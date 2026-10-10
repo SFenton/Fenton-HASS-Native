@@ -42,3 +42,11 @@ struct HomeViewTests {
         cache.clear()
     }
 }
+
+@MainActor
+struct HomeSheetDetentTests {
+    @Test func lightsOpensFullHeightAndListsKeepMedium() {
+        #expect(HomeScreen.detents(for: .lights) == [.large])
+        #expect(HomeScreen.detents(for: .security) == [.medium, .large])
+    }
+}

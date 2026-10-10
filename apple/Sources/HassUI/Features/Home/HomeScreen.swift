@@ -29,12 +29,21 @@ struct HomeScreen: View {
             switch sheet {
             case let .chip(kind):
                 ChipSheet(kind: kind)
-                    .presentationDetents([.medium, .large])
+                    .presentationDetents(Self.detents(for: kind))
                     .presentationDragIndicator(.visible)
             case let .camera(camera):
                 CameraViewer(camera: camera)
             }
         }
+    }
+}
+
+extension HomeScreen {
+    /// The Lights sheet holds every room's tiles, so it opens full height; at the medium detent the
+    /// lower tiles sat below the screen edge and failed the clipping and contrast audits. Short
+    /// read-only lists keep the medium detent.
+    static func detents(for kind: HomeConfig.ChipSheet) -> Set<PresentationDetent> {
+        kind == .lights ? [.large] : [.medium, .large]
     }
 }
 

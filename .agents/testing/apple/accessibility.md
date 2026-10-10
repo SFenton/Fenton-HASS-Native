@@ -10,6 +10,18 @@
 - A single passing run of a flaky audit is not certification; a source-identical rerun must pass too.
 - iPhone Duo: `XCUIDevice` cannot fold or rotate the Duo. Set the pose in Device Hub before the run; the journey audits the pose it finds.
 
+## Accepted audit issues
+
+`FentonHomeApp.audit` collects every issue in one run and accepts only these, all on system-drawn elements the app does not style:
+
+| Issue | Element | Why |
+|---|---|---|
+| Contrast | Disabled buttons (e.g. Sign In before the fields are filled) | System dimmed style; disabled controls are exempt from WCAG 1.4.3 |
+| Contrast | `Form` section headers ("Home Assistant", "Two-factor code") | System secondary header style |
+| Dynamic Type | Navigation bar buttons (a sheet's Done) | System bar buttons |
+
+Add a row here and in `isSystemDrawn` together, with the evidence.
+
 ## Open findings
 
 None yet.
