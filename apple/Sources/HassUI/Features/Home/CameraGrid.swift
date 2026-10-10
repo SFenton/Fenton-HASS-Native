@@ -32,8 +32,10 @@ struct CameraTile: View {
     var camera: HomeConfig.Camera
 
     var body: some View {
-        CameraSnapshotView(entityId: camera.entityId)
+        // The cell sets the 16:9 frame and the snapshot fills it, so wide images can't widen the tile.
+        Color.clear
             .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            .overlay { CameraSnapshotView(entityId: camera.entityId) }
             .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))
             .overlay(alignment: .bottomLeading) {
                 // Wraps at large Dynamic Type instead of truncating.

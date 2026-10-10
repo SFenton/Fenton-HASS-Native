@@ -74,6 +74,14 @@ final class HomeJourneyTests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+        // XCUIScreen captures only the outer panel, which is dark on an unfolded iPhone Duo. With
+        // FENTON_CAPTURE_DIR set, the host captures the lit panel: `<name>.ready` asks, `<name>.done` answers.
+        guard let folder = ProcessInfo.processInfo.environment["FENTON_CAPTURE_DIR"], !folder.isEmpty else { return }
+        let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
+        let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
+        FileManager.default.createFile(atPath: ready.path, contents: nil)
+        let deadline = Date().addingTimeInterval(30)
+        while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
     }
 
     /// Keeps a screenshot of live Home in the result bundle.
