@@ -34,7 +34,8 @@ struct StatusChipView: View {
                     .foregroundStyle(active ? tint : .secondary)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(chip.title).font(.subheadline.weight(.semibold))
-                    Text(summary).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                    // Primary: secondary caption text failed the contrast audit on the chip's material.
+                    Text(summary).font(.caption).foregroundStyle(.primary).monospacedDigit()
                 }
             }
             .padding(.horizontal, HassTokens.Spacing.m)

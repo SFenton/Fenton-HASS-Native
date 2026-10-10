@@ -1,12 +1,13 @@
 import XCTest
 
 /// Home after a real sign-in: audit, chips, sheets and reopening without a reload.
+@MainActor
 final class HomeJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
     func testHomePassesAccessibilityAudit() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        try app.performAccessibilityAudit()
+        try FentonHomeApp.audit(app)
     }
 
     func testStatusChipsHaveValueLabels() throws {
@@ -23,8 +24,36 @@ final class HomeJourneyTests: XCTestCase {
         let app = try FentonHomeApp.launchSignedIn()
         app.buttons["home.chip.lights"].tap()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
-        try app.performAccessibilityAudit()
+        sleep(1) // Let the sheet finish presenting; mid-animation frames fail contrast and clipping.
+        try FentonHomeApp.audit(app)
         app.buttons["Done"].tap()
+    }
+
+    /// Toggling a light group in the Lights sheet flips its live state, then the test restores it.
+    func testLightsSheetTogglesAGroup() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        app.buttons["home.chip.lights"].tap()
+        let tile = app.descendants(matching: .any)["lights.group.light.gym_light"]
+        XCTAssertTrue(tile.waitForExistence(timeout: 5))
+        let before = try XCTUnwrap(tile.value as? String)
+        XCTAssertNotEqual(before, "Unavailable")
+        tile.tap()
+        let changed = NSPredicate(format: "value != %@", before)
+        wait(for: [XCTNSPredicateExpectation(predicate: changed, object: tile)], timeout: 10)
+        tile.tap()
+        let restored = NSPredicate(format: "value == %@", before)
+        wait(for: [XCTNSPredicateExpectation(predicate: restored, object: tile)], timeout: 10)
+        app.buttons["Done"].tap()
+    }
+
+    /// Keeps a screenshot of live Home in the result bundle.
+    func testHomeScreenshot() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        sleep(2)
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "Home"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     /// Reopening keeps Home on screen: no sign-in screen, no blank page.

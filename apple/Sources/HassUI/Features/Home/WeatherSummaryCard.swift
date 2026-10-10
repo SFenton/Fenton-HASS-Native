@@ -18,15 +18,16 @@ struct WeatherSummaryCard: View {
                     .monospacedDigit()
                 Text(Self.conditionName(weather?.state))
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
             Spacer(minLength: 0)
             if let humidity = weather?.attributes["humidity"]?.number {
                 Label("\(Int(humidity))%", systemImage: "humidity")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
         }
+        // Text is primary: secondary failed the contrast audit on the card's material.
         .padding(HassTokens.Spacing.l)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
         .accessibilityElement(children: .combine)

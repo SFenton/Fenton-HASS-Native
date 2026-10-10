@@ -17,3 +17,6 @@ xcuserdata/
 !.env.example
 apple/Apps/*/Info.plist
 .build/
+
+# Local build output (xcodebuild -derivedDataPath, result bundles).
+build/

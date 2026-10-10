@@ -14,13 +14,22 @@ struct LoginView: View {
     @State private var needsMFA = false
     @State private var isWorking = false
     @State private var errorMessage: String?
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable { case server, code, username, password }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Server", text: $serverText)
+                    // Wraps rather than truncating long URLs (Dynamic Type audit); Return adds no line.
+                    TextField("Server", text: $serverText, axis: .vertical)
+                        .lineLimit(1...4)
                         .urlEntryField()
+                        .onChange(of: serverText) { _, value in
+                            if value.contains(where: \.isNewline) { serverText = value.filter { !$0.isNewline } }
+                        }
+                        .focusesFromWholeRow($focusedField, .server)
                         .accessibilityIdentifier("login.server")
                         .disabled(needsMFA)
                 } header: {
@@ -31,6 +40,7 @@ struct LoginView: View {
                     Section {
                         TextField("Code", text: $mfaCode)
                             .oneTimeCodeEntryField()
+                            .focusesFromWholeRow($focusedField, .code)
                             .accessibilityIdentifier("login.code")
                     } header: {
                         Text("Two-factor code")
@@ -41,9 +51,11 @@ struct LoginView: View {
                     Section {
                         TextField("Username", text: $username)
                             .usernameEntryField()
+                            .focusesFromWholeRow($focusedField, .username)
                             .accessibilityIdentifier("login.username")
                         SecureField("Password", text: $password)
                             .textContentType(.password)
+                            .focusesFromWholeRow($focusedField, .password)
                             .accessibilityIdentifier("login.password")
                     }
                 }
@@ -134,5 +146,16 @@ struct LoginView: View {
         if let value = environment["FENTON_HASS_USERNAME"] { username = value }
         if let value = environment["FENTON_HASS_PASSWORD"] { password = value }
         #endif
+    }
+}
+
+private extension View {
+    /// Fills the Form row (44 pt minimum) and focuses the field from a tap anywhere in it, not only on
+    /// its text.
+    func focusesFromWholeRow<Value: Hashable>(_ focus: FocusState<Value?>.Binding, _ value: Value) -> some View {
+        frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { focus.wrappedValue = value }
+            .focused(focus, equals: value)
     }
 }

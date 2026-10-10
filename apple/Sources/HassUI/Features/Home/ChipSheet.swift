@@ -9,6 +9,8 @@ struct ChipSheet: View {
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection
     @Environment(\.dismiss) private var dismiss
+    /// Grows with Dynamic Type so tiles drop to fewer columns instead of clipping their titles.
+    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
     var body: some View {
         NavigationStack {
@@ -26,7 +28,7 @@ struct ChipSheet: View {
         switch kind {
         case .lights:
             ScrollView {
-                DynamicGridLayout(minCellWidth: 140, maxColumns: 6) {
+                DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 6) {
                     ForEach(HomeConfig.lightGroups) { group in
                         let state = store.entity(group.toggleEntityId).state
                         GlassTile(
@@ -39,6 +41,7 @@ struct ChipSheet: View {
                         ) {
                             Task { try? await connection.toggle(group.toggleEntityId) }
                         }
+                        .accessibilityIdentifier("lights.group.\(group.toggleEntityId)")
                     }
                 }
                 .padding()

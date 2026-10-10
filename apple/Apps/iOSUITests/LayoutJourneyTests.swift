@@ -2,9 +2,10 @@ import XCTest
 
 /// Orientation and split rules per device family (owner, 2026-10-10;
 /// `.agents/design/apple/split-view.md`).
+@MainActor
 final class LayoutJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
-    override func tearDown() { XCUIDevice.shared.orientation = .portrait }
+    override func tearDown() { MainActor.assumeIsolated { XCUIDevice.shared.orientation = .portrait } }
 
     /// iPhone is locked to portrait.
     func testIPhoneStaysPortrait() throws {
@@ -31,10 +32,10 @@ final class LayoutJourneyTests: XCTestCase {
     func testSignInAuditsInSupportedOrientations() throws {
         let app = FentonHomeApp.launchSignedOut()
         XCTAssertTrue(app.textFields["login.username"].waitForExistence(timeout: 10))
-        try app.performAccessibilityAudit()
+        try FentonHomeApp.audit(app)
         guard FentonHomeApp.family == .iPad else { return }
         XCUIDevice.shared.orientation = .landscapeLeft
         sleep(1)
-        try app.performAccessibilityAudit()
+        try FentonHomeApp.audit(app)
     }
 }

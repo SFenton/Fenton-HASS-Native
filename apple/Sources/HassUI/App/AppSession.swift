@@ -29,6 +29,15 @@ public final class AppSession {
             tokenStore.clear()
             snapshotCache.clear()
         }
+        // FENTON_HASS_TOKEN signs in with a long-lived access token for this launch only (never saved),
+        // so journeys can run against the real server without a password.
+        if let token = ProcessInfo.processInfo.environment["FENTON_HASS_TOKEN"], !token.isEmpty {
+            let server = ProcessInfo.processInfo.environment["FENTON_HASS_SERVER"]
+                .flatMap(URL.init(string:)).map(HassServer.init(baseURL:)) ?? .fentonHome
+            let tokens = AuthTokens(accessToken: token, expiresAt: .distantFuture, refreshToken: "")
+            start(server: server, tokens: TokenManager(store: InMemoryTokenStore(), initial: tokens))
+            return
+        }
         #endif
         if let stored = tokenStore.load() {
             start(server: stored.server, tokens: TokenManager(store: tokenStore))

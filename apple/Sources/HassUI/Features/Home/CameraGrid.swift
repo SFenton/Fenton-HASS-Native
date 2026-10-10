@@ -36,11 +36,15 @@ struct CameraTile: View {
             .aspectRatio(16.0 / 9.0, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))
             .overlay(alignment: .bottomLeading) {
+                // Wraps at large Dynamic Type instead of truncating.
                 Text(camera.title)
                     .font(.caption.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, HassTokens.Spacing.s)
                     .padding(.vertical, HassTokens.Spacing.xs)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    // A dark scrim keeps contrast on any snapshot (thin material failed on dark images).
+                    .background(.black.opacity(0.6), in: Capsule())
                     .padding(HassTokens.Spacing.s)
             }
     }

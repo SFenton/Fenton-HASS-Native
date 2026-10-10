@@ -60,14 +60,17 @@ public struct GlassTile: View {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 if let subtitle {
                     Text(subtitle)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
+            // Text wraps and the tile grows at large Dynamic Type instead of truncating.
             .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
             .padding(HassTokens.Spacing.m)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
