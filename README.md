@@ -6,7 +6,7 @@ Native iOS, iPadOS and watchOS apps for the Fenton household's Home Assistant (`
 
 ## Build
 
-Requires Xcode 16+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+Requires Xcode 27.1+ (iPhone Duo SDK) and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 ```bash
 cd apple
@@ -14,6 +14,8 @@ swift test                 # HassCore and HassDesign unit tests (macOS host)
 xcodegen generate          # writes FentonHome.xcodeproj
 open FentonHome.xcodeproj  # run the FentonHome scheme on an iPhone or iPad simulator
 ```
+
+Gates: `tools/apple_coverage.sh` (95% logic / 90% UX line coverage) and `tools/ios_uitest.sh --env <local env file>` (journeys and accessibility audits on iPhone, iPhone Duo and iPad).
 
 ## Where to start
 

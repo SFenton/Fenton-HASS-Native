@@ -1,4 +1,3 @@
-#if os(iOS)
 import HassCore
 import HassDesign
 import SwiftUI
@@ -15,7 +14,7 @@ struct ChipSheet: View {
         NavigationStack {
             content
                 .navigationTitle(title)
-                .navigationBarTitleDisplayMode(.inline)
+                .inlineNavigationTitle()
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 }
@@ -69,4 +68,3 @@ struct ChipSheet: View {
         return ids.compactMap { store.entity($0).state }
     }
 }
-#endif

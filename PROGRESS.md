@@ -28,7 +28,7 @@ apple/Tests/**                                             → tests for your ow
 2. **Primary tabs:** Security, Climate, Chores, Settings, at web parity, iPhone first.
 3. **iPad and iPhone Duo:** flyout navigation and on-demand split per [split-view](.agents/design/apple/split-view.md).
 4. **Rooms and detail pages:** room pages, Food & Recipes, Groceries, vacuums, media.
-5. **Live cameras:** WebRTC streams (go2rtc) replacing snapshot tiles.
+5. **Live cameras:** snapshot tiles, then HLS, then WebRTC (go2rtc).
 6. **Watch app:** glanceable status and a handful of controls.
 7. **Report an Issue / Feature Request:** port from FestivalNativeApps with its own request repo.
 
@@ -40,7 +40,10 @@ apple/Tests/**                                             → tests for your ow
 | Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Security, Climate, Chores, Settings | Placeholders |
-| iPad flyout, on-demand split | Not started (TabView for now) |
+| Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
+| Split policy (landscape regular only) | Policy and tests; split layout not built yet |
+| iPad flyout | Not started (TabView for now) |
+| Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`) |
 | Watch app | Target stub only |
 
 ## 4. Log

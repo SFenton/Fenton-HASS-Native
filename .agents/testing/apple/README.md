@@ -1,12 +1,9 @@
 # Apple testing
 
-> **What:** what to test and when on Apple platforms. **Read when:** adding or changing Swift code.
+> **What:** test phases, device matrix, accessibility rules and coverage bars (ported from FestivalNativeApps). **Read when:** adding or changing Swift code.
 
-| Phase | Tests |
+| File | Holds |
 |---|---|
-| Feature build | Unit tests for `HassCore` and `HassDesign` logic (`swift test`); quick simulator screenshots |
-| Feature complete | XCUITests per page, accessibility checks (labels, traits, Dynamic Type, 44 pt targets) |
-| Release | Whole-app audits and VoiceOver walkthroughs |
-
-- Network code is tested with `URLProtocol` stubs; never hit the live server from automated tests.
-- `EntityStore` tests assert that unchanged entities keep the same box and are not re-published.
+| [strategy.md](strategy.md) | Phases, accessibility tests with every change, certification gates |
+| [accessibility.md](accessibility.md) | Audit rules and evidence |
+| [devices.md](devices.md) | iPhone, iPhone Duo, iPad matrix and how to run it |

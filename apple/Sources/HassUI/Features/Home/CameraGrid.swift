@@ -1,8 +1,7 @@
-#if os(iOS)
 import HassCore
 import HassDesign
+import ImageIO
 import SwiftUI
-import UIKit
 
 /// Home cameras (web `CameraTile` grid: `columns={2} maxCellWidth={280} maxColumns={4}`).
 struct CameraGrid: View {
@@ -21,6 +20,7 @@ struct CameraGrid: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(camera.title) camera")
                     .accessibilityHint("Opens the camera")
+                    .accessibilityIdentifier("home.camera.\(camera.rtcStreamId)")
                 }
             }
         }
@@ -60,7 +60,7 @@ struct CameraViewer: View {
                 .padding()
                 .frame(maxHeight: .infinity)
                 .navigationTitle(camera.title)
-                .navigationBarTitleDisplayMode(.inline)
+                .inlineNavigationTitle()
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 }
@@ -75,13 +75,13 @@ struct CameraSnapshotView: View {
     var entityId: String
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection
-    @State private var image: UIImage?
+    @State private var image: CGImage?
 
     var body: some View {
         ZStack {
             Rectangle().fill(.quaternary)
             if let image {
-                Image(uiImage: image).resizable().scaledToFill()
+                Image(decorative: image, scale: 1).resizable().scaledToFill()
             } else {
                 Image(systemName: "video").font(.title).foregroundStyle(.secondary)
             }
@@ -90,7 +90,8 @@ struct CameraSnapshotView: View {
             guard let url = snapshotURL,
                   let (data, response) = try? await URLSession.shared.data(from: url),
                   (response as? HTTPURLResponse)?.statusCode == 200,
-                  let loaded = UIImage(data: data) else { return }
+                  let source = CGImageSourceCreateWithData(data as CFData, nil),
+                  let loaded = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return }
             image = loaded
         }
     }
@@ -100,4 +101,3 @@ struct CameraSnapshotView: View {
         return URL(string: picture, relativeTo: connection.server.baseURL)?.absoluteURL
     }
 }
-#endif

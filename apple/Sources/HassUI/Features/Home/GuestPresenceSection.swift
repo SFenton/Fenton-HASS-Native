@@ -1,4 +1,3 @@
-#if os(iOS)
 import HassCore
 import HassDesign
 import SwiftUI
@@ -46,4 +45,3 @@ struct ControlTileGrid<Content: View>: View {
         DynamicGridLayout(minCellWidth: 110, maxColumns: 6) { content }
     }
 }
-#endif

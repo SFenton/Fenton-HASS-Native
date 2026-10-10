@@ -2,6 +2,8 @@
 
 > **What:** one folder per web route with a platform-neutral spec and per-platform notes. **Read when:** porting or changing a page.
 
+Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-2e8f-4aee-b216-8256aa97f47c).
+
 | Page | Web route | Spec | Native status |
 |---|---|---|---|
 | Home | `/at-a-glance/overview` | [home/spec.md](home/spec.md) | Scaffolded ([ios.md](home/ios.md)) |

@@ -1,4 +1,3 @@
-#if os(iOS)
 import HassCore
 import HassDesign
 import SwiftUI
@@ -41,6 +40,7 @@ struct MainTabView: View {
                     screen(for: tab)
                 }
                 .tabItem { Label(tab.title, systemImage: tab.symbol) }
+                .accessibilityIdentifier("tab.\(tab.rawValue)")
                 .tag(tab)
             }
         }
@@ -55,4 +55,3 @@ struct MainTabView: View {
         }
     }
 }
-#endif

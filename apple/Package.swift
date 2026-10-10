@@ -21,6 +21,7 @@ let package = Package(
         .target(name: "HassUI", dependencies: ["HassCore", "HassDesign"]),
         .testTarget(name: "HassCoreTests", dependencies: ["HassCore"]),
         .testTarget(name: "HassDesignTests", dependencies: ["HassDesign"]),
+        .testTarget(name: "HassUITests", dependencies: ["HassUI", "HassCore"]),
     ],
     swiftLanguageModes: [.v6]
 )

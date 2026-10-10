@@ -1,4 +1,3 @@
-#if os(iOS)
 import HassCore
 import HassDesign
 import SwiftUI
@@ -70,4 +69,3 @@ struct WeatherSummaryCard: View {
         }
     }
 }
-#endif

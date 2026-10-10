@@ -1,4 +1,3 @@
-#if os(iOS)
 import HassCore
 import HassDesign
 import SwiftUI
@@ -21,9 +20,10 @@ struct HomeScreen: View {
             }
             .padding(.vertical, HassTokens.Spacing.m)
         }
+        .accessibilityIdentifier("home.scroll")
         .navigationTitle("Home")
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { FreshnessIndicator() }
+            ToolbarItem(placement: .primaryAction) { FreshnessIndicator() }
         }
         .sheet(item: $sheet) { sheet in
             switch sheet {
@@ -66,4 +66,3 @@ struct FreshnessIndicator: View {
         }
     }
 }
-#endif

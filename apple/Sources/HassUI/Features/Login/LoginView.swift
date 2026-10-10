@@ -1,4 +1,3 @@
-#if os(iOS)
 import HassCore
 import SwiftUI
 
@@ -21,10 +20,8 @@ struct LoginView: View {
             Form {
                 Section {
                     TextField("Server", text: $serverText)
-                        .textContentType(.URL)
-                        .keyboardType(.URL)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                        .urlEntryField()
+                        .accessibilityIdentifier("login.server")
                         .disabled(needsMFA)
                 } header: {
                     Text("Home Assistant")
@@ -33,8 +30,8 @@ struct LoginView: View {
                 if needsMFA {
                     Section {
                         TextField("Code", text: $mfaCode)
-                            .textContentType(.oneTimeCode)
-                            .keyboardType(.numberPad)
+                            .oneTimeCodeEntryField()
+                            .accessibilityIdentifier("login.code")
                     } header: {
                         Text("Two-factor code")
                     } footer: {
@@ -43,11 +40,11 @@ struct LoginView: View {
                 } else {
                     Section {
                         TextField("Username", text: $username)
-                            .textContentType(.username)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
+                            .usernameEntryField()
+                            .accessibilityIdentifier("login.username")
                         SecureField("Password", text: $password)
                             .textContentType(.password)
+                            .accessibilityIdentifier("login.password")
                     }
                 }
 
@@ -69,6 +66,7 @@ struct LoginView: View {
                         }
                     }
                     .disabled(!canSubmit)
+                    .accessibilityIdentifier("login.submit")
                 }
             }
             .navigationTitle("Sign In")
@@ -138,4 +136,3 @@ struct LoginView: View {
         #endif
     }
 }
-#endif

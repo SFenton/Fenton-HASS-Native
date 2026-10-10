@@ -13,7 +13,8 @@
 | Fix a reported issue | [skills/fix-reported-issue](skills/fix-reported-issue/SKILL.md) |
 | Sign-in, tokens, Keychain | [platforms/apple/auth.md](platforms/apple/auth.md) |
 | Websocket, backgrounding, caching | [platforms/apple/connection-lifecycle.md](platforms/apple/connection-lifecycle.md) |
-| Decide what tests to write | [testing/apple/README.md](testing/apple/README.md) |
+| Decide what tests to write | [testing/apple/strategy.md](testing/apple/strategy.md) |
+| Run tests on iPhone, Duo, iPad | [testing/apple/devices.md](testing/apple/devices.md) |
 | Edit these docs | [workflow/docs-conventions.md](workflow/docs-conventions.md) |
 
 ## By platform

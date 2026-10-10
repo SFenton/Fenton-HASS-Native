@@ -38,10 +38,10 @@ targets:
           UIColorName: LaunchBackground
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
-        UISupportedInterfaceOrientations:
+        # iPhone is portrait-only; iPad allows all four. iPhone Duo gets every orientation at runtime
+        # once a hinge is observed (FentonOrientationSupport, owner 2026-10-10).
+        UISupportedInterfaceOrientations~iphone:
           - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown
@@ -61,10 +61,27 @@ targets:
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.sfenton.home
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Home
+  FentonHomeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Apps/iOSUITests
+    dependencies:
+      - target: FentonHome
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.uitests
+        TEST_TARGET_NAME: FentonHome
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   FentonHome:
     build:
       targets:
         FentonHome: all
     test:
-      targets: []
+      gatherCoverageData: true
+      coverageTargets:
+        - FentonHome
+      targets:
+        - FentonHomeUITests

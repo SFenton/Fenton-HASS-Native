@@ -13,6 +13,8 @@ Read this file first, then [.agents/README.md](.agents/README.md) for the page, 
 - **Apple design guidance.** Every UI decision goes through the Apple HIG (and the `apple-hig` skill where installed, including `/duo` for iPhone Duo). Cite the HIG section in the page or control note. HIG wins over web parity where they conflict; record the departure.
 - **Web parity source.** The React dashboard `SFenton/ha-sfenton-react-dash` defines behavior and entity IDs. Read it; never edit it to make a native test pass. Cite files as `ha-sfenton-react-dash@<sha>:path:line`.
 - **Shared code.** iPhone, iPad, Duo and Watch share `HassCore` and `HassDesign`; the phone and tablet share `HassUI`. Form-factor differences live in layout policies, not forked screens.
+- **Devices (owner, 2026-10-10).** Every automation and accessibility test runs on iPhone, iPhone Duo and iPad. iPhone is locked to portrait. iPhone Duo and iPad rotate freely. Folded Duo, unfolded Duo portrait and iPad portrait are always single-page and never split; unfolded Duo landscape and iPad landscape may split. The rule is geometric (`SplitPolicy`), never a device-name check. See [split-view](.agents/design/apple/split-view.md).
+- **Tests ship with the change (FestivalNativeApps rules).** Unit tests for new logic; with every UI change, a UX test and an **accessibility test** on each device family it affects (name/role/state, reading order, 44 pt targets, AX5 text scaling). A missing one is a major review finding. Certification needs **≥95% logic and ≥90% UX line coverage** (`tools/apple_coverage.sh`) plus the device journeys (`tools/ios_uitest.sh`). See [testing](.agents/testing/apple/README.md).
 - Document Swift with DocC `///` and `// MARK: -` regions. Test behavior changes, not only compilation.
 
 ## Model roles
@@ -27,5 +29,5 @@ Read this file first, then [.agents/README.md](.agents/README.md) for the page, 
 
 1. Read the web source for the page or control and its spec (`.agents/pages/<id>/spec.md` + your platform file). Identify entities, states, services and navigation edges.
 2. Implement in your lane's folders. Add unit tests for non-UI logic as you go, and a UI or accessibility test with each UI change.
-3. Build and check visually on the simulator ([build-and-run](.agents/platforms/apple/build-and-run.md)).
+3. Build, then run the journeys you added or touched on iPhone, iPhone Duo and iPad (`tools/ios_uitest.sh`) and check visually ([build-and-run](.agents/platforms/apple/build-and-run.md)).
 4. Record durable findings as rules in the right `.agents` file, pattern doc first. Commit small cohesive commits and update PROGRESS.md.

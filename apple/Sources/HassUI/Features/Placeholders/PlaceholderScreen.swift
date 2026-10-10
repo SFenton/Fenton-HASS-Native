@@ -1,4 +1,3 @@
-#if os(iOS)
 import HassCore
 import SwiftUI
 
@@ -41,4 +40,3 @@ struct SettingsPlaceholder: View {
         }
     }
 }
-#endif

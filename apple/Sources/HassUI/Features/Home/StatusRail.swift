@@ -1,4 +1,3 @@
-#if os(iOS)
 import HassCore
 import HassDesign
 import SwiftUI
@@ -45,6 +44,7 @@ struct StatusChipView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(chip.title), \(summary)")
         .accessibilityHint("Opens \(chip.title)")
+        .accessibilityIdentifier("home.chip.\(chip.sheet.rawValue)")
     }
 
     private var tint: Color {
@@ -57,4 +57,3 @@ struct StatusChipView: View {
         }
     }
 }
-#endif

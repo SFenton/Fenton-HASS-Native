@@ -1,4 +1,3 @@
-#if os(iOS)
 import HassCore
 import SwiftUI
 
@@ -24,6 +23,7 @@ public struct RootView: View {
                     }
             }
         }
+        .observesDeviceSignals()
         .onChange(of: scenePhase) { _, phase in
             guard case let .signedIn(_, lifecycle) = session.phase else { return }
             switch phase {
@@ -34,4 +34,3 @@ public struct RootView: View {
         }
     }
 }
-#endif

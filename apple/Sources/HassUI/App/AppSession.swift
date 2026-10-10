@@ -1,4 +1,3 @@
-#if os(iOS)
 import Foundation
 import HassCore
 import Observation
@@ -24,6 +23,13 @@ public final class AppSession {
     public init(tokenStore: TokenStore = KeychainTokenStore(), snapshotCache: EntitySnapshotCache = .init()) {
         self.tokenStore = tokenStore
         self.snapshotCache = snapshotCache
+        #if DEBUG
+        // UI tests start signed out: FENTON_UITEST_RESET=1 clears the saved sign-in and snapshot.
+        if ProcessInfo.processInfo.environment["FENTON_UITEST_RESET"] == "1" {
+            tokenStore.clear()
+            snapshotCache.clear()
+        }
+        #endif
         if let stored = tokenStore.load() {
             start(server: stored.server, tokens: TokenManager(store: tokenStore))
         }
@@ -57,4 +63,3 @@ public final class AppSession {
         lifecycle.didBecomeActive()
     }
 }
-#endif
