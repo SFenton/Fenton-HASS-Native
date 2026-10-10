@@ -1,0 +1,48 @@
+# Fenton HASS Native: plan and progress
+
+Single source of truth for what is being built, by whom and in which order. Update the lane table and log whenever work lands on `main`.
+
+## 1. Operating model
+
+Opus plans and reviews; Sonnet lanes implement in separate worktrees on disjoint folders; Haiku gathers. See [AGENTS.md](AGENTS.md#model-roles).
+
+### Lanes and file ownership
+
+A lane may read anything but only edit what it owns. Shared seams are orchestrator-owned; ask in your final report if you need a change there.
+
+```
+apple/Package.swift, apple/project.yml                    → orchestrator
+apple/Sources/HassCore/Auth, Connection, Entities          → orchestrator (Core lane once opened)
+apple/Sources/HassCore/Config/<Area>Config.swift           → the lane porting that area
+apple/Sources/HassDesign/                                  → orchestrator (lanes may add new files)
+apple/Sources/HassUI/App/                                  → orchestrator
+apple/Sources/HassUI/Features/<Feature>/                   → the lane for that feature
+apple/Tests/**                                             → tests for your own files only
+.agents/pages/<id>/, .agents/controls/<id>/                → the lane for that page/control
+.agents/** (everything else)                               → orchestrator
+```
+
+## 2. Priorities
+
+1. **Foundation (this scaffold):** sign-in, connection lifecycle, cached entity store, Home screen.
+2. **Primary tabs:** Security, Climate, Chores, Settings, at web parity, iPhone first.
+3. **iPad and iPhone Duo:** flyout navigation and on-demand split per [split-view](.agents/design/apple/split-view.md).
+4. **Rooms and detail pages:** room pages, Food & Recipes, Groceries, vacuums, media.
+5. **Live cameras:** WebRTC streams (go2rtc) replacing snapshot tiles.
+6. **Watch app:** glanceable status and a handful of controls.
+7. **Report an Issue / Feature Request:** port from FestivalNativeApps with its own request repo.
+
+## 3. Status
+
+| Area | State |
+|---|---|
+| Sign-in (login flow, MFA step, Keychain) | Scaffolded; not yet verified against the live server |
+| Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
+| Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
+| Security, Climate, Chores, Settings | Placeholders |
+| iPad flyout, on-demand split | Not started (TabView for now) |
+| Watch app | Target stub only |
+
+## 4. Log
+
+- 2026-10-10: initial scaffold.
