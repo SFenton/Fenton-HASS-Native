@@ -5,29 +5,30 @@ import SwiftUI
 /// Current conditions (web `WeatherSummary`, first pass: no forecast rail).
 struct WeatherSummaryCard: View {
     @Environment(EntityStore.self) private var store
+    /// The condition symbol grows with Dynamic Type.
+    @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 44
 
     var body: some View {
         let weather = store.entity(HomeConfig.weatherEntityId).state
         HStack(spacing: HassTokens.Spacing.l) {
             Image(systemName: Self.symbol(for: weather?.state))
                 .symbolRenderingMode(.multicolor)
-                .font(.system(size: 44))
+                .font(.system(size: symbolSize))
             VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
                 Text(temperature(weather))
                     .font(.largeTitle.weight(.semibold))
                     .monospacedDigit()
                 Text(Self.conditionName(weather?.state))
                     .font(.subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(HassTokens.Ink.secondary)
             }
             Spacer(minLength: 0)
             if let humidity = weather?.attributes["humidity"]?.number {
                 Label("\(Int(humidity))%", systemImage: "humidity")
                     .font(.subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(HassTokens.Ink.secondary)
             }
         }
-        // Text is primary: secondary failed the contrast audit on the card's material.
         .padding(HassTokens.Spacing.l)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
         .accessibilityElement(children: .combine)

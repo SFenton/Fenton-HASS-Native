@@ -88,6 +88,7 @@ struct CameraSnapshotView: View {
             Rectangle().fill(.quaternary)
             if let image {
                 Image(decorative: image, scale: 1).resizable().scaledToFill()
+                    .blur(radius: ScreenshotPrivacy.isRedacting ? 40 : 0)
             } else {
                 Image(systemName: "video").font(.title).foregroundStyle(.secondary)
             }

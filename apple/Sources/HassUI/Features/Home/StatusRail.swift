@@ -15,6 +15,9 @@ struct StatusRail: View {
             }
             .padding(.horizontal, HassTokens.Spacing.l)
         }
+        // A horizontal scroll view draws into the side safe areas; clip it to its frame so chips never
+        // scroll under the folded iPhone Duo's trailing toolbar rail.
+        .clipped()
     }
 }
 
@@ -25,7 +28,8 @@ struct StatusChipView: View {
     @Environment(EntityStore.self) private var store
 
     var body: some View {
-        let summary = HomeConfig.summary(for: chip) { store.entity($0).state }
+        let summary = ScreenshotPrivacy.isRedacting && [.security, .occupancy].contains(chip.sheet)
+            ? "Hidden" : HomeConfig.summary(for: chip) { store.entity($0).state }
         let active = store.entity(chip.entityId).state?.isActive ?? false
         Button(action: action) {
             HStack(spacing: HassTokens.Spacing.s) {
@@ -33,9 +37,8 @@ struct StatusChipView: View {
                     .symbolVariant(active ? .fill : .none)
                     .foregroundStyle(active ? tint : .secondary)
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(chip.title).font(.subheadline.weight(.semibold))
-                    // Primary: secondary caption text failed the contrast audit on the chip's material.
-                    Text(summary).font(.caption).foregroundStyle(.primary).monospacedDigit()
+                    Text(chip.title).font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
+                    Text(summary).font(.caption).foregroundStyle(HassTokens.Ink.secondary).monospacedDigit()
                 }
             }
             .padding(.horizontal, HassTokens.Spacing.m)

@@ -59,14 +59,13 @@ public struct GlassTile: View {
                 }
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(HassTokens.Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if let subtitle {
-                    // Primary: secondary text failed the contrast audit on the tile's material.
                     Text(subtitle)
                         .font(.footnote)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(HassTokens.Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }

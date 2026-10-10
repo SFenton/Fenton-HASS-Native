@@ -1,4 +1,9 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#else
+import AppKit
+#endif
 
 /// Design tokens shared by every Apple surface. Values follow the web dashboard's density
 /// (`src/styles/tokens.css`) adapted to HIG spacing.
@@ -32,6 +37,27 @@ public enum HassTokens {
         public static let presence = Color(red: 0.20, green: 0.76, blue: 0.57)
         public static let contact = Color(red: 0.98, green: 0.55, blue: 0.20)
         public static let neutral = Color.secondary
+    }
+
+    // MARK: - Text
+
+    /// Text colors for content on materials. Plain `Color`s rather than the hierarchical `.primary` /
+    /// `.secondary` styles, which pick up vibrancy on a material and fail the contrast audit there.
+    public enum Ink {
+        /// Titles and values.
+        public static let primary = label
+        /// Supporting text (summaries, states): still at least 4.5:1 on the light and dark materials.
+        public static let secondary = label.opacity(0.72)
+
+        /// The platform label color as a plain dynamic color (`Color.primary` resolves to the vibrant
+        /// hierarchical style inside a material).
+        private static var label: Color {
+            #if canImport(UIKit)
+            Color(uiColor: .label)
+            #else
+            Color(nsColor: .labelColor)
+            #endif
+        }
     }
 
     /// Minimum hit target (HIG: Buttons).

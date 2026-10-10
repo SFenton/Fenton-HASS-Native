@@ -7,7 +7,11 @@ final class HomeJourneyTests: XCTestCase {
 
     func testHomePassesAccessibilityAudit() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        try FentonHomeApp.audit(app)
+        try FentonHomeApp.audit(app) {
+            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
+            sleep(2)
+            return large
+        }
     }
 
     func testStatusChipsHaveValueLabels() throws {
@@ -25,15 +29,20 @@ final class HomeJourneyTests: XCTestCase {
         app.buttons["home.chip.lights"].tap()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
         sleep(1) // Let the sheet finish presenting; mid-animation frames fail contrast and clipping.
-        try FentonHomeApp.audit(app)
-        app.buttons["Done"].tap()
+        try FentonHomeApp.audit(app) {
+            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
+            large.buttons["home.chip.lights"].tap()
+            XCTAssertTrue(large.buttons["Done"].waitForExistence(timeout: 5))
+            sleep(1)
+            return large
+        }
     }
 
     /// Toggling a light group in the Lights sheet flips its live state, then the test restores it.
     func testLightsSheetTogglesAGroup() throws {
         let app = try FentonHomeApp.launchSignedIn()
         app.buttons["home.chip.lights"].tap()
-        let tile = app.descendants(matching: .any)["lights.group.light.gym_light"]
+        let tile = app.descendants(matching: .any)["lights.group.light.guest_room"]
         XCTAssertTrue(tile.waitForExistence(timeout: 5))
         XCTAssertTrue(tile.wait(for: \.isHittable, toEqual: true, timeout: 5), "Sheet still presenting")
         let before = try XCTUnwrap(tile.value as? String)
