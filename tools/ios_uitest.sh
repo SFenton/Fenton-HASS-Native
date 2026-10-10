@@ -32,8 +32,10 @@ device_name() {
 if [[ -n "$ENV_FILE" ]]; then
   # Accept KEY=VALUE lines; map common names onto the runner variables without echoing them.
   set -a; source "$ENV_FILE"; set +a
-  export TEST_RUNNER_FENTON_HASS_USERNAME="${FENTON_HASS_USERNAME:-${HASS_USERNAME:-${HA_USERNAME:-}}}"
-  export TEST_RUNNER_FENTON_HASS_PASSWORD="${FENTON_HASS_PASSWORD:-${HASS_PASSWORD:-${HA_PASSWORD:-}}}"
+  export TEST_RUNNER_FENTON_HASS_USERNAME="${FENTON_HASS_USERNAME:-${HASS_USERNAME:-${HA_USERNAME:-${USERNAME:-}}}}"
+  export TEST_RUNNER_FENTON_HASS_PASSWORD="${FENTON_HASS_PASSWORD:-${HASS_PASSWORD:-${HA_PASSWORD:-${PASSWORD:-}}}}"
+  # FENTON_UITEST_NO_TOKEN=1 forces the password login flow.
+  [[ "${FENTON_UITEST_NO_TOKEN:-}" == 1 ]] || export TEST_RUNNER_FENTON_HASS_TOKEN="${FENTON_HASS_TOKEN:-${HASS_TOKEN:-${TOKEN:-}}}"
   SERVER="${FENTON_HASS_SERVER:-${HASS_URL:-${HA_URL:-}}}"
   [[ -n "$SERVER" ]] && export TEST_RUNNER_FENTON_HASS_SERVER="$SERVER"
 fi

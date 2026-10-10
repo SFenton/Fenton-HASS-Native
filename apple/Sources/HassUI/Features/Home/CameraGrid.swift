@@ -44,7 +44,7 @@ struct CameraTile: View {
                     .padding(.horizontal, HassTokens.Spacing.s)
                     .padding(.vertical, HassTokens.Spacing.xs)
                     // A dark scrim keeps contrast on any snapshot (thin material failed on dark images).
-                    .background(.black.opacity(0.6), in: Capsule())
+                    .background(.black.opacity(0.75), in: Capsule())
                     .padding(HassTokens.Spacing.s)
             }
     }

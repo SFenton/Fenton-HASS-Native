@@ -19,7 +19,7 @@ final class LoginJourneyTests: XCTestCase {
             // The tap target is the whole Form row: tapping its empty trailing space must focus the field.
             let cell = app.cells.containing(.textField, identifier: id).firstMatch
             XCTAssertGreaterThanOrEqual(cell.frame.height, 43, "\(id) is below the 44 pt target")
-            cell.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.15)).tap()
+            cell.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
             let before = field.value as? String ?? ""
             app.typeText("x")
             XCTAssertNotEqual(field.value as? String, before, "\(id) row space does not focus it")

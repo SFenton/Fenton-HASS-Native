@@ -18,7 +18,7 @@
 |---|---|---|
 | Contrast | Disabled buttons (e.g. Sign In before the fields are filled) | System dimmed style; disabled controls are exempt from WCAG 1.4.3 |
 | Contrast | `Form` section headers ("Home Assistant", "Two-factor code") | System secondary header style |
-| Dynamic Type | Navigation bar buttons (a sheet's Done) | System bar buttons |
+| Contrast, Dynamic Type | Navigation bar buttons (a sheet's Done) | System Liquid Glass bar buttons; the audit samples them over the sheet's glass |
 
 Add a row here and in `isSystemDrawn` together, with the evidence.
 

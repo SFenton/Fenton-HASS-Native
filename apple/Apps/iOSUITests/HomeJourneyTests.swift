@@ -35,6 +35,7 @@ final class HomeJourneyTests: XCTestCase {
         app.buttons["home.chip.lights"].tap()
         let tile = app.descendants(matching: .any)["lights.group.light.gym_light"]
         XCTAssertTrue(tile.waitForExistence(timeout: 5))
+        XCTAssertTrue(tile.wait(for: \.isHittable, toEqual: true, timeout: 5), "Sheet still presenting")
         let before = try XCTUnwrap(tile.value as? String)
         XCTAssertNotEqual(before, "Unavailable")
         tile.tap()
@@ -46,6 +47,35 @@ final class HomeJourneyTests: XCTestCase {
         app.buttons["Done"].tap()
     }
 
+    /// Keeps screenshots of sign-in, Home and the Lights sheet in the pose the device is in (iPad: also
+    /// landscape), named `<screen>-<orientation>`, for design review on every layout.
+    func testCaptureScreens() throws {
+        let orientations: [UIDeviceOrientation] = FentonHomeApp.family == .iPad ? [.portrait, .landscapeLeft] : [.unknown]
+        for orientation in orientations {
+            if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
+            let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
+            let signedOut = FentonHomeApp.launchSignedOut()
+            XCTAssertTrue(signedOut.textFields["login.username"].waitForExistence(timeout: 10))
+            keep(signedOut, "signin-\(suffix)")
+            let app = try FentonHomeApp.launchSignedIn()
+            sleep(2)
+            keep(app, "home-\(suffix)")
+            app.buttons["home.chip.lights"].tap()
+            XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+            sleep(1)
+            keep(app, "lights-\(suffix)")
+            app.buttons["Done"].tap()
+        }
+        XCUIDevice.shared.orientation = .portrait
+    }
+
+    private func keep(_ app: XCUIApplication, _ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
     /// Keeps a screenshot of live Home in the result bundle.
     func testHomeScreenshot() throws {
         let app = try FentonHomeApp.launchSignedIn()
@@ -54,6 +84,16 @@ final class HomeJourneyTests: XCTestCase {
         attachment.name = "Home"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    /// A password sign-in keeps its refresh token in the Keychain, so a cold relaunch opens on Home.
+    func testRelaunchSkipsSignIn() throws {
+        let app = try FentonHomeApp.launchSignedIn(passwordOnly: true)
+        app.terminate()
+        let relaunched = XCUIApplication()
+        relaunched.launch()
+        XCTAssertTrue(relaunched.buttons["home.chip.lights"].waitForExistence(timeout: 10), "Relaunch did not open on Home")
+        XCTAssertFalse(relaunched.textFields["login.username"].exists)
     }
 
     /// Reopening keeps Home on screen: no sign-in screen, no blank page.

@@ -33,9 +33,10 @@ enum FentonHomeApp {
 
     /// Launches signed out, then signs in with the runner's credentials. Skips when none are provided.
     /// `TEST_RUNNER_FENTON_HASS_TOKEN` (a long-lived access token) takes precedence over the password.
-    static func launchSignedIn() throws -> XCUIApplication {
+    /// - Parameter passwordOnly: Ignore the token and go through the real login flow.
+    static func launchSignedIn(passwordOnly: Bool = false) throws -> XCUIApplication {
         let environment = ProcessInfo.processInfo.environment
-        if let token = environment["FENTON_HASS_TOKEN"], !token.isEmpty {
+        if !passwordOnly, let token = environment["FENTON_HASS_TOKEN"], !token.isEmpty {
             let app = XCUIApplication()
             app.launchEnvironment["FENTON_UITEST_RESET"] = "1"
             app.launchEnvironment["FENTON_HASS_TOKEN"] = token
@@ -61,7 +62,7 @@ enum FentonHomeApp {
     }
 
     /// Runs the full audit, accepting only issues on system-drawn elements the app does not style:
-    /// the grouped `Form` section header's secondary text, toolbar bar buttons (e.g. a sheet's Done), and
+    /// the grouped `Form` section header's secondary text, toolbar bar buttons (e.g. a sheet's glass Done), and
     /// the system's dimmed style on disabled controls (exempt from WCAG 1.4.3).
     /// Collects every remaining issue so one run lists them all, then fails once with the list.
     static func audit(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) throws {
@@ -69,7 +70,8 @@ enum FentonHomeApp {
         try app.performAccessibilityAudit(for: .all) { issue in
             if isSystemDrawn(issue, in: app) { return true }
             let element = issue.element
-            open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")'")
+            open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")' "
+                + issue.detailedDescription)
             return true
         }
         if !open.isEmpty {
@@ -86,6 +88,7 @@ enum FentonHomeApp {
         switch issue.auditType {
         case .contrast:
             if element.elementType == .button && !element.isEnabled { return true }
+            if element.elementType == .button && app.navigationBars.buttons[element.label].exists { return true }
             return element.elementType == .staticText && systemSectionHeaders.contains(element.label)
         case .dynamicType:
             return element.elementType == .button && app.navigationBars.buttons[element.label].exists
