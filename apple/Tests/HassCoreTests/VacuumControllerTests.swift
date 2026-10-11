@@ -257,6 +257,22 @@ struct VacuumControllerTests {
         #expect(caller.calls.last?.domain == "script")
     }
 
+    @Test func queuedCleanCancelsWhenTheVacuumStopsBeingReady() async {
+        let (vacuum, store, caller, scheduler, clock) = make()
+        vacuum.select(main.passesEntityId, option: "2")
+        vacuum.run(.clean)
+        #expect(vacuum.queuedClean != nil)
+        clock.advance(0.2)
+        set(store, main.errorEntityId, "Robot stuck or trapped")
+        confirm(vacuum, store, main.passesEntityId, "2")
+        clock.advance(1)
+        for item in scheduler.pending where item.delay < .seconds(1) { item.cancelled = true; item.work() }
+        await vacuum.waitForCalls()
+        #expect(vacuum.cleanError == "The queued cleaning request was canceled because the vacuum is no longer ready. Retry when ready.")
+        #expect(vacuum.queuedClean == nil && !vacuum.cleanStartPending)
+        #expect(!caller.calls.contains { $0.domain == "script" }, "nothing is sent to a robot that is no longer ready")
+    }
+
     @Test func cleanFailsWhenTheVacuumNeverStarts() {
         let (vacuum, _, _, scheduler, _) = make()
         vacuum.run(.clean)

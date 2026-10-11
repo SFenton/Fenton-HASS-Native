@@ -14,7 +14,10 @@ struct VacuumAreaEditor: View {
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @State private var drawMode: Bool
     @State private var viewport = MapViewport.initial
-    @State private var gesture: EditGesture?
+    @State private var gesture: MapAreaEdit.Gesture?
+    /// True only while a map drag is live. Unlike `gesture`, it also resets when the system cancels the drag
+    /// (no `onEnded`), so the page can never be left unscrollable.
+    @GestureState private var dragging = false
     @State private var pinchStart: (zoom: Double, anchor: MapPoint, at: MapPoint)?
     @State private var draft: MapGridRect?
 
@@ -24,19 +27,8 @@ struct VacuumAreaEditor: View {
         _drawMode = State(initialValue: controller.areaSelection == nil)
     }
 
-    /// What the current drag does.
-    enum EditGesture {
-        case draw(anchor: MapPoint)
-        case move(origin: MapGridRect, start: MapPoint)
-        case resize(corner: MapGridRect.Corner, origin: MapGridRect)
-        case pan(origin: MapViewport, start: CGPoint)
-    }
-
     private var area: MapGridRect? { draft ?? controller.areaSelection }
-    private var minimumCells: Double {
-        guard let scene = mapState.scene else { return 5 }
-        return ((controller.vacuum.areaCleaning?.minimumSizeCm ?? 25) / scene.interactionGeometry.pixelSize).rounded(.up)
-    }
+    private var minimumCells: Double { mapState.scene?.minimumAreaCells(controller.vacuum) ?? 5 }
 
     var body: some View {
         ScrollView {
@@ -53,7 +45,8 @@ struct VacuumAreaEditor: View {
             .frame(maxWidth: 760)
             .frame(maxWidth: .infinity)
         }
-        .scrollDisabled(gesture != nil)
+        .scrollDisabled(dragging)
+        .onChange(of: dragging) { _, live in if !live { gesture = nil } }
         .navigationTitle("\(controller.vacuum.title) Cleaning Area")
         .inlineNavigationTitle()
     }
@@ -65,8 +58,7 @@ struct VacuumAreaEditor: View {
             tool(controller.areaSelection == nil ? "Draw" : "Redraw", symbol: "rectangle.dashed", active: drawMode, id: "draw") {
                 controller.areaSelection = nil
                 if voiceOver, let scene = mapState.scene {
-                    // A drag isn't available to VoiceOver: start from a centred area it can then move and resize.
-                    controller.areaSelection = MapGeometry.defaultRect(scene.interactionGeometry, size: max(30, minimumCells))
+                    placeVoiceOverArea(scene)
                     drawMode = false
                 } else {
                     drawMode = true
@@ -122,49 +114,17 @@ struct VacuumAreaEditor: View {
         }
     }
 
-    private func grid(_ scene: ValetudoMapScene, _ point: CGPoint, _ size: CGSize) -> MapPoint {
-        MapGeometry.gridPoint(scene.geometry, matrix: scene.matrix(size: size, viewport: viewport), framePoint: .init(x: point.x, y: point.y))
-    }
-
-    /// The corner within reach of a frame point (22 pt, the web's hit radius).
-    private func corner(near point: CGPoint, _ scene: ValetudoMapScene, _ size: CGSize, _ rect: MapGridRect) -> MapGridRect.Corner? {
-        let m = scene.matrix(size: size, viewport: viewport)
-        return MapGridRect.Corner.allCases.first { corner in
-            let p = MapGeometry.framePoint(scene.geometry, matrix: m, gridPoint: rect.point(corner))
-            return hypot(p.x - point.x, p.y - point.y) <= 22
-        }
-    }
 
     private func drag(_ scene: ValetudoMapScene, size: CGSize) -> some Gesture {
         DragGesture(minimumDistance: 0)
+            .updating($dragging) { _, state, _ in state = true }
             .onChanged { value in
                 guard mapState.isReady, pinchStart == nil else { return }
-                let interaction = scene.interactionGeometry
-                if gesture == nil {
-                    let start = grid(scene, value.startLocation, size)
-                    if drawMode {
-                        gesture = .draw(anchor: start)
-                    } else if let rect = controller.areaSelection, let corner = corner(near: value.startLocation, scene, size, rect) {
-                        gesture = .resize(corner: corner, origin: rect)
-                    } else if let rect = controller.areaSelection, start.x >= rect.x0, start.x <= rect.x1, start.y >= rect.y0, start.y <= rect.y1 {
-                        gesture = .move(origin: rect, start: start)
-                    } else {
-                        gesture = .pan(origin: viewport, start: value.startLocation)
-                    }
-                }
-                let current = grid(scene, value.location, size)
-                switch gesture {
-                case let .draw(anchor): draft = MapGeometry.rect(interaction, from: anchor, to: current, minimum: minimumCells)
-                case let .move(origin, start):
-                    draft = MapGeometry.translate(interaction, origin, by: .init(x: current.x - start.x, y: current.y - start.y))
-                case let .resize(corner, origin): draft = MapGeometry.resize(interaction, origin, corner: corner, to: current, minimum: minimumCells)
-                case let .pan(origin, start):
-                    var next = origin
-                    next.panX += value.location.x - start.x
-                    next.panY += value.location.y - start.y
-                    viewport = MapGeometry.clamp(scene.geometry, frame: size, viewport: next, rotation: scene.rotation)
-                case nil: break
-                }
+                let (job, step) = scene.drag(gesture, from: value.startLocation, to: value.location, size: size, viewport: viewport,
+                                             drawMode: drawMode, area: controller.areaSelection, minimum: minimumCells)
+                gesture = job
+                if let next = step.draft { draft = next }
+                if let next = step.viewport { viewport = next }
             }
             .onEnded { _ in
                 if let draft {
@@ -180,33 +140,32 @@ struct VacuumAreaEditor: View {
         MagnifyGesture()
             .onChanged { value in
                 if pinchStart == nil {
-                    let at = MapPoint(x: value.startLocation.x, y: value.startLocation.y)
-                    let local = scene.matrix(size: size, viewport: viewport).inverted.apply(at)
-                    pinchStart = (viewport.zoom, local, at)
+                    pinchStart = scene.pinchStart(at: value.startLocation, size: size, viewport: viewport)
                     gesture = nil
                     draft = nil
                 }
                 guard let start = pinchStart else { return }
-                viewport = MapGeometry.viewport(scene.geometry, frame: size, anchor: start.anchor, at: start.at,
-                                                zoom: start.zoom * value.magnification, rotation: scene.rotation)
+                viewport = scene.pinched(start, magnification: value.magnification, size: size)
             }
             .onEnded { _ in pinchStart = nil }
     }
 
     @ViewBuilder private func accessibilityEdits(_ scene: ValetudoMapScene) -> some View {
         if let rect = controller.areaSelection {
-            let g = scene.interactionGeometry, step = max(2, minimumCells / 2)
-            Button("Move area left") { controller.areaSelection = MapGeometry.translate(g, rect, by: .init(x: -step, y: 0)) }
-            Button("Move area right") { controller.areaSelection = MapGeometry.translate(g, rect, by: .init(x: step, y: 0)) }
-            Button("Move area up") { controller.areaSelection = MapGeometry.translate(g, rect, by: .init(x: 0, y: -step)) }
-            Button("Move area down") { controller.areaSelection = MapGeometry.translate(g, rect, by: .init(x: 0, y: step)) }
-            Button("Make area larger") {
-                controller.areaSelection = MapGeometry.resize(g, rect, corner: .c, to: .init(x: rect.x1 + step, y: rect.y1 + step), minimum: minimumCells)
-            }
-            Button("Make area smaller") {
-                controller.areaSelection = MapGeometry.resize(g, rect, corner: .c, to: .init(x: rect.x1 - step, y: rect.y1 - step), minimum: minimumCells)
+            ForEach(MapAreaEdit.Nudge.allCases, id: \.self) { nudge in
+                Button(nudge.title) { apply(nudge, to: rect, scene: scene) }
             }
         }
+    }
+
+    /// A drag isn't available to VoiceOver, so its Draw places a centred area it can then move and resize.
+    func placeVoiceOverArea(_ scene: ValetudoMapScene) {
+        controller.areaSelection = MapAreaEdit.voiceOverStart(scene.interactionGeometry, minimum: minimumCells)
+    }
+
+    /// Applies one of the map's VoiceOver actions to the area.
+    func apply(_ nudge: MapAreaEdit.Nudge, to rect: MapGridRect, scene: ValetudoMapScene) {
+        controller.areaSelection = MapAreaEdit.nudge(rect, nudge, interaction: scene.interactionGeometry, minimum: minimumCells)
     }
 
     // MARK: - Summary
@@ -246,5 +205,53 @@ struct VacuumAreaEditor: View {
         guard let area, let scene = mapState.scene else { return nil }
         let size = area.dimensionsCm(pixelSize: scene.interactionGeometry.pixelSize)
         return String(format: "%.2f m² selected", size.width * size.height / 10_000)
+    }
+}
+
+// MARK: - Editing math
+
+extension ValetudoMapScene {
+    /// Where a pinch started: the zoom then, the map point under the fingers and their frame point.
+    typealias PinchStart = (zoom: Double, anchor: MapPoint, at: MapPoint)
+
+    /// The smallest area side in cells (the vacuum's `minimumSizeCm`, 25 cm by default).
+    func minimumAreaCells(_ vacuum: VacuumConfig) -> Double {
+        ((vacuum.areaCleaning?.minimumSizeCm ?? 25) / interactionGeometry.pixelSize).rounded(.up)
+    }
+
+    /// The grid cell under a frame point.
+    func gridPoint(_ point: CGPoint, size: CGSize, viewport: MapViewport) -> MapPoint {
+        MapGeometry.gridPoint(geometry, matrix: matrix(size: size, viewport: viewport), framePoint: .init(x: point.x, y: point.y))
+    }
+
+    /// The resize handle within 22 pt (the web's hit radius) of a frame point.
+    func corner(near point: CGPoint, of rect: MapGridRect, size: CGSize, viewport: MapViewport) -> MapGridRect.Corner? {
+        let m = matrix(size: size, viewport: viewport)
+        return MapGridRect.Corner.allCases.first { corner in
+            let p = MapGeometry.framePoint(geometry, matrix: m, gridPoint: rect.point(corner))
+            return hypot(p.x - point.x, p.y - point.y) <= 22
+        }
+    }
+
+    /// One drag update: the drag's job (chosen on its first update, then kept) and what it changes.
+    func drag(_ gesture: MapAreaEdit.Gesture?, from start: CGPoint, to location: CGPoint, size: CGSize, viewport: MapViewport,
+              drawMode: Bool, area: MapGridRect?, minimum: Double) -> (MapAreaEdit.Gesture, MapAreaEdit.Step) {
+        let job = gesture ?? MapAreaEdit.begin(
+            start: gridPoint(start, size: size, viewport: viewport), location: start, drawMode: drawMode, area: area,
+            corner: area.flatMap { corner(near: start, of: $0, size: size, viewport: viewport) }, viewport: viewport)
+        let step = MapAreaEdit.update(job, current: gridPoint(location, size: size, viewport: viewport), location: location,
+                                      stage: geometry, interaction: interactionGeometry, frame: size, rotation: rotation, minimum: minimum)
+        return (job, step)
+    }
+
+    /// Starts a pinch at a frame point.
+    func pinchStart(at point: CGPoint, size: CGSize, viewport: MapViewport) -> PinchStart {
+        let at = MapPoint(x: point.x, y: point.y)
+        return (viewport.zoom, matrix(size: size, viewport: viewport).inverted.apply(at), at)
+    }
+
+    /// The viewport after magnifying from `start`, keeping the pinched point under the fingers.
+    func pinched(_ start: PinchStart, magnification: Double, size: CGSize) -> MapViewport {
+        MapGeometry.viewport(geometry, frame: size, anchor: start.anchor, at: start.at, zoom: start.zoom * magnification, rotation: rotation)
     }
 }
