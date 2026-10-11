@@ -51,6 +51,26 @@ public enum HassTokens {
         /// Supporting text (summaries, states): still at least 4.5:1 on the light and dark materials.
         public static let secondary = label.opacity(0.72)
 
+        /// Destructive actions ("Stop watering"): system red is 3.6:1 on a light grouped row, this is at least
+        /// 6:1 on light and dark rows (HIG: Color; WCAG 1.4.3).
+        public static let danger: Color = {
+            #if os(iOS)
+            Color(uiColor: UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(red: 1.0, green: 0.45, blue: 0.43, alpha: 1)
+                    : UIColor(red: 0.76, green: 0.09, blue: 0.09, alpha: 1)
+            })
+            #elseif os(macOS)
+            Color(nsColor: NSColor(name: nil) { appearance in
+                appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                    ? NSColor(red: 1.0, green: 0.45, blue: 0.43, alpha: 1)
+                    : NSColor(red: 0.76, green: 0.09, blue: 0.09, alpha: 1)
+            })
+            #else
+            Color(red: 1.0, green: 0.45, blue: 0.43)
+            #endif
+        }()
+
         /// The platform label color as a plain dynamic color (`Color.primary` resolves to the vibrant
         /// hierarchical style inside a material).
         private static var label: Color {

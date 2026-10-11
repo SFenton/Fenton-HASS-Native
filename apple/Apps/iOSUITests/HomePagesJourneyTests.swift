@@ -62,6 +62,15 @@ final class HomePagesJourneyTests: XCTestCase {
         target.tap()
     }
 
+    /// Flips a `Form` toggle: XCUITest taps a row's middle, which lands on its label and leaves the switch alone.
+    private func flip(_ id: String, in app: XCUIApplication) {
+        let row = app.switches[id].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "\(id) missing")
+        reveal(row, in: app)
+        let knob = row.switches.firstMatch
+        if knob.exists { knob.tap() } else { row.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap() }
+    }
+
     private func assertTarget(_ id: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let target = element(id, in: app)
         XCTAssertGreaterThanOrEqual(target.frame.width, 43, id, file: file, line: line)
@@ -129,16 +138,43 @@ final class HomePagesJourneyTests: XCTestCase {
 
     func testLightTilesOpenTheirSheet() {
         let app = launch("custom-lights", waitFor: "customLights.manual")
-        tap("customLights.resetAll", in: app)
-        expectCall("light.turn_on brightness=255 color_temp_kelvin=2000 entity_id=light.front_yard_lights transition=1", in: app)
         tap("customLights.light.light.front_door_bollard_1", in: app)
         XCTAssertTrue(element("customLight.brightness", in: app).waitForExistence(timeout: 10), "Light sheet opened")
-        tap("customLight.reset", in: app)
-        expectCall("light.turn_on brightness=255 color_temp_kelvin=2000 entity_id=light.front_door_bollard_1 transition=1", in: app)
+        // Copy a color before any reset: the gallery echoes a reset as every light at 2000 K.
         tap("customLight.other.light.front_door_exterior_left_light", in: app)
         expectCall("light.turn_on entity_id=light.front_door_bollard_1 rgb_color=[0,255,0]", in: app)
+        tap("customLight.reset", in: app)
+        expectCall("light.turn_on brightness=255 color_temp_kelvin=2000 entity_id=light.front_door_bollard_1 transition=1", in: app)
         tap("customLight.brightness", in: app)
         expectCall("light.turn_off entity_id=light.front_door_bollard_1", in: app)
+        app.navigationBars.buttons["Done"].firstMatch.tap()
+        tap("customLights.resetAll", in: app)
+        expectCall("light.turn_on brightness=255 color_temp_kelvin=2000 entity_id=light.front_yard_lights transition=1", in: app)
+    }
+
+    /// A sideways drag on a tile sets brightness; a vertical one scrolls the page (it used to be swallowed).
+    func testTileDragSetsBrightnessAndVerticalDragScrolls() {
+        let app = launch("custom-lights", waitFor: "customLights.manual")
+        let tile = element("customLights.light.light.front_door_bollard_1", in: app)
+        reveal(tile, in: app)
+        let start = tile.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: tile.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)),
+                    withVelocity: .slow, thenHoldForDuration: 0.1)
+        let label = app.staticTexts["gallery.lastCall"].firstMatch
+        let parts = ["light.turn_on", "brightness_pct=", "entity_id=light.front_door_bollard_1"]
+        let predicate = NSPredicate(format: parts.map { _ in "label CONTAINS %@" }.joined(separator: " AND "), argumentArray: parts)
+        let sent = XCTNSPredicateExpectation(predicate: predicate, object: label)
+        XCTAssertEqual(XCTWaiter().wait(for: [sent], timeout: 10), .completed, "Last call was '\(label.label)'")
+
+        // Only where the page is taller than the window (an iPad in landscape shows it all).
+        guard element("customLights.resetAll", in: app).frame.maxY > app.windows.firstMatch.frame.maxY else { return }
+        let manual = element("customLights.manual", in: app)
+        let before = manual.frame.minY
+        let onTile = element("customLights.light.light.front_door_exterior_left_light", in: app)
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        onTile.press(forDuration: 0.05, thenDragTo: onTile.withOffset(CGVector(dx: 0, dy: -200)), withVelocity: .slow,
+                     thenHoldForDuration: 0.2)
+        XCTAssertLessThan(manual.frame.minY, before - 40, "A vertical drag starting on a tile scrolls the page")
     }
 
     func testCustomLightsAuditsAndScreenshots() throws {
@@ -158,7 +194,7 @@ final class HomePagesJourneyTests: XCTestCase {
         let app = launch("sprinklers", waitFor: "sprinklers.controller.frontYard")
         tap("sprinklers.controller.frontYard", in: app)
         XCTAssertTrue(element("sprinkler.overview", in: app).waitForExistence(timeout: 10))
-        tap("sprinkler.rainDelay", in: app)
+        flip("sprinkler.rainDelay", in: app)
         expectCall("switch.turn_on entity_id=switch.front_yard_rain_delay", in: app)
         tap("sprinkler.zone.0", in: app)
         tap("sprinkler.startWatering", in: app)
@@ -166,6 +202,14 @@ final class HomePagesJourneyTests: XCTestCase {
         XCTAssertTrue(element("sprinkler.stop", in: app).wait(for: \.isEnabled, toEqual: true, timeout: 10), "Back on the overview, watering")
         tap("sprinkler.stop", in: app)
         expectCall("bhyve.stop_watering entity_id=valve.front_yard_zone", in: app)
+    }
+
+    /// While one zone waters, another zone's row still opens and says why it can't start.
+    func testBusyControllerExplainsWhyAZoneCannotStart() {
+        let app = launch("sprinklers", ["FENTON_GALLERY_SPRINKLER": "backyard"], waitFor: "sprinkler.overview")
+        tap("sprinkler.zone.0", in: app)
+        XCTAssertTrue(element("sprinkler.waterBlocked", in: app).waitForExistence(timeout: 10), "The reason shows")
+        XCTAssertFalse(element("sprinkler.startWatering", in: app).isEnabled, "Start waits for the running zone")
     }
 
     func testScheduleEditorSavesTheProgram() {

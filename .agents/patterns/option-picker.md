@@ -4,6 +4,7 @@
 
 - `OptionPickerSheet(title:options:selected:identifierPrefix:choose:)` (`HassDesign/OptionPickerSheet.swift`, web `OptionPickerDialog` with `presentation="sheet"`). Present it with `.presentationDetents([.medium, .large])`.
 - Rows are 44 pt or taller, show the label, an optional `GradientSwatch`, and a checkmark on the current value; the current row carries `.isSelected`. Choosing calls `choose` only for a new value, then dismisses.
+- The sheet has an opaque grouped background at every detent. At the medium detent, the default glass let a page's colored tiles show through the rows and fail text contrast.
 - Row identifiers are `<prefix>.<value>`.
 - For two to five short choices inline on a page, prefer a segmented control or `Menu`; use this sheet when options need swatches or more room.
 - First used by Custom Lights (Lighting Mode).

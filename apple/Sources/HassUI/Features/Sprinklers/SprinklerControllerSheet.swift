@@ -78,7 +78,9 @@ struct SprinklerControllerSheet: View {
                                      lines: [!zone.available ? "Unavailable" : active ? "Watering" : "Closed",
                                              format.lastStart(zone.lastRun)])
                     }
-                    .disabled(!zone.available || (controller.isWatering && !active))
+                    // Open while another zone waters (Water now explains and disables Start there): a disabled
+                    // row dims its name below 4.5:1 and hides the zone's status from VoiceOver.
+                    .disabled(!zone.available)
                     .accessibilityHint("Water now")
                     .accessibilityIdentifier("sprinkler.zone.\(index)")
                 }
@@ -87,6 +89,7 @@ struct SprinklerControllerSheet: View {
             Section {
                 Button(role: .destructive) { controller.stopWatering() } label: {
                     Label("Stop watering", systemImage: "stop.circle")
+                        .foregroundStyle(controller.isWatering ? HassTokens.Ink.danger : HassTokens.Ink.secondary)
                         .frame(minHeight: HassTokens.minTarget - 12)
                 }
                 .disabled(!controller.isWatering)
@@ -219,7 +222,13 @@ struct SprinklerWaterPage: View {
                 .accessibilityValue("\(minutes) minutes")
                 .disabled(!controller.canStartWatering || !(zoneState?.available ?? false))
                 .accessibilityIdentifier("sprinkler.runTime")
-            } header: { SprinklerHeader("Water now · \(zoneState?.name ?? controller.config.title)") }
+            } header: { SprinklerHeader("Water now · \(zoneState?.name ?? controller.config.title)") } footer: {
+                if controller.isWatering {
+                    Text("Another zone is watering. Stop it to water this one.")
+                        .foregroundStyle(HassTokens.Ink.secondary)
+                        .accessibilityIdentifier("sprinkler.waterBlocked")
+                }
+            }
         }
         .safeAreaInset(edge: .bottom) {
             Button {
