@@ -138,8 +138,10 @@ public struct RemoteImage: View {
     }
 
     private var placeholder: some View {
+        // Secondary ink, not `.secondary`: the system gray on the gray fill is about 3:1, and at large text
+        // sizes the symbol fills the card and fails the card's contrast audit.
         Image(systemName: placeholderSymbol)
             .font(.largeTitle)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(HassTokens.Ink.secondary)
     }
 }

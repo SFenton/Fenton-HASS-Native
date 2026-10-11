@@ -266,4 +266,57 @@ final class FoodJourneyTests: XCTestCase {
         keepScreenshot(app, "food-recipe-general-\(device)-landscape")
         try FentonHomeApp.audit(app)
     }
+
+    // MARK: - Live
+
+    /// Signs in with the runner's long-lived token and opens a Food page (`FENTON_OPEN_FOOD`). Skips without one.
+    private func launchLive(_ route: String) throws -> XCUIApplication {
+        let environment = ProcessInfo.processInfo.environment
+        guard let token = environment["FENTON_HASS_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("Set TEST_RUNNER_FENTON_HASS_TOKEN to check the live EverShelf recipe calls")
+        }
+        let app = FentonHomeApp.makeApp()
+        app.launchEnvironment["FENTON_UITEST_RESET"] = "1"
+        app.launchEnvironment["FENTON_HASS_TOKEN"] = token
+        if let server = environment["FENTON_HASS_SERVER"] { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
+        app.launchEnvironment["FENTON_OPEN_FOOD"] = route
+        app.launch()
+        return app
+    }
+
+    private func first(_ prefix: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).firstMatch
+    }
+
+    /// Live server: suggestions load, a suggestion opens a real detail with ingredients and instructions.
+    /// Never taps "Add Missing Ingredients to Groceries".
+    func testLiveSuggestionsAndDetail() throws {
+        let app = try launchLive("hub")
+        let suggestion = first("food.suggestion.", in: app)
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 45), "No live suggestions")
+        XCTAssertFalse(element("food.suggestions.error", in: app).exists)
+        sleep(2)
+        keepScreenshot(app, "food-live-hub-\(device)")
+        suggestion.tap()
+        XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 30), "Recipe detail did not open")
+        XCTAssertFalse(element("recipe.error", in: app).waitForExistence(timeout: 3), "Live recipe detail failed")
+        sleep(2)
+        keepScreenshot(app, "food-live-recipe-general-\(device)")
+        element("recipe.tabs", in: app).buttons["Ingredients"].tap()
+        XCTAssertTrue(first("recipe.ingredient.", in: app).waitForExistence(timeout: 10), "No live ingredients")
+        sleep(1)
+        keepScreenshot(app, "food-live-recipe-ingredients-\(device)")
+        element("recipe.tabs", in: app).buttons["Instructions"].tap()
+        sleep(1)
+        keepScreenshot(app, "food-live-recipe-instructions-\(device)")
+    }
+
+    /// Live server: the Recipes grid's first browse page loads.
+    func testLiveRecipesGrid() throws {
+        let app = try launchLive("recipes")
+        XCTAssertTrue(first("recipes.card.", in: app).waitForExistence(timeout: 45), "No live recipes")
+        XCTAssertFalse(element("recipes.error", in: app).exists)
+        sleep(2)
+        keepScreenshot(app, "food-live-recipes-\(device)")
+    }
 }

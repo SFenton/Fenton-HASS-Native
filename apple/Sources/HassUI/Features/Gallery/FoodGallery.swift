@@ -33,7 +33,8 @@ struct FoodGallery: View {
             .foodNavigation(service: service)
         }
         .environment(store)
-        .safeAreaInset(edge: .bottom) {
+        // At the top: at the bottom the bar covered the Recipes page's floating actions.
+        .safeAreaInset(edge: .top) {
             // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out, as do accessibility text sizes,
             // where it would be clipped and cover the page (the AX5 journeys never read it).
             if ProcessInfo.processInfo.environment["FENTON_GALLERY_CLEAN"] != "1", !dynamicTypeSize.isAccessibilitySize, path.count > 0 {

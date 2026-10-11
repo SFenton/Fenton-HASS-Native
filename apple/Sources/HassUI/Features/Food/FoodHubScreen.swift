@@ -144,6 +144,14 @@ struct GlassTileLabel: View {
     }
 }
 
+/// Colors the Food pages share.
+enum FoodStyle {
+    /// Fill for prominent buttons. White on the app accent (#42A9FE) is 2.5:1 and fails the contrast audit;
+    /// this darker blue keeps the same hue at about 5.8:1. Fold into a shared `HassTokens` action tint once
+    /// other pages need one.
+    static let action = Color(red: 0.04, green: 0.39, blue: 0.78)
+}
+
 /// SF Symbols for the Food pages' MDI icons.
 ///
 /// Kept here rather than in ``SymbolMap`` while several page threads add rows there at once: a key added twice

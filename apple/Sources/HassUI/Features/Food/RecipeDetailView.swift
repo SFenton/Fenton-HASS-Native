@@ -128,8 +128,7 @@ struct RecipeGeneralTab: View {
     }
 }
 
-/// A prominent button that opens a web page. A `Link` styled `.borderedProminent` draws a faded fill
-/// (2.5:1 contrast in the audit); a `Button` that calls `openURL` keeps the full-strength fill.
+/// A prominent button that opens a web page through `openURL`, in the Food action tint (``FoodStyle/action``).
 struct ExternalLinkButton: View {
     var title: String
     var url: URL
@@ -141,6 +140,7 @@ struct ExternalLinkButton: View {
                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
         }
         .buttonStyle(.borderedProminent)
+        .tint(FoodStyle.action)
         .accessibilityAddTraits(.isLink)
     }
 }
@@ -157,6 +157,7 @@ struct FactTile: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(fact.label).font(.caption).foregroundStyle(HassTokens.Ink.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(fact.value).font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -390,6 +391,7 @@ struct GroceryAction: View {
                     .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(FoodStyle.action)
                 .disabled(model.groceryDisabledReason != nil)
                 .accessibilityIdentifier("recipe.grocery.add")
                 if let reason = model.groceryDisabledReason {

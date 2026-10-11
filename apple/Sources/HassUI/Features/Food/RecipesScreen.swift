@@ -83,8 +83,11 @@ struct RecipesScreen: View {
             ContentUnavailableView {
                 Label("Unable to Load Recipes", systemImage: "exclamationmark.triangle")
             } actions: {
-                Button("Retry") { collection.reload() }
+                Button { collection.reload() } label: {
+                    Text("Retry").frame(minWidth: 88, minHeight: HassTokens.minTarget)
+                }
                     .buttonStyle(.borderedProminent)
+                    .tint(FoodStyle.action)
                     .accessibilityIdentifier("recipes.retry")
             }
             // A container keeps the Retry button's own identifier (an outer identifier overrides children's).
