@@ -104,6 +104,25 @@ final class GalleryServiceRecorder: HassServiceCalling {
                 set(MediaRemotes.MusicRoom.hueSyncPowerEntityId, "on")
                 set(MediaRemotes.MusicRoom.hueSyncLightSyncEntityId, "on")
             }
+        case ("homeassistant", "toggle"):
+            if let target { set(target, store.value(target)?.state == "on" ? "off" : "on") }
+        case ("climate", "set_hvac_mode"):
+            if let target, let mode = data["hvac_mode"] as? String { set(target, mode) }
+        case ("climate", "set_fan_mode"):
+            if let target, var entity = store.value(target), let mode = data["fan_mode"] as? String {
+                entity.attributes["fan_mode"] = .string(mode)
+                store.apply([entity])
+            }
+        case ("climate", "set_temperature"):
+            let targets = (data["entity_id"] as? [String]) ?? target.map { [$0] } ?? []
+            let changed: [EntityState] = targets.compactMap { id in
+                guard var entity = store.value(id) else { return nil }
+                for key in ["temperature", "target_temp_low", "target_temp_high"] {
+                    if let value = data[key] as? Double { entity.attributes[key] = .number(value) }
+                }
+                return entity
+            }
+            store.apply(changed)
         case ("number", "set_value"):
             if let target, let value = data["value"] { set(target, "\(value)") }
         case ("media_player", "volume_set"):

@@ -47,6 +47,27 @@ public enum SymbolMap {
         "mdi:movie-open": "film",
         "mdi:lightbulb-multiple": "lightbulb.2",
         "mdi:gauge": "gauge.with.dots.needle.50percent",
+        // Climate (`ClimateConfig`, `.agents/pages/climate/spec.md`)
+        "mdi:home-thermometer": "thermometer.variable",
+        "mdi:home-thermometer-outline": "thermometer.and.liquid.waves",
+        "mdi:thermometer-check": "thermometer.medium",
+        "mdi:thermometer-off": "thermometer.medium.slash",
+        "mdi:thermometer-alert": "thermometer.high",
+        "mdi:thermostat-auto": "dial.medium",
+        "mdi:leaf": "leaf",
+        "mdi:leaf-circle": "leaf.circle",
+        "mdi:home-export-outline": "figure.walk.departure",
+        "mdi:home-check": "checkmark.circle",
+        "mdi:hvac": "air.conditioner.horizontal",
+        "mdi:fan": "fan",
+        "mdi:fan-check": "fan.fill",
+        "mdi:snowflake": "snowflake",
+        "mdi:fire": "flame",
+        "mdi:sun-snowflake-variant": "sun.snow",
+        "mdi:autorenew": "arrow.triangle.2.circlepath",
+        "mdi:water-percent": "humidity",
+        "mdi:door-open": "door.left.hand.open",
+        "mdi:window-open": "window.vertical.open",
     ]
 
     /// The SF Symbol name for an MDI icon.
