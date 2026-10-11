@@ -14,6 +14,26 @@ final class NavigationJourneyTests: XCTestCase {
         app.buttons["nav.open"].waitForExistence(timeout: 3)
     }
 
+    /// A tab item: in the tab bar, or on the folded iPhone Duo in the vertical bar, which XCUITest
+    /// reports as a toolbar.
+    private func tab(_ title: String, in app: XCUIApplication) -> XCUIElement {
+        let item = app.tabBars.buttons[title]
+        return item.exists ? item : app.toolbars.buttons[title]
+    }
+
+    /// Goes back one page: the system Back button wherever the bar puts it (the folded iPhone Duo moves
+    /// bar items into its vertical bar), else the system leading-edge back swipe.
+    private func goBack(in app: XCUIApplication) {
+        let back = app.buttons["BackButton"]
+        if back.exists, back.isHittable {
+            back.tap()
+            return
+        }
+        let window = app.windows.firstMatch
+        let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 2, dy: window.frame.height / 2))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: window.frame.width * 0.7, dy: 0)))
+    }
+
     /// The flyout panel (SwiftUI puts its identifier on the panel's scroll view).
     private func flyout(_ app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)["nav.flyout"]
@@ -32,7 +52,7 @@ final class NavigationJourneyTests: XCTestCase {
             app.buttons["nav.\(section)"].tap()
             XCTAssertTrue(flyout(app).waitForNonExistence(timeout: 3), "Flyout stayed open")
         } else {
-            app.tabBars.buttons[title].tap()
+            tab(title, in: app).tap()
         }
         XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5), "\(title) did not appear")
     }
@@ -44,13 +64,13 @@ final class NavigationJourneyTests: XCTestCase {
         let app = try FentonHomeApp.launchSignedIn()
         guard !usesFlyout(app) else { throw XCTSkip("Regular-width window") }
         for title in ["Security", "Climate", "Chores", "Settings", "Home"] {
-            XCTAssertTrue(app.tabBars.buttons[title].exists, "\(title) tab missing")
+            XCTAssertTrue(tab(title, in: app).exists, "\(title) tab missing")
         }
         open("settings", title: "Settings", in: app)
         app.buttons["settings.topic.vacation"].tap()
         XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["split.close"].exists, "Compact width split")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        goBack(in: app)
         XCTAssertTrue(app.buttons["settings.topic.vacation"].waitForExistence(timeout: 5))
     }
 
@@ -86,7 +106,7 @@ final class NavigationJourneyTests: XCTestCase {
         open("settings", title: "Settings", in: app)
         app.buttons["settings.topic.vacation"].tap()
         XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 5))
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        goBack(in: app)
         XCTAssertTrue(app.buttons["settings.topic.vacation"].waitForExistence(timeout: 5))
     }
 
@@ -96,7 +116,7 @@ final class NavigationJourneyTests: XCTestCase {
     func testFlyoutOpensSelectsAndDismisses() throws {
         let app = try FentonHomeApp.launchSignedIn()
         guard usesFlyout(app) else { throw XCTSkip("Compact window") }
-        XCTAssertFalse(app.tabBars.buttons["Security"].isHittable, "Tab bar visible beside the flyout")
+        XCTAssertFalse(tab("Security", in: app).isHittable, "Tab bar visible beside the flyout")
         app.buttons["nav.open"].tap()
         let flyout = flyout(app)
         XCTAssertTrue(flyout.waitForExistence(timeout: 3))
@@ -252,7 +272,7 @@ final class NavigationJourneyTests: XCTestCase {
                 app.buttons["nav.settings"].tap()
             } else {
                 keep(app, "nav-tabbar-\(suffix)")
-                app.tabBars.buttons["Settings"].tap()
+                tab("Settings", in: app).tap()
             }
             XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
             sleep(1)
