@@ -50,7 +50,7 @@ struct MainTabView: View {
     private func screen(for tab: Tab) -> some View {
         switch tab {
         case .home: HomeScreen()
-        case .settings: SettingsPlaceholder()
+        case .settings: SettingsScreen()
         default: PlaceholderScreen(title: tab.title, symbol: tab.symbol)
         }
     }

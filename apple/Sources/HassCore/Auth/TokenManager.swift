@@ -25,8 +25,14 @@ public actor TokenManager {
 
     /// Returns an access token that is valid for at least another minute.
     public func validAccessToken() async throws -> String {
-        if let current, !current.needsRefresh() { return current.accessToken }
-        if let refreshTask { return try await refreshTask.value.accessToken }
+        try await validTokens().accessToken
+    }
+
+    /// Returns the full token set (access token valid for at least another minute, plus the refresh
+    /// token), e.g. to hand the Home Assistant web frontend its own session in the settings web view.
+    public func validTokens() async throws -> AuthTokens {
+        if let current, !current.needsRefresh() { return current }
+        if let refreshTask { return try await refreshTask.value }
         guard let stored = store.load() else { throw SignedOut() }
         let session = session
         let task = Task { try await HassLoginFlow.refresh(server: stored.server, refreshToken: stored.refreshToken, session: session) }
@@ -38,7 +44,7 @@ public actor TokenManager {
             if tokens.refreshToken != stored.refreshToken {
                 try? store.save(StoredCredentials(server: stored.server, refreshToken: tokens.refreshToken))
             }
-            return tokens.accessToken
+            return tokens
         } catch HassLoginFlow.LoginError.invalidCredentials {
             throw SignedOut()
         }
