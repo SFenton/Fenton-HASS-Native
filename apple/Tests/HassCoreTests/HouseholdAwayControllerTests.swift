@@ -11,6 +11,8 @@ final class ScriptedResponder: HassServiceResponding {
     var hangs = false
     /// Runs after a command is recorded, before it answers (tests echo into the store here).
     var onCommand: (([String: any Sendable]) -> Void)?
+    /// Answers only after this long (for late answers).
+    var delay: Duration?
 
     struct Failure: Error {}
 
@@ -25,6 +27,7 @@ final class ScriptedResponder: HassServiceResponding {
         #expect(service == "household_away_command")
         sent.append(data)
         onCommand?(data)
+        if let delay { try await Task.sleep(for: delay) }
         if hangs {
             try await Task.sleep(for: .seconds(60))
         }
@@ -128,5 +131,63 @@ struct HouseholdAwayControllerTests {
         #expect(controller.snapshot.mode == .none)
         store.apply([awayEntity("scheduled", awayAttributes(mode: "solo_trip", traveler: "steph"))])
         #expect(controller.snapshot.state == .scheduled)
+    }
+
+    @Test func aResponseThatIsNotAnObjectIsTransport() async {
+        let (controller, responder, _) = make()
+        responder.responses = [.success(.object(["response": .string("oops")]))]
+        // The wrapper's own fields hold no status, and a non-object `response` is not unwrapped.
+        #expect(await controller.cancel() == .rejected(errorCode: "transport"))
+    }
+
+    @Test func aWrappedResponseIsUnwrapped() async {
+        let (controller, responder, _) = make()
+        responder.responses = [.success(.object(["response": .object(["status": .string("accepted"), "revision": .number(9)])]))]
+        #expect(await controller.cancel() == .accepted(revision: 9))
+    }
+
+    @Test func aFractionalRevisionIsIgnored() async {
+        let (controller, responder, _) = make(awayEntity("idle", awayAttributes(revision: 5)))
+        responder.responses = [.success(.object(["status": .string("accepted"), "revision": .number(6.5)]))]
+        #expect(await controller.cancel() == .accepted(revision: nil))
+        // The floor stays at the sensor's revision.
+        await controller.endNow()
+        #expect(responder.sent[1]["expected_revision"] as? Int == 5)
+    }
+
+    @Test func aLateAnswerAfterTheTimeoutIsDropped() async {
+        let (controller, responder, _) = make(timeout: .milliseconds(20))
+        responder.delay = .milliseconds(120)
+        responder.responses = [ScriptedResponder.accepted(revision: 8)]
+        #expect(await controller.endNow() == .unknown)
+        // The answer arrives after the outcome was already reported unknown: it changes nothing.
+        try? await Task.sleep(for: .milliseconds(250))
+        #expect(controller.errorCode == "unknown_outcome")
+        #expect(!controller.pending)
+        responder.delay = nil
+        responder.responses = [ScriptedResponder.accepted()]
+        await controller.cancel()
+        #expect(responder.sent[1]["expected_revision"] as? Int == 3)
+    }
+
+    @Test func theTimeoutFiringAfterAnAnswerIsIgnored() async {
+        let (controller, _, _) = make(timeout: .milliseconds(60))
+        #expect(await controller.cancel() == .accepted(revision: nil))
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(controller.errorCode == nil)
+    }
+
+    @Test func requestIdsAreUniqueByDefault() async {
+        let store = EntityStore()
+        store.replaceAll([awayEntity()])
+        let responder = ScriptedResponder()
+        let controller = HouseholdAwayController(store: store, responder: responder)
+        await controller.cancel()
+        await controller.cancel()
+        let ids = responder.sent.compactMap { $0["request_id"] as? String }
+        #expect(ids.count == 2)
+        #expect(Set(ids).count == 2)
+        #expect(ids.allSatisfy { $0 == $0.lowercased() && UUID(uuidString: $0) != nil })
+        #expect(HouseholdAwayController.commandTimeout == .seconds(10))
     }
 }
