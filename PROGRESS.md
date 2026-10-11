@@ -39,7 +39,8 @@ apple/Tests/**                                             → tests for your ow
 | Sign-in (login flow, MFA step, Keychain) | Verified on the live server (password sign-in, relaunch skips sign-in) on iPhone, Duo and iPad |
 | Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
-| Security, Climate, Chores, Settings | Placeholders |
+| Security, Climate, Chores | Placeholders |
+| Settings | Home Assistant settings modal (server, account, signed-in Settings/Profile web pages, Sign Out); household topics not ported |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | Policy and tests; split layout not built yet |
 | iPad flyout | Not started (TabView for now) |

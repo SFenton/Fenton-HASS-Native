@@ -1,0 +1,75 @@
+import HassCore
+import HassDesign
+import SwiftUI
+
+/// The Settings tab. Until the household settings topics (Admin, Guests, Vacation…) are ported, it
+/// lists only the web's last item, Home Assistant Settings (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`),
+/// which opens ``HomeAssistantSettingsView`` as a full-screen modal (`.agents/design/apple/split-view.md`).
+struct SettingsScreen: View {
+    @State private var showsHomeAssistant = false
+
+    var body: some View {
+        List {
+            Section {
+                Button { showsHomeAssistant = true } label: {
+                    SettingsLinkRow(
+                        title: HomeAssistantSettingsView.linkTitle,
+                        subtitle: HomeAssistantSettingsView.linkSubtitle,
+                        symbol: SymbolMap.symbol(for: "mdi:cog")
+                    )
+                }
+                .accessibilityIdentifier("settings.homeAssistant")
+                .accessibilityHint("Opens server, account and sign-out options.")
+            }
+        }
+        .navigationTitle("Settings")
+        .homeAssistantSettingsCover(isPresented: $showsHomeAssistant)
+    }
+}
+
+/// One settings topic: icon, bold title and a wrapping subtitle, like the web's `SettingsLink`
+/// (`DashboardViewPage.tsx` `SettingsLink`), with the platform disclosure chevron.
+struct SettingsLinkRow: View {
+    var title: String
+    var subtitle: String
+    var symbol: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(.tint)
+                .frame(minWidth: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(HassTokens.Ink.primary)
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(HassTokens.Ink.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.forward")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, HassTokens.Spacing.xs)
+        .frame(minHeight: HassTokens.minTarget)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+    }
+}
+
+extension View {
+    /// Presents Home Assistant settings full screen on iOS (a sheet on macOS, where hosted tests run).
+    func homeAssistantSettingsCover(isPresented: Binding<Bool>) -> some View {
+        #if os(iOS)
+        fullScreenCover(isPresented: isPresented) { HomeAssistantSettingsView() }
+        #else
+        sheet(isPresented: isPresented) { HomeAssistantSettingsView() }
+        #endif
+    }
+}

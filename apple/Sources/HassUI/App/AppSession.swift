@@ -15,6 +15,9 @@ public final class AppSession {
     /// Current phase.
     public private(set) var phase: Phase = .signedOut
 
+    /// Token source for the signed-in server, used by the Home Assistant settings web view.
+    @ObservationIgnored public private(set) var tokens: TokenManager?
+
     @ObservationIgnored private let tokenStore: TokenStore
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
 
@@ -59,6 +62,7 @@ public final class AppSession {
         let stored = tokenStore.load()
         tokenStore.clear()
         snapshotCache.clear()
+        tokens = nil
         phase = .signedOut
         if let stored {
             Task.detached { await HassLoginFlow.revoke(server: stored.server, refreshToken: stored.refreshToken) }
@@ -68,6 +72,7 @@ public final class AppSession {
     private func start(server: HassServer, tokens: TokenManager) {
         let connection = HassConnection(server: server, tokens: tokens, store: EntityStore(), snapshotCache: snapshotCache)
         let lifecycle = ConnectionLifecycle(connection: connection)
+        self.tokens = tokens
         phase = .signedIn(connection, lifecycle)
         lifecycle.didBecomeActive()
     }

@@ -33,7 +33,7 @@ public final class HassConnection {
 
     // MARK: - Private
 
-    @ObservationIgnored private let connection: HAConnection
+    @ObservationIgnored let connection: HAConnection
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
     @ObservationIgnored private var statesSubscription: HACancellable?
     @ObservationIgnored private var stateObserver: NSObjectProtocol?
