@@ -59,6 +59,7 @@ struct InventoryRow: View {
             Text(item.name)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(HassTokens.Ink.primary)
+                .privacySensitive()
             HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.xs) {
                 if let tone {
                     Image(systemName: tone == .expired ? "exclamationmark.triangle.fill" : "clock.fill")

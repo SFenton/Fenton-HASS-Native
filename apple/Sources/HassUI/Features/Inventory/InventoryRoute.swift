@@ -87,6 +87,9 @@ struct InventoryDestinationScreen: View {
             case let .space(space):
                 InventoryScreen(model: models.model(for: space), models: models)
                     .environment(\.inventoryModels, models)
+                    // Live rows are the household's own: screenshots shared outside it hide item names
+                    // (`FENTON_REDACT_PRIVATE=1`). The gallery's fixture rows stay readable.
+                    .redacted(reason: ScreenshotPrivacy.isRedacting ? .privacy : [])
             }
         } else {
             ContentUnavailableView("Not Signed In", systemImage: "person.crop.circle.badge.exclamationmark")

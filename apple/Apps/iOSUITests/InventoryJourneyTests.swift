@@ -186,6 +186,19 @@ final class InventoryJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["scan.location.dispensa"].isSelected || app.buttons["scan.location.frigo"].isSelected)
     }
 
+    // MARK: - Live
+
+    /// Signed in against the real server, `FENTON_OPEN_INVENTORY=pantry` pushes the Pantry page from Home.
+    /// Item names are redacted under `FENTON_REDACT_PRIVATE=1`. Skips without credentials.
+    func testLivePantryOpensFromHome() throws {
+        let app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_OPEN_INVENTORY": "pantry"])
+        XCTAssertTrue(app.descendants(matching: .any)["inventory.pantry"].waitForExistence(timeout: 30), "Pantry did not open")
+        let loaded = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'inventory.row.' OR identifier == 'inventory.empty'")).firstMatch
+        XCTAssertTrue(loaded.waitForExistence(timeout: 30), "Pantry rows did not load")
+        sleep(1)
+        keepScreenshot(app, "inventory-live-pantry-\(layout)")
+    }
+
     // MARK: - Audits and screenshots
 
     func testPagesPassAccessibilityAudit() throws {
