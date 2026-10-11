@@ -136,9 +136,12 @@ public struct ThermostatDial: View {
                     .font(.system(size: primarySize, weight: .light))
                     .monospacedDigit()
                 if let unit = configuration.primaryUnit {
+                    // Raised with an alignment guide, not `baselineOffset`: the offset stretches the unit's
+                    // frame to 2.5× its glyph and the accessibility audit then judges contrast on the
+                    // empty part (iPad, 2026-10-10).
                     Text(unit)
                         .font(.system(size: primarySize * 0.32, weight: .bold))
-                        .baselineOffset(primarySize * 0.42)
+                        .alignmentGuide(.firstTextBaseline) { $0[.firstTextBaseline] + primarySize * 0.42 }
                 }
             }
             .foregroundStyle(HassTokens.Ink.primary)
