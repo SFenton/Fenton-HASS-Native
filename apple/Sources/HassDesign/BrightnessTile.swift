@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 /// A dimmable light tile (web `LightBrightnessCard.tsx`, pattern: `.agents/patterns/entity-tile.md`).
 ///
@@ -82,7 +85,14 @@ public struct BrightnessTile: View {
                         guard ContinuousClock.now - lastDragEnd > .milliseconds(300) else { return }
                         tap()
                     }
-                    .simultaneousGesture(drag(width: proxy.size.width), including: isUnavailable ? .none : .all)
+                    .modifier(BrightnessDrag(
+                        width: proxy.size.width, isEnabled: !isUnavailable,
+                        changed: { translation, x in
+                            interaction.dragChanged(translation: translation, x: x, width: proxy.size.width)
+                        },
+                        ended: { x in dragEnded(x: x, width: proxy.size.width) },
+                        cancelled: { interaction.dragCancelled() }
+                    ))
             }
         }
         .allowsHitTesting(!isUnavailable)
@@ -135,16 +145,10 @@ public struct BrightnessTile: View {
         }
     }
 
-    private func drag(width: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 6)
-            .onChanged { value in
-                interaction.dragChanged(translation: value.translation, x: value.location.x, width: width)
-            }
-            .onEnded { value in
-                let intent = interaction.dragEnded(x: value.location.x, width: width, live: percent)
-                if intent != nil { lastDragEnd = .now }
-                send(intent)
-            }
+    private func dragEnded(x: CGFloat, width: CGFloat) {
+        let intent = interaction.dragEnded(x: x, width: width, live: percent)
+        if intent != nil { lastDragEnd = .now }
+        send(intent)
     }
 
     // MARK: - Pure helpers
@@ -228,9 +232,93 @@ struct BrightnessInteraction: Equatable {
         return commit(Int(BrightnessTile.percent(atX: x, width: width).rounded()), live: live)
     }
 
+    /// The system took the touch (a scroll won, or the tile went away): drop the drag without committing.
+    mutating func dragCancelled() {
+        dragAxis = nil
+        dragPercent = nil
+    }
+
     private mutating func commit(_ value: Int, live: Int) -> Intent? {
         guard value != shown(live: live) else { return nil }
         pendingPercent = value
         return .brightness(value)
     }
 }
+
+// MARK: - Drag
+
+/// Wires a horizontal drag to the tile without stealing vertical scrolls.
+///
+/// From iOS 18 a SwiftUI `DragGesture` attached inside a `ScrollView` (even as a simultaneous gesture) keeps the
+/// scroll view from scrolling when the drag starts on the tile, so a page of tiles could not be scrolled from them.
+/// On iOS a UIKit pan that only begins on a mostly horizontal movement sets brightness and leaves vertical
+/// movement to the scroll view; elsewhere the SwiftUI drag remains.
+struct BrightnessDrag: ViewModifier {
+    var width: CGFloat
+    var isEnabled: Bool
+    var changed: (CGSize, CGFloat) -> Void
+    var ended: (CGFloat) -> Void
+    var cancelled: () -> Void
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if #available(iOS 18.0, *) {
+            content.gesture(HorizontalPan(isEnabled: isEnabled, changed: changed, ended: ended, cancelled: cancelled))
+        } else {
+            content.simultaneousGesture(swiftUIDrag, including: isEnabled ? .all : .none)
+        }
+        #else
+        content.simultaneousGesture(swiftUIDrag, including: isEnabled ? .all : .none)
+        #endif
+    }
+
+    private var swiftUIDrag: some Gesture {
+        DragGesture(minimumDistance: 6)
+            .onChanged { changed($0.translation, $0.location.x) }
+            .onEnded { ended($0.location.x) }
+    }
+}
+
+#if os(iOS)
+/// A pan that begins only when the finger moves more sideways than up or down.
+@available(iOS 18.0, *)
+struct HorizontalPan: UIGestureRecognizerRepresentable {
+    var isEnabled: Bool
+    var changed: (CGSize, CGFloat) -> Void
+    var ended: (CGFloat) -> Void
+    var cancelled: () -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        pan.isEnabled = isEnabled
+        return pan
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        recognizer.isEnabled = isEnabled
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let x = context.converter.localLocation.x
+        switch recognizer.state {
+        case .began, .changed:
+            let moved = context.converter.localTranslation ?? .zero
+            changed(CGSize(width: moved.x, height: moved.y), x)
+        case .ended: ended(x)
+        case .cancelled, .failed: cancelled()
+        default: break
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = recognizer as? UIPanGestureRecognizer else { return true }
+            let velocity = pan.velocity(in: pan.view)
+            return abs(velocity.x) > abs(velocity.y)
+        }
+    }
+}
+#endif
