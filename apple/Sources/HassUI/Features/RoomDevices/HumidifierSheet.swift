@@ -261,6 +261,7 @@ struct HumidifierControlsTab: View {
 /// Device state and environment readings (web `InfoPanel`).
 struct HumidifierInfoTab: View {
     var controller: HumidifierController
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
@@ -270,7 +271,8 @@ struct HumidifierInfoTab: View {
     }
 
     private func pills(_ items: [HumidifierController.InfoItem]) -> some View {
-        DynamicGridLayout(minCellWidth: 150, maxColumns: 3) {
+        // One column at accessibility sizes so values like "Humidifying" never break mid-word.
+        DynamicGridLayout(minCellWidth: 150, maxColumns: typeSize.isAccessibilitySize ? 1 : 3) {
             ForEach(items) { DeviceStatusPill(item: $0) }
         }
     }
@@ -279,9 +281,14 @@ struct HumidifierInfoTab: View {
 /// A labelled reading with a tone dot (web `StatusPill`).
 struct DeviceStatusPill: View {
     var item: HumidifierController.InfoItem
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(spacing: HassTokens.Spacing.s) {
+        // At accessibility sizes the icon sits above the text, giving the value the pill's full width.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
+            : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.s))
+        layout {
             Image(systemName: SymbolMap.symbol(for: item.icon))
                 .foregroundStyle(Self.color(item.tone))
                 .frame(width: 24)
@@ -290,7 +297,7 @@ struct DeviceStatusPill: View {
                 Text(item.value).font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary).monospacedDigit()
             }
             .fixedSize(horizontal: false, vertical: true) // Wrap long values ("Humidifying") instead of truncating.
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(HassTokens.Spacing.m)
         .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
