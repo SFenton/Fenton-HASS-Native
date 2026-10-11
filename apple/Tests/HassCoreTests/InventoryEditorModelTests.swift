@@ -368,7 +368,7 @@ struct InventoryEditorModelTests {
         #expect(editor.busy == nil)
         #expect(editor.batches.map(\.preparedFood) == [false, true])
         #expect(editor.batches.map(\.quantity) == [1, 1])
-        #expect(editor.batches.allSatisfy(\.addressable))
+        #expect(editor.batches.allSatisfy { $0.addressable })
         #expect(setup.list.displayItem(id: "soup")?.rows.count == 2)
 
         // And back: the prepared unit merges into the plain batch.

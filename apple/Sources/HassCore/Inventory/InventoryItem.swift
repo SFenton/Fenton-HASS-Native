@@ -186,13 +186,13 @@ public struct InventoryItem: Hashable, Sendable {
     /// `vacuum_sealed`: any non-empty string other than `0`/`false`, or a truthy value (`itemVacuumSealed`).
     static func isTruthy(_ value: JSONValue) -> Bool {
         switch value {
-        case let .bool(flag): flag
-        case let .number(number): number != 0
+        case let .bool(flag): return flag
+        case let .number(number): return number != 0
         case let .string(text):
             let trimmed = text.trimmingCharacters(in: .whitespaces)
             return !trimmed.isEmpty && trimmed != "0" && trimmed.lowercased() != "false"
-        case .array, .object: true
-        case .null: false
+        case .array, .object: return true
+        case .null: return false
         }
     }
 }
