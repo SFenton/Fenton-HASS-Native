@@ -284,7 +284,13 @@ extension XCTestCase {
     /// `FENTON_CAPTURE_DIR` set, the host captures the lit panel: `<name>.ready` asks, `<name>.done` answers.
     @MainActor
     func keepScreenshot(_ app: XCUIApplication, _ name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
+        // Drawn upright: in iPad landscape the raw screenshot is the portrait panel, and attaching it as is
+        // clipped the landscape page onto a portrait canvas (2026-10-11).
+        let image = app.screenshot().image
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = image.scale
+        let upright = UIGraphicsImageRenderer(size: image.size, format: format).image { _ in image.draw(at: .zero) }
+        let attachment = XCTAttachment(image: upright)
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
