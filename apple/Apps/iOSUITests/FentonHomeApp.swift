@@ -121,14 +121,21 @@ enum FentonHomeApp {
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
         if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 {
+            // A label shown twice (a list row and the open detail's title) can't be paired across
+            // launches, so only unique labels are samples.
+            func isUnique(_ label: String, in page: XCUIApplication) -> Bool {
+                page.staticTexts.matching(NSPredicate(format: "label == %@", label)).count == 1
+            }
             let sample = app.staticTexts.allElementsBoundByIndex.prefix(12)
-                .filter { !$0.label.isEmpty && $0.isHittable }.map { ($0.label, $0.frame.height) }
+                .filter { !$0.label.isEmpty && $0.isHittable && isUnique($0.label, in: app) }
+                .map { ($0.label, $0.frame.height) }
             let large = try ax5Page()
             func grew(_ label: String, _ height: CGFloat) -> Bool? {
                 // Only an on-screen element is a measurement; a row scrolled out of the AX5 page is
                 // unknown, so the page decides.
                 let element = large.staticTexts[label].firstMatch
-                return element.exists && element.isHittable ? element.frame.height >= height * 1.35 : nil
+                guard element.exists, element.isHittable, isUnique(label, in: large) else { return nil }
+                return element.frame.height >= height * 1.35
             }
             // A live value (humidity, temperature) can change between launches; then the page decides.
             let pageGrew = !sample.isEmpty && sample.allSatisfy { grew($0.0, $0.1) ?? true }

@@ -120,7 +120,7 @@ final class NavigationJourneyTests: XCTestCase {
     /// Landscape regular width: Settings keeps its list on the leading half and opens topics beside it,
     /// with a placeholder while nothing is selected. Portrait pushes the same topic full screen.
     func testSettingsSplitsInLandscapeAndPushesInPortrait() throws {
-        let app = try FentonHomeApp.launchSignedIn()
+        var app = try FentonHomeApp.launchSignedIn()
         guard usesFlyout(app) else { throw XCTSkip("Compact window") }
         if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .landscapeLeft; sleep(1) }
         guard isLandscape(app) else { throw XCTSkip("Set the iPhone Duo to unfolded landscape in Device Hub") }
@@ -162,6 +162,11 @@ final class NavigationJourneyTests: XCTestCase {
             sleep(1)
             return large
         }
+        // The AX5 page replaced the running app; continue at the default size.
+        app = try FentonHomeApp.launchSignedIn()
+        open("settings", title: "Settings", in: app)
+        app.buttons["settings.topic.guests"].tap()
+        XCTAssertTrue(app.buttons["split.close"].waitForExistence(timeout: 3))
 
         app.buttons["settings.topic.vacation"].tap()
         XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 3), "Selecting another topic did not replace the pane")
