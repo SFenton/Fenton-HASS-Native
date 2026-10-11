@@ -153,7 +153,7 @@ public final class HassConnection {
             "service": service,
             "service_data": data,
             "return_response": true,
-        ])
+        ], shouldRetry: false) // A resend after a reconnect could add groceries twice.
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
             connection.send(request) { result in
                 switch result {
