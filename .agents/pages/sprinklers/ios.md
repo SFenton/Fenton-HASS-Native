@@ -1,0 +1,10 @@
+# Sprinklers (iPhone and iPad)
+
+> **What:** how the native Sprinklers page is built. **Read when:** changing `HassUI/Features/Sprinklers` or `HassCore/Sprinklers`.
+
+- `SprinklerSnapshot` ports `sprinklerState.ts` rule for rule; `SprinklerController` (`@Observable`) layers an `OptimisticOverlay` (10 s, clear on confirmation) over it and sends every command through `HassServiceCalling`; `SprinklerFormat` holds the copy and time formatting. All three are unit-tested in `HassCoreTests/HomePagesTests.swift`.
+- `SprinklersScreen` cards use `GlassTile(kind: .navigate)` and `StatusPill` ([status-pill](../../patterns/status-pill.md)). The tile opens the sheet even while the controller is offline: its status lives there.
+- The controller sheet is a `List` in a `NavigationStack`; Water now and the schedule editor are pushed pages (`SprinklerDetail`) with their primary button pinned at the bottom (HIG: Sheets). The web's in-modal detail pages map to that stack. Native controls: `Toggle` for switches, `Stepper` for run time and budget, `DatePicker(.hourAndMinute)` for start times, a seven-button day row whose buttons read the full day name and selected state.
+- Section headers are drawn with the app's ink so they keep contrast on the grouped background.
+- Layout: cards in a `DynamicGridLayout` (min 340 pt, 2 columns); full-width push page in every pose; the sheet is `.large` everywhere.
+- Gallery: `FENTON_GALLERY=sprinklers`, `FENTON_GALLERY_SPRINKLER=frontYard|backyard`, `FENTON_GALLERY_DETAIL=water-<zone>|schedule-<zone>`. Fixtures: the front yard ready, the backyard low on battery with House watering.

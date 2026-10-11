@@ -10,4 +10,7 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Security | `/at-a-glance/security` | TODO | Placeholder |
 | Climate | `/at-a-glance/thermostat` | TODO | Placeholder |
 | Chores | `/at-a-glance/chores` | TODO | Placeholder |
+| Media | `/at-a-glance/media` | [media/spec.md](media/spec.md) | Ported ([ios.md](media/ios.md)) |
+| Custom Lights | `/at-a-glance/custom-lights` | [custom-lights/spec.md](custom-lights/spec.md) | Ported ([ios.md](custom-lights/ios.md)) |
+| Sprinklers | `/at-a-glance/sprinklers` | [sprinklers/spec.md](sprinklers/spec.md) | Ported ([ios.md](sprinklers/ios.md)) |
 | Settings | `/at-a-glance/settings` | TODO | Home Assistant settings modal only ([ios.md](settings/ios.md)) |

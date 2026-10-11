@@ -37,6 +37,8 @@ public enum HassTokens {
         public static let presence = Color(red: 0.20, green: 0.76, blue: 0.57)
         public static let contact = Color(red: 0.98, green: 0.55, blue: 0.20)
         public static let neutral = Color.secondary
+        /// Water (sprinklers); dark enough for white text at 4.5:1.
+        public static let water = Color(red: 0.05, green: 0.40, blue: 0.70)
     }
 
     // MARK: - Text

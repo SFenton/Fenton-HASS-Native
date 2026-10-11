@@ -5,7 +5,9 @@ import SwiftUI
 /// Home (web At a Glance overview). Spec: `.agents/pages/home/spec.md`.
 struct HomeScreen: View {
     @Environment(EntityStore.self) private var store
+    @Environment(HassConnection.self) private var connection
     @State private var sheet: HomeSheet?
+    @State private var route: HomeRoute?
 
     var body: some View {
         ScrollView {
@@ -15,6 +17,8 @@ struct HomeScreen: View {
                     .padding(.horizontal, HassTokens.Spacing.l)
                 GuestPresenceSection()
                     .padding(.horizontal, HassTokens.Spacing.l)
+                HomeQuickLinks { route = $0 }
+                    .padding(.horizontal, HassTokens.Spacing.l)
                 CameraGrid { sheet = .camera($0) }
                     .padding(.horizontal, HassTokens.Spacing.l)
             }
@@ -22,6 +26,7 @@ struct HomeScreen: View {
         }
         .accessibilityIdentifier("home.scroll")
         .navigationTitle("Home")
+        .navigationDestination(item: $route) { $0.destination(connection: connection) }
         .toolbar {
             ToolbarItem(placement: .primaryAction) { FreshnessIndicator() }
         }

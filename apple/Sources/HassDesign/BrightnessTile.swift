@@ -2,9 +2,10 @@ import SwiftUI
 
 /// A dimmable light tile (web `LightBrightnessCard.tsx`, pattern: `.agents/patterns/entity-tile.md`).
 ///
-/// Tap flips power. A horizontal drag sets brightness from where the finger is across the tile and
-/// commits on release, as on the web; a vertical drag is left to the scroll view. VoiceOver activates
-/// to flip power and swipes up or down to step brightness by ``step``.
+/// Tap flips power, or opens the light's details when ``onOpen`` is set (web `tapAction: 'more-info'`). A
+/// horizontal drag sets brightness from where the finger is across the tile and commits on release, as on the
+/// web; a vertical drag is left to the scroll view. VoiceOver activates the tap (with a "Turn On/Off" action
+/// when tapping opens details) and swipes up or down to step brightness by ``step``.
 ///
 /// Pure UI: callers pass the live percent and receive intents; they send the service calls.
 public struct BrightnessTile: View {
@@ -22,6 +23,8 @@ public struct BrightnessTile: View {
     public var onPower: (Bool) -> Void
     /// Asked to set brightness; 0 means off.
     public var onBrightness: (Int) -> Void
+    /// When set, a tap opens the light's details (shown with a chevron) instead of flipping power.
+    public var onOpen: (() -> Void)?
 
     /// VoiceOver adjust step, in percent.
     public nonisolated static let step = 10
@@ -41,7 +44,8 @@ public struct BrightnessTile: View {
         percent: Int,
         isUnavailable: Bool = false,
         onPower: @escaping (Bool) -> Void,
-        onBrightness: @escaping (Int) -> Void
+        onBrightness: @escaping (Int) -> Void,
+        onOpen: (() -> Void)? = nil
     ) {
         self.title = title
         self.symbol = symbol
@@ -51,6 +55,7 @@ public struct BrightnessTile: View {
         self.isUnavailable = isUnavailable
         self.onPower = onPower
         self.onBrightness = onBrightness
+        self.onOpen = onOpen
     }
 
     // MARK: - Body
@@ -64,6 +69,7 @@ public struct BrightnessTile: View {
             tint: tint,
             isActive: shown > 0 && !isUnavailable,
             isUnavailable: isUnavailable,
+            showsChevron: onOpen != nil,
             level: isUnavailable ? nil : Double(shown) / 100,
             levelTint: fillTint
         )
@@ -74,7 +80,7 @@ public struct BrightnessTile: View {
                     .onTapGesture {
                         // A short horizontal drag can also end as a tap; it already set the level.
                         guard ContinuousClock.now - lastDragEnd > .milliseconds(300) else { return }
-                        flip()
+                        tap()
                     }
                     .simultaneousGesture(drag(width: proxy.size.width), including: isUnavailable ? .none : .all)
             }
@@ -86,9 +92,14 @@ public struct BrightnessTile: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityValue(Self.status(percent: shown, isUnavailable: isUnavailable))
-        .accessibilityHint(isUnavailable ? "" : "Double-tap to turn \(shown > 0 ? "off" : "on"). Swipe up or down to adjust brightness.")
+        .accessibilityHint(Self.hint(percent: shown, isUnavailable: isUnavailable, opensDetails: onOpen != nil))
         .accessibilityAddTraits(.isButton)
-        .accessibilityAction { flip() }
+        .accessibilityAction { tap() }
+        .accessibilityActions {
+            if onOpen != nil, !isUnavailable {
+                Button(shown > 0 ? "Turn Off" : "Turn On") { flip() }
+            }
+        }
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: send(interaction.adjust(by: Self.step, live: percent, isUnavailable: isUnavailable))
@@ -99,6 +110,11 @@ public struct BrightnessTile: View {
     }
 
     // MARK: - Intents
+
+    /// A tap: open details when the caller asked for that, else flip power.
+    private func tap() {
+        if let onOpen { onOpen() } else { flip() }
+    }
 
     private func flip() {
         send(interaction.flip(live: percent, isUnavailable: isUnavailable))
@@ -142,6 +158,13 @@ public struct BrightnessTile: View {
     /// `value` moved by `delta`, clamped to 0...100.
     nonisolated static func stepped(_ value: Int, by delta: Int) -> Int {
         min(100, max(0, value + delta))
+    }
+
+    /// The VoiceOver hint: what a double-tap does, then how to adjust.
+    nonisolated static func hint(percent: Int, isUnavailable: Bool, opensDetails: Bool) -> String {
+        if isUnavailable { return "" }
+        let tap = opensDetails ? "Double-tap for details." : "Double-tap to turn \(percent > 0 ? "off" : "on")."
+        return tap + " Swipe up or down to adjust brightness."
     }
 
     /// The tile's status line and accessibility value: `Off`, `45%` or `Unavailable`.

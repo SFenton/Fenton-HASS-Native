@@ -47,6 +47,10 @@ public enum SymbolMap {
         "mdi:movie-open": "film",
         "mdi:lightbulb-multiple": "lightbulb.2",
         "mdi:gauge": "gauge.with.dots.needle.50percent",
+        // Media, Custom Lights and Sprinklers pages
+        "mdi:nintendo-switch": "gamecontroller.fill",
+        "mdi:sprinkler-variant": "sprinkler.and.droplets",
+        "mdi:palette": "paintpalette",
     ]
 
     /// The SF Symbol name for an MDI icon.
