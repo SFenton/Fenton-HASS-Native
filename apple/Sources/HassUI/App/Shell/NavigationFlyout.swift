@@ -177,27 +177,31 @@ private struct SectionRootChrome: ViewModifier {
     }
 }
 
-/// Opens the flyout with a leading-edge swipe while the selected section is at its root (deeper,
-/// the system's back swipe owns that edge).
-struct FlyoutEdgeSwipe: View {
-    @Environment(ShellNavigator.self) private var navigator
+extension View {
+    /// Opens the flyout with a leading-edge swipe while the selected section is at its root (deeper,
+    /// the system's back swipe owns that edge).
+    func flyoutEdgeSwipe(_ navigator: ShellNavigator, isEnabled: Bool) -> some View {
+        modifier(FlyoutEdgeSwipe(navigator: navigator, isEnabled: isEnabled))
+    }
+}
 
-    var body: some View {
-        if navigator.isAtRoot(navigator.selection), !navigator.isFlyoutOpen {
-            Color.clear
-                .frame(width: NavigationFlyoutMetrics.edgeSwipeWidth)
-                .frame(maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 16, coordinateSpace: .local)
-                        .onEnded { value in
-                            if NavigationFlyoutMetrics.edgeSwipeOpens(startX: value.startLocation.x, translation: value.translation) {
-                                navigator.openFlyout()
-                            }
-                        }
-                )
-                .accessibilityHidden(true)
-        }
+/// Implementation of ``SwiftUI/View/flyoutEdgeSwipe(_:isEnabled:)``.
+///
+/// A simultaneous drag on the whole content rather than a hit-testable strip over the leading edge:
+/// a strip took every tap in its 20 pt, including the leading part of Open Navigation and of list rows.
+/// Taps never become a drag (16 pt minimum distance), and only a drag that starts inside the edge opens.
+private struct FlyoutEdgeSwipe: ViewModifier {
+    var navigator: ShellNavigator
+    var isEnabled: Bool
+
+    func body(content: Content) -> some View {
+        content.simultaneousGesture(
+            DragGesture(minimumDistance: 16, coordinateSpace: .local)
+                .onEnded { value in
+                    navigator.edgeSwipeEnded(startX: value.startLocation.x, translation: value.translation)
+                },
+            isEnabled: isEnabled
+        )
     }
 }
 

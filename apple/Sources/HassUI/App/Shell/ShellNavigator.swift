@@ -43,6 +43,18 @@ final class ShellNavigator {
     /// Shows the flyout.
     func openFlyout() { isFlyoutOpen = true }
 
+    /// Opens the flyout for a finished leading-edge drag, only while the selected section is at its root
+    /// (deeper, the system's back swipe owns that edge).
+    /// - Parameters:
+    ///   - startX: Where the drag began, from the leading edge.
+    ///   - translation: Total movement.
+    func edgeSwipeEnded(startX: CGFloat, translation: CGSize) {
+        guard isAtRoot(selection), !isFlyoutOpen,
+              NavigationFlyoutMetrics.edgeSwipeOpens(startX: startX, translation: translation)
+        else { return }
+        openFlyout()
+    }
+
     /// Hides the flyout without choosing a destination; focus returns to Open Navigation.
     func dismissFlyout() {
         guard isFlyoutOpen else { return }

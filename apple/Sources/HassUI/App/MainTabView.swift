@@ -29,9 +29,9 @@ struct MainTabView: View {
                 }
             }
             // While the flyout is open its scrim covers the content; hide the content from VoiceOver too.
-            .accessibilityHidden(navigator.isFlyoutOpen)
+            .accessibilityHidden(while: navigator.isFlyoutOpen)
+            .flyoutEdgeSwipe(navigator, isEnabled: style == .flyout)
             if style == .flyout {
-                FlyoutEdgeSwipe()
                 NavigationFlyout()
             }
         }
