@@ -122,7 +122,7 @@ public struct SelectableOptionRow: View {
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)
-        .accessibilityElement(children: .ignore)
+        // On the Button itself, so its identifier and selected state stay on one element (see GlassTile).
         .accessibilityLabel(title)
         .accessibilityHint(detail)
         .accessibilityAddTraits(isSelected ? .isSelected : [])

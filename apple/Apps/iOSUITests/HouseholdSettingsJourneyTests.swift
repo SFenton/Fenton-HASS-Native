@@ -40,7 +40,13 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
     @discardableResult
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
         let scroll = app.scrollViews.firstMatch
-        for _ in 0..<8 where !(element.exists && element.isHittable) { scroll.swipeUp() }
+        var swiped = false
+        for _ in 0..<12 where !(element.exists && element.isHittable) {
+            scroll.swipeUp(velocity: .slow)
+            swiped = true
+        }
+        // A tap during scroll momentum only stops the scroll, so let it settle first.
+        if swiped { usleep(800_000) }
         return element
     }
 

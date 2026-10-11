@@ -108,9 +108,11 @@ public enum HouseholdSettingsConfig {
         /// Opener titles (`AdminHashButton`).
         public static let presenceOpenerTitle = "Open Presence-Based Overrides"
         public static let autoResetOpenerTitle = "Open Presence-Based Auto-Reset Configuration"
-        /// Sheet titles.
+        /// Sheet titles. The web's "Presence-Based Overrides Auto-Reset" truncates in an inline bar at AX5,
+        /// so the sheet uses a shorter title (HIG: Navigation bars, keep titles short); its opener and the
+        /// section above keep the full name.
         public static let presenceSheetTitle = "Presence-Based Overrides"
-        public static let autoResetSheetTitle = "Presence-Based Overrides Auto-Reset"
+        public static let autoResetSheetTitle = "Presence Auto-Reset"
 
         /// The 14 rooms, in the web's order.
         public static let presenceRooms: [PresenceRoom] = [
