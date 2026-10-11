@@ -298,7 +298,8 @@ extension XCTestCase {
         let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
         let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
         FileManager.default.createFile(atPath: ready.path, contents: nil)
-        let deadline = Date().addingTimeInterval(30)
+        // `simctl io` can take over 30 s on a loaded host; a short wait moved on and mislabeled the next capture.
+        let deadline = Date().addingTimeInterval(120)
         while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
     }
 }
