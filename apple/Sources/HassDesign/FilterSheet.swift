@@ -59,6 +59,10 @@ public struct FilterSheet<Content: View>: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        #if os(iOS)
+        // Opaque, not glass: at the medium detent the page's floating buttons otherwise show through and fail contrast.
+        .presentationBackground(Color(.systemGroupedBackground))
+        #endif
     }
 }
 
