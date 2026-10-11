@@ -18,6 +18,9 @@ struct VacationRoute: View {
 struct VacationScreen: View {
     @State private var household: HouseholdAwayController
     @State private var viewer: HouseholdResident?
+    /// The engaged page this screen last showed. Turning that mode off keeps its page (the web stays on
+    /// `vacation-mode` / `solo-trip`) instead of swapping the root back to the chooser under the person.
+    @State private var lastEngaged: Vacation.Route?
     private let store: EntityStore
     private let caller: any HassServiceCalling
     private let currentUserId: @MainActor () async -> String?
@@ -39,11 +42,14 @@ struct VacationScreen: View {
     var body: some View {
         content
             .task { viewer = HouseholdResident.forHaUserId(await currentUserId()) }
+            .onChange(of: route, initial: true) { _, route in
+                if route != .chooser { lastEngaged = route }
+            }
     }
 
     @ViewBuilder
     private var content: some View {
-        switch route {
+        switch displayedRoute {
         case .chooser:
             VacationChooser(household: household, store: store, caller: caller, viewer: viewer)
         case .vacationMode:
@@ -51,6 +57,11 @@ struct VacationScreen: View {
         case .soloTrip:
             SoloTripScreen(household: household, viewer: viewer)
         }
+    }
+
+    /// The live route, or the engaged page already shown once its mode turns off.
+    private var displayedRoute: Vacation.Route {
+        route == .chooser ? lastEngaged ?? .chooser : route
     }
 
     private var route: Vacation.Route {

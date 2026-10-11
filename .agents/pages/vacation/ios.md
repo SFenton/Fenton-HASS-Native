@@ -6,7 +6,7 @@ Spec: [spec.md](spec.md) (web source `ha-sfenton-react-dash@9ac2a46`).
 
 ## Native
 
-- **Entry.** Settings lists Vacation (`settings.vacation`, `VacationRoute`). `VacationScreen` re-resolves the route on live state (`Vacation.route`, web `vacationFeaturePath`): an engaged vacation or Solo Trip skips the chooser, and the root swaps if the state changes while it is shown.
+- **Entry.** Settings lists Vacation (`settings.vacation`, `VacationRoute`). `VacationScreen` re-resolves the route on live state (`Vacation.route`, web `vacationFeaturePath`): an engaged vacation or Solo Trip skips the chooser, and the root swaps if the state changes while it is shown. Once an engaged page has shown, turning that mode off keeps it (`lastEngaged`) instead of dropping the person back on the chooser, as the web stays on `vacation-mode` / `solo-trip`.
 - **Logic lives in HassCore**, so it is unit tested without UI:
   - `HouseholdAwayController`: the one path to `script.household_away_command` (`return_response`, `HassConnection.callServiceWithResponse`, sent once with no retry), revision floor, one command at a time, 10 s timeout → unknown outcome. Shared with the bedroom pages (Sleepypod commands can be added as new `HouseholdAway.Command` cases).
   - `VacationModeController` (web `VacationModePage`): optimistic mode and checklist (`OptimisticOverlay`, live-change clear, 2 s revert), blocked enable, confirmation draft, inline date saves and invalid-date recovery.
