@@ -33,4 +33,8 @@ Mechanisms: hosted tests in `HassUITests` for labels, traits and order; an XCUIT
 1. **Line coverage:** ≥ 95% logic (`HassCore`) and ≥ 90% UX (`HassDesign`, `HassUI`), measured from real LLVM reports by `tools/apple_coverage.sh` (`contracts/coverage-rules.json`). Never exclude handwritten code to pass.
 2. **Device journeys:** every journey passes on iPhone, iPhone Duo and iPad (`tools/ios_uitest.sh`). An unavailable simulator or pose is a gap, not a pass.
 
+`tools/apple_coverage.sh` merges every test bundle's profiles and exports all bundles together: the swiftbuild backend builds one bundle per test target and `swift test --show-codecov-path` exports only one, which left `HassDesign` and `HassUI` unmeasured until 2026-10-11.
+
+Hosted SwiftUI tests that need `onAppear`, `onChange` or geometry use a real `NSWindow` (`HostedWindow` in `NavigationHostedTests.swift`, `sizingOptions = []` so the window size is the input) and report through `ViewProbe`, not the accessibility tree (macOS SwiftUI builds none without an assistive client). Poll for appearance (`settle(until:)`); `onDisappear` is unreliable on the host, so assert frames instead.
+
 Gates certify releases; they are not run on every slice. Workers run the device and accessibility tests they add or touch before merging and list them in the PR.
