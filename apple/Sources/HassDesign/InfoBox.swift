@@ -26,7 +26,7 @@ public struct InfoBox: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
             Label {
-                Text(title)
+                Text(title).fixedSize(horizontal: false, vertical: true)
             } icon: {
                 Image(systemName: tone == .success ? "checkmark.circle.fill" : "info.circle.fill")
                     .foregroundStyle(tint)

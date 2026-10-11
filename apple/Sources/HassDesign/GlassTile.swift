@@ -54,7 +54,7 @@ public struct GlassTile: View {
                 showsChevron: kind == .navigate
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(GlassTileButtonStyle())
         .disabled(isUnavailable)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
@@ -66,6 +66,18 @@ public struct GlassTile: View {
         if isUnavailable { return "Unavailable" }
         if kind == .toggle { return isActive ? "On" : "Off" }
         return subtitle ?? ""
+    }
+}
+
+// MARK: - Button style
+
+/// Presses like `.plain` but never fades the label when disabled: a locked tile still carries its state
+/// ("Away", "Select the user … first"), so its text must keep 4.5:1. ``GlassTileFace`` mutes only the icon
+/// and border instead, and VoiceOver still reads the tile as dimmed.
+struct GlassTileButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.8 : 1)
     }
 }
 
@@ -85,13 +97,15 @@ struct GlassTileFace: View {
     /// The fill's color; defaults to ``tint``.
     var levelTint: Color?
 
+    @Environment(\.isEnabled) private var isEnabled
+
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             HStack {
                 Image(systemName: symbol)
                     .font(.title3)
                     .symbolVariant(isActive ? .fill : .none)
-                    .foregroundStyle(isActive ? tint : .secondary)
+                    .foregroundStyle(isActive && isEnabled ? tint : .secondary)
                 Spacer(minLength: 0)
                 if showsChevron {
                     Image(systemName: "chevron.right")
@@ -133,7 +147,7 @@ struct GlassTileFace: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
-                .strokeBorder(isActive ? tint.opacity(0.5) : .clear, lineWidth: 1)
+                .strokeBorder(isActive ? tint.opacity(isEnabled ? 0.5 : 0.25) : .clear, lineWidth: 1)
         }
         .opacity(isUnavailable ? 0.5 : 1)
         .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))

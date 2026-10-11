@@ -135,6 +135,8 @@ struct SoloTripStatusView: View {
                     .disabled(actionsDisabled)
             }
         }
+        // A container keeps the action buttons' own identifiers (an identifier on a plain stack overwrote them).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("soloTrip.status")
     }
 }

@@ -17,6 +17,10 @@ enum AwayTint {
     static let pending = Color(red: 0.12, green: 0.53, blue: 0.90)
     /// Solo Trip (web `SOLO_TRIP_COLOR` 91,141,239).
     static let soloTrip = Color(red: 0.36, green: 0.55, blue: 0.94)
+    /// Prominent action buttons: white text measures 5.6:1.
+    static let action = Color(red: 0.0, green: 0.40, blue: 0.80)
+    /// Bordered action button text: 4.5:1 on its light wash, and a lighter blue on dark backgrounds.
+    static let actionText = dynamic(light: (0.0, 0.40, 0.80), dark: (0.45, 0.70, 1.0))
     /// Alert text: a red dark enough for 4.5:1 on light materials and light enough on dark ones.
     static let alert = dynamic(light: (0.70, 0.11, 0.11), dark: (1.0, 0.55, 0.52))
 
@@ -113,9 +117,10 @@ struct AwayActionButton: View {
     var body: some View {
         Group {
             if prominent {
-                Button(role: role, action: action) { label }.buttonStyle(.borderedProminent)
+                // The light app accent measured 2.5:1 under white text; this blue keeps 4.5:1 in both appearances.
+                Button(role: role, action: action) { label }.buttonStyle(.borderedProminent).tint(role == .destructive ? nil : AwayTint.action)
             } else {
-                Button(role: role, action: action) { label }.buttonStyle(.bordered)
+                Button(role: role, action: action) { label }.buttonStyle(.bordered).tint(role == .destructive ? nil : AwayTint.actionText)
             }
         }
         .controlSize(.large)

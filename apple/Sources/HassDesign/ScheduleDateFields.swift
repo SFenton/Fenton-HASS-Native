@@ -58,15 +58,28 @@ struct ScheduleDatePicker: View {
 
     @State private var draft: Date?
     @State private var commit: Task<Void, Never>?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        DatePicker(field.label, selection: selection, displayedComponents: field.part == .date ? .date : .hourAndMinute)
-            .font(.body)
-            .foregroundStyle(HassTokens.Ink.primary)
-            .frame(minHeight: HassTokens.minTarget)
-            .padding(.horizontal, HassTokens.Spacing.m)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
-            .accessibilityIdentifier(field.identifier)
+        // The label wraps instead of truncating; at accessibility sizes the picker drops below it.
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
+            : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.s))
+        layout {
+            Text(field.label)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            DatePicker(field.label, selection: selection, displayedComponents: field.part == .date ? .date : .hourAndMinute)
+                .labelsHidden()
+                .accessibilityLabel(field.label)
+                .accessibilityIdentifier(field.identifier)
+        }
+        .font(.body)
+        .foregroundStyle(HassTokens.Ink.primary)
+        .frame(minHeight: HassTokens.minTarget)
+        .padding(.horizontal, HassTokens.Spacing.m)
+        .padding(.vertical, typeSize.isAccessibilitySize ? HassTokens.Spacing.s : 0)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
             // The saved value moved (an echo or another device): drop the draft.
             .onChange(of: field.value) { _, _ in draft = nil }
             .onDisappear { commit?.cancel() }
