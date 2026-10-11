@@ -104,8 +104,11 @@ struct SettingsScreen: View {
         .navigationTitle("Settings")
     }
 
-    private var statusText: String {
-        switch connection.status {
+    private var statusText: String { Self.statusText(for: connection.status) }
+
+    /// Readable connection status for the Home Assistant section.
+    static func statusText(for status: HassConnection.Status) -> String {
+        switch status {
         case .disconnected: "Disconnected"
         case .connecting: "Connecting…"
         case let .connected(version): "Connected (\(version))"

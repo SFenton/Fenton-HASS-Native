@@ -78,6 +78,19 @@ struct NavigationShellTests {
         #expect(!NavigationFlyoutMetrics.edgeSwipeOpens(startX: 4, translation: CGSize(width: 70, height: 120)))
         #expect(!NavigationFlyoutMetrics.edgeSwipeOpens(startX: 4, translation: CGSize(width: -80, height: 0)))
     }
+
+    @Test func edgeSwipeOpensTheFlyoutOnlyAtASectionRoot() {
+        let navigator = ShellNavigator(selection: .settings)
+        let swipe = CGSize(width: 80, height: 5)
+        navigator.edgeSwipeEnded(startX: 40, translation: swipe)
+        #expect(!navigator.isFlyoutOpen)
+        navigator.edgeSwipeEnded(startX: 4, translation: swipe)
+        #expect(navigator.isFlyoutOpen)
+        navigator.dismissFlyout()
+        navigator.paths[.settings] = NavigationPath(["topic"])
+        navigator.edgeSwipeEnded(startX: 4, translation: swipe)
+        #expect(!navigator.isFlyoutOpen, "Deeper pages leave the edge to the system back swipe")
+    }
 }
 
 /// ``SplitPolicy/geometry(container:isRegularWidth:hinge:)`` per device and pose.
