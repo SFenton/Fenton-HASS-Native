@@ -145,8 +145,20 @@ final class NavigationJourneyTests: XCTestCase {
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
             self.open("settings", title: "Settings", in: large)
-            large.buttons["settings.topic.guests"].tap()
+            // At AX5 the row starts below the fold.
+            let guests = large.buttons["settings.topic.guests"]
+            for _ in 0..<8 where !(guests.exists && guests.isHittable) {
+                large.buttons["settings.topic.admin"].exists
+                    ? large.buttons["settings.topic.admin"].swipeUp() : large.collectionViews.firstMatch.swipeUp()
+            }
+            guests.tap()
             XCTAssertTrue(large.buttons["split.close"].waitForExistence(timeout: 3))
+            // Back to the top, so the list shows the same rows the audited page did.
+            let first = large.buttons["settings.topic.admin"]
+            for _ in 0..<8 where !(first.exists && first.isHittable) { large.collectionViews.firstMatch.swipeDown() }
+            // All the way up: a partly scrolled list collapses the large title to the inline one.
+            for _ in 0..<2 { large.collectionViews.firstMatch.swipeDown() }
+            sleep(1)
             sleep(1)
             return large
         }
@@ -182,7 +194,7 @@ final class NavigationJourneyTests: XCTestCase {
 
     // MARK: - Screenshots
 
-    /// Keeps `nav-*` screenshots of the navigation and Settings split in each orientation for review.
+    /// Keeps `home-*`, `nav-*` and `settings-*` screenshots of the navigation and Settings split in each orientation for review.
     func testCaptureNavigationScreens() throws {
         let orientations: [UIDeviceOrientation] = FentonHomeApp.family == .iPad ? [.portrait, .landscapeLeft] : [.unknown]
         for orientation in orientations {
@@ -190,6 +202,7 @@ final class NavigationJourneyTests: XCTestCase {
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
             let app = try FentonHomeApp.launchSignedIn()
             sleep(1)
+            keep(app, "home-\(suffix)")
             if usesFlyout(app) {
                 app.buttons["nav.open"].tap()
                 XCTAssertTrue(flyout(app).waitForExistence(timeout: 3))

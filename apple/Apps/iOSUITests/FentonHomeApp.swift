@@ -125,17 +125,23 @@ enum FentonHomeApp {
                 .filter { !$0.label.isEmpty && $0.isHittable }.map { ($0.label, $0.frame.height) }
             let large = try ax5Page()
             func grew(_ label: String, _ height: CGFloat) -> Bool? {
+                // Only an on-screen element is a measurement; a row scrolled out of the AX5 page is
+                // unknown, so the page decides.
                 let element = large.staticTexts[label].firstMatch
-                return element.exists ? element.frame.height >= height * 1.35 : nil
+                return element.exists && element.isHittable ? element.frame.height >= height * 1.35 : nil
             }
             // A live value (humidity, temperature) can change between launches; then the page decides.
             let pageGrew = !sample.isEmpty && sample.allSatisfy { grew($0.0, $0.1) ?? true }
                 && sample.contains { grew($0.0, $0.1) == true }
+            // Name the page samples that held the page decision back, so a failure says why.
+            let stuck = sample.filter { grew($0.0, $0.1) == false }
+                .map { "'\($0.0)' \(Int($0.1))pt→\(Int(large.staticTexts[$0.0].firstMatch.frame.height))pt" }
+            let why = stuck.isEmpty ? "" : " (page samples that did not grow: \(stuck.joined(separator: ", ")))"
             for (label, height) in unconfirmedType where !(grew(label, height) ?? pageGrew) {
-                open.append("Dynamic Type: '\(label)' did not grow 1.35x at AX5")
+                open.append("Dynamic Type: '\(label)' did not grow 1.35x at AX5" + (grew(label, height) == nil ? why : ""))
             }
             if unattributedType > 0, !pageGrew {
-                open.append("Dynamic Type: \(unattributedType) issue(s) with no element, and the page did not grow 1.35x at AX5")
+                open.append("Dynamic Type: \(unattributedType) issue(s) with no element, and the page did not grow 1.35x at AX5" + why)
             }
         }
         if !open.isEmpty {
@@ -154,6 +160,13 @@ enum FentonHomeApp {
             // Home's own controls can't be reached (the sheet's dimming layer takes the touches).
             if issue.auditType == .elementDetection, app.navigationBars.buttons["Done"].exists,
                !app.buttons["home.chip.lights"].isHittable {
+                return true
+            }
+            // The same for the navigation flyout: the page under its scrim is drawn but hidden from
+            // assistive technologies while it is open. Accept it only while the flyout is up and Home's
+            // controls are out of the accessibility tree.
+            if issue.auditType == .elementDetection, app.descendants(matching: .any)["nav.flyout"].exists,
+               !app.buttons["home.chip.lights"].exists {
                 return true
             }
             // When contrast runs with the Dynamic Type or text-clipping checks, the disabled Sign In

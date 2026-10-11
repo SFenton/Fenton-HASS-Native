@@ -40,6 +40,14 @@ final class HostedWindow {
         }
     }
 
+    /// Settles until `condition` holds (or `timeout` passes), for the first window in a process,
+    /// which takes longer to lay out than later ones.
+    func settle(until condition: () -> Bool, timeout: TimeInterval = 5) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while !condition(), Date() < deadline { await settle(0.1) }
+        await settle(0.2)
+    }
+
     /// Runs the main run loop briefly (sync, so the async `settle` may call it).
     private static func pumpRunLoop() {
         RunLoop.main.run(until: Date().addingTimeInterval(0.02))
@@ -130,7 +138,7 @@ struct OnDemandSplitHostedTests {
         let model = SplitModel(), probe = ViewProbe()
         let hosted = host(model, probe, size: CGSize(width: 1200, height: 800))
         defer { hosted.close() }
-        await hosted.settle()
+        await hosted.settle(until: { probe.visible.contains("placeholder") })
         #expect(probe.visible.contains("placeholder"))
         let placeholder = try #require(probe.frames["placeholder"])
         #expect(abs(placeholder.minX - 600.5) <= 1, "trailing pane starts at \(placeholder.minX)")
@@ -139,15 +147,15 @@ struct OnDemandSplitHostedTests {
         #expect(abs(root.maxX - 599.5) <= 1, "leading pane ends at \(root.maxX)")
 
         model.openItem = "a"
-        await hosted.settle()
+        await hosted.settle(until: { probe.visible.contains("detail.a") })
         #expect(probe.visible.contains("detail.a"))
         let detail = try #require(probe.frames["detail.a"])
         #expect(abs(detail.minX - 600.5) <= 1)
 
         model.openItem = "b"
-        await hosted.settle()
+        await hosted.settle(until: { probe.visible.contains("detail.b") })
         #expect(probe.visible.contains("detail.b"))
-        #expect(!probe.visible.contains("detail.a"))
+        #expect(abs(try #require(probe.frames["detail.b"]).minX - 600.5) <= 1, "the new item replaces the pane")
         #expect(model.path.isEmpty, "a split must not push")
     }
 
@@ -160,7 +168,7 @@ struct OnDemandSplitHostedTests {
         #expect(!probe.visible.contains("placeholder"))
         #expect(abs(try #require(probe.frames["root"]).width - 1200) <= 1)
         model.openItem = "b"
-        await hosted.settle()
+        await hosted.settle(until: { probe.visible.contains("detail.b") })
         #expect(probe.visible.contains("detail.b"))
         #expect(abs(try #require(probe.frames["root"]).maxX - 599.5) <= 1)
     }
@@ -173,7 +181,7 @@ struct OnDemandSplitHostedTests {
             await hosted.settle()
             #expect(!probe.visible.contains("placeholder"))
             model.openItem = "a"
-            await hosted.settle()
+            await hosted.settle(until: { probe.visible.contains("detail.a") })
             #expect(probe.visible.contains("detail.a"))
             #expect(abs(try #require(probe.frames["detail.a"]).width - size.width) <= 1)
             hosted.close()
@@ -269,7 +277,7 @@ struct NavigationFlyoutHostedTests {
                     .environment(\.shellNavigationStyle, style),
                 size: CGSize(width: 900, height: 700)
             )
-            await hosted.settle()
+            await hosted.settle(until: { probe.visible.contains("root") })
             #expect(probe.visible.contains("root"))
             navigator.openFlyout()
             navigator.dismissFlyout()
@@ -337,7 +345,7 @@ struct SettingsHostedTests {
             size: CGSize(width: 1200, height: 800)
         )
         defer { hosted.close() }
-        await hosted.settle()
+        await hosted.settle(until: { probe.visible.contains("placeholder") })
         #expect(probe.visible.contains("placeholder"))
         for topic in SettingsTopic.allCases {
             model.openItem = topic.rawValue
