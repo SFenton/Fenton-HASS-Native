@@ -80,6 +80,10 @@ struct OnDemandSplitStack<Item: Hashable, Root: View, Detail: View, Placeholder:
             }
         }
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(duration: 0.35), value: openItem)
+        // Measure the space offered, not the HStack: with fixed pane widths the HStack keeps its split
+        // width after a rotation to portrait, so the split never turned off (it overflowed the window).
+        // `minWidth: 0` too: without it a flexible frame still grows to its child's width.
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { containerFrame = $0 }
         .onChange(of: computedGeometry, initial: true) { _, newGeometry in
             guard newGeometry != appliedGeometry else { return }
