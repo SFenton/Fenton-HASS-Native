@@ -62,7 +62,7 @@ public struct OptionPickerSheet: View {
                         GradientSwatch(colors: option.swatch)
                         Image(systemName: "checkmark")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(HassTokens.Ink.action)
                             .opacity(option.value == selected ? 1 : 0)
                             .accessibilityHidden(true)
                     }
@@ -81,6 +81,7 @@ public struct OptionPickerSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }
+        .tint(HassTokens.Ink.action)
         #if os(iOS)
         // Opaque at every detent: the medium detent's glass let a page's colored tiles show through the rows
         // and fail text contrast (HIG: Sheets; Accessibility, Color and effects).

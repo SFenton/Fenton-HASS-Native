@@ -40,6 +40,7 @@ struct SprinklerControllerSheet: View {
                     }
                 }
         }
+        .tint(HassTokens.Ink.action)
         .onAppear { controller.clearError() }
     }
 
@@ -216,7 +217,7 @@ struct SprinklerWaterPage: View {
                     LabeledContent {
                         Text("\(minutes) min").monospacedDigit().foregroundStyle(HassTokens.Ink.primary)
                     } label: {
-                        Label("Run time", systemImage: "timer")
+                        Label("Run time", systemImage: "timer").foregroundStyle(HassTokens.Ink.primary)
                     }
                 }
                 .accessibilityValue("\(minutes) minutes")
@@ -296,7 +297,8 @@ struct SprinklerSchedulePage: View {
                 .disabled(!available)
                 .accessibilityIdentifier("sprinkler.schedule.enabled")
                 Button { controller.startProgram(zone: zone) } label: {
-                    Label("Start program", systemImage: "play.fill").frame(minHeight: HassTokens.minTarget - 12)
+                    // No fixed frame: a List row is already 44 pt tall and grows with the text (AX5 flagged clipping).
+                    Label("Start program", systemImage: "play.fill")
                 }
                 .disabled(!controller.canStartWatering || !enabled)
                 .accessibilityIdentifier("sprinkler.schedule.start")
@@ -322,7 +324,7 @@ struct SprinklerSchedulePage: View {
                 Button {
                     times.append(SprinklerFormat.date(clock: SprinklersConfig.defaultStartTime) ?? .now)
                 } label: {
-                    Label("Add Another Start Time", systemImage: "plus").frame(minHeight: HassTokens.minTarget - 12)
+                    Label("Add Another Start Time", systemImage: "plus")
                 }
                 .accessibilityIdentifier("sprinkler.schedule.addTime")
             } header: { SprinklerHeader("Start Times") }
@@ -333,7 +335,7 @@ struct SprinklerSchedulePage: View {
                     LabeledContent {
                         Text("\(budget)%").monospacedDigit().foregroundStyle(HassTokens.Ink.primary)
                     } label: {
-                        Label("Watering budget", systemImage: "percent")
+                        Label("Watering budget", systemImage: "percent").foregroundStyle(HassTokens.Ink.primary)
                     }
                 }
                 .accessibilityValue("\(budget) percent")
@@ -341,6 +343,7 @@ struct SprinklerSchedulePage: View {
                 .accessibilityIdentifier("sprinkler.schedule.budget")
             } footer: {
                 Text("Run time · \(program?.runTimeMinutes ?? 0) min")
+                    .font(.footnote)
                     .foregroundStyle(HassTokens.Ink.secondary)
             }
         }

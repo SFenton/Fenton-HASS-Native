@@ -53,23 +53,28 @@ public enum HassTokens {
 
         /// Destructive actions ("Stop watering"): system red is 3.6:1 on a light grouped row, this is at least
         /// 6:1 on light and dark rows (HIG: Color; WCAG 1.4.3).
-        public static let danger: Color = {
+        public static let danger: Color = dynamic(light: (0.76, 0.09, 0.09), dark: (1.0, 0.45, 0.43))
+
+        /// Tint for buttons and links on these pages: the app's light-blue accent is about 2.5:1 as text on a light
+        /// row and under white text on a filled button. This is 5.6:1 in light mode and system blue in dark mode.
+        public static let action: Color = dynamic(light: (0.0, 0.40, 0.80), dark: (0.04, 0.52, 1.0))
+
+        /// A color with light and dark variants (watchOS is always dark).
+        private static func dynamic(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
             #if os(iOS)
             Color(uiColor: UIColor { traits in
-                traits.userInterfaceStyle == .dark
-                    ? UIColor(red: 1.0, green: 0.45, blue: 0.43, alpha: 1)
-                    : UIColor(red: 0.76, green: 0.09, blue: 0.09, alpha: 1)
+                let rgb = traits.userInterfaceStyle == .dark ? dark : light
+                return UIColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
             })
             #elseif os(macOS)
             Color(nsColor: NSColor(name: nil) { appearance in
-                appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-                    ? NSColor(red: 1.0, green: 0.45, blue: 0.43, alpha: 1)
-                    : NSColor(red: 0.76, green: 0.09, blue: 0.09, alpha: 1)
+                let rgb = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+                return NSColor(red: rgb.0, green: rgb.1, blue: rgb.2, alpha: 1)
             })
             #else
-            Color(red: 1.0, green: 0.45, blue: 0.43)
+            Color(red: dark.0, green: dark.1, blue: dark.2)
             #endif
-        }()
+        }
 
         /// The platform label color as a plain dynamic color (`Color.primary` resolves to the vibrant
         /// hierarchical style inside a material).

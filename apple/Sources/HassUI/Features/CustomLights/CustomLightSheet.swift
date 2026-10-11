@@ -52,6 +52,7 @@ struct CustomLightSheet: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }
+        .tint(HassTokens.Ink.action)
     }
 
     // MARK: - Color
@@ -81,7 +82,9 @@ struct CustomLightSheet: View {
     private func actionButton(_ title: String, symbol: String, id: String, disabled: Bool = false,
                               _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
+            // Label ink, not the tint: tinted text on the bordered fill measured under 4.5:1.
             Label(title, systemImage: symbol)
+                .foregroundStyle(disabled ? HassTokens.Ink.secondary : HassTokens.Ink.primary)
                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
         }
         .buttonStyle(.bordered)

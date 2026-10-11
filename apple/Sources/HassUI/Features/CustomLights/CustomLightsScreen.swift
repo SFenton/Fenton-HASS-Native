@@ -60,6 +60,7 @@ public struct CustomLightsScreen: View {
                         send(CustomLightsConfig.reset())
                     } label: {
                         Label("Reset All Lights", systemImage: "arrow.counterclockwise")
+                            .foregroundStyle(HassTokens.Ink.primary)
                             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
                     }
                     .buttonStyle(.bordered)
@@ -72,6 +73,7 @@ public struct CustomLightsScreen: View {
             .padding(.horizontal, HassTokens.Spacing.l)
             .padding(.vertical, HassTokens.Spacing.m)
         }
+        .tint(HassTokens.Ink.action)
         .accessibilityIdentifier("customLights.scroll")
         .navigationTitle("Custom Lights")
         .sheet(isPresented: $picker) {
