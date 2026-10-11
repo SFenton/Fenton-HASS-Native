@@ -29,16 +29,28 @@ struct RecipeDetailPane: View {
     let model: RecipeDetailModel
     var onClose: () -> Void
 
+    /// Its own header rather than a `NavigationStack`: the pane sits inside the Food stack's Recipes page,
+    /// and a nested stack showed nothing on iPad landscape (2026-10-11).
     var body: some View {
-        NavigationStack {
-            RecipeDetailContent(model: model)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Close", action: onClose)
-                            .accessibilityIdentifier("recipe.close")
-                    }
-                }
+        VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
+                Text(model.detail?.title ?? model.recipe.title)
+                    .font(.headline)
+                    .foregroundStyle(HassTokens.Ink.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                Button("Close", action: onClose)
+                    .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
+                    .accessibilityIdentifier("recipe.close")
+            }
+            .padding(.horizontal, HassTokens.Spacing.l)
+            .padding(.vertical, HassTokens.Spacing.s)
+            Divider()
+            RecipeDetailContent(model: model, setsNavigationTitle: false)
         }
+        .background(.background)
+        .overlay(alignment: .leading) { Divider() }
         .id(model.recipe.id)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recipe.pane")
@@ -50,6 +62,8 @@ struct RecipeDetailPane: View {
 /// Title, tab picker and the selected tab (web `RECIPE_DETAIL_TABS`: General, Ingredients, Instructions).
 struct RecipeDetailContent: View {
     @Bindable var model: RecipeDetailModel
+    /// False in the split pane, whose page title stays "Recipes".
+    var setsNavigationTitle = true
 
     var body: some View {
         Group {
@@ -68,8 +82,7 @@ struct RecipeDetailContent: View {
                 loaded(detail)
             }
         }
-        .navigationTitle(model.detail?.title ?? model.recipe.title)
-        .inlineNavigationTitle()
+        .modifier(DetailTitle(title: model.detail?.title ?? model.recipe.title, isEnabled: setsNavigationTitle))
         .onAppear { model.load() }
     }
 
@@ -144,6 +157,20 @@ struct ExternalLinkButton: View {
         .buttonStyle(.borderedProminent)
         .tint(FoodStyle.action)
         .accessibilityAddTraits(.isLink)
+    }
+}
+
+/// The detail's inline navigation title, when it owns the navigation bar (the sheet).
+struct DetailTitle: ViewModifier {
+    var title: String
+    var isEnabled: Bool
+
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.navigationTitle(title).inlineNavigationTitle()
+        } else {
+            content
+        }
     }
 }
 

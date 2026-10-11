@@ -12,6 +12,9 @@ struct FoodHubScreen: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var window = WindowMetrics()
     @State private var openRecipe: RecipeCard?
+    /// Held here, not built in the sheet's closure: live entity updates re-render the hub, and a model rebuilt
+    /// on each render reset the open recipe's tab (seen on iPad, 2026-10-11).
+    @State private var openDetail: RecipeDetailModel?
 
     /// - Parameter window: Initial window metrics (hosted tests; the reader replaces them on screen).
     init(models: FoodModels, window: WindowMetrics = WindowMetrics()) {
@@ -48,8 +51,8 @@ struct FoodHubScreen: View {
         .accessibilityIdentifier("food.scroll")
         .navigationTitle("Food & Recipes")
         .onAppear { models.suggestions.appear() }
-        .sheet(item: $openRecipe) { recipe in
-            RecipeDetailSheet(model: models.detailModel(for: recipe))
+        .sheet(item: $openRecipe) { _ in
+            if let openDetail { RecipeDetailSheet(model: openDetail) }
         }
     }
 
@@ -58,7 +61,7 @@ struct FoodHubScreen: View {
     @ViewBuilder
     private var recipeSections: some View {
         FoodSection("Suggested Recipes") {
-            SuggestedRecipesCarousel(model: models.suggestions) { openRecipe = $0 }
+            SuggestedRecipesCarousel(model: models.suggestions, clipsPages: split) { open($0) }
         }
         NavigationLink(value: FoodRoute.recipes) {
             GlassTileLabel(title: "All Recipes", symbol: FoodSymbols.symbol(for: "mdi:book-open-page-variant"), tint: Self.tint(FoodConfig.allRecipesTint))
@@ -96,6 +99,11 @@ struct FoodHubScreen: View {
                 }
             }
         }
+    }
+
+    private func open(_ recipe: RecipeCard) {
+        openDetail = models.detailModel(for: recipe)
+        openRecipe = recipe
     }
 
     static func tint(_ rgb: (red: Double, green: Double, blue: Double)) -> Color {

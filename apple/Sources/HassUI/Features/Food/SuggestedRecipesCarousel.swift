@@ -7,6 +7,9 @@ import SwiftUI
 /// on narrow windows and two on wide ones. Empty slots keep their place while loading.
 struct SuggestedRecipesCarousel: View {
     let model: SuggestedRecipesModel
+    /// Clip pages to the carousel's own width. Set it when the carousel shares a row with other content (the
+    /// hub's split columns): unclipped, the next page drew under the neighboring column.
+    var clipsPages = false
     var onOpen: (RecipeCard) -> Void
     @State private var width: CGFloat = 0
     @State private var page: Int? = 0
@@ -68,9 +71,9 @@ struct SuggestedRecipesCarousel: View {
         .scrollTargetBehavior(.paging)
         .scrollIndicators(.hidden)
         .scrollPosition(id: $page)
-        // The next page peeks in at standard sizes; at accessibility sizes the sliver is unreadable (and
+        // The next page peeks into the page margin at standard sizes; at accessibility sizes the sliver is unreadable (and
         // unmeasurable by the contrast audit), so pages clip and the dots carry the paging.
-        .scrollClipDisabled(!dynamicTypeSize.isAccessibilitySize)
+        .scrollClipDisabled(!clipsPages && !dynamicTypeSize.isAccessibilitySize)
     }
 
     private func pageGrid(_ index: Int) -> some View {
