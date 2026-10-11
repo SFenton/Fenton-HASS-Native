@@ -1,4 +1,6 @@
 import Foundation
+@preconcurrency import HAKit
+@preconcurrency import HAKit_Mocks
 @testable import HassCore
 import Testing
 
@@ -355,5 +357,82 @@ struct BedLevelTests {
         #expect(Weekday.ordered([.friday, .monday, .friday]) == [.monday, .friday])
         #expect(MasterBedroom.bed(id: "stephs-bed")?.side == .right)
         #expect(MasterBedroom.wakeLight.source(for: .left)?.id == "sleepypod:left")
+    }
+}
+
+// MARK: - Service responses and remaining copy
+
+@Suite("Bedroom service responses")
+@MainActor
+struct BedroomServiceResponseTests {
+    private func makeConnection() -> (HassConnection, HAMockConnection) {
+        let mock = HAMockConnection()
+        let cache = EntitySnapshotCache(fileURL: FileManager.default.temporaryDirectory.appending(path: "bedroom-\(UUID()).json"))
+        return (HassConnection(server: .fentonHome, store: EntityStore(), snapshotCache: cache, connection: mock), mock)
+    }
+
+    private func pending(_ mock: HAMockConnection) async throws -> HAMockConnection.PendingRequest {
+        for _ in 0..<1_000 where mock.pendingRequests.isEmpty { try? await Task.sleep(for: .milliseconds(10)) }
+        return try #require(mock.pendingRequests.first)
+    }
+
+    @Test func sendsReturnResponseOnceAndReadsTheResponseObject() async throws {
+        let (connection, mock) = makeConnection()
+        let task = Task { try await connection.callServiceWithResponse("wake_light", "command", data: ["operation": "upsert_alarm"]) }
+        let request = try await pending(mock)
+        #expect(request.request.type == .webSocket("call_service"))
+        #expect(request.request.shouldRetry == false)
+        let data = request.request.data
+        #expect(data["domain"] as? String == "wake_light")
+        #expect(data["service"] as? String == "command")
+        #expect(data["return_response"] as? Bool == true)
+        #expect((data["service_data"] as? [String: any Sendable])?["operation"] as? String == "upsert_alarm")
+        request.completion(.success(HAData(value: ["response": ["outcome": "accepted", "revision": 9]])))
+        let value = try await task.value
+        #expect(CommandOutcome(response: value) == .accepted(noChange: false, revision: 9))
+    }
+
+    @Test func throwsTheTransportError() async throws {
+        let (connection, mock) = makeConnection()
+        let task = Task { try await connection.callServiceWithResponse("script", "x", data: [:]) }
+        let request = try await pending(mock)
+        request.completion(.failure(.internal(debugDescription: "offline")))
+        await #expect(throws: HAError.self) { try await task.value }
+    }
+
+    @Test func convertsEveryHADataShape() {
+        #expect(JSONValue(haData: .empty) == .null)
+        #expect(JSONValue(haData: .primitive("x")) == .string("x"))
+        #expect(JSONValue(haData: .primitive(true)) == .bool(true))
+        #expect(JSONValue(haData: .dictionary(["a": 1])) == .object(["a": .number(1)]))
+        #expect(JSONValue(haData: .array([.primitive("a"), .empty, .dictionary(["k": "v"])])) == .array(["a", .null, .object(["k": "v"])]))
+    }
+
+    @Test func commandResponseUnwrapsOnlyObjects() {
+        #expect(JSONValue.object(["response": .object(["outcome": "accepted"])]).commandResponse == .object(["outcome": "accepted"]))
+        #expect(JSONValue.object(["outcome": "accepted"]).commandResponse == .object(["outcome": "accepted"]))
+        #expect(JSONValue.object(["response": "text"]).commandResponse == .object(["response": "text"]))
+        #expect(JSONValue.array([]).commandResponse == nil)
+        #expect(JSONValue.string("x").commandResponse == nil)
+        #expect(CommandOutcome(response: .array([])) == nil)
+    }
+
+    @Test func copyForSourceBlockersOnceAlarmsAndStates() {
+        #expect(WakeLight.blockerMessage("source_unavailable").contains("linked alarm schedule"))
+        #expect(WakeLight.blockerMessage("source_ref_missing") == WakeLight.blockerMessage("source_unavailable"))
+        var once = WakeLight.Alarm(id: "o", label: "O", kind: .once, localTime: "06:00", date: "2030-03-04")
+        #expect(WakeLight.scheduleLabel(once, calendar: utc) == "Mar 4, 2030")
+        once.date = nil
+        #expect(WakeLight.scheduleLabel(once, calendar: utc) == "—")
+        once.date = "nope"
+        #expect(WakeLight.scheduleLabel(once, calendar: utc) == "—")
+        #expect(BedAlarmState.ringing.label == "Ringing")
+        #expect(BedAlarmState.snoozed.label == "Snoozed")
+        #expect(Weekday.monday < Weekday.friday)
+        #expect(!(Weekday.friday < Weekday.monday))
+        #expect(BedFormat.metric(EntityState(entityId: "sensor.x", state: "restless")) == "Restless")
+        #expect(BedFormat.metric(EntityState(entityId: "sensor.x", state: "62", attributes: ["unit_of_measurement": "bpm"])) == "62 bpm")
+        #expect(BedFormat.metric(EntityState(entityId: "sensor.x", state: "91.25", attributes: ["unit_of_measurement": "°F"])) == "91.3°F")
+        #expect(BedFormat.metric(nil) == "Unavailable")
     }
 }

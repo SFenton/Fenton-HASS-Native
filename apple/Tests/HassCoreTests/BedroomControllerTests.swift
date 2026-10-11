@@ -534,3 +534,160 @@ struct BedroomDevicesTests {
         #expect(await devices.saveWakeAlarm(alarm, isNew: false, addToBeds: []) == false)
     }
 }
+
+// MARK: - Solo Trip, hot flash fallbacks, stale alarm lists, timeouts
+
+@Suite("Bed side controller edge cases")
+@MainActor
+struct BedSideControllerEdgeTests {
+    let scheduler = ManualScheduler()
+    let caller = ResponseCaller()
+
+    func make(_ entities: [EntityState]) -> (BedSideController, EntityStore) {
+        let store = bedroomStore(entities)
+        return (BedSideController(config: MasterBedroom.stephensBed, store: store, caller: caller, scheduler: scheduler, requestId: { "req" }), store)
+    }
+
+    func fire(_ delay: Duration) {
+        scheduler.pending.filter { $0.delay == delay }.forEach { $0.cancelled = true; $0.work() }
+    }
+
+    func holdingHotFlash(_ bed: BedSideController, _ store: EntityStore, timer: (inout EntityState) -> Void = { _ in }) {
+        update(store, MasterBedroom.stephensBed.hotFlashActiveEntityId) { $0.state = "on" }
+        update(store, MasterBedroom.stephensBed.hotFlashTimerEntityId) { $0.state = "active"; timer(&$0) }
+        bed.liveDidChange()
+    }
+
+    @Test func hotFlashCountdownReadsTheTimerRemainingText() {
+        let (bed, store) = make(bedEntities())
+        #expect(bed.hotFlashCountdown(now: .now) == nil)
+        holdingHotFlash(bed, store) { $0.attributes["remaining"] = "0:02:05" }
+        #expect(bed.hotFlashCountdown(now: .now) == "2:05")
+    }
+
+    @Test func hotFlashCountdownFallsBackToTheRestoreTimestamp() {
+        let (bed, store) = make(bedEntities())
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        holdingHotFlash(bed, store)
+        // No restore entity yet: nothing to count.
+        #expect(bed.hotFlashCountdown(now: now) == nil)
+        update(store, MasterBedroom.stephensBed.hotFlashRestoreAtEntityId) {
+            $0.state = "2026-01-01 00:00:00"
+            $0.attributes["timestamp"] = .number(1_000_000 + 95)
+        }
+        #expect(bed.hotFlashCountdown(now: now) == "1:35")
+        #expect(bed.tileSubtitle(now: now) == "1:35 Remaining")
+    }
+
+    @Test func hotFlashCountdownFallsBackToTheRestoreLocalTime() {
+        let (bed, store) = make(bedEntities())
+        holdingHotFlash(bed, store)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        let now = Date(timeIntervalSince1970: 2_000_000)
+        update(store, MasterBedroom.stephensBed.hotFlashRestoreAtEntityId) { $0.state = formatter.string(from: now.addingTimeInterval(61)) }
+        #expect(bed.hotFlashCountdown(now: now) == "1:01")
+        update(store, MasterBedroom.stephensBed.hotFlashRestoreAtEntityId) { $0.state = "garbage" }
+        #expect(bed.hotFlashCountdown(now: now) == nil)
+        #expect(bed.tileSubtitle(now: now) == "Hot Flash Mode • Cooling")
+    }
+
+    @Test func soloTripStageStepsAndAllNightsGoThroughHouseholdAway() async {
+        let (bed, _) = make(bedEntities(phase: "asleep", away: soloTrip()))
+        bed.stepStage(.bedtime, up: true)
+        fire(BedSideController.stageDebounce)
+        await bed.waitForCalls()
+        #expect(caller.names == ["script.household_away_command"])
+        #expect(caller.calls[0].data["action"] as? String == "set_stage_level")
+        #expect(caller.calls[0].data["phase"] as? String == "bedtime")
+        #expect(caller.calls[0].data["level"] as? Double == 5)
+        // Tonight's target during the running stage, then All Nights saves the stage level for the whole bed.
+        bed.setTarget(6)
+        bed.chooseScope(.allNights)
+        await bed.waitForCalls()
+        #expect(caller.calls.last?.data["action"] as? String == "set_stage_level")
+        #expect(caller.calls.last?.data["phase"] as? String == "asleep")
+        #expect(caller.calls.last?.data["level"] as? Double == 6)
+    }
+
+    @Test func soloTripAlarmsReplaceTheWholeList() async {
+        let (bed, _) = make(bedEntities(phase: "outside", away: soloTrip()))
+        bed.createAlarms(days: [.friday], time: "06:30")
+        await bed.waitForCalls()
+        #expect(caller.names == ["script.household_away_command"])
+        #expect(caller.calls[0].data["action"] as? String == "replace_alarms")
+        let rows = caller.calls[0].data["alarm_rows"] as? [[String: any Sendable]] ?? []
+        #expect(rows.count == 3)
+        let friday = rows.first { $0["day"] as? String == "friday" }
+        #expect(friday?["time"] as? String == "06:30")
+        #expect(friday?["enabled"] as? Bool == true)
+        #expect(friday?["duration"] != nil && friday?["vibrationPattern"] != nil)
+
+        bed.setEnabled(bed.alarms[0], false)
+        fire(BedSideController.alarmDebounce)
+        await bed.waitForCalls()
+        #expect(caller.names.count == 2)
+        let replaced = caller.calls[1].data["alarm_rows"] as? [[String: any Sendable]] ?? []
+        #expect(replaced.first?["enabled"] as? Bool == false)
+    }
+
+    @Test func alarmEditIsDroppedWhenTheListChangedElsewhereBeforeItSent() async {
+        let (bed, store) = make(bedEntities())
+        bed.setEnabled(bed.alarms[0], false)
+        #expect(bed.alarms[0].enabled == false)
+        // Someone else rewrites the list before the batch flushes: the stale edit is not published.
+        update(store, MasterBedroom.scheduleEntityId) { entity in
+            entity.attributes["left"] = .object(["friday": .object(["alarms": .array([.object(["time": "09:00", "enabled": true])])])])
+        }
+        fire(BedSideController.alarmDebounce)
+        await bed.waitForCalls()
+        #expect(caller.calls.isEmpty)
+        #expect(bed.alarms.map(\.day) == [.friday])
+    }
+}
+
+@Suite("Command timeout")
+@MainActor
+struct CommandTimeoutTests {
+    @Test func returnsTheResultWhenTheOperationFinishesFirst() async throws {
+        let value = try await withTimeout(.seconds(5)) { 42 }
+        #expect(value == 42)
+    }
+
+    @Test func throwsTheOperationsOwnError() async {
+        struct Boom: Error {}
+        await #expect(throws: Boom.self) { try await withTimeout(.seconds(5)) { () async throws -> Int in throw Boom() } }
+    }
+
+    @Test func throwsWhenTheOperationIsTooSlow() async {
+        await #expect(throws: TimeoutError.self) {
+            try await withTimeout(.milliseconds(20)) { () async throws -> Int in
+                try await Task.sleep(for: .seconds(30))
+                return 1
+            }
+        }
+    }
+}
+
+@Suite("Wake light pending links")
+@MainActor
+struct WakeLightPendingLinkTests {
+    @Test func aPendingUnlinkShowsAtOnceAndAPendingLinkClearsIt() async {
+        let caller = ResponseCaller()
+        let store = bedroomStore([wakeStatus(["alarm_links": .object(["k1": false])])])
+        let controller = WakeLightController(config: MasterBedroom.wakeLight, store: store, caller: caller, scheduler: ManualScheduler(), requestId: { "req" })
+        #expect(!controller.snapshot.isLinked("k1"))
+        caller.hold = true
+        let on = Task { await controller.setLinks(["k1"], enabled: true) }
+        for _ in 0..<200 where caller.calls.isEmpty { try? await Task.sleep(for: .milliseconds(5)) }
+        #expect(controller.snapshot.isLinked("k1"))
+        #expect(controller.arePending(linkKeys: ["k1"]))
+        caller.release()
+        #expect(await on.value)
+        let off = Task { await controller.setLinks(["k2"], enabled: false) }
+        for _ in 0..<200 where caller.calls.count < 2 { try? await Task.sleep(for: .milliseconds(5)) }
+        #expect(!controller.snapshot.isLinked("k2"))
+        _ = await off.value
+    }
+}
