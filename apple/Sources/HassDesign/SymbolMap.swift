@@ -47,6 +47,11 @@ public enum SymbolMap {
         "mdi:movie-open": "film",
         "mdi:lightbulb-multiple": "lightbulb.2",
         "mdi:gauge": "gauge.with.dots.needle.50percent",
+        "mdi:airplane": "airplane",
+        "mdi:bag-suitcase": "suitcase",
+        "mdi:account": "person",
+        "mdi:home-account": "house",
+        "mdi:account-arrow-right-outline": "figure.walk.departure",
     ]
 
     /// The SF Symbol name for an MDI icon.

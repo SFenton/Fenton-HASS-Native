@@ -10,7 +10,7 @@
 
 ## Native
 
-- `SettingsScreen` lists the Home Assistant row only until the household topics (Admin, Special Device Modes, Guests, Vacation, To-Do, Mach-E) are ported; that port adds the leading-pane split from [split-view](../../design/apple/split-view.md).
+- `SettingsScreen` lists Vacation ([vacation/ios.md](../vacation/ios.md)) and the Home Assistant row; the remaining household topics (Admin, Special Device Modes, Guests, To-Do, Mach-E) are still to port, and that port adds the leading-pane split from [split-view](../../design/apple/split-view.md).
 - The row opens `HomeAssistantSettingsView` with `fullScreenCover` (split-view.md: full-screen modal), so it is single-page on every device and pose. HIG: Modality (full-screen for an immersive, self-contained task with its own navigation), Settings.
 - Sections: **Server** (address, connection, Home Assistant version), **Account** (`auth/current_user` name and role via `HassConnection.currentUser()`), **Home Assistant** (Settings `/config` for administrators and owners, Profile `/profile` for everyone), **Sign Out** with a confirmation dialog (HIG: Action sheets; destructive and needs a password to undo).
 - Web pages push inside the modal's `NavigationStack` (Back returns to the form). `FrontendSession` writes the app's tokens into `localStorage.hassTokens` at document start, only on the server origin, in a non-persistent `WKWebsiteDataStore`, so the frontend opens signed in and nothing reaches disk. Off-server links open in the browser.

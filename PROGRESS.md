@@ -45,7 +45,8 @@ apple/Tests/**                                             → tests for your ow
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
 | Security, Climate, Chores | Placeholders |
-| Settings | Home Assistant settings modal (server, account, signed-in Settings/Profile web pages, Sign Out); household topics not ported |
+| Settings | Home Assistant settings modal (server, account, signed-in Settings/Profile web pages, Sign Out); Vacation; other household topics not ported |
+| Vacation and Solo Trip | Chooser, Vacation Mode (checklist, dates, confirm), Solo Trip (traveler, schedule, end, return, restore); `HouseholdAwayController` shared in HassCore; gallery `FENTON_GALLERY=vacation` |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | Policy and tests; split layout not built yet |
 | iPad flyout | Not started (TabView for now) |
@@ -63,3 +64,4 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11: Home Assistant settings modal verified on the Mac (`claude/project-thread-4ttpvm`): the Settings web page opens signed in through the `localStorage.hassTokens` hand-off (no web login form). Settings journeys and audits pass on iPhone, Duo folded / unfolded portrait / unfolded landscape and iPad portrait / landscape; 52 `swift test` tests; new files ≥ 95% logic / ≥ 95.7% UX. `apple_coverage.sh` now measures every test bundle (repo-wide 63% / 61%, below the bars before this change too). Simulators under heavy host load crash backboardd at random; crashed journeys were re-run alone. Redacted screenshots in `docs/screenshots/ha-settings/`.
 - 2026-10-11: shared thermostat dial (single and heat/cool range, VoiceOver-adjustable handles) with its debug gallery page.
 - 2026-10-11: PR #4 verified on the Mac: dial journeys, hosted VoiceOver-adjust tests and audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad (portrait and landscape); 69 `swift test` tests pass. Screenshots in `docs/screenshots/thermostat-dial/`.
+- 2026-10-11: Vacation and Solo Trip pages (`claude/project-thread-d1pa5r`): `HouseholdAwayController` (return-response script calls, revision floor, timeout), `VacationModeController`, `SoloTripController`, shared `ScheduleDateFields` and `InfoBox`, Settings → Vacation, fixture gallery and journeys.

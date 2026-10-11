@@ -10,4 +10,5 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Security | `/at-a-glance/security` | TODO | Placeholder |
 | Climate | `/at-a-glance/thermostat` | TODO | Placeholder |
 | Chores | `/at-a-glance/chores` | TODO | Placeholder |
-| Settings | `/at-a-glance/settings` | TODO | Home Assistant settings modal only ([ios.md](settings/ios.md)) |
+| Settings | `/at-a-glance/settings` | TODO | Home Assistant settings modal and Vacation ([ios.md](settings/ios.md)) |
+| Vacation, Vacation Mode, Solo Trip | `vacation`, `vacation-mode`, `solo-trip` | [vacation/spec.md](vacation/spec.md) | Ported ([ios.md](vacation/ios.md)) |
