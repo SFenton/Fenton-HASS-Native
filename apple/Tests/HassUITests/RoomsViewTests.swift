@@ -100,6 +100,37 @@ struct RoomsViewTests {
         }
     }
 
+    @Test func everyRouteHasATitleAndADestination() {
+        let routes = RoomNavigation.items.map { HomeRoute.room($0.path) } + [.media, .customLights, .sprinklers, .vacuums, .food, .groceryList]
+        for route in routes {
+            #expect(route.id == route.path)
+            #expect(!route.title.isEmpty)
+            #expect(render(HomeRouteDestination(route: route), size: Self.phone) != nil, "\(route.path)")
+        }
+        #expect(HomeRoute.room("kitchen").title == "Kitchen")
+        #expect(HomeRoute.room("attic").title == "attic")
+        #expect(render(HomeRouteDestination(route: .room("attic")), size: Self.phone) != nil)
+        #expect(HomeRoute.food.title == "Food & Recipes")
+    }
+
+    @Test func roomScreenUsesTheInjectedCallerElseAPlaceholder() {
+        let living = RoomsConfig.page(id: "living-room")!
+        #expect(render(RoomScreen(page: living).environment(\.householdViewer, .steph), size: Self.phone) != nil)
+        let store = EntityStore()
+        let offline = NavigationStack { RoomScreen(page: living) }
+            .environment(store)
+            .frame(width: Self.phone.width, height: Self.phone.height)
+        let renderer = ImageRenderer(content: offline)
+        renderer.proposedSize = ProposedViewSize(Self.phone)
+        #expect(renderer.cgImage != nil)
+    }
+
+    @Test func quickLinksButtonAndSourceFallbackRender() {
+        #expect(render(QuickLinksButton {}, size: CGSize(width: 120, height: 60)) != nil)
+        let xbox = RoomsConfig.page(id: "music-room")!.allCards.first { $0.title == "Xbox" }!
+        #expect(render(RoomSheetFallback(card: xbox), size: Self.phone) != nil)
+    }
+
     // MARK: Symbols
 
     @Test func everyRoomIconMapsToARealSymbol() {

@@ -307,4 +307,52 @@ struct RoomsTests {
             Issue.record("Garage doors sheet")
         }
     }
+
+    // MARK: Residents and visits
+
+    @Test func residentsResolveFromTheSignedInUser() {
+        for resident in HouseholdResident.allCases {
+            #expect(HouseholdResident.forUser(id: resident.haUserId) == resident)
+            #expect(HouseholdResident.forUser(id: " \(resident.haUserId.uppercased()) ") == resident)
+        }
+        #expect(HouseholdResident.forUser(id: nil) == nil)
+        #expect(HouseholdResident.forUser(id: "  ") == nil)
+        #expect(HouseholdResident.forUser(id: "someone-else") == nil)
+    }
+
+    @Test func cardAndItemIdsAreUnique() {
+        for page in RoomsConfig.pages {
+            #expect(Set(page.allCards.map(\.id)).count == page.allCards.count, "\(page.id)")
+        }
+        let item = RoomModalItem("Vent 1", "cover.living_room_vent_1_vent", icon: "mdi:air-filter")
+        #expect(item.id == "cover.living_room_vent_1_ventVent 1")
+    }
+
+    @Test func sheetTilesSendExplicitCommands() async {
+        let (room, _, caller, _) = controller("living-room", [:])
+        room.send(LightControl.flip("light.living_room", shownOn: true))
+        await room.waitForCalls()
+        #expect(caller.calls.map(\.service) == ["turn_off"])
+        #expect(caller.calls.first?.data["entity_id"] == "light.living_room")
+    }
+
+    @Test func openingARoomFromTheGridCountsAVisit() async {
+        let caller = RecordingCaller()
+        RoomController.recordVisit(RoomNavigation.item(for: "kitchen")!, caller: caller)
+        for _ in 0..<200 where caller.calls.isEmpty { await Task.yield() }
+        #expect(caller.calls.map { "\($0.domain).\($0.service)" } == ["script.turn_on"])
+        #expect(caller.calls.first?.data["entity_id"] == RoomNavigation.accessIncrementScript)
+        #expect(caller.calls.first?.data["variables"]?.contains("kitchen") == true)
+    }
+
+    @Test func accessCountsParseLikeTheWeb() {
+        #expect(RoomNavigation.accessCount("7") == 7)
+        #expect(RoomNavigation.accessCount("7.0") == 7)
+        #expect(RoomNavigation.accessCount(" 4 ") == 4)
+        #expect(RoomNavigation.accessCount("7.5") == 0)
+        #expect(RoomNavigation.accessCount("-1") == 0)
+        #expect(RoomNavigation.accessCount("unavailable") == 0)
+        #expect(RoomNavigation.accessCount("") == 0)
+        #expect(RoomNavigation.accessCount(nil) == 0)
+    }
 }
