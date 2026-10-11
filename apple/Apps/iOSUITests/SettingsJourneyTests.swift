@@ -4,7 +4,18 @@ import XCTest
 /// and Sign Out, on every device family.
 @MainActor
 final class SettingsJourneyTests: XCTestCase {
-    override func setUp() { continueAfterFailure = false }
+    override func setUp() {
+        continueAfterFailure = false
+        // `FENTON_UITEST_ORIENTATION=landscape` runs the journeys in iPad landscape (XCUIDevice can't
+        // rotate the iPhone Duo; set its pose in Device Hub instead).
+        if FentonHomeApp.family == .iPad, ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" {
+            XCUIDevice.shared.orientation = .landscapeLeft
+        }
+    }
+
+    override func tearDown() {
+        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
+    }
 
     /// The Settings tab: in the tab bar, or the tab rail the folded iPhone Duo shows instead.
     private func settingsTab(_ app: XCUIApplication) -> XCUIElement {
@@ -158,7 +169,8 @@ final class SettingsJourneyTests: XCTestCase {
     func testCaptureSettingsScreens() throws {
         let orientations: [UIDeviceOrientation] = FentonHomeApp.family == .iPad ? [.portrait, .landscapeLeft] : [.unknown]
         for orientation in orientations {
-            if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
+            // Rotating with the web page up crashed the iPad simulator's backboardd; rotate from a fresh launch.
+            if orientation != .unknown { XCUIApplication().terminate(); XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
             let app = try FentonHomeApp.launchSignedIn()
             showSettingsTab(app)

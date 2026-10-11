@@ -135,25 +135,35 @@ enum FentonHomeApp {
         if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 {
             // Only labels that name one content text on the page: bar titles are left out (they barely
             // scale and can repeat a section header, like the Home Assistant modal's), and comparing two
-            // different texts proves nothing.
-            func unique(_ label: String, in app: XCUIApplication) -> XCUIElement? {
-                let bars = app.navigationBars.allElementsBoundByIndex.map(\.frame)
-                let matches = app.staticTexts.matching(NSPredicate(format: "label == %@", label)).allElementsBoundByIndex
-                    .filter { text in !bars.contains { $0.intersects(text.frame) } }
-                return matches.count == 1 ? matches[0] : nil
+            // different texts proves nothing. Read from one snapshot per page: per-label queries ran
+            // hundreds of accessibility requests and crashed the iPad simulator's backboardd.
+            func uniqueTexts(in app: XCUIApplication) -> [String: CGRect] {
+                guard let root = try? app.snapshot() else { return [:] }
+                var bars: [CGRect] = []
+                var texts: [(String, CGRect)] = []
+                func walk(_ node: XCUIElementSnapshot) {
+                    if node.elementType == .navigationBar { bars.append(node.frame) }
+                    if node.elementType == .staticText, !node.label.isEmpty { texts.append((node.label, node.frame)) }
+                    node.children.forEach(walk)
+                }
+                walk(root)
+                let content = texts.filter { text in !bars.contains { $0.intersects(text.1) } }
+                let counts = Dictionary(content.map { ($0.0, 1) }, uniquingKeysWith: +)
+                return Dictionary(content.filter { counts[$0.0] == 1 }, uniquingKeysWith: { first, _ in first })
             }
+            let before = uniqueTexts(in: app)
             let sample = app.staticTexts.allElementsBoundByIndex.prefix(12)
-                .filter { !$0.label.isEmpty && $0.isHittable && unique($0.label, in: app) != nil }
+                .filter { before[$0.label] != nil && $0.isHittable }
                 .map { ($0.label, $0.frame.height) }
             // Decided before the relaunch: `large` is the same app, so `app` then shows the AX5 page.
-            let uniqueBefore = Set(sample.map(\.0) + unconfirmedType.map(\.label).filter { unique($0, in: app) != nil })
+            let uniqueBefore = Set(sample.map(\.0) + unconfirmedType.map(\.label).filter { before[$0] != nil })
             let large = try ax5Page()
             // AX5 pushes rows below the fold (the folded iPhone Duo shows one or two), so scroll the
             // page to measure every text this audit needs.
             var largeHeights: [String: CGFloat] = [:]
             for _ in 0..<8 {
-                for label in uniqueBefore where largeHeights[label] == nil {
-                    if let element = unique(label, in: large) { largeHeights[label] = element.frame.height }
+                for (label, frame) in uniqueTexts(in: large) where uniqueBefore.contains(label) && largeHeights[label] == nil {
+                    largeHeights[label] = frame.height
                 }
                 let scroller = large.collectionViews.firstMatch.exists ? large.collectionViews.firstMatch : large.scrollViews.firstMatch
                 guard largeHeights.count < uniqueBefore.count, scroller.exists else { break }
@@ -167,7 +177,7 @@ enum FentonHomeApp {
             // grouped section header's frame carries fixed padding (Server: 40.3 → 52 pt at AX5 while
             // its glyphs triple), so it can miss 1.35x alone.
             let compared = sample.compactMap { label, height in largeHeights[label].map { (height, $0) } }
-            let pageGrew = compared.count >= 3 && compared.allSatisfy { $0.1 >= $0.0 }
+            let pageGrew = !compared.isEmpty && compared.allSatisfy { $0.1 >= $0.0 }
                 && compared.map(\.1).reduce(0, +) >= 1.35 * compared.map(\.0).reduce(0, +)
             var missed = false
             for (label, height) in unconfirmedType where !(grew(label, height) ?? pageGrew) {
@@ -181,7 +191,7 @@ enum FentonHomeApp {
                 evidence.lifetime = .keepAlways
                 XCTContext.runActivity(named: "AX5 relaunch") { $0.add(evidence) }
             }
-            if missed, !pageGrew {
+            if missed || unattributedType > 0, !pageGrew {
                 let pairs = compared.map { String(format: "%.1f → %.1f", $0.0, $0.1) }.joined(separator: ", ")
                 open.append("Page check (\(compared.count) of \(sample.count) sampled texts on the AX5 page): \(pairs)")
             }

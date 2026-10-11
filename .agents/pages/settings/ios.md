@@ -18,5 +18,9 @@
 
 ## Tests
 
-- Unit: `FrontendSessionTests`, `TokenManagerTests.validTokensIncludeTheRefreshToken`, `SettingsViewTests` (copy, formatting, role gating, hosted render).
-- Journeys (`SettingsJourneyTests`): Settings tab and modal audits (with AX5 relaunch), live connection and account rows, Settings web page opens signed in, Sign Out cancel then confirm, screenshot capture.
+- Unit: `FrontendSessionTests`, `HassConnectionUserTests` (over `HAMockConnection`), `TokenManagerTests.validTokensIncludeTheRefreshToken`, `SettingsViewTests` (copy, formatting, role gating, account loading, web-session hand-off, hosted renders). `ImageRenderer` runs a view's `.task`, so a hosted render of the connected modal sends its own `currentUser` request; render it after completing the requests a test checks.
+- Journeys (`SettingsJourneyTests`): Settings tab and modal audits (with AX5 relaunch), live connection and account rows, Settings web page opens signed in (no web login form), Sign Out cancel then confirm (audits the confirmation), screenshot capture.
+- iOS 27 shows the sign-out confirmation as a popover anchored to the row, with no Cancel button (an outside tap cancels) and a nested duplicate of the confirm button; the audit can dismiss it.
+- Folded iPhone Duo: tabs are a rail (Settings is the `gearshape` button), bar buttons move to the rail (Back is `BackButton`), the form is taller than the screen and the bar hides while it is scrolled, so journeys scroll rows and Done into view.
+- Web-page screenshots stay out of the repo: Home Assistant's Settings dashboard lists repairs, pending updates and installed integrations.
+- Screenshots: [docs/screenshots/ha-settings](../../../docs/screenshots/ha-settings/).
