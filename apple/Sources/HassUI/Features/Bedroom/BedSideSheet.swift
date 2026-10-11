@@ -273,8 +273,9 @@ struct ActiveBedAlarmSection: View {
                         }
                         .frame(maxWidth: .infinity, minHeight: 56)
                     }
-                    .buttonStyle(.bordered)
-                    .tint(HassTokens.Ink.primary) // The accent tint renders 2.4:1 on the card.
+                    // Filled like Stop: the bordered style's gray fill read 1.5:1 against the card in the audit.
+                    .buttonStyle(.borderedProminent)
+                    .tint(BedroomStyle.off)
                     .disabled(controller.alarmControlsReadOnly || state == .snoozed)
                     .accessibilityIdentifier("bed.alarm.snooze")
                     Button { controller.stopAlarm() } label: {
