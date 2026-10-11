@@ -58,7 +58,8 @@ final class SecurityGalleryRecorder: HassServiceCalling {
 
     func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
         lastCall = GalleryServiceRecorder.describe(domain, service, data)
-        try? await Task.sleep(for: .milliseconds(300))
+        // A door's "Sending…" lasts until the call returns; hold it long enough for a journey to read it.
+        try? await Task.sleep(for: domain == "cover" ? .seconds(2.5) : .milliseconds(300))
         if fails { throw Failure() }
         guard let target = data["entity_id"] as? String else { return }
         switch (domain, service) {

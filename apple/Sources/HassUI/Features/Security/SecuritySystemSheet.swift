@@ -18,10 +18,15 @@ struct SecuritySystemSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
+                    // Label and value instead of a longer replacement label: the clipping audit measures the
+                    // label against the drawn text's frame.
                     Text(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(state?.state)))
                         .font(.headline)
                         .foregroundStyle(HassTokens.Ink.secondary)
-                        .accessibilityLabel("Current mode: \(ScreenshotPrivacy.isRedacting ? "Hidden" : SecurityConfig.stateText(state?.state))")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel("Current mode")
+                        .accessibilityValue(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(state?.state)))
                         .accessibilityIdentifier("security.system.state")
                     Text("Mode")
                         .font(.title3.weight(.semibold))
@@ -76,6 +81,8 @@ struct AlarmModeButton: View {
     var isSelected: Bool
     var isUnavailable: Bool
     var action: () -> Void
+    /// One icon height for every mode, so titles line up (the slashed shield is taller than the others).
+    @ScaledMetric(relativeTo: .title2) private var iconHeight: CGFloat = 30
 
     var body: some View {
         let tint = SecurityConfig.alarmTint(for: mode.state)
@@ -85,12 +92,17 @@ struct AlarmModeButton: View {
                     .font(.title2)
                     .symbolVariant(isSelected ? .fill : .none)
                     .foregroundStyle(isSelected ? tint : .secondary)
+                    .frame(height: iconHeight)
                 Text(mode.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(HassTokens.Ink.primary)
+                    // One-word titles can't wrap; "Disarmed" may tighten rather than clip in a narrow column.
+                    .allowsTightening(true)
+                    .minimumScaleFactor(0.8)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
+            .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
             .padding(HassTokens.Spacing.m)
             .background {
                 let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)

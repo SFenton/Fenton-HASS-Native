@@ -154,13 +154,13 @@ final class SecurityJourneyTests: XCTestCase {
         disarm.tap()
         let alert = app.alerts["Disarm the security system?"]
         XCTAssertTrue(alert.waitForExistence(timeout: 5), "Disarming asks first")
-        alert.buttons["Cancel"].tap()
+        alert.buttons["Cancel"].firstMatch.tap()
         XCTAssertTrue(alert.waitForNonExistence(timeout: 5))
         expectCall("alarm_control_panel.alarm_arm_night entity_id=alarm_control_panel.aqara_hub_m3_0056_security_system_2", in: app)
 
         disarm.tap()
         XCTAssertTrue(alert.waitForExistence(timeout: 5))
-        alert.buttons["Disarm"].tap()
+        alert.buttons["Disarm"].firstMatch.tap()
         expectCall("alarm_control_panel.alarm_disarm entity_id=alarm_control_panel.aqara_hub_m3_0056_security_system_2", in: app)
         XCTAssertTrue(disarm.wait(for: \.isSelected, toEqual: true, timeout: 5))
 
@@ -199,7 +199,15 @@ final class SecurityJourneyTests: XCTestCase {
         app.buttons["security.mode.disarmed"].tap()
         XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
         sleep(1)
-        try FentonHomeApp.audit(app)
+        // The system alert's labels report "partially unsupported"; the AX5 relaunch proves they grow.
+        try FentonHomeApp.audit(app) {
+            let large = self.launch(arguments: FentonHomeApp.ax5)
+            self.openSystemSheet(large)
+            large.buttons["security.mode.disarmed"].tap()
+            XCTAssertTrue(large.alerts.firstMatch.waitForExistence(timeout: 5))
+            sleep(1)
+            return large
+        }
     }
 
     // MARK: - Signed in
