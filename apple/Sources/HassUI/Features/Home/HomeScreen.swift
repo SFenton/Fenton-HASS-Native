@@ -17,6 +17,8 @@ struct HomeScreen: View {
                     .padding(.horizontal, HassTokens.Spacing.l)
                 CameraGrid { sheet = .camera($0) }
                     .padding(.horizontal, HassTokens.Spacing.l)
+                VacuumsHomeLink()
+                    .padding(.horizontal, HassTokens.Spacing.l)
             }
             .padding(.vertical, HassTokens.Spacing.m)
         }

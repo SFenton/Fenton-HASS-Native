@@ -11,3 +11,4 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Climate | `/at-a-glance/thermostat` | TODO | Placeholder |
 | Chores | `/at-a-glance/chores` | TODO | Placeholder |
 | Settings | `/at-a-glance/settings` | TODO | Home Assistant settings modal only ([ios.md](settings/ios.md)) |
+| Vacuums | `/vacuums` | [vacuums/spec.md](vacuums/spec.md) | Page, sheet and map ([ios.md](vacuums/ios.md)) |

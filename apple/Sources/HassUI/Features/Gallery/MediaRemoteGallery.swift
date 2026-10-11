@@ -125,7 +125,13 @@ final class GalleryServiceRecorder: HassServiceCalling {
         case ("script", "music_room_tv_off"):
             set(MediaRemotes.MusicRoom.controlEntityId, "off")
             set(MediaRemotes.MusicRoom.activeMediaSourceEntityId, "Off")
-        default: break
+        case ("input_boolean", "turn_on"), ("automation", "turn_on"): if let target { set(target, "on") }
+        case ("input_boolean", "turn_off"), ("automation", "turn_off"): if let target { set(target, "off") }
+        case ("input_select", "select_option"):
+            if let target, let option = data["option"] as? String { set(target, option) }
+        default:
+            // Vacuums: the robot reacts as Valetudo would, so journeys see the next state without a real run.
+            VacuumFixtures.echo(domain, service, target: target, store: store)
         }
     }
 }
