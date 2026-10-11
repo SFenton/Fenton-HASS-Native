@@ -39,10 +39,11 @@ apple/Tests/**                                             → tests for your ow
 | Sign-in (login flow, MFA step, Keychain) | Verified on the live server (password sign-in, relaunch skips sign-in) on iPhone, Duo and iPad |
 | Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
-| Security, Climate, Chores, Settings | Placeholders |
+| Security, Climate, Chores | Placeholders |
+| Settings | Web link list (topics are placeholders), server status, Sign Out; splits on demand |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
-| Split policy (landscape regular only) | Policy and tests; split layout not built yet |
-| iPad flyout | Not started (TabView for now) |
+| Split policy (landscape regular only) | `OnDemandSplitStack` built; Settings is the first adopter |
+| iPad / unfolded Duo flyout | Built: overlay flyout in regular width, tab bar in compact width |
 | Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`) |
 | Watch app | Target stub only |
 
@@ -51,3 +52,4 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-10: initial scaffold.
 - 2026-10-11: PR #1 verified on the Mac: journeys and accessibility audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad; 32 `swift test` tests pass. Redacted screenshots in `docs/screenshots/pr-1/`.
 - Known follow-up: light tiles send `light.toggle`. Presence Based Lighting's Presence Lock (SFenton/presence-based-lighting) reverts that in empty rooms and only honors an exact `turn_on` from an app user as a manual-on hold. Send `light.turn_on` / `light.turn_off` from the current state instead.
+- 2026-10-11: app navigation: regular-width overlay flyout (`App/Shell/`), `OnDemandSplitStack` with hinge-aware geometry, Settings list/detail split.
