@@ -68,32 +68,30 @@ struct HomeAssistantSettingsView: View {
     // MARK: - Sections
 
     private var serverSection: some View {
-        Section("Server") {
-            LabeledContent("Address", value: Self.displayedServer(connection.server))
-                .accessibilityIdentifier("haSettings.server")
-            LabeledContent("Connection", value: Self.statusText(connection.status))
-                .accessibilityIdentifier("haSettings.status")
+        Section {
+            infoRow("Address", Self.displayedServer(connection.server), id: "haSettings.server")
+            infoRow("Connection", Self.statusText(connection.status), id: "haSettings.status")
             if let version = Self.version(connection.status) {
-                LabeledContent("Version", value: version)
-                    .accessibilityIdentifier("haSettings.version")
+                infoRow("Version", version, id: "haSettings.version")
             }
+        } header: {
+            sectionHeader("Server")
         }
     }
 
     private var accountSection: some View {
-        Section("Account") {
+        Section {
             if let user {
-                LabeledContent("Signed in as", value: Self.displayedName(user))
-                    .accessibilityIdentifier("haSettings.user")
-                LabeledContent("Role", value: user.roleTitle)
-                    .accessibilityIdentifier("haSettings.role")
+                infoRow("Signed in as", Self.displayedName(user), id: "haSettings.user")
+                infoRow("Role", user.roleTitle, id: "haSettings.role")
             } else if userError {
-                LabeledContent("Signed in as", value: "Unavailable offline")
-                    .accessibilityIdentifier("haSettings.user")
+                infoRow("Signed in as", "Unavailable offline", id: "haSettings.user")
             } else {
                 LabeledContent("Signed in as") { ProgressView().accessibilityLabel("Loading") }
                     .accessibilityIdentifier("haSettings.user")
             }
+        } header: {
+            sectionHeader("Account")
         }
     }
 
@@ -106,15 +104,17 @@ struct HomeAssistantSettingsView: View {
                 .accessibilityIdentifier("haSettings.open.\(page.rawValue)")
             }
         } header: {
-            Text("Home Assistant")
+            sectionHeader("Home Assistant")
         } footer: {
             Text("Opens Home Assistant's own pages, signed in as you.")
+                .foregroundStyle(HassTokens.Ink.secondary)
         }
     }
 
     private var signOutSection: some View {
         Section {
             Button("Sign Out", role: .destructive) { confirmsSignOut = true }
+                .foregroundStyle(Self.destructiveInk)
                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 .accessibilityIdentifier("haSettings.signOut")
                 .confirmationDialog(
@@ -129,6 +129,35 @@ struct HomeAssistantSettingsView: View {
                     Text("You'll need your username and password to sign in again.")
                 }
         }
+    }
+
+    /// A read-only value row. The value uses ``HassTokens/Ink/secondary`` (at least 4.5:1); the
+    /// system's secondary value color measured below that on the grouped background.
+    private func infoRow(_ title: String, _ value: String, id: String) -> some View {
+        LabeledContent {
+            Text(value).foregroundStyle(HassTokens.Ink.secondary)
+        } label: {
+            Text(title).foregroundStyle(HassTokens.Ink.primary)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(id)
+    }
+
+    /// A section header in ``HassTokens/Ink/secondary``; the system header gray measured 3.3:1.
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title).foregroundStyle(HassTokens.Ink.secondary)
+    }
+
+    /// The system red at its Increase Contrast value (light and dark), so Sign Out reads at 4.5:1;
+    /// the standard red measured below that on the grouped background.
+    static var destructiveInk: Color {
+        #if canImport(UIKit)
+        Color(uiColor: UIColor { traits in
+            UIColor.systemRed.resolvedColor(with: traits.modifyingTraits { $0.accessibilityContrast = .high })
+        })
+        #else
+        Color(nsColor: .systemRed)
+        #endif
     }
 
     // MARK: - Actions

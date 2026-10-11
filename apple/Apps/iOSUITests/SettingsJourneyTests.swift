@@ -99,6 +99,9 @@ final class SettingsJourneyTests: XCTestCase {
         XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
         sleep(1) // Let the confirmation finish presenting.
         try FentonHomeApp.audit(app)
+        // The audit can dismiss the popover; reopen it to confirm.
+        if !confirmButton(app).exists { app.buttons["haSettings.signOut"].tap() }
+        XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
         confirmButton(app).tap()
         XCTAssertTrue(app.textFields["login.username"].waitForExistence(timeout: 10), "Sign-in did not appear")
     }

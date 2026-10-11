@@ -93,8 +93,11 @@ enum FentonHomeApp {
         var unconfirmedType: [(label: String, height: CGFloat)] = []
         var unattributedType = 0
         let capture = RenderedContrast.Capture.screen()
+        // The audit can dismiss a popover while it runs, so note it before starting.
+        let popover = app.otherElements["PopoverDismissRegion"].exists && app.popovers.firstMatch.exists
+            ? app.popovers.firstMatch.frame : nil
         try app.performAccessibilityAudit(for: .all) { issue in
-            if isSystemDrawn(issue, in: app) { return true }
+            if isSystemDrawn(issue, in: app, popover: popover) { return true }
             var measured = ""
             if issue.auditType == .contrast, let element = issue.element, let capture,
                let ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
@@ -121,18 +124,44 @@ enum FentonHomeApp {
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
         if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 {
+            // Only labels that name one text on the page: a title can repeat as a section header
+            // (the Home Assistant modal), and comparing two different texts proves nothing.
+            func unique(_ label: String, in app: XCUIApplication) -> XCUIElement? {
+                let matches = app.staticTexts.matching(NSPredicate(format: "label == %@", label))
+                return matches.count == 1 ? matches.firstMatch : nil
+            }
             let sample = app.staticTexts.allElementsBoundByIndex.prefix(12)
-                .filter { !$0.label.isEmpty && $0.isHittable }.map { ($0.label, $0.frame.height) }
+                .filter { !$0.label.isEmpty && $0.isHittable && unique($0.label, in: app) != nil }
+                .map { ($0.label, $0.frame.height) }
+            // Decided before the relaunch: `large` is the same app, so `app` then shows the AX5 page.
+            let uniqueBefore = Set(sample.map(\.0) + unconfirmedType.map(\.label).filter { unique($0, in: app) != nil })
             let large = try ax5Page()
             func grew(_ label: String, _ height: CGFloat) -> Bool? {
-                let element = large.staticTexts[label].firstMatch
-                return element.exists ? element.frame.height >= height * 1.35 : nil
+                guard uniqueBefore.contains(label), let element = unique(label, in: large) else { return nil }
+                return element.frame.height >= height * 1.35
             }
-            // A live value (humidity, temperature) can change between launches; then the page decides.
-            let pageGrew = !sample.isEmpty && sample.allSatisfy { grew($0.0, $0.1) ?? true }
-                && sample.contains { grew($0.0, $0.1) == true }
+            // A live value (humidity, temperature) can change between launches; then the page decides:
+            // the sampled texts together are 1.35x taller and none shrank. Measured together because a
+            // grouped section header's frame carries fixed padding (Server: 40.3 → 52 pt at AX5 while
+            // its glyphs triple), so it can miss 1.35x alone.
+            let compared = sample.compactMap { label, height in unique(label, in: large).map { (height, $0.frame.height) } }
+            let pageGrew = compared.count >= 3 && compared.allSatisfy { $0.1 >= $0.0 }
+                && compared.map(\.1).reduce(0, +) >= 1.35 * compared.map(\.0).reduce(0, +)
+            var missed = false
             for (label, height) in unconfirmedType where !(grew(label, height) ?? pageGrew) {
-                open.append("Dynamic Type: '\(label)' did not grow 1.35x at AX5")
+                let measured = unique(label, in: large).map { String(format: " (%.1f → %.1f pt)", height, $0.frame.height) } ?? ""
+                open.append("Dynamic Type: '\(label)' did not grow 1.35x at AX5\(measured)")
+                missed = true
+            }
+            if missed || (unattributedType > 0 && !pageGrew) {
+                let evidence = XCTAttachment(screenshot: large.screenshot())
+                evidence.name = "AX5 screen"
+                evidence.lifetime = .keepAlways
+                XCTContext.runActivity(named: "AX5 relaunch") { $0.add(evidence) }
+            }
+            if missed, !pageGrew {
+                let pairs = compared.map { String(format: "%.1f → %.1f", $0.0, $0.1) }.joined(separator: ", ")
+                open.append("Page check (\(compared.count) of \(sample.count) sampled texts on the AX5 page): \(pairs)")
             }
             if unattributedType > 0, !pageGrew {
                 open.append("Dynamic Type: \(unattributedType) issue(s) with no element, and the page did not grow 1.35x at AX5")
@@ -147,7 +176,7 @@ enum FentonHomeApp {
         }
     }
 
-    private static func isSystemDrawn(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication) -> Bool {
+    private static func isSystemDrawn(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication, popover: CGRect?) -> Bool {
         guard let element = issue.element else {
             // Text behind a modal sheet (iPad form sheets leave Home visible around them) is drawn but
             // hidden from assistive technologies by the modal. Accept it only while a sheet is up and
@@ -165,6 +194,9 @@ enum FentonHomeApp {
         switch issue.auditType {
         case .contrast:
             if element.elementType == .button && !element.isEnabled { return true }
+            // Text behind an action-sheet popover (iOS 27 sign-out confirmation) is sampled through
+            // the popover's dismiss region; the popover's own buttons stay checked.
+            if let popover, !popover.contains(element.frame) { return true }
             if isScrolledOutOfView(element, in: app) { return true }
             if element.elementType == .button && app.navigationBars.buttons[element.label].exists { return true }
             return element.elementType == .staticText && systemSectionHeaders.contains(element.label)
