@@ -134,7 +134,13 @@ public final class HassConnection {
         }
     }
 
-    /// Convenience for `<domain>.toggle` on one entity.
+    /// Sends a light power or brightness command (``LightControl``).
+    public func send(_ command: LightControl.Command) async throws {
+        try await callService(command.domain, command.service, data: command.serviceData)
+    }
+
+    /// Convenience for `<domain>.toggle` on one entity. Not for lights: Presence Based Lighting reverts
+    /// toggles in empty rooms, so lights use ``send(_:)`` with ``LightControl``.
     public func toggle(_ entityId: String) async throws {
         let domain = String(entityId.prefix { $0 != "." })
         try await callService(domain, "toggle", data: ["entity_id": entityId])

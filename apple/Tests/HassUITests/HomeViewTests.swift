@@ -50,3 +50,20 @@ struct HomeSheetDetentTests {
         #expect(HomeScreen.detents(for: .security) == [.medium, .large])
     }
 }
+
+@MainActor
+struct LightGroupTileTests {
+    /// Dimmable groups draw the brightness tile; on/off-only entities fall back to a power tile.
+    @Test func rendersBothTileKinds() {
+        let group = HomeConfig.lightGroups[0]
+        let states: [EntityState?] = [
+            EntityState(entityId: group.toggleEntityId, state: "on", attributes: ["brightness": .number(128), "rgb_color": .array([.number(255), .number(160), .number(60)])]),
+            EntityState(entityId: group.toggleEntityId, state: "off", attributes: ["supported_color_modes": .array([.string("onoff")])]),
+            nil,
+        ]
+        for state in states {
+            let tile = LightGroupTile(group: group, state: state) { _ in }.frame(width: 170)
+            #expect(ImageRenderer(content: tile).cgImage != nil)
+        }
+    }
+}
