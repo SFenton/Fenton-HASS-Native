@@ -16,5 +16,9 @@ tools/ios_uitest.sh --env /path/to/temp.env --only duo  # one family
 - `--env` reads credentials locally and passes them as `TEST_RUNNER_FENTON_HASS_*`; signed-in journeys skip without them. Never print, log or commit them.
 - One product simulator at a time; never touch other projects' simulators.
 - Result bundles land in `apple/.build/uitest-<family>.xcresult` (git-ignored).
+- `FENTON_KEEP_SIM=1` leaves the simulator booted after the run, so a Duo pose set in Device Hub survives into the next run (folded → unfolded portrait → unfolded landscape).
+- Use the product Duo `FENTON_SIM_DUO="iPhone Duo (HASS)"`; the bare `iPhone Duo` device is shared.
+- Device Hub can be driven by FestivalNativeApps' `tools/device_hub_ax.swift` helper (via `ios_sim.py`'s `set_duo_pose`, pointed at the HASS Duo) with the Accessibility permission; poses verify by which panel is lit (`simctl io --display=primary` outer, `primary-1` inner).
+- Screenshots: set `TEST_RUNNER_FENTON_REDACT_PRIVATE=1` and `TEST_RUNNER_FENTON_CAPTURE_DIR=<dir>` and answer each `<name>.ready` with `xcrun simctl io <udid> screenshot [--display=…] <dir>/<name>.png` then `<name>.done`; the lit Duo panel is only reachable from the host.
 - iPhone Duo poses (seen 2026-10-11): the simulator boots folded, and `tools/ios_uitest.sh` shuts it down after a run, so set the pose again before each run. Device Hub's unfold from a fresh boot gives unfolded **landscape**; rotate left from there for unfolded portrait. `ios_sim.set_duo_pose` often reports "unknown" under load, so confirm the pose by which panel is lit (`simctl io <udid> screenshot --display=primary` is the outer panel, `primary-1` the inner) and its aspect, before and after the run.
 - Host captures (`FENTON_CAPTURE_DIR`) use `simctl io screenshot --display=primary-1` for the unfolded Duo; XCUIScreen captures the dark outer panel there.
