@@ -30,6 +30,9 @@
 | Contrast | Text outside a confirmation popover's frame, only when `PopoverDismissRegion` was up as the audit started | iOS 27 anchors action sheets (Sign Out) as popovers; the audit samples covered text through the popover (measured 1.1–2.9:1 on 2026-10-10, iPhone); the audit itself can dismiss the popover, so it is noted first. The popover's own buttons stay checked |
 | Contrast, Dynamic Type | Navigation bar buttons (a sheet's Done) | System Liquid Glass bar buttons; the audit samples them over the sheet's glass |
 
+| Contrast | Text measuring under 1.5:1 whose frame reaches the floating action bar's strip (`fab.*` buttons' top to the window bottom) | The bar's hard scroll edge covers rows scrolled beneath it, so nothing is drawn there (inventory All Food, Peanut Butter at 1.1:1, iPhone 2026-10-11) |
+| Dynamic Type (AX5 check) | Buttons are measured by their own frames as well as static texts | A Form button's or capsule's label has no static text child, so the AX5 check found nothing to compare (Add Item's Manually Enter Name, Simulate Scan) |
+
 Add a row here and in `isSystemDrawn` together, with the evidence.
 
 - `RenderedContrast` draws the screenshot through `UIImage` so the capture follows the interface orientation; the raw `CGImage` stays portrait in landscape and sampled the wrong pixels (every iPad landscape text measured ~1:1, 2026-10-11).

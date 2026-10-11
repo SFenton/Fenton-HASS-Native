@@ -127,6 +127,9 @@ enum FentonHomeApp {
                 // Nothing drawn at an unreachable element: it is scrolled out of view (e.g. below an iPad
                 // form sheet's edge), not low contrast.
                 if ratio < 1.5, !element.isHittable { return true }
+                // Nothing drawn under the floating action bar: its hard scroll edge covers rows that scroll
+                // beneath it (inventory All Food, 2026-10-11), so the text is hidden, not low contrast.
+                if ratio < 1.5, coveredByFloatingBar(element.frame, in: app) { return true }
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             if ax5Page != nil, issue.auditType == .dynamicType,
@@ -155,7 +158,10 @@ enum FentonHomeApp {
                 var texts: [(String, CGRect)] = []
                 func walk(_ node: XCUIElementSnapshot) {
                     if node.elementType == .navigationBar { bars.append(node.frame) }
-                    if node.elementType == .staticText, !node.label.isEmpty { texts.append((node.label, node.frame)) }
+                    // Buttons too: a button's own label (Form rows, capsules) has no static text child to measure.
+                    if node.elementType == .staticText || node.elementType == .button, !node.label.isEmpty {
+                        texts.append((node.label, node.frame))
+                    }
                     node.children.forEach(walk)
                 }
                 walk(root)
@@ -258,6 +264,15 @@ enum FentonHomeApp {
     /// Text scrolled (partly) out of its scroll view is sampled against whatever covers it there, such as
     /// the folded iPhone Duo's toolbar rail or the screen edge under a sheet. It is out of view, not low
     /// contrast: accept it only when no scroll view's visible frame fully contains the element.
+    /// Whether `frame` reaches into the strip the floating action bar (`fab.*` buttons) covers, from the
+    /// buttons' top edge to the bottom of the window.
+    private static func coveredByFloatingBar(_ frame: CGRect, in app: XCUIApplication) -> Bool {
+        let buttons = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fab.'")).allElementsBoundByIndex
+        guard let top = buttons.map(\.frame.minY).min() else { return false }
+        let window = app.windows.firstMatch.frame
+        return frame.maxY > top && frame.minY < window.maxY
+    }
+
     private static func isScrolledOutOfView(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         let frame = element.frame
         // Below the window's edge (a long sheet column in iPad landscape): the capture holds only part of it.

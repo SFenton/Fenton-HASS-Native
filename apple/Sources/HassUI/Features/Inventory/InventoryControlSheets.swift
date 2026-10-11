@@ -35,21 +35,13 @@ struct InventorySortSheet: View {
                         .accessibilityIdentifier("inventory.sort.\(option.rawValue)")
                 }
             }
-            Section {
-                Picker("Sort Direction", selection: $direction) {
-                    ForEach(InventorySortDirection.allCases) { option in
-                        Text(option.title).tag(option)
-                    }
+            // Option rows rather than a segmented control and footnote: both were reported clipped at large
+            // text sizes; rows wrap like Sort By above.
+            Section("Sort Direction") {
+                ForEach(InventorySortDirection.allCases) { option in
+                    FilterOptionRow(title: option.title, subtitle: option.hint, isSelected: direction == option) { direction = option }
+                        .accessibilityIdentifier("inventory.sort.direction.\(option.rawValue)")
                 }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("inventory.sort.direction")
-            } header: {
-                Text("Sort Direction")
-            } footer: {
-                // Ink rather than the system footer gray, which reads 3.2:1; wraps at large text sizes.
-                Text(direction.hint)
-                    .foregroundStyle(HassTokens.Ink.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }

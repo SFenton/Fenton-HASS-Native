@@ -136,7 +136,8 @@ struct ScanItemSheet: View {
         if prominent {
             button.buttonStyle(.borderedProminent)
         } else {
-            button.buttonStyle(.bordered)
+            // Ink label: the teal label on its own tinted fill read 4.3:1.
+            button.buttonStyle(.bordered).foregroundStyle(HassTokens.Ink.primary)
         }
     }
 

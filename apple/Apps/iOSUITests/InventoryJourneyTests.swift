@@ -22,8 +22,9 @@ final class InventoryJourneyTests: XCTestCase {
     }
 
     private func launch(space: String = "pantry", open: String? = nil, state: String? = nil, arguments: [String] = [],
-                        clean: Bool = false) -> XCUIApplication {
+                        clean: Bool = false, environment: [String: String] = [:]) -> XCUIApplication {
         let app = FentonHomeApp.makeApp()
+        app.launchEnvironment.merge(environment) { $1 }
         app.launchEnvironment["FENTON_GALLERY"] = "inventory"
         app.launchEnvironment["FENTON_GALLERY_SPACE"] = space
         app.launchEnvironment["FENTON_SCAN_CAMERA"] = "simulated"
@@ -61,7 +62,7 @@ final class InventoryJourneyTests: XCTestCase {
 
     /// Cart asks for a quantity, then sends EverShelf's shopping service and the to-do list item.
     func testAddToGroceriesAsksForQuantity() {
-        let app = launch()
+        let app = launch(environment: ["FENTON_GALLERY_HOLD_ADDED": "1"])
         let cart = row(app, "Spaghetti").buttons["inventory.row.cart"]
         XCTAssertTrue(cart.waitForExistence(timeout: 10))
         cart.tap()
@@ -143,7 +144,8 @@ final class InventoryJourneyTests: XCTestCase {
 
     /// Scan, read the date, review and add: the item lands in the pantry.
     func testScanFlowAddsItem() {
-        let app = launch(open: "scan")
+        // All Food: the fixture's location suggestion files Greek Yogurt in the fridge, not the pantry.
+        let app = launch(space: "all-food", open: "scan")
         let simulate = app.buttons["scan.simulate"]
         XCTAssertTrue(simulate.waitForExistence(timeout: 10))
         simulate.tap()
@@ -161,7 +163,7 @@ final class InventoryJourneyTests: XCTestCase {
         app.buttons["scan.add"].tap()
         XCTAssertTrue(app.buttons["scan.done"].waitForExistence(timeout: 10))
         app.buttons["scan.done"].tap()
-        XCTAssertTrue(app.staticTexts["Greek Yogurt"].waitForExistence(timeout: 5), "Suggested fridge or pantry row missing")
+        XCTAssertTrue(app.staticTexts["Greek Yogurt"].waitForExistence(timeout: 10), "Added row missing from All Food")
     }
 
     /// Manual entry: type a name, pick a quick date, review.

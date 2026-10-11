@@ -174,5 +174,6 @@ struct InventoryViewTests {
         #expect(rendered(InventoryGallery(environment: ["FENTON_GALLERY_STATE": "empty", "FENTON_GALLERY_SPACE": "fridge"])))
         #expect(rendered(InventoryGallery(environment: ["FENTON_GALLERY_STATE": "error", "FENTON_GALLERY_OPEN": "editor:Honey"])))
         #expect(rendered(InventoryGallery(environment: ["FENTON_GALLERY_STATE": "loading"])))
+        #expect(rendered(InventoryGallery(environment: ["FENTON_GALLERY_HOLD_ADDED": "1"])))
     }
 }
