@@ -292,11 +292,11 @@ struct InventoryEditorModelTests {
 
     @Test func saveIsBusyWhileRunning() async throws {
         let setup = try await open("milk")
-        setup.server.latency = .milliseconds(100)
+        setup.server.latency = .milliseconds(600)
         let batch = setup.editor.batches[0]
         setup.editor.setQuantity(2, for: batch)
         let save = Task { await setup.editor.save(batch) }
-        await sleep(40)
+        #expect(await eventually { setup.editor.busy != nil })
         #expect(setup.editor.busy == .save(batch.key))
         #expect(setup.editor.dismissalBlocked)
         #expect(setup.editor.isDisabled(batch))
@@ -382,11 +382,11 @@ struct InventoryEditorModelTests {
     @Test func togglePreparedShowsTheProjectionMeanwhile() async throws {
         let setup = try await open("soup")
         let editor = setup.editor
-        setup.server.latency = .milliseconds(80)
+        setup.server.latency = .milliseconds(600)
         let batch = editor.batches[0]
         editor.setQuantity(1, for: batch)
         let toggle = Task { await editor.togglePrepared(batch) }
-        await sleep(30)
+        #expect(await eventually { editor.busy != nil })
         #expect(editor.busy == .prepared(batch.key))
         #expect(!editor.dismissalBlocked)
         #expect(editor.quantityDrafts.isEmpty)

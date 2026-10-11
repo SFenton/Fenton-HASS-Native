@@ -63,3 +63,16 @@ final class InventoryStubCaller: EverShelfCalling {
         return responses[service] ?? .null
     }
 }
+
+/// Polls `condition` every 5 ms until it holds or `timeout` passes, and returns whether it held. Use it instead
+/// of a fixed sleep before checking an in-flight or debounced state, so a loaded host can't race the check.
+@MainActor
+@discardableResult
+func eventually(timeout: Duration = .seconds(5), _ condition: () -> Bool) async -> Bool {
+    let deadline = ContinuousClock.now + timeout
+    while !condition() {
+        guard ContinuousClock.now < deadline else { return false }
+        try? await Task.sleep(for: .milliseconds(5))
+    }
+    return true
+}

@@ -132,7 +132,7 @@ struct InventoryListModelTests {
         #expect(model.isSearching)
         #expect(model.searchActive)
         #expect(server.calls.count == 1, "Nothing is sent before the debounce")
-        await sleep(450)
+        #expect(await eventually { server.calls.count == 2 && !model.isSearching })
         #expect(server.calls.count == 2)
         #expect(server.calls.last == "evershelf.list_inventory location=frigo q=milk")
         #expect(names(model) == ["Whole Milk"])
@@ -146,7 +146,8 @@ struct InventoryListModelTests {
         model.searchQuery = "m"
         model.searchQuery = "mi"
         model.searchQuery = " milk "
-        await sleep(250)
+        #expect(await eventually { model.settledQuery == "milk" })
+        await sleep(100) // Nothing else follows the settled search.
         #expect(server.calls == ["evershelf.list_inventory location=frigo", "evershelf.list_inventory location=frigo q=milk"])
         #expect(model.settledQuery == "milk")
     }
@@ -168,7 +169,7 @@ struct InventoryListModelTests {
         let (model, _) = await loaded()
         model.searchDebounce = .milliseconds(10)
         model.searchQuery = "zzz"
-        await sleep(200)
+        #expect(await eventually { model.settledQuery == "zzz" && !model.isSearching })
         #expect(model.items.isEmpty)
         #expect(empty(model) == ["No Matching Items", "Try a different search or clear the search to show all items."])
         model.filterMode = .expired
@@ -180,7 +181,7 @@ struct InventoryListModelTests {
         model.searchDebounce = .milliseconds(10)
         server.failing = ["evershelf.list_inventory"]
         model.searchQuery = "milk"
-        await sleep(200)
+        #expect(await eventually { model.loadError != nil })
         #expect(model.loadError == "EverShelf is unavailable")
         #expect(model.items.isEmpty)
         #expect(model.settledQuery == "milk")
@@ -190,15 +191,15 @@ struct InventoryListModelTests {
     @Test func typingDuringTheFirstLoadSearchesAfterIt() async {
         let (model, server) = makeModel()
         model.searchDebounce = .milliseconds(20)
-        server.latency = .milliseconds(100)
+        server.latency = .milliseconds(600)
         let load = Task { await model.load() }
-        await sleep(30)
+        #expect(await eventually { !server.calls.isEmpty }, "The first load is in flight")
         model.searchQuery = "milk"
         #expect(!model.isSearching, "No search is scheduled before the first load")
         await load.value
         #expect(model.settledQuery == "")
         #expect(model.isSearching)
-        await sleep(400)
+        #expect(await eventually { model.settledQuery == "milk" && !model.isSearching })
         #expect(model.settledQuery == "milk")
         #expect(names(model) == ["Whole Milk"])
         #expect(!model.isSearching)
@@ -264,12 +265,12 @@ struct InventoryListModelTests {
     @Test func addToShoppingGoesIdleAddingAddedIdle() async throws {
         let (model, server) = await loaded()
         let eggs = try #require(model.displayItem(id: "eggs"))
-        model.addedVisibleFor = .milliseconds(100)
-        server.latency = .milliseconds(100)
+        model.addedVisibleFor = .seconds(1)
+        server.latency = .milliseconds(600)
         #expect(model.shopping["eggs"] == nil)
 
         let add = Task { await model.addToShopping(eggs, quantity: 2) }
-        await sleep(40)
+        #expect(await eventually { model.shopping["eggs"] == .adding })
         #expect(model.shopping["eggs"] == .adding)
         await model.addToShopping(eggs, quantity: 2)
         await add.value
@@ -280,8 +281,7 @@ struct InventoryListModelTests {
         await model.addToShopping(eggs, quantity: 2)
         #expect(server.calls.count == 3, "The tap while the check shows was ignored")
 
-        await sleep(400)
-        #expect(model.shopping["eggs"] == .idle)
+        #expect(await eventually { model.shopping["eggs"] == .idle })
         #expect(model.rowErrors["eggs"] == nil)
     }
 
@@ -341,9 +341,9 @@ struct InventoryListModelTests {
     @Test func deleteInFlightBlocksASecondDelete() async throws {
         let (model, server) = await loaded()
         let eggs = try #require(model.displayItem(id: "eggs"))
-        server.latency = .milliseconds(100)
+        server.latency = .milliseconds(600)
         let first = Task { await model.delete(eggs, quantity: 1) }
-        await sleep(40)
+        #expect(await eventually { !model.deleting.isEmpty })
         #expect(model.deleting == ["eggs"])
         await model.delete(eggs, quantity: 1)
         await first.value

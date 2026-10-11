@@ -159,9 +159,9 @@ struct ScanItemModelTests {
 
     @Test func aStaleLookupIsIgnored() async {
         let (model, server) = makeModel()
-        server.latency = .milliseconds(100)
+        server.latency = .milliseconds(600)
         let lookup = Task { await model.didDetectBarcode(barcode) }
-        await sleep(30)
+        #expect(await eventually { model.lookupStatus == .resolving })
         #expect(model.lookupStatus == .resolving)
         #expect(model.isProcessing)
         #expect(model.barcodeForwardDisabled)
@@ -254,7 +254,7 @@ struct ScanItemModelTests {
         let (model, server) = makeModel()
         model.setName("Milk")
         model.goToExpiryStep()
-        await sleep(150)
+        #expect(await eventually { server.calls.contains { $0.hasPrefix("evershelf.suggest_location") } })
         #expect(server.calls.first == "evershelf.prepare_scanned_product name=Milk")
         #expect(server.calls.contains { $0.hasPrefix("evershelf.suggest_location") })
     }
@@ -368,10 +368,10 @@ struct ScanItemModelTests {
 
     @Test func aStaleReadIsIgnored() async {
         let (model, server) = makeModel()
-        server.latency = .milliseconds(100)
+        server.latency = .milliseconds(600)
         model.goToExpiryStep()
         let read = Task { await model.readExpiry(jpeg: Data()) }
-        await sleep(30)
+        #expect(await eventually { model.expiryStatus == .reading })
         #expect(model.expiryStatus == .reading)
         #expect(model.isProcessing)
         #expect(model.expiryForwardDisabled)
@@ -475,10 +475,10 @@ struct ScanItemModelTests {
 
     @Test func checkingWhileTheCommitRuns() async {
         let (model, server) = makeModel(.allFood)
-        server.latency = .milliseconds(100)
+        server.latency = .milliseconds(600)
         model.setName("Milk")
         let prepare = Task { await model.prepareProduct() }
-        await sleep(30)
+        #expect(await eventually { model.locationStatus == .checking })
         #expect(model.location == .pantry)
         #expect(model.locationStatus == .checking)
         #expect(model.locationHint == "Checking previous items and the best storage location…")
@@ -567,10 +567,10 @@ struct ScanItemModelTests {
 
     @Test func renamingDuringACommitRecommitsWithTheSameProduct() async {
         let (model, server) = makeModel(.allFood)
-        server.latency = .milliseconds(50)
+        server.latency = .milliseconds(600)
         model.setName("Milk")
         let first = Task { await model.prepareProduct() }
-        await sleep(10)
+        #expect(await eventually { !server.calls.isEmpty }, "The first commit is in flight")
         model.setName("Oat Milk")
         await model.prepareProduct()
         await first.value
@@ -680,9 +680,9 @@ struct ScanItemModelTests {
     @Test func addIsBusyWhileRunning() async {
         let (model, server) = makeModel()
         model.setName("Milk")
-        server.latency = .milliseconds(100)
+        server.latency = .milliseconds(600)
         let add = Task { await model.add() }
-        await sleep(30)
+        #expect(await eventually { model.step == .adding })
         #expect(model.step == .adding)
         #expect(model.addStatus == .adding)
         #expect(model.subtitle == "Adding Item")
