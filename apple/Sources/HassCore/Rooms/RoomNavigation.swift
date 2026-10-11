@@ -55,10 +55,12 @@ public enum RoomNavigation {
                                   accessKey: path, accessCounterEntityId: "counter.room_access_\(key)")
     }
 
-    /// A counter's visit count: a non-negative integer state, else 0 (web `roomAccessCount`).
+    /// A counter's visit count: a non-negative whole-number state ("3" or "3.0", like JavaScript's `Number`), else 0
+    /// (web `roomAccessCount`).
     public static func accessCount(_ state: String?) -> Int {
-        guard let state, let count = Int(state), count >= 0 else { return 0 }
-        return count
+        guard let text = state?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty,
+              let value = Double(text), value >= 0, value <= 9_007_199_254_740_991, value.rounded() == value else { return 0 }
+        return Int(value)
     }
 
     /// Rooms most-visited first; ties keep configured order (web `rankRoomsByAccess`).

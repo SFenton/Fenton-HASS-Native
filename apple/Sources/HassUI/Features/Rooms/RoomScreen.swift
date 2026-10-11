@@ -69,7 +69,7 @@ struct RoomPageContent: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(item: Binding(get: { remote.map(RemoteSelection.init) }, set: { remote = $0?.controller })) { selection in
+        .sheet(item: Binding(get: { remote.map { RemoteSelection(controller: $0) } }, set: { remote = $0?.controller })) { selection in
             MediaRemoteSheet(controller: selection.controller, imageServer: imageServer, initialTab: .controls)
                 .mediaRemotePresentation()
         }
@@ -117,9 +117,15 @@ struct RoomPageContent: View {
 }
 
 /// Wraps a remote controller for `.sheet(item:)`.
+@MainActor
 private struct RemoteSelection: Identifiable {
     var controller: MediaRemoteController
-    var id: String { controller.config.id }
+    let id: String
+
+    init(controller: MediaRemoteController) {
+        self.controller = controller
+        id = controller.config.id
+    }
 }
 
 // MARK: - Sections
@@ -187,8 +193,9 @@ struct KitchenGroceriesSection: View {
     var navigate: (HomeRoute) -> Void
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
+    private typealias G = RoomsConfig.Groceries
+
     var body: some View {
-        typealias G = RoomsConfig.Groceries
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
             RoomSectionHeader(title: "Groceries")
             DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {

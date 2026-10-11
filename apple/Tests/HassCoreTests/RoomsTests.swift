@@ -219,7 +219,7 @@ struct RoomsTests {
 
     @Test func musicRoomSourcesShareTheRemotesOptimisticState() async {
         typealias M = MediaRemotes.MusicRoom
-        let (room, _, caller, _) = controller("music-room", [M.controlEntityId: "on"])
+        let (room, _, caller, _) = controller("music-room", [M.controlEntityId: "on", M.activeMediaSourceEntityId: M.Source.server])
         let xbox = card("music-room", "Xbox")
         #expect(room.display(xbox).semantics == .selection(isSelected: false))
         #expect(room.tap(xbox) == .ran)

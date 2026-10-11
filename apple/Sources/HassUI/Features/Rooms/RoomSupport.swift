@@ -6,7 +6,8 @@ import SwiftUI
 
 /// A service caller that stands in for the app's connection (the debug gallery's recorder, hosted tests).
 private struct RoomServiceCallerKey: EnvironmentKey {
-    static let defaultValue: (any HassServiceCalling)? = nil
+    // `nil` is the only value ever stored here; injected callers live in the environment, not this static.
+    nonisolated(unsafe) static let defaultValue: (any HassServiceCalling)? = nil
 }
 
 /// The signed-in household member, for personalized card titles ("Your Side").
