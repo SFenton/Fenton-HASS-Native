@@ -204,14 +204,33 @@ extension View {
 
 /// Implementation of ``SwiftUI/View/flyoutEdgeSwipe(_:isEnabled:)``.
 ///
-/// A simultaneous drag on the whole content rather than a hit-testable strip over the leading edge:
-/// a strip took every tap in its 20 pt, including the leading part of Open Navigation and of list rows.
-/// Taps never become a drag (16 pt minimum distance), and only a drag that starts inside the edge opens.
+/// iOS 18+: a UIKit screen-edge pan, like the system back swipe. Once it recognizes it cancels the
+/// touch in the content, so a swipe that starts on a control (a Home camera tile at the leading edge of
+/// the landscape iPhone Duo) opens only the flyout; a SwiftUI drag ran alongside the control and opened
+/// the camera too. Taps never reach it, so nothing at the edge loses its taps (an earlier hit-testable
+/// 20 pt strip took them). iOS 17 and macOS keep a simultaneous drag.
 private struct FlyoutEdgeSwipe: ViewModifier {
     var navigator: ShellNavigator
     var isEnabled: Bool
+    @Environment(\.layoutDirection) private var layoutDirection
 
     func body(content: Content) -> some View {
+        #if os(iOS)
+        if #available(iOS 18.0, *) {
+            content.gesture(
+                ScreenEdgePan(edge: layoutDirection == .rightToLeft ? .right : .left, isEnabled: isEnabled) { translation in
+                    navigator.edgeSwipeEnded(startX: 0, translation: translation)
+                }
+            )
+        } else {
+            dragFallback(content)
+        }
+        #else
+        dragFallback(content)
+        #endif
+    }
+
+    private func dragFallback(_ content: Content) -> some View {
         content.simultaneousGesture(
             DragGesture(minimumDistance: 16, coordinateSpace: .local)
                 .onEnded { value in
@@ -221,6 +240,35 @@ private struct FlyoutEdgeSwipe: ViewModifier {
         )
     }
 }
+
+#if os(iOS)
+/// A `UIScreenEdgePanGestureRecognizer` on the leading edge that reports its translation when it ends,
+/// flipped so a swipe away from the leading edge is positive in either layout direction.
+@available(iOS 18.0, *)
+private struct ScreenEdgePan: UIGestureRecognizerRepresentable {
+    var edge: UIRectEdge
+    var isEnabled: Bool
+    var onEnded: (CGSize) -> Void
+
+    func makeUIGestureRecognizer(context: Context) -> UIScreenEdgePanGestureRecognizer {
+        let recognizer = UIScreenEdgePanGestureRecognizer()
+        recognizer.edges = edge
+        recognizer.isEnabled = isEnabled
+        return recognizer
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIScreenEdgePanGestureRecognizer, context: Context) {
+        recognizer.edges = edge
+        recognizer.isEnabled = isEnabled
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIScreenEdgePanGestureRecognizer, context: Context) {
+        guard recognizer.state == .ended else { return }
+        let raw = recognizer.translation(in: recognizer.view)
+        onEnded(CGSize(width: edge == .right ? -raw.x : raw.x, height: raw.y))
+    }
+}
+#endif
 
 // MARK: - Environment
 
