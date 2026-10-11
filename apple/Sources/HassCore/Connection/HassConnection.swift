@@ -134,13 +134,64 @@ public final class HassConnection {
         }
     }
 
-    /// Convenience for `<domain>.toggle` on one entity.
+    /// Sends a light power or brightness command (``LightControl``).
+    public func send(_ command: LightControl.Command) async throws {
+        try await callService(command.domain, command.service, data: command.serviceData)
+    }
+
+    /// Convenience for `<domain>.toggle` on one entity. Not for lights: Presence Based Lighting reverts
+    /// toggles in empty rooms, so lights use ``send(_:)`` with ``LightControl``.
     public func toggle(_ entityId: String) async throws {
         let domain = String(entityId.prefix { $0 != "." })
         try await callService(domain, "toggle", data: ["entity_id": entityId])
     }
 
+    // MARK: - Cameras
+
+    /// Asks Home Assistant for a camera's HLS stream (`camera/stream`).
+    /// - Parameter entityId: The camera entity.
+    /// - Returns: The tokenized playlist path, e.g. `/api/hls/<token>/master_playlist.m3u8`.
+    public func cameraStreamPath(entityId: String) async throws -> String {
+        try await requestString("camera/stream", data: ["entity_id": entityId, "format": "hls"], field: "url")
+    }
+
+    /// Signs a server path so a client without the auth header (a raw websocket) can open it (`auth/sign_path`).
+    /// - Parameters:
+    ///   - path: The path to sign, e.g. ``CameraStreamEndpoints/webRTCSocketPath``.
+    ///   - expires: Seconds the signature stays valid; it is only checked when the path is opened.
+    /// - Returns: The path with its `authSig` query.
+    public func signPath(_ path: String, expires: Int = 30) async throws -> String {
+        try await requestString("auth/sign_path", data: ["path": path, "expires": expires], field: "path")
+    }
+
+    /// Error for a websocket command whose result lacks the expected field.
+    public struct UnexpectedResponse: Error, Equatable {
+        /// The command that answered unexpectedly.
+        public let command: String
+    }
+
     // MARK: - Private
+
+    /// Sends a websocket command once (no retry across reconnects) and returns one string field of its result.
+    private func requestString(_ command: String, data: [String: any Sendable], field: String) async throws -> String {
+        let request = HARequest(type: .webSocket(command), data: data, shouldRetry: false)
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
+            connection.send(request) { result in
+                switch result {
+                case let .success(.dictionary(values)):
+                    if let value = values[field] as? String {
+                        continuation.resume(returning: value)
+                    } else {
+                        continuation.resume(throwing: UnexpectedResponse(command: command))
+                    }
+                case .success:
+                    continuation.resume(throwing: UnexpectedResponse(command: command))
+                case let .failure(error):
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
 
     private func receive(_ states: [EntityState]) {
         // HAKit's states cache always delivers the full set; the store diffs it in place.
