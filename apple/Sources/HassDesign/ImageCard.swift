@@ -1,0 +1,131 @@
+import SwiftUI
+
+/// A tappable card with a remote image, a title and an optional subtitle (pattern: `.agents/patterns/image-card.md`).
+///
+/// Used for recipes on the Food hub carousel and the Recipes grid (web `ImageCard`). Pure UI: callers pass
+/// values and an action.
+public struct ImageCard: View {
+    // MARK: - Inputs
+
+    public var title: String
+    public var subtitle: String?
+    public var imageURL: URL?
+    /// Tried when ``imageURL`` fails (web `fallbackImageUrl`).
+    public var fallbackImageURL: URL?
+    /// SF Symbol drawn when no image loads.
+    public var placeholderSymbol: String
+    /// What VoiceOver says the card does, e.g. "Opens recipe details".
+    public var accessibilityHint: String
+    /// When set, the title always takes this many lines so cards in a row line up (carousels).
+    public var reservedTitleLines: Int?
+    public var action: () -> Void
+
+    /// Creates a card.
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        imageURL: URL?,
+        fallbackImageURL: URL? = nil,
+        placeholderSymbol: String = "photo",
+        accessibilityHint: String = "",
+        reservedTitleLines: Int? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.imageURL = imageURL
+        self.fallbackImageURL = fallbackImageURL
+        self.placeholderSymbol = placeholderSymbol
+        self.accessibilityHint = accessibilityHint
+        self.reservedTitleLines = reservedTitleLines
+        self.action = action
+    }
+
+    // MARK: - Body
+
+    public var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 0) {
+                RemoteImage(url: imageURL, fallbackURL: fallbackImageURL, placeholderSymbol: placeholderSymbol)
+                    .aspectRatio(4 / 3, contentMode: .fit)
+                    .clipped()
+                VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(HassTokens.Ink.primary)
+                        .lineLimit(reservedTitleLines ?? 3, reservesSpace: reservedTitleLines != nil)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.footnote)
+                            .foregroundStyle(HassTokens.Ink.secondary)
+                            .monospacedDigit()
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(HassTokens.Spacing.m)
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(subtitle ?? "")
+        .accessibilityHint(accessibilityHint)
+        .accessibilityAddTraits(.isButton)
+    }
+}
+
+/// An `AsyncImage` that tries a fallback URL, then a symbol, and never shows a broken image.
+public struct RemoteImage: View {
+    public var url: URL?
+    public var fallbackURL: URL?
+    public var placeholderSymbol: String
+    @State private var useFallback = false
+
+    /// Creates an image.
+    public init(url: URL?, fallbackURL: URL? = nil, placeholderSymbol: String = "photo") {
+        self.url = url
+        self.fallbackURL = fallbackURL
+        self.placeholderSymbol = placeholderSymbol
+    }
+
+    private var current: URL? {
+        if useFallback || url == nil { return fallbackURL == url ? nil : fallbackURL }
+        return url
+    }
+
+    public var body: some View {
+        Color.secondary.opacity(0.12)
+            .overlay {
+                if let current {
+                    AsyncImage(url: current, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
+                        switch phase {
+                        case let .success(image):
+                            image.resizable().scaledToFill()
+                        case .failure:
+                            placeholder.onAppear { if !useFallback, fallbackURL != nil { useFallback = true } }
+                        default:
+                            ProgressView()
+                        }
+                    }
+                    .id(current)
+                } else {
+                    placeholder
+                }
+            }
+            .clipped()
+            .accessibilityHidden(true)
+    }
+
+    private var placeholder: some View {
+        Image(systemName: placeholderSymbol)
+            .font(.largeTitle)
+            .foregroundStyle(.secondary)
+    }
+}
