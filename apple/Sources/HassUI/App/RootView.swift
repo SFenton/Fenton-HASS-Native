@@ -10,17 +10,22 @@ public struct RootView: View {
 
     public var body: some View {
         Group {
-            switch session.phase {
-            case .signedOut:
-                LoginView { server, tokens in try session.didSignIn(server: server, tokens: tokens) }
-            case let .signedIn(connection, _):
-                MainTabView()
-                    .environment(connection)
-                    .environment(connection.store)
-                    .environment(session)
-                    .onChange(of: connection.status) { _, status in
-                        if status == .rejected { session.signOut() }
-                    }
+            if let gallery = ComponentGallery.requested {
+                // Debug builds only: fixture-driven controls for UI tests and screenshots.
+                ComponentGallery(page: gallery)
+            } else {
+                switch session.phase {
+                case .signedOut:
+                    LoginView { server, tokens in try session.didSignIn(server: server, tokens: tokens) }
+                case let .signedIn(connection, _):
+                    MainTabView()
+                        .environment(connection)
+                        .environment(connection.store)
+                        .environment(session)
+                        .onChange(of: connection.status) { _, status in
+                            if status == .rejected { session.signOut() }
+                        }
+                }
             }
         }
         .observesDeviceSignals()

@@ -45,9 +45,11 @@ apple/Tests/**                                             → tests for your ow
 | iPad flyout | Not started (TabView for now) |
 | Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`) |
 | Watch app | Target stub only |
+| Thermostat dial (shared control) | `ThermostatDial` + `ClimateThermostatDial`; debug gallery `FENTON_GALLERY=thermostat-dial` |
 
 ## 4. Log
 
 - 2026-10-10: initial scaffold.
 - 2026-10-11: PR #1 verified on the Mac: journeys and accessibility audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad; 32 `swift test` tests pass. Redacted screenshots in `docs/screenshots/pr-1/`.
 - Known follow-up: light tiles send `light.toggle`. Presence Based Lighting's Presence Lock (SFenton/presence-based-lighting) reverts that in empty rooms and only honors an exact `turn_on` from an app user as a manual-on hold. Send `light.turn_on` / `light.turn_off` from the current state instead.
+- 2026-10-11: shared thermostat dial (single and heat/cool range, VoiceOver-adjustable handles) and a debug component gallery for fixture-driven UI tests.

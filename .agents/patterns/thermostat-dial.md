@@ -1,0 +1,15 @@
+# Thermostat dial
+
+> **What:** the circular setpoint dial for `climate` entities. **Read when:** showing or editing a thermostat anywhere (Climate page, room pages, sheets).
+
+Web source: `ha-sfenton-react-dash@9ac2a46:src/pages/DashboardViewPage.tsx:4188` (`ThermostatDial`) over `src/components/hass/CircularControlDial.tsx` and `circularDialGeometry.ts`.
+
+- **Components.** `HassDesign/ThermostatDial/ThermostatDial.swift` is pure UI: a `ThermostatDialConfiguration` in, `ThermostatTargets` commits out. `HassUI/Controls/Thermostat/ClimateThermostatDial.swift` binds one entity from `EntityStore` and calls `climate.set_temperature`; pass `commitEntityIds` to fan out (the web sends the global virtual thermostat's range to every room thermostat).
+- **Geometry.** 270° ring open at the bottom, min at 7:30, max at 4:30, radius 145/320 of the side. A 20 pt gutter keeps the 64 pt handle targets inside the view. Sizes: page 316, modal 300, compact 250 pt.
+- **Modes.** Range when `target_temp_low` and `target_temp_high` are both numbers: heat-to (orange `#cd5401`) and cool-to (teal `#2c8e98`) handles with trails from each end, heat-to never above cool-to. Otherwise one `temperature` handle colored by `hvac_action`.
+- **Readout.** Action line (title-cased `hvac_action`), current temperature (one decimal, `.0` dropped) with a small unit, and a caption `72.0°F` or `68.0 · 75.0`. Callers can override each line or hide the caption.
+- **States.** Unavailable (missing, `unavailable`, `unknown`): no handles, no current marker, readout `--`. Off with no range while idle: ring dimmed and desaturated; text stays full contrast. Read-only: readout only.
+- **Interaction.** Drag a handle (64 pt target) to preview, release to commit. Tap the ring band to move the nearest handle there. Touches inside the ring fall through to the enclosing scroll view. Selection haptics while dragging. The edit stays on screen until Home Assistant reports new targets; an identical commit within 400 ms is dropped.
+- **Accessibility.** Each handle is its own adjustable element: label "<title> target temperature", "<title> heat to" or "<title> cool to", value "72 degrees", swipe up or down moves one step and commits (HIG: Accessibility › VoiceOver). The readout is one element ("<title> thermostat, Heating, currently 68.5°F", value "set to 72.0°F"). Ring, trails and marker are hidden. Reduce Motion removes handle animation; Increase Contrast darkens the track.
+- **Departures from web.** Track uses adaptive ink instead of fixed white so it reads in light mode; idle color is secondary ink instead of 78% white. Handles are adjustable for VoiceOver (the web hides them).
+- **Tests.** Logic in `HassDesignTests/ThermostatDial*Tests.swift`, mapping in `HassUITests/ThermostatDialMappingTests.swift`, device journeys and audits in `Apps/iOSUITests/ThermostatDialJourneyTests.swift` against the debug gallery (`FENTON_GALLERY=thermostat-dial`).
