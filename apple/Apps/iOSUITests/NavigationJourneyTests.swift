@@ -292,6 +292,8 @@ final class NavigationJourneyTests: XCTestCase {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
             let app = try FentonHomeApp.launchSignedIn()
+            // Set again after launch: set only before it, iPad captures came out portrait.
+            if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             sleep(1)
             keep(app, "home-\(suffix)")
             if usesFlyout(app) {
@@ -310,6 +312,10 @@ final class NavigationJourneyTests: XCTestCase {
             app.buttons["settings.topic.guests"].tap()
             sleep(1)
             keep(app, "settings-topic-\(suffix)")
+            // Close it: the open topic is scene-restored on the next launch, which would hide the
+            // placeholder in the next orientation's capture.
+            if app.buttons["split.close"].exists { app.buttons["split.close"].tap() } else { goBack(in: app) }
+            sleep(1)
         }
         if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
@@ -323,7 +329,8 @@ final class NavigationJourneyTests: XCTestCase {
         let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
         let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
         FileManager.default.createFile(atPath: ready.path, contents: nil)
-        let deadline = Date().addingTimeInterval(30)
+        // Generous: under load from other lanes' simulators a host screenshot took over 30 s.
+        let deadline = Date().addingTimeInterval(120)
         while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
     }
 }
