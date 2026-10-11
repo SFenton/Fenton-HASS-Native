@@ -36,7 +36,7 @@ struct InventoryItemEditor: View {
                 .numericEntryField()
                 .accessibilityIdentifier("inventory.editor.prompt.field")
             Button("Cancel", role: .cancel) {}
-            Button(prompt.confirmTitle) { submit(prompt) }
+            Button(prompt.confirmTitle) { Task { await prompt.submit(promptText, to: model) } }
         } message: { prompt in
             Text(prompt.message)
         }
@@ -71,18 +71,6 @@ struct InventoryItemEditor: View {
 
     private var promptShown: Binding<Bool> {
         Binding(get: { prompt != nil }, set: { if !$0 { prompt = nil } })
-    }
-
-    private func submit(_ prompt: EditorPrompt) {
-        let batch = prompt.batch
-        guard let quantity = InventoryFormat.parseQuantity(promptText), quantity >= 1, quantity <= batch.quantity else {
-            model.reportInvalidQuantity(max: batch.quantity)
-            return
-        }
-        switch prompt {
-        case .delete: Task { await model.delete(batch, quantity: quantity) }
-        case .prepared: Task { await model.togglePrepared(batch, quantity: quantity) }
-        }
     }
 }
 
@@ -124,6 +112,37 @@ enum EditorPrompt: Identifiable {
         case .delete: "Delete"
         case .prepared: "Change"
         }
+    }
+
+    /// Applies the prompt to the entered quantity (1 to the batch's quantity), or reports it as invalid.
+    @MainActor
+    func submit(_ text: String, to model: InventoryEditorModel) async {
+        guard let quantity = InventoryFormat.parseQuantity(text), quantity >= 1, quantity <= batch.quantity else {
+            model.reportInvalidQuantity(max: batch.quantity)
+            return
+        }
+        switch self {
+        case .delete: await model.delete(batch, quantity: quantity)
+        case .prepared: await model.togglePrepared(batch, quantity: quantity)
+        }
+    }
+
+    /// Delete on a batch: the prompt asking how many when it holds more than one; otherwise deletes it and
+    /// returns `nil`.
+    @MainActor
+    static func delete(_ batch: InventoryBatch, in model: InventoryEditorModel) async -> EditorPrompt? {
+        guard batch.quantity <= 1 else { return .delete(batch, qualifier: model.qualifier(batch)) }
+        await model.delete(batch)
+        return nil
+    }
+
+    /// Prepared food flipped on a batch: the prompt asking how many when it holds more than one; otherwise
+    /// flips it and returns `nil`.
+    @MainActor
+    static func prepared(_ batch: InventoryBatch, in model: InventoryEditorModel) async -> EditorPrompt? {
+        guard batch.quantity <= 1 else { return .prepared(batch, qualifier: model.qualifier(batch)) }
+        await model.togglePrepared(batch)
+        return nil
     }
 }
 
@@ -201,11 +220,7 @@ private struct BatchSection: View {
             }
 
             Button(role: .destructive) {
-                if batch.quantity > 1 {
-                    ask(.delete(batch, qualifier: qualifier))
-                } else {
-                    Task { await model.delete(batch) }
-                }
+                Task { if let prompt = await EditorPrompt.delete(batch, in: model) { ask(prompt) } }
             } label: {
                 HStack {
                     Label("Delete", systemImage: "trash")
@@ -261,11 +276,7 @@ private struct BatchSection: View {
         Binding(
             get: { batch.preparedFood },
             set: { _ in
-                if batch.quantity > 1 {
-                    ask(.prepared(batch, qualifier: model.qualifier(batch)))
-                } else {
-                    Task { await model.togglePrepared(batch) }
-                }
+                Task { if let prompt = await EditorPrompt.prepared(batch, in: model) { ask(prompt) } }
             }
         )
     }

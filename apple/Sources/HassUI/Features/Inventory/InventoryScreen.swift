@@ -15,22 +15,27 @@ struct InventoryScreen: View {
     var launch: InventoryLaunch?
 
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @State private var editing: InventoryEditorModel?
-    @State private var sheet: InventorySheet?
-    @State private var prompt: InventoryPrompt?
-    @State private var promptText = ""
-    @State private var confirmDelete: InventoryDisplayItem?
-    @State private var canSplit = false
+    @State private var presentation: InventoryPresentation
     @State private var searchExpanded = false
 
+    /// - Parameter presentation: what the page starts out presenting (tests and previews).
+    init(model: InventoryListModel, models: InventoryModels, launch: InventoryLaunch? = nil, presentation: InventoryPresentation = InventoryPresentation()) {
+        self.model = model
+        self.models = models
+        self.launch = launch
+        _presentation = State(initialValue: presentation)
+    }
+
     private var space: InventorySpace { model.space }
+    private var editing: InventoryEditorModel? { presentation.editing }
+    private var canSplit: Bool { presentation.canSplit }
 
     var body: some View {
         HStack(spacing: 0) {
             list
                 .frame(maxWidth: .infinity)
             if canSplit, let editing {
-                InventoryItemEditor(model: editing, style: .pane) { self.editing = nil }
+                InventoryItemEditor(model: editing, style: .pane) { presentation.editing = nil }
                     .frame(maxWidth: .infinity)
                     .background(.background)
                     .id(editing.itemId)
@@ -49,35 +54,28 @@ struct InventoryScreen: View {
         .floatingActionBar(model.phase == .content ? floatingActions : [], search: floatingSearch)
         .task {
             await model.load()
-            open(launch)
+            presentation.open(launch, in: model)
         }
-        .sheet(item: $sheet) { sheet in
-            switch sheet {
-            case .sort: InventorySortSheet(model: model)
-            case .filter: InventoryFilterSheet(model: model)
-            case .scan:
-                ScanItemSheet(model: ScanItemModel(space: space, client: models.everShelf)) {
-                    Task { await models.refreshLoaded() }
-                }
-            }
+        .sheet(item: $presentation.sheet) { sheet in
+            InventorySheetContent(sheet: sheet, model: model, models: models)
         }
-        .sheet(item: editorSheet) { editor in
-            InventoryItemEditor(model: editor, style: .sheet) { editing = nil }
+        .sheet(item: $presentation.sheetEditor) { editor in
+            InventoryItemEditor(model: editor, style: .sheet) { presentation.editing = nil }
         }
-        .alert(prompt?.title ?? "", isPresented: promptShown, presenting: prompt) { prompt in
-            TextField("Quantity", text: $promptText)
+        .alert(presentation.prompt?.title ?? "", isPresented: promptShown, presenting: presentation.prompt) { prompt in
+            TextField("Quantity", text: $presentation.promptText)
                 .numericEntryField()
                 .accessibilityIdentifier("inventory.prompt.field")
             Button("Cancel", role: .cancel) {}
-            Button(prompt.confirmTitle) { submit(prompt) }
+            Button(prompt.confirmTitle) { Task { await presentation.submit(prompt, in: model) } }
         } message: { prompt in
             Text(prompt.message)
         }
         .confirmationDialog(
-            confirmDelete.map { "Delete \($0.name) from the \(space.phrase)?" } ?? "",
-            isPresented: Binding(get: { confirmDelete != nil }, set: { if !$0 { confirmDelete = nil } }),
+            presentation.confirmDelete.map { "Delete \($0.name) from the \(space.phrase)?" } ?? "",
+            isPresented: Binding(get: { presentation.confirmDelete != nil }, set: { if !$0 { presentation.confirmDelete = nil } }),
             titleVisibility: .visible,
-            presenting: confirmDelete
+            presenting: presentation.confirmDelete
         ) { item in
             Button("Delete", role: .destructive) { Task { await model.delete(item) } }
         }
@@ -112,9 +110,9 @@ struct InventoryScreen: View {
                         item: item,
                         model: model,
                         selected: canSplit && editing?.itemId == item.id,
-                        onEdit: { open(item) },
-                        onShop: { ask(.shopping(item)) },
-                        onDelete: { delete(item) }
+                        onEdit: { presentation.open(item, in: model) },
+                        onShop: { presentation.ask(.shopping(item)) },
+                        onDelete: { presentation.requestDelete(item, in: model) }
                     )
                 }
             }
@@ -141,10 +139,10 @@ struct InventoryScreen: View {
         let hasControls = !model.items.isEmpty || model.searchActive
         var actions: [FloatingAction] = []
         if hasControls {
-            actions.append(FloatingAction(id: "inventory.sort", title: "Sort", symbol: "arrow.up.arrow.down", showsTitle: false, isActive: model.sortActive) { sheet = .sort })
-            actions.append(FloatingAction(id: "inventory.filter", title: "Filter", symbol: "line.3.horizontal.decrease", showsTitle: false, isActive: model.filterActive) { sheet = .filter })
+            actions.append(FloatingAction(id: "inventory.sort", title: "Sort", symbol: "arrow.up.arrow.down", showsTitle: false, isActive: model.sortActive) { presentation.sheet = .sort })
+            actions.append(FloatingAction(id: "inventory.filter", title: "Filter", symbol: "line.3.horizontal.decrease", showsTitle: false, isActive: model.filterActive) { presentation.sheet = .filter })
         }
-        actions.append(FloatingAction(id: "inventory.scan", title: "Scan Item", symbol: "barcode.viewfinder", showsTitle: !hasControls) { sheet = .scan })
+        actions.append(FloatingAction(id: "inventory.scan", title: "Scan Item", symbol: "barcode.viewfinder", showsTitle: !hasControls) { presentation.sheet = .scan })
         return actions
     }
 
@@ -154,63 +152,32 @@ struct InventoryScreen: View {
         return FloatingSearch(text: $model.searchQuery, isExpanded: $searchExpanded, prompt: "Search items")
     }
 
-    // MARK: - Actions
-
-    private func open(_ launch: InventoryLaunch?) {
-        switch launch {
-        case let .sheet(next): sheet = next
-        case let .editor(name): if let item = model.displayItem(id: name.lowercased()) { open(item) }
-        case nil: break
-        }
-    }
-
-    private func open(_ item: InventoryDisplayItem) {
-        editing = InventoryEditorModel(item: item, list: model)
-    }
-
-    private func delete(_ item: InventoryDisplayItem) {
-        guard let rows = model.deletableRows(of: item) else { return }
-        let stocked = rows.reduce(0) { $0 + $1.quantity }
-        if stocked > 1 {
-            ask(.delete(item, stocked))
-        } else {
-            confirmDelete = item
-        }
-    }
-
-    private func ask(_ next: InventoryPrompt) {
-        promptText = "1"
-        prompt = next
-    }
-
-    private func submit(_ prompt: InventoryPrompt) {
-        switch prompt {
-        case let .shopping(item):
-            guard let quantity = InventoryFormat.parseQuantity(promptText), quantity >= 1 else { return }
-            Task { await model.addToShopping(item, quantity: quantity) }
-        case let .delete(item, stocked):
-            guard let quantity = InventoryFormat.parseQuantity(promptText), quantity >= 1, quantity <= stocked else {
-                model.setRowError("Enter a number from 1 to \(InventoryFormat.quantity(stocked)).", for: item.id)
-                return
-            }
-            Task { await model.delete(item, quantity: quantity) }
-        }
-    }
+    // MARK: - Presentation
 
     private var promptShown: Binding<Bool> {
-        Binding(get: { prompt != nil }, set: { if !$0 { prompt = nil } })
+        Binding(get: { presentation.prompt != nil }, set: { if !$0 { presentation.prompt = nil } })
     }
-
-    // MARK: - Split
 
     private func updateSplit(_ size: CGSize) {
-        let allowed = SplitPolicy.allowsSplit(size: size, isRegularWidth: sizeClass == .regular)
-        if allowed != canSplit { canSplit = allowed }
+        presentation.updateSplit(size, isRegularWidth: sizeClass == .regular)
     }
+}
 
-    /// The editor as a sheet, only while the window can't split.
-    private var editorSheet: Binding<InventoryEditorModel?> {
-        Binding(get: { canSplit ? nil : editing }, set: { if $0 == nil, !canSplit { editing = nil } })
+/// The content of a page's Sort, Filter or Scan Item sheet.
+struct InventorySheetContent: View {
+    var sheet: InventorySheet
+    var model: InventoryListModel
+    var models: InventoryModels
+
+    var body: some View {
+        switch sheet {
+        case .sort: InventorySortSheet(model: model)
+        case .filter: InventoryFilterSheet(model: model)
+        case .scan:
+            ScanItemSheet(model: ScanItemModel(space: model.space, client: models.everShelf)) {
+                Task { await models.refreshLoaded() }
+            }
+        }
     }
 }
 

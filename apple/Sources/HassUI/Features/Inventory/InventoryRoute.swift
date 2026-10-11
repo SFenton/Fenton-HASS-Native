@@ -35,7 +35,7 @@ extension View {
 
 /// Holds the stack's models for the life of its root view.
 @MainActor
-private final class InventoryModelsHolder {
+final class InventoryModelsHolder {
     var models: InventoryModels?
 
     func models(for connection: HassConnection) -> InventoryModels {
@@ -46,11 +46,11 @@ private final class InventoryModelsHolder {
     }
 }
 
-private struct InventoryDestinations: ViewModifier {
+struct InventoryDestinations: ViewModifier {
     @Environment(\.inventoryModels) private var injected
     @Environment(HassConnection.self) private var connection: HassConnection?
     @State private var holder = InventoryModelsHolder()
-    @State private var launchSpace: InventorySpace? = InventoryDestinations.requestedAtLaunch
+    @State private var launchSpace: InventorySpace? = InventoryDestinations.requestedAtLaunch()
 
     func body(content: Content) -> some View {
         content
@@ -62,9 +62,27 @@ private struct InventoryDestinations: ViewModifier {
             }
     }
 
-    @ViewBuilder
-    private func screen(_ route: InventoryRoute) -> some View {
-        if let models = injected ?? connection.map(holder.models(for:)) {
+    private func screen(_ route: InventoryRoute) -> InventoryDestinationScreen {
+        InventoryDestinationScreen(route: route, models: injected ?? connection.map(holder.models(for:)))
+    }
+
+    /// `FENTON_OPEN_INVENTORY=<space>` (debug builds only).
+    static func requestedAtLaunch(environment: [String: String] = ProcessInfo.processInfo.environment) -> InventorySpace? {
+        #if DEBUG
+        environment["FENTON_OPEN_INVENTORY"].flatMap(InventorySpace.init(rawValue:))
+        #else
+        nil
+        #endif
+    }
+}
+
+/// One inventory destination: the page for a route with the stack's models, or Not Signed In without them.
+struct InventoryDestinationScreen: View {
+    var route: InventoryRoute
+    var models: InventoryModels?
+
+    var body: some View {
+        if let models {
             switch route {
             case let .space(space):
                 InventoryScreen(model: models.model(for: space), models: models)
@@ -73,14 +91,5 @@ private struct InventoryDestinations: ViewModifier {
         } else {
             ContentUnavailableView("Not Signed In", systemImage: "person.crop.circle.badge.exclamationmark")
         }
-    }
-
-    /// `FENTON_OPEN_INVENTORY=<space>` (debug builds only).
-    static var requestedAtLaunch: InventorySpace? {
-        #if DEBUG
-        ProcessInfo.processInfo.environment["FENTON_OPEN_INVENTORY"].flatMap(InventorySpace.init(rawValue:))
-        #else
-        nil
-        #endif
     }
 }
