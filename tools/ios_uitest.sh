@@ -55,6 +55,6 @@ for family in iphone duo ipad; do
     -destination "platform=iOS Simulator,name=$name" \
     -resultBundlePath "$ROOT/apple/.build/uitest-$family.xcresult" \
     ${EXTRA[@]+"${EXTRA[@]}"} || STATUS=1
-  xcrun simctl shutdown "$name" >/dev/null 2>&1 || true
+  [[ -n "${FENTON_KEEP_SIM:-}" ]] || xcrun simctl shutdown "$name" >/dev/null 2>&1 || true
 done
 exit $STATUS

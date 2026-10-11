@@ -8,6 +8,15 @@ export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Develope
 cd "$ROOT/apple"
 swift test --enable-code-coverage
 
-CODECOV_JSON="$(swift test --show-codecov-path)"
-# swift test writes one merged export for every test bundle in the package.
-python3 "$ROOT/tools/coverage_gate.py" --language swift --report "$CODECOV_JSON"
+# swift test merges every bundle's profile into default.profdata, but its own JSON export reads only
+# one test binary, which drops HassDesign and HassUI. Export once against every test binary instead.
+CODECOV_DIR="$(dirname "$(swift test --show-codecov-path)")"
+BIN_DIR="$(swift build --show-bin-path)"
+OBJECTS=()
+for bundle in "$BIN_DIR"/*Tests.xctest; do
+  name="$(basename "$bundle" .xctest)"
+  OBJECTS+=(${OBJECTS[@]+-object} "$bundle/Contents/MacOS/$name")
+done
+REPORT="$CODECOV_DIR/all-bundles.json"
+xcrun llvm-cov export -format=text -instr-profile "$CODECOV_DIR/default.profdata" "${OBJECTS[@]}" > "$REPORT"
+python3 "$ROOT/tools/coverage_gate.py" --language swift --report "$REPORT"
