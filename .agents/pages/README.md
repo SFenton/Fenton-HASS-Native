@@ -10,4 +10,4 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Security | `/at-a-glance/security` | TODO | Placeholder |
 | Climate | `/at-a-glance/thermostat` | TODO | Placeholder |
 | Chores | `/at-a-glance/chores` | TODO | Placeholder |
-| Settings | `/at-a-glance/settings` | TODO | Placeholder |
+| Settings | `/at-a-glance/settings` | TODO | Home Assistant settings modal only ([ios.md](settings/ios.md)) |

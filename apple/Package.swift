@@ -28,9 +28,15 @@ let package = Package(
                 .product(name: "WebRTC", package: "WebRTC", condition: .when(platforms: [.iOS])),
             ]
         ),
-        .testTarget(name: "HassCoreTests", dependencies: ["HassCore"]),
+        .testTarget(
+            name: "HassCoreTests",
+            dependencies: ["HassCore", .product(name: "HAKit+Mocks", package: "HAKit")]
+        ),
         .testTarget(name: "HassDesignTests", dependencies: ["HassDesign"]),
-        .testTarget(name: "HassUITests", dependencies: ["HassUI", "HassCore"]),
+        .testTarget(
+            name: "HassUITests",
+            dependencies: ["HassUI", "HassCore", .product(name: "HAKit+Mocks", package: "HAKit")]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

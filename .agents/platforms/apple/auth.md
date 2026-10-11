@@ -19,3 +19,7 @@ Uses Home Assistant's login flow API, the same path the HA web login uses, so th
 - Refresh token and server URL: Keychain, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, service `com.sfenton.home.auth`. The watch will need a shared access group.
 - Access token: memory only, in `TokenManager` (an actor that refreshes 60 s before expiry and coalesces concurrent refreshes).
 - Never store the password. Never commit `temp.env` or any token.
+
+## Web frontend hand-off
+
+The Home Assistant settings modal opens `/config` and `/profile` signed in: `FrontendSession` stores the current tokens as `localStorage.hassTokens` (same shape and `clientId` the frontend uses) at document start, only on the server origin, in a non-persistent web data store. See [settings](../../pages/settings/ios.md).
