@@ -128,31 +128,3 @@ public struct SelectableOptionRow: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
-
-/// An entity tile that only shows state: the ``GlassTile`` look without a button (web `EntityActionCard`
-/// with no action; pattern: `.agents/patterns/entity-tile.md`).
-public struct GlassStateTile: View {
-    public var title: String
-    public var subtitle: String?
-    public var symbol: String
-    public var tint: Color
-    public var isActive: Bool
-    public var isUnavailable: Bool
-
-    /// Creates a tile.
-    public init(title: String, subtitle: String? = nil, symbol: String, tint: Color, isActive: Bool, isUnavailable: Bool = false) {
-        self.title = title
-        self.subtitle = subtitle
-        self.symbol = symbol
-        self.tint = tint
-        self.isActive = isActive
-        self.isUnavailable = isUnavailable
-    }
-
-    public var body: some View {
-        GlassTileFace(title: title, subtitle: subtitle, symbol: symbol, tint: tint, isActive: isActive, isUnavailable: isUnavailable)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(title)
-            .accessibilityValue(isUnavailable ? "Unavailable" : subtitle ?? "")
-    }
-}

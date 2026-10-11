@@ -215,3 +215,24 @@ struct MachEContent: View {
         }
     }
 }
+
+// MARK: - Read-only tile
+
+/// An entity tile that only shows state (web `EntityActionCard` with no action): the ``GlassTile`` face with
+/// hit testing and the button trait removed. Feature-local until the shared read-only tile lands in HassDesign
+/// (the Room pages lane owns `GlassTile`); switch to it then.
+struct GlassStateTile: View {
+    var title: String
+    var subtitle: String?
+    var symbol: String
+    var tint: Color
+    var isActive: Bool
+    var isUnavailable = false
+
+    var body: some View {
+        GlassTile(title: title, subtitle: subtitle, symbol: symbol, tint: tint, isActive: isActive,
+                  isUnavailable: isUnavailable, kind: .command) {}
+            .allowsHitTesting(false)
+            .accessibilityRemoveTraits(.isButton)
+    }
+}
