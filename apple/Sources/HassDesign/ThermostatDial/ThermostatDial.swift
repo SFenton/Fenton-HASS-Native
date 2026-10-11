@@ -98,7 +98,9 @@ public struct ThermostatDial: View {
             if !configuration.isUnavailable, let current = configuration.current {
                 Circle()
                     .fill(ThermostatDialPalette.color(for: configuration.thermalStatus))
-                    .overlay { Circle().strokeBorder(HassTokens.Ink.primary, lineWidth: 3) }
+                    // A dark rim in both appearances: with adaptive ink it turns white in dark mode and the
+                    // marker reads as another handle (white disc, colored rim).
+                    .overlay { Circle().strokeBorder(ThermostatDialPalette.markerRim, lineWidth: 3) }
                     .frame(width: 18, height: 18)
                     .position(geometry.point(for: current, side: side))
             }
@@ -205,6 +207,8 @@ public enum ThermostatDialPalette {
     public static let heat = Color(red: 205 / 255, green: 84 / 255, blue: 1 / 255)
     /// Cooling and the cool-to handle (`#2c8e98`).
     public static let cool = Color(red: 44 / 255, green: 142 / 255, blue: 152 / 255)
+    /// The current-temperature marker's rim: near-black in light and dark mode so it never looks like a handle.
+    public static let markerRim = Color(white: 0.08)
     /// Idle (web: 78% white; here the adaptive secondary ink so it reads in light mode too).
     public static let neutral = HassTokens.Ink.secondary
 
