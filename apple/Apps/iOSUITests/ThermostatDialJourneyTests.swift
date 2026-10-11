@@ -121,7 +121,7 @@ final class ThermostatDialJourneyTests: XCTestCase {
         for id in ["heating", "range", "cooling", "off", "unavailable"] {
             scrollTo(card(id, in: fresh), in: fresh)
             sleep(1)
-            FentonHomeApp.keepScreenshot(of: fresh, named: "thermostat-\(orientation)-\(id)", in: self)
+            keepScreenshot(fresh, "thermostat-\(orientation)-\(id)")
         }
     }
 }

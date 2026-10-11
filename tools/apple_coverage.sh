@@ -8,17 +8,15 @@ export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Develope
 cd "$ROOT/apple"
 swift test --enable-code-coverage
 
-# The profile data is merged across bundles, but swift test's own JSON export covers only one test
-# binary, so re-export against every bundle (otherwise HassDesign and HassUI read as uncovered).
-PROFDATA="$(dirname "$(swift test --show-codecov-path)")/default.profdata"
-BIN="$(swift build --show-bin-path)"
+# swift test merges every bundle's profile into default.profdata, but its own JSON export reads only
+# one test binary, which drops HassDesign and HassUI. Export once against every test binary instead.
+CODECOV_DIR="$(dirname "$(swift test --show-codecov-path)")"
+BIN_DIR="$(swift build --show-bin-path)"
 OBJECTS=()
-for bundle in "$BIN"/*Tests.xctest; do
+for bundle in "$BIN_DIR"/*Tests.xctest; do
   name="$(basename "$bundle" .xctest)"
-  OBJECTS+=("${#OBJECTS[@]}" "$bundle/Contents/MacOS/$name")
+  OBJECTS+=(${OBJECTS[@]+-object} "$bundle/Contents/MacOS/$name")
 done
-ARGS=("${OBJECTS[1]}")
-for ((i = 3; i < ${#OBJECTS[@]}; i += 2)); do ARGS+=(-object "${OBJECTS[$i]}"); done
-CODECOV_JSON="$BIN/codecov/all-bundles.json"
-xcrun llvm-cov export -format=text -summary-only -instr-profile "$PROFDATA" "${ARGS[@]}" > "$CODECOV_JSON"
-python3 "$ROOT/tools/coverage_gate.py" --language swift --report "$CODECOV_JSON"
+REPORT="$CODECOV_DIR/all-bundles.json"
+xcrun llvm-cov export -format=text -instr-profile "$CODECOV_DIR/default.profdata" "${OBJECTS[@]}" > "$REPORT"
+python3 "$ROOT/tools/coverage_gate.py" --language swift --report "$REPORT"

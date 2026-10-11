@@ -52,15 +52,14 @@ struct CameraTile: View {
     }
 }
 
-/// Full-screen camera view. First pass: a larger snapshot; live WebRTC comes later
-/// (`.agents/pages/home/ios.md`).
+/// Full-screen camera view: live video (WebRTC, then HLS) over the latest snapshot (`CameraLiveView`).
 struct CameraViewer: View {
     var camera: HomeConfig.Camera
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            CameraSnapshotView(entityId: camera.entityId)
+            CameraLiveView(camera: camera)
                 .aspectRatio(camera.aspectRatio, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))
                 .padding()
