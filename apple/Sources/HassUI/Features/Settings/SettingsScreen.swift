@@ -131,6 +131,9 @@ struct SettingsLinkRow: View {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(HassTokens.Ink.primary)
+                    // Wraps instead of truncating in the half-width split pane at large sizes (iPad
+                    // landscape audit, 2026-10-11: "Home Assistant Settings" may be clipped).
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(HassTokens.Ink.secondary)
