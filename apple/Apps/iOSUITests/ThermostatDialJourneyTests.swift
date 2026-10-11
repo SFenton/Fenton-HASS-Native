@@ -70,16 +70,8 @@ final class ThermostatDialJourneyTests: XCTestCase {
         XCTAssertEqual(target.value as? String, "70 degrees")
     }
 
-    /// Swiping up on a VoiceOver-adjustable handle raises it one step and commits.
-    func testAdjustingAHandleStepsAndCommits() {
-        let app = launch()
-        let range = card("range", in: app)
-        scrollTo(range, in: app)
-        let high = handle("high", in: range)
-        XCTAssertEqual(high.value as? String, "75 degrees")
-        high.adjust(toNormalizedSliderPosition: 0.6)
-        XCTAssertTrue(app.staticTexts["gallery.lastCommit"].label.hasPrefix("Last commit: range range 68-"), lastCommit(app))
-    }
+    // VoiceOver's adjustable action (swipe up/down on a handle) is covered by the hosted
+    // `Apps/iOSTests/ThermostatDialAccessibilityTests`: XCUITest can only adjust slider elements.
 
     /// Tapping the ring past the cool-to handle moves that handle there.
     func testTappingTheRingMovesTheNearestHandle() {

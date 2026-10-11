@@ -7,6 +7,7 @@
 - Large text: assert real glyph growth (> 1.35× at AX5) and that actions stay reachable in every supported orientation.
 - Never write `.accessibilityHidden(someBool)`: `false` on an ancestor un-hides descendants. Hide with a conditional modifier that only ever applies `true`.
 - XCUITest cannot prove a SwiftUI view is hidden; assert hiding in a hosted test.
+- XCUITest can only `adjust` slider elements, so a custom adjustable control (`accessibilityAdjustableAction`) is tested in the app-hosted `apple/Apps/iOSTests` bundle: host the view in a window, find the element by identifier and call `accessibilityIncrement()` / `accessibilityDecrement()`. SwiftUI publishes its tree there only with accessibility automation on (`_AXSSetAutomationEnabled`); without it a fresh simulator exposes nothing. Example: `ThermostatDialAccessibilityTests`.
 - A single passing run of a flaky audit is not certification; a source-identical rerun must pass too.
 - iPhone Duo: `XCUIDevice` cannot fold or rotate the Duo. Set the pose in Device Hub before the run; the journey audits the pose it finds.
 
