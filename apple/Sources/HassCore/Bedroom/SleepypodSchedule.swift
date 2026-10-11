@@ -409,7 +409,7 @@ public enum BedFormat {
         guard let state, !state.isUnavailable else { return "Unavailable" }
         let value: String
         if let number = Double(state.state) {
-            value = number == number.rounded() ? String(Int(number)) : String(format: "%.1f", number)
+            value = number == number.rounded() ? String(Int(number)) : String(format: "%.1f", (number * 10).rounded(.toNearestOrAwayFromZero) / 10) // JS toFixed(1): 91.25 → 91.3
         } else {
             value = state.state.prefix(1).uppercased() + state.state.dropFirst()
         }

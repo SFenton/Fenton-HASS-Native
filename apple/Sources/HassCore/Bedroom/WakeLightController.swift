@@ -244,17 +244,35 @@ public final class WakeLightController {
 }
 
 /// Runs `operation`, throwing ``TimeoutError`` if it takes longer than `limit`.
+///
+/// A race between two main-actor tasks rather than a task group, which the region-based isolation checker
+/// rejects for a main-actor operation. A late reply after the timeout is dropped.
 @MainActor
 func withTimeout<T: Sendable>(_ limit: Duration, _ operation: @escaping @MainActor () async throws -> T) async throws -> T {
-    try await withThrowingTaskGroup(of: T.self) { group in
-        group.addTask { @MainActor in try await operation() }
-        group.addTask {
-            try await Task.sleep(for: limit)
-            throw TimeoutError()
+    let race = TimeoutRace<T>()
+    return try await withCheckedThrowingContinuation { continuation in
+        race.continuation = continuation
+        let work = Task { @MainActor in
+            do { race.finish(.success(try await operation())) } catch { race.finish(.failure(error)) }
         }
-        defer { group.cancelAll() }
-        guard let result = try await group.next() else { throw TimeoutError() }
-        return result
+        race.timer = Task { @MainActor in
+            do { try await Task.sleep(for: limit) } catch { return }
+            work.cancel()
+            race.finish(.failure(TimeoutError()))
+        }
+    }
+}
+
+/// Resumes ``withTimeout(_:_:)`` once, with whichever of the operation or the timer finishes first.
+@MainActor
+private final class TimeoutRace<T: Sendable> {
+    var continuation: CheckedContinuation<T, Error>?
+    var timer: Task<Void, Never>?
+
+    func finish(_ result: Result<T, Error>) {
+        timer?.cancel()
+        continuation?.resume(with: result)
+        continuation = nil
     }
 }
 

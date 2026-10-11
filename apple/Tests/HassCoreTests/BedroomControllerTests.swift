@@ -182,8 +182,7 @@ struct WakeLightControllerTests {
         let save = Task { await controller.save(controller.snapshot.alarms[0]) }
         await Task.yield()
         let stop = Task { await controller.endEpisode() }
-        await Task.yield()
-        await Task.yield()
+        for _ in 0..<50 where caller.names.count < 2 { await Task.yield() }
         #expect(controller.stopping)
         #expect(controller.snapshot.activeOccurrences.isEmpty)
         #expect(caller.names.count == 2)
