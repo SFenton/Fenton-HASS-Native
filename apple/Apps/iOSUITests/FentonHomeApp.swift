@@ -44,13 +44,15 @@ enum FentonHomeApp {
     /// `TEST_RUNNER_FENTON_HASS_TOKEN` (a long-lived access token) takes precedence over the password.
     /// - Parameter passwordOnly: Ignore the token and go through the real login flow.
     ///   - arguments: Extra launch arguments (e.g. ``ax5``).
-    static func launchSignedIn(passwordOnly: Bool = false, arguments: [String] = []) throws -> XCUIApplication {
+    ///   - environment: Extra launch environment (e.g. `FENTON_CAMERA_MODE`).
+    static func launchSignedIn(passwordOnly: Bool = false, arguments: [String] = [], environment extra: [String: String] = [:]) throws -> XCUIApplication {
         let environment = ProcessInfo.processInfo.environment
         if !passwordOnly, let token = environment["FENTON_HASS_TOKEN"], !token.isEmpty {
             let app = makeApp()
             app.launchEnvironment["FENTON_UITEST_RESET"] = "1"
             app.launchEnvironment["FENTON_HASS_TOKEN"] = token
             app.launchArguments += arguments
+            app.launchEnvironment.merge(extra) { _, new in new }
             if let server = environment["FENTON_HASS_SERVER"] { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
             app.launch()
             XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30), "Home did not appear")
@@ -64,6 +66,7 @@ enum FentonHomeApp {
         app.launchEnvironment["FENTON_HASS_USERNAME"] = credentials.username
         app.launchEnvironment["FENTON_HASS_PASSWORD"] = credentials.password
         app.launchArguments += arguments
+        app.launchEnvironment.merge(extra) { _, new in new }
         if let server = credentials.server { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
         app.launch()
         let submit = app.buttons["login.submit"]
