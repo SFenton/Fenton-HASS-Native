@@ -34,6 +34,10 @@ Add a row here and in `isSystemDrawn` together, with the evidence.
 
 - `RenderedContrast` draws the screenshot through `UIImage` so the capture follows the interface orientation; the raw `CGImage` stays portrait in landscape and sampled the wrong pixels (every iPad landscape text measured ~1:1, 2026-10-11).
 
+- **Identifiers on containers replace their children's.** `.accessibilityIdentifier` on a `Section`, or on a view after a `safeAreaInset`, is applied to every element inside and overwrites their own identifiers (seen 2026-10-11: the inventory editor's steppers and switches all read `inventory.editor.batch`; Add Item's footer buttons read `scan.barcode`). Put the identifier on a leaf (a header) or on the view before the inset, or add `.accessibilityElement(children: .contain)` first.
+- SwiftUI drops `.accessibilityIdentifier` on an alert's `TextField`; journeys find it as `app.alerts.textFields.firstMatch`.
+- The app accent (66,169,254) reads about 2.5:1 as button text on white. Inventory sheets tint with `FloatingActionBar.tint` (5.8:1).
+
 ## Open findings
 
 None yet.
