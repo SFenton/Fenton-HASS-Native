@@ -258,6 +258,9 @@ enum FentonHomeApp {
             // the popover's dismiss region; the popover's own buttons stay checked.
             if let popover, !popover.contains(element.frame) { return true }
             if isScrolledOutOfView(element, in: app) { return true }
+            // A row scrolled under the glass tab bar is sampled against the bar (iPhone Settings'
+            // last row, 2026-10-11: 1.2:1); the bar's own items stay checked.
+            if isUnderTabBar(element, in: app) { return true }
             if element.elementType == .button && app.navigationBars.buttons[element.label].exists { return true }
             return element.elementType == .staticText && systemSectionHeaders.contains(element.label)
         case .dynamicType:
@@ -292,6 +295,13 @@ enum FentonHomeApp {
         return app.staticTexts.allElementsBoundByIndex.contains { text in
             !text.label.isEmpty && text.frame.intersects(barFrame) && !bar.staticTexts[text.label].exists
         }
+    }
+
+    /// Whether a page element (not one of the tab bar's own items) overlaps the tab bar.
+    private static func isUnderTabBar(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        let bar = app.tabBars.firstMatch
+        guard bar.exists, element.frame.intersects(bar.frame) else { return false }
+        return !bar.descendants(matching: element.elementType)[element.label].exists
     }
 
     /// `Form` section headers, styled by the system.

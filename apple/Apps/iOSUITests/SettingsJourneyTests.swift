@@ -39,10 +39,12 @@ final class SettingsJourneyTests: XCTestCase {
         }
     }
 
-    /// Selects Settings and waits for its Home Assistant row.
+    /// Selects Settings and waits for its Home Assistant row, scrolled into view: it ends the topic list,
+    /// below the fold on iPhone, and a `List` only exposes rows it has laid out.
     private func showSettingsTab(_ app: XCUIApplication) {
         goToSettings(app)
-        XCTAssertTrue(app.buttons["settings.homeAssistant"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(reveal(app.buttons["settings.homeAssistant"], in: app).waitForExistence(timeout: 5))
     }
 
     /// Scrolls the modal until `element` can be tapped (the folded iPhone Duo's form is taller than
@@ -75,7 +77,7 @@ final class SettingsJourneyTests: XCTestCase {
 
     /// Opens the modal from a signed-in launch.
     private func openSettings(_ app: XCUIApplication) {
-        goToSettings(app)
+        showSettingsTab(app)
         let row = app.buttons["settings.homeAssistant"]
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         XCTAssertGreaterThanOrEqual(row.frame.height, 43)
