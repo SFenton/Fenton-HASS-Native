@@ -14,6 +14,11 @@ final class NavigationJourneyTests: XCTestCase {
         app.buttons["nav.open"].waitForExistence(timeout: 3)
     }
 
+    /// The flyout panel (SwiftUI puts its identifier on the panel's scroll view).
+    private func flyout(_ app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)["nav.flyout"]
+    }
+
     private func isLandscape(_ app: XCUIApplication) -> Bool {
         let frame = app.windows.firstMatch.frame
         return frame.width > frame.height
@@ -23,9 +28,9 @@ final class NavigationJourneyTests: XCTestCase {
     private func open(_ section: String, title: String, in app: XCUIApplication) {
         if usesFlyout(app) {
             app.buttons["nav.open"].tap()
-            XCTAssertTrue(app.otherElements["nav.flyout"].waitForExistence(timeout: 3), "Flyout did not open")
+            XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "Flyout did not open")
             app.buttons["nav.\(section)"].tap()
-            XCTAssertTrue(app.otherElements["nav.flyout"].waitForNonExistence(timeout: 3), "Flyout stayed open")
+            XCTAssertTrue(flyout(app).waitForNonExistence(timeout: 3), "Flyout stayed open")
         } else {
             app.tabBars.buttons[title].tap()
         }
@@ -57,8 +62,9 @@ final class NavigationJourneyTests: XCTestCase {
         guard usesFlyout(app) else { throw XCTSkip("Compact window") }
         XCTAssertFalse(app.tabBars.buttons["Security"].isHittable, "Tab bar visible beside the flyout")
         app.buttons["nav.open"].tap()
-        let flyout = app.otherElements["nav.flyout"]
+        let flyout = flyout(app)
         XCTAssertTrue(flyout.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["home.chip.lights"].exists, "Content under the scrim still reachable by VoiceOver")
         for section in ["home", "security", "climate", "chores", "settings"] {
             let row = app.buttons["nav.\(section)"]
             XCTAssertTrue(row.isHittable, "\(section) row unreachable")
@@ -75,17 +81,37 @@ final class NavigationJourneyTests: XCTestCase {
         open("home", title: "Home", in: app)
     }
 
+    /// A drag from the leading edge opens the flyout, and the edge does not swallow taps: Open Navigation
+    /// works when tapped inside the edge-swipe width.
+    func testEdgeSwipeOpensFlyoutWithoutBlockingEdgeTaps() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        guard usesFlyout(app) else { throw XCTSkip("Compact window") }
+        let window = app.windows.firstMatch
+        let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 4, dy: window.frame.height / 2))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 200, dy: 0)))
+        XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "Edge swipe did not open the flyout")
+        app.buttons["nav.flyout.scrim"].coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertTrue(flyout(app).waitForNonExistence(timeout: 3))
+
+        let open = app.buttons["nav.open"]
+        XCTAssertTrue(open.waitForExistence(timeout: 3))
+        let edgeX = min(open.frame.maxX, 18) - open.frame.minX
+        XCTAssertGreaterThan(edgeX, 0, "Open Navigation is not inside the edge-swipe width")
+        open.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: edgeX - 1, dy: open.frame.height / 2)).tap()
+        XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "A tap inside the leading edge was swallowed")
+    }
+
     /// The open flyout audits clean (names, roles, contrast, targets, Dynamic Type).
     func testFlyoutPassesAccessibilityAudit() throws {
         let app = try FentonHomeApp.launchSignedIn()
         guard usesFlyout(app) else { throw XCTSkip("Compact window") }
         app.buttons["nav.open"].tap()
-        XCTAssertTrue(app.otherElements["nav.flyout"].waitForExistence(timeout: 3))
+        XCTAssertTrue(flyout(app).waitForExistence(timeout: 3))
         sleep(1)
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
             large.buttons["nav.open"].tap()
-            XCTAssertTrue(large.otherElements["nav.flyout"].waitForExistence(timeout: 3))
+            XCTAssertTrue(self.flyout(large).waitForExistence(timeout: 3))
             sleep(1)
             return large
         }
@@ -108,7 +134,22 @@ final class NavigationJourneyTests: XCTestCase {
         XCTAssertTrue(topic.isSelected, "Open topic not marked selected")
         let window = app.windows.firstMatch.frame
         XCTAssertLessThan(topic.frame.maxX, window.midX + 1, "List pane wider than half")
-        try FentonHomeApp.audit(app)
+        // The trailing pane starts at the midpoint (iPad: the 1 pt band) or just after the hinge (Duo).
+        let trailing = app.descendants(matching: .any)["split.trailing"].frame
+        print("split: window \(window), trailing \(trailing)")
+        XCTAssertGreaterThanOrEqual(trailing.minX, window.midX, "Trailing pane starts before the midpoint")
+        XCTAssertEqual(trailing.maxX, window.maxX, accuracy: 1, "Trailing pane does not reach the window edge")
+        if FentonHomeApp.family == .iPad {
+            XCTAssertEqual(trailing.minX, window.midX + 0.5, accuracy: 0.5, "Divider is not at the midpoint")
+        }
+        try FentonHomeApp.audit(app) {
+            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
+            self.open("settings", title: "Settings", in: large)
+            large.buttons["settings.topic.guests"].tap()
+            XCTAssertTrue(large.buttons["split.close"].waitForExistence(timeout: 3))
+            sleep(1)
+            return large
+        }
 
         app.buttons["settings.topic.vacation"].tap()
         XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 3), "Selecting another topic did not replace the pane")
@@ -151,7 +192,7 @@ final class NavigationJourneyTests: XCTestCase {
             sleep(1)
             if usesFlyout(app) {
                 app.buttons["nav.open"].tap()
-                XCTAssertTrue(app.otherElements["nav.flyout"].waitForExistence(timeout: 3))
+                XCTAssertTrue(flyout(app).waitForExistence(timeout: 3))
                 sleep(1)
                 keep(app, "nav-flyout-\(suffix)")
                 app.buttons["nav.settings"].tap()
