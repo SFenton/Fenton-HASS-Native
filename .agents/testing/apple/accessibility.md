@@ -2,7 +2,7 @@
 
 > **What:** audit rules and evidence (from FestivalNativeApps). **Read when:** writing the accessibility test a UI change ships with.
 
-- Run XCTest `performAccessibilityAudit()` (all types). No blanket waivers and never a whole audit type. Accept a specific issue only with same-run evidence that disproves it (e.g. rendered contrast measured ≥ 4.5:1 from the screenshot), recorded here with the reason.
+- Run XCTest `performAccessibilityAudit()` (all types; `FentonHomeApp.audit` runs contrast as its own pass, because alongside the Dynamic Type or text-clipping checks contrast issues can lose their element and then cannot be measured). No blanket waivers and never a whole audit type. Accept a specific issue only with same-run evidence that disproves it (e.g. rendered contrast measured ≥ 4.5:1 from the screenshot), recorded here with the reason.
 - Named visible text over camera images or materials gets a rendered-pixel contrast assertion (≥ 4.5:1 text, ≥ 3:1 meaningful edges); token math is not rendered evidence.
 - Large text: assert real glyph growth (> 1.35× at AX5) and that actions stay reachable in every supported orientation.
 - Never write `.accessibilityHidden(someBool)`: `false` on an ancestor un-hides descendants. Hide with a conditional modifier that only ever applies `true`.

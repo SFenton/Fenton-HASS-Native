@@ -117,7 +117,7 @@ enum FentonHomeApp {
         // The audit can dismiss a popover while it runs, so note it before starting.
         let popover = app.otherElements["PopoverDismissRegion"].exists && app.popovers.firstMatch.exists
             ? app.popovers.firstMatch.frame : nil
-        try app.performAccessibilityAudit(for: .all) { issue in
+        func review(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
             if isSystemDrawn(issue, in: app, popover: popover) { return true }
             var measured = ""
             if issue.auditType == .contrast, let element = issue.element, let capture,
@@ -146,6 +146,11 @@ enum FentonHomeApp {
                 + issue.detailedDescription)
             return true
         }
+        // Contrast runs on its own: alongside the Dynamic Type or text-clipping checks its issues can lose their
+        // element (probed 2026-10-11: a row half under the floating action bar came back unattributed), and an
+        // unattributed issue cannot be measured or placed.
+        try app.performAccessibilityAudit(for: .contrast, review)
+        try app.performAccessibilityAudit(for: XCUIAccessibilityAuditType.all.subtracting(.contrast), review)
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
         if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 {
             // Only labels that name one content text on the page: bar titles are left out (they barely

@@ -240,10 +240,11 @@ final class InventoryJourneyTests: XCTestCase {
     }
 
     func testScanStepsPassAccessibilityAudit() throws {
-        /// At AX5 wrapped text pushes controls below the fold, where the form loads them once scrolled to.
+        /// At AX5 wrapped text pushes controls below the fold, where the form loads them once scrolled to; the
+        /// footer's large buttons leave the form a short window, so it can take several swipes.
         func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
             var swipes = 0
-            while !(element.waitForExistence(timeout: 2) && element.isHittable), swipes < 5 {
+            while !(element.waitForExistence(timeout: 2) && element.isHittable), swipes < 10 {
                 app.swipeUp()
                 swipes += 1
             }
