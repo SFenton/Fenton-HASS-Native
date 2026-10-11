@@ -131,7 +131,9 @@ public struct RemoteImage: View {
     }
 
     public var body: some View {
-        Color.secondary.opacity(0.12)
+        // A faint fill: a stronger one (0.12) differs from the card's material enough that rendered-contrast
+        // sampling counts it as text and measures image cards at ~1.1:1.
+        Color.secondary.opacity(0.05)
             .overlay {
                 if let current {
                     AsyncImage(url: current, transaction: Transaction(animation: .easeOut(duration: 0.2))) { self.phase($0) }

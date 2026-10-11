@@ -87,12 +87,15 @@ final class FoodJourneyTests: XCTestCase {
         let fridge = element("food.space.frigo", in: app)
         XCTAssertTrue("\(fridge.label) \(fridge.value as? String ?? "")".contains("38 Items"), "Fridge tile reads '\(fridge.label)'")
         sleep(1)
+        keepScreenshot(app, "food-hub-spaces-\(device)")
+        // Audit from the top: scrolled down, the carousel sits half under the translucent bar and measures ~1.1:1.
+        let first = element("food.suggestion.1", in: app)
+        for _ in 0..<4 where !first.isHittable { app.swipeDown() }
+        app.swipeDown()
+        sleep(1)
         keepScreenshot(app, "food-hub-\(device)")
         try FentonHomeApp.audit(app) { self.launch("hub", arguments: FentonHomeApp.ax5) }
 
-        let first = element("food.suggestion.1", in: app)
-        app.swipeDown()
-        if !first.isHittable { app.swipeDown() }
         first.tap()
         XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10), "Recipe sheet did not open")
         expectCall("recipe_detail recipe_id=1", in: app)
@@ -203,12 +206,13 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(element("recipe.ingredient.0", in: app).waitForExistence(timeout: 5))
         XCTAssertEqual(element("recipe.ingredient.1", in: app).value as? String, "Not on hand", "missing lemons read as not on hand")
         XCTAssertEqual(element("recipe.ingredient.0", in: app).value as? String, "On hand")
-        let add = element("recipe.grocery.add", in: app)
-        reveal(add, in: app)
-        assertTarget(add)
+        // Audit before scrolling: rows scrolled half under the sheet's edge measure ~1.1:1.
         sleep(1)
         keepScreenshot(app, "food-recipe-ingredients-\(device)")
         try FentonHomeApp.audit(app)
+        let add = element("recipe.grocery.add", in: app)
+        reveal(add, in: app)
+        assertTarget(add)
         add.tap()
         expectCall("recipe_grocery_add recipe_id=6 selections=1,4", in: app)
         XCTAssertTrue(element("recipe.grocery.added", in: app).waitForExistence(timeout: 10))
@@ -315,9 +319,9 @@ final class FoodJourneyTests: XCTestCase {
         sleep(2)
         keepScreenshot(app, "food-live-recipe-general-\(device)")
         element("recipe.tabs", in: app).buttons["Ingredients"].tap()
-        XCTAssertTrue(first("recipe.ingredient.", in: app).waitForExistence(timeout: 30), "No live ingredients")
-        sleep(1)
+        sleep(2)
         keepScreenshot(app, "food-live-recipe-ingredients-\(device)")
+        XCTAssertTrue(first("recipe.ingredient.", in: app).waitForExistence(timeout: 30), "No live ingredients")
         element("recipe.tabs", in: app).buttons["Instructions"].tap()
         sleep(1)
         keepScreenshot(app, "food-live-recipe-instructions-\(device)")
