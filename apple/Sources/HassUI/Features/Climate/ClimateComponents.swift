@@ -144,10 +144,12 @@ struct ClimateOpenerTile: View {
     var action: () -> Void
 
     var body: some View {
+        // Disabled, not unavailable: VoiceOver reads the subtitle ("Enable Track Selected Rooms first") and
+        // "dimmed", rather than "Unavailable". `.disabled` outside so assistive technologies report it.
         GlassTile(title: title, subtitle: subtitle, symbol: ClimateStyle.symbol(icon), tint: ClimateStyle.control,
-                  isActive: false, isUnavailable: isDisabled, kind: .navigate, action: action)
-            // `.disabled` outside too, so assistive technologies report it (see `RemoteGlassTile`).
+                  isActive: false, kind: .navigate, action: action)
             .disabled(isDisabled)
+            .opacity(isDisabled ? 0.5 : 1)
     }
 }
 
@@ -270,14 +272,15 @@ struct ClimateOptionPicker: View {
     var tint: (String) -> Color? = { _ in nil }
     var onSelect: (String) -> Void
     @Environment(\.dismiss) private var dismiss
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
+    /// Wide enough for "Heat/Cool" with its icon; one column on iPhone.
+    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 200
     /// Follows the choice at once; the parent's value catches up through the controller.
     @State private var choice: String?
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 3) {
+                DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 2) {
                     ForEach(options) { option in
                         let isSelected = (choice ?? selected) == option.value
                         RemoteGlassTile(
@@ -298,8 +301,7 @@ struct ClimateOptionPicker: View {
                 }
                 .padding(HassTokens.Spacing.l)
             }
-            .navigationTitle(title)
-            .inlineNavigationTitle()
+            .climateSheetTitle(title)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }

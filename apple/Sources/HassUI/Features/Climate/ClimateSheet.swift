@@ -72,14 +72,12 @@ struct ClimateSheet: View {
                 }
             }
             .accessibilityIdentifier("climate.sheet.\(tab.rawValue)")
-            .navigationTitle(ClimateConfig.sheetTitle)
-            .inlineNavigationTitle()
+            .climateSheetTitle(ClimateConfig.sheetTitle)
             .toolbar { doneButton }
             .navigationDestination(for: ClimateRoute.self) { route in
                 ClimateSheetScroll { detail(route) }
                     .accessibilityIdentifier("climate.detail")
-                    .navigationTitle(route.title)
-                    .inlineNavigationTitle()
+                    .climateSheetTitle(route.title)
                     .toolbar { doneButton }
             }
         }
@@ -99,6 +97,47 @@ struct ClimateSheet: View {
         case let .eco(option): EcoOptionDetail(controller: controller, option: option)
         case let .tracking(page): TrackingRoomsDetail(controller: controller, page: page)
         }
+    }
+}
+
+extension View {
+    /// The sheet's title as a wrapping heading at the top of the content instead of an inline bar title, which
+    /// truncated "Thermostat · Advanced Controls" and "Eco Mode Critical Tracking" beside Back and Done on iPhone
+    /// and can't grow with Dynamic Type. `navigationTitle` still names the page for Back and VoiceOver.
+    /// HIG: Navigation bars, Typography (Dynamic Type).
+    @ViewBuilder
+    func climateSheetTitle(_ title: String) -> some View {
+        #if os(iOS)
+        if #available(iOS 18, *) {
+            navigationTitle(title)
+                .inlineNavigationTitle()
+                .toolbar(removing: .title)
+                .safeAreaInset(edge: .top, spacing: 0) { ClimateSheetHeading(title: title) }
+        } else {
+            navigationTitle(title).inlineNavigationTitle()
+        }
+        #else
+        navigationTitle(title)
+        #endif
+    }
+}
+
+/// The page heading ``View/climateSheetTitle(_:)`` draws.
+struct ClimateSheetHeading: View {
+    var title: String
+
+    var body: some View {
+        Text(title)
+            .font(.title3.weight(.bold))
+            .foregroundStyle(HassTokens.Ink.primary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 720, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, HassTokens.Spacing.l)
+            .padding(.vertical, HassTokens.Spacing.s)
+            .background(.bar)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("climate.sheetHeading")
     }
 }
 
@@ -154,6 +193,7 @@ struct ClimateRoomDetail: View {
     var body: some View {
         ClimateThermostatDial(entityId: room.climateEntityId, title: room.title, size: .modal, caller: controller.caller)
             .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("climate.roomDial")
         ClimateSection(title: room.ventSectionTitle) {
             DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 3) {

@@ -23,22 +23,26 @@ struct ClimateGallery: View {
     }
 
     var body: some View {
-        ClimatePage(controller: controller, initialSheet: initialSheet)
+        // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
+        let clean = MediaRemoteGallery.isClean
+        ClimatePage(controller: controller, initialSheet: initialSheet,
+                    sheetAccessory: clean ? nil : AnyView(lastCall.background(.bar)))
             .environment(store)
             .safeAreaInset(edge: .bottom) {
-                // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
-                if !MediaRemoteGallery.isClean {
-                    Text("Last call: \(recorder.lastCall)")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .lineLimit(3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal)
-                        .padding(.vertical, 4)
-                        .background(.bar)
-                        .accessibilityIdentifier("gallery.lastCall")
-                }
+                if !clean { lastCall.background(.bar) }
             }
+    }
+
+    /// The last service call, which journeys read to check what a control sent.
+    private var lastCall: some View {
+        Text("Last call: \(recorder.lastCall)")
+            .font(.caption.monospaced())
+            .foregroundStyle(HassTokens.Ink.secondary)
+            .lineLimit(3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal)
+            .padding(.vertical, 4)
+            .accessibilityIdentifier("gallery.lastCall")
     }
 
     /// A tab name or a route token.

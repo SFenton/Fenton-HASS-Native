@@ -44,7 +44,8 @@ apple/Tests/**                                             → tests for your ow
 | Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
-| Security, Climate, Chores | Placeholders |
+| Climate | Page, Thermostat Hub pickers and the advanced-controls sheet (Rooms, Automation, Tracking and their detail pages); gallery `FENTON_GALLERY=climate` |
+| Security, Chores | Placeholders |
 | Settings | Home Assistant settings modal (server, account, signed-in Settings/Profile web pages, Sign Out); household topics not ported |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | Policy and tests; split layout not built yet |

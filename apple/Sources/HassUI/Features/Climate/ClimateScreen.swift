@@ -23,12 +23,15 @@ struct ClimateSheetRequest: Identifiable, Hashable {
 struct ClimatePage: View {
     @State private var controller: ClimateController
     @State private var sheet: ClimateSheetRequest?
+    /// Shown above the sheet's content (the gallery's last-call line).
+    private let sheetAccessory: AnyView?
     @ScaledMetric(relativeTo: .subheadline) private var minEntryWidth: CGFloat = 240
     @ScaledMetric(relativeTo: .subheadline) private var minContactWidth: CGFloat = 160
 
-    init(controller: ClimateController, initialSheet: ClimateSheetRequest? = nil) {
+    init(controller: ClimateController, initialSheet: ClimateSheetRequest? = nil, sheetAccessory: AnyView? = nil) {
         _controller = State(initialValue: controller)
         _sheet = State(initialValue: initialSheet)
+        self.sheetAccessory = sheetAccessory
     }
 
     var body: some View {
@@ -75,6 +78,7 @@ struct ClimatePage: View {
         }
         .sheet(item: $sheet) { request in
             ClimateSheet(controller: controller, request: request)
+                .safeAreaInset(edge: .top) { sheetAccessory }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
@@ -94,6 +98,7 @@ struct ClimatePage: View {
                 commitEntityIds: { targets in Self.wholeHomeCommitIds(dialEntityId: dialEntityId, targets: targets) }
             )
             .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("climate.wholeHome")
             VStack(spacing: HassTokens.Spacing.m) {
                 ThermostatHubPill(controller: controller)
