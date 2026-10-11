@@ -59,7 +59,8 @@ public struct GlassTile: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityValue(accessibilityValue)
-        .accessibilityAddTraits(kind == .toggle ? .isToggle : [])
+        // `children: .ignore` replaces the Button's own element, so the role is restated here.
+        .accessibilityAddTraits(kind == .toggle ? [.isButton, .isToggle] : .isButton)
     }
 
     private var accessibilityValue: String {
