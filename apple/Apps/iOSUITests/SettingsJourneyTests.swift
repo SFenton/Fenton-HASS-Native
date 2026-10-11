@@ -174,35 +174,21 @@ final class SettingsJourneyTests: XCTestCase {
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
             let app = try FentonHomeApp.launchSignedIn()
             showSettingsTab(app)
-            keep(app, "settings-\(suffix)")
+            keepScreenshot(app, "settings-\(suffix)")
             openSettings(app)
             _ = app.descendants(matching: .any)["haSettings.role"].waitForExistence(timeout: 10)
-            keep(app, "ha-settings-\(suffix)")
+            keepScreenshot(app, "ha-settings-\(suffix)")
             signOutRow(app).tap()
             XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
             sleep(1)
-            keep(app, "ha-signout-\(suffix)")
+            keepScreenshot(app, "ha-signout-\(suffix)")
             cancelSignOut(app)
             reveal(app.buttons["haSettings.open.settings"], in: app).tap()
             _ = app.webViews.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'Devices'")).firstMatch
                 .waitForExistence(timeout: 30)
             sleep(1)
-            keep(app, "ha-web-config-\(suffix)")
+            keepScreenshot(app, "ha-web-config-\(suffix)")
         }
         XCUIDevice.shared.orientation = .portrait
-    }
-
-    private func keep(_ app: XCUIApplication, _ name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
-        // Same host hand-off as HomeJourneyTests: the lit panel of an unfolded Duo is captured by the host.
-        guard let folder = ProcessInfo.processInfo.environment["FENTON_CAPTURE_DIR"], !folder.isEmpty else { return }
-        let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
-        let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
-        FileManager.default.createFile(atPath: ready.path, contents: nil)
-        let deadline = Date().addingTimeInterval(30)
-        while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
     }
 }
