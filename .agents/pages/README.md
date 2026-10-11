@@ -7,7 +7,7 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Page | Web route | Spec | Native status |
 |---|---|---|---|
 | Home | `/at-a-glance/overview` | [home/spec.md](home/spec.md) | Scaffolded ([ios.md](home/ios.md)) |
-| Security | `/at-a-glance/security` | TODO | Placeholder |
+| Security | `/at-a-glance/security` | [security/spec.md](security/spec.md) | Ported ([ios.md](security/ios.md)) |
 | Climate | `/at-a-glance/thermostat` | TODO | Placeholder |
 | Chores | `/at-a-glance/chores` | TODO | Placeholder |
 | Settings | `/at-a-glance/settings` | TODO | Home Assistant settings modal only ([ios.md](settings/ios.md)) |

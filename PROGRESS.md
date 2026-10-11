@@ -21,6 +21,10 @@ apple/Sources/HassCore/Config/MediaRemote*.swift,
 apple/Sources/HassCore/MediaRemote/,
 apple/Sources/HassUI/Features/MediaRemote/,
 apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote lane (claude/project-thread-go5jtz)
+apple/Sources/HassCore/Config/SecurityConfig.swift,
+apple/Sources/HassCore/Security/,
+apple/Sources/HassUI/Features/Security/,
+apple/Sources/HassUI/Features/Gallery/SecurityGallery.swift → security lane (claude/project-thread-f1gx1e)
 apple/Tests/**                                             → tests for your own files only
 .agents/pages/<id>/, .agents/controls/<id>/                → the lane for that page/control
 .agents/** (everything else)                               → orchestrator
@@ -44,7 +48,8 @@ apple/Tests/**                                             → tests for your ow
 | Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
-| Security, Climate, Chores | Placeholders |
+| Security | Alarm modes (disarm confirms), front door lock, garage doors (command state machine), hidden Vehicle tile, cameras; gallery `FENTON_GALLERY=security` |
+| Climate, Chores | Placeholders |
 | Settings | Home Assistant settings modal (server, account, signed-in Settings/Profile web pages, Sign Out); household topics not ported |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | Policy and tests; split layout not built yet |

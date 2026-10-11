@@ -47,6 +47,15 @@ public enum SymbolMap {
         "mdi:movie-open": "film",
         "mdi:lightbulb-multiple": "lightbulb.2",
         "mdi:gauge": "gauge.with.dots.needle.50percent",
+        "mdi:shield-home": "house",
+        "mdi:shield-moon": "moon",
+        "mdi:shield-off": "shield.slash",
+        "mdi:shield-alert": "exclamationmark.shield",
+        "mdi:lock": "lock",
+        "mdi:lock-open": "lock.open",
+        "mdi:car-door-lock": "car",
+        "mdi:garage": "door.garage.closed",
+        "mdi:garage-open": "door.garage.open",
     ]
 
     /// The SF Symbol name for an MDI icon.
