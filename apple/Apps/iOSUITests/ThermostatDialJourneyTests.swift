@@ -21,8 +21,18 @@ final class ThermostatDialJourneyTests: XCTestCase {
         card.descendants(matching: .any)["thermostatDial.handle.\(name)"].firstMatch
     }
 
+    /// Scrolls until all of `element` is on screen (or the page ends). Drags along the leading edge,
+    /// outside every dial, so the scroll never grabs a handle.
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<8 where !element.isHittable { app.swipeUp() }
+        let window = app.windows.firstMatch
+        let bottom = window.frame.maxY - 24
+        for _ in 0..<12 where element.frame.maxY > bottom || !element.isHittable {
+            let before = element.frame.minY
+            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.75))
+            let distance = Swift.min(element.frame.maxY - bottom + 24, window.frame.height * 0.45)
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -Swift.max(distance, 60))))
+            if element.frame.minY == before { break }
+        }
         XCTAssertTrue(element.isHittable, "\(element) never came into view")
     }
 
@@ -108,10 +118,7 @@ final class ThermostatDialJourneyTests: XCTestCase {
         for id in ["heating", "range", "cooling", "off", "unavailable"] {
             scrollTo(card(id, in: fresh), in: fresh)
             sleep(1)
-            let shot = XCTAttachment(screenshot: fresh.screenshot())
-            shot.name = "thermostat-dial-\(FentonHomeApp.family)-\(orientation)-\(id)"
-            shot.lifetime = .keepAlways
-            add(shot)
+            FentonHomeApp.keepScreenshot(of: fresh, named: "thermostat-\(orientation)-\(id)", in: self)
         }
     }
 }
