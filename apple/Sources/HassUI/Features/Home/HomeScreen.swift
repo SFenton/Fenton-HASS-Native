@@ -5,6 +5,8 @@ import SwiftUI
 /// Home (web At a Glance overview). Spec: `.agents/pages/home/spec.md`.
 struct HomeScreen: View {
     @Environment(EntityStore.self) private var store
+    @Environment(HassConnection.self) private var connection: HassConnection?
+    @Environment(\.roomServiceCaller) private var callerOverride
     @State private var sheet: HomeSheet?
 
     var body: some View {
@@ -25,6 +27,7 @@ struct HomeScreen: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) { FreshnessIndicator() }
         }
+        .quickLinks(caller: callerOverride ?? connection)
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case let .chip(kind):

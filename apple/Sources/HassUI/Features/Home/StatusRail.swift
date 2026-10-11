@@ -31,23 +31,8 @@ struct StatusChipView: View {
         let summary = ScreenshotPrivacy.isRedacting && [.security, .occupancy].contains(chip.sheet)
             ? "Hidden" : HomeConfig.summary(for: chip) { store.entity($0).state }
         let active = store.entity(chip.entityId).state?.isActive ?? false
-        Button(action: action) {
-            HStack(spacing: HassTokens.Spacing.s) {
-                Image(systemName: SymbolMap.symbol(for: chip.icon))
-                    .symbolVariant(active ? .fill : .none)
-                    .foregroundStyle(active ? tint : .secondary)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(chip.title).font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
-                    Text(summary).font(.caption).foregroundStyle(HassTokens.Ink.secondary).monospacedDigit()
-                }
-            }
-            .padding(.horizontal, HassTokens.Spacing.m)
-            .frame(minHeight: HassTokens.minTarget + 8)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(chip.title), \(summary)")
-        .accessibilityHint("Opens \(chip.title)")
+        StatusChipButton(title: chip.title, summary: summary, symbol: SymbolMap.symbol(for: chip.icon), tint: tint,
+                         isActive: active, action: action)
         .accessibilityIdentifier("home.chip.\(chip.sheet.rawValue)")
     }
 
@@ -59,5 +44,44 @@ struct StatusChipView: View {
         case .presence: HassTokens.Tint.presence
         case .contact: HassTokens.Tint.contact
         }
+    }
+}
+
+/// The chip drawing and semantics shared by the Home rail and room rails (pattern: `.agents/patterns/status-rail.md`).
+struct StatusChipButton: View {
+    var title: String
+    var summary: String
+    var symbol: String
+    var tint: Color
+    var isActive: Bool
+    /// `nil` draws an inert chip (no sheet), which is not a button.
+    var action: (() -> Void)?
+
+    var body: some View {
+        if let action {
+            Button(action: action) { face }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(title), \(summary)")
+                .accessibilityHint("Opens \(title)")
+        } else {
+            face
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(title), \(summary)")
+        }
+    }
+
+    private var face: some View {
+        HStack(spacing: HassTokens.Spacing.s) {
+            Image(systemName: symbol)
+                .symbolVariant(isActive ? .fill : .none)
+                .foregroundStyle(isActive ? tint : .secondary)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
+                Text(summary).font(.caption).foregroundStyle(HassTokens.Ink.secondary).monospacedDigit()
+            }
+        }
+        .padding(.horizontal, HassTokens.Spacing.m)
+        .frame(minHeight: HassTokens.minTarget + 8)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
     }
 }

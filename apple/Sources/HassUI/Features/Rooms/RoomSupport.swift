@@ -1,0 +1,69 @@
+import HassCore
+import HassDesign
+import SwiftUI
+
+// MARK: - Service seam
+
+/// A service caller that stands in for the app's connection (the debug gallery's recorder, hosted tests).
+private struct RoomServiceCallerKey: EnvironmentKey {
+    static let defaultValue: (any HassServiceCalling)? = nil
+}
+
+/// The signed-in household member, for personalized card titles ("Your Side").
+private struct HouseholdViewerKey: EnvironmentKey {
+    static let defaultValue: HouseholdResident? = nil
+}
+
+extension EnvironmentValues {
+    /// Overrides where room pages send service calls; `nil` uses the app's ``HassConnection``.
+    var roomServiceCaller: (any HassServiceCalling)? {
+        get { self[RoomServiceCallerKey.self] }
+        set { self[RoomServiceCallerKey.self] = newValue }
+    }
+
+    /// The household member using the app, when known.
+    var householdViewer: HouseholdResident? {
+        get { self[HouseholdViewerKey.self] }
+        set { self[HouseholdViewerKey.self] = newValue }
+    }
+}
+
+// MARK: - Colors
+
+extension RoomTone {
+    /// The tint for an active tile of this tone (web `GlassTile` tone colors).
+    var color: Color {
+        switch self {
+        case .light: HassTokens.Tint.light
+        case .air: Color(red: 0.26, green: 0.63, blue: 0.28)
+        case .climate: HassTokens.Tint.climate
+        case .presence: HassTokens.Tint.presence
+        case .contact: HassTokens.Tint.contact
+        case .vacuum: Color(red: 0.40, green: 0.33, blue: 0.80)
+        case .media: RemoteStyle.media
+        case .power: HassTokens.Tint.presence
+        case .warning: Color(red: 0.81, green: 0.45, blue: 0.15)
+        case .neutral: Color(red: 0.45, green: 0.47, blue: 0.50)
+        }
+    }
+}
+
+extension RoomColor {
+    /// The SwiftUI color, alpha included.
+    var color: Color { Color(red: red, green: green, blue: blue).opacity(opacity) }
+}
+
+// MARK: - Section header
+
+/// A room section's title (web `SectionHeader`): a heading for VoiceOver's rotor.
+struct RoomSectionHeader: View {
+    var title: String
+
+    var body: some View {
+        Text(title)
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(HassTokens.Ink.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+}

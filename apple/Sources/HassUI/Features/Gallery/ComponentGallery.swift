@@ -8,6 +8,7 @@ public struct ComponentGallery: View {
     public enum Page: String, CaseIterable, Sendable {
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
+        case rooms
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -25,10 +26,16 @@ public struct ComponentGallery: View {
     public init(page: Page) { self.page = page }
 
     public var body: some View {
-        NavigationStack {
-            switch page {
-            case .mediaRemote: MediaRemoteGallery()
-            case .thermostatDial: ThermostatDialGallery()
+        if page == .rooms {
+            // Owns its stack so pushed rooms inherit the fixture store and caller.
+            RoomsGallery()
+        } else {
+            NavigationStack {
+                switch page {
+                case .mediaRemote: MediaRemoteGallery()
+                case .thermostatDial: ThermostatDialGallery()
+                case .rooms: EmptyView()
+                }
             }
         }
     }
