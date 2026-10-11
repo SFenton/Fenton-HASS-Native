@@ -5,10 +5,21 @@ import XCTest
 /// screenshots on iPhone, iPhone Duo and iPad (`.agents/pages/food/spec.md`).
 @MainActor
 final class FoodJourneyTests: XCTestCase {
-    override func setUp() { continueAfterFailure = false }
+    /// `TEST_RUNNER_FENTON_ORIENTATION=landscape` runs every journey in landscape (iPad and unfolded Duo
+    /// screenshots per layout); otherwise portrait.
+    private static var orientation: UIDeviceOrientation {
+        ProcessInfo.processInfo.environment["FENTON_ORIENTATION"] == "landscape" ? .landscapeLeft : .portrait
+    }
+
+    override func setUp() {
+        continueAfterFailure = false
+        MainActor.assumeIsolated {
+            if FentonHomeApp.family != .iPhone { XCUIDevice.shared.orientation = Self.orientation }
+        }
+    }
     override func tearDown() {
         MainActor.assumeIsolated {
-            if FentonHomeApp.family != .iPhone { XCUIDevice.shared.orientation = .portrait }
+            if FentonHomeApp.family != .iPhone { XCUIDevice.shared.orientation = Self.orientation }
         }
     }
 
@@ -17,8 +28,8 @@ final class FoodJourneyTests: XCTestCase {
     private var device: String {
         switch FentonHomeApp.family {
         case .iPhone: "iphone"
-        case .iPhoneDuo: "duo"
-        case .iPad: "ipad"
+        case .iPhoneDuo: Self.orientation == .portrait ? "duo" : "duo-landscape"
+        case .iPad: Self.orientation == .portrait ? "ipad" : "ipad-landscape"
         }
     }
 
