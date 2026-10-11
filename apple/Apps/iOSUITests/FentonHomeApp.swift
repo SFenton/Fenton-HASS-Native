@@ -259,6 +259,9 @@ enum FentonHomeApp {
     /// contrast: accept it only when no scroll view's visible frame fully contains the element.
     private static func isScrolledOutOfView(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         let frame = element.frame
+        // Under the translucent tab bar (the bottom of a scrolled page): covered, not low contrast.
+        let tabBar = app.tabBars.firstMatch
+        if tabBar.exists, !tabBar.frame.isEmpty, tabBar.frame.intersects(frame) { return true }
         // Below the window's edge (a long sheet column in iPad landscape): the capture holds only part of it.
         let window = app.windows.firstMatch.frame
         if !window.isEmpty, !window.insetBy(dx: -1, dy: -1).contains(frame) { return true }

@@ -306,7 +306,8 @@ struct ClimateOptionPicker: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
         }
-        .presentationDetents([.medium, .large])
+        // Full height like every control grid (modal-sheet pattern); at the medium detent the heading clipped.
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 }

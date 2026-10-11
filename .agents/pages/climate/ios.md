@@ -20,7 +20,7 @@
 - Tabs use the shared `SheetTabPicker` (segmented; a menu at accessibility sizes). HIG: Segmented controls.
 - Dials reuse `ClimateThermostatDial` (page size for Whole Home, modal size in a room), passing `action` for the Whole Home action line and the controller's `caller`. HIG: Accessibility › VoiceOver (adjustable handles).
 - Tiles reuse `GlassTile` / `RemoteGlassTile`: toggles are switches with On/Off values, eco options and picker choices are selected, contact and vent cards are read-only (not buttons), openers have a chevron. Predictive Comfort's power button is a separate 52 pt button labelled "Turn off Predictive Comfort". HIG: Toggles, Buttons.
-- The hub's HVAC mode picker is a small sheet of option tiles (`.medium`/`.large`) that stays open after a choice, matching the web; the fan picker closes. A `Menu` would close on selection. HIG: Pickers, Sheets.
+- The hub's HVAC mode picker is a full-height sheet of option tiles that stays open after a choice, matching the web; the fan picker closes. A `Menu` would close on selection. HIG: Pickers, Sheets.
 - Grids use `DynamicGridLayout` with `@ScaledMetric` minimum widths, so two-column grids drop to one at AX5 instead of clipping. The sheet column caps at 720 pt on iPad (HIG: Layout, readable width).
 - The hub pill stacks its pickers under its title at accessibility sizes.
 

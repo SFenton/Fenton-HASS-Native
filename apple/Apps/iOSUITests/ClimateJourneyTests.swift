@@ -40,7 +40,9 @@ final class ClimateJourneyTests: XCTestCase {
             if element.exists, element.isHittable, element.frame.maxY <= bottom, element.frame.minY >= top { break }
             let above = element.exists && element.frame.minY < top
             let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: above ? 0.35 : 0.7))
-            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: (above ? 1 : -1) * window.frame.height * 0.2)))
+            // Slow drag with a hold so the scroll doesn't coast: a tap during momentum only stops the scroll.
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: (above ? 1 : -1) * window.frame.height * 0.2)),
+                        withVelocity: .slow, thenHoldForDuration: 0.3)
         }
         XCTAssertTrue(element.isHittable, "\(element) never came into view", file: file, line: line)
         return element
