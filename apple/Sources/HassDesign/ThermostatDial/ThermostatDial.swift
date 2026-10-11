@@ -129,7 +129,9 @@ public struct ThermostatDial: View {
     // MARK: - Readout
 
     private func readout(side: CGFloat) -> some View {
-        VStack(spacing: 4) {
+        // Read once here: the alignment guide's closure is Sendable and cannot touch main-actor state.
+        let unitRaise = primarySize * 0.42
+        return VStack(spacing: 4) {
             Text(configuration.actionText)
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(HassTokens.Ink.secondary)
@@ -143,7 +145,7 @@ public struct ThermostatDial: View {
                     // empty part (iPad, 2026-10-10).
                     Text(unit)
                         .font(.system(size: primarySize * 0.32, weight: .bold))
-                        .alignmentGuide(.firstTextBaseline) { $0[.firstTextBaseline] + primarySize * 0.42 }
+                        .alignmentGuide(.firstTextBaseline) { $0[.firstTextBaseline] + unitRaise }
                 }
             }
             .foregroundStyle(HassTokens.Ink.primary)
