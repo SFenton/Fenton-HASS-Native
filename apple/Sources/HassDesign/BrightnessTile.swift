@@ -24,13 +24,11 @@ public struct BrightnessTile: View {
     public var onBrightness: (Int) -> Void
 
     /// VoiceOver adjust step, in percent.
-    public static let step = 10
+    public nonisolated static let step = 10
     /// Optimistic values give way to live state after this long even if the server never echoes them.
     static let pendingTimeout: Duration = .seconds(4)
 
-    @State private var dragPercent: Double?
-    @State private var pendingPercent: Int?
-    @State private var dragAxis: DragAxis?
+    @State private var interaction = BrightnessInteraction()
     @State private var pendingTask: Task<Void, Never>?
     @State private var lastDragEnd = ContinuousClock.now - .seconds(1)
 
@@ -58,7 +56,7 @@ public struct BrightnessTile: View {
     // MARK: - Body
 
     public var body: some View {
-        let shown = shownPercent
+        let shown = interaction.shown(live: percent)
         return GlassTileFace(
             title: title,
             subtitle: Self.status(percent: shown, isUnavailable: isUnavailable),
@@ -84,7 +82,7 @@ public struct BrightnessTile: View {
         .allowsHitTesting(!isUnavailable)
         .animation(.snappy(duration: 0.2), value: shown)
         // Any live report replaces the optimistic value (web `useOptimisticState`).
-        .onChange(of: percent) { pendingPercent = nil }
+        .onChange(of: percent) { interaction.pendingPercent = nil }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityValue(Self.status(percent: shown, isUnavailable: isUnavailable))
@@ -92,83 +90,124 @@ public struct BrightnessTile: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { flip() }
         .accessibilityAdjustableAction { direction in
-            guard !isUnavailable else { return }
             switch direction {
-            case .increment: commit(Self.stepped(shown, by: Self.step))
-            case .decrement: commit(Self.stepped(shown, by: -Self.step))
+            case .increment: send(interaction.adjust(by: Self.step, live: percent, isUnavailable: isUnavailable))
+            case .decrement: send(interaction.adjust(by: -Self.step, live: percent, isUnavailable: isUnavailable))
             @unknown default: break
             }
         }
     }
 
-    // MARK: - State
-
-    private var shownPercent: Int {
-        if let dragPercent { return Int(dragPercent.rounded()) }
-        return pendingPercent ?? percent
-    }
+    // MARK: - Intents
 
     private func flip() {
-        guard !isUnavailable else { return }
-        let on = shownPercent == 0
-        // Optimistic: off shows 0; on shows full until Home Assistant reports the restored level.
-        hold(on ? 100 : 0)
-        onPower(on)
+        send(interaction.flip(live: percent, isUnavailable: isUnavailable))
     }
 
-    private func commit(_ value: Int) {
-        guard value != shownPercent else { return }
-        hold(value)
-        onBrightness(value)
-    }
-
-    /// Shows `value` until the live percent catches up or ``pendingTimeout`` passes.
-    private func hold(_ value: Int) {
-        pendingPercent = value
+    /// Passes `intent` to the caller and drops the optimistic value after ``pendingTimeout``.
+    private func send(_ intent: BrightnessInteraction.Intent?) {
+        guard let intent else { return }
         pendingTask?.cancel()
         pendingTask = Task { @MainActor in
             try? await Task.sleep(for: Self.pendingTimeout)
             guard !Task.isCancelled else { return }
-            pendingPercent = nil
+            interaction.pendingPercent = nil
+        }
+        switch intent {
+        case .power(let on): onPower(on)
+        case .brightness(let value): onBrightness(value)
         }
     }
 
     private func drag(width: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 6)
             .onChanged { value in
-                if dragAxis == nil {
-                    dragAxis = abs(value.translation.width) >= abs(value.translation.height) ? .horizontal : .vertical
-                }
-                guard dragAxis == .horizontal else { return }
-                dragPercent = Self.percent(atX: value.location.x, width: width)
+                interaction.dragChanged(translation: value.translation, x: value.location.x, width: width)
             }
             .onEnded { value in
-                defer { dragAxis = nil }
-                guard dragAxis == .horizontal, dragPercent != nil else { return }
-                dragPercent = nil
-                lastDragEnd = .now
-                commit(Int(Self.percent(atX: value.location.x, width: width).rounded()))
+                let intent = interaction.dragEnded(x: value.location.x, width: width, live: percent)
+                if intent != nil { lastDragEnd = .now }
+                send(intent)
             }
     }
 
     // MARK: - Pure helpers
 
-    enum DragAxis { case horizontal, vertical }
-
     /// Percent for a touch at `x` across a tile `width` wide, clamped to 0...100.
-    static func percent(atX x: CGFloat, width: CGFloat) -> Double {
+    nonisolated static func percent(atX x: CGFloat, width: CGFloat) -> Double {
         guard width > 0 else { return 0 }
         return min(100, max(0, Double(x / width) * 100))
     }
 
     /// `value` moved by `delta`, clamped to 0...100.
-    static func stepped(_ value: Int, by delta: Int) -> Int {
+    nonisolated static func stepped(_ value: Int, by delta: Int) -> Int {
         min(100, max(0, value + delta))
     }
 
     /// The tile's status line and accessibility value: `Off`, `45%` or `Unavailable`.
-    static func status(percent: Int, isUnavailable: Bool) -> String {
+    nonisolated static func status(percent: Int, isUnavailable: Bool) -> String {
         if isUnavailable { return "Unavailable" }
         return percent > 0 ? "\(percent)%" : "Off"
+    }
+}
+
+/// The tile's interaction state, kept apart from the view so tap, drag and adjust are unit-testable.
+///
+/// It holds the drag in progress and the optimistic value shown until Home Assistant reports back,
+/// and turns gestures into the intents the tile passes to its caller.
+struct BrightnessInteraction: Equatable {
+    /// What the user asked for.
+    enum Intent: Equatable {
+        case power(Bool)
+        case brightness(Int)
+    }
+
+    enum DragAxis { case horizontal, vertical }
+
+    var dragPercent: Double?
+    var pendingPercent: Int?
+    var dragAxis: DragAxis?
+
+    /// The percent to draw: the drag in progress, else the optimistic value, else `live`.
+    func shown(live: Int) -> Int {
+        if let dragPercent { return Int(dragPercent.rounded()) }
+        return pendingPercent ?? live
+    }
+
+    /// Tap: off turns on (optimistically full until the restored level arrives), on turns off.
+    mutating func flip(live: Int, isUnavailable: Bool) -> Intent? {
+        guard !isUnavailable else { return nil }
+        let on = shown(live: live) == 0
+        pendingPercent = on ? 100 : 0
+        return .power(on)
+    }
+
+    /// VoiceOver adjust by `delta` percent, clamped; `nil` when nothing changes.
+    mutating func adjust(by delta: Int, live: Int, isUnavailable: Bool) -> Intent? {
+        guard !isUnavailable else { return nil }
+        return commit(BrightnessTile.stepped(shown(live: live), by: delta), live: live)
+    }
+
+    /// The first movement picks the axis; only a horizontal drag sets the level.
+    mutating func dragChanged(translation: CGSize, x: CGFloat, width: CGFloat) {
+        if dragAxis == nil {
+            dragAxis = abs(translation.width) >= abs(translation.height) ? .horizontal : .vertical
+        }
+        guard dragAxis == .horizontal else { return }
+        dragPercent = BrightnessTile.percent(atX: x, width: width)
+    }
+
+    /// Release: a horizontal drag commits the level under the finger; a vertical one does nothing.
+    mutating func dragEnded(x: CGFloat, width: CGFloat, live: Int) -> Intent? {
+        defer { dragAxis = nil }
+        guard dragAxis == .horizontal, dragPercent != nil else { return nil }
+        dragPercent = nil
+        return commit(Int(BrightnessTile.percent(atX: x, width: width).rounded()), live: live)
+    }
+
+    private mutating func commit(_ value: Int, live: Int) -> Intent? {
+        guard value != shown(live: live) else { return nil }
+        pendingPercent = value
+        return .brightness(value)
     }
 }
