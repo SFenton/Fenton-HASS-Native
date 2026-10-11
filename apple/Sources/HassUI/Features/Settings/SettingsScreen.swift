@@ -2,15 +2,23 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// The Settings tab. Until the household settings topics (Admin, Guests, Vacation…) are ported, it
-/// lists only the web's last item, Home Assistant Settings (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`),
-/// which opens ``HomeAssistantSettingsView`` as a full-screen modal (`.agents/design/apple/split-view.md`).
+/// The Settings tab: the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`; Vacation and
+/// To-Do land with their own pages), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
+/// as a full-screen modal (`.agents/design/apple/split-view.md`).
 struct SettingsScreen: View {
     @State private var showsHomeAssistant = false
 
     var body: some View {
         List {
             Section {
+                ForEach(HouseholdSettingsPage.allCases) { page in
+                    NavigationLink {
+                        HouseholdSettingsDestination(page: page)
+                    } label: {
+                        SettingsLinkRow(title: page.rowTitle, subtitle: page.subtitle, symbol: page.symbol, showsChevron: false)
+                    }
+                    .accessibilityIdentifier("settings.topic.\(page.rawValue)")
+                }
                 Button { showsHomeAssistant = true } label: {
                     SettingsLinkRow(
                         title: HomeAssistantSettingsView.linkTitle,

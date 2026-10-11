@@ -21,6 +21,10 @@ apple/Sources/HassCore/Config/MediaRemote*.swift,
 apple/Sources/HassCore/MediaRemote/,
 apple/Sources/HassUI/Features/MediaRemote/,
 apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote lane (claude/project-thread-go5jtz)
+apple/Sources/HassCore/Config/HouseholdSettingsConfig.swift,
+apple/Sources/HassCore/Settings/,
+apple/Sources/HassUI/Features/Settings/Household/,
+apple/Sources/HassUI/Features/Gallery/HouseholdSettingsGallery.swift → household settings lane (claude/project-thread-fww01h)
 apple/Tests/**                                             → tests for your own files only
 .agents/pages/<id>/, .agents/controls/<id>/                → the lane for that page/control
 .agents/** (everything else)                               → orchestrator
@@ -45,7 +49,7 @@ apple/Tests/**                                             → tests for your ow
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
 | Security, Climate, Chores | Placeholders |
-| Settings | Home Assistant settings modal (server, account, signed-in Settings/Profile web pages, Sign Out); household topics not ported |
+| Settings | Home Assistant settings modal (server, account, signed-in Settings/Profile web pages, Sign Out); Admin (presence overrides, auto-reset), Special Device Modes, Guest Controls, Mach-E; Vacation and To-Do not ported |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | Policy and tests; split layout not built yet |
 | iPad flyout | Not started (TabView for now) |
@@ -63,3 +67,4 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11: Home Assistant settings modal verified on the Mac (`claude/project-thread-4ttpvm`): the Settings web page opens signed in through the `localStorage.hassTokens` hand-off (no web login form). Settings journeys and audits pass on iPhone, Duo folded / unfolded portrait / unfolded landscape and iPad portrait / landscape; 52 `swift test` tests; new files ≥ 95% logic / ≥ 95.7% UX. `apple_coverage.sh` now measures every test bundle (repo-wide 63% / 61%, below the bars before this change too). Simulators under heavy host load crash backboardd at random; crashed journeys were re-run alone. Redacted screenshots in `docs/screenshots/ha-settings/`.
 - 2026-10-11: shared thermostat dial (single and heat/cool range, VoiceOver-adjustable handles) with its debug gallery page.
 - 2026-10-11: PR #4 verified on the Mac: dial journeys, hosted VoiceOver-adjust tests and audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad (portrait and landscape); 69 `swift test` tests pass. Screenshots in `docs/screenshots/thermostat-dial/`.
+- 2026-10-11: household Settings pages (`claude/project-thread-fww01h`): Admin with the presence-override and auto-reset sheets, Special Device Modes, Guest Controls and Mach-E; explicit on/off with optimistic state; `SettingsSection`, `InlineAlert`, `SelectableOptionRow` and `GlassStateTile` in HassDesign; gallery page `FENTON_GALLERY=household-settings`.
