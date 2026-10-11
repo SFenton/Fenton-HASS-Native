@@ -145,6 +145,18 @@ struct InventoryPresentationTests {
         #expect(server.calls.contains { $0.hasPrefix("evershelf.set_inventory_prepared_food") })
     }
 
+    @Test func batchNamesPrefixTheItemTitleLikeTheWeb() async throws {
+        let (_, _, model) = await loaded()
+        let beans = InventoryEditorModel(item: try #require(model.displayItem(id: "black beans")), list: model)
+        let batch = try #require(beans.batches.first)
+        #expect(beans.batchName(batch) == "Black Beans" + beans.qualifier(batch))
+        #expect(beans.batchName(batch).hasPrefix("Black Beans expiring "))
+        let prompt = try #require(await EditorPrompt.delete(batch, in: beans))
+        #expect(prompt.title == "Delete \(beans.batchName(batch))")
+        let honey = InventoryEditorModel(item: try #require(model.displayItem(id: "honey")), list: model)
+        #expect(honey.batchName(try #require(honey.batches.first)) == "Honey")
+    }
+
     @Test func singleUnitBatchesActWithoutAsking() async throws {
         let (server, _, model) = await loaded()
         let honey = InventoryEditorModel(item: try #require(model.displayItem(id: "honey")), list: model)

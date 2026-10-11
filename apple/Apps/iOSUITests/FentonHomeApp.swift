@@ -247,7 +247,8 @@ enum FentonHomeApp {
             if isScrolledOutOfView(element, in: app) { return true }
             if element.elementType == .button && app.navigationBars.buttons[element.label].exists { return true }
             return element.elementType == .staticText && systemSectionHeaders.contains(element.label)
-        case .dynamicType:
+        case .dynamicType, .textClipped:
+            // Toolbar buttons are system-drawn and offer the Large Content Viewer instead of scaling.
             return element.elementType == .button && app.navigationBars.buttons[element.label].exists
         default:
             return false

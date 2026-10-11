@@ -33,12 +33,15 @@ struct ScanItemSheet: View {
                     }
                 }
             }
+            // On the form itself: applied after the footer inset, it would replace the footer buttons' identifiers.
+            .accessibilityIdentifier("scan.\(model.step.rawValue)")
             .navigationTitle("Add Item")
             .inlineNavigationTitle()
             .toolbar { toolbar }
             .safeAreaInset(edge: .bottom) { footer }
-            .accessibilityIdentifier("scan.\(model.step.rawValue)")
         }
+        // The app accent reads 2.5:1 as button text on the sheet; the floating actions' teal reads 5.8:1.
+        .tint(FloatingActionBar.tint)
         .presentationDetents([.large])
         .interactiveDismissDisabled(model.addStatus == .adding)
         .task(id: CameraKey(step: model.step, wanted: model.wantedCamera)) { await camera.sync(with: model) }
@@ -157,7 +160,6 @@ struct ScanItemSheet: View {
             Section {
                 viewfinder(symbol: "barcode.viewfinder", label: "Live item scan camera feed")
                 Button("Manually Enter Name") { model.enterNameManually() }
-                    .frame(minHeight: HassTokens.minTarget)
                     .accessibilityIdentifier("scan.manualName")
             }
         } else {
@@ -168,7 +170,6 @@ struct ScanItemSheet: View {
                     .accessibilityLabel("Product name")
                     .accessibilityIdentifier("scan.name")
                 Button(model.scanBarcodeTitle) { model.scanBarcodeAgain() }
-                    .frame(minHeight: HassTokens.minTarget)
                     .accessibilityIdentifier("scan.scanAgain")
             }
         }
@@ -180,7 +181,6 @@ struct ScanItemSheet: View {
             Section {
                 viewfinder(symbol: "camera", label: "Live expiration date camera feed")
                 Button("Manually Enter Expiration Date") { model.enterExpiryManually() }
-                    .frame(minHeight: HassTokens.minTarget)
                     .accessibilityIdentifier("scan.manualExpiry")
             }
         } else {
@@ -196,7 +196,6 @@ struct ScanItemSheet: View {
             }
             Section {
                 Button(model.readExpiryTitle) { model.readExpiryAgain() }
-                    .frame(minHeight: HassTokens.minTarget)
                     .disabled(camera.source == .unavailable)
                     .accessibilityIdentifier("scan.readAgain")
             }

@@ -30,6 +30,8 @@ struct InventoryItemEditor: View {
                     .overlay(alignment: .leading) { Divider().ignoresSafeArea() }
             }
         }
+        // The app accent reads 2.5:1 as button text (Reset, Save); the floating actions' teal reads 5.8:1.
+        .tint(FloatingActionBar.tint)
         .onChange(of: model.isFinished) { _, finished in if finished { onClose() } }
         .alert(prompt?.title ?? "", isPresented: promptShown, presenting: prompt) { prompt in
             TextField("Quantity", text: $promptText)
@@ -71,6 +73,14 @@ struct InventoryItemEditor: View {
 
     private var promptShown: Binding<Bool> {
         Binding(get: { prompt != nil }, set: { if !$0 { prompt = nil } })
+    }
+}
+
+extension InventoryEditorModel {
+    /// The item name plus the batch's qualifier (`Black Beans expiring 10/14/2026`), as the web's
+    /// `${title}${qualifier}` in control labels and prompts.
+    func batchName(_ batch: InventoryBatch) -> String {
+        title + qualifier(batch)
     }
 }
 
@@ -131,7 +141,7 @@ enum EditorPrompt: Identifiable {
     /// returns `nil`.
     @MainActor
     static func delete(_ batch: InventoryBatch, in model: InventoryEditorModel) async -> EditorPrompt? {
-        guard batch.quantity <= 1 else { return .delete(batch, qualifier: model.qualifier(batch)) }
+        guard batch.quantity <= 1 else { return .delete(batch, qualifier: model.batchName(batch)) }
         await model.delete(batch)
         return nil
     }
@@ -140,7 +150,7 @@ enum EditorPrompt: Identifiable {
     /// flips it and returns `nil`.
     @MainActor
     static func prepared(_ batch: InventoryBatch, in model: InventoryEditorModel) async -> EditorPrompt? {
-        guard batch.quantity <= 1 else { return .prepared(batch, qualifier: model.qualifier(batch)) }
+        guard batch.quantity <= 1 else { return .prepared(batch, qualifier: model.batchName(batch)) }
         await model.togglePrepared(batch)
         return nil
     }
@@ -153,7 +163,7 @@ private struct BatchSection: View {
     var ask: (EditorPrompt) -> Void
 
     var body: some View {
-        let qualifier = model.qualifier(batch)
+        let qualifier = model.batchName(batch)
         let disabled = model.isDisabled(batch)
         let quantity = model.quantity(batch)
         Section {
@@ -247,8 +257,9 @@ private struct BatchSection: View {
                     .textCase(nil)
             }
             .accessibilityElement(children: .combine)
+            // On the header only: on the section it would replace every control's identifier.
+            .accessibilityIdentifier("inventory.editor.batch")
         }
-        .accessibilityIdentifier("inventory.editor.batch")
     }
 
     // MARK: - Bindings

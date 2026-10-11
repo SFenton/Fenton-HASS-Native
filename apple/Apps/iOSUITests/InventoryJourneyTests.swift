@@ -65,7 +65,8 @@ final class InventoryJourneyTests: XCTestCase {
         let cart = row(app, "Spaghetti").buttons["inventory.row.cart"]
         XCTAssertTrue(cart.waitForExistence(timeout: 10))
         cart.tap()
-        let field = app.textFields["inventory.prompt.field"]
+        // SwiftUI drops identifiers on alert text fields, so find the alert's only field.
+        let field = app.alerts.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.clearAndType("2")
         app.alerts.buttons["Add"].tap()
@@ -224,18 +225,29 @@ final class InventoryJourneyTests: XCTestCase {
     }
 
     func testScanStepsPassAccessibilityAudit() throws {
+        /// At AX5 wrapped text pushes controls below the fold, where the form loads them once scrolled to.
+        func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+            var swipes = 0
+            while !(element.waitForExistence(timeout: 2) && element.isHittable), swipes < 5 {
+                app.swipeUp()
+                swipes += 1
+            }
+            XCTAssertTrue(element.exists, "\(element) not found")
+            return element
+        }
         func atStep(_ step: Int, _ arguments: [String]) -> XCUIApplication {
             let app = launch(open: "scan", arguments: arguments, clean: true)
-            XCTAssertTrue(app.buttons["scan.simulate"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.buttons["scan.cancel"].waitForExistence(timeout: 10))
+            _ = reveal(app.buttons["scan.simulate"], in: app)
             if step >= 2 {
                 app.buttons["scan.simulate"].tap()
                 XCTAssertTrue(app.buttons["scan.forward"].waitForExistence(timeout: 5))
                 app.buttons["scan.forward"].tap()
-                XCTAssertTrue(app.buttons["scan.manualExpiry"].waitForExistence(timeout: 5))
+                _ = reveal(app.buttons["scan.manualExpiry"], in: app)
             }
             if step >= 3 {
                 app.buttons["scan.manualExpiry"].tap()
-                app.buttons["scan.quick.1-month"].tap()
+                reveal(app.buttons["scan.quick.1-month"], in: app).tap()
                 app.buttons["scan.forward"].tap()
                 XCTAssertTrue(app.buttons["scan.add"].waitForExistence(timeout: 5))
             }

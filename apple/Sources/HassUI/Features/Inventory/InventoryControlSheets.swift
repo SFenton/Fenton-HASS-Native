@@ -46,7 +46,10 @@ struct InventorySortSheet: View {
             } header: {
                 Text("Sort Direction")
             } footer: {
+                // Ink rather than the system footer gray, which reads 3.2:1; wraps at large text sizes.
                 Text(direction.hint)
+                    .foregroundStyle(HassTokens.Ink.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
