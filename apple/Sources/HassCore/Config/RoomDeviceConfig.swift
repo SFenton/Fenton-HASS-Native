@@ -121,6 +121,11 @@ public extension AirPurifierConfig {
         .init(roomTitle: "Music Room", pm25EntityId: "sensor.air_purifier_pm2_5"),
         .init(roomTitle: "Theater Room", pm25EntityId: "sensor.theater_room_air_purifier_pm2_5"),
     ]
+
+    /// The purifier a room page names by its PM2.5 sensor.
+    static func forPM25Entity(_ entityId: String) -> AirPurifierConfig? {
+        all.first { $0.pm25EntityId == entityId }
+    }
 }
 
 // MARK: - Humidifiers

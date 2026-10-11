@@ -30,6 +30,8 @@ struct AirPurifierControllerTests {
         let music = AirPurifierConfig.all.first { $0.roomTitle == "Music Room" }!
         #expect(music.modeEntityId == "select.air_purifier_fan_mode")
         #expect(AirPurifierConfig.all.count == 6)
+        #expect(AirPurifierConfig.forPM25Entity("sensor.air_purifier_pm2_5") == music)
+        #expect(AirPurifierConfig.forPM25Entity("sensor.kitchen_pm2_5") == nil)
     }
 
     @Test func sectionsFollowTheMode() {
