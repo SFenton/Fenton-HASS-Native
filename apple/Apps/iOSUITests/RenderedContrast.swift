@@ -15,7 +15,14 @@ enum RenderedContrast {
 
         static func screen() -> Capture? {
             let screenshot = XCUIScreen.main.screenshot()
-            guard let image = screenshot.image.cgImage else { return nil }
+            // Draw through UIImage so the capture follows the interface orientation: the raw CGImage stays
+            // portrait in landscape while element frames are landscape (seen on iPad, 2026-10-11).
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = screenshot.image.scale
+            let upright = UIGraphicsImageRenderer(size: screenshot.image.size, format: format).image { _ in
+                screenshot.image.draw(at: .zero)
+            }
+            guard let image = upright.cgImage else { return nil }
             let width = image.width, height = image.height
             var pixels = [UInt8](repeating: 0, count: width * height * 4)
             let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
