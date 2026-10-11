@@ -25,10 +25,10 @@ public final class EverShelfClient {
         public init(_ message: String) { self.message = message }
     }
 
-    private let caller: any HassServiceResponding
+    private let caller: any EverShelfCalling
 
     /// Creates a client over a connection (or a fixture server).
-    public init(caller: any HassServiceResponding) {
+    public init(caller: any EverShelfCalling) {
         self.caller = caller
     }
 

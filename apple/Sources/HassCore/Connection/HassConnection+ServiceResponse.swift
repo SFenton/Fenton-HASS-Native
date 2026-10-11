@@ -6,13 +6,13 @@ import Foundation
 /// EverShelf's inventory, barcode and expiry services answer with data (`SupportsResponse.OPTIONAL` or
 /// `.ONLY`), so the inventory feature talks through this instead of ``HassServiceCalling`` alone.
 @MainActor
-public protocol HassServiceResponding: HassServiceCalling {
+public protocol EverShelfCalling: HassServiceCalling {
     /// Calls `domain.service` with `return_response: true`.
     /// - Returns: The service's `response` object, or ``JSONValue/null`` when it returned nothing.
     func callServiceForResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue
 }
 
-extension HassConnection: HassServiceResponding {
+extension HassConnection: EverShelfCalling {
     /// Sends `call_service` with `return_response: true` over the app's websocket, once (no retry across
     /// reconnects, so a mutation is never applied twice).
     public func callServiceForResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {

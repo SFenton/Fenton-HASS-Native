@@ -9,7 +9,7 @@ import Observation
 /// Debug builds only. Its data is synthetic, not a copy of the household's inventory.
 @MainActor
 @Observable
-public final class EverShelfFixtureServer: HassServiceResponding {
+public final class EverShelfFixtureServer: EverShelfCalling {
     /// One stored row.
     public struct Row: Equatable, Sendable {
         public var id: Int
@@ -85,7 +85,7 @@ public final class EverShelfFixtureServer: HassServiceResponding {
         ])
     }
 
-    // MARK: - HassServiceResponding
+    // MARK: - EverShelfCalling
 
     public func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
         _ = try await respond(domain, service, data)
