@@ -200,6 +200,7 @@ final class SettingsJourneyTests: XCTestCase {
             sleep(1)
             keepScreenshot(app, "ha-web-config-\(suffix)")
         }
-        XCUIDevice.shared.orientation = .portrait
+        // Only iPad rotates here; setting the orientation on an unfolded Duo hangs the runner (devices.md).
+        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
 }
