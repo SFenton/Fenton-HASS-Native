@@ -26,12 +26,11 @@ public struct ComponentGallery: View {
     public init(page: Page) { self.page = page }
 
     public var body: some View {
-        NavigationStack {
-            switch page {
-            case .mediaRemote: MediaRemoteGallery()
-            case .thermostatDial: ThermostatDialGallery()
-            case .vacation: VacationGallery()
-            }
+        switch page {
+        case .mediaRemote: NavigationStack { MediaRemoteGallery() }
+        case .thermostatDial: NavigationStack { ThermostatDialGallery() }
+        // Owns its stack, so its last-call line stays under pushed pages too.
+        case .vacation: VacationGallery()
         }
     }
 }

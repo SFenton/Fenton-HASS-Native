@@ -43,9 +43,20 @@ final class VacationJourneyTests: XCTestCase {
     private func waitForCall(_ text: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let predicate = NSPredicate(format: "label CONTAINS %@", text)
         let found = expectation(for: predicate, evaluatedWith: app.staticTexts["gallery.lastCall"])
-        if XCTWaiter().wait(for: [found], timeout: 5) != .completed {
+        // Up to 10 s: turning Vacation Mode off sends seven calls one after another.
+        if XCTWaiter().wait(for: [found], timeout: 10) != .completed {
             XCTFail("Expected a call containing \(text); last: \(lastCall(app))", file: file, line: line)
         }
+    }
+
+    /// Waits until `element`'s accessibility value is `value` (an empty string also matches no value).
+    private func waitForValue(_ value: String, of element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        repeat {
+            if (element.value as? String ?? "") == value { return true }
+            usleep(200_000)
+        } while Date() < deadline
+        return false
     }
 
     /// Scrolls the page until `target` can be tapped.
@@ -190,13 +201,13 @@ final class VacationJourneyTests: XCTestCase {
         waitForCall("operation=schedule", in: app)
         XCTAssertTrue(lastCall(app).contains("traveler=stephen"))
         XCTAssertTrue(element("soloTrip.editor.confirm", in: app).waitForNonExistence(timeout: 5))
-        XCTAssertTrue(toggle.wait(for: \.value, toEqual: "On" as NSString, timeout: 5) || (toggle.value as? String) == "On")
+        XCTAssertTrue(waitForValue("On", of: toggle), "Solo Trip never turned on")
         XCTAssertEqual(stephen.value as? String, "Away")
         XCTAssertEqual(element("soloTrip.traveler.steph", in: app).value as? String, "Home")
         XCTAssertTrue(element("soloTrip.return.date", in: app).exists)
         toggle.tap()
         waitForCall("operation=end_now", in: app)
-        XCTAssertTrue(stephen.wait(for: \.value, toEqual: "" as NSString, timeout: 5) || (stephen.value as? String ?? "").isEmpty)
+        XCTAssertTrue(waitForValue("", of: stephen), "Stephen still shows \(stephen.value ?? "nil")")
     }
 
     /// An active trip skips the chooser and can be ended from there; a trip needing attention offers the restore choice.
@@ -230,9 +241,11 @@ final class VacationJourneyTests: XCTestCase {
 
     // MARK: - Audits
 
+    /// Audits `page` without the gallery's debug line, which is not product UI (behind an iPad form sheet it
+    /// is dimmed by the modal).
     private func audit(_ page: Page) throws {
-        let app = open(page)
-        try FentonHomeApp.audit(app) { self.open(page, arguments: FentonHomeApp.ax5) }
+        let app = open(page, clean: true)
+        try FentonHomeApp.audit(app) { self.open(page, clean: true, arguments: FentonHomeApp.ax5) }
     }
 
     func testChooserPassesAudit() throws { try audit(.chooser) }

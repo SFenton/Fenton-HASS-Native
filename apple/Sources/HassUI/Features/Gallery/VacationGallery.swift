@@ -17,7 +17,10 @@ struct VacationGallery: View {
     }
 
     var body: some View {
-        VacationScreen(store: house.store, responder: house, caller: house) { HouseholdResident.stephen.haUserId }
+        // The inset sits outside the stack: on the root view it would vanish once the chooser pushes a page.
+        NavigationStack {
+            VacationScreen(store: house.store, responder: house, caller: house) { HouseholdResident.stephen.haUserId }
+        }
             .safeAreaInset(edge: .bottom) {
                 // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
                 if !MediaRemoteGallery.isClean {
