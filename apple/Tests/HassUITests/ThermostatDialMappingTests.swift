@@ -55,6 +55,22 @@ struct ThermostatDialMappingTests {
         #expect(many["target_temp_low"] as? Double == 68)
     }
 
+    /// A bound dial commits to its own entity, or fans out to `commitEntityIds` (the web's global thermostat).
+    @Test func boundDialCommitsToItsEntityOrTheFanOut() {
+        let own = ClimateThermostatDial(entityId: "climate.office", title: "Office")
+            .setTemperatureData(for: .single(71.5))
+        #expect(own["entity_id"] as? String == "climate.office")
+        #expect(own["temperature"] as? Double == 71.5)
+        let fanOut = ClimateThermostatDial(entityId: "climate.whole_home", title: "Whole Home") { targets in
+            #expect(targets == .range(low: 67, high: 76))
+            return ["climate.office", "climate.living_room"]
+        }
+        let data = fanOut.setTemperatureData(for: .range(low: 67, high: 76))
+        #expect(data["entity_id"] as? [String] == ["climate.office", "climate.living_room"])
+        #expect(data["target_temp_low"] as? Double == 67)
+        #expect(data["target_temp_high"] as? Double == 76)
+    }
+
     /// The bound dial renders from a snapshot-only store.
     @Test func boundDialRendersFromTheStore() throws {
         let cache = EntitySnapshotCache(fileURL: FileManager.default.temporaryDirectory.appending(path: "dial-\(UUID()).json"))

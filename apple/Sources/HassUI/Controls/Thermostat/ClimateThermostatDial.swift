@@ -71,8 +71,13 @@ public struct ClimateThermostatDial: View {
 
     public var body: some View {
         ThermostatDial(ThermostatDialConfiguration(entity: store.entity(entityId).state, title: title), size: size) { targets in
-            let data = targets.setTemperatureData(entityIds: commitEntityIds?(targets) ?? [entityId])
+            let data = setTemperatureData(for: targets)
             Task { try? await connection.callService("climate", "set_temperature", data: data) }
         }
+    }
+
+    /// The `climate.set_temperature` data a commit sends: this entity, or `commitEntityIds` when set.
+    func setTemperatureData(for targets: ThermostatTargets) -> [String: any Sendable] {
+        targets.setTemperatureData(entityIds: commitEntityIds?(targets) ?? [entityId])
     }
 }
