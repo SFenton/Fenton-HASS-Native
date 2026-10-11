@@ -1,0 +1,187 @@
+import Foundation
+@preconcurrency import HAKit
+import Observation
+
+/// The app's one Home Assistant connection: a HAKit websocket feeding ``EntityStore``.
+///
+/// Views never touch HAKit. They read the store and act through ``callService(_:_:data:)``.
+@MainActor
+@Observable
+public final class HassConnection {
+    // MARK: - Types
+
+    /// Connection status for the UI.
+    public enum Status: Equatable, Sendable {
+        case disconnected
+        case connecting
+        case connected(version: String)
+        case waitingToReconnect
+        /// The server rejected the token; the user must sign in again.
+        case rejected
+    }
+
+    // MARK: - Public state
+
+    /// Current status.
+    public private(set) var status: Status = .disconnected
+
+    /// The server this connection talks to.
+    public let server: HassServer
+
+    /// The entity store this connection feeds.
+    public let store: EntityStore
+
+    // MARK: - Private
+
+    @ObservationIgnored private let connection: HAConnection
+    @ObservationIgnored private let snapshotCache: EntitySnapshotCache
+    @ObservationIgnored private var statesSubscription: HACancellable?
+    @ObservationIgnored private var stateObserver: NSObjectProtocol?
+    @ObservationIgnored private var saveTask: Task<Void, Never>?
+
+    /// How long live updates are batched before the disk snapshot is rewritten.
+    static let snapshotDebounce: Duration = .seconds(2)
+
+    // MARK: - Init
+
+    /// Creates a connection and restores the disk snapshot into the store before any network work.
+    /// - Parameters:
+    ///   - server: The server to connect to.
+    ///   - tokens: Supplies access tokens.
+    ///   - store: The store to feed.
+    ///   - snapshotCache: Disk snapshot of entity states.
+    public init(server: HassServer, tokens: TokenManager, store: EntityStore, snapshotCache: EntitySnapshotCache = .init()) {
+        self.server = server
+        self.store = store
+        self.snapshotCache = snapshotCache
+
+        if let snapshot = snapshotCache.load(for: server) {
+            store.replaceAll(snapshot.entities, freshness: .snapshot(savedAt: snapshot.savedAt))
+        }
+
+        let baseURL = server.baseURL
+        let configuration = HAConnectionConfiguration(
+            connectionInfo: { try? HAConnectionInfo(url: baseURL, userAgent: "FentonHome") },
+            fetchAuthToken: { completion in
+                nonisolated(unsafe) let completion = completion
+                Task {
+                    do {
+                        completion(.success(try await tokens.validAccessToken()))
+                    } catch {
+                        completion(.failure(error))
+                    }
+                }
+            }
+        )
+        connection = HAKit.connection(configuration: configuration, connectAutomatically: false)
+
+        stateObserver = NotificationCenter.default.addObserver(
+            forName: HAConnectionState.didTransitionToStateNotification,
+            object: connection,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshStatus() }
+        }
+    }
+
+    // MARK: - Lifecycle
+
+    /// Opens the websocket and subscribes to entity states. Safe to call repeatedly.
+    public func connect() {
+        connection.connect()
+        guard statesSubscription == nil else { return }
+        statesSubscription = connection.caches.states().subscribe { [weak self] _, cached in
+            let states = cached.all.map(EntityState.init(haEntity:))
+            MainActor.assumeIsolated { self?.receive(states) }
+        }
+    }
+
+    /// Closes the websocket and saves the snapshot. The store keeps its values so the UI does not blank.
+    public func disconnect() {
+        saveSnapshotNow()
+        statesSubscription?.cancel()
+        statesSubscription = nil
+        connection.disconnect()
+    }
+
+    /// Saves the snapshot immediately (entering background).
+    public func saveSnapshotNow() {
+        saveTask?.cancel()
+        saveTask = nil
+        try? snapshotCache.save(Array(store.allValues.values), server: server)
+    }
+
+    // MARK: - Actions
+
+    /// Calls a Home Assistant service.
+    /// - Parameters:
+    ///   - domain: e.g. `light`.
+    ///   - service: e.g. `toggle`.
+    ///   - data: Service data, including `entity_id`.
+    public func callService(_ domain: String, _ service: String, data: [String: any Sendable] = [:]) async throws {
+        let request = HATypedRequest<HAResponseVoid>.callService(
+            domain: .init(rawValue: domain),
+            service: .init(rawValue: service),
+            data: data
+        )
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            connection.send(request) { result in
+                switch result {
+                case .success: continuation.resume()
+                case let .failure(error): continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// Convenience for `<domain>.toggle` on one entity.
+    public func toggle(_ entityId: String) async throws {
+        let domain = String(entityId.prefix { $0 != "." })
+        try await callService(domain, "toggle", data: ["entity_id": entityId])
+    }
+
+    // MARK: - Private
+
+    private func receive(_ states: [EntityState]) {
+        // HAKit's states cache always delivers the full set; the store diffs it in place.
+        store.replaceAll(states, freshness: .live)
+        scheduleSnapshotSave()
+    }
+
+    private func scheduleSnapshotSave() {
+        guard saveTask == nil else { return }
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.snapshotDebounce)
+            guard !Task.isCancelled, let self else { return }
+            self.saveTask = nil
+            try? self.snapshotCache.save(Array(self.store.allValues.values), server: self.server)
+        }
+    }
+
+    private func refreshStatus() {
+        let next: Status
+        switch connection.state {
+        case .connecting, .authenticating: next = .connecting
+        case let .ready(version): next = .connected(version: version)
+        case let .disconnected(reason):
+            switch reason {
+            case .disconnected: next = .disconnected
+            case .rejected: next = .rejected
+            case .waitingToReconnect: next = .waitingToReconnect
+            }
+        }
+        if status != next { status = next }
+    }
+}
+
+extension EntityState {
+    /// Converts a HAKit entity.
+    init(haEntity entity: HAEntity) {
+        self.init(
+            entityId: entity.entityId,
+            state: entity.state,
+            attributes: entity.attributes.dictionary.mapValues { JSONValue(any: $0) },
+            lastChanged: entity.lastChanged
+        )
+    }
+}

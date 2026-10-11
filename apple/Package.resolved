@@ -1,0 +1,33 @@
+{
+  "originHash" : "3d41b7c900d11a4a57f976feccbe75e49d846fccd59fced749ad1de02c6628a6",
+  "pins" : [
+    {
+      "identity" : "hakit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/home-assistant/HAKit",
+      "state" : {
+        "revision" : "02777d0b7ce4b635ca7dd46bcd74a032eb79dd60",
+        "version" : "0.4.18"
+      }
+    },
+    {
+      "identity" : "promisekit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mxcl/PromiseKit",
+      "state" : {
+        "revision" : "2bc44395edb4f8391902a9ff7c220471882a4d07",
+        "version" : "8.2.0"
+      }
+    },
+    {
+      "identity" : "starscream",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/bgoncal/Starscream",
+      "state" : {
+        "revision" : "aaaf609d07eb487b2fccbe77f6267cf0843e2b19",
+        "version" : "4.0.9"
+      }
+    }
+  ],
+  "version" : 3
+}

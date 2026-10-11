@@ -1,0 +1,12 @@
+{
+  "thresholds": {
+    "logic": 95,
+    "ux": 90
+  },
+  "swift": {
+    "sourceRoots": ["apple/Sources/**/*.swift"],
+    "logic": ["apple/Sources/HassCore/**/*.swift"],
+    "ux": ["apple/Sources/HassDesign/**/*.swift", "apple/Sources/HassUI/**/*.swift"],
+    "exclude": []
+  }
+}

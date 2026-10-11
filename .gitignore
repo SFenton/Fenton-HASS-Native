@@ -1,0 +1,22 @@
+.DS_Store
+.build/
+.swiftpm/
+DerivedData/
+apple/*.xcodeproj/
+*.xcresult
+*.xcuserstate
+xcuserdata/
+*.p12
+*.p8
+*.mobileprovision
+
+# Secrets: Home Assistant tokens and credentials never enter the repo.
+*.env
+.env
+.env.*
+!.env.example
+apple/Apps/*/Info.plist
+.build/
+
+# Local build output (xcodebuild -derivedDataPath, result bundles).
+build/
