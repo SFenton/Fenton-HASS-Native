@@ -186,6 +186,13 @@ public final class HumidifierController {
         public var value: String
         public var tone: Tone
         public var id: String { title }
+
+        public init(title: String, icon: String, value: String, tone: Tone) {
+            self.title = title
+            self.icon = icon
+            self.value = value
+            self.tone = tone
+        }
     }
 
     /// Device State rows (web `InfoPanel`).

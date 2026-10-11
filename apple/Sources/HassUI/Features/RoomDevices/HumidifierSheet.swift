@@ -289,6 +289,7 @@ struct DeviceStatusPill: View {
                 Text(item.title).font(.caption).foregroundStyle(HassTokens.Ink.secondary)
                 Text(item.value).font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary).monospacedDigit()
             }
+            .fixedSize(horizontal: false, vertical: true) // Wrap long values ("Humidifying") instead of truncating.
             Spacer(minLength: 0)
         }
         .padding(HassTokens.Spacing.m)

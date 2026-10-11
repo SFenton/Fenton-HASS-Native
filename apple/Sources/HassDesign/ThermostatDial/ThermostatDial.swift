@@ -250,7 +250,7 @@ public enum ThermostatDialPalette {
 
 extension Color {
     /// A dial tint as a SwiftUI color.
-    init(_ tint: DialTint) {
+    public init(_ tint: DialTint) {
         self.init(.sRGB, red: tint.red / 255, green: tint.green / 255, blue: tint.blue / 255, opacity: tint.opacity)
     }
 }

@@ -181,8 +181,9 @@ final class RoomDevicesJourneyTests: XCTestCase {
         night.tap()
         let save = element("activity.save", in: app)
         XCTAssertTrue(save.waitForExistence(timeout: 5))
-        let friday = element("activity.day.friday", in: app)
-        friday.tap()
+        // The fixture's Night runs Sunday–Thursday; adding Friday and Saturday makes it every day.
+        element("activity.day.friday", in: app).tap()
+        element("activity.day.saturday", in: app).tap()
         save.tap()
         XCTAssertTrue(night.waitForExistence(timeout: 10), "Back on the list after saving")
         XCTAssertTrue(night.label.contains("Every day"), night.label)

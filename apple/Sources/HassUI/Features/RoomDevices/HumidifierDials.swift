@@ -3,6 +3,7 @@ import HassDesign
 
 /// Maps the humidifier onto the shared dial (web `HumidifierHero`, `TargetHumidityDial` and the schedule editor's
 /// dials over `SingleValueCircularDial`).
+@MainActor
 enum HumidifierDials {
     /// Comfort (40–50%) and condensation-risk (60–80%) bands on target humidity dials.
     static let humidityTrails = [
