@@ -31,6 +31,18 @@ struct SecurityViewTests {
         #expect(ImageRenderer(content: empty).cgImage != nil)
     }
 
+    /// Guest stays and the Contact Sensors sheet render with no `HassConnection` in the environment (the
+    /// gallery path), and a guest toggle goes through the passed caller.
+    @Test func guestSectionAndContactsSheetNeedNoConnection() {
+        let store = SecurityFixtures.store()
+        store.apply([EntityState(entityId: HomeConfig.guestToggles[0].entityId, state: "on")])
+        let caller = Caller()
+        let guests = GuestPresenceSection(caller: caller).environment(store).frame(width: 402)
+        #expect(ImageRenderer(content: guests).cgImage != nil)
+        let contacts = ChipSheet(kind: .contacts).environment(store).frame(width: 402, height: 500)
+        #expect(ImageRenderer(content: contacts).cgImage != nil)
+    }
+
     @Test func everyTileKindRenders() {
         let caller = Caller()
         let store = SecurityFixtures.store()

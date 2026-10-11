@@ -65,7 +65,7 @@ struct SecurityPage: View {
                 StatusRail(chips: Self.chips, idPrefix: "security") { sheet = .chip($0) }
                 tileSection("Security", tiles: SecurityConfig.controlTiles)
                     .padding(.horizontal, HassTokens.Spacing.l)
-                GuestPresenceSection()
+                GuestPresenceSection(caller: caller)
                     .padding(.horizontal, HassTokens.Spacing.l)
                 if showsCameras {
                     CameraGrid { sheet = .camera($0) }

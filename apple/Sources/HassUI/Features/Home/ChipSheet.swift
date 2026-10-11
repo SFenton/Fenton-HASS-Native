@@ -7,7 +7,8 @@ import SwiftUI
 struct ChipSheet: View {
     var kind: HomeConfig.ChipSheet
     @Environment(EntityStore.self) private var store
-    @Environment(HassConnection.self) private var connection
+    /// Optional so the read-only sheets also open from the Security gallery, which has no connection.
+    @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.dismiss) private var dismiss
     /// Grows with Dynamic Type so tiles drop to fewer columns instead of clipping their titles.
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
@@ -31,7 +32,7 @@ struct ChipSheet: View {
                 DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 6) {
                     ForEach(HomeConfig.lightGroups) { group in
                         LightGroupTile(group: group, state: store.entity(group.toggleEntityId).state) { command in
-                            Task { try? await connection.send(command) }
+                            Task { try? await connection?.send(command) }
                         }
                         .accessibilityIdentifier("lights.group.\(group.toggleEntityId)")
                     }
