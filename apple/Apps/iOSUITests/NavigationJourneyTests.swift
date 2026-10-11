@@ -5,7 +5,13 @@ import XCTest
 @MainActor
 final class NavigationJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
-    override func tearDown() { MainActor.assumeIsolated { XCUIDevice.shared.orientation = .portrait } }
+    /// Only the iPad journeys rotate (the Duo's pose comes from Device Hub). Setting the orientation on
+    /// an unfolded Duo hung the runner waiting for SpringBoard, and the restart rebooted it folded.
+    override func tearDown() {
+        MainActor.assumeIsolated {
+            if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
+        }
+    }
 
     // MARK: - Helpers
 
@@ -130,7 +136,7 @@ final class NavigationJourneyTests: XCTestCase {
         // Settings sits below the primary four.
         XCTAssertGreaterThan(app.buttons["nav.settings"].frame.minY, app.buttons["nav.chores"].frame.maxY)
         // The scrim closes it without navigating.
-        app.buttons["nav.flyout.scrim"].coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        app.buttons["nav.flyout.scrim"].tap()
         XCTAssertTrue(flyout.waitForNonExistence(timeout: 3))
         XCTAssertTrue(app.buttons["home.chip.lights"].exists)
         open("security", title: "Security", in: app)
@@ -142,19 +148,38 @@ final class NavigationJourneyTests: XCTestCase {
     func testEdgeSwipeOpensFlyoutWithoutBlockingEdgeTaps() throws {
         let app = try FentonHomeApp.launchSignedIn()
         guard usesFlyout(app) else { throw XCTSkip("Compact window") }
+        // Start on a control at the leading edge (the first camera tile's row): the swipe must open only
+        // the flyout, never the control under it (the landscape Duo opened the camera too).
         let window = app.windows.firstMatch
-        let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 4, dy: window.frame.height / 2))
+        let camera = app.buttons["home.camera.front_door"]
+        let y = camera.exists && camera.frame.minX < 40 ? camera.frame.midY : window.frame.height / 2
+        let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 2, dy: y))
         start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 200, dy: 0)))
         XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "Edge swipe did not open the flyout")
-        app.buttons["nav.flyout.scrim"].coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertFalse(app.navigationBars.buttons["Done"].exists, "The edge swipe also activated the control under it")
+        app.buttons["nav.flyout.scrim"].tap()
         XCTAssertTrue(flyout(app).waitForNonExistence(timeout: 3))
 
+        // Taps inside the leading 18 pt still reach the controls there.
+        var tappedAtEdge = 0
         let open = app.buttons["nav.open"]
         XCTAssertTrue(open.waitForExistence(timeout: 3))
-        let edgeX = min(open.frame.maxX, 18) - open.frame.minX
-        XCTAssertGreaterThan(edgeX, 0, "Open Navigation is not inside the edge-swipe width")
-        open.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: edgeX - 1, dy: open.frame.height / 2)).tap()
-        XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "A tap inside the leading edge was swallowed")
+        // On the unfolded Duo the system moves Open Navigation into its trailing vertical bar.
+        if open.frame.minX < 18 {
+            open.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 18 - open.frame.minX - 1, dy: open.frame.height / 2)).tap()
+            XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "A tap on Open Navigation inside the leading edge was swallowed")
+            app.buttons["nav.flyout.scrim"].tap()
+            XCTAssertTrue(flyout(app).waitForNonExistence(timeout: 3))
+            tappedAtEdge += 1
+        }
+        if camera.exists, camera.frame.minX < 18 {
+            camera.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 18 - camera.frame.minX - 1, dy: camera.frame.height / 2)).tap()
+            let done = app.navigationBars.buttons["Done"]
+            XCTAssertTrue(done.waitForExistence(timeout: 5), "A tap on a camera tile inside the leading edge was swallowed")
+            done.tap()
+            tappedAtEdge += 1
+        }
+        XCTAssertGreaterThan(tappedAtEdge, 0, "No control inside the leading edge to tap")
     }
 
     /// The open flyout audits clean (names, roles, contrast, targets, Dynamic Type).
@@ -193,10 +218,15 @@ final class NavigationJourneyTests: XCTestCase {
         // The trailing pane starts at the midpoint (iPad: the 1 pt band) or just after the hinge (Duo).
         let trailing = app.descendants(matching: .any)["split.trailing"].frame
         print("split: window \(window), trailing \(trailing)")
-        XCTAssertGreaterThanOrEqual(trailing.minX, window.midX, "Trailing pane starts before the midpoint")
         XCTAssertEqual(trailing.maxX, window.maxX, accuracy: 1, "Trailing pane does not reach the window edge")
         if FentonHomeApp.family == .iPad {
             XCTAssertEqual(trailing.minX, window.midX + 0.5, accuracy: 0.5, "Divider is not at the midpoint")
+        } else {
+            // Duo: on the hinge in book pose; flat, at the midpoint of the space beside the system's
+            // vertical bar (owner #361), e.g. 434 pt of 951 pt with an 83 pt bar. Both sit within a
+            // hinge's width of the window centre; exact pane widths are unit-tested (SplitGeometryTests,
+            // OnDemandSplitHostedTests).
+            XCTAssertEqual(trailing.minX, window.midX, accuracy: window.width * 0.06, "Divider far from the fold")
         }
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
@@ -281,7 +311,7 @@ final class NavigationJourneyTests: XCTestCase {
             sleep(1)
             keep(app, "settings-topic-\(suffix)")
         }
-        XCUIDevice.shared.orientation = .portrait
+        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
 
     private func keep(_ app: XCUIApplication, _ name: String) {
