@@ -42,9 +42,9 @@ apple/Tests/**                                             → tests for your ow
 | Security, Climate, Chores | Placeholders |
 | Settings | Web link list (topics are placeholders), server status, Sign Out; splits on demand |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
-| Split policy (landscape regular only) | `OnDemandSplitStack` built; Settings is the first adopter |
-| iPad / unfolded Duo flyout | Built: overlay flyout in regular width, tab bar in compact width |
-| Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`) |
+| Split policy (landscape regular only) | `OnDemandSplitStack` built and verified on the Mac: divider at the exact midpoint on iPad landscape, on the hinge on the unfolded Duo landscape; rotation moves the open item between pane and push; Settings is the first adopter |
+| iPad / unfolded Duo flyout | Built and verified on iPad and the unfolded Duo: overlay flyout in regular width, tab bar (folded Duo: vertical bar) in compact width |
+| Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`), which now measures every test bundle: repo-wide 54.2% logic / 70.5% UX on 2026-10-11 (below the bars; the gaps are HassCore connection/Keychain, Login, the Home chip sheets and RootView/AppSession) |
 | Watch app | Target stub only |
 
 ## 4. Log
@@ -53,3 +53,4 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11: PR #1 verified on the Mac: journeys and accessibility audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad; 32 `swift test` tests pass. Redacted screenshots in `docs/screenshots/pr-1/`.
 - Known follow-up: light tiles send `light.toggle`. Presence Based Lighting's Presence Lock (SFenton/presence-based-lighting) reverts that in empty rooms and only honors an exact `turn_on` from an app user as a manual-on hold. Send `light.turn_on` / `light.turn_off` from the current state instead.
 - 2026-10-11: app navigation: regular-width overlay flyout (`App/Shell/`), `OnDemandSplitStack` with hinge-aware geometry, Settings list/detail split.
+- 2026-10-11: PR #3 verified on the Mac. Fixed: the split never turning off after rotating to portrait (it measured its own fixed-width panes); the hinge not being read (read in `onGeometryChange`, inactive division while flat); content under the flyout still reachable by VoiceOver (UIKit tab controller hidden too); the full-window scrim winning the accessibility hit test over the rows; white-on-accent selected row (2.5:1); the edge strip eating taps, then the edge swipe also activating the control under it (now a UIKit screen-edge pan); a `DynamicGridLayout` crash on unbounded widths; the coverage script measuring one of three bundles. Redacted screenshots in `docs/screenshots/pr-3/`.
