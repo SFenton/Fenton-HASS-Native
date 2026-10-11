@@ -21,17 +21,20 @@ final class ThermostatDialJourneyTests: XCTestCase {
         card.descendants(matching: .any)["thermostatDial.handle.\(name)"].firstMatch
     }
 
-    /// Scrolls until all of `element` is on screen (or the page ends). Drags along the leading edge,
-    /// outside every dial, so the scroll never grabs a handle.
+    /// Scrolls until all of `element` is on screen (or the page ends). The gallery grid is lazy, so a card
+    /// far below may not exist until scrolled near. Drags along the leading edge, outside every dial, so
+    /// the scroll never grabs a handle.
     private func scrollTo(_ element: XCUIElement, in app: XCUIApplication) {
         let window = app.windows.firstMatch
         let bottom = window.frame.maxY - 24
-        for _ in 0..<12 where element.frame.maxY > bottom || !element.isHittable {
-            let before = element.frame.minY
+        for _ in 0..<12 {
+            let before: CGFloat? = element.exists ? element.frame.minY : nil
+            if let before, element.isHittable, before + element.frame.height <= bottom { break }
+            let distance = before.map { $0 + element.frame.height - bottom + 24 } ?? window.frame.height
             let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.75))
-            let distance = Swift.min(element.frame.maxY - bottom + 24, window.frame.height * 0.45)
-            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -Swift.max(distance, 60))))
-            if element.frame.minY == before { break }
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(
+                CGVector(dx: 0, dy: -Swift.min(Swift.max(distance, 60), window.frame.height * 0.45))))
+            if let before, element.exists, element.frame.minY == before { break } // The page ended.
         }
         XCTAssertTrue(element.isHittable, "\(element) never came into view")
     }
