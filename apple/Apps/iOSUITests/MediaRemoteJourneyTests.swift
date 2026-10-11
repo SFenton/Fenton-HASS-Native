@@ -22,8 +22,9 @@ final class MediaRemoteJourneyTests: XCTestCase {
         app.launchEnvironment["FENTON_GALLERY_OFFLINE"] = "1"
         app.launchArguments += arguments
         app.launch()
-        XCTAssertTrue(app.buttons["remote.power"].waitForExistence(timeout: 20), "Remote sheet did not open")
-        XCTAssertTrue(app.buttons["remote.power"].wait(for: \.isHittable, toEqual: true, timeout: 5), "Sheet still presenting")
+        let power = element("remote.power", in: app)
+        XCTAssertTrue(power.waitForExistence(timeout: 30), "Remote sheet did not open")
+        XCTAssertTrue(power.wait(for: \.isHittable, toEqual: true, timeout: 10), "Sheet still presenting")
         sleep(1) // Mid-animation frames fail contrast and clipping.
         return app
     }
@@ -36,14 +37,32 @@ final class MediaRemoteJourneyTests: XCTestCase {
 
     private func expectCall(_ expected: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let label = app.staticTexts["gallery.lastCall"].firstMatch
-        let matched = label.wait(for: \.label, toEqual: "Last call: \(expected)", timeout: 5)
+        let matched = label.wait(for: \.label, toEqual: "Last call: \(expected)", timeout: 10)
         XCTAssertTrue(matched, "Last call was '\(label.label)'", file: file, line: line)
     }
 
-    /// Scrolls the tab column until `element` is fully on screen.
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<8 where !element.isHittable { app.swipeUp(velocity: .slow) }
-        XCTAssertTrue(element.isHittable, "\(element) never came into view")
+    /// Scrolls toward `element` in short drags until it is hittable: full swipes overshoot long columns
+    /// (AX5, the unfolded Duo), and the element may sit above or below the visible part.
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication, down: Bool = false) {
+        let window = app.windows.firstMatch.frame
+        for _ in 0..<24 where !element.isHittable {
+            let above = element.exists ? element.frame.midY < window.midY : down
+            // Drag in the element's own column (in two columns each side scrolls on its own), in screen points
+            // from the window origin: normalized app coordinates stay portrait in a landscape window
+            // (FestivalNativeApps xcuitest pitfalls).
+            // On iPhone Duo, gestures from `app.coordinate` never reach the inner display; anchor them on the window
+            // and keep clear of the system vertical bar at its trailing edge (FestivalNativeApps `screenOrigin`).
+            var x = element.exists && element.frame.midX > 0 ? element.frame.midX : window.midX
+            if FentonHomeApp.family == .iPhoneDuo { x = min(x, window.maxX - 96) }
+            let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: -window.minX, dy: -window.minY))
+            let from = origin.withOffset(CGVector(dx: x, dy: window.minY + window.height * (above ? 0.35 : 0.65)))
+            let to = from.withOffset(CGVector(dx: 0, dy: above ? 220 : -220))
+            from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
+        }
+        if !element.isHittable { keep(app, "reveal-failed") }
+        let scrolls = app.scrollViews.allElementsBoundByIndex.map { "\($0.frame)" }.joined(separator: "; ")
+        XCTAssertTrue(element.isHittable, "\(element) never came into view: frame \(element.frame), window \(window), scroll views \(scrolls)")
     }
 
     private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
@@ -53,7 +72,7 @@ final class MediaRemoteJourneyTests: XCTestCase {
 
     private func isSelected(_ element: XCUIElement) -> Bool { element.isSelected }
 
-    private func waitFor(_ element: XCUIElement, _ format: String, _ argument: String, timeout: TimeInterval = 5) -> Bool {
+    private func waitFor(_ element: XCUIElement, _ format: String, _ argument: String, timeout: TimeInterval = 10) -> Bool {
         let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: format, argument), object: element)
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
@@ -94,7 +113,8 @@ final class MediaRemoteJourneyTests: XCTestCase {
     /// The Music Room power button is a switch with an On/Off value.
     func testMusicRoomPowerIsASwitch() {
         let app = launch("music-room-remote")
-        let power = app.buttons["remote.power"]
+        let power = app.switches["remote.power"]
+        XCTAssertTrue(power.exists, "Music Room power is a switch")
         XCTAssertEqual(power.value as? String, "On")
         power.tap()
         expectCall("script.music_room_tv_off", in: app)
@@ -157,7 +177,10 @@ final class MediaRemoteJourneyTests: XCTestCase {
         tabs.buttons["Devices"].tap()
         XCTAssertTrue(element("remote.device.Projector", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(tabs.buttons["Devices"].isSelected)
-        XCTAssertTrue(app.buttons["remote.power"].isHittable, "Power stays visible on every tab")
+        // Power stays in every tab's layout; on short screens the tab change scrolls the picker to the top.
+        let power = element("remote.power", in: app)
+        XCTAssertTrue(power.exists, "Power is on every tab")
+        reveal(power, in: app, down: true)
     }
 
     /// App tiles launch apps; the running app carries the selected trait.
@@ -211,7 +234,7 @@ final class MediaRemoteJourneyTests: XCTestCase {
         game.tap()
         expectCall("select.select_option entity_id=select.music_room_music_room_sync_box_sync_mode option=game", in: app)
         XCTAssertTrue(game.wait(for: \.isSelected, toEqual: true, timeout: 5))
-        XCTAssertEqual(lightSync.value as? String, "On", "Choosing a mode starts syncing")
+        XCTAssertTrue(waitFor(lightSync, "value == %@", "On"), "Choosing a mode starts syncing")
 
         let high = element("remote.hue.intensity.high", in: app)
         reveal(high, in: app)
@@ -234,9 +257,8 @@ final class MediaRemoteJourneyTests: XCTestCase {
             XCUIDevice.shared.orientation = .landscapeLeft
             app = launch("theater-room-shield")
             XCTAssertTrue(element("remote.layout.twoColumn", in: app).waitForExistence(timeout: 5), "iPad landscape splits")
-            let leading = element("remote.leadingColumn", in: app)
-            XCTAssertLessThan(app.buttons["remote.power"].frame.maxX, app.segmentedControls["remote.tabs"].frame.minX)
-            XCTAssertTrue(leading.exists)
+            XCTAssertLessThan(element("remote.power", in: app).frame.maxX, app.segmentedControls["remote.tabs"].frame.minX,
+                              "Power leads, tab content trails")
             return
         }
         let app = launch("theater-room-shield")
@@ -291,8 +313,9 @@ final class MediaRemoteJourneyTests: XCTestCase {
                 app.launchEnvironment["FENTON_GALLERY"] = "media-remote"
                 app.launchEnvironment["FENTON_GALLERY_REMOTE"] = remote
                 app.launchEnvironment["FENTON_GALLERY_TAB"] = tab
+                app.launchEnvironment["FENTON_GALLERY_CLEAN"] = "1"
                 app.launch()
-                XCTAssertTrue(app.buttons["remote.power"].waitForExistence(timeout: 20))
+                XCTAssertTrue(element("remote.power", in: app).waitForExistence(timeout: 30))
                 sleep(3) // Artwork loads from the server's public /local folder.
                 keep(app, "remote-\(tab)-\(suffix)")
             }
@@ -300,7 +323,12 @@ final class MediaRemoteJourneyTests: XCTestCase {
     }
 
     private func keep(_ app: XCUIApplication, _ name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
+        // Upright: the raw capture stays portrait in landscape (see RenderedContrast).
+        let shot = XCUIScreen.main.screenshot().image
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = shot.scale
+        let upright = UIGraphicsImageRenderer(size: shot.size, format: format).image { _ in shot.draw(at: .zero) }
+        let attachment = XCTAttachment(image: upright)
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)

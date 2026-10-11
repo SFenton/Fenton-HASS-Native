@@ -29,16 +29,22 @@ struct MediaRemoteGallery: View {
                         .accessibilityIdentifier("gallery.remote.\(config.id)")
                 }
             } footer: {
-                lastCall
+                // Only while no remote is open: behind an iPad page sheet the dimmed copy fails contrast.
+                if open == nil { lastCall }
             }
         }
         .navigationTitle("Media Remote")
         .sheet(item: $open) { config in
             MediaRemoteSheet(config: config, store: store, caller: recorder, imageServer: MediaRemoteFixtures.imageServer, initialTab: initialTab)
-                .safeAreaInset(edge: .bottom) { lastCall.padding(.horizontal).background(.bar) }
+                .safeAreaInset(edge: .top) {
+                    // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
+                    if !Self.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
+                }
                 .mediaRemotePresentation()
         }
     }
+
+    static var isClean: Bool { ProcessInfo.processInfo.environment["FENTON_GALLERY_CLEAN"] == "1" }
 
     /// The last service call, which journeys read to check what a control sent.
     private var lastCall: some View {
@@ -91,7 +97,13 @@ final class GalleryServiceRecorder: HassServiceCalling {
         case ("media_player", "toggle"): if let target { flip(target) }
         case ("switch", "turn_on"): if let target { set(target, "on") }
         case ("switch", "turn_off"): if let target { set(target, "off") }
-        case ("select", "select_option"): if let target, let option = data["option"] as? String { set(target, option) }
+        case ("select", "select_option"):
+            if let target, let option = data["option"] as? String { set(target, option) }
+            // Choosing a sync mode starts syncing, as the Sync Box does.
+            if target == MediaRemotes.MusicRoom.hueSyncModeEntityId {
+                set(MediaRemotes.MusicRoom.hueSyncPowerEntityId, "on")
+                set(MediaRemotes.MusicRoom.hueSyncLightSyncEntityId, "on")
+            }
         case ("number", "set_value"):
             if let target, let value = data["value"] { set(target, "\(value)") }
         case ("media_player", "volume_set"):

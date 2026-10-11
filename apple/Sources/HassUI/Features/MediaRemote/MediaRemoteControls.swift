@@ -96,6 +96,9 @@ struct RemoteButtonIcon: View {
                 .rotationEffect(.degrees(button.iconRotationDegrees))
                 .foregroundStyle(color)
                 .accessibilityHidden(true)
+        } else {
+            // The SHIELD select button is blank; keep a body so the button keeps its size.
+            Color.clear
         }
     }
 
@@ -177,10 +180,19 @@ private struct PowerSemantics: ViewModifier {
 /// each press (web `RemoteGrid`; HIG: Playing haptics). Select is blank on a SHIELD and a dot on Apple TV.
 struct DirectionalPad: View {
     var controller: MediaRemoteController
+    /// The width the pad must fit (the leading column in two columns); `nil` for no limit.
+    var maxWidth: CGFloat?
     @ScaledMetric(relativeTo: .title) private var scaledDiameter: CGFloat = 76
     @State private var presses = 0
 
-    private var diameter: CGFloat { min(max(scaledDiameter, 64), 104) }
+    /// 64–104 pt with Dynamic Type, but never wider than three buttons fit in `maxWidth` (never under 44 pt).
+    private var diameter: CGFloat { Self.diameter(scaled: scaledDiameter, maxWidth: maxWidth) }
+
+    static func diameter(scaled: CGFloat, maxWidth: CGFloat?) -> CGFloat {
+        let size = min(max(scaled, 64), 104)
+        guard let maxWidth else { return size }
+        return max(HassTokens.minTarget, min(size, (maxWidth - 2 * HassTokens.Spacing.s) / 3))
+    }
 
     var body: some View {
         let config = controller.config
@@ -299,6 +311,7 @@ struct RemoteControlsTab: View {
     @State private var keyboard: KeyboardPrompt
     @State private var volume = SliderDraft()
     @FocusState private var fieldFocused: Bool
+    @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .title2) private var scaledDiameter: CGFloat = 56
 
     init(controller: MediaRemoteController, keyboard: KeyboardPrompt = KeyboardPrompt()) {
@@ -377,31 +390,48 @@ struct RemoteControlsTab: View {
 
     // MARK: Keyboard
 
+    private var field: some View {
+        TextField("Enter text", text: $keyboard.text)
+            .textFieldStyle(.roundedBorder)
+            .remoteTextEntry()
+            .focused($fieldFocused)
+            .submitLabel(.send)
+            .onSubmit { keyboard.submit(with: controller) }
+            .frame(minHeight: HassTokens.minTarget)
+            .accessibilityLabel("Text to send")
+            .accessibilityIdentifier("remote.keyboard.field")
+    }
+
+    private var keyboardButtons: some View {
+        HStack(spacing: HassTokens.Spacing.s) {
+            Button("Send") { keyboard.submit(with: controller) }
+                .buttonStyle(.borderedProminent)
+                .disabled(keyboard.isBlank)
+                .accessibilityIdentifier("remote.keyboard.send")
+            Button("Cancel") { keyboard.close() }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("remote.keyboard.cancel")
+        }
+        .controlSize(.large)
+        .fixedSize()
+    }
+
     private var keyboardForm: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             Text("Text to send")
                 .font(.subheadline)
                 .foregroundStyle(HassTokens.Ink.secondary)
                 .accessibilityHidden(true)
-            TextField("Enter text", text: $keyboard.text)
-                .textFieldStyle(.roundedBorder)
-                .remoteTextEntry()
-                .focused($fieldFocused)
-                .submitLabel(.send)
-                .onSubmit { keyboard.submit(with: controller) }
-                .frame(minHeight: HassTokens.minTarget)
-                .accessibilityLabel("Text to send")
-                .accessibilityIdentifier("remote.keyboard.field")
-            HStack(spacing: HassTokens.Spacing.m) {
-                Button("Send") { keyboard.submit(with: controller) }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(keyboard.isBlank)
-                    .accessibilityIdentifier("remote.keyboard.send")
-                Button("Cancel") { keyboard.close() }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("remote.keyboard.cancel")
+            // Field, Send and Cancel on one row like the web, so keyboard avoidance that keeps the focused field
+            // visible keeps the buttons visible too; stacked at accessibility sizes. One layout only: a
+            // `ViewThatFits` keeps the unused variant's elements in the accessibility tree.
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
+                : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.s))
+            layout {
+                field
+                keyboardButtons
             }
-            .controlSize(.large)
         }
         .transition(.opacity.combined(with: .move(edge: .top)))
     }

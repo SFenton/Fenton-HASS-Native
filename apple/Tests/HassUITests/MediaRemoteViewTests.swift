@@ -74,6 +74,15 @@ struct MediaRemoteViewTests {
         #expect(!MediaRemoteLayout.usesTwoColumns(window: Self.phone, isRegularWidth: false, container: Self.phone))
     }
 
+    /// The d-pad scales 64–104 pt with Dynamic Type but fits its column, never below 44 pt.
+    @Test func dpadFitsItsColumn() {
+        #expect(DirectionalPad.diameter(scaled: 76, maxWidth: nil) == 76)
+        #expect(DirectionalPad.diameter(scaled: 200, maxWidth: nil) == 104)
+        #expect(DirectionalPad.diameter(scaled: 30, maxWidth: nil) == 64)
+        #expect(DirectionalPad.diameter(scaled: 104, maxWidth: 296) == 93.33333333333333)
+        #expect(DirectionalPad.diameter(scaled: 104, maxWidth: 100) == 44)
+    }
+
     // MARK: Symbols
 
     /// Every MDI icon the remotes use maps to an SF Symbol that exists.

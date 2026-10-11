@@ -189,6 +189,9 @@ enum FentonHomeApp {
     /// contrast: accept it only when no scroll view's visible frame fully contains the element.
     private static func isScrolledOutOfView(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         let frame = element.frame
+        // Below the window's edge (a long sheet column in iPad landscape): the capture holds only part of it.
+        let window = app.windows.firstMatch.frame
+        if !window.isEmpty, !window.insetBy(dx: -1, dy: -1).contains(frame) { return true }
         // Only scroll views that hold this element (not, say, Home's behind a sheet).
         let holder = NSPredicate(format: "label == %@", element.label)
         let scrollViews = app.scrollViews.allElementsBoundByIndex

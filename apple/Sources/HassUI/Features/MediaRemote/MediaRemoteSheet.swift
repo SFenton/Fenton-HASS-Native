@@ -51,9 +51,11 @@ public struct MediaRemoteSheet: View {
                 Group {
                     if twoColumns {
                         HStack(alignment: .top, spacing: 0) {
-                            ScrollView { leadingColumn.padding(HassTokens.Spacing.l) }
+                            ScrollView {
+                                leadingColumn(width: proxy.size.width / 2 - 2 * HassTokens.Spacing.l)
+                                    .padding(HassTokens.Spacing.l)
+                            }
                                 .frame(width: proxy.size.width / 2)
-                                .accessibilityIdentifier("remote.leadingColumn")
                             ScrollViewReader { reader in
                                 ScrollView { tabColumn(reader: reader).padding(HassTokens.Spacing.l) }
                             }
@@ -63,7 +65,7 @@ public struct MediaRemoteSheet: View {
                         ScrollViewReader { reader in
                             ScrollView {
                                 VStack(spacing: HassTokens.Spacing.xl) {
-                                    leadingColumn
+                                    leadingColumn(width: nil)
                                     tabColumn(reader: reader)
                                 }
                                 .frame(maxWidth: 640)
@@ -86,10 +88,10 @@ public struct MediaRemoteSheet: View {
 
     // MARK: - Columns
 
-    private var leadingColumn: some View {
+    private func leadingColumn(width: CGFloat?) -> some View {
         VStack(spacing: HassTokens.Spacing.xl) {
             PowerPill(controller: controller)
-            DirectionalPad(controller: controller)
+            DirectionalPad(controller: controller, maxWidth: width)
         }
         .frame(maxWidth: .infinity)
     }

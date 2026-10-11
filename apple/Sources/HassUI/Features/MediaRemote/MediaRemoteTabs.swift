@@ -133,8 +133,11 @@ struct RemoteGlassTile: View {
     var action: () -> Void
 
     var body: some View {
+        // `.disabled` again outside: GlassTile's own sits inside its combined accessibility element, so
+        // assistive technologies still reported unplugged HDMI ports as enabled.
         let tile = GlassTile(title: title, subtitle: subtitle, symbol: symbol, tint: tint, isActive: isActive,
                              isUnavailable: isDisabled, kind: kind, action: action)
+            .disabled(isDisabled)
         switch semantics {
         case .state:
             tile.allowsHitTesting(false).accessibilityRemoveTraits(.isButton)
