@@ -148,20 +148,30 @@ enum FentonHomeApp {
             // Decided before the relaunch: `large` is the same app, so `app` then shows the AX5 page.
             let uniqueBefore = Set(sample.map(\.0) + unconfirmedType.map(\.label).filter { unique($0, in: app) != nil })
             let large = try ax5Page()
+            // AX5 pushes rows below the fold (the folded iPhone Duo shows one or two), so scroll the
+            // page to measure every text this audit needs.
+            var largeHeights: [String: CGFloat] = [:]
+            for _ in 0..<8 {
+                for label in uniqueBefore where largeHeights[label] == nil {
+                    if let element = unique(label, in: large) { largeHeights[label] = element.frame.height }
+                }
+                let scroller = large.collectionViews.firstMatch.exists ? large.collectionViews.firstMatch : large.scrollViews.firstMatch
+                guard largeHeights.count < uniqueBefore.count, scroller.exists else { break }
+                scroller.swipeUp()
+            }
             func grew(_ label: String, _ height: CGFloat) -> Bool? {
-                guard uniqueBefore.contains(label), let element = unique(label, in: large) else { return nil }
-                return element.frame.height >= height * 1.35
+                largeHeights[label].map { $0 >= height * 1.35 }
             }
             // A live value (humidity, temperature) can change between launches; then the page decides:
             // the sampled texts together are 1.35x taller and none shrank. Measured together because a
             // grouped section header's frame carries fixed padding (Server: 40.3 → 52 pt at AX5 while
             // its glyphs triple), so it can miss 1.35x alone.
-            let compared = sample.compactMap { label, height in unique(label, in: large).map { (height, $0.frame.height) } }
+            let compared = sample.compactMap { label, height in largeHeights[label].map { (height, $0) } }
             let pageGrew = compared.count >= 3 && compared.allSatisfy { $0.1 >= $0.0 }
                 && compared.map(\.1).reduce(0, +) >= 1.35 * compared.map(\.0).reduce(0, +)
             var missed = false
             for (label, height) in unconfirmedType where !(grew(label, height) ?? pageGrew) {
-                let measured = unique(label, in: large).map { String(format: " (%.1f → %.1f pt)", height, $0.frame.height) } ?? ""
+                let measured = largeHeights[label].map { String(format: " (%.1f → %.1f pt)", height, $0) } ?? ""
                 open.append("Dynamic Type: '\(label)' did not grow 1.35x at AX5\(measured)")
                 missed = true
             }

@@ -31,6 +31,13 @@ final class SettingsJourneyTests: XCTestCase {
         return element
     }
 
+    /// Done, scrolled back into view (the folded iPhone Duo hides the bar while the form is scrolled).
+    private func doneButton(_ app: XCUIApplication) -> XCUIElement {
+        let done = app.buttons["haSettings.done"]
+        for _ in 0..<6 where !(done.exists && done.isHittable) { app.collectionViews.firstMatch.swipeDown() }
+        return done
+    }
+
     /// The Sign Out row, scrolled into view.
     private func signOutRow(_ app: XCUIApplication) -> XCUIElement {
         reveal(app.buttons["haSettings.signOut"], in: app)
@@ -107,7 +114,7 @@ final class SettingsJourneyTests: XCTestCase {
             self.openSettings(large)
             return large
         }
-        app.buttons["haSettings.done"].tap()
+        doneButton(app).tap()
         XCTAssertTrue(app.buttons["settings.homeAssistant"].waitForExistence(timeout: 5))
     }
 
