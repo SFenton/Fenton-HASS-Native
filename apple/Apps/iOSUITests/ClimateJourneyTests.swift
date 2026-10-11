@@ -7,7 +7,8 @@ import XCTest
 @MainActor
 final class ClimateJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
-    override func tearDown() { MainActor.assumeIsolated { XCUIDevice.shared.orientation = .portrait } }
+    // Only the iPad journeys rotate; leave a Duo pose set in Device Hub alone.
+    override func tearDown() { MainActor.assumeIsolated { if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait } } }
 
     // MARK: - Helpers
 
@@ -375,6 +376,6 @@ final class ClimateJourneyTests: XCTestCase {
             sleep(1)
             keepScreenshot(away, "climate-page-away-\(suffix)")
         }
-        XCUIDevice.shared.orientation = .portrait
+        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
 }
