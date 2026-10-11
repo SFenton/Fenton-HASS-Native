@@ -11,3 +11,4 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Climate | `/at-a-glance/thermostat` | TODO | Placeholder |
 | Chores | `/at-a-glance/chores` | TODO | Placeholder |
 | Settings | `/at-a-glance/settings` | TODO | Home Assistant settings modal only ([ios.md](settings/ios.md)) |
+| Food & Recipes | `/food`, `/food/recipes` | [food/spec.md](food/spec.md) | Hub, Recipes grid, recipe detail ([ios.md](food/ios.md)) |

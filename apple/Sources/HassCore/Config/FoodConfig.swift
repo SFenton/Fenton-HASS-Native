@@ -39,23 +39,25 @@ public enum FoodConfig {
 
     // MARK: - Subtitles
 
+    // Each helper reads entities through `state`, so a view passing `{ store.entity($0).state }` observes them.
+
     /// `12 Items • 3 Expiring Soon` for one space (web `groceryPlaceSubtitle`).
-    public static func spaceSubtitle(_ space: Space, values: [String: EntityState], now: Date = .now, calendar: Calendar = .current) -> String {
-        summary(items: count(values[space.entityId]), expiring: expiringCount(location: space.location, values: values, now: now, calendar: calendar))
+    public static func spaceSubtitle(_ space: Space, state: (String) -> EntityState?, now: Date = .now, calendar: Calendar = .current) -> String {
+        summary(items: count(state(space.entityId)), expiring: expiringCount(location: space.location, state: state, now: now, calendar: calendar))
     }
 
     /// The whole inventory: total items (or the spaces' sum) and the expiring sensor (web `allFoodSubtitle`).
-    public static func allFoodSubtitle(values: [String: EntityState]) -> String {
-        let fallback = spaces.reduce(0) { $0 + count(values[$1.entityId]) }
-        let total = count(values[totalItemsEntityId])
-        return summary(items: total > 0 ? total : fallback, expiring: count(values[expiringSoonEntityId]))
+    public static func allFoodSubtitle(state: (String) -> EntityState?) -> String {
+        let fallback = spaces.reduce(0) { $0 + count(state($1.entityId)) }
+        let total = count(state(totalItemsEntityId))
+        return summary(items: total > 0 ? total : fallback, expiring: count(state(expiringSoonEntityId)))
     }
 
     /// Every space's items and expiring items (web `foodSummarySubtitle`, the Kitchen page's Food tile).
-    public static func foodSummarySubtitle(values: [String: EntityState], now: Date = .now, calendar: Calendar = .current) -> String {
+    public static func foodSummarySubtitle(state: (String) -> EntityState?, now: Date = .now, calendar: Calendar = .current) -> String {
         summary(
-            items: spaces.reduce(0) { $0 + count(values[$1.entityId]) },
-            expiring: spaces.reduce(0) { $0 + expiringCount(location: $1.location, values: values, now: now, calendar: calendar) }
+            items: spaces.reduce(0) { $0 + count(state($1.entityId)) },
+            expiring: spaces.reduce(0) { $0 + expiringCount(location: $1.location, state: state, now: now, calendar: calendar) }
         )
     }
 
@@ -73,8 +75,8 @@ public enum FoodConfig {
     }
 
     /// Items in `location` that expire within a week (web `expiringSoonCountForLocation`).
-    static func expiringCount(location: String, values: [String: EntityState], now: Date, calendar: Calendar) -> Int {
-        guard let list = values[expiringSoonEntityId]?.attributes["expiring_list"]?.array else { return 0 }
+    static func expiringCount(location: String, state: (String) -> EntityState?, now: Date, calendar: Calendar) -> Int {
+        guard let list = state(expiringSoonEntityId)?.attributes["expiring_list"]?.array else { return 0 }
         return list.filter { item in
             normalizedLocation(item["location"]?.string ?? "") == location && expiresWithinWeek(item, now: now, calendar: calendar)
         }.count

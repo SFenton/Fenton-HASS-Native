@@ -1,0 +1,265 @@
+import XCTest
+
+/// The Food & Recipes hub, Recipes grid and recipe detail in the debug gallery (fixture recipes, recording
+/// service; nothing reaches the house): semantics, service calls, split per pose, accessibility audits and
+/// screenshots on iPhone, iPhone Duo and iPad (`.agents/pages/food/spec.md`).
+@MainActor
+final class FoodJourneyTests: XCTestCase {
+    override func setUp() { continueAfterFailure = false }
+    override func tearDown() {
+        MainActor.assumeIsolated {
+            if FentonHomeApp.family != .iPhone { XCUIDevice.shared.orientation = .portrait }
+        }
+    }
+
+    // MARK: - Helpers
+
+    private var device: String {
+        switch FentonHomeApp.family {
+        case .iPhone: "iphone"
+        case .iPhoneDuo: "duo"
+        case .iPad: "ipad"
+        }
+    }
+
+    private func launch(_ route: String, mode: String? = nil, arguments: [String] = []) -> XCUIApplication {
+        let app = FentonHomeApp.makeApp()
+        app.launchEnvironment["FENTON_GALLERY"] = "food"
+        app.launchEnvironment["FENTON_GALLERY_ROUTE"] = route
+        if let mode { app.launchEnvironment["FENTON_GALLERY_FOOD_MODE"] = mode }
+        app.launchArguments += arguments
+        app.launch()
+        return app
+    }
+
+    private func element(_ id: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)[id].firstMatch
+    }
+
+    private func expectCall(_ prefix: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let label = app.staticTexts["gallery.lastCall"].firstMatch
+        let matched = waitFor(label, "label BEGINSWITH %@", "Last call: \(prefix)")
+        XCTAssertTrue(matched, "Last call was '\(label.label)'", file: file, line: line)
+    }
+
+    private func waitFor(_ element: XCUIElement, _ format: String, _ argument: String, timeout: TimeInterval = 10) -> Bool {
+        let expectation = XCTNSPredicateExpectation(predicate: NSPredicate(format: format, argument), object: element)
+        return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<12 where !(element.exists && element.isHittable) { app.swipeUp() }
+        XCTAssertTrue(element.isHittable, "\(element) never came into view")
+    }
+
+    private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertGreaterThanOrEqual(element.frame.width, 43, element.label, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(element.frame.height, 43, element.label, file: file, line: line)
+    }
+
+    private func waitForGrid(_ app: XCUIApplication) {
+        XCTAssertTrue(element("recipes.card.1", in: app).waitForExistence(timeout: 15), "Recipes did not load")
+        sleep(1) // Mid-animation frames fail contrast and clipping.
+    }
+
+    // MARK: - Hub
+
+    func testHubShowsSuggestionsRecipesAndSpaces() throws {
+        let app = launch("hub")
+        XCTAssertTrue(app.navigationBars["Food & Recipes"].waitForExistence(timeout: 15))
+        XCTAssertTrue(element("food.suggestion.1", in: app).waitForExistence(timeout: 10), "Suggestions did not load")
+        expectCall("recipe_query kind=recommendations limit=40", in: app)
+        let allRecipes = element("food.allRecipes", in: app)
+        XCTAssertTrue(allRecipes.exists)
+        assertTarget(allRecipes)
+        reveal(element("food.space.cabinet", in: app), in: app)
+        XCTAssertTrue(element("food.space.frigo", in: app).label.contains("38 Items"))
+        sleep(1)
+        keepScreenshot(app, "food-hub-\(device)")
+        try FentonHomeApp.audit(app) { self.launch("hub", arguments: FentonHomeApp.ax5) }
+
+        let first = element("food.suggestion.1", in: app)
+        app.swipeDown()
+        if !first.isHittable { app.swipeDown() }
+        first.tap()
+        XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10), "Recipe sheet did not open")
+        expectCall("recipe_detail recipe_id=1", in: app)
+    }
+
+    func testHubFailureOffersRetry() {
+        let app = launch("hub", mode: "error")
+        XCTAssertTrue(element("food.suggestions.error", in: app).waitForExistence(timeout: 15))
+        XCTAssertTrue(element("food.allRecipes", in: app).exists, "navigation stays available when suggestions fail")
+    }
+
+    func testHubAtAX5() throws {
+        let app = launch("hub", arguments: FentonHomeApp.ax5)
+        XCTAssertTrue(element("food.suggestion.1", in: app).waitForExistence(timeout: 15))
+        sleep(1)
+        keepScreenshot(app, "food-hub-\(device)-ax5")
+        try FentonHomeApp.audit(app)
+    }
+
+    // MARK: - Recipes
+
+    func testRecipesSortFilterAndSearch() throws {
+        let app = launch("recipes")
+        waitForGrid(app)
+        expectCall("recipe_query kind=browse q= sort=availability cursor=-", in: app)
+        keepScreenshot(app, "food-recipes-\(device)")
+        try FentonHomeApp.audit(app) { self.launch("recipes", arguments: FentonHomeApp.ax5) }
+
+        for id in ["fab.sort", "fab.filter", "fab.search"] { assertTarget(element(id, in: app)) }
+
+        // Sort.
+        element("fab.sort", in: app).tap()
+        XCTAssertTrue(app.navigationBars["Sort Recipes"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["filterSheet.apply"].isEnabled, "Apply waits for a change")
+        element("recipes.sort.alphabetical", in: app).tap()
+        XCTAssertTrue(element("recipes.sort.alphabetical", in: app).isSelected)
+        sleep(1)
+        keepScreenshot(app, "food-recipes-sort-\(device)")
+        try FentonHomeApp.audit(app)
+        app.buttons["filterSheet.apply"].tap()
+        expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
+        XCTAssertTrue(element("fab.sort", in: app).isSelected, "an applied sort marks the button")
+
+        // Filter.
+        element("fab.filter", in: app).tap()
+        XCTAssertTrue(app.navigationBars["Filter Recipes"].waitForExistence(timeout: 5))
+        XCTAssertFalse(element("recipes.filter.days30", in: app).isEnabled, "horizons wait for the toggle")
+        element("recipes.filter.expiringOnly", in: app).switches.firstMatch.tap()
+        sleep(1)
+        keepScreenshot(app, "food-recipes-filter-\(device)")
+        try FentonHomeApp.audit(app)
+        app.buttons["filterSheet.apply"].tap()
+        expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
+        XCTAssertTrue(element("fab.filter", in: app).wait(for: \.isSelected, toEqual: true, timeout: 5), "applied filters mark the button")
+
+        // Search.
+        element("fab.search", in: app).tap()
+        let field = element("fab.search.field", in: app)
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.typeText("zzz")
+        XCTAssertTrue(element("recipes.empty", in: app).waitForExistence(timeout: 10))
+        expectCall("recipe_hydration query=zzz", in: app)
+        element("fab.search.close", in: app).tap()
+        XCTAssertFalse(field.exists)
+    }
+
+    func testRecipesErrorAndEmpty() throws {
+        let failing = launch("recipes", mode: "error")
+        XCTAssertTrue(element("recipes.error", in: failing).waitForExistence(timeout: 15))
+        assertTarget(element("recipes.retry", in: failing))
+        keepScreenshot(failing, "food-recipes-error-\(device)")
+        try FentonHomeApp.audit(failing)
+
+        let empty = launch("recipes", mode: "empty")
+        XCTAssertTrue(element("recipes.empty", in: empty).waitForExistence(timeout: 15))
+        try FentonHomeApp.audit(empty)
+    }
+
+    func testRecipesLoadMoreOnScroll() {
+        let app = launch("recipes")
+        waitForGrid(app)
+        let last = element("recipes.card.120", in: app)
+        for _ in 0..<60 where !last.exists { app.swipeUp() }
+        XCTAssertTrue(last.exists, "infinite scroll stopped early")
+        expectCall("recipe_query kind=browse q= sort=availability cursor=100", in: app)
+    }
+
+    // MARK: - Detail
+
+    func testRecipeDetailTabsAndGroceries() throws {
+        let app = launch("recipes")
+        waitForGrid(app)
+        element("recipes.card.2", in: app).tap()
+        XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10))
+        expectCall("recipe_detail recipe_id=2", in: app)
+        sleep(1)
+        let split = element("recipe.pane", in: app).exists
+        XCTAssertEqual(split, FentonHomeApp.family == .iPad && app.windows.firstMatch.frame.width > app.windows.firstMatch.frame.height,
+                       "the pane shows only where a split is allowed")
+        keepScreenshot(app, "food-recipe-general-\(device)")
+        try FentonHomeApp.audit(app)
+
+        let tabs = element("recipe.tabs", in: app)
+        tabs.buttons["Ingredients"].tap()
+        XCTAssertTrue(element("recipe.ingredient.0", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(element("recipe.ingredient.1", in: app).label.contains("Missing"))
+        let add = element("recipe.grocery.add", in: app)
+        reveal(add, in: app)
+        assertTarget(add)
+        sleep(1)
+        keepScreenshot(app, "food-recipe-ingredients-\(device)")
+        try FentonHomeApp.audit(app)
+        add.tap()
+        expectCall("recipe_grocery_add recipe_id=2 selections=1,4", in: app)
+        XCTAssertTrue(element("recipe.grocery.added", in: app).waitForExistence(timeout: 10))
+
+        tabs.buttons["Instructions"].tap()
+        XCTAssertTrue(app.staticTexts["Heat the oven to 425°F and zest the lemons."].waitForExistence(timeout: 5))
+        keepScreenshot(app, "food-recipe-instructions-\(device)")
+        try FentonHomeApp.audit(app)
+    }
+
+    func testCookidooRecipeLinksOut() throws {
+        let app = launch("recipes")
+        waitForGrid(app)
+        element("recipes.card.1", in: app).tap()
+        XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10))
+        element("recipe.tabs", in: app).buttons["Instructions"].tap()
+        XCTAssertTrue(element("recipe.openCookidoo", in: app).waitForExistence(timeout: 5))
+        assertTarget(element("recipe.openCookidoo", in: app))
+        keepScreenshot(app, "food-recipe-cookidoo-\(device)")
+        try FentonHomeApp.audit(app)
+    }
+
+    func testRecipeDetailAtAX5() throws {
+        let app = launch("recipes", arguments: FentonHomeApp.ax5)
+        waitForGrid(app)
+        keepScreenshot(app, "food-recipes-\(device)-ax5")
+        try FentonHomeApp.audit(app)
+        element("recipes.card.2", in: app).tap()
+        XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10))
+        sleep(1)
+        keepScreenshot(app, "food-recipe-general-\(device)-ax5")
+        try FentonHomeApp.audit(app)
+    }
+
+    // MARK: - Poses
+
+    /// Landscape on iPad and the iPhone Duo: the hub goes to two columns and an open recipe fills the trailing
+    /// half where a split is allowed (unfolded Duo, iPad); the folded Duo keeps the sheet.
+    func testLandscapeSplit() throws {
+        guard FentonHomeApp.family != .iPhone else { throw XCTSkip("iPhone is portrait-only") }
+        XCUIDevice.shared.orientation = .landscapeLeft
+        let hub = launch("hub")
+        XCTAssertTrue(element("food.suggestion.1", in: hub).waitForExistence(timeout: 15))
+        sleep(1)
+        keepScreenshot(hub, "food-hub-\(device)-landscape")
+        try FentonHomeApp.audit(hub)
+
+        let app = launch("recipes")
+        waitForGrid(app)
+        keepScreenshot(app, "food-recipes-\(device)-landscape")
+        element("recipes.card.2", in: app).tap()
+        XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10))
+        sleep(1)
+        let window = app.windows.firstMatch.frame
+        if element("recipe.pane", in: app).exists {
+            XCTAssertTrue(element("recipes.card.3", in: app).isHittable, "the grid stays usable beside the pane")
+            XCTAssertTrue(element("recipes.card.2", in: app).isSelected)
+            element("recipe.close", in: app).tap()
+            XCTAssertFalse(element("recipe.pane", in: app).waitForExistence(timeout: 2))
+            element("recipes.card.2", in: app).tap()
+            XCTAssertTrue(element("recipe.pane", in: app).waitForExistence(timeout: 5))
+        } else {
+            XCTAssertNotEqual(FentonHomeApp.family, .iPad, "iPad landscape (\(window)) must split")
+            XCTAssertTrue(element("recipe.done", in: app).exists)
+        }
+        sleep(1)
+        keepScreenshot(app, "food-recipe-general-\(device)-landscape")
+        try FentonHomeApp.audit(app)
+    }
+}

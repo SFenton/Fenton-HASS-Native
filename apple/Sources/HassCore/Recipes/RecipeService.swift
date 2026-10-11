@@ -5,7 +5,7 @@ import Foundation
 /// Anything that can call a Home Assistant service and return its response (`return_response: true`).
 /// ``HassConnection`` is the app's implementation; tests and the gallery answer from fixtures.
 @MainActor
-public protocol HassServiceResponding: AnyObject {
+public protocol HassServiceResponding: AnyObject, Sendable {
     /// Calls `domain.service` with `data` and returns the service's `response` object.
     func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue
 }
@@ -17,7 +17,7 @@ extension HassConnection: HassServiceResponding {}
 /// The EverShelf recipe features the Food pages use. ``EverShelfRecipeService`` calls Home Assistant;
 /// previews and journeys swap in fixtures.
 @MainActor
-public protocol RecipeServing: AnyObject {
+public protocol RecipeServing: AnyObject, Sendable {
     /// Suggested recipes for the Food hub carousel.
     func recommendations(limit: Int) async throws -> [RecipeCard]
     /// One page of the Recipes grid.

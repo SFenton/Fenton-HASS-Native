@@ -6,6 +6,7 @@ import SwiftUI
 public struct ComponentGallery: View {
     /// A gallery page.
     public enum Page: String, CaseIterable, Sendable {
+        case food
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
     }
@@ -25,11 +26,12 @@ public struct ComponentGallery: View {
     public init(page: Page) { self.page = page }
 
     public var body: some View {
-        NavigationStack {
-            switch page {
-            case .mediaRemote: MediaRemoteGallery()
-            case .thermostatDial: ThermostatDialGallery()
-            }
+        switch page {
+        case .food:
+            // Owns its navigation stack so journeys can start on a pushed page.
+            FoodGallery()
+        case .mediaRemote: NavigationStack { MediaRemoteGallery() }
+        case .thermostatDial: NavigationStack { ThermostatDialGallery() }
         }
     }
 }

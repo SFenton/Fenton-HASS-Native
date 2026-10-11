@@ -1,0 +1,299 @@
+import HassCore
+import HassDesign
+import SwiftUI
+
+/// All recipes: search, sort, filter and an endlessly loading grid (web `RecipesPage` + `RecipeFloatingActions`).
+///
+/// Search, Sort and Filter are the shared floating actions (`.agents/patterns/floating-actions.md`), as on the
+/// web. Where a split is allowed (iPad and unfolded iPhone Duo landscape) an open recipe fills the trailing
+/// half; elsewhere it opens as a sheet.
+struct RecipesScreen: View {
+    let models: FoodModels
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var window = WindowMetrics()
+    @State private var selected: RecipeCard?
+    @State private var detail: RecipeDetailModel?
+    @State private var sheet: ControlSheet?
+    @State private var searchExpanded = false
+
+    enum ControlSheet: String, Identifiable {
+        case sort, filter
+        var id: String { rawValue }
+    }
+
+    private var collection: RecipeCollectionModel { models.collection }
+
+    private var split: Bool {
+        guard let size = window.size else { return false }
+        return SplitPolicy.allowsSplit(size: size, isRegularWidth: horizontalSizeClass == .regular || window.isRegularWidth)
+    }
+
+    var body: some View {
+        @Bindable var collection = collection
+        HStack(spacing: 0) {
+            results
+                .frame(maxWidth: .infinity)
+                .floatingActionBar(
+                    [
+                        FloatingAction(id: "sort", title: "Sort", symbol: "arrow.up.arrow.down", showsTitle: false, isActive: collection.sortActive) { sheet = .sort },
+                        FloatingAction(id: "filter", title: "Filter", symbol: "line.3.horizontal.decrease", showsTitle: false, isActive: collection.filterActive) { sheet = .filter },
+                    ],
+                    search: FloatingSearch(text: $collection.searchText, isExpanded: $searchExpanded, prompt: "Search recipes")
+                )
+            if split, let detail {
+                RecipeDetailPane(model: detail) { close() }
+                    .frame(maxWidth: .infinity)
+                    .transition(.move(edge: .trailing))
+            }
+        }
+        .background { WindowMetricsReader(metrics: $window) }
+        .navigationTitle("Recipes")
+        .sheet(item: $sheet) { kind in
+            switch kind {
+            case .sort: RecipeSortSheet(current: collection.sort) { collection.apply(sort: $0) }
+            case .filter: RecipeFilterSheet(current: collection.filters, sortedAlphabetically: collection.sort == .alphabetical) { collection.apply(filters: $0) }
+            }
+        }
+        .sheet(item: sheetRecipe) { _ in
+            if let detail { RecipeDetailSheet(model: detail) }
+        }
+        .onAppear {
+            collection.appear()
+            if !collection.searchText.isEmpty { searchExpanded = true }
+        }
+        .onChange(of: collection.announcement) { _, text in announce(text) }
+        .animation(.snappy, value: split && detail != nil)
+    }
+
+    // MARK: - Results
+
+    @ViewBuilder
+    private var results: some View {
+        switch collection.phase {
+        case .idle, .loading:
+            ProgressView("Loading recipes")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("recipes.loading")
+        case .failed:
+            ContentUnavailableView {
+                Label("Unable to Load Recipes", systemImage: "exclamationmark.triangle")
+            } actions: {
+                Button("Retry") { collection.reload() }
+                    .buttonStyle(.borderedProminent)
+                    .accessibilityIdentifier("recipes.retry")
+            }
+            .accessibilityIdentifier("recipes.error")
+        case .loaded where collection.items.isEmpty:
+            ContentUnavailableView(
+                "No Recipes Found", systemImage: "magnifyingglass",
+                description: Text(collection.appliedQuery.isEmpty
+                    ? "No recipes matched the current filters."
+                    : "Try a different search or loosen the recipe filters.")
+            )
+            .accessibilityIdentifier("recipes.empty")
+        case .loaded:
+            RecipeGrid(collection: collection, selectedId: split ? selected?.id : nil) { open($0) }
+        }
+    }
+
+    // MARK: - Selection
+
+    /// The sheet's item: only while no split shows the recipe inline. When a fold or rotation removes the
+    /// split, an open recipe moves into the sheet.
+    private var sheetRecipe: Binding<RecipeCard?> {
+        Binding(
+            get: { split ? nil : selected },
+            set: { if $0 == nil, !split { close() } }
+        )
+    }
+
+    private func open(_ recipe: RecipeCard) {
+        guard recipe.id != selected?.id else { return }
+        selected = recipe
+        detail = models.detailModel(for: recipe)
+    }
+
+    private func close() {
+        selected = nil
+        detail = nil
+    }
+
+    private func announce(_ text: String) {
+        guard !text.isEmpty else { return }
+        #if os(iOS)
+        UIAccessibility.post(notification: .announcement, argument: text)
+        #endif
+    }
+}
+
+// MARK: - Grid
+
+/// The recipe card grid with infinite loading (web `RecipeGrid`): 2+ columns, cards up to ~220 pt.
+struct RecipeGrid: View {
+    let collection: RecipeCollectionModel
+    var selectedId: Int?
+    var onOpen: (RecipeCard) -> Void
+    @State private var width: CGFloat = 0
+
+    var body: some View {
+        let metrics = DynamicGridMetrics(width: max(width, 1), minCellWidth: 160, maxColumns: 8, spacing: HassTokens.Spacing.m)
+        let columns = Array(repeating: GridItem(.flexible(), spacing: HassTokens.Spacing.m, alignment: .top), count: max(2, metrics.columns))
+        ScrollView {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: HassTokens.Spacing.m) {
+                ForEach(collection.items, id: \.dedupeKey) { recipe in
+                    ImageCard(
+                        title: recipe.title, subtitle: recipe.coverageText, imageURL: recipe.cardImageURL,
+                        fallbackImageURL: recipe.imageURL, placeholderSymbol: "fork.knife", accessibilityHint: "Opens recipe details"
+                    ) { onOpen(recipe) }
+                    .overlay {
+                        if recipe.id == selectedId {
+                            RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous)
+                                .strokeBorder(Color.accentColor, lineWidth: 3)
+                        }
+                    }
+                    .accessibilityAddTraits(recipe.id == selectedId ? .isSelected : [])
+                    .accessibilityIdentifier("recipes.card.\(recipe.id)")
+                    .onAppear { collection.itemAppeared(recipe) }
+                }
+            }
+            .padding(.horizontal, HassTokens.Spacing.l)
+            .padding(.vertical, HassTokens.Spacing.m)
+            footer
+        }
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width - 2 * HassTokens.Spacing.l }) { width = $0 }
+        .accessibilityIdentifier("recipes.grid")
+    }
+
+    @ViewBuilder
+    private var footer: some View {
+        if collection.nextPageFailed {
+            VStack(spacing: HassTokens.Spacing.s) {
+                Text("Unable to load more recipes.").foregroundStyle(HassTokens.Ink.secondary)
+                Button("Retry") { collection.retryNextPage() }
+                    .buttonStyle(.bordered)
+                    .frame(minHeight: HassTokens.minTarget)
+                    .accessibilityIdentifier("recipes.nextPage.retry")
+            }
+            .padding(.bottom, HassTokens.Spacing.xl)
+        } else if collection.nextPageLoading || collection.hydrating {
+            ProgressView(collection.hydrating ? "Finding more recipes" : "Loading more recipes")
+                .padding(.bottom, HassTokens.Spacing.xl)
+                .accessibilityIdentifier("recipes.nextPage.loading")
+        }
+    }
+}
+
+// MARK: - Sort and filter
+
+/// Sort Recipes (web `RecipeSortSheet`).
+struct RecipeSortSheet: View {
+    @State private var draft: RecipeSort
+    var current: RecipeSort
+    var onApply: (RecipeSort) -> Void
+
+    init(current: RecipeSort, onApply: @escaping (RecipeSort) -> Void) {
+        _draft = State(initialValue: current)
+        self.current = current
+        self.onApply = onApply
+    }
+
+    var body: some View {
+        FilterSheet(title: "Sort Recipes", canApply: draft != current, canReset: draft != .availability,
+                    onApply: { onApply(draft) }, onReset: { draft = .availability }) {
+            Section("Sort By") {
+                ForEach(RecipeSort.allCases) { option in
+                    FilterOptionRow(title: option.title, subtitle: option.subtitle, isSelected: draft == option) { draft = option }
+                        .accessibilityIdentifier("recipes.sort.\(option.rawValue)")
+                }
+            }
+        }
+    }
+}
+
+/// Filter Recipes (web `RecipeFilterSheet`).
+struct RecipeFilterSheet: View {
+    @State private var draft: RecipeFilters
+    var current: RecipeFilters
+    var sortedAlphabetically: Bool
+    var onApply: (RecipeFilters) -> Void
+
+    init(current: RecipeFilters, sortedAlphabetically: Bool, onApply: @escaping (RecipeFilters) -> Void) {
+        _draft = State(initialValue: current)
+        self.current = current
+        self.sortedAlphabetically = sortedAlphabetically
+        self.onApply = onApply
+    }
+
+    var body: some View {
+        FilterSheet(title: "Filter Recipes", canApply: draft != current, canReset: draft != .defaults,
+                    onApply: { onApply(draft) }, onReset: { draft = .defaults }) {
+            Section {
+                PercentSliderRow("Minimum Ingredients Available", value: $draft.minimumCoverage, identifier: "recipes.filter.coverage")
+            } header: {
+                Text("Ingredient Coverage")
+            } footer: {
+                Text("Only show recipes where at least this percentage of required ingredients is currently available.")
+            }
+            Section("Expiring Ingredients") {
+                Toggle(isOn: $draft.expiringOnly) {
+                    Label("Use expiring ingredients only", systemImage: "clock")
+                }
+                .frame(minHeight: HassTokens.minTarget)
+                .accessibilityIdentifier("recipes.filter.expiringOnly")
+                ForEach(RecipeFilters.horizons, id: \.self) { days in
+                    let horizon = RecipeFilters.horizon(days)
+                    FilterOptionRow(title: horizon.title, subtitle: horizon.subtitle, isSelected: draft.expiringWithinDays == days) {
+                        draft.expiringWithinDays = days
+                    }
+                    .disabled(!draft.expiringOnly)
+                    .opacity(draft.expiringOnly ? 1 : 0.5)
+                    .accessibilityIdentifier("recipes.filter.days\(days)")
+                }
+            }
+            Section {
+                PercentSliderRow("Availability Weight", value: $draft.availabilityWeight, identifier: "recipes.filter.availabilityWeight")
+                    .disabled(sortedAlphabetically)
+                PercentSliderRow("Expiry Weight", value: $draft.expiryWeight, identifier: "recipes.filter.expiryWeight")
+                    .disabled(sortedAlphabetically)
+            } header: {
+                Text("Ranking Strength")
+            } footer: {
+                Text(sortedAlphabetically
+                    ? "Weights are unavailable while recipes are sorted alphabetically."
+                    : "Tune how strongly available and expiring ingredients influence ranked recipe results.")
+            }
+        }
+        .presentationDetents([.large])
+    }
+}
+
+/// A labelled 0...100 slider in steps of 5 that shows and speaks its value (web `RangeField`).
+struct PercentSliderRow: View {
+    var title: String
+    @Binding var value: Double
+    var identifier: String
+    @Environment(\.isEnabled) private var isEnabled
+
+    init(_ title: String, value: Binding<Double>, identifier: String) {
+        self.title = title
+        _value = value
+        self.identifier = identifier
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).foregroundStyle(HassTokens.Ink.primary)
+                Spacer(minLength: HassTokens.Spacing.s)
+                Text("\(Int(value))%").monospacedDigit().foregroundStyle(HassTokens.Ink.secondary)
+            }
+            .accessibilityHidden(true)
+            Slider(value: $value, in: 0...100, step: 5)
+                .accessibilityLabel(title)
+                .accessibilityValue("\(Int(value)) percent")
+                .accessibilityIdentifier(identifier)
+        }
+        .padding(.vertical, HassTokens.Spacing.xs)
+        .opacity(isEnabled ? 1 : 0.5)
+    }
+}

@@ -22,6 +22,7 @@ struct HomeScreen: View {
         }
         .accessibilityIdentifier("home.scroll")
         .navigationTitle("Home")
+        .foodNavigation()
         .toolbar {
             ToolbarItem(placement: .primaryAction) { FreshnessIndicator() }
         }
