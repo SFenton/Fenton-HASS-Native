@@ -8,6 +8,7 @@ public struct ComponentGallery: View {
     public enum Page: String, CaseIterable, Sendable {
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
+        case bedroom = "bedroom"
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -29,6 +30,7 @@ public struct ComponentGallery: View {
             switch page {
             case .mediaRemote: MediaRemoteGallery()
             case .thermostatDial: ThermostatDialGallery()
+            case .bedroom: BedroomGallery()
             }
         }
     }

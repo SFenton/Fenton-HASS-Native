@@ -21,6 +21,9 @@ apple/Sources/HassCore/Config/MediaRemote*.swift,
 apple/Sources/HassCore/MediaRemote/,
 apple/Sources/HassUI/Features/MediaRemote/,
 apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote lane (claude/project-thread-go5jtz)
+apple/Sources/HassCore/Bedroom/,
+apple/Sources/HassUI/Features/Bedroom/,
+apple/Sources/HassUI/Features/Gallery/BedroomGallery.swift   → bedroom devices lane (claude/project-thread-hmhfaj)
 apple/Tests/**                                             → tests for your own files only
 .agents/pages/<id>/, .agents/controls/<id>/                → the lane for that page/control
 .agents/** (everything else)                               → orchestrator
@@ -52,6 +55,7 @@ apple/Tests/**                                             → tests for your ow
 | Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`) |
 | Media remote (sheet, 4 remotes, Hue Sync) | Shared component + debug gallery; not yet opened from a page (Rooms/Media lanes wire it) |
 | Watch app | Target stub only |
+| Bedroom devices (wake light, SleepyPod bed sides) | Tiles, sheets, alarm editors, active alarm, Solo Trip routing; debug gallery `FENTON_GALLERY=bedroom`; Rooms lane places them |
 | Thermostat dial (shared control) | `ThermostatDial` + `ClimateThermostatDial`; debug gallery `FENTON_GALLERY=thermostat-dial` |
 
 ## 4. Log

@@ -189,7 +189,7 @@ public struct ThermostatDial: View {
                 })
             .accessibilityElement()
             .accessibilityLabel(configuration.accessibilityLabel(for: handle))
-            .accessibilityValue(ThermostatDialConfiguration.spokenTemperature(value))
+            .accessibilityValue(configuration.spokenValue(value))
             .accessibilityAdjustableAction { direction in
                 send(editor.adjust(handle, increment: direction == .increment, in: configuration))
             }

@@ -10,3 +10,4 @@
 | [modal-sheet.md](modal-sheet.md) | SwiftUI `.sheet` with `HassSheet` chrome | `src/components/core/ModalSheet.tsx` |
 | [media-remote.md](media-remote.md) | `HassUI/Features/MediaRemote/MediaRemoteSheet.swift` | `src/components/hass/MediaRemoteModalContent.tsx` |
 | [thermostat-dial.md](thermostat-dial.md) | `HassDesign/ThermostatDial/ThermostatDial.swift` | `src/components/hass/CircularControlDial.tsx` |
+| [bedroom-devices.md](bedroom-devices.md) | `HassUI/Features/Bedroom/BedSideSheet.swift`, `WakeLightSheet.swift` | `src/components/hass/wakeLights/`, SleepyPod in `DashboardViewPage.tsx` |

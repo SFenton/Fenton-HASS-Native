@@ -127,6 +127,21 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
     /// Forces the dimmed state on or off.
     public var inactiveOverride: Bool?
 
+    // MARK: Non-temperature scales
+
+    /// How handle values are spoken and what the single handle is called.
+    public enum ValueStyle: Equatable, Sendable {
+        /// `72.5 degrees`; handle "<title> target temperature".
+        case temperature
+        /// `+3`, `0`, `-2` (the bed Pod's level scale); handle "<title> target level".
+        case signedLevel
+    }
+
+    /// How handle values read (default: temperatures).
+    public var valueStyle: ValueStyle = .temperature
+    /// Replaces the readout's VoiceOver label.
+    public var readoutAccessibilityLabelOverride: String?
+
     /// Creates a configuration.
     public init(
         title: String, min: Double = 45, max: Double = 95, step: Double = 0.5,
@@ -209,9 +224,17 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
     /// The VoiceOver label for `handle`.
     public func accessibilityLabel(for handle: ThermostatTargets.Handle) -> String {
         switch handle {
-        case .target: "\(title) target temperature"
+        case .target: valueStyle == .signedLevel ? "\(title) target level" : "\(title) target temperature"
         case .low: "\(title) heat to"
         case .high: "\(title) cool to"
+        }
+    }
+
+    /// A handle value as VoiceOver reads it in this configuration's ``valueStyle``.
+    public func spokenValue(_ value: Double) -> String {
+        switch valueStyle {
+        case .temperature: Self.spokenTemperature(value)
+        case .signedLevel: value > 0 ? "+" + Self.compact(value) : Self.compact(value)
         }
     }
 
@@ -222,6 +245,7 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
 
     /// The readout's VoiceOver label: name, action and current temperature.
     public var readoutAccessibilityLabel: String {
+        if let readoutAccessibilityLabelOverride { return readoutAccessibilityLabelOverride }
         let current = isUnavailable || self.current == nil ? "current temperature unknown" : "currently \(primaryText)\(primaryUnit ?? "")"
         return "\(title) thermostat, \(actionText), \(current)"
     }
