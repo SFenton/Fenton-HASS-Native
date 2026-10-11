@@ -29,19 +29,23 @@ struct InventorySortSheet: View {
                 direction = .ascending
             }
         ) {
-            Section("Sort By") {
+            Section {
                 ForEach(InventorySortMode.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.subtitle, isSelected: mode == option) { mode = option }
                         .accessibilityIdentifier("inventory.sort.\(option.rawValue)")
                 }
+            } header: {
+                FilterSectionHeader("Sort By")
             }
             // Option rows rather than a segmented control and footnote: both were reported clipped at large
             // text sizes; rows wrap like Sort By above.
-            Section("Sort Direction") {
+            Section {
                 ForEach(InventorySortDirection.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.hint, isSelected: direction == option) { direction = option }
                         .accessibilityIdentifier("inventory.sort.direction.\(option.rawValue)")
                 }
+            } header: {
+                FilterSectionHeader("Sort Direction")
             }
         }
     }
@@ -65,11 +69,13 @@ struct InventoryFilterSheet: View {
             onApply: { model.filterMode = mode },
             onReset: { mode = .all }
         ) {
-            Section("Filter Items") {
+            Section {
                 ForEach(InventoryFilterMode.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.subtitle, isSelected: mode == option) { mode = option }
                         .accessibilityIdentifier("inventory.filter.\(option.rawValue)")
                 }
+            } header: {
+                FilterSectionHeader("Filter Items")
             }
         }
     }

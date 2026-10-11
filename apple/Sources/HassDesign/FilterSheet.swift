@@ -61,10 +61,27 @@ public struct FilterSheet<Content: View>: View {
         .presentationDragIndicator(.visible)
         #if os(iOS)
         // Opaque: at the medium detent the glass sheet let the page's floating actions show through behind the
-        // options' footnotes, and its section headers read 3.1:1 (failed contrast on iPhone). Opaque, the
-        // standard headers pass; prominent ones were reported clipped at large text sizes.
+        // options' footnotes (failed contrast on iPhone). Headers use ``FilterSectionHeader``.
         .presentationBackground(Color(uiColor: .systemGroupedBackground))
         #endif
+    }
+}
+
+/// A ``FilterSheet`` section header: secondary ink (the system header gray measured 3.3:1 on the sheet) that
+/// wraps at accessibility sizes instead of clipping. Write sections as `Section { … } header: { FilterSectionHeader("…") }`.
+public struct FilterSectionHeader: View {
+    public var title: String
+
+    /// Creates a header.
+    public init(_ title: String) {
+        self.title = title
+    }
+
+    public var body: some View {
+        Text(title)
+            .foregroundStyle(HassTokens.Ink.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 

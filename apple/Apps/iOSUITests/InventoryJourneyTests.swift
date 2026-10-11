@@ -258,7 +258,8 @@ final class InventoryJourneyTests: XCTestCase {
             if step >= 2 {
                 app.buttons["scan.simulate"].tap(until: { app.textFields["scan.name"].exists })
                 XCTAssertTrue(app.buttons["scan.forward"].waitForExistence(timeout: 5))
-                app.buttons["scan.forward"].tap()
+                // Forward stays disabled while the lookup runs; tap until the expiry step shows.
+                app.buttons["scan.forward"].tap(until: { app.descendants(matching: .any)["scan.expiry"].exists })
                 _ = reveal(app.buttons["scan.manualExpiry"], in: app)
             }
             if step >= 3 {
