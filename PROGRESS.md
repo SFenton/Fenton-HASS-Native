@@ -50,4 +50,4 @@ apple/Tests/**                                             → tests for your ow
 
 - 2026-10-10: initial scaffold.
 - 2026-10-11: PR #1 verified on the Mac: journeys and accessibility audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad; 32 `swift test` tests pass. Redacted screenshots in `docs/screenshots/pr-1/`.
-- Known follow-up: light tiles send `light.toggle`. Presence Based Lighting's Presence Lock (SFenton/presence-based-lighting) reverts that in empty rooms and only honors an exact `turn_on` from an app user as a manual-on hold. Send `light.turn_on` / `light.turn_off` from the current state instead.
+- 2026-10-11: Lights sheet sends explicit `turn_on` / `turn_off` instead of `toggle` (Presence Based Lighting's Presence Lock reverts toggles in empty rooms), and dimmable groups get `BrightnessTile` (drag to set brightness, web `LightBrightnessCard`).

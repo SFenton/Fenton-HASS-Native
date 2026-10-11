@@ -44,41 +44,15 @@ public struct GlassTile: View {
 
     public var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                HStack {
-                    Image(systemName: symbol)
-                        .font(.title3)
-                        .symbolVariant(isActive ? .fill : .none)
-                        .foregroundStyle(isActive ? tint : .secondary)
-                    Spacer(minLength: 0)
-                    if kind == .navigate {
-                        Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(.footnote)
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            // Text wraps and the tile grows at large Dynamic Type instead of truncating.
-            .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
-            .padding(HassTokens.Spacing.m)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
-                    .strokeBorder(isActive ? tint.opacity(0.5) : .clear, lineWidth: 1)
-            }
-            .opacity(isUnavailable ? 0.5 : 1)
+            GlassTileFace(
+                title: title,
+                subtitle: subtitle,
+                symbol: symbol,
+                tint: tint,
+                isActive: isActive,
+                isUnavailable: isUnavailable,
+                showsChevron: kind == .navigate
+            )
         }
         .buttonStyle(.plain)
         .disabled(isUnavailable)
@@ -92,5 +66,76 @@ public struct GlassTile: View {
         if isUnavailable { return "Unavailable" }
         if kind == .toggle { return isActive ? "On" : "Off" }
         return subtitle ?? ""
+    }
+}
+
+// MARK: - Face
+
+/// The tile's drawing, shared by ``GlassTile`` and ``BrightnessTile`` so every entity tile looks the same.
+struct GlassTileFace: View {
+    var title: String
+    var subtitle: String?
+    var symbol: String
+    var tint: Color
+    var isActive: Bool
+    var isUnavailable: Bool
+    var showsChevron = false
+    /// 0...1 fill drawn from the leading edge (brightness), or `nil` for none.
+    var level: Double?
+    /// The fill's color; defaults to ``tint``.
+    var levelTint: Color?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+            HStack {
+                Image(systemName: symbol)
+                    .font(.title3)
+                    .symbolVariant(isActive ? .fill : .none)
+                    .foregroundStyle(isActive ? tint : .secondary)
+                Spacer(minLength: 0)
+                if showsChevron {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(HassTokens.Ink.primary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundStyle(HassTokens.Ink.secondary)
+                    .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        // Text wraps and the tile grows at large Dynamic Type instead of truncating.
+        .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
+        .padding(HassTokens.Spacing.m)
+        .background {
+            let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
+            shape.fill(.regularMaterial)
+                .overlay(alignment: .leading) {
+                    if let level, level > 0 {
+                        GeometryReader { proxy in
+                            // A light wash keeps the label text above 4.5:1 on any light color.
+                            Rectangle()
+                                .fill((levelTint ?? tint).opacity(0.32))
+                                .frame(width: proxy.size.width * min(1, level))
+                        }
+                    }
+                }
+                .clipShape(shape)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
+                .strokeBorder(isActive ? tint.opacity(0.5) : .clear, lineWidth: 1)
+        }
+        .opacity(isUnavailable ? 0.5 : 1)
+        .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
     }
 }
