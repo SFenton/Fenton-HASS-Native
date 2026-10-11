@@ -161,10 +161,10 @@ struct VacuumButtonStyle: ButtonStyle {
     var tone: VacuumController.ActionTone
 
     func makeBody(configuration: Configuration) -> some View {
-        Body(configuration: configuration, tone: tone)
+        StyledLabel(configuration: configuration, tone: tone)
     }
 
-    private struct Body: View {
+    private struct StyledLabel: View {
         var configuration: Configuration
         var tone: VacuumController.ActionTone
         @Environment(\.isEnabled) private var isEnabled

@@ -19,8 +19,8 @@ func statusContract(_ overrides: [String: Any] = [:]) -> [String: JSONValue] {
     return attributes
 }
 
-let presentIssue: [String: Any] = ["code": "navigation.stuck", "raw": "Robot stuck or trapped", "reported_at": "2026-08-21T21:20:11Z", "status": "present"]
-let resumeCondition: [String: Any] = ["code": "vacuum.task_resume_pending", "since": "2026-08-21T21:20:11.500Z", "source": "coordinator"]
+var presentIssue: [String: Any] { ["code": "navigation.stuck", "raw": "Robot stuck or trapped", "reported_at": "2026-08-21T21:20:11Z", "status": "present"] }
+var resumeCondition: [String: Any] { ["code": "vacuum.task_resume_pending", "since": "2026-08-21T21:20:11.500Z", "source": "coordinator"] }
 
 struct VacuumStatusContractTests {
     @Test func acceptsACoherentContract() throws {

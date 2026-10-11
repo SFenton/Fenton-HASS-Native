@@ -111,7 +111,11 @@ struct VacuumControllerTests {
         #expect(vacuum.powerSettings.map(\.title) == ["Mode", "Water"])
         set(store, "select.\(main.vacuumMapId)_mode", "vacuum")
         #expect(vacuum.powerSettings.map(\.title) == ["Mode", "Fan"])
+        #expect(vacuum.powerSettings[0].valueLabel == "Vacuum & Mop", "web shows the helper until HA rewrites it (VacuumCard.tsx:1376)")
+        set(store, "input_text.main_floor_vacuum_mode", "Vacuum")
         #expect(vacuum.powerSettings[0].valueLabel == "Vacuum")
+        set(store, "input_text.main_floor_vacuum_mode", "unknown")
+        #expect(vacuum.powerSettings[0].valueLabel == "Vacuum", "without a meaningful helper the select value is formatted")
         set(store, "select.\(main.vacuumMapId)_fan", "unavailable")
         #expect(vacuum.powerSettings.map(\.title) == ["Mode"])
     }
@@ -355,7 +359,7 @@ struct VacuumControllerTests {
         await resumable.waitForCalls()
         #expect(caller.calls.last?.service == "stop")
         #expect(resumable.state == "docked")
-        #expect(resumable.runtimeActions.allSatisfy(\.isDisabled), "buttons wait for the flag to clear")
+        #expect(resumable.runtimeActions.allSatisfy { $0.isDisabled }, "buttons wait for the flag to clear")
     }
 
     @Test func locateAndEmptyBin() async {
@@ -378,9 +382,12 @@ struct VacuumControllerTests {
         await vacuum.waitForCalls()
         #expect(caller.calls.last == .init(domain: "script", service: "main_floor_vacuum_mop_dock_clean", data: [:]))
         #expect(vacuum.dockActions.first?.title == "Stop Dock Clean")
+        confirm(vacuum, store, "sensor.\(main.vacuumMapId)_dock_status", "cleaning")
         confirm(vacuum, store, "sensor.\(main.vacuumMapId)_dock_status", "drying")
-        #expect(vacuum.dockActions.map(\.title) == ["Clean Mop Dock", "Stop Mop Drying", "Empty Bin"])
-        #expect(vacuum.dockActions[0].isDisabled, "dock is busy drying")
+        // A drying dock is busy, so commands are restricted and only the active dock action shows (VacuumCard.tsx:456).
+        #expect(vacuum.runtimeMode == .minimal)
+        #expect(vacuum.dockActions.map(\.title) == ["Stop Mop Drying"])
+        #expect(!vacuum.dockActions[0].isDisabled, "stopping stays allowed while restricted")
         vacuum.run(.stopDrying)
         await vacuum.waitForCalls()
         #expect(caller.calls.last?.service == "main_floor_vacuum_mop_dock_dry")
