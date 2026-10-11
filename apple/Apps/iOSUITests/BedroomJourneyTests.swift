@@ -282,31 +282,32 @@ final class BedroomJourneyTests: XCTestCase {
     // MARK: - Screenshots
 
     /// Every sheet, tab and pushed page in the current pose (iPad: both orientations), named
-    /// `bedroom-<screen>-<orientation>`.
+    /// `bedroom-<screen>-<orientation>`. Split in three so a simulator crash retries a short run, not all of them.
     func testCaptureBedroomScreens() {
-        let orientations: [UIDeviceOrientation] = FentonHomeApp.family == .iPad ? [.portrait, .landscapeLeft] : [.unknown]
-        let shots: [(name: String, sheet: String?, tab: String?, scenario: String)] = [
+        capture([
             ("tiles", nil, nil, "default"),
             ("bed-temperature", "stephens-bed", nil, "default"),
             ("bed-ringing", "stephens-bed", nil, "ringing"),
             ("bed-special-modes", "stephs-bed", "special-modes", "hot-flash"),
             ("bed-alarms", "stephens-bed", "alarms", "default"),
             ("bed-status", "stephens-bed", "status", "default"),
+        ])
+    }
+
+    func testCaptureBedroomScreensMore() {
+        capture([
             ("bed-solo-trip-home", "stephens-bed", nil, "solo-trip"),
             ("bed-solo-trip-traveler", "stephs-bed", nil, "solo-trip"),
             ("bed-unavailable", "stephens-bed", nil, "unavailable"),
             ("wake-alarms", "wake-light", nil, "default"),
             ("wake-active", "wake-light", nil, "waking"),
             ("wake-defaults", "wake-light", "defaults", "default"),
-        ]
-        for orientation in orientations {
-            if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
-            let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
-            for shot in shots {
-                let app = launch(sheet: shot.sheet, tab: shot.tab, scenario: shot.scenario, clean: true)
-                keepScreenshot(app, "bedroom-\(shot.name)-\(suffix)")
-            }
-            // Pushed pages and prompts.
+        ])
+    }
+
+    /// Pushed pages and prompts.
+    func testCaptureBedroomPushedScreens() {
+        forEachCaptureOrientation { suffix in
             var app = launch(sheet: "stephens-bed", tab: "alarms", clean: true)
             tap("bed.alarms.monday", in: app)
             sleep(1)
@@ -323,6 +324,25 @@ final class BedroomJourneyTests: XCTestCase {
             tap("wake.add", in: app)
             sleep(1)
             keepScreenshot(app, "bedroom-wake-editor-\(suffix)")
+        }
+    }
+
+    private func capture(_ shots: [(name: String, sheet: String?, tab: String?, scenario: String)]) {
+        forEachCaptureOrientation { suffix in
+            for shot in shots {
+                let app = launch(sheet: shot.sheet, tab: shot.tab, scenario: shot.scenario, clean: true)
+                keepScreenshot(app, "bedroom-\(shot.name)-\(suffix)")
+            }
+        }
+    }
+
+    /// Runs `body` in each orientation the family captures (iPad: portrait, then landscape; others: the current
+    /// pose) with its file-name suffix.
+    private func forEachCaptureOrientation(_ body: (String) -> Void) {
+        guard FentonHomeApp.family == .iPad else { return body("current") }
+        for (orientation, suffix) in [(UIDeviceOrientation.portrait, "portrait"), (.landscapeLeft, "landscape")] {
+            XCUIDevice.shared.orientation = orientation
+            body(suffix)
         }
     }
 }
