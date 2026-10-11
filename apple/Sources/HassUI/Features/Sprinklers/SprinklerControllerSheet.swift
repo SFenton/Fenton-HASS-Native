@@ -60,12 +60,12 @@ struct SprinklerControllerSheet: View {
                 DynamicGridLayout(minCellWidth: minPillWidth, maxColumns: 4, spacing: HassTokens.Spacing.s) {
                     StatusPill(label: "Controller", value: format.status(snapshot),
                                symbol: snapshot.status == .watering ? SprinklerStyle.symbol : "info.circle",
-                               tone: Self.tone(snapshot))
+                               tone: Self.tone(snapshot), surface: .groupedList)
                     StatusPill(label: "Battery", value: format.battery(snapshot), symbol: "battery.100percent",
-                               tone: snapshot.batteryLow ? .warning : .neutral)
-                    StatusPill(label: "Next watering", value: format.nextStart(snapshot), symbol: "calendar.badge.clock")
+                               tone: snapshot.batteryLow ? .warning : .neutral, surface: .groupedList)
+                    StatusPill(label: "Next watering", value: format.nextStart(snapshot), symbol: "calendar.badge.clock", surface: .groupedList)
                     StatusPill(label: "Last watering", value: format.lastStart(snapshot.lastRun),
-                               detail: snapshot.lastRun.runTimeMinutes.map(format.minutes), symbol: "clock.arrow.circlepath")
+                               detail: snapshot.lastRun.runTimeMinutes.map(format.minutes), symbol: "clock.arrow.circlepath", surface: .groupedList)
                 }
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
@@ -214,11 +214,7 @@ struct SprinklerWaterPage: View {
             }
             Section {
                 Stepper(value: $minutes, in: range) {
-                    LabeledContent {
-                        Text("\(minutes) min").monospacedDigit().foregroundStyle(HassTokens.Ink.primary)
-                    } label: {
-                        Label("Run time", systemImage: "timer").foregroundStyle(HassTokens.Ink.primary)
-                    }
+                    StepperRow(title: "Run time", symbol: "timer", value: "\(minutes) min")
                 }
                 .accessibilityValue("\(minutes) minutes")
                 .disabled(!controller.canStartWatering || !(zoneState?.available ?? false))
@@ -299,6 +295,8 @@ struct SprinklerSchedulePage: View {
                 Button { controller.startProgram(zone: zone) } label: {
                     // No fixed frame: a List row is already 44 pt tall and grows with the text (AX5 flagged clipping).
                     Label("Start program", systemImage: "play.fill")
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .disabled(!controller.canStartWatering || !enabled)
                 .accessibilityIdentifier("sprinkler.schedule.start")
@@ -332,11 +330,7 @@ struct SprinklerSchedulePage: View {
             Section {
                 Stepper(value: $budget, in: SprinklersConfig.budgetRange.min...SprinklersConfig.budgetRange.max,
                         step: SprinklersConfig.budgetRange.step) {
-                    LabeledContent {
-                        Text("\(budget)%").monospacedDigit().foregroundStyle(HassTokens.Ink.primary)
-                    } label: {
-                        Label("Watering budget", systemImage: "percent").foregroundStyle(HassTokens.Ink.primary)
-                    }
+                    StepperRow(title: "Watering budget", symbol: "percent", value: "\(budget)%")
                 }
                 .accessibilityValue("\(budget) percent")
                 .disabled(!available)
@@ -370,6 +364,28 @@ struct SprinklerSchedulePage: View {
         .navigationTitle(format.programName(zone: zoneName))
         .inlineNavigationTitle()
         .onDisappear { controller.clearError() }
+    }
+}
+
+/// A stepper's label: icon and title, then the value. In `LabeledContent` the icon stacked above the title.
+struct StepperRow: View {
+    var title: String
+    var symbol: String
+    var value: String
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: HassTokens.Spacing.s) { label; Spacer(minLength: HassTokens.Spacing.s); valueText }
+            VStack(alignment: .leading, spacing: 2) { label; valueText }
+        }
+    }
+
+    private var label: some View {
+        Label(title, systemImage: symbol).labelStyle(.titleAndIcon).foregroundStyle(HassTokens.Ink.primary)
+    }
+
+    private var valueText: some View {
+        Text(value).monospacedDigit().foregroundStyle(HassTokens.Ink.primary)
     }
 }
 

@@ -118,6 +118,15 @@ struct HomePagesViewTests {
         #expect(StatusPill.color(.danger) == .red)
     }
 
+    @MainActor
+    @Test func pillRendersOnPagesAndGroupedLists() {
+        for surface in [StatusPill.Surface.page, .groupedList] {
+            let pill = StatusPill(label: "Battery", value: "18%", symbol: "battery.25percent", tone: .warning, surface: surface)
+                .frame(width: 200)
+            #expect(ImageRenderer(content: pill).cgImage != nil)
+        }
+    }
+
     // MARK: Gallery recorder
 
     @Test func recorderEchoesPageCalls() async throws {

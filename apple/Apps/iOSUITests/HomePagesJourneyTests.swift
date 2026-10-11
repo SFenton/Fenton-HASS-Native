@@ -5,6 +5,9 @@ import XCTest
 /// relaunch, and screenshots on iPhone, iPhone Duo and iPad. Specs: `.agents/pages/{media,custom-lights,sprinklers}`.
 @MainActor
 final class HomePagesJourneyTests: XCTestCase {
+    /// The next `launch` adds the AX5 text size (the audit's relaunch).
+    private var nextLaunchIsAX5 = false
+
     override func setUp() { continueAfterFailure = false }
     override func tearDown() {
         MainActor.assumeIsolated {
@@ -21,6 +24,10 @@ final class HomePagesJourneyTests: XCTestCase {
         app.launchEnvironment["FENTON_GALLERY_OFFLINE"] = "1"
         app.launchEnvironment.merge(environment) { _, new in new }
         app.launchArguments += arguments
+        if nextLaunchIsAX5 {
+            app.launchArguments += FentonHomeApp.ax5
+            nextLaunchIsAX5 = false
+        }
         app.launch()
         let ready = element(id, in: app)
         XCTAssertTrue(ready.waitForExistence(timeout: 30), "\(id) did not appear")
@@ -86,8 +93,8 @@ final class HomePagesJourneyTests: XCTestCase {
                 sleep(1)
             }
             try FentonHomeApp.audit(app) {
-                let large = relaunch()
-                return large
+                self.nextLaunchIsAX5 = true
+                return relaunch()
             }
             app = relaunch()
             keepScreenshot(app, "\(name)-\(orientation)")

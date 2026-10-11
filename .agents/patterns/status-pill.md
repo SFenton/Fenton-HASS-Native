@@ -6,3 +6,4 @@
 - One accessibility element: label, then "value, detail". Not a button; never put an action on it (use `GlassTile`).
 - Lay pills out in a `DynamicGridLayout` (about 150 pt minimum, scaled with Dynamic Type) so they wrap at large text sizes.
 - First used by Sprinklers.
+- In a grouped `List` (for example a sheet), pass `surface: .groupedList`, which draws a solid row fill. A material over a sheet's glass smeared the content behind it (seen 2026-10-11 in the sprinkler sheet).

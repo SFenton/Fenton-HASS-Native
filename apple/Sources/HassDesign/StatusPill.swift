@@ -8,19 +8,31 @@ public struct StatusPill: View {
     /// The icon's color (web `StatusPillTone`).
     public enum Tone: Sendable { case neutral, ok, active, warning, danger, unavailable }
 
+    /// What the pill is drawn on.
+    public enum Surface: Sendable {
+        /// A page: a material, like the tiles around it.
+        case page
+        /// A grouped list in a sheet: a solid row fill. A material over the sheet's glass smeared the
+        /// content behind it.
+        case groupedList
+    }
+
     public var label: String
     public var value: String
     public var detail: String?
     public var symbol: String
     public var tone: Tone
+    public var surface: Surface
 
     /// Creates a pill.
-    public init(label: String, value: String, detail: String? = nil, symbol: String, tone: Tone = .neutral) {
+    public init(label: String, value: String, detail: String? = nil, symbol: String, tone: Tone = .neutral,
+                surface: Surface = .page) {
         self.label = label
         self.value = value
         self.detail = detail
         self.symbol = symbol
         self.tone = tone
+        self.surface = surface
     }
 
     public var body: some View {
@@ -45,10 +57,22 @@ public struct StatusPill: View {
         }
         .padding(HassTokens.Spacing.m)
         .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
+        .background(fill, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .accessibilityValue(Self.accessibilityValue(value: value, detail: detail))
+    }
+
+    private var fill: AnyShapeStyle {
+        switch surface {
+        case .page: AnyShapeStyle(.regularMaterial)
+        case .groupedList:
+            #if os(iOS)
+            AnyShapeStyle(Color(uiColor: .secondarySystemGroupedBackground))
+            #else
+            AnyShapeStyle(.background.secondary)
+            #endif
+        }
     }
 
     /// `value, detail`, or just the value.
