@@ -221,6 +221,17 @@ struct ThermostatDialRenderTests {
         #expect(ThermostatDial.Size.compact.maxSide == 250)
     }
 
+    /// In a column wider than its cap (unfolded iPhone Duo, iPad) the dial stays square at its cap
+    /// instead of taking the column width as its height.
+    @Test func staysSquareInAWideColumn() throws {
+        let renderer = ImageRenderer(content: ThermostatDial(.init(title: "A", current: 70, targets: .single(72), action: "idle"),
+                                                             size: .modal) { _ in }.frame(width: 600))
+        renderer.scale = 1
+        let image = try #require(renderer.cgImage)
+        #expect(image.width == 600)
+        #expect(image.height == 340) // 300 pt ring box + 20 pt gutter each side.
+    }
+
     @Test func ringShapesDrawInsideTheirRect() {
         let rect = CGRect(x: 0, y: 0, width: 320, height: 320)
         #expect(RingArc(from: 0.5, to: 0.2).path(in: rect).isEmpty)

@@ -74,8 +74,10 @@ public struct ThermostatDial: View {
             .coordinateSpace(name: CoordinateSpaceKey.dial)
             .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
         }
-        .frame(maxWidth: size.maxSide + Self.gutter * 2)
+        // Square first, then cap: capped first, a wide column (unfolded Duo, iPad) proposed its full width
+        // as the height and the ring floated in a tall empty box.
         .aspectRatio(1, contentMode: .fit)
+        .frame(maxWidth: size.maxSide + Self.gutter * 2)
         .animation(reduceMotion || activeHandle != nil ? nil : .snappy(duration: 0.2), value: displayed)
         .sensoryFeedback(.selection, trigger: displayed) { _, _ in activeHandle != nil }
         .accessibilityElement(children: .contain)
