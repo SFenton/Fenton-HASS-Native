@@ -54,6 +54,42 @@ final class NavigationJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["settings.topic.vacation"].waitForExistence(timeout: 5))
     }
 
+    /// The Settings list audits clean in compact width, AX5 included.
+    func testCompactSettingsPassesAccessibilityAudit() throws {
+        var app = try FentonHomeApp.launchSignedIn()
+        guard !usesFlyout(app) else { throw XCTSkip("Regular-width window") }
+        open("settings", title: "Settings", in: app)
+        sleep(1)
+        try FentonHomeApp.audit(app) {
+            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
+            self.open("settings", title: "Settings", in: large)
+            sleep(1)
+            return large
+        }
+        // The pushed topic page too.
+        app = try FentonHomeApp.launchSignedIn()
+        open("settings", title: "Settings", in: app)
+        app.buttons["settings.topic.vacation"].tap()
+        XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 5))
+        sleep(1)
+        try FentonHomeApp.audit(app) {
+            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
+            self.open("settings", title: "Settings", in: large)
+            let vacation = large.buttons["settings.topic.vacation"]
+            for _ in 0..<8 where !(vacation.exists && vacation.isHittable) { large.collectionViews.firstMatch.swipeUp() }
+            vacation.tap()
+            XCTAssertTrue(large.navigationBars["Vacation"].waitForExistence(timeout: 5))
+            sleep(1)
+            return large
+        }
+        app = try FentonHomeApp.launchSignedIn()
+        open("settings", title: "Settings", in: app)
+        app.buttons["settings.topic.vacation"].tap()
+        XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.buttons["settings.topic.vacation"].waitForExistence(timeout: 5))
+    }
+
     // MARK: - Regular width
 
     /// iPad and unfolded Duo hide the tab bar and navigate with the overlay flyout.

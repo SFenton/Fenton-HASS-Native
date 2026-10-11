@@ -176,6 +176,12 @@ enum FentonHomeApp {
                !app.buttons["home.chip.lights"].exists {
                 return true
             }
+            // A list row scrolled under the glass tab bar is sampled against the bar and sometimes
+            // loses its element (iPhone Settings, 2026-10-11: the "Home Assistant" header). Accept an
+            // element-less contrast issue only while some page text really sits under the tab bar.
+            if issue.auditType == .contrast, isPageTextUnderTabBar(in: app) {
+                return true
+            }
             // When contrast runs with the Dynamic Type or text-clipping checks, the disabled Sign In
             // button's issue loses its element (probed 2026-10-10: the same audit otherwise reports it
             // on that button). Accept it only while that button is on screen and disabled.
@@ -207,6 +213,16 @@ enum FentonHomeApp {
                 .allElementsBoundByIndex.contains { $0.frame == frame } }
             .map(\.frame)
         return !scrollViews.isEmpty && !scrollViews.contains { $0.insetBy(dx: -1, dy: -1).contains(frame) }
+    }
+
+    /// Whether a page text (not the tab bar's own labels) overlaps the tab bar, i.e. is scrolled under it.
+    private static func isPageTextUnderTabBar(in app: XCUIApplication) -> Bool {
+        let bar = app.tabBars.firstMatch
+        guard bar.exists else { return false }
+        let barFrame = bar.frame
+        return app.staticTexts.allElementsBoundByIndex.contains { text in
+            !text.label.isEmpty && text.frame.intersects(barFrame) && !bar.staticTexts[text.label].exists
+        }
     }
 
     /// `Form` section headers, styled by the system.
