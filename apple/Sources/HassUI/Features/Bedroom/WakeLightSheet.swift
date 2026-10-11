@@ -59,7 +59,7 @@ public struct WakeLightSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(HassTokens.Spacing.l)
             }
-            .navigationTitle("\(controller.config.roomTitle) \(controller.config.title)")
+            .navigationTitle(controller.config.title) // With the room name the bar title clips at AX5.
             .inlineNavigationTitle()
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .navigationDestination(for: Route.self) { route in
@@ -189,12 +189,17 @@ public struct WakeLightSheet: View {
                 .accessibilityIdentifier("wake.alarm.\(alarm.id).link")
             }
             if let source {
-                Button("Open Linked-Device Alarm Editor") {
+                Button {
                     dismiss()
                     onOpenBed(source.side)
+                } label: {
+                    Label("Open Linked-Device Alarm Editor", systemImage: "arrow.up.forward.app")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(HassTokens.Ink.primary) // The accent renders 2.5:1 on the card.
+                        .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
-                .font(.subheadline)
-                .frame(minHeight: HassTokens.minTarget)
+                .buttonStyle(.plain)
                 .accessibilityIdentifier("wake.alarm.\(alarm.id).open")
             }
         }
@@ -297,7 +302,7 @@ struct WakeLightEditor: View {
             .frame(maxWidth: .infinity)
             .padding(HassTokens.Spacing.l)
         }
-        .navigationTitle(isNew ? "Add Wake Alarm · \(controller.config.roomTitle)" : "\(initial.label) · \(controller.config.roomTitle)")
+        .navigationTitle(isNew ? "Add Wake Alarm" : initial.label)
         .inlineNavigationTitle()
         .onDisappear { controller.clearError() }
         .confirmationDialog("Delete alarm set for \(WakeLight.displayTime(initial.localTime)) on \(WakeLight.scheduleLabel(initial))?",
@@ -374,6 +379,7 @@ struct WakeLightEditor: View {
                     Text("Delete").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 }
                 .buttonStyle(.bordered)
+                .tint(BedroomStyle.danger)
                 .disabled(locked)
                 .accessibilityIdentifier("wake.editor.delete")
             }

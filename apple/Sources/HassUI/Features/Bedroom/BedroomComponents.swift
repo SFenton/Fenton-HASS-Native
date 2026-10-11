@@ -8,8 +8,10 @@ enum BedroomStyle {
     static let heating = Color(red: 136 / 255, green: 64 / 255, blue: 26 / 255)
     static let cooling = Color(red: 25 / 255, green: 84 / 255, blue: 130 / 255)
     static let idle = Color(red: 67 / 255, green: 160 / 255, blue: 71 / 255)
-    /// Stop buttons.
-    static let danger = Color.red
+    /// Stop buttons: a deep red that keeps white labels at about 6:1 (system red gives 3.6:1 and fails the audit).
+    static let danger = Color(red: 0.76, green: 0.12, blue: 0.12)
+    /// The power button while the side is off: a gray that keeps its white label above 4.5:1 (system gray does not).
+    static let off = Color(white: 0.4)
 
     /// The tile tint for a bed action.
     static func tint(action: String) -> Color {

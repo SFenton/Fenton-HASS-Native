@@ -24,7 +24,7 @@ final class BedroomJourneyTests: XCTestCase {
         if clean { app.launchEnvironment["FENTON_GALLERY_CLEAN"] = "1" }
         app.launchArguments += arguments
         app.launch()
-        let anchor = element(sheet == nil ? "tile.wakeLight" : sheet == "wake-light" ? "wake.tabs" : "bed.power", in: app)
+        let anchor = element(sheet == nil ? "tile.wakeLight" : sheet == "wake-light" ? "wake.tabs" : "bed.hint", in: app)
         XCTAssertTrue(anchor.waitForExistence(timeout: 30), "Bedroom gallery did not open \(sheet ?? "tiles")")
         sleep(1) // Mid-animation frames fail contrast and clipping.
         return app
@@ -78,6 +78,11 @@ final class BedroomJourneyTests: XCTestCase {
         if segmented.exists { segmented.buttons[title].tap() } else { app.buttons[title].firstMatch.tap() }
     }
 
+    /// The confirmation dialog's "Turn Off" action; the power button itself is also labelled "Turn Off".
+    private func turnOffConfirmation(in app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label == %@ AND identifier != %@", "Turn Off", "bed.power")).firstMatch
+    }
+
     private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertGreaterThanOrEqual(element.frame.width, 43, element.label, file: file, line: line)
         XCTAssertGreaterThanOrEqual(element.frame.height, 43, element.label, file: file, line: line)
@@ -108,7 +113,7 @@ final class BedroomJourneyTests: XCTestCase {
         let power = element("bed.power", in: app)
         assertTarget(power)
         power.tap()
-        let confirm = app.buttons["Turn Off"].firstMatch
+        let confirm = turnOffConfirmation(in: app)
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Turning off asks first")
         confirm.tap()
         expectCall(startingWith: "script.sleepypod_hot_flash_broker action=power_off side=left", in: app)
@@ -181,7 +186,7 @@ final class BedroomJourneyTests: XCTestCase {
     func testTravelerSideIsReadOnly() {
         let app = launch(sheet: "stephs-bed", scenario: "solo-trip")
         XCTAssertTrue(element("bed.soloTrip", in: app).exists)
-        XCTAssertFalse(element("bed.power", in: app).isEnabled)
+        XCTAssertFalse(element("bed.power", in: app).exists, "The traveler's side has no power control")
         XCTAssertEqual(element("bed.hint", in: app).label, "Away · Read Only")
     }
 
@@ -189,7 +194,9 @@ final class BedroomJourneyTests: XCTestCase {
         let app = launch(sheet: "stephens-bed", scenario: "solo-trip")
         XCTAssertTrue(app.navigationBars["Stephen's Bed · Whole Bed"].exists)
         element("bed.power", in: app).tap()
-        app.buttons["Turn Off"].firstMatch.tap()
+        let confirm = turnOffConfirmation(in: app)
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Turning off asks first")
+        confirm.tap()
         expectCall(startingWith: "script.household_away_command action=set_power", in: app)
     }
 

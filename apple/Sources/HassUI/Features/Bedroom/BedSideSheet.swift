@@ -122,7 +122,8 @@ public struct BedSideSheet: View {
                 if case let .single(value) = targets { controller.setTarget(value) }
             }
             .accessibilityIdentifier("bed.dial")
-            powerButton
+            // The traveler's side is read-only: the hint below says so, and a disabled button would repeat it at 1.5:1.
+            if controller.scope.interactive { powerButton }
             Text(controller.hint)
                 .font(.footnote)
                 .foregroundStyle(HassTokens.Ink.secondary)
@@ -141,7 +142,7 @@ public struct BedSideSheet: View {
                 .frame(minWidth: 160, minHeight: HassTokens.minTarget)
         }
         .buttonStyle(.borderedProminent)
-        .tint(controller.isOn ? BedroomStyle.tint(action: controller.action) : .gray)
+        .tint(controller.isOn ? BedroomStyle.tint(action: controller.action) : BedroomStyle.off)
         .disabled(!controller.canTogglePower)
         .accessibilityIdentifier("bed.power")
         .confirmationDialog("Turn off \(controller.config.title)?", isPresented: $confirmingPowerOff, titleVisibility: .visible) {
@@ -273,6 +274,7 @@ struct ActiveBedAlarmSection: View {
                         .frame(maxWidth: .infinity, minHeight: 56)
                     }
                     .buttonStyle(.bordered)
+                    .tint(HassTokens.Ink.primary) // The accent tint renders 2.4:1 on the card.
                     .disabled(controller.alarmControlsReadOnly || state == .snoozed)
                     .accessibilityIdentifier("bed.alarm.snooze")
                     Button { controller.stopAlarm() } label: {
@@ -542,6 +544,7 @@ struct BedAlarmEditor: View {
                         Text("Delete").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                     }
                     .buttonStyle(.bordered)
+                    .tint(BedroomStyle.danger)
                     .disabled(saving || !controller.alarmsEditable)
                     .accessibilityIdentifier("bed.editor.delete")
                 }
