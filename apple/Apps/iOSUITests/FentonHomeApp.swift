@@ -195,3 +195,25 @@ enum FentonHomeApp {
     /// `Form` section headers, styled by the system.
     private static let systemSectionHeaders: Set<String> = ["Home Assistant", "Two-factor code"]
 }
+
+// MARK: - Screenshots
+
+extension XCTestCase {
+    /// Keeps a screenshot named `name` in the result bundle for design review.
+    ///
+    /// XCUIScreen captures only the outer panel, which is dark on an unfolded iPhone Duo. With
+    /// `FENTON_CAPTURE_DIR` set, the host captures the lit panel: `<name>.ready` asks, `<name>.done` answers.
+    @MainActor
+    func keepScreenshot(_ app: XCUIApplication, _ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        guard let folder = ProcessInfo.processInfo.environment["FENTON_CAPTURE_DIR"], !folder.isEmpty else { return }
+        let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
+        let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
+        FileManager.default.createFile(atPath: ready.path, contents: nil)
+        let deadline = Date().addingTimeInterval(30)
+        while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
+    }
+}

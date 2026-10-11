@@ -34,10 +34,18 @@ final class CameraJourneyTests: XCTestCase {
 
     /// The default order (WebRTC, then HLS) reaches live video on every Home camera.
     func testEveryCameraGoesLive() throws {
-        let app = try FentonHomeApp.launchSignedIn()
+        try assertEveryCameraGoesLive(FentonHomeApp.launchSignedIn(), NSPredicate(format: "value BEGINSWITH %@", "Live"))
+    }
+
+    /// WebRTC itself (not the HLS fallback) reaches live video on every Home camera.
+    func testEveryCameraGoesLiveOverWebRTC() throws {
+        let app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_CAMERA_MODE": "webrtc"])
+        assertEveryCameraGoesLive(app, NSPredicate(format: "value == %@", "Live"))
+    }
+
+    private func assertEveryCameraGoesLive(_ app: XCUIApplication, _ live: NSPredicate) {
         for stream in ["front_door", "garage_camera", "upper_deck", "lower_deck"] {
             let video = openCamera(app, stream)
-            let live = NSPredicate(format: "value BEGINSWITH %@", "Live")
             let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: live, object: video)], timeout: 30)
             XCTAssertEqual(result, .completed, "\(stream) stayed '\(video.value as? String ?? "")'")
             app.buttons["Done"].tap()
@@ -75,10 +83,7 @@ final class CameraJourneyTests: XCTestCase {
             let app = try FentonHomeApp.launchSignedIn()
             waitForValue(openCamera(app), "Live")
             sleep(1)
-            let attachment = XCTAttachment(screenshot: app.screenshot())
-            attachment.name = "camera-\(suffix)"
-            attachment.lifetime = .keepAlways
-            add(attachment)
+            keepScreenshot(app, "camera-\(suffix)")
         }
         XCUIDevice.shared.orientation = .portrait
     }

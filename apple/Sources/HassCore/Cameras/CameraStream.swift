@@ -9,6 +9,17 @@ public enum CameraStreamMode: String, Sendable, CaseIterable {
     case webRTC
     /// Home Assistant's own HLS stream (`camera/stream`): a few seconds behind, but needs nothing beyond core.
     case hls
+
+    /// How long this mode may take to show its first frame before the next mode is tried.
+    ///
+    /// Home Assistant holds the first HLS playlist request until a cold stream has its first segment
+    /// (9.5 to 12.7 s on the Home cameras, measured 2026-10-10), so HLS gets a longer budget than WebRTC.
+    public var firstFrameTimeout: Duration {
+        switch self {
+        case .webRTC: .seconds(10)
+        case .hls: .seconds(25)
+        }
+    }
 }
 
 // MARK: - State

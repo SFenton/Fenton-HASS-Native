@@ -8,8 +8,9 @@ import WebRTC
 
 /// Drives live video for one camera view: WebRTC first, HLS if that fails, the snapshot if both do.
 ///
-/// Each attempt gets ``firstFrameTimeout`` to show a frame before the next mode is tried. The view keeps
-/// the snapshot up until ``state`` is live, so nothing blanks while streams connect or fall back.
+/// Each attempt gets its mode's ``CameraStreamMode/firstFrameTimeout`` to show a frame before the next mode
+/// is tried. The view keeps the snapshot up until ``state`` is live, so nothing blanks while streams connect
+/// or fall back.
 @MainActor
 @Observable
 final class CameraLiveModel {
@@ -26,13 +27,12 @@ final class CameraLiveModel {
 
     let camera: HomeConfig.Camera
 
-    /// How long a mode may take to show its first frame before falling back.
-    static let firstFrameTimeout: Duration = .seconds(10)
-
     @ObservationIgnored private weak var connection: HassConnection?
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var attempt: Task<Void, Never>?
-    @ObservationIgnored private var hlsWatcher: Task<Void, Never>?
+    /// KVO on the HLS item and player. (Combine's `publisher(for:).values` delivered only the initial
+    /// values here, so a playing stream never reported its first frame.)
+    @ObservationIgnored private var hlsObservations: [NSKeyValueObservation] = []
 
     // MARK: - Init
 
@@ -103,7 +103,7 @@ final class CameraLiveModel {
                 case .hls: try await self?.openHLS(connection, generation: current)
                 case .webRTC: try await self?.openWebRTC(connection, generation: current)
                 }
-                try await Task.sleep(for: Self.firstFrameTimeout)
+                try await Task.sleep(for: mode.firstFrameTimeout)
                 self?.modeFailed(mode, generation: current)
             } catch is CancellationError {
             } catch {
@@ -132,16 +132,16 @@ final class CameraLiveModel {
         player.isMuted = true
         player.preventsDisplaySleepDuringVideoPlayback = false
         hlsPlayer = player
-        hlsWatcher = Task { [weak self] in
-            for await status in item.publisher(for: \.status).values {
-                if status == .failed { self?.modeFailed(.hls, generation: current); return }
-                if status == .readyToPlay { break }
-            }
-            for await control in player.publisher(for: \.timeControlStatus).values where control == .playing {
-                self?.firstFrame(.hls)
-                return
-            }
-        }
+        hlsObservations = [
+            item.observe(\.status) { @Sendable [weak self] item, _ in
+                guard item.status == .failed else { return }
+                Task { @MainActor in self?.modeFailed(.hls, generation: current) }
+            },
+            player.observe(\.timeControlStatus) { @Sendable [weak self] player, _ in
+                guard player.timeControlStatus == .playing else { return }
+                Task { @MainActor in self?.firstFrame(.hls) }
+            },
+        ]
         player.play()
     }
 
@@ -166,8 +166,8 @@ final class CameraLiveModel {
     }
 
     private func tearDownPlayers() {
-        hlsWatcher?.cancel()
-        hlsWatcher = nil
+        hlsObservations.forEach { $0.invalidate() }
+        hlsObservations = []
         hlsPlayer?.pause()
         hlsPlayer = nil
         #if canImport(WebRTC) && canImport(UIKit)

@@ -53,6 +53,12 @@ struct CameraStreamStateTests {
         state.restart()
         #expect(state.phase == .failed)
     }
+
+    /// HLS waits out Home Assistant's cold-stream warm-up (about 10 to 13 s) before falling back.
+    @Test func hlsGetsALongerFirstFrameBudgetThanWebRTC() {
+        #expect(CameraStreamMode.webRTC.firstFrameTimeout == .seconds(10))
+        #expect(CameraStreamMode.hls.firstFrameTimeout > .seconds(15))
+    }
 }
 
 struct CameraStreamEndpointTests {
