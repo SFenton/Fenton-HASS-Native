@@ -111,7 +111,7 @@ public struct SprinklerFormat: Sendable {
     public func programName(zone: String) -> String { "\(zone) schedule" }
 
     /// A whole number without a fraction, else one decimal.
-    static func number(_ value: Double) -> String {
+    public static func number(_ value: Double) -> String {
         value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
     }
 }
