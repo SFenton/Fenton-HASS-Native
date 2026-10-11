@@ -45,6 +45,15 @@ Web source: `ha-sfenton-react-dash@9ac2a46:src/components/hass/MediaRemoteModalC
 
 ## Tests
 
+Findings from the device runs (2026-10-11):
+
+- Only one keyboard layout at a time: a `ViewThatFits` kept the unused variant's Send button in the accessibility tree, and XCUITest matched the hidden copy. Choose the layout with `AnyLayout` (row; stacked at accessibility sizes).
+- A blank button label (`EmptyView`) collapses the round button to 0 pt; draw `Color.clear`.
+- `GlassTile`'s `.disabled` sits inside its combined accessibility element, so unavailable tiles read as enabled; `RemoteGlassTile` applies `.disabled` again outside.
+- At AX5 in two columns the d-pad is capped to its column (never under 44 pt).
+- Journeys scroll with short drags in screen points anchored on the window, at the element's x, clear of the Duo's trailing vertical bar: `app.coordinate` gestures never reach the unfolded Duo's inner display, normalized coordinates stay portrait in landscape, and in two columns each side scrolls on its own.
+- The unfolded Duo's inner panel boots in landscape; rotate in Device Hub for unfolded portrait.
+
 - Unit (`HassCoreTests/MediaRemote*Tests.swift`): configs vs web, `.state` cases, Xbox resolver, text escaping, power color rule, disabled/visibility rules, optimistic commit/confirm/revert/failure, holds, Hue Sync.
 - Hosted (`HassUITests/MediaRemoteViewTests.swift`): every remote × tab in one and two columns, AX5, all unavailable; layout policy; every mapped SF Symbol exists; keyboard and slider state.
 - Device (`iOSUITests/MediaRemoteJourneyTests.swift`, gallery fixtures with a recording caller, never the house): calls sent, semantics, 44 pt targets, layout per pose, audits per tab (iPad both orientations) with the AX5 relaunch, screenshots.
