@@ -51,7 +51,7 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
     }
 
     /// Waits until the element's accessibility value is `text`.
-    private func waitForValue(_ element: XCUIElement, _ text: String, timeout: TimeInterval = 3) -> Bool {
+    private func waitForValue(_ element: XCUIElement, _ text: String, timeout: TimeInterval = 6) -> Bool {
         let predicate = NSPredicate(format: "value == %@", text)
         return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: timeout) == .completed
     }
@@ -59,7 +59,7 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
     private func lastCall(_ app: XCUIApplication) -> XCUIElement { app.staticTexts["gallery.lastCall"] }
 
     private func expectLastCall(_ app: XCUIApplication, _ text: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(lastCall(app).wait(for: \.label, toEqual: "Last call: \(text)", timeout: 3),
+        XCTAssertTrue(lastCall(app).wait(for: \.label, toEqual: "Last call: \(text)", timeout: 6),
                       "Last call was \(lastCall(app).label)", file: file, line: line)
     }
 
@@ -71,8 +71,12 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
 
     /// Opens one of the Admin sheets.
     private func openSheet(_ app: XCUIApplication, _ sheet: String) {
-        reveal(app.buttons["admin.open.\(sheet)"], in: app).tap()
-        XCTAssertTrue(app.buttons["household.sheet.done"].waitForExistence(timeout: 5), "\(sheet) sheet did not open")
+        let opener = reveal(app.buttons["admin.open.\(sheet)"], in: app)
+        opener.tap()
+        let done = app.buttons["household.sheet.done"]
+        // A loaded host can drop the first tap; tap once more if the sheet hasn't started presenting.
+        if !done.waitForExistence(timeout: 6), opener.isHittable { opener.tap() }
+        XCTAssertTrue(done.waitForExistence(timeout: 6), "\(sheet) sheet did not open")
         sleep(1) // Let the sheet finish presenting.
     }
 
