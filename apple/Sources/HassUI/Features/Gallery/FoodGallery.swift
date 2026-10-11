@@ -41,10 +41,9 @@ struct FoodGallery: View {
                 // bar covered them, and a top bar covered the back button).
                 lastCall.padding(.horizontal, HassTokens.Spacing.s).padding(.vertical, 4)
                     .frame(maxWidth: 180, alignment: .leading)
-                    .background(.bar, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
+                    .background(.bar)
                     .padding(.leading, HassTokens.Spacing.l)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .allowsHitTesting(false)
             }
         }
     }
@@ -53,7 +52,7 @@ struct FoodGallery: View {
     private var lastCall: some View {
         Text("Last call: \(service.lastCall)")
             .font(.caption.monospaced())
-            .foregroundStyle(HassTokens.Ink.secondary)
+            .foregroundStyle(HassTokens.Ink.primary) // Secondary ink measured 2.2:1 on an iPad sheet's bar.
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityIdentifier("gallery.lastCall")

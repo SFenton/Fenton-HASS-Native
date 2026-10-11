@@ -68,7 +68,9 @@ struct SuggestedRecipesCarousel: View {
         .scrollTargetBehavior(.paging)
         .scrollIndicators(.hidden)
         .scrollPosition(id: $page)
-        .scrollClipDisabled()
+        // The next page peeks in at standard sizes; at accessibility sizes the sliver is unreadable (and
+        // unmeasurable by the contrast audit), so pages clip and the dots carry the paging.
+        .scrollClipDisabled(!dynamicTypeSize.isAccessibilitySize)
     }
 
     private func pageGrid(_ index: Int) -> some View {
