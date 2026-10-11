@@ -231,7 +231,8 @@ final class RoomDevicesJourneyTests: XCTestCase {
 
     func testFanPassesAudit() throws { try audit("fan-master", ready: "fan.power") }
     func testPurifierPassesAudit() throws { try audit("purifier-auto", ready: "purifier.mode.Auto") }
-    func testGrillPassesAudit() throws { try audit("grill", ready: "grill.Keep Warm") }
+    // The header, not a card: at AX5 the cards start below the folded iPhone Duo's fold.
+    func testGrillPassesAudit() throws { try audit("grill", ready: "grill.header") }
     func testHumidifierControlsPassAudit() throws { try audit("humidifier", ready: "humidifier.power") }
     func testHumidifierSchedulesPassAudit() throws { try audit("humidifier", ready: "humidifier.power", tab: "schedules") }
     func testHumidifierInfoPassesAudit() throws { try audit("humidifier", ready: "humidifier.power", tab: "info") }
@@ -249,7 +250,7 @@ final class RoomDevicesJourneyTests: XCTestCase {
     /// Every sheet in the current pose (iPad: both orientations), named `device-<fixture>-<tab>-<orientation>`.
     func testCaptureDeviceScreens() {
         let shots = [("fan-master", "fan.power", "controls"), ("purifier-auto", "purifier.mode.Auto", "controls"),
-                     ("grill", "grill.Keep Warm", "controls"), ("humidifier", "humidifier.power", "controls"),
+                     ("grill", "grill.header", "controls"), ("humidifier", "humidifier.power", "controls"),
                      ("humidifier", "humidifier.power", "schedules"), ("humidifier", "humidifier.power", "info"),
                      ("humidifier-fault", "humidifier.power", "controls")]
         let orientations: [UIDeviceOrientation] = FentonHomeApp.family == .iPad ? [.portrait, .landscapeLeft] : [.unknown]
