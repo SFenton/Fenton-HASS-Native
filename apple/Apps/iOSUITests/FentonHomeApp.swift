@@ -44,13 +44,15 @@ enum FentonHomeApp {
     /// `TEST_RUNNER_FENTON_HASS_TOKEN` (a long-lived access token) takes precedence over the password.
     /// - Parameter passwordOnly: Ignore the token and go through the real login flow.
     ///   - arguments: Extra launch arguments (e.g. ``ax5``).
-    static func launchSignedIn(passwordOnly: Bool = false, arguments: [String] = []) throws -> XCUIApplication {
+    ///   - environment: Extra launch environment (e.g. `FENTON_CAMERA_MODE`).
+    static func launchSignedIn(passwordOnly: Bool = false, arguments: [String] = [], environment extra: [String: String] = [:]) throws -> XCUIApplication {
         let environment = ProcessInfo.processInfo.environment
         if !passwordOnly, let token = environment["FENTON_HASS_TOKEN"], !token.isEmpty {
             let app = makeApp()
             app.launchEnvironment["FENTON_UITEST_RESET"] = "1"
             app.launchEnvironment["FENTON_HASS_TOKEN"] = token
             app.launchArguments += arguments
+            app.launchEnvironment.merge(extra) { _, new in new }
             if let server = environment["FENTON_HASS_SERVER"] { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
             app.launch()
             XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30), "Home did not appear")
@@ -64,12 +66,22 @@ enum FentonHomeApp {
         app.launchEnvironment["FENTON_HASS_USERNAME"] = credentials.username
         app.launchEnvironment["FENTON_HASS_PASSWORD"] = credentials.password
         app.launchArguments += arguments
+        app.launchEnvironment.merge(extra) { _, new in new }
         if let server = credentials.server { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
         app.launch()
         let submit = app.buttons["login.submit"]
         XCTAssertTrue(submit.waitForExistence(timeout: 10))
         submit.tap()
         XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30), "Home did not appear after sign-in")
+        return app
+    }
+
+    /// Launches the debug component gallery on `page` (e.g. `thermostat-dial`): fixture data, no sign-in.
+    static func launchGallery(_ page: String, arguments: [String] = []) -> XCUIApplication {
+        let app = makeApp()
+        app.launchEnvironment["FENTON_GALLERY"] = page
+        app.launchArguments += arguments
+        app.launch()
         return app
     }
 
@@ -206,6 +218,9 @@ enum FentonHomeApp {
     /// contrast: accept it only when no scroll view's visible frame fully contains the element.
     private static func isScrolledOutOfView(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         let frame = element.frame
+        // Below the window's edge (a long sheet column in iPad landscape): the capture holds only part of it.
+        let window = app.windows.firstMatch.frame
+        if !window.isEmpty, !window.insetBy(dx: -1, dy: -1).contains(frame) { return true }
         // Only scroll views that hold this element (not, say, Home's behind a sheet).
         let holder = NSPredicate(format: "label == %@", element.label)
         let scrollViews = app.scrollViews.allElementsBoundByIndex
@@ -227,4 +242,26 @@ enum FentonHomeApp {
 
     /// `Form` section headers, styled by the system.
     private static let systemSectionHeaders: Set<String> = ["Home Assistant", "Two-factor code"]
+}
+
+// MARK: - Screenshots
+
+extension XCTestCase {
+    /// Keeps a screenshot named `name` in the result bundle for design review.
+    ///
+    /// XCUIScreen captures only the outer panel, which is dark on an unfolded iPhone Duo. With
+    /// `FENTON_CAPTURE_DIR` set, the host captures the lit panel: `<name>.ready` asks, `<name>.done` answers.
+    @MainActor
+    func keepScreenshot(_ app: XCUIApplication, _ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        guard let folder = ProcessInfo.processInfo.environment["FENTON_CAPTURE_DIR"], !folder.isEmpty else { return }
+        let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
+        let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
+        FileManager.default.createFile(atPath: ready.path, contents: nil)
+        let deadline = Date().addingTimeInterval(30)
+        while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
+    }
 }

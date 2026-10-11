@@ -6,23 +6,17 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 cd "$ROOT/apple"
-CODECOV_DIR="$(dirname "$(swift test --show-codecov-path)")"
-rm -f "$CODECOV_DIR"/*.profraw
 swift test --enable-code-coverage
 
-# The swiftbuild backend builds one bundle per test target (HassCoreTests, HassDesignTests,
-# HassUITests), and `swift test --show-codecov-path` exports only one of them, so HassDesign and
-# HassUI went unmeasured. Merge every bundle's profiles and export all bundles together.
-BIN="$(swift build --show-bin-path)"
-PROFDATA="$CODECOV_DIR/all-bundles.profdata"
-REPORT="$CODECOV_DIR/all-bundles.json"
-xcrun llvm-profdata merge -sparse "$CODECOV_DIR"/*.profraw -o "$PROFDATA"
+# swift test merges every bundle's profile into default.profdata, but its own JSON export reads only
+# one test binary, which drops HassDesign and HassUI. Export once against every test binary instead.
+CODECOV_DIR="$(dirname "$(swift test --show-codecov-path)")"
+BIN_DIR="$(swift build --show-bin-path)"
 OBJECTS=()
-for bundle in "$BIN"/*.xctest; do
+for bundle in "$BIN_DIR"/*Tests.xctest; do
   name="$(basename "$bundle" .xctest)"
-  binary="$bundle/Contents/MacOS/$name"
-  [[ -f "$binary" ]] || binary="$bundle"
-  if [[ ${#OBJECTS[@]} -eq 0 ]]; then OBJECTS+=("$binary"); else OBJECTS+=(-object "$binary"); fi
+  OBJECTS+=(${OBJECTS[@]+-object} "$bundle/Contents/MacOS/$name")
 done
-xcrun llvm-cov export -format=text -summary-only -instr-profile "$PROFDATA" "${OBJECTS[@]}" > "$REPORT"
+REPORT="$CODECOV_DIR/all-bundles.json"
+xcrun llvm-cov export -format=text -instr-profile "$CODECOV_DIR/default.profdata" "${OBJECTS[@]}" > "$REPORT"
 python3 "$ROOT/tools/coverage_gate.py" --language swift --report "$REPORT"

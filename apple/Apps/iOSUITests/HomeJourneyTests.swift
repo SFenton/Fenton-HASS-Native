@@ -56,6 +56,41 @@ final class HomeJourneyTests: XCTestCase {
         app.buttons["Done"].tap()
     }
 
+    /// Dragging across a dimmable group sets its brightness live, then the test restores the old state.
+    func testLightsSheetDragSetsBrightness() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        app.buttons["home.chip.lights"].tap()
+        let tile = app.descendants(matching: .any)["lights.group.light.guest_room"]
+        XCTAssertTrue(tile.waitForExistence(timeout: 5))
+        XCTAssertTrue(tile.wait(for: \.isHittable, toEqual: true, timeout: 5), "Sheet still presenting")
+        let before = try XCTUnwrap(tile.value as? String)
+        XCTAssertNotEqual(before, "Unavailable")
+        XCTAssertTrue(before == "Off" || before.hasSuffix("%"), "Not a brightness tile: \(before)")
+        let target = before == "30%" ? 0.7 : 0.3
+        drag(tile, to: target)
+        let set = NSPredicate(format: "value != %@ AND value != 'Off'", before)
+        wait(for: [XCTNSPredicateExpectation(predicate: set, object: tile)], timeout: 10)
+        let level = Int((tile.value as? String ?? "").dropLast()) ?? -1
+        XCTAssertEqual(Double(level), target * 100, accuracy: 6, "Drag landed at \(level)%")
+        // Restore: off by tapping, else drag back to the old level.
+        if before == "Off" { tile.tap() } else { drag(tile, to: (Double(before.dropLast()) ?? 100) / 100) }
+        let moved = NSPredicate(format: "value != %@", "\(level)%")
+        wait(for: [XCTNSPredicateExpectation(predicate: moved, object: tile)], timeout: 10)
+        let after = tile.value as? String ?? ""
+        if before == "Off" { XCTAssertEqual(after, "Off") } else {
+            // brightness_pct round-trips through 0...255, so allow a few percent.
+            XCTAssertEqual(Double(after.dropLast()) ?? -1, Double(before.dropLast()) ?? 0, accuracy: 3)
+        }
+        app.buttons["Done"].tap()
+    }
+
+    /// Drags horizontally from the leading edge to `fraction` of the tile's width.
+    private func drag(_ tile: XCUIElement, to fraction: Double) {
+        let start = tile.coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.5))
+        let end = tile.coordinate(withNormalizedOffset: CGVector(dx: fraction, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
+    }
+
     /// Keeps screenshots of sign-in, Home and the Lights sheet in the pose the device is in (iPad: also
     /// landscape), named `<screen>-<orientation>`, for design review on every layout.
     func testCaptureScreens() throws {
@@ -65,32 +100,17 @@ final class HomeJourneyTests: XCTestCase {
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
             let signedOut = FentonHomeApp.launchSignedOut()
             XCTAssertTrue(signedOut.textFields["login.username"].waitForExistence(timeout: 10))
-            keep(signedOut, "signin-\(suffix)")
+            keepScreenshot(signedOut, "signin-\(suffix)")
             let app = try FentonHomeApp.launchSignedIn()
             sleep(2)
-            keep(app, "home-\(suffix)")
+            keepScreenshot(app, "home-\(suffix)")
             app.buttons["home.chip.lights"].tap()
             XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
             sleep(1)
-            keep(app, "lights-\(suffix)")
+            keepScreenshot(app, "lights-\(suffix)")
             app.buttons["Done"].tap()
         }
         XCUIDevice.shared.orientation = .portrait
-    }
-
-    private func keep(_ app: XCUIApplication, _ name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
-        // XCUIScreen captures only the outer panel, which is dark on an unfolded iPhone Duo. With
-        // FENTON_CAPTURE_DIR set, the host captures the lit panel: `<name>.ready` asks, `<name>.done` answers.
-        guard let folder = ProcessInfo.processInfo.environment["FENTON_CAPTURE_DIR"], !folder.isEmpty else { return }
-        let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
-        let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
-        FileManager.default.createFile(atPath: ready.path, contents: nil)
-        let deadline = Date().addingTimeInterval(30)
-        while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
     }
 
     /// Keeps a screenshot of live Home in the result bundle.

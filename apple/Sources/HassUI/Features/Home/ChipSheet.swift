@@ -30,16 +30,8 @@ struct ChipSheet: View {
             ScrollView {
                 DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 6) {
                     ForEach(HomeConfig.lightGroups) { group in
-                        let state = store.entity(group.toggleEntityId).state
-                        GlassTile(
-                            title: group.title,
-                            subtitle: state.map { $0.isUnavailable ? "Unavailable" : ($0.state == "on" ? "On" : "Off") },
-                            symbol: "lightbulb",
-                            tint: HassTokens.Tint.light,
-                            isActive: state?.state == "on",
-                            isUnavailable: state?.isUnavailable ?? true
-                        ) {
-                            Task { try? await connection.toggle(group.toggleEntityId) }
+                        LightGroupTile(group: group, state: store.entity(group.toggleEntityId).state) { command in
+                            Task { try? await connection.send(command) }
                         }
                         .accessibilityIdentifier("lights.group.\(group.toggleEntityId)")
                     }
@@ -69,5 +61,41 @@ struct ChipSheet: View {
         guard let chip, let entity = store.entity(chip.entityId).state else { return [] }
         let ids = entity.attributes["entity_id"]?.array?.compactMap(\.string) ?? [chip.entityId]
         return ids.compactMap { store.entity($0).state }
+    }
+}
+
+/// One light group in the Lights sheet: a brightness tile when the light dims, else a power tile.
+/// Both send explicit `turn_on` / `turn_off` (``LightControl``), never `toggle`.
+struct LightGroupTile: View {
+    var group: HomeConfig.LightGroup
+    var state: EntityState?
+    var send: (LightControl.Command) -> Void
+
+    var body: some View {
+        let id = group.toggleEntityId
+        let unavailable = state?.isUnavailable ?? true
+        if LightControl.isDimmable(state) {
+            BrightnessTile(
+                title: group.title,
+                tint: HassTokens.Tint.light,
+                fillTint: LightControl.rgb(of: state).map { Color(red: $0.red, green: $0.green, blue: $0.blue) },
+                percent: LightControl.percent(of: state),
+                isUnavailable: unavailable,
+                onPower: { send(LightControl.power(id, on: $0)) },
+                onBrightness: { send(LightControl.brightness(id, percent: Double($0))) }
+            )
+        } else {
+            let on = state?.state == "on"
+            GlassTile(
+                title: group.title,
+                subtitle: state.map { $0.isUnavailable ? "Unavailable" : (on ? "On" : "Off") },
+                symbol: "lightbulb",
+                tint: HassTokens.Tint.light,
+                isActive: on,
+                isUnavailable: unavailable
+            ) {
+                send(LightControl.flip(id, shownOn: on))
+            }
+        }
     }
 }
