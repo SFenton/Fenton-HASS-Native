@@ -47,8 +47,11 @@ struct FoodNavigation: ViewModifier {
         }
     }
 
+    private func destination(_ route: FoodRoute) -> some View { Self.destination(route, models: models) }
+
+    /// The page for a route.
     @ViewBuilder
-    private func destination(_ route: FoodRoute) -> some View {
+    static func destination(_ route: FoodRoute, models: FoodModels) -> some View {
         switch route {
         case .hub: FoodHubScreen(models: models)
         case .recipes: RecipesScreen(models: models)

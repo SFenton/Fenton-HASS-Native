@@ -10,8 +10,6 @@ public protocol HassServiceResponding: AnyObject, Sendable {
     func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue
 }
 
-extension HassConnection: HassServiceResponding {}
-
 // MARK: - Recipes
 
 /// The EverShelf recipe features the Food pages use. ``EverShelfRecipeService`` calls Home Assistant;

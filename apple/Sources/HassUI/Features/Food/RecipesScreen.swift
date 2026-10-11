@@ -21,6 +21,16 @@ struct RecipesScreen: View {
         var id: String { rawValue }
     }
 
+    /// - Parameters:
+    ///   - window: Initial window metrics (hosted tests; the reader replaces them on screen).
+    ///   - selected: A recipe to open at once (hosted tests).
+    init(models: FoodModels, window: WindowMetrics = WindowMetrics(), selected: RecipeCard? = nil) {
+        self.models = models
+        _window = State(initialValue: window)
+        _selected = State(initialValue: selected)
+        _detail = State(initialValue: selected.map(models.detailModel(for:)))
+    }
+
     private var collection: RecipeCollectionModel { models.collection }
 
     private var split: Bool {
@@ -48,12 +58,7 @@ struct RecipesScreen: View {
         }
         .background { WindowMetricsReader(metrics: $window) }
         .navigationTitle("Recipes")
-        .sheet(item: $sheet) { kind in
-            switch kind {
-            case .sort: RecipeSortSheet(current: collection.sort) { collection.apply(sort: $0) }
-            case .filter: RecipeFilterSheet(current: collection.filters, sortedAlphabetically: collection.sort == .alphabetical) { collection.apply(filters: $0) }
-            }
-        }
+        .sheet(item: $sheet) { RecipeControlSheet(kind: $0, collection: collection) }
         .sheet(item: sheetRecipe) { _ in
             if let detail { RecipeDetailSheet(model: detail) }
         }
@@ -82,6 +87,8 @@ struct RecipesScreen: View {
                     .buttonStyle(.borderedProminent)
                     .accessibilityIdentifier("recipes.retry")
             }
+            // A container keeps the Retry button's own identifier (an outer identifier overrides children's).
+            .accessibilityElement(children: .contain)
             .accessibilityIdentifier("recipes.error")
         case .loaded where collection.items.isEmpty:
             ContentUnavailableView(
@@ -128,16 +135,24 @@ struct RecipesScreen: View {
 
 // MARK: - Grid
 
-/// The recipe card grid with infinite loading (web `RecipeGrid`): 2+ columns, cards up to ~220 pt.
+/// The recipe card grid with infinite loading (web `RecipeGrid`): 2+ columns (1+ at accessibility sizes).
 struct RecipeGrid: View {
     let collection: RecipeCollectionModel
     var selectedId: Int?
     var onOpen: (RecipeCard) -> Void
     @State private var width: CGFloat = 0
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Columns for a width: 160 pt cards, at least two (web). At accessibility text sizes cards are twice
+    /// as wide and a phone shows one column, so titles wrap whole words instead of clipping.
+    static func columnCount(width: CGFloat, accessibilitySize: Bool) -> Int {
+        let metrics = DynamicGridMetrics(width: max(width, 1), minCellWidth: accessibilitySize ? 320 : 160, maxColumns: 8, spacing: HassTokens.Spacing.m)
+        return accessibilitySize ? metrics.columns : max(2, metrics.columns)
+    }
 
     var body: some View {
-        let metrics = DynamicGridMetrics(width: max(width, 1), minCellWidth: 160, maxColumns: 8, spacing: HassTokens.Spacing.m)
-        let columns = Array(repeating: GridItem(.flexible(), spacing: HassTokens.Spacing.m, alignment: .top), count: max(2, metrics.columns))
+        let count = Self.columnCount(width: width, accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+        let columns = Array(repeating: GridItem(.flexible(), spacing: HassTokens.Spacing.m, alignment: .top), count: count)
         ScrollView {
             LazyVGrid(columns: columns, alignment: .leading, spacing: HassTokens.Spacing.m) {
                 ForEach(collection.items, id: \.dedupeKey) { recipe in
@@ -184,6 +199,19 @@ struct RecipeGrid: View {
 }
 
 // MARK: - Sort and filter
+
+/// The Sort or Filter sheet for the grid's current criteria.
+struct RecipeControlSheet: View {
+    let kind: RecipesScreen.ControlSheet
+    let collection: RecipeCollectionModel
+
+    var body: some View {
+        switch kind {
+        case .sort: RecipeSortSheet(current: collection.sort) { collection.apply(sort: $0) }
+        case .filter: RecipeFilterSheet(current: collection.filters, sortedAlphabetically: collection.sort == .alphabetical) { collection.apply(filters: $0) }
+        }
+    }
+}
 
 /// Sort Recipes (web `RecipeSortSheet`).
 struct RecipeSortSheet: View {

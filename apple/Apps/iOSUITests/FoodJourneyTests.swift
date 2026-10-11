@@ -73,7 +73,8 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(allRecipes.exists)
         assertTarget(allRecipes)
         reveal(element("food.space.cabinet", in: app), in: app)
-        XCTAssertTrue(element("food.space.frigo", in: app).label.contains("38 Items"))
+        let fridge = element("food.space.frigo", in: app)
+        XCTAssertTrue("\(fridge.label) \(fridge.value as? String ?? "")".contains("38 Items"), "Fridge tile reads '\(fridge.label)'")
         sleep(1)
         keepScreenshot(app, "food-hub-\(device)")
         try FentonHomeApp.audit(app) { self.launch("hub", arguments: FentonHomeApp.ax5) }
@@ -173,13 +174,16 @@ final class FoodJourneyTests: XCTestCase {
     func testRecipeDetailTabsAndGroceries() throws {
         let app = launch("recipes")
         waitForGrid(app)
-        element("recipes.card.2", in: app).tap()
+        element("recipes.card.6", in: app).tap()
         XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10))
-        expectCall("recipe_detail recipe_id=2", in: app)
+        expectCall("recipe_detail recipe_id=6", in: app)
         sleep(1)
         let split = element("recipe.pane", in: app).exists
-        XCTAssertEqual(split, FentonHomeApp.family == .iPad && app.windows.firstMatch.frame.width > app.windows.firstMatch.frame.height,
-                       "the pane shows only where a split is allowed")
+        let frame = app.windows.firstMatch.frame
+        if FentonHomeApp.family == .iPad || frame.width <= frame.height {
+            // Unfolded Duo landscape may split; iPad splits exactly in landscape; portrait never does.
+            XCTAssertEqual(split, frame.width > frame.height, "the pane shows only where a split is allowed")
+        }
         keepScreenshot(app, "food-recipe-general-\(device)")
         try FentonHomeApp.audit(app)
 
@@ -194,7 +198,7 @@ final class FoodJourneyTests: XCTestCase {
         keepScreenshot(app, "food-recipe-ingredients-\(device)")
         try FentonHomeApp.audit(app)
         add.tap()
-        expectCall("recipe_grocery_add recipe_id=2 selections=1,4", in: app)
+        expectCall("recipe_grocery_add recipe_id=6 selections=1,4", in: app)
         XCTAssertTrue(element("recipe.grocery.added", in: app).waitForExistence(timeout: 10))
 
         tabs.buttons["Instructions"].tap()
@@ -220,7 +224,7 @@ final class FoodJourneyTests: XCTestCase {
         waitForGrid(app)
         keepScreenshot(app, "food-recipes-\(device)-ax5")
         try FentonHomeApp.audit(app)
-        element("recipes.card.2", in: app).tap()
+        element("recipes.card.6", in: app).tap()
         XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10))
         sleep(1)
         keepScreenshot(app, "food-recipe-general-\(device)-ax5")
@@ -243,16 +247,16 @@ final class FoodJourneyTests: XCTestCase {
         let app = launch("recipes")
         waitForGrid(app)
         keepScreenshot(app, "food-recipes-\(device)-landscape")
-        element("recipes.card.2", in: app).tap()
+        element("recipes.card.6", in: app).tap()
         XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10))
         sleep(1)
         let window = app.windows.firstMatch.frame
         if element("recipe.pane", in: app).exists {
-            XCTAssertTrue(element("recipes.card.3", in: app).isHittable, "the grid stays usable beside the pane")
-            XCTAssertTrue(element("recipes.card.2", in: app).isSelected)
+            XCTAssertTrue(element("recipes.card.11", in: app).isHittable, "the grid stays usable beside the pane")
+            XCTAssertTrue(element("recipes.card.6", in: app).isSelected)
             element("recipe.close", in: app).tap()
             XCTAssertFalse(element("recipe.pane", in: app).waitForExistence(timeout: 2))
-            element("recipes.card.2", in: app).tap()
+            element("recipes.card.6", in: app).tap()
             XCTAssertTrue(element("recipe.pane", in: app).waitForExistence(timeout: 5))
         } else {
             XCTAssertNotEqual(FentonHomeApp.family, .iPad, "iPad landscape (\(window)) must split")

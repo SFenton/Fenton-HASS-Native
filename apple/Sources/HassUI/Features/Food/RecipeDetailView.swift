@@ -121,14 +121,27 @@ struct RecipeGeneralTab: View {
                 FactList(title: "Additional Equipment", items: detail.general.equipment)
             }
             if let url = detail.source.canonicalURL {
-                Link(destination: url) {
-                    Label(detail.source.isCookidoo ? "Open in Cookidoo" : "Open Source Recipe", systemImage: "arrow.up.right.square")
-                        .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                }
-                .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("recipe.openSource")
+                ExternalLinkButton(title: detail.source.isCookidoo ? "Open in Cookidoo" : "Open Source Recipe", url: url)
+                    .accessibilityIdentifier("recipe.openSource")
             }
         }
+    }
+}
+
+/// A prominent button that opens a web page. A `Link` styled `.borderedProminent` draws a faded fill
+/// (2.5:1 contrast in the audit); a `Button` that calls `openURL` keeps the full-strength fill.
+struct ExternalLinkButton: View {
+    var title: String
+    var url: URL
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        Button { openURL(url) } label: {
+            Label(title, systemImage: "arrow.up.right.square")
+                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
+        }
+        .buttonStyle(.borderedProminent)
+        .accessibilityAddTraits(.isLink)
     }
 }
 
@@ -424,12 +437,8 @@ struct RecipeInstructionsTab: View {
                         Text("Instructions are on Cookidoo").font(.headline).foregroundStyle(HassTokens.Ink.primary)
                         Text("Official Cookidoo step text stays on Cookidoo and is not stored or shown here.")
                             .font(.subheadline).foregroundStyle(HassTokens.Ink.secondary).multilineTextAlignment(.center)
-                        Link(destination: url) {
-                            Label("Open in Cookidoo", systemImage: "arrow.up.right.square")
-                                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .accessibilityIdentifier("recipe.openCookidoo")
+                        ExternalLinkButton(title: "Open in Cookidoo", url: url)
+                            .accessibilityIdentifier("recipe.openCookidoo")
                     }
                     .frame(maxWidth: .infinity)
                 } else {

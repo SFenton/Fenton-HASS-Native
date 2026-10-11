@@ -170,13 +170,19 @@ struct FoodModelTests {
         #expect(SuggestedRecipesCarousel.layout(width: 700) == (4, 3))
         #expect(SuggestedRecipesCarousel.layout(width: 1000) == (5, 2))
         #expect(SuggestedRecipesCarousel.layout(width: 5000).columns == 10)
+        #expect(SuggestedRecipesCarousel.layout(width: 370, accessibilitySize: true) == (1, 2))
+        #expect(RecipeGrid.columnCount(width: 370, accessibilitySize: false) == 2)
+        #expect(RecipeGrid.columnCount(width: 100, accessibilitySize: false) == 2)
+        #expect(RecipeGrid.columnCount(width: 370, accessibilitySize: true) == 1)
+        #expect(RecipeGrid.columnCount(width: 1100, accessibilitySize: true) == 3)
+        #expect(SuggestedRecipesCarousel.layout(width: 1000, accessibilitySize: true) == (2, 2))
         #expect(RecipeFilters.horizons.map { RecipeFilters.horizon($0).title } == ["7 Days", "30 Days", "90 Days"])
     }
 
     @Test func fixturesAreValid() {
         #expect(Set(FoodFixtures.catalog.map(\.dedupeKey)).count == 120)
         let detail = FoodFixtures.detail(id: 2)
-        #expect(detail.ingredients.allSatisfy { $0.key.wholeMatch(of: RecipeParsing.ingredientKeyPattern) != nil })
+        #expect(detail.ingredients.allSatisfy { $0.key.wholeMatch(of: #/^ri:\d+:[a-f0-9]{16}$/#) != nil })
         #expect(FoodFixtures.detail(id: 1).capabilities.instructions == .externalLink)
     }
 }

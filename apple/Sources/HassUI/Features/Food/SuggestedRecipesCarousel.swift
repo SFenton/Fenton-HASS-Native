@@ -10,18 +10,23 @@ struct SuggestedRecipesCarousel: View {
     var onOpen: (RecipeCard) -> Void
     @State private var width: CGFloat = 0
     @State private var page: Int? = 0
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Web `RECOMMENDATION_PAGE_COUNT`.
     static let pageCount = 5
     static let spacing: CGFloat = 10
 
-    /// Columns and rows for a width (web `recommendationLayout`).
-    static func layout(width: CGFloat) -> (columns: Int, rows: Int) {
+    /// Columns and rows for a width (web `recommendationLayout`). At accessibility text sizes cards are
+    /// twice as wide (one column on iPhone) and pages hold two rows, so titles wrap instead of truncating.
+    static func layout(width: CGFloat, accessibilitySize: Bool = false) -> (columns: Int, rows: Int) {
+        if accessibilitySize {
+            return (min(10, max(1, Int(((width + spacing) / (440 + spacing)).rounded(.down)))), 2)
+        }
         let columns = max(2, Int(((width + spacing) / (220 + spacing)).rounded(.up)))
         return (min(10, columns), width >= 900 ? 2 : 3)
     }
 
-    private var layout: (columns: Int, rows: Int) { Self.layout(width: width) }
+    private var layout: (columns: Int, rows: Int) { Self.layout(width: width, accessibilitySize: dynamicTypeSize.isAccessibilitySize) }
     private var pageSize: Int { layout.columns * layout.rows }
 
     var body: some View {
@@ -89,6 +94,16 @@ struct SuggestedRecipesCarousel: View {
         .padding(.trailing, Self.spacing)
     }
 
+    /// The page after a VoiceOver swipe up (next) or down (previous), clamped to the pages.
+    static func adjusted(_ page: Int?, _ direction: AccessibilityAdjustmentDirection, pageCount: Int) -> Int {
+        let current = page ?? 0
+        switch direction {
+        case .increment: return min(pageCount - 1, current + 1)
+        case .decrement: return max(0, current - 1)
+        @unknown default: return current
+        }
+    }
+
     /// Page dots with VoiceOver adjustable paging (web carousel dots).
     private var pageControl: some View {
         HStack(spacing: HassTokens.Spacing.s) {
@@ -104,13 +119,7 @@ struct SuggestedRecipesCarousel: View {
         .accessibilityLabel("Suggestion page")
         .accessibilityValue("\((page ?? 0) + 1) of \(pageCount)")
         .accessibilityAdjustableAction { direction in
-            withAnimation {
-                switch direction {
-                case .increment: page = min(pageCount - 1, (page ?? 0) + 1)
-                case .decrement: page = max(0, (page ?? 0) - 1)
-                @unknown default: break
-                }
-            }
+            withAnimation { page = Self.adjusted(page, direction, pageCount: pageCount) }
         }
         .accessibilityIdentifier("food.suggestions.pages")
     }

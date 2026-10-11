@@ -232,4 +232,24 @@ struct RecipeParsingTests {
         #expect(RecipeParsing.coveragePercent(0.25) == 25)
         #expect(RecipeParsing.coveragePercent(-3) == 0)
     }
+
+    // MARK: - Edge cases
+
+    @Test func minimalDetailFallsBackToEmptySections() throws {
+        let detail = try #require(RecipeParsing.detail(json(#"{"schema_version": "recipe_detail_v1", "id": 4, "title": "Toast"}"#)))
+        #expect(detail.source.connector == "")
+        #expect(detail.ingredients.isEmpty)
+        #expect(detail.capabilities.instructions == .none)
+        #expect(detail.grocery.confirmedMissingCount == 0)
+    }
+
+    @Test func malformedStepsAndIngredientsAreUnsafe() {
+        #expect(RecipeParsing.steps(json(#"{"text": "x"}"#)).unsafe, "a non-list is unsafe")
+        let long = RecipeParsing.steps(.array([.string(String(repeating: "a", count: 2100))]))
+        #expect(long.unsafe)
+        #expect(long.steps.first?.count == 2000)
+        #expect(RecipeParsing.steps(json("[{\"text\": \"  \"}]")).unsafe)
+        #expect(RecipeParsing.ingredient(json(#""salt""#)) == nil)
+        #expect(RecipeParsing.ingredients(json(#"{"a": 1}"#)).unsafe)
+    }
 }

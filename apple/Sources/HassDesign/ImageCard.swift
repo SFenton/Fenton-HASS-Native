@@ -19,6 +19,7 @@ public struct ImageCard: View {
     /// When set, the title always takes this many lines so cards in a row line up (carousels).
     public var reservedTitleLines: Int?
     public var action: () -> Void
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Creates a card.
     public init(
@@ -41,6 +42,14 @@ public struct ImageCard: View {
         self.action = action
     }
 
+    /// Title lines: the reserved count (so a row lines up), else up to three; never truncated at
+    /// accessibility text sizes, where a cut title fails the Dynamic Type audit.
+    static func titleLines(reserved: Int?, accessibilitySize: Bool) -> ClosedRange<Int> {
+        if accessibilitySize { return 1...100 }
+        if let reserved { return reserved...reserved }
+        return 1...3
+    }
+
     // MARK: - Body
 
     public var body: some View {
@@ -53,7 +62,7 @@ public struct ImageCard: View {
                     Text(title)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(HassTokens.Ink.primary)
-                        .lineLimit(reservedTitleLines ?? 3, reservesSpace: reservedTitleLines != nil)
+                        .lineLimit(Self.titleLines(reserved: reservedTitleLines, accessibilitySize: dynamicTypeSize.isAccessibilitySize))
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                     if let subtitle {
@@ -104,23 +113,28 @@ public struct RemoteImage: View {
         Color.secondary.opacity(0.12)
             .overlay {
                 if let current {
-                    AsyncImage(url: current, transaction: Transaction(animation: .easeOut(duration: 0.2))) { phase in
-                        switch phase {
-                        case let .success(image):
-                            image.resizable().scaledToFill()
-                        case .failure:
-                            placeholder.onAppear { if !useFallback, fallbackURL != nil { useFallback = true } }
-                        default:
-                            ProgressView()
-                        }
-                    }
-                    .id(current)
+                    AsyncImage(url: current, transaction: Transaction(animation: .easeOut(duration: 0.2))) { self.phase($0) }
+                        .id(current)
                 } else {
                     placeholder
                 }
             }
             .clipped()
             .accessibilityHidden(true)
+    }
+
+    /// What one `AsyncImage` phase draws: the image, the placeholder (switching to the fallback URL once)
+    /// or a spinner.
+    @ViewBuilder
+    func phase(_ phase: AsyncImagePhase) -> some View {
+        switch phase {
+        case let .success(image):
+            image.resizable().scaledToFill()
+        case .failure:
+            placeholder.onAppear { if !useFallback, fallbackURL != nil { useFallback = true } }
+        default:
+            ProgressView()
+        }
     }
 
     private var placeholder: some View {

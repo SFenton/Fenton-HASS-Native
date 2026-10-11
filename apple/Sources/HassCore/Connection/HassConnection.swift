@@ -270,3 +270,8 @@ extension EntityState {
         )
     }
 }
+
+// MARK: - Service responses
+
+/// Declared here: a `Sendable` conformance must live in the class's own file.
+extension HassConnection: HassServiceResponding {}

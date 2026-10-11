@@ -12,6 +12,7 @@ struct FoodGallery: View {
     @State private var store = FoodFixtures.store()
     @State private var service: FixtureRecipeService
     @State private var path: [FoodRoute]
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init() {
         let environment = ProcessInfo.processInfo.environment
@@ -33,8 +34,9 @@ struct FoodGallery: View {
         }
         .environment(store)
         .safeAreaInset(edge: .bottom) {
-            // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
-            if ProcessInfo.processInfo.environment["FENTON_GALLERY_CLEAN"] != "1", path.count > 0 {
+            // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out, as do accessibility text sizes,
+            // where it would be clipped and cover the page (the AX5 journeys never read it).
+            if ProcessInfo.processInfo.environment["FENTON_GALLERY_CLEAN"] != "1", !dynamicTypeSize.isAccessibilitySize, path.count > 0 {
                 lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar)
             }
         }
@@ -84,10 +86,14 @@ final class FixtureRecipeService: RecipeServing {
         if mode == .empty { return RecipeBrowsePage(items: []) }
         let query = criteria.normalizedQuery.lowercased()
         var matches = FoodFixtures.catalog.filter { (query.isEmpty || $0.title.lowercased().contains(query)) && criteria.matchesFilters($0) }
+        // Ties keep catalog order, so journeys know which cards lead (1, 6, 11, … by availability).
+        func ordered<Key: Comparable>(_ key: @escaping (RecipeCard) -> Key) -> (RecipeCard, RecipeCard) -> Bool {
+            { key($0) == key($1) ? $0.id < $1.id : key($0) < key($1) }
+        }
         switch criteria.sort {
-        case .alphabetical: matches.sort { $0.title < $1.title }
-        case .expiry: matches.sort { ($0.soonestExpiryDays ?? .max) < ($1.soonestExpiryDays ?? .max) }
-        case .availability: matches.sort { $0.coverage > $1.coverage }
+        case .alphabetical: matches.sort(by: ordered(\.title))
+        case .expiry: matches.sort(by: ordered { $0.soonestExpiryDays ?? .max })
+        case .availability: matches.sort(by: ordered { -$0.coverage })
         }
         let start = Int(cursor ?? "0") ?? 0
         let page = Array(matches.dropFirst(start).prefix(RecipeServiceData.pageSize))
@@ -126,6 +132,7 @@ final class FixtureRecipeService: RecipeServing {
 // MARK: - Fixtures
 
 /// Fixture recipes, a detail per recipe and EverShelf sensor states.
+@MainActor
 enum FoodFixtures {
     static let titles = [
         "Lemon Garlic Chicken", "Tomato Basil Soup", "Mushroom Risotto", "Black Bean Tacos", "Spinach Lasagna",
@@ -163,8 +170,8 @@ enum FoodFixtures {
             .init(key: key(0), position: 0, name: "chicken thighs", displayName: "Chicken thighs", amountQuantity: 6, amountUnit: "pieces",
                   inventoryState: .inStock, inventoryRelation: "exact", matchedProductName: "Chicken Thighs", quantityState: .known, quantitySufficiency: .sufficient),
             .init(key: key(1), position: 1, name: "lemon", displayName: "Lemons", amountQuantity: 2, inventoryState: .missing, quantityState: .known, quantitySufficiency: .insufficient),
-            .init(key: key(2), position: 2, name: "garlic", displayName: "Garlic", sourceText: "4 cloves garlic, minced", amountQuantity: 4, amountUnit: "cloves",
-                  inventoryState: .uncertain, closestMatchLabel: "Garlic bulb"),
+            .init(key: key(2), position: 2, name: "garlic", displayName: "Garlic", sourceText: "4 cloves garlic, minced", closestMatchLabel: "Garlic bulb",
+                  amountQuantity: 4, amountUnit: "cloves", inventoryState: .uncertain),
             .init(key: key(3), position: 3, name: "olive oil", displayName: "Olive oil", amountQuantity: 2, amountUnit: "tbsp", inventoryState: .staple),
             .init(key: key(4), position: 4, name: "thyme", displayName: "Fresh thyme", optional: true, amountText: "a few sprigs", inventoryState: .missing),
             .init(key: key(5), position: 5, name: "butter", displayName: "Butter", overrideAvailability: .have, amountQuantity: 1, amountQuantityMax: 2, amountUnit: "tbsp",

@@ -13,6 +13,12 @@ struct FoodHubScreen: View {
     @State private var window = WindowMetrics()
     @State private var openRecipe: RecipeCard?
 
+    /// - Parameter window: Initial window metrics (hosted tests; the reader replaces them on screen).
+    init(models: FoodModels, window: WindowMetrics = WindowMetrics()) {
+        self.models = models
+        _window = State(initialValue: window)
+    }
+
     private var split: Bool {
         guard let size = window.size else { return false }
         return SplitPolicy.allowsSplit(size: size, isRegularWidth: horizontalSizeClass == .regular || window.isRegularWidth)

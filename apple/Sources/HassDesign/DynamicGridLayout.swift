@@ -12,7 +12,9 @@ public struct DynamicGridMetrics: Equatable, Sendable {
     /// Columns are `floor((width + spacing) / (minCellWidth + spacing))`, clamped to `1...maxColumns`;
     /// leftover width is shared equally (web `dynamicGridLayout.ts`).
     public init(width: CGFloat, minCellWidth: CGFloat, maxColumns: Int, spacing: CGFloat) {
-        let fit = Int(((width + spacing) / (minCellWidth + spacing)).rounded(.down))
+        // An unbounded width (a flexible stack's probe) fits every column rather than trapping on Int(.infinity).
+        let ratio = ((width + spacing) / (minCellWidth + spacing)).rounded(.down)
+        let fit = ratio.isFinite ? Int(ratio) : maxColumns
         let columns = min(max(fit, 1), max(maxColumns, 1))
         self.columns = columns
         self.cellWidth = max(0, (width - spacing * CGFloat(columns - 1)) / CGFloat(columns))
@@ -65,7 +67,8 @@ public struct DynamicGridLayout: Layout {
     }
 
     public func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? minCellWidth * CGFloat(maxColumns)
+        // nil or infinite proposals (e.g. an HStack probing a `maxWidth: .infinity` child) get the ideal width.
+        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? minCellWidth * CGFloat(maxColumns)
         let rows = rowHeights(width: width, subviews: subviews)
         let height = rows.reduce(0, +) + spacing * CGFloat(max(rows.count - 1, 0))
         return CGSize(width: width, height: height)
