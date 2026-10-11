@@ -11,3 +11,4 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Climate | `/at-a-glance/thermostat` | TODO | Placeholder |
 | Chores | `/at-a-glance/chores` | TODO | Placeholder |
 | Settings | `/at-a-glance/settings` | TODO | Home Assistant settings modal only ([ios.md](settings/ios.md)) |
+| Inventory (All Food, Pantry, Fridge, Freezer, Spice Rack, Cabinet) | `/food-and-recipes/<space>` | [inventory/spec.md](inventory/spec.md) | Pages, item editor and Add Item ([ios.md](inventory/ios.md)); reached from the Food & Recipes hub once it lands |

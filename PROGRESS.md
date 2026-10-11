@@ -21,6 +21,8 @@ apple/Sources/HassCore/Config/MediaRemote*.swift,
 apple/Sources/HassCore/MediaRemote/,
 apple/Sources/HassUI/Features/MediaRemote/,
 apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote lane (claude/project-thread-go5jtz)
+apple/Sources/HassCore/Inventory/, apple/Sources/HassUI/Features/Inventory/,
+apple/Sources/HassUI/Features/Gallery/InventoryGallery.swift → inventory lane (claude/project-thread-2tax3x)
 apple/Tests/**                                             → tests for your own files only
 .agents/pages/<id>/, .agents/controls/<id>/                → the lane for that page/control
 .agents/** (everything else)                               → orchestrator
@@ -53,6 +55,7 @@ apple/Tests/**                                             → tests for your ow
 | Media remote (sheet, 4 remotes, Hue Sync) | Shared component + debug gallery; not yet opened from a page (Rooms/Media lanes wire it) |
 | Watch app | Target stub only |
 | Floating actions (shared) | `FloatingActionBar` (labeled/icon actions, expandable search) + `FilterSheet`; gallery `FENTON_GALLERY=floating-actions` |
+| Inventory (6 pages, item editor, Add Item scan) | EverShelf client and models, pages, editor (sheet or split pane), AVFoundation scan; gallery `FENTON_GALLERY=inventory`; linked from Food & Recipes once it lands |
 | Thermostat dial (shared control) | `ThermostatDial` + `ClimateThermostatDial`; debug gallery `FENTON_GALLERY=thermostat-dial` |
 
 ## 4. Log
@@ -65,3 +68,4 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11: shared thermostat dial (single and heat/cool range, VoiceOver-adjustable handles) with its debug gallery page.
 - 2026-10-11: PR #4 verified on the Mac: dial journeys, hosted VoiceOver-adjust tests and audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad (portrait and landscape); 69 `swift test` tests pass. Screenshots in `docs/screenshots/thermostat-dial/`.
 - 2026-10-11: shared floating action bar and filter sheet (`.agents/patterns/floating-actions.md`) for Chores, Groceries, To-Do, Recipes and Inventory.
+- 2026-10-11: inventory pages (All Food, Pantry, Fridge, Freezer, Spice Rack, Cabinet), item editor and Add Item scan sheet (`.agents/pages/inventory/`), on a shared `EverShelfClient` and the shared floating actions.

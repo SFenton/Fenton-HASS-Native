@@ -34,6 +34,7 @@ targets:
         CFBundleDisplayName: Home
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSCameraUsageDescription: Scan item barcodes and printed expiration dates to add groceries to your inventory.
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIApplicationSceneManifest:

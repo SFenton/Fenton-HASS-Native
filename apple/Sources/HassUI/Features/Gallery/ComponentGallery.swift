@@ -9,6 +9,7 @@ public struct ComponentGallery: View {
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
         case floatingActions = "floating-actions"
+        case inventory
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -31,6 +32,12 @@ public struct ComponentGallery: View {
             case .mediaRemote: MediaRemoteGallery()
             case .thermostatDial: ThermostatDialGallery()
             case .floatingActions: FloatingActionsGallery()
+            case .inventory:
+                #if DEBUG
+                InventoryGallery()
+                #else
+                EmptyView()
+                #endif
             }
         }
     }
