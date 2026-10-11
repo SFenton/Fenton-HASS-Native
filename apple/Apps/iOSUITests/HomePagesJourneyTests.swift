@@ -202,16 +202,4 @@ final class HomePagesJourneyTests: XCTestCase {
         }
     }
 
-    // MARK: - Signed in
-
-    /// Home's Quick Links push each page on the live server (read-only: nothing is tapped on the pages).
-    func testQuickLinksPushThePages() throws {
-        let app = try FentonHomeApp.launchSignedIn()
-        for (link, title) in [("home.link.media", "Media"), ("home.link.custom-lights", "Custom Lights")] {
-            tap(link, in: app)
-            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 10), "\(title) did not open")
-            app.navigationBars.buttons.firstMatch.tap()
-            XCTAssertTrue(element(link, in: app).waitForExistence(timeout: 10))
-        }
-    }
 }

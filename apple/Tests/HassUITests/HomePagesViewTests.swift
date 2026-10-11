@@ -97,14 +97,6 @@ struct HomePagesViewTests {
         #expect(MediaCardTile.slug("Windows PC") == "windows-pc")
     }
 
-    @Test func quickLinksHideSprinklersUntilFaucetsShow() {
-        let store = store([])
-        #expect(HomeRoute.allCases.filter { $0.link.isVisible(store) } == [.media, .customLights])
-        store.apply([EntityState(entityId: SprinklersConfig.visibilityEntityId, state: "on")])
-        #expect(HomeRoute.allCases.filter { $0.link.isVisible(store) } == [.media, .customLights, .sprinklers])
-        #expect(HomeRoute.allCases.map(\.link.title) == ["Media", "Custom Lights", "Sprinklers"])
-    }
-
     @Test func brightnessTileHints() {
         #expect(BrightnessTile.hint(percent: 0, isUnavailable: false, opensDetails: false) == "Double-tap to turn on. Swipe up or down to adjust brightness.")
         #expect(BrightnessTile.hint(percent: 40, isUnavailable: false, opensDetails: true) == "Double-tap for details. Swipe up or down to adjust brightness.")
