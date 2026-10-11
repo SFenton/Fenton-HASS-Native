@@ -42,6 +42,29 @@ public struct ImageCard: View {
         self.action = action
     }
 
+    private var image: some View {
+        RemoteImage(url: imageURL, fallbackURL: fallbackImageURL, placeholderSymbol: placeholderSymbol)
+    }
+
+    private var labels: some View {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(HassTokens.Ink.primary)
+                .lineLimit(Self.titleLines(reserved: reservedTitleLines, accessibilitySize: dynamicTypeSize.isAccessibilitySize))
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundStyle(HassTokens.Ink.secondary)
+                    .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     /// Title lines: the reserved count (so a row lines up), else up to three; never truncated at
     /// accessibility text sizes, where a cut title fails the Dynamic Type audit.
     static func titleLines(reserved: Int?, accessibilitySize: Bool) -> ClosedRange<Int> {
@@ -54,27 +77,25 @@ public struct ImageCard: View {
 
     public var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 0) {
-                RemoteImage(url: imageURL, fallbackURL: fallbackImageURL, placeholderSymbol: placeholderSymbol)
-                    .aspectRatio(4 / 3, contentMode: .fit)
-                    .clipped()
-                VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(HassTokens.Ink.primary)
-                        .lineLimit(Self.titleLines(reserved: reservedTitleLines, accessibilitySize: dynamicTypeSize.isAccessibilitySize))
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if let subtitle {
-                        Text(subtitle)
-                            .font(.footnote)
-                            .foregroundStyle(HassTokens.Ink.secondary)
-                            .monospacedDigit()
-                            .fixedSize(horizontal: false, vertical: true)
+            Group {
+                if dynamicTypeSize.isAccessibilitySize {
+                    // Large text: a row with a small thumbnail, so the title (not the picture) fills the card
+                    // (HIG Typography: prioritize text at accessibility sizes).
+                    HStack(alignment: .top, spacing: HassTokens.Spacing.m) {
+                        image
+                            .frame(width: 72, height: 72)
+                            .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
+                        labels
+                    }
+                    .padding(HassTokens.Spacing.m)
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        image
+                            .aspectRatio(4 / 3, contentMode: .fit)
+                            .clipped()
+                        labels.padding(HassTokens.Spacing.m)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(HassTokens.Spacing.m)
             }
             .frame(maxHeight: .infinity, alignment: .top)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))

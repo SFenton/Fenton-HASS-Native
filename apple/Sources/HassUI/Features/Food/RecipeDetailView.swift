@@ -101,6 +101,7 @@ struct RecipeDetailContent: View {
 struct RecipeGeneralTab: View {
     let detail: RecipeDetail
     var fallbackImageURL: URL?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
@@ -108,7 +109,8 @@ struct RecipeGeneralTab: View {
                 .aspectRatio(16 / 10, contentMode: .fit)
                 .frame(maxWidth: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))
-            DynamicGridLayout(minCellWidth: 150, maxColumns: 3, spacing: HassTokens.Spacing.s) {
+            // One column at accessibility sizes, so labels and values wrap whole words.
+            DynamicGridLayout(minCellWidth: dynamicTypeSize.isAccessibilitySize ? 320 : 150, maxColumns: 3, spacing: HassTokens.Spacing.s) {
                 ForEach(RecipeFormatting.facts(detail)) { fact in
                     FactTile(fact: fact)
                 }
@@ -148,9 +150,14 @@ struct ExternalLinkButton: View {
 /// One fact: symbol, label and value (web `StatusPill`).
 struct FactTile: View {
     let fact: RecipeFormatting.Fact
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        HStack(alignment: .top, spacing: HassTokens.Spacing.s) {
+        // The symbol goes above the text at accessibility sizes, leaving the text the tile's full width.
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: HassTokens.Spacing.s))
+        layout {
             Image(systemName: fact.symbol)
                 .foregroundStyle(HassTokens.Ink.secondary)
                 .frame(minWidth: 22)
