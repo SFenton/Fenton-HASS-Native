@@ -31,7 +31,7 @@ struct HouseholdSettingsTests {
 
     @Test func guestsReuseTheHomeToggles() {
         #expect(Config.Guests.tiles.map(\.entityId) == HomeConfig.guestToggles.map(\.entityId))
-        #expect(Config.Guests.tiles.allSatisfy(\.showsState))
+        #expect(Config.Guests.tiles.allSatisfy { $0.showsState })
     }
 
     @Test func toggleIdsAreUniqueAndCoverEveryPage() {

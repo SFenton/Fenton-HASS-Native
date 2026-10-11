@@ -88,7 +88,7 @@ final class HouseholdGalleryRecorder: HassServiceCalling {
 /// Synthetic states for the gallery and hosted tests (not a copy of the live house).
 enum HouseholdSettingsFixtures {
     /// A store with every household entity, in a spread of states.
-    static func store(unavailable: Bool = false) -> EntityStore {
+    @MainActor static func store(unavailable: Bool = false) -> EntityStore {
         let store = EntityStore()
         store.replaceAll(states(unavailable: unavailable))
         return store
