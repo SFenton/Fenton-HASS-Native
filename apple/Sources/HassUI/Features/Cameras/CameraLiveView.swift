@@ -29,14 +29,21 @@ struct CameraLiveView: View {
     }
 
     var body: some View {
-        ZStack {
-            Rectangle().fill(.black)
-            player
-            if model.state.phase != .live || ScreenshotPrivacy.isRedacting {
-                CameraSnapshotView(entityId: camera.entityId)
-                    .transition(.opacity)
+        // The black frame sets the size; the fill-scaled snapshot must not grow it past the viewer's
+        // aspect ratio, or the badge lands outside the clip.
+        Rectangle().fill(.black)
+            .overlay {
+                // Redacted runs keep the player decoding (so the state still reaches Live) but never show
+                // it: the Metal video view can draw above the snapshot that covers it.
+                player.opacity(ScreenshotPrivacy.isRedacting ? 0 : 1)
             }
-        }
+            .overlay {
+                if model.state.phase != .live || ScreenshotPrivacy.isRedacting {
+                    CameraSnapshotView(entityId: camera.entityId)
+                        .transition(.opacity)
+                }
+            }
+            .clipped()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(camera.title) camera")
         .accessibilityValue(Self.statusText(model.state))
