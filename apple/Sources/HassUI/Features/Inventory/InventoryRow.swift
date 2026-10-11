@@ -59,6 +59,7 @@ struct InventoryRow: View {
             Text(item.name)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(HassTokens.Ink.primary)
+                .fixedSize(horizontal: false, vertical: true)
                 .privacySensitive()
             HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.xs) {
                 if let tone {
@@ -68,6 +69,7 @@ struct InventoryRow: View {
                 }
                 Text(subtitle)
                     .font(.subheadline)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(InventoryTone.color(tone))
             if let error = model.rowErrors[item.id] {

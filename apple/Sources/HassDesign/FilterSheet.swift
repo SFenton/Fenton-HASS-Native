@@ -38,8 +38,6 @@ public struct FilterSheet<Content: View>: View {
                         .accessibilityIdentifier("filterSheet.reset")
                 }
             }
-            // Prominent headers draw in the primary ink: the default secondary header reads 3.1:1 on the sheet's glass.
-            .headerProminence(.increased)
             .navigationTitle(title)
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -63,7 +61,8 @@ public struct FilterSheet<Content: View>: View {
         .presentationDragIndicator(.visible)
         #if os(iOS)
         // Opaque: at the medium detent the glass sheet let the page's floating actions show through behind the
-        // options' footnotes (failed contrast on iPhone).
+        // options' footnotes, and its section headers read 3.1:1 (failed contrast on iPhone). Opaque, the
+        // standard headers pass; prominent ones were reported clipped at large text sizes.
         .presentationBackground(Color(uiColor: .systemGroupedBackground))
         #endif
     }

@@ -70,7 +70,7 @@ final class InventoryJourneyTests: XCTestCase {
         let field = app.alerts.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.clearAndType("2")
-        app.alerts.buttons["Add"].tap()
+        app.alerts.buttons["Add"].tap(until: { !app.alerts.firstMatch.exists })
         XCTAssertTrue(app.buttons["Added Spaghetti to shopping list"].waitForExistence(timeout: 5))
         XCTAssertTrue(lastCall(app).contains("todo.add_item"), lastCall(app))
     }
@@ -148,8 +148,8 @@ final class InventoryJourneyTests: XCTestCase {
         let app = launch(space: "all-food", open: "scan")
         let simulate = app.buttons["scan.simulate"]
         XCTAssertTrue(simulate.waitForExistence(timeout: 10))
-        simulate.tap()
         let name = app.textFields["scan.name"]
+        simulate.tap(until: { name.exists })
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         XCTAssertEqual(name.value as? String, "Greek Yogurt")
         app.buttons["scan.forward"].tap()
@@ -255,7 +255,7 @@ final class InventoryJourneyTests: XCTestCase {
             XCTAssertTrue(app.buttons["scan.cancel"].waitForExistence(timeout: 10))
             _ = reveal(app.buttons["scan.simulate"], in: app)
             if step >= 2 {
-                app.buttons["scan.simulate"].tap()
+                app.buttons["scan.simulate"].tap(until: { app.textFields["scan.name"].exists })
                 XCTAssertTrue(app.buttons["scan.forward"].waitForExistence(timeout: 5))
                 app.buttons["scan.forward"].tap()
                 _ = reveal(app.buttons["scan.manualExpiry"], in: app)
@@ -279,6 +279,20 @@ final class InventoryJourneyTests: XCTestCase {
 }
 
 private extension XCUIElement {
+    /// Taps, then retries (up to three taps) until `done` holds: a tap that lands while a sheet or alert is
+    /// still animating in is dropped on a loaded host.
+    func tap(until done: () -> Bool) {
+        for _ in 0..<3 {
+            tap()
+            let deadline = Date().addingTimeInterval(4)
+            while Date() < deadline {
+                if done() { return }
+                usleep(250_000)
+            }
+            guard exists, isHittable else { return }
+        }
+    }
+
     func clearAndType(_ text: String) {
         tap()
         if let value = value as? String, !value.isEmpty {

@@ -60,13 +60,15 @@ struct FloatingActionsGallery: View {
             } else {
                 FilterSheet(title: "Filter Rows", canApply: draftMinimum != minimum, canReset: draftMinimum != 0,
                             onApply: { minimum = draftMinimum; lastAction = "filter \(Int(minimum))" }, onReset: { draftMinimum = 0 }) {
+                    // The label is a row, not a section header: the prominent header was reported clipped at
+                    // large text sizes, even when allowed to wrap.
                     Section {
-                        Slider(value: $draftMinimum, in: 0...100, step: 5) { Text("Minimum Ingredients Available") }
-                            .accessibilityValue("\(Int(draftMinimum)) percent")
-                            .accessibilityIdentifier("gallery.filter.minimum")
-                    } header: {
-                        // Wraps: the prominent header was reported clipped at large text sizes.
-                        Text("Minimum Ingredients Available").fixedSize(horizontal: false, vertical: true)
+                        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                            Text("Minimum Ingredients Available").font(.headline)
+                            Slider(value: $draftMinimum, in: 0...100, step: 5) { Text("Minimum Ingredients Available") }
+                                .accessibilityValue("\(Int(draftMinimum)) percent")
+                                .accessibilityIdentifier("gallery.filter.minimum")
+                        }
                     }
                 }
             }
