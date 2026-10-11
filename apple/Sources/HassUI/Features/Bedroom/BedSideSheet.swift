@@ -428,6 +428,7 @@ struct BedAlarmsTab: View {
                 Label("Add Alarm", systemImage: "plus").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
             }
             .buttonStyle(.borderedProminent)
+            .tint(BedroomStyle.action)
             .disabled(!controller.alarmsEditable)
             .accessibilityIdentifier("bed.alarms.add")
         }
@@ -482,6 +483,7 @@ struct BedAlarmDayPage: View {
                     Label("Add Alarm", systemImage: "plus").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(BedroomStyle.action)
                 .disabled(!controller.alarmsEditable)
                 .accessibilityIdentifier("bed.day.add")
             }
@@ -538,6 +540,7 @@ struct BedAlarmEditor: View {
                     Text(saving ? "Saving…" : "Save").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(BedroomStyle.action)
                 .disabled(saving || !problems.isEmpty)
                 .accessibilityIdentifier("bed.editor.save")
                 if draft.editingId != nil {

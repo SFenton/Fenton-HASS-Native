@@ -10,6 +10,8 @@ enum BedroomStyle {
     static let idle = Color(red: 67 / 255, green: 160 / 255, blue: 71 / 255)
     /// Stop buttons: a deep red that keeps white labels at about 6:1 (system red gives 3.6:1 and fails the audit).
     static let danger = Color(red: 0.76, green: 0.12, blue: 0.12)
+    /// Primary actions (Add, Save): a deeper blue than the app accent, which leaves white labels at 2.5:1.
+    static let action = Color(red: 0.0, green: 0.40, blue: 0.80)
     /// The power button while the side is off, and Snooze: a gray that keeps its white label above 4.5:1 (system gray does not).
     static let off = Color(white: 0.4)
 

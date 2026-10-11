@@ -110,6 +110,7 @@ public struct WakeLightSheet: View {
                         .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(BedroomStyle.action)
                 .disabled(!snapshot.available || controller.configurationPending)
                 .accessibilityIdentifier("wake.add")
             } else {
@@ -372,6 +373,7 @@ struct WakeLightEditor: View {
                 Text(saving ? "Saving…" : "Save").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
             }
             .buttonStyle(.borderedProminent)
+            .tint(BedroomStyle.action)
             .disabled(locked || !dirty || !problems.isEmpty || stale)
             .accessibilityIdentifier("wake.editor.save")
             if !isNew {
