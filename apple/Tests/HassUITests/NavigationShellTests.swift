@@ -153,7 +153,7 @@ struct SplitGeometryTests {
 struct SettingsTopicTests {
     @Test func topicsFollowTheWebOrder() {
         #expect(SettingsTopic.allCases.map(\.title) == [
-            "Admin Controls", "Special Device Modes", "Guest Controls", "Vacation", "To-Do", "Mach-E", "Home Assistant Settings",
+            "Admin Controls", "Special Device Modes", "Guest Controls", "Vacation", "To-Do", "Mach-E",
         ])
         #expect(SettingsTopic.allCases.allSatisfy { !$0.subtitle.isEmpty && !$0.symbol.isEmpty })
     }

@@ -11,6 +11,12 @@ struct TokenManagerTests {
         #expect(try await manager.validAccessToken() == "A")
     }
 
+    @Test func validTokensIncludeTheRefreshToken() async throws {
+        let tokens = AuthTokens(accessToken: "A", expiresAt: Date().addingTimeInterval(600), refreshToken: "R")
+        let manager = TokenManager(store: InMemoryTokenStore(), initial: tokens)
+        #expect(try await manager.validTokens() == tokens)
+    }
+
     @Test func signedOutWithoutRefreshToken() async {
         let manager = TokenManager(store: InMemoryTokenStore())
         await #expect(throws: TokenManager.SignedOut.self) { try await manager.validAccessToken() }

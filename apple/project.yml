@@ -74,6 +74,22 @@ targets:
         TEST_TARGET_NAME: FentonHome
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
+  FentonHomeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Apps/iOSTests
+    dependencies:
+      - target: FentonHome
+      - package: FentonHomeApple
+        product: HassDesign
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.tests
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/FentonHome.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/FentonHome
+        BUNDLE_LOADER: $(TEST_HOST)
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   FentonHome:
     build:
@@ -84,4 +100,5 @@ schemes:
       coverageTargets:
         - FentonHome
       targets:
+        - FentonHomeTests
         - FentonHomeUITests

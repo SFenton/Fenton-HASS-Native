@@ -33,7 +33,7 @@ public final class HassConnection {
 
     // MARK: - Private
 
-    @ObservationIgnored private let connection: HAConnection
+    @ObservationIgnored let connection: HAConnection
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
     @ObservationIgnored private var statesSubscription: HACancellable?
     @ObservationIgnored private var stateObserver: NSObjectProtocol?
@@ -50,15 +50,7 @@ public final class HassConnection {
     ///   - tokens: Supplies access tokens.
     ///   - store: The store to feed.
     ///   - snapshotCache: Disk snapshot of entity states.
-    public init(server: HassServer, tokens: TokenManager, store: EntityStore, snapshotCache: EntitySnapshotCache = .init()) {
-        self.server = server
-        self.store = store
-        self.snapshotCache = snapshotCache
-
-        if let snapshot = snapshotCache.load(for: server) {
-            store.replaceAll(snapshot.entities, freshness: .snapshot(savedAt: snapshot.savedAt))
-        }
-
+    public convenience init(server: HassServer, tokens: TokenManager, store: EntityStore, snapshotCache: EntitySnapshotCache = .init()) {
         let baseURL = server.baseURL
         let configuration = HAConnectionConfiguration(
             connectionInfo: { try? HAConnectionInfo(url: baseURL, userAgent: "FentonHome") },
@@ -73,7 +65,22 @@ public final class HassConnection {
                 }
             }
         )
-        connection = HAKit.connection(configuration: configuration, connectAutomatically: false)
+        self.init(
+            server: server, store: store, snapshotCache: snapshotCache,
+            connection: HAKit.connection(configuration: configuration, connectAutomatically: false)
+        )
+    }
+
+    /// Creates a connection over a given HAKit connection (tests pass `HAMockConnection`).
+    init(server: HassServer, store: EntityStore, snapshotCache: EntitySnapshotCache = .init(), connection: HAConnection) {
+        self.server = server
+        self.store = store
+        self.snapshotCache = snapshotCache
+        self.connection = connection
+
+        if let snapshot = snapshotCache.load(for: server) {
+            store.replaceAll(snapshot.entities, freshness: .snapshot(savedAt: snapshot.savedAt))
+        }
 
         stateObserver = NotificationCenter.default.addObserver(
             forName: HAConnectionState.didTransitionToStateNotification,

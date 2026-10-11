@@ -45,13 +45,14 @@ apple/Tests/**                                             → tests for your ow
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
 | Security, Climate, Chores | Placeholders |
-| Settings | Web link list (topics are placeholders), server status, Sign Out; splits on demand |
+| Settings | Web topic list (topics are placeholders) that splits on demand; Home Assistant Settings opens the full-screen modal (server, account, signed-in web pages, Sign Out) |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | `OnDemandSplitStack` built and verified on the Mac: divider at the exact midpoint on iPad landscape, on the hinge on the unfolded Duo landscape; rotation moves the open item between pane and push; Settings is the first adopter |
 | iPad / unfolded Duo flyout | Built and verified on iPad and the unfolded Duo: overlay flyout in regular width, tab bar (folded Duo: vertical bar) in compact width |
 | Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`), which now measures every test bundle: repo-wide 54.2% logic / 70.5% UX on 2026-10-11 (below the bars; the gaps are HassCore connection/Keychain, Login, the Home chip sheets and RootView/AppSession) |
 | Media remote (sheet, 4 remotes, Hue Sync) | Shared component + debug gallery; not yet opened from a page (Rooms/Media lanes wire it) |
 | Watch app | Target stub only |
+| Thermostat dial (shared control) | `ThermostatDial` + `ClimateThermostatDial`; debug gallery `FENTON_GALLERY=thermostat-dial` |
 
 ## 4. Log
 
@@ -59,5 +60,8 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11: PR #1 verified on the Mac: journeys and accessibility audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad; 32 `swift test` tests pass. Redacted screenshots in `docs/screenshots/pr-1/`.
 - 2026-10-11: Lights sheet sends explicit `turn_on` / `turn_off` instead of `toggle` (Presence Based Lighting's Presence Lock reverts toggles in empty rooms), and dimmable groups get `BrightnessTile` (drag to set brightness, web `LightBrightnessCard`).
 - 2026-10-11: media remote component (`.agents/patterns/media-remote.md`): config model and the four web remotes, optimistic overlay with revert timers, sheet with power, d-pad and Controls/Apps/Devices/Hue Sync tabs; unit, hosted and device journeys with audits.
+- 2026-10-11: Home Assistant settings modal verified on the Mac (`claude/project-thread-4ttpvm`): the Settings web page opens signed in through the `localStorage.hassTokens` hand-off (no web login form). Settings journeys and audits pass on iPhone, Duo folded / unfolded portrait / unfolded landscape and iPad portrait / landscape; 52 `swift test` tests; new files ≥ 95% logic / ≥ 95.7% UX. `apple_coverage.sh` now measures every test bundle (repo-wide 63% / 61%, below the bars before this change too). Simulators under heavy host load crash backboardd at random; crashed journeys were re-run alone. Redacted screenshots in `docs/screenshots/ha-settings/`.
+- 2026-10-11: shared thermostat dial (single and heat/cool range, VoiceOver-adjustable handles) with its debug gallery page.
+- 2026-10-11: PR #4 verified on the Mac: dial journeys, hosted VoiceOver-adjust tests and audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad (portrait and landscape); 69 `swift test` tests pass. Screenshots in `docs/screenshots/thermostat-dial/`.
 - 2026-10-11: app navigation: regular-width overlay flyout (`App/Shell/`), `OnDemandSplitStack` with hinge-aware geometry, Settings list/detail split.
 - 2026-10-11: PR #3 verified on the Mac. Fixed: the split never turning off after rotating to portrait (it measured its own fixed-width panes); the hinge not being read (read in `onGeometryChange`, inactive division while flat); content under the flyout still reachable by VoiceOver (UIKit tab controller hidden too); the full-window scrim winning the accessibility hit test over the rows; white-on-accent selected row (2.5:1); the edge strip eating taps, then the edge swipe also activating the control under it (now a UIKit screen-edge pan); a `DynamicGridLayout` crash on unbounded widths; the coverage script measuring one of three bundles. Redacted screenshots in `docs/screenshots/pr-3/`.

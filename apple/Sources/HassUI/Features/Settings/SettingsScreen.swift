@@ -4,10 +4,11 @@ import SwiftUI
 
 // MARK: - Topics
 
-/// The Settings page's links, in the web's order (`ha-sfenton-react-dash:src/constants/portedDashboard.ts`
-/// `SETTINGS_PAGE_ITEMS`; copy from `i18n/locales/en/pageSettings.json`).
+/// The Settings topics that open in place, in the web's order (`ha-sfenton-react-dash:src/constants/portedDashboard.ts`
+/// `SETTINGS_PAGE_ITEMS`; copy from `i18n/locales/en/pageSettings.json`). The web's last item, Home Assistant
+/// Settings, is not a topic: it opens ``HomeAssistantSettingsView`` full screen.
 enum SettingsTopic: String, CaseIterable, Identifiable, Hashable, Sendable {
-    case admin, specialDeviceModes, guests, vacation, todo, machE, homeAssistant
+    case admin, specialDeviceModes, guests, vacation, todo, machE
 
     var id: String { rawValue }
 
@@ -19,7 +20,6 @@ enum SettingsTopic: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .vacation: "Vacation"
         case .todo: "To-Do"
         case .machE: "Mach-E"
-        case .homeAssistant: "Home Assistant Settings"
         }
     }
 
@@ -31,7 +31,6 @@ enum SettingsTopic: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .vacation: "Set away dates and prepare the house for vacation."
         case .todo: "An admin panel for to-do tasks."
         case .machE: "Controls for the Mustang Mach-E."
-        case .homeAssistant: "Access more in-depth Home Assistant details and settings."
         }
     }
 
@@ -43,7 +42,6 @@ enum SettingsTopic: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .vacation: SymbolMap.symbol(for: "mdi:airplane")
         case .todo: SymbolMap.symbol(for: "mdi:clipboard-list")
         case .machE: SymbolMap.symbol(for: "mdi:car-estate")
-        case .homeAssistant: SymbolMap.symbol(for: "mdi:cog")
         }
     }
 }
@@ -71,11 +69,16 @@ struct SettingsStack: View {
 
 // MARK: - List
 
-/// The Settings list: the web's link rows, then the server, connection status and Sign Out.
+/// The Settings list: the web's topics, then Home Assistant Settings, which opens full screen.
 struct SettingsScreen: View {
     @Binding var openTopic: SettingsTopic?
-    @Environment(AppSession.self) private var session
-    @Environment(HassConnection.self) private var connection
+    @State private var showsHomeAssistant = false
+
+    /// Creates the list.
+    /// - Parameter openTopic: The topic open beside or above the list; constant nil for a static render.
+    init(openTopic: Binding<SettingsTopic?> = .constant(nil)) {
+        _openTopic = openTopic
+    }
 
     var body: some View {
         List {
@@ -84,69 +87,78 @@ struct SettingsScreen: View {
                     Button {
                         openTopic = topic
                     } label: {
-                        SettingsTopicRow(topic: topic, isSelected: openTopic == topic)
+                        SettingsLinkRow(title: topic.title, subtitle: topic.subtitle, symbol: topic.symbol)
                     }
                     .buttonStyle(.plain)
                     .listRowBackground(openTopic == topic ? Color.accentColor.opacity(0.18) : nil)
                     .accessibilityAddTraits(openTopic == topic ? .isSelected : [])
                     .accessibilityIdentifier("settings.topic.\(topic.rawValue)")
                 }
-            }
-            Section("Home Assistant") {
-                LabeledContent("Server", value: connection.server.baseURL.host() ?? connection.server.baseURL.absoluteString)
-                LabeledContent("Connection", value: statusText)
-            }
-            Section {
-                Button("Sign Out", role: .destructive) { session.signOut() }
-                    .accessibilityIdentifier("settings.signOut")
+                Button { showsHomeAssistant = true } label: {
+                    SettingsLinkRow(
+                        title: HomeAssistantSettingsView.linkTitle,
+                        subtitle: HomeAssistantSettingsView.linkSubtitle,
+                        symbol: SymbolMap.symbol(for: "mdi:cog")
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("settings.homeAssistant")
+                .accessibilityHint("Opens server, account and sign-out options.")
             }
         }
         .navigationTitle("Settings")
-    }
-
-    private var statusText: String { Self.statusText(for: connection.status) }
-
-    /// Readable connection status for the Home Assistant section.
-    static func statusText(for status: HassConnection.Status) -> String {
-        switch status {
-        case .disconnected: "Disconnected"
-        case .connecting: "Connecting…"
-        case let .connected(version): "Connected (\(version))"
-        case .waitingToReconnect: "Reconnecting…"
-        case .rejected: "Signed out by server"
-        }
+        .homeAssistantSettingsCover(isPresented: $showsHomeAssistant)
     }
 }
 
-/// One Settings link: icon, title and subtitle, with a chevron like the web's `SettingsLinkList`.
-struct SettingsTopicRow: View {
-    var topic: SettingsTopic
-    var isSelected: Bool
+/// One settings topic: icon, bold title and a wrapping subtitle, like the web's `SettingsLink`
+/// (`DashboardViewPage.tsx` `SettingsLink`), with the platform disclosure chevron.
+struct SettingsLinkRow: View {
+    var title: String
+    var subtitle: String
+    var symbol: String
+    /// Off inside a `NavigationLink`, which draws its own chevron.
+    var showsChevron = true
 
     var body: some View {
-        HStack(spacing: HassTokens.Spacing.m) {
-            Image(systemName: topic.symbol)
+        HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
+            Image(systemName: symbol)
                 .font(.title3)
-                .foregroundStyle(Color.accentColor)
-                .frame(width: 32)
+                .foregroundStyle(.tint)
+                .frame(minWidth: 28)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(topic.title)
-                    .font(.body.weight(.semibold))
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+                Text(title)
+                    .font(.headline)
                     .foregroundStyle(HassTokens.Ink.primary)
-                Text(topic.subtitle)
+                Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(HassTokens.Ink.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: HassTokens.Spacing.s)
-            Image(systemName: "chevron.forward")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(HassTokens.Ink.secondary)
-                .accessibilityHidden(true)
+            Spacer(minLength: 0)
+            if showsChevron {
+                Image(systemName: "chevron.forward")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
         }
-        .frame(minHeight: 44)
+        .padding(.vertical, HassTokens.Spacing.xs)
+        .frame(minHeight: HassTokens.minTarget)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+}
+
+extension View {
+    /// Presents Home Assistant settings full screen on iOS (a sheet on macOS, where hosted tests run).
+    func homeAssistantSettingsCover(isPresented: Binding<Bool>) -> some View {
+        #if os(iOS)
+        fullScreenCover(isPresented: isPresented) { HomeAssistantSettingsView() }
+        #else
+        sheet(isPresented: isPresented) { HomeAssistantSettingsView() }
+        #endif
     }
 }
 

@@ -370,18 +370,11 @@ struct SettingsHostedTests {
         #expect(hosted.window.contentView != nil)
     }
 
-    /// Every topic has a title, subtitle and symbol; every connection status has readable text.
-    @Test func topicsAndStatusTextAreComplete() {
+    /// Every topic has a title, subtitle and symbol.
+    @Test func topicsAreComplete() {
         for topic in SettingsTopic.allCases {
             #expect(!topic.title.isEmpty && !topic.subtitle.isEmpty && !topic.symbol.isEmpty)
             #expect(topic.id == topic.rawValue)
-        }
-        let statuses: [(HassConnection.Status, String)] = [
-            (.disconnected, "Disconnected"), (.connecting, "Connecting…"), (.connected(version: "2026.10"), "Connected (2026.10)"),
-            (.waitingToReconnect, "Reconnecting…"), (.rejected, "Signed out by server"),
-        ]
-        for (status, text) in statuses {
-            #expect(SettingsScreen.statusText(for: status) == text)
         }
     }
 }
