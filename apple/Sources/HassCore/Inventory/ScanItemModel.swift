@@ -204,6 +204,7 @@ public final class ScanItemModel {
     /// Clears the scan and starts the barcode camera again.
     public func scanBarcodeAgain() {
         serviceGeneration += 1
+        isProcessing = false
         resetLineage()
         resetLocation()
         preparedTouched = false
@@ -266,6 +267,7 @@ public final class ScanItemModel {
     /// Starts the expiry camera again.
     public func readExpiryAgain() {
         serviceGeneration += 1
+        isProcessing = false
         expiryCameraHidden = false
         expiryStatus = .idle
         cameraStatus = .idle

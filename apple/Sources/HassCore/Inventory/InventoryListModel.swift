@@ -227,7 +227,7 @@ public final class InventoryListModel {
     public func delete(_ item: InventoryDisplayItem, quantity: Double? = nil) async {
         guard let rows = deletableRows(of: item), !deleting.contains(item.id) else { return }
         let stocked = rows.reduce(0) { $0 + $1.quantity }
-        let steps = quantity.map { $0 < stocked ? InventoryCatalog.decreaseSteps(rows, amount: $0).steps : nil }
+        let steps = quantity.flatMap { $0 < stocked ? InventoryCatalog.decreaseSteps(rows, amount: $0).steps : nil }
             ?? rows.map { InventoryDeleteStep(inventoryId: $0.inventoryId) }
         deleting.insert(item.id)
         rowErrors[item.id] = nil
