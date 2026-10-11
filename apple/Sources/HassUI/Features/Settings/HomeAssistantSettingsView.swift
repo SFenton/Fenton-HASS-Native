@@ -37,6 +37,11 @@ struct HomeAssistantSettingsView: View {
     @State private var confirmsSignOut = false
     @State private var path: [WebPage] = []
 
+    /// Creates the modal; `user` seeds the account rows (hosted tests and previews).
+    init(user: HassUser? = nil) {
+        _user = State(initialValue: user)
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             Form {
@@ -96,7 +101,7 @@ struct HomeAssistantSettingsView: View {
         Section {
             ForEach(Self.webPages(for: user)) { page in
                 NavigationLink(value: page) {
-                    SettingsLinkLabel(title: page.title, subtitle: page.subtitle, symbol: page.symbol)
+                    SettingsLinkRow(title: page.title, subtitle: page.subtitle, symbol: page.symbol, showsChevron: false)
                 }
                 .accessibilityIdentifier("haSettings.open.\(page.rawValue)")
             }
@@ -129,15 +134,19 @@ struct HomeAssistantSettingsView: View {
     // MARK: - Actions
 
     private func loadUser() async {
+        (user, userError) = await Self.loadedUser(user, from: connection)
+    }
+
+    /// The account rows after a load: the server's user while connected, otherwise the last one
+    /// loaded, flagged as failed when there is none and the connection isn't still coming up.
+    static func loadedUser(_ current: HassUser?, from connection: HassConnection) async -> (HassUser?, Bool) {
         guard case .connected = connection.status else {
-            if user == nil { userError = connection.status != .connecting }
-            return
+            return (current, current == nil && connection.status != .connecting)
         }
         do {
-            user = try await connection.currentUser()
-            userError = false
+            return (try await connection.currentUser(), false)
         } catch {
-            if user == nil { userError = true }
+            return (current, current == nil)
         }
     }
 
@@ -185,32 +194,5 @@ struct HomeAssistantSettingsView: View {
     static func webPages(for user: HassUser?) -> [WebPage] {
         guard let user, !user.isAdmin, !user.isOwner else { return WebPage.allCases }
         return [.profile]
-    }
-}
-
-/// ``SettingsLinkRow`` without its own chevron, for `NavigationLink`s that draw one.
-struct SettingsLinkLabel: View {
-    var title: String
-    var subtitle: String
-    var symbol: String
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
-            Image(systemName: symbol)
-                .font(.title3)
-                .foregroundStyle(.tint)
-                .frame(minWidth: 28)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
-                Text(title).font(.headline).foregroundStyle(HassTokens.Ink.primary)
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(HassTokens.Ink.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.vertical, HassTokens.Spacing.xs)
-        .frame(minHeight: HassTokens.minTarget)
-        .accessibilityElement(children: .combine)
     }
 }

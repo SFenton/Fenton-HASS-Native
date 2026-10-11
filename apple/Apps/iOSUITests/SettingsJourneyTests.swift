@@ -19,6 +19,30 @@ final class SettingsJourneyTests: XCTestCase {
         sleep(1) // Let the full-screen modal finish presenting.
     }
 
+    /// A `LabeledContent` row by identifier once its label or value shows `text` (the row merges both).
+    private func row(_ app: XCUIApplication, _ identifier: String, showing text: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier)
+            .matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", text, text)).firstMatch
+    }
+
+    /// The sign-out confirmation's destructive button (the system nests a duplicate inside it).
+    private func confirmButton(_ app: XCUIApplication) -> XCUIElement {
+        app.buttons.matching(identifier: "haSettings.signOut.confirm").firstMatch
+    }
+
+    /// Cancels the confirmation: its Cancel button where the system draws one (iPad action sheets
+    /// drop it, and iOS 27 anchors it as a popover that cancels on an outside tap).
+    private func cancelSignOut(_ app: XCUIApplication) {
+        let cancel = app.buttons["Cancel"].firstMatch
+        if cancel.exists && cancel.isHittable {
+            cancel.tap()
+        } else {
+            let dismiss = app.otherElements["PopoverDismissRegion"].firstMatch
+            if dismiss.exists { dismiss.tap() } else { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap() }
+        }
+        XCTAssertTrue(confirmButton(app).waitForNonExistence(timeout: 5), "Sign-out confirmation did not close")
+    }
+
     func testSettingsTabPassesAccessibilityAudit() throws {
         let app = try FentonHomeApp.launchSignedIn()
         app.tabBars.buttons["Settings"].tap()
@@ -34,7 +58,7 @@ final class SettingsJourneyTests: XCTestCase {
     func testModalShowsServerAccountAndPassesAudit() throws {
         let app = try FentonHomeApp.launchSignedIn()
         openSettings(app)
-        XCTAssertTrue(app.staticTexts["Connected"].waitForExistence(timeout: 15), "Connection row not live")
+        XCTAssertTrue(row(app, "haSettings.status", showing: "Connected").waitForExistence(timeout: 15), "Connection row not live")
         XCTAssertTrue(app.descendants(matching: .any)["haSettings.role"].waitForExistence(timeout: 10), "Account did not load")
         XCTAssertTrue(app.buttons["haSettings.signOut"].exists)
         try FentonHomeApp.audit(app) {
@@ -68,17 +92,14 @@ final class SettingsJourneyTests: XCTestCase {
         let app = try FentonHomeApp.launchSignedIn()
         openSettings(app)
         app.buttons["haSettings.signOut"].tap()
-        let confirm = app.buttons["haSettings.signOut.confirm"].exists
-            ? app.buttons["haSettings.signOut.confirm"] : app.sheets.buttons["Sign Out"].firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
-        let cancel = app.buttons["Cancel"].firstMatch
-        if cancel.exists {
-            cancel.tap()
-            XCTAssertTrue(app.buttons["haSettings.done"].waitForExistence(timeout: 5))
-            app.buttons["haSettings.signOut"].tap()
-            XCTAssertTrue(confirm.waitForExistence(timeout: 5))
-        }
-        confirm.tap()
+        XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
+        cancelSignOut(app)
+        XCTAssertTrue(app.buttons["haSettings.done"].exists, "Cancel left the modal")
+        app.buttons["haSettings.signOut"].tap()
+        XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
+        sleep(1) // Let the confirmation finish presenting.
+        try FentonHomeApp.audit(app)
+        confirmButton(app).tap()
         XCTAssertTrue(app.textFields["login.username"].waitForExistence(timeout: 10), "Sign-in did not appear")
     }
 
@@ -96,9 +117,10 @@ final class SettingsJourneyTests: XCTestCase {
             _ = app.descendants(matching: .any)["haSettings.role"].waitForExistence(timeout: 10)
             keep(app, "ha-settings-\(suffix)")
             app.buttons["haSettings.signOut"].tap()
+            XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
             sleep(1)
             keep(app, "ha-signout-\(suffix)")
-            app.buttons["Cancel"].firstMatch.tap()
+            cancelSignOut(app)
             app.buttons["haSettings.open.settings"].tap()
             _ = app.webViews.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'Devices'")).firstMatch
                 .waitForExistence(timeout: 30)

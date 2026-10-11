@@ -33,6 +33,8 @@ struct SettingsLinkRow: View {
     var title: String
     var subtitle: String
     var symbol: String
+    /// Off inside a `NavigationLink`, which draws its own chevron.
+    var showsChevron = true
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
@@ -51,10 +53,12 @@ struct SettingsLinkRow: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
-            Image(systemName: "chevron.forward")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .accessibilityHidden(true)
+            if showsChevron {
+                Image(systemName: "chevron.forward")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .accessibilityHidden(true)
+            }
         }
         .padding(.vertical, HassTokens.Spacing.xs)
         .frame(minHeight: HassTokens.minTarget)

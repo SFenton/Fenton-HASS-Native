@@ -8,6 +8,16 @@ export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Develope
 cd "$ROOT/apple"
 swift test --enable-code-coverage
 
+# `swift test`'s own export covers only the first test bundle, so export every bundle together
+# (one merged report: a file shared by two bundles is counted once, with hits from both).
 CODECOV_JSON="$(swift test --show-codecov-path)"
-# swift test writes one merged export for every test bundle in the package.
-python3 "$ROOT/tools/coverage_gate.py" --language swift --report "$CODECOV_JSON"
+CODECOV_DIR="$(dirname "$CODECOV_JSON")"
+PRODUCTS="$(dirname "$CODECOV_DIR")"
+OBJECTS=()
+for bundle in "$PRODUCTS"/*Tests.xctest; do
+  name="$(basename "$bundle" .xctest)"
+  OBJECTS+=(-object "$bundle/Contents/MacOS/$name")
+done
+MERGED="$CODECOV_DIR/all-bundles.json"
+xcrun llvm-cov export -format=text -instr-profile "$CODECOV_DIR/default.profdata" "${OBJECTS[@]}" > "$MERGED"
+python3 "$ROOT/tools/coverage_gate.py" --language swift --report "$MERGED"

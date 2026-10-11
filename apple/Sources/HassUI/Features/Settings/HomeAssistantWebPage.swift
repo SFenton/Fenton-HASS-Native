@@ -18,6 +18,13 @@ struct HomeAssistantWebPage: View {
     @State private var isLoading = true
     @State private var reloadToken = 0
 
+    /// Creates the page; `frontend` and `failed` seed its state (hosted tests).
+    init(page: HomeAssistantSettingsView.WebPage, frontend: FrontendSession? = nil, failed: Bool = false) {
+        self.page = page
+        _frontend = State(initialValue: frontend)
+        _failed = State(initialValue: failed)
+    }
+
     var body: some View {
         content
             .navigationTitle(page.title)
@@ -59,12 +66,14 @@ struct HomeAssistantWebPage: View {
 
     private func prepare() async {
         failed = false
-        guard let tokens = session.tokens else { failed = true; return }
-        do {
-            frontend = FrontendSession(server: connection.server, tokens: try await tokens.validTokens())
-        } catch {
-            failed = true
-        }
+        frontend = await Self.frontendSession(server: connection.server, tokens: session.tokens)
+        failed = frontend == nil
+    }
+
+    /// The sign-in hand-off for the web view, with fresh tokens; `nil` when signed out or the refresh fails.
+    static func frontendSession(server: HassServer, tokens: TokenManager?) async -> FrontendSession? {
+        guard let tokens, let current = try? await tokens.validTokens() else { return nil }
+        return FrontendSession(server: server, tokens: current)
     }
 }
 

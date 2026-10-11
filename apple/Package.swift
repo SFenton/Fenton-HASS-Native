@@ -19,9 +19,15 @@ let package = Package(
         ),
         .target(name: "HassDesign"),
         .target(name: "HassUI", dependencies: ["HassCore", "HassDesign"]),
-        .testTarget(name: "HassCoreTests", dependencies: ["HassCore"]),
+        .testTarget(
+            name: "HassCoreTests",
+            dependencies: ["HassCore", .product(name: "HAKit+Mocks", package: "HAKit")]
+        ),
         .testTarget(name: "HassDesignTests", dependencies: ["HassDesign"]),
-        .testTarget(name: "HassUITests", dependencies: ["HassUI", "HassCore"]),
+        .testTarget(
+            name: "HassUITests",
+            dependencies: ["HassUI", "HassCore", .product(name: "HAKit+Mocks", package: "HAKit")]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )

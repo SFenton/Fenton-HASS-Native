@@ -49,7 +49,9 @@ public struct FrontendSession: Equatable, Sendable {
     /// - Parameter now: Current time, for `expires_in`.
     public func bootstrapScript(now: Date = Date()) throws -> String {
         let tokens = try tokensJSON(now: now)
-        let origin = try String(decoding: JSONEncoder().encode(origin), as: UTF8.self)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .withoutEscapingSlashes
+        let origin = try String(decoding: encoder.encode(origin), as: UTF8.self)
         return """
         (function () {
           if (window.location.origin !== \(origin)) { return; }
