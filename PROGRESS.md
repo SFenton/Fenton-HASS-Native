@@ -17,6 +17,10 @@ apple/Sources/HassCore/Config/<Area>Config.swift           → the lane porting 
 apple/Sources/HassDesign/                                  → orchestrator (lanes may add new files)
 apple/Sources/HassUI/App/                                  → orchestrator
 apple/Sources/HassUI/Features/<Feature>/                   → the lane for that feature
+apple/Sources/HassCore/Config/MediaRemote*.swift,
+apple/Sources/HassCore/MediaRemote/,
+apple/Sources/HassUI/Features/MediaRemote/,
+apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote lane (claude/project-thread-go5jtz)
 apple/Tests/**                                             → tests for your own files only
 .agents/pages/<id>/, .agents/controls/<id>/                → the lane for that page/control
 .agents/** (everything else)                               → orchestrator
@@ -44,6 +48,7 @@ apple/Tests/**                                             → tests for your ow
 | Split policy (landscape regular only) | Policy and tests; split layout not built yet |
 | iPad flyout | Not started (TabView for now) |
 | Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`) |
+| Media remote (sheet, 4 remotes, Hue Sync) | Shared component + debug gallery; not yet opened from a page (Rooms/Media lanes wire it) |
 | Watch app | Target stub only |
 
 ## 4. Log
@@ -51,3 +56,4 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-10: initial scaffold.
 - 2026-10-11: PR #1 verified on the Mac: journeys and accessibility audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad; 32 `swift test` tests pass. Redacted screenshots in `docs/screenshots/pr-1/`.
 - Known follow-up: light tiles send `light.toggle`. Presence Based Lighting's Presence Lock (SFenton/presence-based-lighting) reverts that in empty rooms and only honors an exact `turn_on` from an app user as a manual-on hold. Send `light.turn_on` / `light.turn_off` from the current state instead.
+- 2026-10-11: media remote component (`.agents/patterns/media-remote.md`): config model and the four web remotes, optimistic overlay with revert timers, sheet with power, d-pad and Controls/Apps/Devices/Hue Sync tabs; unit, hosted and device journeys with audits.

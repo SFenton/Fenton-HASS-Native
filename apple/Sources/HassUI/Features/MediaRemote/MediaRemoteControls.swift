@@ -1,0 +1,433 @@
+import HassCore
+import HassDesign
+import SwiftUI
+
+// MARK: - Shared pieces
+
+/// Colors and sizes local to the remote.
+enum RemoteStyle {
+    /// Fill behind round buttons; sits on the sheet background, not on a material, so it keeps its edge.
+    static let buttonFill = Color.primary.opacity(0.09)
+    /// Media device tint (web `media` tile tone).
+    static let media = Color(red: 0.36, green: 0.42, blue: 0.95)
+    /// Power icon while the device is on (web `red`).
+    static let powerOn = Color.red
+    /// Power icon while the device is off (web `green`).
+    static let powerOff = Color.green
+
+    /// The SF Symbol for a button's MDI icon.
+    static func symbol(_ mdi: String) -> String { SymbolMap.symbol(for: mdi) }
+}
+
+/// A section title (web `SectionHeader`), exposed as a heading.
+struct RemoteSectionHeader: View {
+    var title: String
+
+    var body: some View {
+        Text(title)
+            .font(.headline)
+            .foregroundStyle(HassTokens.Ink.primary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// A round icon button: tinted fill, pressed scale, dimmed while disabled (HIG: Buttons; ≥ 44 pt).
+struct RoundButtonStyle: ButtonStyle {
+    var diameter: CGFloat
+    var fill: Color = RemoteStyle.buttonFill
+
+    func makeBody(configuration: Configuration) -> some View {
+        RoundButtonBody(configuration: configuration, diameter: diameter, fill: fill)
+    }
+
+    private struct RoundButtonBody: View {
+        var configuration: Configuration
+        var diameter: CGFloat
+        var fill: Color
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .frame(width: diameter, height: diameter)
+                .background(fill, in: Circle())
+                .contentShape(Circle())
+                .scaleEffect(configuration.isPressed ? 0.94 : 1)
+                .opacity(isEnabled ? 1 : 0.4)
+                .animation(.snappy(duration: 0.12), value: configuration.isPressed)
+        }
+    }
+}
+
+/// One configured remote button drawn as a round icon (web `RemoteButton`).
+struct RemoteIconButton: View {
+    var controller: MediaRemoteController
+    var button: MediaRemoteButton
+    var diameter: CGFloat
+    var iconFont: Font = .title2
+    var onTextPrompt: (String) -> Void = { _ in }
+    var onPress: () -> Void = {}
+
+    var body: some View {
+        Button {
+            onPress()
+            if let target = controller.press(button) { onTextPrompt(target) }
+        } label: {
+            RemoteButtonIcon(button: button, tone: controller.iconTone(for: button), font: iconFont)
+        }
+        .buttonStyle(RoundButtonStyle(diameter: diameter))
+        .accessibilityLabel(button.label)
+        .modifier(SemanticsTraits(semantics: controller.semantics(for: button)))
+        .accessibilityIdentifier("remote.button.\(button.label)")
+    }
+}
+
+/// A button's icon with its rotation and color rule applied.
+struct RemoteButtonIcon: View {
+    var button: MediaRemoteButton
+    var tone: IconTone?
+    var font: Font
+
+    var body: some View {
+        if button.hasIcon {
+            Image(systemName: RemoteStyle.symbol(button.icon))
+                .font(button.icon == "mdi:circle" ? .footnote : font)
+                .fontWeight(.semibold)
+                .rotationEffect(.degrees(button.iconRotationDegrees))
+                .foregroundStyle(color)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var color: Color {
+        switch tone {
+        case .active: RemoteStyle.powerOn
+        case .inactive: RemoteStyle.powerOff
+        case nil: HassTokens.Ink.primary
+        }
+    }
+}
+
+/// Adds the traits and value for ``ControlSemantics`` (web `aria-checked` / `aria-pressed`).
+struct SemanticsTraits: ViewModifier {
+    var semantics: ControlSemantics
+
+    func body(content: Content) -> some View {
+        switch semantics {
+        case let .toggle(isOn):
+            content.accessibilityAddTraits(.isToggle).accessibilityValue(isOn ? "On" : "Off")
+        case let .selection(isSelected):
+            content.accessibilityAddTraits(isSelected ? .isSelected : [])
+        case .command, .state:
+            content
+        }
+    }
+}
+
+// MARK: - Power
+
+/// The always-visible power pill: icon red while on, green while off, and "Power On" / "Power Off" text
+/// (web `PowerButton`).
+struct PowerPill: View {
+    var controller: MediaRemoteController
+    @ScaledMetric(relativeTo: .headline) private var height: CGFloat = 52
+
+    var body: some View {
+        let button = controller.config.power
+        Button {
+            controller.press(button)
+        } label: {
+            HStack(spacing: HassTokens.Spacing.s) {
+                RemoteButtonIcon(button: button, tone: controller.iconTone(for: button), font: .title3)
+                Text(controller.powerTitle)
+                    .font(.headline)
+                    .foregroundStyle(HassTokens.Ink.primary)
+            }
+            .padding(.horizontal, HassTokens.Spacing.xl)
+            .frame(minHeight: max(height, HassTokens.minTarget))
+            .background(RemoteStyle.buttonFill, in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        // Label from the config ("Power"); the state is the value, and Voice Control also takes the visible text.
+        .accessibilityLabel(button.label)
+        .accessibilityInputLabels([button.label, controller.powerTitle])
+        .modifier(PowerSemantics(semantics: controller.semantics(for: button), isOff: controller.isControlOff))
+        .accessibilityIdentifier("remote.power")
+    }
+}
+
+/// A toggle power button reads On/Off as a switch; a command one still reads the device's state.
+private struct PowerSemantics: ViewModifier {
+    var semantics: ControlSemantics
+    var isOff: Bool
+
+    func body(content: Content) -> some View {
+        if case .toggle = semantics {
+            content.modifier(SemanticsTraits(semantics: semantics))
+        } else {
+            content.accessibilityValue(isOff ? "Off" : "On")
+        }
+    }
+}
+
+// MARK: - D-pad
+
+/// The 3×3 directional pad: up, left, select, right and down as large round buttons, with a light haptic on
+/// each press (web `RemoteGrid`; HIG: Playing haptics). Select is blank on a SHIELD and a dot on Apple TV.
+struct DirectionalPad: View {
+    var controller: MediaRemoteController
+    @ScaledMetric(relativeTo: .title) private var scaledDiameter: CGFloat = 76
+    @State private var presses = 0
+
+    private var diameter: CGFloat { min(max(scaledDiameter, 64), 104) }
+
+    var body: some View {
+        let config = controller.config
+        Grid(horizontalSpacing: HassTokens.Spacing.s, verticalSpacing: HassTokens.Spacing.s) {
+            GridRow {
+                gap
+                button(config.up)
+                gap
+            }
+            GridRow {
+                button(config.left)
+                button(config.select)
+                button(config.right)
+            }
+            GridRow {
+                gap
+                button(config.down)
+                gap
+            }
+        }
+        .disabled(controller.controlsDisabled)
+        .sensoryFeedback(.impact(weight: .light), trigger: presses)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(config.title) remote controls")
+        .accessibilityIdentifier("remote.dpad")
+    }
+
+    private var gap: some View {
+        Color.clear.frame(width: diameter, height: diameter).accessibilityHidden(true)
+    }
+
+    private func button(_ button: MediaRemoteButton) -> some View {
+        RemoteIconButton(controller: controller, button: button, diameter: diameter, iconFont: .title, onPress: { presses += 1 })
+    }
+}
+
+// MARK: - Tab picker
+
+/// The segmented tab control; a menu at accessibility text sizes, where segments can't grow (HIG: Segmented controls).
+struct RemoteTabPicker: View {
+    var tabs: [MediaRemoteTab]
+    var title: String
+    @Binding var selection: MediaRemoteTab
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        let picker = Picker("\(title) sections", selection: $selection) {
+            ForEach(tabs) { Text($0.title).tag($0) }
+        }
+        .accessibilityIdentifier("remote.tabs")
+        if typeSize.isAccessibilitySize {
+            picker.pickerStyle(.menu).frame(minHeight: HassTokens.minTarget)
+        } else {
+            picker.pickerStyle(.segmented).labelsHidden()
+        }
+    }
+}
+
+// MARK: - Slider and keyboard state
+
+/// A slider that commits on release, or at once for steps that arrive without a drag (VoiceOver adjust,
+/// keyboard), so a drag doesn't send a service call per point (the web sends one per `input` event).
+struct SliderDraft: Equatable {
+    /// The value under the finger while dragging.
+    var draft: Double?
+
+    /// The value to draw.
+    func shown(live: Double) -> Double { draft ?? live }
+
+    /// A new value from the slider.
+    mutating func set(_ value: Double, commit: (Double) -> Void) {
+        if draft == nil { commit(value) } else { draft = value }
+    }
+
+    /// Drag start keeps the live value as the draft; drag end commits the draft.
+    mutating func editingChanged(_ editing: Bool, live: Double, commit: (Double) -> Void) {
+        if editing {
+            draft = live
+        } else if let value = draft {
+            draft = nil
+            commit(value)
+        }
+    }
+}
+
+/// The inline keyboard under Navigation (web `TextPromptForm`).
+struct KeyboardPrompt: Equatable {
+    /// The entity typed into while open.
+    var target: String?
+    var text = ""
+
+    var isOpen: Bool { target != nil }
+    var isBlank: Bool { text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+
+    /// The keyboard button: opens for `target`, or closes when already open for it.
+    mutating func toggle(_ target: String) {
+        if self.target == target { close() } else { self.target = target }
+    }
+
+    /// Cancel: closes and clears the text.
+    mutating func close() { self = KeyboardPrompt() }
+
+    /// Send: types the text and closes; blank text sends nothing and stays open.
+    @MainActor mutating func submit(with controller: MediaRemoteController) {
+        guard let target, !isBlank else { return }
+        controller.sendText(text, to: target)
+        close()
+    }
+}
+
+// MARK: - Controls tab
+
+/// Volume, navigation (with the inline keyboard) and playback (web `MediaRemoteModalTabContent`, controls tab).
+struct RemoteControlsTab: View {
+    var controller: MediaRemoteController
+    @State private var keyboard: KeyboardPrompt
+    @State private var volume = SliderDraft()
+    @FocusState private var fieldFocused: Bool
+    @ScaledMetric(relativeTo: .title2) private var scaledDiameter: CGFloat = 56
+
+    init(controller: MediaRemoteController, keyboard: KeyboardPrompt = KeyboardPrompt()) {
+        self.controller = controller
+        _keyboard = State(initialValue: keyboard)
+    }
+
+    private var diameter: CGFloat { min(max(scaledDiameter, HassTokens.minTarget), 88) }
+
+    var body: some View {
+        let config = controller.config
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
+            if controller.showsVolume {
+                section(config.volumeTitle) {
+                    volumeSlider
+                    row([config.volumeDown, config.volumeMute, config.volumeUp], disabled: controller.volumeDisabled)
+                }
+                .accessibilityIdentifier("remote.section.volume")
+            }
+            section("Navigation") {
+                row([config.back, config.home, controller.hidesKeyboard ? nil : config.keyboard], disabled: controller.controlsDisabled)
+                if keyboard.isOpen { keyboardForm }
+            }
+            section("Controls") {
+                row([config.pause, nil, config.play], disabled: controller.controlsDisabled)
+            }
+            .opacity(controller.isControlOff ? 0.6 : 1)
+        }
+        .animation(.default, value: keyboard.isOpen)
+        .onChange(of: keyboard.isOpen) { _, open in fieldFocused = open }
+    }
+
+    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
+            RemoteSectionHeader(title: title)
+            content()
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Three equal columns; a `nil` slot keeps its space (web `ButtonRow` spacer).
+    private func row(_ buttons: [MediaRemoteButton?], disabled: Bool) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(buttons.enumerated()), id: \.offset) { _, button in
+                Group {
+                    if let button {
+                        RemoteIconButton(controller: controller, button: button, diameter: diameter,
+                                         onTextPrompt: { keyboard.toggle($0) })
+                            .modifier(KeyboardState(isKeyboard: button == controller.config.keyboard, isOpen: keyboard.isOpen))
+                    } else {
+                        Color.clear.frame(width: diameter, height: diameter).accessibilityHidden(true)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .disabled(disabled)
+    }
+
+    // MARK: Volume
+
+    private var volumeSlider: some View {
+        let live = Double(controller.volumePercent)
+        let shown = volume.shown(live: live)
+        let commit: (Double) -> Void = { controller.setVolume(percent: Int($0.rounded())) }
+        return Slider(value: Binding(get: { volume.shown(live: live) }, set: { volume.set($0, commit: commit) }), in: 0...100, step: 1) {
+            volume.editingChanged($0, live: live, commit: commit)
+        }
+        .tint(RemoteStyle.media)
+        .disabled(controller.volumeDisabled)
+        .frame(minHeight: HassTokens.minTarget)
+        .accessibilityLabel("\(controller.config.volumeTitle) volume")
+        .accessibilityValue("\(Int(shown.rounded())) percent")
+        .accessibilityIdentifier("remote.volume")
+    }
+
+    // MARK: Keyboard
+
+    private var keyboardForm: some View {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+            Text("Text to send")
+                .font(.subheadline)
+                .foregroundStyle(HassTokens.Ink.secondary)
+                .accessibilityHidden(true)
+            TextField("Enter text", text: $keyboard.text)
+                .textFieldStyle(.roundedBorder)
+                .remoteTextEntry()
+                .focused($fieldFocused)
+                .submitLabel(.send)
+                .onSubmit { keyboard.submit(with: controller) }
+                .frame(minHeight: HassTokens.minTarget)
+                .accessibilityLabel("Text to send")
+                .accessibilityIdentifier("remote.keyboard.field")
+            HStack(spacing: HassTokens.Spacing.m) {
+                Button("Send") { keyboard.submit(with: controller) }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(keyboard.isBlank)
+                    .accessibilityIdentifier("remote.keyboard.send")
+                Button("Cancel") { keyboard.close() }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("remote.keyboard.cancel")
+            }
+            .controlSize(.large)
+        }
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+}
+
+/// Tells VoiceOver whether the keyboard button's text field is open.
+private struct KeyboardState: ViewModifier {
+    var isKeyboard: Bool
+    var isOpen: Bool
+
+    func body(content: Content) -> some View {
+        if isKeyboard {
+            content.accessibilityValue(isOpen ? "Expanded" : "Collapsed")
+        } else {
+            content
+        }
+    }
+}
+
+private extension View {
+    /// Free text for a TV: no autocapitalization or autocorrection (web `autoCapitalize="none"`).
+    func remoteTextEntry() -> some View {
+        #if os(iOS)
+        textInputAutocapitalization(.never).autocorrectionDisabled()
+        #else
+        autocorrectionDisabled()
+        #endif
+    }
+}

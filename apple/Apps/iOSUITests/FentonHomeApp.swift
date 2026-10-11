@@ -73,6 +73,15 @@ enum FentonHomeApp {
         return app
     }
 
+    /// Launches the debug component gallery on `page` (e.g. `thermostat-dial`): fixture data, no sign-in.
+    static func launchGallery(_ page: String, arguments: [String] = []) -> XCUIApplication {
+        let app = makeApp()
+        app.launchEnvironment["FENTON_GALLERY"] = page
+        app.launchArguments += arguments
+        app.launch()
+        return app
+    }
+
     /// Launch arguments for the largest accessibility text size (AX5).
     static let ax5 = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
 
