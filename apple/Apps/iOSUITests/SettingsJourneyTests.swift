@@ -6,10 +6,46 @@ import XCTest
 final class SettingsJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
+    /// The Settings tab: in the tab bar, or the tab rail the folded iPhone Duo shows instead.
+    private func settingsTab(_ app: XCUIApplication) -> XCUIElement {
+        app.tabBars.buttons["Settings"].exists
+            ? app.tabBars.buttons["Settings"]
+            : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
+    }
+
+    /// Selects the Settings tab and waits for its Home Assistant row.
+    private func showSettingsTab(_ app: XCUIApplication) {
+        let tab = settingsTab(app)
+        XCTAssertTrue(tab.waitForExistence(timeout: 10), "Settings tab not found")
+        tab.tap()
+        XCTAssertTrue(app.buttons["settings.homeAssistant"].waitForExistence(timeout: 5))
+    }
+
+    /// Scrolls the modal until `element` can be tapped (the folded iPhone Duo's form is taller than
+    /// its screen, and a `Form` only exposes rows it has laid out).
+    @discardableResult
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+        for _ in 0..<6 where !(element.exists && element.isHittable) {
+            app.collectionViews.firstMatch.swipeUp()
+        }
+        return element
+    }
+
+    /// The Sign Out row, scrolled into view.
+    private func signOutRow(_ app: XCUIApplication) -> XCUIElement {
+        reveal(app.buttons["haSettings.signOut"], in: app)
+    }
+
+    /// Back from a web page: the bar's back button, which the folded iPhone Duo moves to its rail.
+    private func goBack(_ app: XCUIApplication) {
+        let back = app.buttons["BackButton"].firstMatch
+        if back.exists { back.tap() } else { app.navigationBars.buttons.element(boundBy: 0).tap() }
+    }
+
     /// Opens the modal from a signed-in launch.
     private func openSettings(_ app: XCUIApplication) {
-        let tab = app.tabBars.buttons["Settings"].exists ? app.tabBars.buttons["Settings"] : app.buttons["tab.settings"]
-        XCTAssertTrue(tab.waitForExistence(timeout: 10))
+        let tab = settingsTab(app)
+        XCTAssertTrue(tab.waitForExistence(timeout: 10), "Settings tab not found")
         tab.tap()
         let row = app.buttons["settings.homeAssistant"]
         XCTAssertTrue(row.waitForExistence(timeout: 5))
@@ -38,19 +74,24 @@ final class SettingsJourneyTests: XCTestCase {
             cancel.tap()
         } else {
             let dismiss = app.otherElements["PopoverDismissRegion"].firstMatch
-            if dismiss.exists { dismiss.tap() } else { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap() }
+            if dismiss.exists {
+                dismiss.tap()
+            } else {
+                // Just above the popover: outside it, and clear of the bar's Done button.
+                let popover = app.popovers.firstMatch.exists ? app.popovers.firstMatch.frame : confirmButton(app).frame
+                app.coordinate(withNormalizedOffset: .zero)
+                    .withOffset(CGVector(dx: popover.midX, dy: max(popover.minY - 40, 0))).tap()
+            }
         }
         XCTAssertTrue(confirmButton(app).waitForNonExistence(timeout: 5), "Sign-out confirmation did not close")
     }
 
     func testSettingsTabPassesAccessibilityAudit() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        app.tabBars.buttons["Settings"].tap()
-        XCTAssertTrue(app.buttons["settings.homeAssistant"].waitForExistence(timeout: 5))
+        showSettingsTab(app)
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
-            large.tabBars.buttons["Settings"].tap()
-            XCTAssertTrue(large.buttons["settings.homeAssistant"].waitForExistence(timeout: 5))
+            self.showSettingsTab(large)
             return large
         }
     }
@@ -60,7 +101,7 @@ final class SettingsJourneyTests: XCTestCase {
         openSettings(app)
         XCTAssertTrue(row(app, "haSettings.status", showing: "Connected").waitForExistence(timeout: 15), "Connection row not live")
         XCTAssertTrue(app.descendants(matching: .any)["haSettings.role"].waitForExistence(timeout: 10), "Account did not load")
-        XCTAssertTrue(app.buttons["haSettings.signOut"].exists)
+        XCTAssertTrue(signOutRow(app).exists)
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
             self.openSettings(large)
@@ -83,24 +124,24 @@ final class SettingsJourneyTests: XCTestCase {
         let signedIn = web.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'Devices'")).firstMatch
         XCTAssertTrue(signedIn.waitForExistence(timeout: 30), "Home Assistant Settings did not open signed in")
         XCTAssertFalse(web.secureTextFields.firstMatch.exists, "Web login form shown")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.buttons["haSettings.signOut"].waitForExistence(timeout: 5))
+        goBack(app)
+        XCTAssertTrue(app.buttons["haSettings.done"].waitForExistence(timeout: 5))
     }
 
     /// Cancel keeps the session; confirming returns to sign-in.
     func testSignOutConfirmsThenReturnsToSignIn() throws {
         let app = try FentonHomeApp.launchSignedIn()
         openSettings(app)
-        app.buttons["haSettings.signOut"].tap()
+        signOutRow(app).tap()
         XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
         cancelSignOut(app)
-        XCTAssertTrue(app.buttons["haSettings.done"].exists, "Cancel left the modal")
-        app.buttons["haSettings.signOut"].tap()
+        XCTAssertTrue(app.buttons["haSettings.signOut"].waitForExistence(timeout: 5), "Cancel left the modal")
+        signOutRow(app).tap()
         XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
         sleep(1) // Let the confirmation finish presenting.
         try FentonHomeApp.audit(app)
         // The audit can dismiss the popover; reopen it to confirm.
-        if !confirmButton(app).exists { app.buttons["haSettings.signOut"].tap() }
+        if !confirmButton(app).exists { signOutRow(app).tap() }
         XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
         confirmButton(app).tap()
         XCTAssertTrue(app.textFields["login.username"].waitForExistence(timeout: 10), "Sign-in did not appear")
@@ -113,18 +154,17 @@ final class SettingsJourneyTests: XCTestCase {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
             let app = try FentonHomeApp.launchSignedIn()
-            app.tabBars.buttons["Settings"].tap()
-            XCTAssertTrue(app.buttons["settings.homeAssistant"].waitForExistence(timeout: 5))
+            showSettingsTab(app)
             keep(app, "settings-\(suffix)")
             openSettings(app)
             _ = app.descendants(matching: .any)["haSettings.role"].waitForExistence(timeout: 10)
             keep(app, "ha-settings-\(suffix)")
-            app.buttons["haSettings.signOut"].tap()
+            signOutRow(app).tap()
             XCTAssertTrue(confirmButton(app).waitForExistence(timeout: 5))
             sleep(1)
             keep(app, "ha-signout-\(suffix)")
             cancelSignOut(app)
-            app.buttons["haSettings.open.settings"].tap()
+            reveal(app.buttons["haSettings.open.settings"], in: app).tap()
             _ = app.webViews.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'Devices'")).firstMatch
                 .waitForExistence(timeout: 30)
             sleep(1)

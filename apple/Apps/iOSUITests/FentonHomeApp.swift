@@ -67,7 +67,16 @@ enum FentonHomeApp {
         if let server = credentials.server { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
         app.launch()
         let submit = app.buttons["login.submit"]
-        XCTAssertTrue(submit.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.textFields["login.username"].waitForExistence(timeout: 10), "Sign-in did not appear")
+        // At AX5 on a short screen (the folded iPhone Duo) Sign In sits below the fold.
+        // Drag in the form's leading gutter: a swipe that starts on the multi-line server field
+        // scrolls the field's own text, not the form.
+        let form = app.collectionViews.firstMatch
+        for _ in 0..<6 where !(submit.exists && submit.isHittable) {
+            form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.85))
+                .press(forDuration: 0.05, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.25)))
+        }
+        XCTAssertTrue(submit.waitForExistence(timeout: 10), "Sign In button not reachable")
         submit.tap()
         XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30), "Home did not appear after sign-in")
         return app
@@ -124,11 +133,14 @@ enum FentonHomeApp {
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
         if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 {
-            // Only labels that name one text on the page: a title can repeat as a section header
-            // (the Home Assistant modal), and comparing two different texts proves nothing.
+            // Only labels that name one content text on the page: bar titles are left out (they barely
+            // scale and can repeat a section header, like the Home Assistant modal's), and comparing two
+            // different texts proves nothing.
             func unique(_ label: String, in app: XCUIApplication) -> XCUIElement? {
-                let matches = app.staticTexts.matching(NSPredicate(format: "label == %@", label))
-                return matches.count == 1 ? matches.firstMatch : nil
+                let bars = app.navigationBars.allElementsBoundByIndex.map(\.frame)
+                let matches = app.staticTexts.matching(NSPredicate(format: "label == %@", label)).allElementsBoundByIndex
+                    .filter { text in !bars.contains { $0.intersects(text.frame) } }
+                return matches.count == 1 ? matches[0] : nil
             }
             let sample = app.staticTexts.allElementsBoundByIndex.prefix(12)
                 .filter { !$0.label.isEmpty && $0.isHittable && unique($0.label, in: app) != nil }
@@ -178,6 +190,9 @@ enum FentonHomeApp {
 
     private static func isSystemDrawn(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication, popover: CGRect?) -> Bool {
         guard let element = issue.element else {
+            // Same for the content behind an action-sheet popover noted as the audit started (the
+            // audit can dismiss it): the popover's dismiss region hides it from assistive technologies.
+            if issue.auditType == .elementDetection, popover != nil { return true }
             // Text behind a modal sheet (iPad form sheets leave Home visible around them) is drawn but
             // hidden from assistive technologies by the modal. Accept it only while a sheet is up and
             // Home's own controls can't be reached (the sheet's dimming layer takes the touches).
