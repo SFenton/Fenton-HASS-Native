@@ -12,6 +12,10 @@ enum RenderedContrast {
         let width: Int
         let height: Int
         let scale: CGFloat
+        /// `.up` normally. In iPad landscape XCUIScreen returns `.left`: the raw buffer is the portrait
+        /// panel, so a landscape frame must be turned before sampling (measured 2026-10-10; unturned, it
+        /// sampled unrelated pixels and could pass or fail any element).
+        let orientation: UIImage.Orientation
 
         static func screen() -> Capture? {
             let screenshot = XCUIScreen.main.screenshot()
@@ -28,18 +32,35 @@ enum RenderedContrast {
                 return true
             }
             guard drawn else { return nil }
-            return Capture(pixels: pixels, width: width, height: height, scale: screenshot.image.scale)
+            return Capture(pixels: pixels, width: width, height: height, scale: screenshot.image.scale,
+                           orientation: screenshot.image.imageOrientation)
         }
     }
 
-    /// WCAG contrast of the text against its surface inside `frame` (screen points), or nil when the
-    /// frame is empty or off the capture.
-    static func ratio(of frame: CGRect, in capture: Capture) -> Double? {
-        let rect = CGRect(
-            x: frame.minX * capture.scale, y: frame.minY * capture.scale,
-            width: frame.width * capture.scale, height: frame.height * capture.scale
-        ).integral.intersection(CGRect(x: 0, y: 0, width: capture.width, height: capture.height))
+    /// The part of `frame` (screen points) the capture holds, in raw pixels, or nil when it holds none.
+    static func pixelRect(of frame: CGRect, in capture: Capture) -> CGRect? {
+        let points: CGRect
+        switch capture.orientation {
+        case .up:
+            points = frame
+        case .left:
+            // Screen (x, y) sits at raw (short side - maxY, x): the buffer is the portrait panel.
+            points = CGRect(x: CGFloat(capture.width) / capture.scale - frame.maxY, y: frame.minX,
+                            width: frame.height, height: frame.width)
+        default:
+            return nil
+        }
+        let rect = CGRect(x: points.minX * capture.scale, y: points.minY * capture.scale,
+                          width: points.width * capture.scale, height: points.height * capture.scale)
+            .integral.intersection(CGRect(x: 0, y: 0, width: capture.width, height: capture.height))
         guard rect.width >= 2, rect.height >= 2 else { return nil }
+        return rect
+    }
+
+    /// WCAG contrast of the text against its surface inside `frame` (screen points), or nil when the
+    /// frame is empty or off the capture (then there is no evidence and the issue stays open).
+    static func ratio(of frame: CGRect, in capture: Capture) -> Double? {
+        guard let rect = pixelRect(of: frame, in: capture) else { return nil }
         var luminances: [Double] = []
         luminances.reserveCapacity(Int(rect.width * rect.height))
         for y in Int(rect.minY)..<Int(rect.maxY) {
