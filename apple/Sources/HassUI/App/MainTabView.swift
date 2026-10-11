@@ -76,12 +76,51 @@ extension View {
 /// Implementation of ``SwiftUI/View/pageChrome()``.
 private struct PageChrome: ViewModifier {
     @Environment(\.shellNavigationStyle) private var style
+    @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
 
     func body(content: Content) -> some View {
+        let isFlyoutOpen = navigator?.isFlyoutOpen ?? false
         #if os(iOS)
-        content.toolbar(style == .flyout ? .hidden : .automatic, for: .tabBar)
-        #else
+        // Both layers: SwiftUI vends a page's own elements past UIKit, and the UIKit navigation bar is
+        // out of SwiftUI's reach.
         content
+            .accessibilityHidden(while: isFlyoutOpen)
+            .toolbar(style == .flyout ? .hidden : .automatic, for: .tabBar)
+            .background(TabControllerAccessibilityHider(hidden: isFlyoutOpen))
+        #else
+        content.accessibilityHidden(while: isFlyoutOpen)
         #endif
     }
 }
+
+#if os(iOS)
+/// Hides the root `UITabBarController` (every page and its UIKit navigation bar) from assistive
+/// technologies while the flyout covers it.
+///
+/// SwiftUI's `accessibilityHidden` on the `TabView` or on a page did not reach the UIKit navigation bar:
+/// the iPad audit still read the large title under the scrim (2.5:1). The flyout is a sibling outside the
+/// tab controller, so it stays reachable.
+private struct TabControllerAccessibilityHider: UIViewRepresentable {
+    var hidden: Bool
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.isUserInteractionEnabled = false
+        view.isAccessibilityElement = false
+        return view
+    }
+
+    func updateUIView(_ view: UIView, context: Context) {
+        let hidden = hidden
+        // Next turn: on the first update the view is not in a window yet.
+        DispatchQueue.main.async {
+            var responder: UIResponder? = view
+            while let current = responder, !(current is UIViewController) { responder = current.next }
+            guard let tabs = (responder as? UIViewController)?.tabBarController,
+                  tabs.view.accessibilityElementsHidden != hidden else { return }
+            tabs.view.accessibilityElementsHidden = hidden
+            UIAccessibility.post(notification: .screenChanged, argument: nil)
+        }
+    }
+}
+#endif

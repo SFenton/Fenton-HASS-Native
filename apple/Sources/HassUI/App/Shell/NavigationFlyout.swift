@@ -31,18 +31,31 @@ struct NavigationFlyout: View {
     // MARK: - Scrim
 
     private var scrim: some View {
-        Button {
-            navigator.dismissFlyout()
-        } label: {
+        ZStack(alignment: .leading) {
+            // The dimming layer: drawing only. Leaves the status bar undimmed (dimmed, its window title
+            // read below 3:1 in the audit).
             Color.black.opacity(0.32)
-                .ignoresSafeArea()
+                .ignoresSafeArea(edges: [.horizontal, .bottom])
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            // The close target covers only the area beside the panel: a full-window button won the
+            // accessibility hit test over the panel's rows, so touch exploration read "Close Navigation"
+            // on top of them (XCUITest: rows not hittable).
+            Button {
+                navigator.dismissFlyout()
+            } label: {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .ignoresSafeArea(edges: [.horizontal, .bottom])
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
+            .padding(.leading, NavigationFlyoutMetrics.panelWidth + 2 * NavigationFlyoutMetrics.margin)
+            .accessibilityLabel("Close Navigation")
+            .accessibilityIdentifier("nav.flyout.scrim")
+            // The panel's own rows come first for VoiceOver; the close target is reachable after them.
+            .accessibilitySortPriority(-1)
         }
-        .buttonStyle(.plain)
-        .keyboardShortcut(.cancelAction)
-        .accessibilityLabel("Close Navigation")
-        .accessibilityIdentifier("nav.flyout.scrim")
-        // The panel's own rows come first for VoiceOver; the scrim is reachable as a close button after them.
-        .accessibilitySortPriority(-1)
     }
 
     // MARK: - Panel
@@ -103,13 +116,17 @@ struct NavigationFlyout: View {
                         .accessibilityHidden(true)
                 }
             }
-            .foregroundStyle(isCurrent ? Color.white : HassTokens.Ink.primary)
+            // Primary ink on an accent tint, like Settings' selected row: white on the light accent
+            // measured 2.5:1 in the iPad audit.
+            .foregroundStyle(HassTokens.Ink.primary)
             .padding(.horizontal, HassTokens.Spacing.m)
+            // Vertical padding so the row grows with Dynamic Type instead of resting on its minimum.
+            .padding(.vertical, HassTokens.Spacing.s)
             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             .background {
                 if isCurrent {
                     RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous)
-                        .fill(Color.accentColor)
+                        .fill(Color.accentColor.opacity(0.18))
                 }
             }
             .contentShape(Rectangle())
