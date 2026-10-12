@@ -155,8 +155,9 @@ struct ScanItemSheet: View {
         if prominent {
             button.buttonStyle(.borderedProminent)
         } else {
-            // Ink label: the teal label on its own tinted fill read 4.3:1.
-            button.buttonStyle(.bordered).foregroundStyle(HassTokens.Ink.primary)
+            // Tinted with ink: the teal label on its own teal fill read 4.3:1, and the audit judges a bordered
+            // button by its tint even when the label is restyled (iPad, 2026-10-12).
+            button.buttonStyle(.bordered).tint(HassTokens.Ink.primary)
         }
     }
 
