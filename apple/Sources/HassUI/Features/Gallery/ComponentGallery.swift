@@ -11,6 +11,9 @@ public struct ComponentGallery: View {
         case mediaPage = "media-page"
         case customLights = "custom-lights"
         case sprinklers
+        case vacuums
+        case roomDevices = "room-devices"
+        case householdSettings = "household-settings"
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -35,6 +38,9 @@ public struct ComponentGallery: View {
             case .mediaPage: HomePageGallery(kind: .media)
             case .customLights: HomePageGallery(kind: .customLights)
             case .sprinklers: HomePageGallery(kind: .sprinklers)
+            case .vacuums: VacuumGallery()
+            case .roomDevices: RoomDevicesGallery()
+            case .householdSettings: HouseholdSettingsGallery()
             }
         }
     }

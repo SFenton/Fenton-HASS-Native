@@ -91,6 +91,12 @@ public struct ThermostatDial: View {
         return ZStack {
             arc(from: geometry.min, to: geometry.max)
                 .stroke(trackColor, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+            if let trails = configuration.valueStyle?.trails, !configuration.isUnavailable {
+                ForEach(trails) { trail in
+                    arc(from: trail.from, to: trail.to)
+                        .stroke(Color(trail.tint), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                }
+            }
             if case let .range(low, high)? = displayed, !configuration.isUnavailable {
                 arc(from: geometry.min, to: low)
                     .stroke(ThermostatDialPalette.heat, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
@@ -99,7 +105,7 @@ public struct ThermostatDial: View {
             }
             if !configuration.isUnavailable, let current = configuration.current {
                 Circle()
-                    .fill(ThermostatDialPalette.color(for: configuration.thermalStatus))
+                    .fill(configuration.valueStyle.map { Color($0.tint) } ?? ThermostatDialPalette.color(for: configuration.thermalStatus))
                     // A dark rim in both appearances: with adaptive ink it turns white in dark mode and the
                     // marker reads as another handle (white disc, colored rim).
                     .overlay { Circle().strokeBorder(ThermostatDialPalette.markerRim, lineWidth: 3) }
@@ -129,12 +135,14 @@ public struct ThermostatDial: View {
     // MARK: - Readout
 
     private func readout(side: CGFloat) -> some View {
-        VStack(spacing: 4) {
+        // Read once here: the alignment guide's closure is Sendable and cannot touch main-actor state.
+        let unitRaise = primarySize * 0.42
+        return VStack(spacing: 4) {
             Text(configuration.actionText)
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(HassTokens.Ink.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(configuration.primaryText)
+                Text(configuration.primaryText(for: displayed))
                     .font(.system(size: primarySize, weight: .light))
                     .monospacedDigit()
                 if let unit = configuration.primaryUnit {
@@ -143,15 +151,25 @@ public struct ThermostatDial: View {
                     // empty part (iPad, 2026-10-10).
                     Text(unit)
                         .font(.system(size: primarySize * 0.32, weight: .bold))
-                        .alignmentGuide(.firstTextBaseline) { $0[.firstTextBaseline] + primarySize * 0.42 }
+                        .alignmentGuide(.firstTextBaseline) { $0[.firstTextBaseline] + unitRaise }
                 }
             }
             .foregroundStyle(HassTokens.Ink.primary)
             if let caption = configuration.caption(for: displayed) {
-                Label(caption, systemImage: "thermometer.medium")
-                    .font(.footnote.weight(.bold))
-                    .monospacedDigit()
-                    .foregroundStyle(HassTokens.Ink.secondary)
+                Group {
+                    if configuration.valueStyle == nil {
+                        Label(caption, systemImage: "thermometer.medium")
+                    } else {
+                        // Value-style captions ("Level 5 • 41% current") run longer than a temperature;
+                        // two lines keep them whole in a small dial (unfolded iPhone Duo landscape).
+                        Text(caption)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                    }
+                }
+                .font(.footnote.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(HassTokens.Ink.secondary)
             }
         }
         .lineLimit(1)
@@ -160,7 +178,7 @@ public struct ThermostatDial: View {
         .frame(maxWidth: side * 0.62, maxHeight: side * 0.62)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(configuration.readoutAccessibilityLabel)
-        .accessibilityValue(configuration.caption(for: displayed).map { "set to \($0)" } ?? "")
+        .accessibilityValue(configuration.readoutAccessibilityValue(for: displayed))
         .accessibilityIdentifier("thermostatDial.readout")
     }
 
@@ -168,7 +186,7 @@ public struct ThermostatDial: View {
 
     private func handleView(_ handle: ThermostatTargets.Handle, targets: ThermostatTargets, side: CGFloat) -> some View {
         let value = targets.value(of: handle) ?? geometry.min
-        let color = ThermostatDialPalette.color(for: handle, status: configuration.thermalStatus)
+        let color = configuration.valueStyle.map { Color($0.tint) } ?? ThermostatDialPalette.color(for: handle, status: configuration.thermalStatus)
         let dragging = activeHandle == handle
         return Circle()
             .fill(.white)
@@ -189,7 +207,7 @@ public struct ThermostatDial: View {
                 })
             .accessibilityElement()
             .accessibilityLabel(configuration.accessibilityLabel(for: handle))
-            .accessibilityValue(ThermostatDialConfiguration.spokenTemperature(value))
+            .accessibilityValue(configuration.spokenValue(value))
             .accessibilityAdjustableAction { direction in
                 send(editor.adjust(handle, increment: direction == .increment, in: configuration))
             }
@@ -233,6 +251,13 @@ public enum ThermostatDialPalette {
         case .high: cool
         case .target: color(for: status)
         }
+    }
+}
+
+extension Color {
+    /// A dial tint as a SwiftUI color.
+    public init(_ tint: DialTint) {
+        self.init(.sRGB, red: tint.red / 255, green: tint.green / 255, blue: tint.blue / 255, opacity: tint.opacity)
     }
 }
 

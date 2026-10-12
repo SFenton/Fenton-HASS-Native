@@ -56,7 +56,8 @@ public struct GlassTile: View {
         }
         .buttonStyle(.plain)
         .disabled(isUnavailable)
-        .accessibilityElement(children: .ignore)
+        // Label and value go on the Button itself: wrapping it in `.accessibilityElement(children: .ignore)`
+        // left the Button exposed beside a second element, so identifiers and disabled state split between them.
         .accessibilityLabel(title)
         .accessibilityValue(accessibilityValue)
         .accessibilityAddTraits(kind == .toggle ? .isToggle : [])
