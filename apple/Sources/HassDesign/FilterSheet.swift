@@ -13,18 +13,22 @@ public struct FilterSheet<Content: View>: View {
     public var canReset: Bool
     public var onApply: () -> Void
     public var onReset: () -> Void
+    /// Sheet heights. A list longer than the medium detent opens `[.large]`: rows cut by the sheet's edge read as
+    /// clipped text to the accessibility audit.
+    public var detents: Set<PresentationDetent>
     @ViewBuilder public var content: () -> Content
 
     @Environment(\.dismiss) private var dismiss
 
     /// Creates a sheet.
     public init(title: String, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void, onReset: @escaping () -> Void,
-                @ViewBuilder content: @escaping () -> Content) {
+                detents: Set<PresentationDetent> = [.medium, .large], @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.canApply = canApply
         self.canReset = canReset
         self.onApply = onApply
         self.onReset = onReset
+        self.detents = detents
         self.content = content
     }
 
@@ -57,7 +61,7 @@ public struct FilterSheet<Content: View>: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents(detents)
         .presentationDragIndicator(.visible)
         #if os(iOS)
         // Opaque: at the medium detent the glass sheet let the page's floating actions show through behind the

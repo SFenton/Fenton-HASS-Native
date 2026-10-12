@@ -152,17 +152,18 @@ final class InventoryJourneyTests: XCTestCase {
         simulate.tap(until: { name.exists })
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         XCTAssertEqual(name.value as? String, "Greek Yogurt")
-        app.buttons["scan.forward"].tap()
+        // Each step's button is retried until its step shows: taps landing mid-transition are dropped.
+        let step = { (id: String) in app.descendants(matching: .any)["scan.\(id)"].exists }
+        app.buttons["scan.forward"].tap(until: { step("expiry") })
 
         XCTAssertTrue(app.buttons["scan.simulate"].waitForExistence(timeout: 5))
-        app.buttons["scan.simulate"].tap()
-        XCTAssertTrue(app.buttons["scan.forward"].waitForExistence(timeout: 5))
-        app.buttons["scan.forward"].tap()
+        app.buttons["scan.simulate"].tap(until: { app.buttons["scan.forward"].label == "Next" })
+        app.buttons["scan.forward"].tap(until: { step("review") })
 
         XCTAssertTrue(app.buttons["scan.add"].waitForExistence(timeout: 5))
-        app.buttons["scan.add"].tap()
+        app.buttons["scan.add"].tap(until: { app.buttons["scan.done"].exists })
         XCTAssertTrue(app.buttons["scan.done"].waitForExistence(timeout: 10))
-        app.buttons["scan.done"].tap()
+        app.buttons["scan.done"].tap(until: { !app.buttons["scan.done"].exists })
         XCTAssertTrue(app.staticTexts["Greek Yogurt"].waitForExistence(timeout: 10), "Added row missing from All Food")
     }
 
@@ -175,13 +176,13 @@ final class InventoryJourneyTests: XCTestCase {
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
         name.typeText("Oat Milk")
-        app.buttons["scan.forward"].tap()
+        app.buttons["scan.forward"].tap(until: { app.descendants(matching: .any)["scan.expiry"].exists })
         XCTAssertTrue(app.buttons["scan.manualExpiry"].waitForExistence(timeout: 5))
-        app.buttons["scan.manualExpiry"].tap()
+        app.buttons["scan.manualExpiry"].tap(until: { app.buttons["scan.quick.1-week"].exists })
         XCTAssertTrue(app.buttons["scan.quick.1-week"].waitForExistence(timeout: 5))
         app.buttons["scan.quick.1-week"].tap()
         XCTAssertTrue(app.buttons["scan.quick.1-week"].isSelected)
-        app.buttons["scan.forward"].tap()
+        app.buttons["scan.forward"].tap(until: { app.descendants(matching: .any)["scan.review"].exists })
         XCTAssertTrue(app.buttons["scan.add"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["scan.location.dispensa"].isSelected || app.buttons["scan.location.frigo"].isSelected)
     }

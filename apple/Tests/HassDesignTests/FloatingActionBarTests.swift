@@ -62,6 +62,9 @@ struct FloatingActionBarTests {
             }
         }
         #expect(render(sheet.frame(height: 600)) != nil)
+        #expect(sheet.detents == [.medium, .large])
+        let tall = FilterSheet(title: "Filter", canApply: false, canReset: false, onApply: {}, onReset: {}, detents: [.large]) { EmptyView() }
+        #expect(tall.detents == [.large])
         #expect(render(FilterOptionRow(title: "Alphabetical", isSelected: true) {}.dynamicTypeSize(.accessibility5)) != nil)
     }
 }

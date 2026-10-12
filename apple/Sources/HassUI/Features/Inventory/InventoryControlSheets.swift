@@ -63,7 +63,9 @@ struct InventoryFilterSheet: View {
             canApply: mode != model.filterMode,
             canReset: mode != .all,
             onApply: { model.filterMode = mode },
-            onReset: { mode = .all }
+            onReset: { mode = .all },
+            // Seven options don't fit the medium detent.
+            detents: [.large]
         ) {
             // No "Filter Items" header: it repeated the sheet title, and the audit reported it clipped.
             Section {
