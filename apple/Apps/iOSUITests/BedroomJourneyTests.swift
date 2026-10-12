@@ -294,7 +294,7 @@ final class BedroomJourneyTests: XCTestCase {
     private func openWakeEditor(_ app: XCUIApplication) {
         tap("wake.add", in: app)
         XCTAssertTrue(element("wake.editor.save", in: app).waitForExistence(timeout: 10))
-        sleep(1)
+        sleep(3) // The growing name field settles after the push; auditing mid-layout sampled the wrong frames.
     }
 
     func testTilesPassAudit() throws { try audit(sheet: nil) }
