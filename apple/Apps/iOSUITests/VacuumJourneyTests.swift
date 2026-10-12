@@ -126,6 +126,17 @@ final class VacuumJourneyTests: XCTestCase {
     private func tab(_ title: String, in app: XCUIApplication) {
         let picker = element("vacuum.tabs", in: app)
         reveal(picker, in: app, down: picker.exists && picker.frame.minY > app.windows.firstMatch.frame.midY)
+        // A picker scrolled up under the navigation bar is "hittable" but taps land on the bar: pull it below.
+        let window = app.windows.firstMatch.frame
+        let barBottom = app.navigationBars.allElementsBoundByIndex.map(\.frame).filter { $0.intersects(window) }.map(\.maxY).max()
+            ?? window.minY
+        if picker.frame.minY < barBottom + 8 {
+            let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: -window.minX, dy: -window.minY))
+            let from = origin.withOffset(CGVector(dx: picker.frame.midX, dy: window.midY))
+            from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: barBottom + 80 - picker.frame.minY)),
+                       withVelocity: .slow, thenHoldForDuration: 0.4)
+        }
         let segment = picker.buttons[title].firstMatch
         if segment.exists {
             segment.tap()
