@@ -10,6 +10,8 @@ public struct ComponentGallery: View {
         case thermostatDial = "thermostat-dial"
         case floatingActions = "floating-actions"
         case inventory
+        case roomDevices = "room-devices"
+        case householdSettings = "household-settings"
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -38,6 +40,8 @@ public struct ComponentGallery: View {
                 #else
                 EmptyView()
                 #endif
+            case .roomDevices: RoomDevicesGallery()
+            case .householdSettings: HouseholdSettingsGallery()
             }
         }
     }

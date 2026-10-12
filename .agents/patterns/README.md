@@ -11,3 +11,5 @@
 | [media-remote.md](media-remote.md) | `HassUI/Features/MediaRemote/MediaRemoteSheet.swift` | `src/components/hass/MediaRemoteModalContent.tsx` |
 | [thermostat-dial.md](thermostat-dial.md) | `HassDesign/ThermostatDial/ThermostatDial.swift` | `src/components/hass/CircularControlDial.tsx` |
 | [floating-actions.md](floating-actions.md) | `HassDesign/FloatingActionBar.swift`, `HassDesign/FilterSheet.swift` | `src/components/core/FloatingActionButton.tsx`, `src/components/shell/DashboardFloatingAction.tsx` |
+| [room-device-sheets.md](room-device-sheets.md) | `HassUI/Features/RoomDevices/` | `src/components/hass/*ModalContent.tsx` (fan, purifier, humidifier, grill) |
+| [settings-section.md](settings-section.md) | `HassDesign/SettingsSection.swift` | `src/components/core/SettingsSection.tsx` |

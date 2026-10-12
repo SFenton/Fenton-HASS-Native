@@ -23,6 +23,10 @@ apple/Sources/HassUI/Features/MediaRemote/,
 apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote lane (claude/project-thread-go5jtz)
 apple/Sources/HassCore/Inventory/, apple/Sources/HassUI/Features/Inventory/,
 apple/Sources/HassUI/Features/Gallery/InventoryGallery.swift → inventory lane (claude/project-thread-2tax3x)
+apple/Sources/HassCore/Config/HouseholdSettingsConfig.swift,
+apple/Sources/HassCore/Settings/,
+apple/Sources/HassUI/Features/Settings/Household/,
+apple/Sources/HassUI/Features/Gallery/HouseholdSettingsGallery.swift → household settings lane (claude/project-thread-fww01h)
 apple/Tests/**                                             → tests for your own files only
 .agents/pages/<id>/, .agents/controls/<id>/                → the lane for that page/control
 .agents/** (everything else)                               → orchestrator
@@ -47,7 +51,7 @@ apple/Tests/**                                             → tests for your ow
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
 | Security, Climate, Chores | Placeholders |
-| Settings | Home Assistant settings modal (server, account, signed-in Settings/Profile web pages, Sign Out); household topics not ported |
+| Settings | Home Assistant settings modal (server, account, signed-in Settings/Profile web pages, Sign Out); Admin (presence overrides, auto-reset), Special Device Modes, Guest Controls, Mach-E; Vacation and To-Do not ported |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | Policy and tests; split layout not built yet |
 | iPad flyout | Not started (TabView for now) |
@@ -56,6 +60,7 @@ apple/Tests/**                                             → tests for your ow
 | Watch app | Target stub only |
 | Floating actions (shared) | `FloatingActionBar` (labeled/icon actions, expandable search) + `FilterSheet`; gallery `FENTON_GALLERY=floating-actions` |
 | Inventory (6 pages, item editor, Add Item scan) | EverShelf client and models, pages, editor (sheet or split pane), AVFoundation scan; gallery `FENTON_GALLERY=inventory`; linked from Food & Recipes once it lands |
+| Room device sheets (fan, air quality, humidifier, grill) | Sheets + debug gallery `FENTON_GALLERY=room-devices`; Room pages wire them in |
 | Thermostat dial (shared control) | `ThermostatDial` + `ClimateThermostatDial`; debug gallery `FENTON_GALLERY=thermostat-dial` |
 
 ## 4. Log
@@ -69,3 +74,5 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11: PR #4 verified on the Mac: dial journeys, hosted VoiceOver-adjust tests and audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad (portrait and landscape); 69 `swift test` tests pass. Screenshots in `docs/screenshots/thermostat-dial/`.
 - 2026-10-11: shared floating action bar and filter sheet (`.agents/patterns/floating-actions.md`) for Chores, Groceries, To-Do, Recipes and Inventory.
 - 2026-10-11: inventory pages (All Food, Pantry, Fridge, Freezer, Spice Rack, Cabinet), item editor and Add Item scan sheet (`.agents/pages/inventory/`), on a shared `EverShelfClient` and the shared floating actions.
+- 2026-10-11: room device sheets (`.agents/patterns/room-device-sheets.md`): bathroom fan, air quality, humidifier (mist dial on `ThermostatDial` value style, schedules over the websocket) and grill, with unit, hosted and device journeys.
+- 2026-10-11: household Settings pages (`claude/project-thread-fww01h`): Admin with the presence-override and auto-reset sheets, Special Device Modes, Guest Controls and Mach-E; explicit on/off with optimistic state; `SettingsSection`, `InlineAlert` and `SelectableOptionRow` in HassDesign; feature-local read-only `GlassStateTile`; gallery page `FENTON_GALLERY=household-settings`.
