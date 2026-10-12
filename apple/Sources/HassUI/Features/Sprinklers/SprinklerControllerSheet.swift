@@ -95,10 +95,10 @@ struct SprinklerControllerSheet: View {
 
             Section {
                 Button(role: .destructive) { controller.stopWatering() } label: {
-                    Label("Stop watering", systemImage: "stop.circle")
+                    WrappingRowLabel(title: "Stop watering", symbol: "stop.circle")
                         .foregroundStyle(controller.isWatering ? HassTokens.Ink.danger : HassTokens.Ink.secondary)
-                        .frame(minHeight: HassTokens.minTarget - 12)
                 }
+                .accessibilityLabel("Stop watering")
                 .disabled(!controller.isWatering)
                 .accessibilityIdentifier("sprinkler.stop")
             } header: { SprinklerHeader("Controls") }
@@ -300,14 +300,7 @@ struct SprinklerSchedulePage: View {
                 .accessibilityIdentifier("sprinkler.schedule.enabled")
                 Button { controller.startProgram(zone: zone) } label: {
                     // No fixed frame: a List row is already 44 pt tall and grows with the text (AX5 flagged clipping).
-                    // Icon and text laid out by hand: the audit flagged the Label's title as clipping at AX5.
-                    HStack(spacing: HassTokens.Spacing.m) {
-                        Image(systemName: "play.fill")
-                        Text("Start program")
-                            .lineLimit(nil)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 0)
-                    }
+                    WrappingRowLabel(title: "Start program", symbol: "play.fill")
                 }
                 .disabled(!controller.canStartWatering || !enabled)
                 // One name for the row (a hidden glyph read as unexposed text to the audit).
@@ -335,8 +328,9 @@ struct SprinklerSchedulePage: View {
                 Button {
                     times.append(SprinklerFormat.date(clock: SprinklersConfig.defaultStartTime) ?? .now)
                 } label: {
-                    Label("Add Another Start Time", systemImage: "plus")
+                    WrappingRowLabel(title: "Add Another Start Time", symbol: "plus")
                 }
+                .accessibilityLabel("Add Another Start Time")
                 .accessibilityIdentifier("sprinkler.schedule.addTime")
             } header: { SprinklerHeader("Start Times") }
             .disabled(!available)
@@ -377,6 +371,23 @@ struct SprinklerSchedulePage: View {
         .navigationTitle(format.programName(zone: zoneName))
         .inlineNavigationTitle()
         .onDisappear { controller.clearError() }
+    }
+}
+
+/// A list button's icon and title, laid out by hand so the title wraps: the audit flagged a `Label` title in
+/// a list button as clipping at large text sizes (Start program, Add Another Start Time).
+struct WrappingRowLabel: View {
+    var title: String
+    var symbol: String
+
+    var body: some View {
+        HStack(spacing: HassTokens.Spacing.m) {
+            Image(systemName: symbol)
+            Text(title)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
     }
 }
 
