@@ -334,6 +334,7 @@ final class FoodJourneyTests: XCTestCase {
         app.launchEnvironment["FENTON_HASS_TOKEN"] = token
         if let server = environment["FENTON_HASS_SERVER"] { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
         app.launchEnvironment["FENTON_OPEN_FOOD"] = route
+        app.launchEnvironment["FENTON_FOOD_DEBUG"] = "1"
         app.launch()
         return app
     }
@@ -362,6 +363,12 @@ final class FoodJourneyTests: XCTestCase {
         ingredients.tap()
         sleep(2)
         diagnose("after Ingredients", app: app, tabs: tabs, segment: ingredients)
+        if !ingredients.isSelected {
+            // Investigation only: does a second, coordinate tap register? The assertion below still decides.
+            ingredients.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            sleep(2)
+            diagnose("after second tap", app: app, tabs: tabs, segment: ingredients)
+        }
         keepScreenshot(app, "food-live-recipe-ingredients-\(device)")
         XCTAssertTrue(first("recipe.ingredient.", in: app).waitForExistence(timeout: 30), "No live ingredients")
         element("recipe.tabs", in: app).buttons["Instructions"].tap()
@@ -372,8 +379,10 @@ final class FoodJourneyTests: XCTestCase {
     /// Logs the tab picker's state and the hierarchy around a tap (iPad live-sheet investigation, 2026-10-12).
     private func diagnose(_ moment: String, app: XCUIApplication, tabs: XCUIElement, segment: XCUIElement) {
         let count = app.descendants(matching: .any).matching(identifier: "recipe.tabs").count
+        let marker = app.staticTexts["recipe.debug"]
         print("FOODDIAG \(moment): pickers=\(count) tabs.frame=\(tabs.frame) segment.exists=\(segment.exists) "
-              + "hittable=\(segment.exists && segment.isHittable) frame=\(segment.frame) selected=\(segment.isSelected)")
+              + "hittable=\(segment.exists && segment.isHittable) frame=\(segment.frame) selected=\(segment.isSelected) "
+              + "marker=\(marker.exists ? marker.label : "none")")
         let tree = XCTAttachment(string: app.debugDescription)
         tree.name = "hierarchy \(moment)"
         tree.lifetime = .keepAlways

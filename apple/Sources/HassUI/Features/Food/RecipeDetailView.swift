@@ -85,6 +85,7 @@ struct RecipeDetailContent: View {
         }
         .modifier(DetailTitle(title: model.detail?.title ?? model.recipe.title, isEnabled: setsNavigationTitle))
         .onAppear { model.load() }
+        .overlay(alignment: .bottomTrailing) { DetailDebugMarker(model: model) }
     }
 
     private func loaded(_ detail: RecipeDetail) -> some View {
@@ -158,6 +159,23 @@ struct ExternalLinkButton: View {
         .buttonStyle(.borderedProminent)
         .tint(FoodStyle.action)
         .accessibilityAddTraits(.isLink)
+    }
+}
+
+/// Debug builds with `FENTON_FOOD_DEBUG=1` (live journeys only): exposes the model's identity, tab and body
+/// count so a journey can tell a rebuilt model from a lost tap.
+struct DetailDebugMarker: View {
+    let model: RecipeDetailModel
+
+    var body: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["FENTON_FOOD_DEBUG"] == "1" {
+            Text("model \(ObjectIdentifier(model).hashValue) tab \(model.tab.rawValue)")
+                .font(.caption2)
+                .foregroundStyle(HassTokens.Ink.primary)
+                .accessibilityIdentifier("recipe.debug")
+        }
+        #endif
     }
 }
 
