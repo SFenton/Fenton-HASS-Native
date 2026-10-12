@@ -90,12 +90,16 @@ enum HomeRoute: Hashable, Identifiable, Sendable {
 /// The screen for a route. Lanes replace their placeholder line with their screen.
 struct HomeRouteDestination: View {
     var route: HomeRoute
+    @Environment(HassConnection.self) private var connection: HassConnection?
 
     var body: some View {
         switch route {
         case let .room(id):
             if let page = RoomsConfig.page(id: id) { RoomScreen(page: page) } else { placeholder }
-        case .media, .customLights, .sprinklers, .vacuums, .food, .groceryList:
+        case .vacuums:
+            // The Vacuums page runs on the app's connection; the debug gallery has none and keeps the placeholder.
+            if connection != nil { VacuumsScreen() } else { placeholder }
+        case .media, .customLights, .sprinklers, .food, .groceryList:
             placeholder
         }
     }

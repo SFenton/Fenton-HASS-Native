@@ -16,7 +16,7 @@ struct RoomScreen: View {
 
     var body: some View {
         if let caller = callerOverride ?? connection {
-            RoomPageContent(page: page, store: store, caller: caller, imageServer: connection?.server)
+            RoomPageContent(page: page, store: store, caller: caller, imageServer: connection?.server, connection: connection)
                 .environment(\.householdViewer, injectedViewer ?? viewer)
                 .task {
                     // Personalized titles ("Your Side") need the signed-in user; the page shows plain titles until then.
@@ -37,11 +37,24 @@ struct RoomPageContent: View {
     @State private var showsQuickLinks = false
     @State private var pendingRoute: HomeRoute?
     @State private var route: HomeRoute?
+    @State private var deviceModal: RoomDeviceModal?
+    /// One controller per bathroom fan, shared by its tile and sheet.
+    @State private var fans: [String: BathroomFanController]
     private let imageServer: HassServer?
+    private let connection: HassConnection?
 
-    init(page: RoomPage, store: EntityStore, caller: any HassServiceCalling, imageServer: HassServer?) {
+    init(page: RoomPage, store: EntityStore, caller: any HassServiceCalling, imageServer: HassServer?,
+         connection: HassConnection? = nil) {
         _controller = State(initialValue: RoomController(page: page, store: store, caller: caller))
+        var fans: [String: BathroomFanController] = [:]
+        for card in page.allCards where card.control == .bathroomFan {
+            if let config = BathroomFanConfig.forPowerEntity(card.entityId) {
+                fans[card.entityId] = BathroomFanController(config: config, store: store, caller: caller)
+            }
+        }
+        _fans = State(initialValue: fans)
         self.imageServer = imageServer
+        self.connection = connection
     }
 
     private var page: RoomPage { controller.page }
@@ -68,6 +81,7 @@ struct RoomPageContent: View {
         .sheet(item: Binding(get: { remote.map { RemoteSelection(controller: $0) } }, set: { remote = $0?.controller }),
                content: remoteSheet)
         .sheet(isPresented: $showsQuickLinks, onDismiss: quickLinksDismissed, content: quickLinksSheet)
+        .sheet(item: $deviceModal, content: deviceSheet)
         .homeRouteDestination($route)
     }
 
@@ -87,7 +101,7 @@ struct RoomPageContent: View {
                         .gridSpan(count == 1 ? 2 : 1)
                 }
                 ForEach(visible) { section in
-                    RoomSectionView(controller: controller, section: section, imageServer: imageServer, onOpen: open)
+                    RoomSectionView(controller: controller, section: section, imageServer: imageServer, fans: fans, onOpen: open)
                         .gridSpan(RoomSectionView.isFullWidth(section, sectionCount: count) ? 2 : 1)
                 }
             }
@@ -107,6 +121,10 @@ struct RoomPageContent: View {
             .mediaRemotePresentation()
     }
 
+    func deviceSheet(_ modal: RoomDeviceModal) -> some View {
+        RoomDeviceModalSheet(modal: modal, store: controller.store, caller: controller.caller, connection: connection)
+    }
+
     func quickLinksSheet() -> some View {
         QuickLinksSheet(caller: controller.caller) { pendingRoute = $0 }
     }
@@ -117,24 +135,35 @@ struct RoomPageContent: View {
         pendingRoute = nil
     }
 
-    /// Opens a card: its remote sheet when it has one, else its room sheet.
+    /// Opens a card: its remote sheet, its device lane's sheet, else its room sheet.
     func open(_ card: RoomCard) {
-        switch Self.opening(card, controller: controller) {
+        switch Self.opening(card, controller: controller, hasConnection: connection != nil, fans: fans) {
         case let .remote(shared): remote = shared
+        case let .device(modal): deviceModal = modal
         case .sheet: sheetCard = card
         }
     }
 
-    /// Where opening a card goes: the shared remote sheet for remote cards, else the room sheet.
-    static func opening(_ card: RoomCard, controller: RoomController) -> RoomCardOpening {
-        if case let .mediaRemote(id) = controller.sheet(for: card), let shared = controller.remote(id) { return .remote(shared) }
+    /// Where opening a card goes: the shared remote sheet for remote cards, a device lane's sheet when one is wired
+    /// (``RoomDeviceModal``), else the room sheet.
+    static func opening(_ card: RoomCard, controller: RoomController, hasConnection: Bool = false,
+                        fans: [String: BathroomFanController] = [:]) -> RoomCardOpening {
+        switch controller.sheet(for: card) {
+        case let .mediaRemote(id):
+            if let shared = controller.remote(id) { return .remote(shared) }
+        case let .device(device):
+            if let modal = RoomDeviceModal.resolve(device, hasConnection: hasConnection, fan: { fans[$0] }) { return .device(modal) }
+        default:
+            break
+        }
         return .sheet
     }
 }
 
-/// Where a room card opens (``RoomPageContent/opening(_:controller:)``).
+/// Where a room card opens (``RoomPageContent/opening(_:controller:hasConnection:fans:)``).
 enum RoomCardOpening {
     case remote(MediaRemoteController)
+    case device(RoomDeviceModal)
     case sheet
 }
 
@@ -157,6 +186,7 @@ struct RoomSectionView: View {
     var controller: RoomController
     var section: RoomSection
     var imageServer: HassServer?
+    var fans: [String: BathroomFanController] = [:]
     var onOpen: (RoomCard) -> Void
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
@@ -205,7 +235,7 @@ struct RoomSectionView: View {
     }
 
     private func card(_ card: RoomCard) -> some View {
-        RoomCardView(controller: controller, card: card) { onOpen(card) }
+        RoomCardView(controller: controller, card: card, fan: fans[card.entityId]) { onOpen(card) }
     }
 }
 

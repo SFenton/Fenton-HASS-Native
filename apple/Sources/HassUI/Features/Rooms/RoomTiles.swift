@@ -89,12 +89,18 @@ struct RoomCardTile: View {
 struct RoomCardView: View {
     var controller: RoomController
     var card: RoomCard
+    /// The page's shared controller when this card is a bathroom fan.
+    var fan: BathroomFanController?
     var onOpen: () -> Void
 
     var body: some View {
-        // Hook points: bathroom fan (`card.control == .bathroomFan`), garage door (`.garageDoor`), humidifier,
-        // wake light, vacuum and dishwasher tiles land here; until then they use the generic tile.
-        RoomCardTile(controller: controller, card: card, onOpen: onOpen)
+        // Hook points: garage door (`.garageDoor`), wake light and dishwasher tiles land here; until then they use
+        // the generic tile.
+        if card.control == .bathroomFan, let fan {
+            BathroomFanRoomTile(fan: fan, card: card, onOpen: onOpen)
+        } else {
+            RoomCardTile(controller: controller, card: card, onOpen: onOpen)
+        }
     }
 }
 

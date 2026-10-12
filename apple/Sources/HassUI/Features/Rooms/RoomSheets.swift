@@ -61,8 +61,9 @@ struct RoomSheetBody: View {
             RoomEntityGrid(title: nil, items: items.map { RoomEntityItem($0.title, $0.entityId, icon: $0.icon) },
                            controller: controller, format: RoomFormat.compact, isActive: RoomFormat.isActive, tone: card.kind.tone)
         case .device:
-            // Hook point for the device lanes (air quality, humidifier, grill, dishwasher, bathroom fan: Room device
-            // modals; wake light and beds: Bedroom alarms; vacuum: Vacuums). Until they land: generic read-only tiles.
+            // Wired device sheets (bathroom fan, air quality, humidifier, grill, vacuum) open on their own through
+            // ``RoomDeviceModal``. This is the fallback: dishwasher, wake light and beds (lanes still open), and the
+            // vacuum and humidifier without the app's connection (the debug gallery).
             RoomDeviceFallback(controller: controller, card: card)
         case .mediaRemote, .fallback:
             RoomSheetFallback(card: card)

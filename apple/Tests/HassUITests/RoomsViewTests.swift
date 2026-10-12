@@ -191,6 +191,80 @@ struct RoomsViewTests {
         }
     }
 
+    // MARK: Device sheets (room device sheets and vacuum lanes)
+
+    @Test func deviceSheetsResolveFromTheirConfigs() {
+        let store = EntityStore()
+        let fan = BathroomFanController(config: BathroomFanConfig.forPowerEntity(RoomsConfig.BathroomFan.guestPower)!,
+                                        store: store, caller: NullCaller())
+        let fans = [RoomsConfig.BathroomFan.guestPower: fan]
+        func resolve(_ device: RoomDeviceSheet, connected: Bool = true) -> String? {
+            RoomDeviceModal.resolve(device, hasConnection: connected) { fans[$0] }?.id
+        }
+        #expect(resolve(.bathroomFan(powerEntityId: RoomsConfig.BathroomFan.guestPower)) == "fan.\(RoomsConfig.BathroomFan.guestPower)")
+        #expect(resolve(.bathroomFan(powerEntityId: "switch.nowhere")) == nil)
+        #expect(resolve(.airQuality(pm25EntityId: "sensor.living_room_air_purifier_pm2_5")) == "purifier.sensor.living_room_air_purifier_pm2_5")
+        #expect(resolve(.airQuality(pm25EntityId: "sensor.nowhere")) == nil)
+        let humidifier = HumidifierConfig.all[0].powerEntityId
+        #expect(resolve(.humidifier(powerEntityId: humidifier)) == "humidifier.\(humidifier)")
+        #expect(resolve(.humidifier(powerEntityId: humidifier), connected: false) == nil, "Needs the app's connection")
+        #expect(resolve(.vacuum(entityId: "vacuum.valetudo_exaltedsneakydeer")) == "vacuum.vacuum.valetudo_exaltedsneakydeer")
+        #expect(resolve(.vacuum(entityId: "vacuum.valetudo_exaltedsneakydeer"), connected: false) == nil, "Gallery keeps the fallback")
+        #expect(resolve(.vacuum(entityId: "vacuum.nowhere")) == nil)
+        #expect(resolve(.grill(entityId: "sensor.d8478fa2ad0a_grill_state")) == "grill")
+        #expect(resolve(.dishwasher) == nil)
+        #expect(resolve(.wakeLight(statusEntityId: "sensor.x")) == nil)
+        #expect(resolve(.bed(sheet: "stephens-bed", climateEntityId: "climate.x")) == nil)
+    }
+
+    @Test func roomCardsOpenDeviceSheetsAndRenderThem() {
+        let store = EntityStore()
+        store.replaceAll(RoomsFixtures.states)
+        let bath = RoomsConfig.page(id: "guest-bathroom")!
+        let living = RoomsConfig.page(id: "living-room")!
+        let caller = NullCaller()
+        let bathController = RoomController(page: bath, store: store, caller: caller)
+        let livingController = RoomController(page: living, store: store, caller: caller)
+        let fanCard = bath.allCards.first { $0.control == .bathroomFan }!
+        let fan = BathroomFanController(config: BathroomFanConfig.forPowerEntity(fanCard.entityId)!, store: store, caller: caller)
+        if case let .device(modal) = RoomPageContent.opening(fanCard, controller: bathController, fans: [fanCard.entityId: fan]) {
+            #expect(modal.id.hasPrefix("fan."))
+            #expect(render(RoomDeviceModalSheet(modal: modal, store: store, caller: caller, connection: nil), size: Self.phone) != nil)
+        } else {
+            Issue.record("The fan card opens the fan sheet")
+        }
+        if case .device = RoomPageContent.opening(fanCard, controller: bathController) { Issue.record("No shared fan: room sheet") }
+        let purifier = living.allCards.first { $0.title == "Air Purifier" }!
+        if case let .device(modal) = RoomPageContent.opening(purifier, controller: livingController) {
+            #expect(render(RoomDeviceModalSheet(modal: modal, store: store, caller: caller, connection: nil), size: Self.phone) != nil)
+        } else {
+            Issue.record("The purifier card opens the air quality sheet")
+        }
+        let vacuum = living.allCards.first { $0.title == "Main Floor" }!
+        if case .device = RoomPageContent.opening(vacuum, controller: livingController) { Issue.record("Gallery vacuum keeps the room sheet") }
+        #expect(render(RoomDeviceModalSheet(modal: .grill, store: store, caller: caller, connection: nil), size: Self.phone) != nil)
+        // Sheets that need the connection draw nothing without one rather than crashing.
+        #expect(render(RoomDeviceModalSheet(modal: .vacuum(Vacuums.all[0]), store: store, caller: caller, connection: nil), size: Self.phone) != nil)
+        #expect(render(RoomDeviceModalSheet(modal: .humidifier(HumidifierConfig.all[0]), store: store, caller: caller, connection: nil),
+                       size: Self.phone) != nil)
+        let page = RoomPageContent(page: bath, store: store, caller: caller, imageServer: nil)
+        page.open(fanCard)
+        #expect(render(page.deviceSheet(.grill), size: Self.phone) != nil)
+    }
+
+    @Test func bathroomFanTileRendersWithItsAccessories() {
+        let store = EntityStore()
+        store.replaceAll(RoomsFixtures.states)
+        let bath = RoomsConfig.page(id: "guest-bathroom")!
+        let card = bath.allCards.first { $0.control == .bathroomFan }!
+        let fan = BathroomFanController(config: BathroomFanConfig.forPowerEntity(card.entityId)!, store: store, caller: NullCaller())
+        #expect(render(BathroomFanRoomTile(fan: fan, card: card) {}, size: CGSize(width: 370, height: 120)) != nil)
+        #expect(render(BathroomFanRoomTile(fan: fan, card: card) {}, size: CGSize(width: 370, height: 300), typeSize: .accessibility5) != nil)
+        let controller = RoomController(page: bath, store: store, caller: NullCaller())
+        #expect(render(RoomCardView(controller: controller, card: card, fan: fan) {}, size: CGSize(width: 370, height: 120)) != nil)
+        #expect(render(page(bath), size: Self.phone) != nil)
+    }
+
     // MARK: Symbols
 
     @Test func everyRoomIconMapsToARealSymbol() {

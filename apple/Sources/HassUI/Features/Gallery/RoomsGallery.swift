@@ -85,6 +85,11 @@ enum RoomsFixtures {
             if byId[id] == nil { byId[id] = EntityState(entityId: id, state: state, attributes: attributes) }
         }
         for state in MediaRemoteFixtures.states { byId[state.entityId] = state }
+        // Device sheets wired from room cards: the room device lane's fixtures (fans off and unlocked).
+        let devices = BathroomFanConfig.all.flatMap { RoomDeviceFixture.fanStates($0, power: "off", locked: false, pending: false, now: Date()) }
+            + AirPurifierConfig.all.flatMap { RoomDeviceFixture.purifierStates($0, mode: "Auto", percentage: 33) }
+            + RoomDeviceFixture.grillStates
+        for state in devices { byId[state.entityId] = state }
 
         // A lived-in evening: some lights on, one room occupied, one window open.
         add("light.living_room", "on", ["brightness": .number(180), "supported_color_modes": .array([.string("brightness")])])

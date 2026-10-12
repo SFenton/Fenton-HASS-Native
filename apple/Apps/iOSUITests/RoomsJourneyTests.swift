@@ -112,6 +112,35 @@ final class RoomsJourneyTests: XCTestCase {
         XCTAssertNotEqual(app.staticTexts["gallery.lastCall"].firstMatch.label, "Last call: None")
     }
 
+    /// The bathroom fan tile's Lock and Power send the fan script's explicit target state, and device cards open
+    /// their lane's sheets (fan, air quality); fixture state only.
+    func testBathroomFanTileAndDeviceSheets() {
+        let app = launch(room: "guest-bathroom")
+        let power = app.buttons["room.fan.switch.guest_bathroom_fan_switch_top.power"]
+        let lock = app.buttons["room.fan.switch.guest_bathroom_fan_switch_top.lock"]
+        reveal(power, in: app)
+        XCTAssertEqual(power.value as? String, "Off")
+        XCTAssertEqual(lock.value as? String, "Off")
+        assertTarget(power)
+        assertTarget(lock)
+        power.tap()
+        let call = app.staticTexts["gallery.lastCall"].firstMatch
+        let sent = NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "script.guest_bathroom_fan_command", "target_power=on")
+        XCTAssertEqual(XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: sent, object: call)], timeout: 10), .completed,
+                       "Power sends an explicit target, got '\(call.label)'")
+        XCTAssertFalse(call.label.contains("toggle"))
+
+        element("room.card.Fan", in: app).tap()
+        XCTAssertTrue(element("device.sheet.fan", in: app).waitForExistence(timeout: 10), "The fan tile opens the fan sheet")
+        app.buttons["device.sheet.done"].tap()
+
+        let living = launch(room: "living-room")
+        let purifier = element("room.card.Air Purifier", in: living)
+        reveal(purifier, in: living)
+        purifier.tap()
+        XCTAssertTrue(element("device.sheet.purifier", in: living).waitForExistence(timeout: 10), "Air Purifier opens the air quality sheet")
+    }
+
     /// Rooms without sections say so.
     func testEmptyRoom() {
         let app = launch(room: "hallway")
@@ -167,6 +196,7 @@ final class RoomsJourneyTests: XCTestCase {
     }
 
     func testLivingRoomPassesAudit() throws { try audit(room: "living-room") }
+    func testGuestBathroomPassesAudit() throws { try audit(room: "guest-bathroom") }
     func testMasterBedroomPassesAudit() throws { try audit(room: "master-bedroom") }
     func testMusicRoomPassesAudit() throws { try audit(room: "music-room") }
     func testKitchenPassesAudit() throws { try audit(room: "kitchen") }
