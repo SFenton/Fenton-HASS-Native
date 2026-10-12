@@ -19,6 +19,7 @@ public struct ComponentGallery: View {
         case householdSettings = "household-settings"
         case climate
         case floatingActions = "floating-actions"
+        case chores
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -54,6 +55,7 @@ public struct ComponentGallery: View {
                 case .householdSettings: HouseholdSettingsGallery()
                 case .climate: ClimateGallery()
                 case .floatingActions: FloatingActionsGallery()
+                case .chores: ChoresGallery()
                 case .rooms: EmptyView()
                 }
             }

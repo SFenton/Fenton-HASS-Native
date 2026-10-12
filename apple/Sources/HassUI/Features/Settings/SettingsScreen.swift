@@ -26,12 +26,13 @@ struct SettingsStack: View {
 
 // MARK: - List
 
-/// The Settings list: the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`; Vacation and
-/// To-Do land with their own pages), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
+/// The Settings list: the admin To-Do (hidden from Steph; it pushes on the list's stack), the web's household
+/// topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`; Vacation lands with its own page), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
 /// as a full-screen modal (`.agents/design/apple/split-view.md`).
 struct SettingsScreen: View {
     @Binding var openTopic: HouseholdSettingsPage?
     @State private var showsHomeAssistant = false
+    @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
 
     /// Creates the list.
     /// - Parameter openTopic: The topic open beside or above the list; constant nil for a static render.
@@ -41,6 +42,17 @@ struct SettingsScreen: View {
 
     var body: some View {
         List {
+            if ChoresConfig.showsAdminTodo(to: ChoresConfig.Resident.forUserId(viewerUserId)) {
+                Section {
+                    NavigationLink {
+                        AdminTodoScreen()
+                    } label: {
+                        SettingsLinkRow(title: "To-Do", subtitle: "An admin panel for to-do tasks.",
+                                        symbol: SymbolMap.symbol(for: "mdi:clipboard-list"), showsChevron: false)
+                    }
+                    .accessibilityIdentifier("settings.todo")
+                }
+            }
             Section {
                 ForEach(HouseholdSettingsPage.allCases) { page in
                     Button {

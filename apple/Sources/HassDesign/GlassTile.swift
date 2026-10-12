@@ -169,7 +169,8 @@ public enum GlassTileKind: Equatable, Sendable {
 // MARK: - Face
 
 /// The tile's drawing, shared by ``GlassTile`` and ``BrightnessTile`` so every entity tile looks the same.
-struct GlassTileFace: View {
+/// Public for tiles whose container handles the tap, such as a `NavigationLink` label.
+public struct GlassTileFace: View {
     var title: String
     var subtitle: String?
     var symbol: String
@@ -186,7 +187,21 @@ struct GlassTileFace: View {
     /// Room kept free at the trailing edge for an accessory.
     var trailingInset: CGFloat = 0
 
-    var body: some View {
+    /// Creates a tile face.
+    public init(title: String, subtitle: String? = nil, symbol: String, tint: Color, isActive: Bool,
+                isUnavailable: Bool = false, showsChevron: Bool = false, level: Double? = nil, levelTint: Color? = nil) {
+        self.title = title
+        self.subtitle = subtitle
+        self.symbol = symbol
+        self.tint = tint
+        self.isActive = isActive
+        self.isUnavailable = isUnavailable
+        self.showsChevron = showsChevron
+        self.level = level
+        self.levelTint = levelTint
+    }
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             HStack {
                 // Decorative: the title names the tile. Symbols carry built-in labels ("Humidifier"), which the audit

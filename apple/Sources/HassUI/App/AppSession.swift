@@ -62,6 +62,8 @@ public final class AppSession {
         let stored = tokenStore.load()
         tokenStore.clear()
         snapshotCache.clear()
+        TodoItemsCache().clear()
+        UserDefaults.standard.removeObject(forKey: ChoresModel.viewerDefaultsKey)
         tokens = nil
         phase = .signedOut
         if let stored {
