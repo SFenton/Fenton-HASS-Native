@@ -122,8 +122,12 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
     func testRelayWarningFollowsRelayModeAndGuestRoom() {
         let app = launch("admin")
         let warning = app.descendants(matching: .any)["admin.relayWarning"]
-        XCTAssertTrue(reveal(warning, in: app).exists, "Relay warning missing")
-        tile(app, "input_boolean.relay_control_mode").tapCenter()
+        XCTAssertTrue(warning.waitForExistence(timeout: 5), "Relay warning missing")
+        // Reveal the tile itself: revealing the warning below it can leave the tile under the bar on the
+        // folded iPhone Duo, where a tap misses (flaky, 2026-10-12).
+        let relay = reveal(tile(app, "input_boolean.relay_control_mode"), in: app)
+        XCTAssertTrue(waitForValue(relay, "On"), "relay value is \(relay.value ?? "nil")")
+        relay.tapCenter()
         expectLastCall(app, "input_boolean.turn_off entity_id=input_boolean.relay_control_mode")
         XCTAssertTrue(warning.waitForNonExistence(timeout: 3), "Relay warning stayed after relay mode turned off")
     }
@@ -134,8 +138,10 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         let livingRoom = app.buttons["presence.room.switch.living_room_presence_living_room_lights_presence_allowed"]
         XCTAssertTrue(livingRoom.waitForExistence(timeout: 5))
         XCTAssertEqual(livingRoom.value as? String, "Enabled")
-        XCTAssertFalse(app.buttons["presence.room.switch.upper_deck_presence_back_deck_lights_presence_allowed"].isEnabled,
-                       "An unavailable room should not open")
+        // An unavailable room still opens (its detail disables the choices); see testUnavailableEntitiesDisableTheirControls.
+        let upperDeck = app.buttons["presence.room.switch.upper_deck_presence_back_deck_lights_presence_allowed"]
+        XCTAssertEqual(upperDeck.value as? String, "Unavailable")
+        XCTAssertTrue(upperDeck.isEnabled, "An unavailable room should still open")
         livingRoom.tap()
         let paused = app.buttons["presence.option.paused"]
         XCTAssertTrue(paused.waitForExistence(timeout: 5))
@@ -200,7 +206,19 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         XCTAssertEqual(autoLock.value as? String, "Unavailable")
         XCTAssertFalse(autoLock.isEnabled)
         openSheet(app, "presenceOverrides")
-        XCTAssertFalse(app.buttons["presence.room.switch.kitchen_presence_kitchen_lights_presence_allowed"].isEnabled)
+        // The room opens so it can say why; its choices are disabled and nothing is sent.
+        let kitchen = app.buttons["presence.room.switch.kitchen_presence_kitchen_lights_presence_allowed"]
+        XCTAssertTrue(kitchen.waitForExistence(timeout: 5))
+        XCTAssertEqual(kitchen.value as? String, "Unavailable")
+        kitchen.tap()
+        let enabled = app.buttons["presence.option.enabled"]
+        XCTAssertTrue(enabled.waitForExistence(timeout: 5))
+        for mode in ["enabled", "off", "paused", "quieted"] {
+            XCTAssertFalse(app.buttons["presence.option.\(mode)"].isEnabled, "\(mode) should be disabled")
+        }
+        app.buttons["household.sheet.done"].firstMatch.tap()
+        XCTAssertTrue(enabled.waitForNonExistence(timeout: 5), "Done on the detail should close the sheet")
+        XCTAssertFalse(lastCall(app).label.contains("set_automation_state"), "An unavailable room sent \(lastCall(app).label)")
     }
 
     // MARK: - Audits and screenshots
@@ -247,9 +265,9 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
             XCTAssertTrue(app.buttons["presence.option.enabled"].waitForExistence(timeout: 5))
             sleep(1)
             keepScreenshot(app, "presence-detail-\(suffix)")
-            backFromPresenceDetail(app) // Done sits on the sheet's root, not the pushed detail.
-            XCTAssertTrue(app.buttons["household.sheet.done"].waitForExistence(timeout: 5))
-            app.buttons["household.sheet.done"].tap()
+            backFromPresenceDetail(app) // Back to the grid; the next sheet opens from the page.
+            XCTAssertTrue(app.buttons["household.sheet.done"].firstMatch.waitForExistence(timeout: 5))
+            app.buttons["household.sheet.done"].firstMatch.tap()
             openSheet(app, "autoReset")
             keepScreenshot(app, "auto-reset-\(suffix)")
         }
