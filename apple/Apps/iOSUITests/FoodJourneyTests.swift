@@ -263,8 +263,16 @@ final class FoodJourneyTests: XCTestCase {
         // At AX5 the row starts below the fold, and the Form only creates rows on screen.
         for _ in 0..<6 where !(alphabetical.exists && alphabetical.isHittable) { sheet.swipeUp() }
         alphabetical.tap()
-        sleep(1)
+        revealReset(in: app, sheet: sheet)
         return app
+    }
+
+    /// Scrolls the sheet until Reset to Defaults is on screen, so the AX5 comparison page can measure it (the
+    /// Form only creates rows on screen).
+    private func revealReset(in app: XCUIApplication, sheet: XCUIElement) {
+        let reset = app.buttons["Reset to Defaults"]
+        for _ in 0..<8 where !(reset.exists && reset.isHittable) { sheet.swipeUp() }
+        sleep(1)
     }
 
     /// The Filter sheet with expiring-only on (so Reset to Defaults shows), for the AX5 comparison page.
@@ -276,7 +284,7 @@ final class FoodJourneyTests: XCTestCase {
         let sheet = app.collectionViews.firstMatch
         for _ in 0..<6 where !(toggle.exists && toggle.isHittable) { sheet.swipeUp() }
         toggle.tap()
-        sleep(1)
+        revealReset(in: app, sheet: sheet)
         return app
     }
 

@@ -287,6 +287,7 @@ struct RecipeFilterSheet: View {
                     .accessibilityAddTraits(.isHeader)
             } footer: {
                 Text("Only show recipes where at least this percentage of required ingredients is currently available.")
+                    .foregroundStyle(HassTokens.Ink.secondary) // The system footer gray measured 3.3:1 on iPad.
             }
             FilterSection("Expiring Ingredients") {
                 Toggle(isOn: $draft.expiringOnly) {
@@ -320,6 +321,7 @@ struct RecipeFilterSheet: View {
                 Text(sortedAlphabetically
                     ? "Weights are unavailable while recipes are sorted alphabetically."
                     : "Tune how strongly available and expiring ingredients influence ranked recipe results.")
+                    .foregroundStyle(HassTokens.Ink.secondary)
             }
         }
         .presentationDetents([.large])
