@@ -381,6 +381,10 @@ struct ScanItemSheet: View {
         }
         .aspectRatio(4 / 3, contentMode: .fit)
         .clipShape(RoundedRectangle(cornerRadius: 12))
+        // Capped on wide sheets (iPad): full width, the 4:3 feed pushed the manual-entry button under the
+        // pinned footer.
+        .frame(maxWidth: 480)
+        .frame(maxWidth: .infinity)
         .listRowInsets(EdgeInsets())
         .accessibilityIdentifier("scan.camera")
     }
