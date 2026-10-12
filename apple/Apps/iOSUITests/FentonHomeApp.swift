@@ -117,16 +117,30 @@ enum FentonHomeApp {
         // The audit can dismiss a popover while it runs, so note it before starting.
         let popover = app.otherElements["PopoverDismissRegion"].exists && app.popovers.firstMatch.exists
             ? app.popovers.firstMatch.frame : nil
+        // The handler only collects: element queries made inside it count against the audit's own deadline, and on
+        // a long scrolled list (iPhone vacuum Auto-Clean tab, 2026-10-12) they made it fail "to complete in time".
+        var issues: [XCUIAccessibilityAuditIssue] = []
         try app.performAccessibilityAudit(for: .all) { issue in
-            if isSystemDrawn(issue, in: app, popover: popover) { return true }
+            issues.append(issue)
+            return true
+        }
+        for issue in issues {
+            if isSystemDrawn(issue, in: app, popover: popover) { continue }
             var measured = ""
             if issue.auditType == .contrast, let element = issue.element, let capture,
-               let ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
+               var ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
+                // The audit scrolls long sheets to inspect elements, so the frame it reports can belong to a later
+                // scroll position than the opening capture (iPad vacuum sheet, 2026-10-12: visible 19:1 text measured
+                // 1.2:1). Measure a low reading again against the screen as it is now.
+                if ratio < 4.5, let now = RenderedContrast.Capture.screen(),
+                   let fresh = RenderedContrast.ratio(of: element.frame, in: now) {
+                    ratio = max(ratio, fresh)
+                }
                 // The audit misjudges text on materials (notably on iPad); accept it when it renders >= 4.5:1.
-                if ratio >= 4.5 { return true }
+                if ratio >= 4.5 { continue }
                 // Nothing drawn at an unreachable element: it is scrolled out of view (e.g. below an iPad
                 // form sheet's edge), not low contrast.
-                if ratio < 1.5, !element.isHittable { return true }
+                if ratio < 1.5, !element.isHittable { continue }
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             if ax5Page != nil, issue.auditType == .dynamicType,
@@ -136,12 +150,11 @@ enum FentonHomeApp {
                 } else {
                     unattributedType += 1
                 }
-                return true
+                continue
             }
             let element = issue.element
             open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")'\(measured) "
                 + issue.detailedDescription)
-            return true
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
         if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 {

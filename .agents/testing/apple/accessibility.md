@@ -33,6 +33,8 @@
 
 Add a row here and in `isSystemDrawn` together, with the evidence.
 
+- The audit handler only collects issues; every rule above runs after `performAccessibilityAudit` returns. Element queries inside the handler count against the audit's own deadline: on the scrolled iPhone vacuum Auto-Clean tab they made it fail "to complete in time" every run (2026-10-12), while each audit type alone took under 3 s.
+- A contrast reading below 4.5:1 is measured again against a fresh capture before it counts: the audit scrolls long sheets to inspect elements, so the frame it reports can belong to a later scroll position than the capture taken when the audit started (iPad vacuum sheet, 2026-10-12: "Status" and "Docked" at 19:1 on screen measured 1.2:1). The higher reading wins; text that really renders low still fails.
 - `RenderedContrast` draws the screenshot through `UIImage` so the capture follows the interface orientation; the raw `CGImage` stays portrait in landscape and sampled the wrong pixels (every iPad landscape text measured ~1:1, 2026-10-11).
 
 ## Open findings
