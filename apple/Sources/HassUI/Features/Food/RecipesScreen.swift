@@ -94,12 +94,30 @@ struct RecipesScreen: View {
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("recipes.error")
         case .loaded where collection.items.isEmpty:
-            ContentUnavailableView(
-                "No Recipes Found", systemImage: "magnifyingglass",
-                description: Text(collection.appliedQuery.isEmpty
-                    ? "No recipes matched the current filters."
-                    : "Try a different search or loosen the recipe filters.")
-            )
+            // Not ContentUnavailableView: it caps its text size and clipped the title on the folded iPhone Duo's
+            // outer panel (AX audit, 2026-10-12). A scrolling stack scales and wraps fully.
+            ScrollView {
+                VStack(spacing: HassTokens.Spacing.m) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.largeTitle)
+                        .foregroundStyle(HassTokens.Ink.secondary)
+                        .accessibilityHidden(true)
+                    Text("No Recipes Found")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(HassTokens.Ink.primary)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(collection.appliedQuery.isEmpty
+                        ? "No recipes matched the current filters."
+                        : "Try a different search or loosen the recipe filters.")
+                        .font(.body)
+                        .foregroundStyle(HassTokens.Ink.secondary)
+                }
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
+                .padding(HassTokens.Spacing.xl)
+                .padding(.top, HassTokens.Spacing.xl * 2)
+            }
             .accessibilityIdentifier("recipes.empty")
         case .loaded:
             RecipeGrid(collection: collection, selectedId: split ? selected?.id : nil) { open($0) }
