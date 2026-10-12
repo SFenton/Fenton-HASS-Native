@@ -223,7 +223,9 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(element("recipes.sort.alphabetical", in: app).isSelected)
         sleep(1)
         keepScreenshot(app, "food-recipes-sort-\(device)")
-        try audit(app)
+        // The AX5 page lets the audit waive the stock Form button's iPad Dynamic Type false positive on
+        // "Reset to Defaults" (FentonHomeApp.audit, ax5Page).
+        try audit(app) { self.openSortSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
         app.buttons["filterSheet.apply"].tap()
         expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
         XCTAssertTrue(element("fab.sort", in: app).isSelected, "an applied sort marks the button")
@@ -235,7 +237,7 @@ final class FoodJourneyTests: XCTestCase {
         element("recipes.filter.expiringOnly", in: app).switches.firstMatch.tap()
         sleep(1)
         keepScreenshot(app, "food-recipes-filter-\(device)")
-        try audit(app)
+        try audit(app) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
         app.buttons["filterSheet.apply"].tap()
         expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
         XCTAssertTrue(element("fab.filter", in: app).wait(for: \.isSelected, toEqual: true, timeout: 5), "applied filters mark the button")
@@ -249,6 +251,26 @@ final class FoodJourneyTests: XCTestCase {
         expectCall("recipe_hydration query=zzz", in: app)
         element("fab.search.close", in: app).tap()
         XCTAssertFalse(field.exists)
+    }
+
+    /// The Sort sheet with a changed choice (so Reset to Defaults shows), for the AX5 comparison page.
+    private func openSortSheet(_ app: XCUIApplication) -> XCUIApplication {
+        waitForGrid(app)
+        element("fab.sort", in: app).tap()
+        XCTAssertTrue(app.buttons["filterSheet.apply"].waitForExistence(timeout: 5))
+        element("recipes.sort.alphabetical", in: app).tap()
+        sleep(1)
+        return app
+    }
+
+    /// The Filter sheet with expiring-only on (so Reset to Defaults shows), for the AX5 comparison page.
+    private func openFilterSheet(_ app: XCUIApplication) -> XCUIApplication {
+        waitForGrid(app)
+        element("fab.filter", in: app).tap()
+        XCTAssertTrue(app.buttons["filterSheet.apply"].waitForExistence(timeout: 5))
+        element("recipes.filter.expiringOnly", in: app).switches.firstMatch.tap()
+        sleep(1)
+        return app
     }
 
     func testRecipesErrorAndEmpty() throws {
