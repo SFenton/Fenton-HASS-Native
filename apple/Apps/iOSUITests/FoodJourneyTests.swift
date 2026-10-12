@@ -397,25 +397,6 @@ final class FoodJourneyTests: XCTestCase {
         ingredients.tap()
         sleep(2)
         diagnose("after Ingredients", app: app, tabs: tabs, segment: ingredients)
-        if !ingredients.isSelected {
-            // Investigation only: does a second, coordinate tap register? The assertion below still decides.
-            ingredients.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-            sleep(2)
-            diagnose("after second tap", app: app, tabs: tabs, segment: ingredients)
-            ingredients.press(forDuration: 0.3)
-            sleep(2)
-            diagnose("after press", app: app, tabs: tabs, segment: ingredients)
-            tabs.buttons["Instructions"].tap()
-            sleep(2)
-            diagnose("after Instructions", app: app, tabs: tabs, segment: tabs.buttons["Instructions"])
-            if !tabs.buttons["Instructions"].isSelected {
-                element("recipe.scroll", in: app).swipeUp()
-                sleep(1)
-                print("FOODDIAG scrolled: openSource.hittable=\(element("recipe.openSource", in: app).isHittable)")
-                element("recipe.done", in: app).tap()
-                print("FOODDIAG after Done: sheet gone=\(!tabs.waitForExistence(timeout: 1) || !tabs.exists)")
-            }
-        }
         keepScreenshot(app, "food-live-recipe-ingredients-\(device)")
         XCTAssertTrue(first("recipe.ingredient.", in: app).waitForExistence(timeout: 30), "No live ingredients")
         element("recipe.tabs", in: app).buttons["Instructions"].tap()

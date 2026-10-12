@@ -91,13 +91,7 @@ struct RecipeDetailContent: View {
     private func loaded(_ detail: RecipeDetail) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-                Picker("Section", selection: $model.tab) {
-                    ForEach(RecipeDetailModel.Tab.allCases) { tab in
-                        Text(tab.title).tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("recipe.tabs")
+                DetailTabBar(selection: $model.tab)
                 switch model.tab {
                 case .general: RecipeGeneralTab(detail: detail, fallbackImageURL: model.recipe.imageURL)
                 case .ingredients: RecipeIngredientsTab(detail: detail, model: model)
@@ -159,6 +153,46 @@ struct ExternalLinkButton: View {
         .buttonStyle(.borderedProminent)
         .tint(FoodStyle.action)
         .accessibilityAddTraits(.isLink)
+    }
+}
+
+/// General / Ingredients / Instructions, drawn like a segmented control from SwiftUI buttons.
+///
+/// Not `Picker(.segmented)`: in the live app on iPad the hub and Home stay visible under the form sheet and keep
+/// re-rendering with entity updates, and the system segmented control lost every tap while buttons and scrolling
+/// in the same sheet still worked (2026-10-12). Each segment is a button with `.isSelected`; 44 pt tall (HIG:
+/// Segmented controls; departure recorded in `.agents/pages/food/ios.md`).
+struct DetailTabBar: View {
+    @Binding var selection: RecipeDetailModel.Tab
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(RecipeDetailModel.Tab.allCases) { tab in
+                let isSelected = selection == tab
+                Button { selection = tab } label: {
+                    Text(tab.title)
+                        .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                        .foregroundStyle(HassTokens.Ink.primary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 4)
+                        .background {
+                            if isSelected {
+                                Capsule().fill(.background).shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(2)
+        .background(Capsule().fill(Color.secondary.opacity(0.14)))
+        .animation(.snappy, value: selection)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Section")
+        .accessibilityIdentifier("recipe.tabs")
     }
 }
 
