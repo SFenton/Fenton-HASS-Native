@@ -40,6 +40,14 @@ struct FoodNavigation: ViewModifier {
     }
 
     private func connect() {
+        #if DEBUG
+        // FENTON_FOOD_FIXTURES=1: the signed-in app's Food pages answer from fixtures (journeys that separate live
+        // data from the signed-in app's own behavior).
+        if serviceOverride == nil, ProcessInfo.processInfo.environment["FENTON_FOOD_FIXTURES"] == "1" {
+            if !(models.service is FixtureRecipeService) { models.service = FixtureRecipeService() }
+            return
+        }
+        #endif
         if let serviceOverride {
             if models.service !== serviceOverride { models.service = serviceOverride }
         } else if let connection, !(models.service is EverShelfRecipeService) {

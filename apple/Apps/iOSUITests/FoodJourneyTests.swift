@@ -377,7 +377,7 @@ final class FoodJourneyTests: XCTestCase {
     // MARK: - Live
 
     /// Signs in with the runner's long-lived token and opens a Food page (`FENTON_OPEN_FOOD`). Skips without one.
-    private func launchLive(_ route: String) throws -> XCUIApplication {
+    private func launchLive(_ route: String, fixtures: Bool = false) throws -> XCUIApplication {
         let environment = ProcessInfo.processInfo.environment
         guard let token = environment["FENTON_HASS_TOKEN"], !token.isEmpty else {
             throw XCTSkip("Set TEST_RUNNER_FENTON_HASS_TOKEN to check the live EverShelf recipe calls")
@@ -388,6 +388,7 @@ final class FoodJourneyTests: XCTestCase {
         if let server = environment["FENTON_HASS_SERVER"] { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
         app.launchEnvironment["FENTON_OPEN_FOOD"] = route
         app.launchEnvironment["FENTON_FOOD_DEBUG"] = "1"
+        if fixtures { app.launchEnvironment["FENTON_FOOD_FIXTURES"] = "1" }
         app.launch()
         return app
     }
@@ -435,6 +436,25 @@ final class FoodJourneyTests: XCTestCase {
         tree.lifetime = .keepAlways
         add(tree)
         print("FOODDIAG-TREE \(moment) BEGIN\n\(app.debugDescription)\nFOODDIAG-TREE END")
+    }
+
+    /// The signed-in app (Home, tabs, live entity updates) with fixture recipes: the recipe sheet switches tabs.
+    /// Separates live recipe data from the signed-in app when the live iPad sheet ignored taps (2026-10-12).
+    func testSignedInFixtureSheetSwitchesTabs() throws {
+        let app = try launchLive("hub", fixtures: true)
+        let suggestion = element("food.suggestion.2", in: app)
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 45))
+        suggestion.tap()
+        let tabs = element("recipe.tabs", in: app)
+        XCTAssertTrue(tabs.waitForExistence(timeout: 15), "Recipe sheet did not open")
+        sleep(2)
+        let ingredients = tabs.buttons["Ingredients"]
+        diagnose("signed-in fixture before", app: app, tabs: tabs, segment: ingredients)
+        ingredients.tap()
+        sleep(2)
+        diagnose("signed-in fixture after", app: app, tabs: tabs, segment: ingredients)
+        XCTAssertTrue(element("recipe.ingredient.0", in: app).waitForExistence(timeout: 10),
+                      "In the signed-in app the fixture recipe sheet did not switch to Ingredients")
     }
 
     /// Live server: the Recipes grid's first browse page loads.
