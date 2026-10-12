@@ -311,8 +311,15 @@ final class ClimateJourneyTests: XCTestCase {
     }
 
     private func openClimateTab(_ app: XCUIApplication) {
-        let tab = app.tabBars.buttons["Climate"]
-        if tab.waitForExistence(timeout: 5) { tab.tap() } else { app.buttons["Climate"].firstMatch.tap() }
+        // Regular width (iPad, unfolded Duo) navigates through the flyout; compact width through the tab bar.
+        if app.buttons["nav.open"].waitForExistence(timeout: 3) {
+            app.buttons["nav.open"].tap()
+            XCTAssertTrue(app.buttons["nav.climate"].waitForExistence(timeout: 3), "Flyout did not open")
+            app.buttons["nav.climate"].tap()
+        } else {
+            let tab = app.tabBars.buttons["Climate"]
+            if tab.waitForExistence(timeout: 5) { tab.tap() } else { app.buttons["Climate"].firstMatch.tap() }
+        }
         XCTAssertTrue(element("climate.wholeHome", in: app).waitForExistence(timeout: 15), "Climate tab did not open")
     }
 
