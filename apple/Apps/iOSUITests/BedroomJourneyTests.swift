@@ -261,13 +261,40 @@ final class BedroomJourneyTests: XCTestCase {
 
     // MARK: - Accessibility audits
 
-    private func audit(sheet: String?, tab: String? = nil, scenario: String = "default") throws {
+    /// Audits a sheet, or a page pushed inside it when `open` taps through to one (after each launch, including
+    /// the AX5 relaunch).
+    private func audit(sheet: String?, tab: String? = nil, scenario: String = "default",
+                       open: ((XCUIApplication) -> Void)? = nil) throws {
         let orientations: [UIDeviceOrientation] = FentonHomeApp.family == .iPad ? [.portrait, .landscapeLeft] : [.unknown]
         for orientation in orientations {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let app = launch(sheet: sheet, tab: tab, scenario: scenario)
-            try FentonHomeApp.audit(app) { self.launch(sheet: sheet, tab: tab, scenario: scenario, arguments: FentonHomeApp.ax5) }
+            open?(app)
+            try FentonHomeApp.audit(app) {
+                let large = self.launch(sheet: sheet, tab: tab, scenario: scenario, arguments: FentonHomeApp.ax5)
+                open?(large)
+                return large
+            }
         }
+    }
+
+    private func openBedAlarmDay(_ app: XCUIApplication) {
+        tap("bed.alarms.monday", in: app)
+        XCTAssertTrue(element("bed.day.add", in: app).waitForExistence(timeout: 10))
+        sleep(1)
+    }
+
+    private func openBedAlarmEditor(_ app: XCUIApplication) {
+        openBedAlarmDay(app)
+        tap("bed.day.alarm.06:30", in: app)
+        XCTAssertTrue(element("bed.editor.save", in: app).waitForExistence(timeout: 10))
+        sleep(1)
+    }
+
+    private func openWakeEditor(_ app: XCUIApplication) {
+        tap("wake.add", in: app)
+        XCTAssertTrue(element("wake.editor.save", in: app).waitForExistence(timeout: 10))
+        sleep(1)
     }
 
     func testTilesPassAudit() throws { try audit(sheet: nil) }
@@ -278,6 +305,9 @@ final class BedroomJourneyTests: XCTestCase {
     func testSoloTripBedPassesAudit() throws { try audit(sheet: "stephs-bed", scenario: "solo-trip") }
     func testWakeAlarmsPassesAudit() throws { try audit(sheet: "wake-light", scenario: "waking") }
     func testWakeDefaultsPassesAudit() throws { try audit(sheet: "wake-light", tab: "defaults") }
+    func testBedAlarmDayPassesAudit() throws { try audit(sheet: "stephens-bed", tab: "alarms", open: openBedAlarmDay) }
+    func testBedAlarmEditorPassesAudit() throws { try audit(sheet: "stephens-bed", tab: "alarms", open: openBedAlarmEditor) }
+    func testWakeEditorPassesAudit() throws { try audit(sheet: "wake-light", open: openWakeEditor) }
 
     // MARK: - Screenshots
 

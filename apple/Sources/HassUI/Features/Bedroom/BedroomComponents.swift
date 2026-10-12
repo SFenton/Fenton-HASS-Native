@@ -158,7 +158,7 @@ struct ChoiceGrid<Value: Hashable>: View {
                             .font(.subheadline.weight(selected ? .semibold : .regular))
                             .foregroundStyle(selected ? Color.white : HassTokens.Ink.primary)
                             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                            .background(selected ? Color.accentColor : Color.primary.opacity(0.08),
+                            .background(selected ? BedroomStyle.action : Color.primary.opacity(0.08),
                                         in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -194,7 +194,7 @@ struct WeekdayPicker: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(selected ? Color.white : HassTokens.Ink.primary)
                             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                            .background(selected ? Color.accentColor : Color.primary.opacity(0.08), in: Capsule())
+                            .background(selected ? BedroomStyle.action : Color.primary.opacity(0.08), in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(day.label)
