@@ -176,15 +176,19 @@ struct GlassTileFace: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             HStack {
+                // Decorative: the title names the tile. Symbols carry built-in labels ("Humidifier"), which the audit
+                // then flagged as clipped text on iPad (glyph wider than its frame).
                 Image(systemName: symbol)
                     .font(.title3)
                     .symbolVariant(isActive ? .fill : .none)
                     .foregroundStyle(isActive ? tint : .secondary)
+                    .accessibilityHidden(true)
                 Spacer(minLength: 0)
                 if showsChevron {
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
                 }
             }
             Text(title)
