@@ -176,9 +176,12 @@ final class RoomsJourneyTests: XCTestCase {
 
     /// Every room, Quick Links, the room grid and one sheet of each kind in the current pose (iPad: both
     /// orientations), named `room-<id>-<orientation>`. `FENTON_CAPTURE_SET` = `rooms-a`, `rooms-b` or `extras`
-    /// captures one part, so each run fits a shared simulator slot on a loaded host.
+    /// captures one part, so each run fits a shared simulator slot on a loaded host; `FENTON_CAPTURE_ROOMS` (comma
+    /// separated room ids) recaptures just those rooms.
     func testCaptureRoomScreens() {
-        let set = ProcessInfo.processInfo.environment["FENTON_CAPTURE_SET"] ?? ""
+        let environment = ProcessInfo.processInfo.environment
+        let only = environment["FENTON_CAPTURE_ROOMS"].map { $0.split(separator: ",").map(String.init) }
+        let set = only == nil ? environment["FENTON_CAPTURE_SET"] ?? "" : "rooms-only"
         let orientations: [UIDeviceOrientation] = FentonHomeApp.family == .iPad ? [.portrait, .landscapeLeft] : [.unknown]
         let rooms = ["living-room", "guest-room", "master-bedroom", "gym", "hallway", "office", "kitchen", "dining-room",
                      "back-deck", "music-room", "theater-room", "downstairs-hallway", "garage", "guest-bathroom",
@@ -186,7 +189,7 @@ final class RoomsJourneyTests: XCTestCase {
         for orientation in orientations {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
-            let roomPart = set == "rooms-a" ? Array(rooms.prefix(8)) : set == "rooms-b" ? Array(rooms.dropFirst(8)) : set == "extras" ? [] : rooms
+            let roomPart = only ?? (set == "rooms-a" ? Array(rooms.prefix(8)) : set == "rooms-b" ? Array(rooms.dropFirst(8)) : set == "extras" ? [] : rooms)
             for room in roomPart {
                 let app = launch(room: room, clean: true)
                 keepScreenshot(app, "room-\(room)-\(suffix)")
