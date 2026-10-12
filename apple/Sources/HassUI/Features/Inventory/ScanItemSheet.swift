@@ -53,6 +53,7 @@ struct ScanItemSheet: View {
         // The app accent reads 2.5:1 as button text on the sheet; the floating actions' teal reads 5.8:1.
         .tint(FloatingActionBar.tint)
         .presentationDetents([.large])
+        .presentationBackground(Self.surface)
         .interactiveDismissDisabled(model.addStatus == .adding)
         .task(id: CameraKey(step: model.step, wanted: model.wantedCamera)) { await camera.sync(with: model) }
         .onDisappear { camera.stop() }
@@ -62,6 +63,16 @@ struct ScanItemSheet: View {
                 onAdded()
             }
         }
+    }
+
+    /// Opaque sheet and footer surface: on the iPad form sheet's glass and the footer's bar material the audit
+    /// failed dark labels ("Skip Barcode", "Manually Enter Name") that read well on screen (2026-10-12).
+    static var surface: Color {
+        #if os(iOS)
+        Color(uiColor: .systemGroupedBackground)
+        #else
+        Color(nsColor: .windowBackgroundColor)
+        #endif
     }
 
     private struct CameraKey: Hashable {
@@ -119,7 +130,7 @@ struct ScanItemSheet: View {
             footerButtons
                 .padding(.horizontal, HassTokens.Spacing.l)
                 .padding(.vertical, HassTokens.Spacing.s)
-                .background(.bar)
+                .background(Self.surface)
         }
     }
 
