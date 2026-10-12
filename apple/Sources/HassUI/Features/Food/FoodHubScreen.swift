@@ -15,6 +15,10 @@ struct FoodHubScreen: View {
     /// Held here, not built in the sheet's closure: live entity updates re-render the hub, and a model rebuilt
     /// on each render reset the open recipe's tab (seen on iPad, 2026-10-11).
     @State private var openDetail: RecipeDetailModel?
+    /// The page a hub tile opened. Tiles are `GlassTile`s with their own action: a tile drawn with
+    /// `.allowsHitTesting(false)` inside a `NavigationLink` label left the link nothing to tap on iPhone
+    /// (`.agents/patterns/entity-tile.md`).
+    @State private var pushed: FoodRoute?
 
     /// - Parameter window: Initial window metrics (hosted tests; the reader replaces them on screen).
     init(models: FoodModels, window: WindowMetrics = WindowMetrics()) {
@@ -51,6 +55,7 @@ struct FoodHubScreen: View {
         .accessibilityIdentifier("food.scroll")
         .navigationTitle("Food & Recipes")
         .onAppear { models.suggestions.appear() }
+        .navigationDestination(item: $pushed) { FoodNavigation.destination($0, models: models) }
         .sheet(item: $openRecipe) { _ in
             if let openDetail { RecipeDetailSheet(model: openDetail) }
         }
@@ -63,11 +68,9 @@ struct FoodHubScreen: View {
         FoodSection("Suggested Recipes") {
             SuggestedRecipesCarousel(model: models.suggestions, clipsPages: split) { open($0) }
         }
-        NavigationLink(value: FoodRoute.recipes) {
-            GlassTileLabel(title: "All Recipes", symbol: FoodSymbols.symbol(for: "mdi:book-open-page-variant"), tint: Self.tint(FoodConfig.allRecipesTint))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("food.allRecipes")
+        GlassTile(title: "All Recipes", symbol: FoodSymbols.symbol(for: "mdi:book-open-page-variant"),
+                  tint: Self.tint(FoodConfig.allRecipesTint), isActive: true, kind: .navigate) { pushed = .recipes }
+            .accessibilityIdentifier("food.allRecipes")
     }
 
     @ViewBuilder
@@ -75,26 +78,22 @@ struct FoodHubScreen: View {
         let state: (String) -> EntityState? = { store?.entity($0).state }
         FoodSection("All Food") {
             DynamicGridLayout(minCellWidth: 150, maxColumns: 4) {
-                NavigationLink(value: FoodRoute.inventory(location: nil)) {
-                    GlassTileLabel(
-                        title: "All Food", subtitle: FoodConfig.allFoodSubtitle(state: state),
-                        symbol: FoodSymbols.symbol(for: "mdi:food-variant"), tint: Self.tint(FoodConfig.allFoodTint)
-                    )
-                }
-                .buttonStyle(.plain)
+                GlassTile(
+                    title: "All Food", subtitle: FoodConfig.allFoodSubtitle(state: state),
+                    symbol: FoodSymbols.symbol(for: "mdi:food-variant"), tint: Self.tint(FoodConfig.allFoodTint),
+                    isActive: true, kind: .navigate
+                ) { pushed = .inventory(location: nil) }
                 .accessibilityIdentifier("food.allFood")
             }
         }
         FoodSection("Food Spaces") {
             DynamicGridLayout(minCellWidth: 150, maxColumns: 4) {
                 ForEach(FoodConfig.spaces) { space in
-                    NavigationLink(value: FoodRoute.inventory(location: space.location)) {
-                        GlassTileLabel(
-                            title: space.title, subtitle: FoodConfig.spaceSubtitle(space, state: state),
-                            symbol: FoodSymbols.symbol(for: space.icon), tint: Self.tint((space.red, space.green, space.blue))
-                        )
-                    }
-                    .buttonStyle(.plain)
+                    GlassTile(
+                        title: space.title, subtitle: FoodConfig.spaceSubtitle(space, state: state),
+                        symbol: FoodSymbols.symbol(for: space.icon), tint: Self.tint((space.red, space.green, space.blue)),
+                        isActive: true, kind: .navigate
+                    ) { pushed = .inventory(location: space.location) }
                     .accessibilityIdentifier("food.space.\(space.location)")
                 }
             }
@@ -132,23 +131,6 @@ struct FoodSection<Content: View>: View {
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// A navigation tile drawn like ``GlassTile`` for use as a `NavigationLink` label, so the link
-/// keeps the system's push semantics.
-struct GlassTileLabel: View {
-    var title: String
-    var subtitle: String?
-    var symbol: String
-    var tint: Color
-
-    var body: some View {
-        GlassTile(title: title, subtitle: subtitle, symbol: symbol, tint: tint, isActive: true, kind: .navigate) {}
-            .allowsHitTesting(false)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(title)
-            .accessibilityValue(subtitle ?? "")
     }
 }
 

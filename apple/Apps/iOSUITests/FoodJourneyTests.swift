@@ -101,6 +101,27 @@ final class FoodJourneyTests: XCTestCase {
         expectCall("recipe_detail recipe_id=1", in: app)
     }
 
+    /// Hub tiles are controls of their own: All Recipes pushes the grid, a space tile pushes its inventory page.
+    func testHubTilesOpenTheirPages() {
+        let app = launch("hub")
+        let allRecipes = element("food.allRecipes", in: app)
+        XCTAssertTrue(allRecipes.waitForExistence(timeout: 15))
+        allRecipes.tap()
+        XCTAssertTrue(app.navigationBars["Recipes"].waitForExistence(timeout: 10), "All Recipes did not open the grid")
+        waitForGrid(app)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        let fridge = element("food.space.frigo", in: app)
+        reveal(fridge, in: app)
+        fridge.tap()
+        XCTAssertTrue(app.navigationBars["Fridge"].waitForExistence(timeout: 10), "The Fridge tile did not open its page")
+        XCTAssertTrue(app.staticTexts["Coming in a later update."].exists)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        let allFood = element("food.allFood", in: app)
+        reveal(allFood, in: app)
+        allFood.tap()
+        XCTAssertTrue(app.navigationBars["All Food"].waitForExistence(timeout: 10), "All Food did not open its page")
+    }
+
     func testHubFailureOffersRetry() {
         let app = launch("hub", mode: "error")
         XCTAssertTrue(element("food.suggestions.error", in: app).waitForExistence(timeout: 15))
