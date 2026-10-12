@@ -40,8 +40,14 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
     @discardableResult
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
         let scroll = app.scrollViews.firstMatch
+        // The gallery's last-call bar covers the bottom of the page, and a tile under it still reads as hittable.
+        let bar = lastCall(app)
+        func clear() -> Bool {
+            guard element.exists, element.isHittable else { return false }
+            return !bar.exists || element.frame.maxY <= bar.frame.minY
+        }
         var swiped = false
-        for _ in 0..<12 where !(element.exists && element.isHittable) {
+        for _ in 0..<12 where !clear() {
             scroll.swipeUp(velocity: .slow)
             swiped = true
         }
