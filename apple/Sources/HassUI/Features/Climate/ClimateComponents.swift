@@ -1,6 +1,11 @@
 import HassCore
 import HassDesign
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#else
+import AppKit
+#endif
 
 // MARK: - Style
 
@@ -10,8 +15,23 @@ enum ClimateStyle {
     static let heat = Color(hex: ClimateConfig.heatColorHex)
     /// Cooling `#2c8e98` (web `THERMOSTAT_COOL_COLOR`).
     static let cool = Color(hex: ClimateConfig.coolColorHex)
-    /// Toggles and openers (web `tone="switch"`).
-    static let control = HassTokens.Tint.climate
+    /// Toggles and openers (web `tone="switch"`): the climate tint, lightened in dark mode so icons keep their
+    /// contrast on the dark material (HIG: Color, Dark Mode).
+    static let control = adaptive(light: (0.10, 0.33, 0.51), dark: (0.45, 0.70, 0.95))
+
+    private static func adaptive(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
+        #if canImport(UIKit)
+        Color(uiColor: UIColor { traits in
+            let c = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: c.0, green: c.1, blue: c.2, alpha: 1)
+        })
+        #else
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let c = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+            return NSColor(red: c.0, green: c.1, blue: c.2, alpha: 1)
+        })
+        #endif
+    }
     /// An open vent (web `VENT_OPEN_COLOR`, rgb 30 136 229).
     static let ventOpen = Color(red: 30 / 255, green: 136 / 255, blue: 229 / 255)
     /// An open door or window.
