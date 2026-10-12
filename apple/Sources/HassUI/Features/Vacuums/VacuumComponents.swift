@@ -34,8 +34,9 @@ enum VacuumStyle {
         }
     }
 
-    /// Primary button fill, dark enough for white text at 4.5:1.
-    static let primaryFill = Color(red: 0.0, green: 0.42, blue: 0.82)
+    /// Primary button and order-badge fill: white text is 6.0:1 on it, so the small bold badge digits still clear
+    /// the accessibility audit once anti-aliased (they measured 4.5:1 on the 5.2:1 fill, iPhone 2026-10-12).
+    static let primaryFill = Color(red: 0.0, green: 0.38, blue: 0.76)
 
     /// The SF Symbol for an MDI name.
     static func symbol(_ mdi: String) -> String { SymbolMap.symbol(for: mdi) }

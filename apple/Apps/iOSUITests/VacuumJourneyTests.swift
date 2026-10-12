@@ -54,7 +54,8 @@ final class VacuumJourneyTests: XCTestCase {
         let bar = app.staticTexts["gallery.lastCall"].firstMatch
         func reachable() -> Bool {
             guard element.isHittable else { return false }
-            return !bar.exists || element.frame.maxY <= bar.frame.minY - 4 || element.frame.minY >= bar.frame.maxY
+            // The bar's background starts 4 pt above its text; a control ending there is fully visible.
+            return !bar.exists || element.frame.maxY <= bar.frame.minY + 1 || element.frame.minY >= bar.frame.maxY
         }
         for _ in 0..<24 where !reachable() {
             let above = element.exists ? element.frame.midY < window.midY : !down
@@ -62,7 +63,19 @@ final class VacuumJourneyTests: XCTestCase {
             if FentonHomeApp.family == .iPhoneDuo { x = min(x, window.maxX - 96) }
             let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
                 .withOffset(CGVector(dx: -window.minX, dy: -window.minY))
-            let from = origin.withOffset(CGVector(dx: x, dy: window.minY + window.height * (above ? 0.35 : 0.65)))
+            // Start on the control itself when it is on screen (e.g. under the Last call bar), kept clear of the edges.
+            var y = window.minY + window.height * (above ? 0.35 : 0.65)
+            if element.exists, window.intersects(element.frame) {
+                y = min(max(element.frame.midY, window.minY + 150), window.maxY - 150)
+            } else if element.exists {
+                // Off screen: drag near the leading edge of the narrowest scroll view over it (the sheet's column, not
+                // the page behind), clear of the map in the middle and of the back-swipe edge.
+                let id = element.identifier
+                let holders = id.isEmpty ? [] : app.scrollViews.containing(.any, identifier: id).allElementsBoundByIndex
+                let column = holders.map(\.frame).filter { $0.height > 200 }.min { $0.width < $1.width }
+                if let column { x = max(column.minX, window.minX) + 24 }
+            }
+            let from = origin.withOffset(CGVector(dx: x, dy: y))
             let to = from.withOffset(CGVector(dx: 0, dy: above ? 220 : -220))
             from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
         }
@@ -94,7 +107,14 @@ final class VacuumJourneyTests: XCTestCase {
         let from = origin.withOffset(CGVector(dx: x, dy: picker.frame.minY - 8))
         from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: top - picker.frame.minY)),
                    withVelocity: .slow, thenHoldForDuration: 0.4)
-        sleep(1) // Let the scroll settle: a frame captured mid-deceleration samples text at stale positions.
+        // Let the scroll settle: a frame captured mid-deceleration samples text at stale positions.
+        var last = picker.frame
+        for _ in 0..<10 {
+            usleep(500_000)
+            let now = picker.frame
+            if now == last { break }
+            last = now
+        }
     }
 
     private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
@@ -110,10 +130,16 @@ final class VacuumJourneyTests: XCTestCase {
         if segment.exists {
             segment.tap()
         } else {
-            picker.tap()
-            let item = app.buttons[title].firstMatch
-            XCTAssertTrue(item.waitForExistence(timeout: 5), "No \(title) menu item")
-            item.tap()
+            // The menu's rows read as buttons or as menu items depending on the layout; under load the first tap
+            // can land while the picker is still settling, so open the menu again if nothing appeared.
+            let button = app.buttons[title].firstMatch, menuItem = app.menuItems[title].firstMatch
+            var shown = false
+            for _ in 0..<2 where !shown {
+                picker.tap()
+                shown = button.waitForExistence(timeout: 5) || menuItem.waitForExistence(timeout: 2)
+            }
+            XCTAssertTrue(shown, "No \(title) menu item")
+            (button.exists ? button : menuItem).tap()
         }
     }
 
@@ -139,15 +165,18 @@ final class VacuumJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Main Floor Robot Vacuum"].exists)
     }
 
-    /// Splits only where allowed: unfolded Duo landscape and iPad landscape.
-    func testPageLayoutFollowsThePose() {
+    /// Splits only where allowed: unfolded Duo landscape and iPad landscape. Named to sort last: on the Duo the
+    /// runner has restarted during this test's tear-down (folded and unfolded landscape, 2026-10-11), and a restart
+    /// returns the Duo to folded, which would put every later test in the wrong pose.
+    func testSplitFollowsThePose() {
         if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .landscapeLeft }
         let app = launch()
         let split = element("vacuums.layout.split", in: app).exists
+        let window = app.windows.firstMatch.frame
         switch FentonHomeApp.family {
         case .iPad: XCTAssertTrue(split, "iPad landscape splits")
         case .iPhone: XCTAssertFalse(split, "iPhone never splits")
-        default: XCTAssertEqual(split, app.windows.firstMatch.frame.width > app.windows.firstMatch.frame.height && app.windows.firstMatch.frame.width > 700)
+        case .iPhoneDuo: XCTAssertEqual(split, window.width > window.height && window.width > 700, "Duo window \(window.size)")
         }
     }
 
@@ -278,9 +307,10 @@ final class VacuumJourneyTests: XCTestCase {
         let orientations: [UIDeviceOrientation] = FentonHomeApp.family == .iPad ? [.portrait, .landscapeLeft] : [.unknown]
         for orientation in orientations {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
-            let app = launch(vacuum, tab: tab, scenario: scenario)
+            // Clean gallery: the debug Last call bar is not product UI, and text half under it can't be judged.
+            let app = launch(vacuum, tab: tab, scenario: scenario, clean: true)
             if tab != "controls" { scrollToTabContent(in: app) }
-            try FentonHomeApp.audit(app) { self.launch(vacuum, tab: tab, scenario: scenario, arguments: FentonHomeApp.ax5) }
+            try FentonHomeApp.audit(app) { self.launch(vacuum, tab: tab, scenario: scenario, clean: true, arguments: FentonHomeApp.ax5) }
         }
     }
 

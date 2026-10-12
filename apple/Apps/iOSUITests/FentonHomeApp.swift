@@ -259,14 +259,18 @@ enum FentonHomeApp {
     /// contrast: accept it only when no scroll view's visible frame fully contains the element.
     private static func isScrolledOutOfView(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         let frame = element.frame
+        let holder = NSPredicate(format: "label == %@", element.label)
         // Below the window's edge (a long sheet column in iPad landscape): the capture holds only part of it.
         let window = app.windows.firstMatch.frame
         if !window.isEmpty, !window.insetBy(dx: -1, dy: -1).contains(frame) { return true }
-        // Partly scrolled under a navigation bar: the bar's scroll-edge effect deliberately obscures it.
-        let bar = app.navigationBars.firstMatch.frame
-        if !bar.isEmpty, frame.minY < bar.maxY - 1, frame.maxY > bar.maxY + 1 { return true }
+        // Scrolled under a navigation bar (wholly or partly): the bar's scroll-edge effect deliberately obscures it.
+        // The bar's own title and buttons are its descendants and stay checked.
+        for navigationBar in app.navigationBars.allElementsBoundByIndex {
+            let bar = navigationBar.frame
+            guard !bar.isEmpty, bar.intersects(frame), frame.minY < bar.maxY - 1 else { continue }
+            if !navigationBar.descendants(matching: element.elementType).matching(holder).firstMatch.exists { return true }
+        }
         // Only scroll views that hold this element (not, say, Home's behind a sheet).
-        let holder = NSPredicate(format: "label == %@", element.label)
         let scrollViews = app.scrollViews.allElementsBoundByIndex
             .filter { $0.frame.intersects(frame) && $0.descendants(matching: element.elementType).matching(holder)
                 .allElementsBoundByIndex.contains { $0.frame == frame } }
