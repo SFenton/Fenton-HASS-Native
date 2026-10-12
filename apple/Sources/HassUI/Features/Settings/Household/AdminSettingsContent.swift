@@ -137,7 +137,8 @@ struct PresenceOverridesSheet: View {
                                 symbol: SymbolMap.symbol(for: "mdi:lightbulb-auto"),
                                 tint: mode.tint,
                                 isActive: mode != .unavailable,
-                                isUnavailable: mode == .unavailable,
+                                // Unavailable rooms stay openable (full contrast); the detail explains and
+                                // disables the choices.
                                 kind: .navigate
                             ) {
                                 path.append(room)
