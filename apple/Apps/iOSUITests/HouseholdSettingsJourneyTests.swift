@@ -69,6 +69,14 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         if back.exists { back.tap() } else { app.navigationBars.buttons.element(boundBy: 0).tap() }
     }
 
+    /// Back from the presence detail to the room grid. Prefers the detail's own bar: with the sheet over the
+    /// page, the first `BackButton` can be the page's (behind the sheet) on the unfolded iPhone Duo.
+    private func backFromPresenceDetail(_ app: XCUIApplication) {
+        let bar = app.navigationBars.matching(NSPredicate(format: "identifier ENDSWITH 'Presence Lighting'")).firstMatch
+        let back = bar.buttons.firstMatch
+        if back.exists, back.isHittable { back.tap() } else { goBack(app) }
+    }
+
     /// Opens one of the Admin sheets.
     private func openSheet(_ app: XCUIApplication, _ sheet: String) {
         let opener = reveal(app.buttons["admin.open.\(sheet)"], in: app)
@@ -131,7 +139,7 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         sleep(1) // The recorder echoes after 400 ms; the live value must keep it selected.
         XCTAssertTrue(paused.isSelected)
         XCTAssertFalse(app.buttons["presence.option.enabled"].isSelected)
-        goBack(app)
+        backFromPresenceDetail(app)
         XCTAssertTrue(waitForValue(livingRoom, "Paused"), "livingRoom value is \(livingRoom.value ?? "nil")")
         app.buttons["household.sheet.done"].tap()
         expectLastCall(app, "presence_based_lighting.set_automation_state entity_id=switch.living_room_presence_living_room_lights_presence_allowed state=paused")
@@ -233,7 +241,7 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
             XCTAssertTrue(app.buttons["presence.option.enabled"].waitForExistence(timeout: 5))
             sleep(1)
             keepScreenshot(app, "presence-detail-\(suffix)")
-            goBack(app) // Done sits on the sheet's root, not the pushed detail.
+            backFromPresenceDetail(app) // Done sits on the sheet's root, not the pushed detail.
             XCTAssertTrue(app.buttons["household.sheet.done"].waitForExistence(timeout: 5))
             app.buttons["household.sheet.done"].tap()
             openSheet(app, "autoReset")
