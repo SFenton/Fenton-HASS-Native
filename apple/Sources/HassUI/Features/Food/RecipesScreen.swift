@@ -231,7 +231,7 @@ struct RecipeSortSheet: View {
     var body: some View {
         FilterSheet(title: "Sort Recipes", canApply: draft != current, canReset: draft != .availability,
                     onApply: { onApply(draft) }, onReset: { draft = .availability }) {
-            Section("Sort By") {
+            FilterSection("Sort By") {
                 ForEach(RecipeSort.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.subtitle, isSelected: draft == option) { draft = option }
                         .accessibilityIdentifier("recipes.sort.\(option.rawValue)")
@@ -261,11 +261,16 @@ struct RecipeFilterSheet: View {
             Section {
                 PercentSliderRow("Minimum Ingredients Available", value: $draft.minimumCoverage, identifier: "recipes.filter.coverage")
             } header: {
+                // Styled like FilterSection's header (the system header measured 3.1:1 on the sheet).
                 Text("Ingredient Coverage")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(HassTokens.Ink.primary)
+                    .textCase(nil)
+                    .accessibilityAddTraits(.isHeader)
             } footer: {
                 Text("Only show recipes where at least this percentage of required ingredients is currently available.")
             }
-            Section("Expiring Ingredients") {
+            FilterSection("Expiring Ingredients") {
                 Toggle(isOn: $draft.expiringOnly) {
                     Label("Use expiring ingredients only", systemImage: "clock")
                 }
@@ -287,7 +292,12 @@ struct RecipeFilterSheet: View {
                 PercentSliderRow("Expiry Weight", value: $draft.expiryWeight, identifier: "recipes.filter.expiryWeight")
                     .disabled(sortedAlphabetically)
             } header: {
+                // Styled like FilterSection's header (the system header measured 3.1:1 on the sheet).
                 Text("Ranking Strength")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(HassTokens.Ink.primary)
+                    .textCase(nil)
+                    .accessibilityAddTraits(.isHeader)
             } footer: {
                 Text(sortedAlphabetically
                     ? "Weights are unavailable while recipes are sorted alphabetically."
