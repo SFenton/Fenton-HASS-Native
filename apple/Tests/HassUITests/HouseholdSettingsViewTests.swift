@@ -76,6 +76,8 @@ struct HouseholdSettingsViewTests {
     @Test func galleryRenders() {
         #expect(render(ComponentGallery(page: .householdSettings)) != nil)
         #expect(render(NavigationStack { HouseholdSettingsGallery() }) != nil)
+        // The gallery's List footer isn't drawn by ImageRenderer, so render the last-call line directly.
+        #expect(render(HouseholdGalleryLastCall(recorder: HouseholdGalleryRecorder(store: HouseholdSettingsFixtures.store()))) != nil)
     }
 
     @Test func sharedPiecesRender() {
@@ -103,6 +105,11 @@ struct HouseholdSettingsViewTests {
         #expect(PresenceOverrideState(entity: store.value(room)) == .quieted)
         try await recorder.callService("presence_based_lighting", "set_automation_state", data: ["entity_id": room, "state": "off"])
         #expect(PresenceOverrideState(entity: store.value(room)) == .off)
+        // No state means active; an unrecognized service on a known entity leaves it alone.
+        try await recorder.callService("presence_based_lighting", "set_automation_state", data: ["entity_id": room])
+        #expect(PresenceOverrideState(entity: store.value(room)) == .enabled)
+        try await recorder.callService("input_boolean", "toggle", data: ["entity_id": aqi])
+        #expect(store.value(aqi)?.state == "off")
         // Unknown services and entities change nothing.
         try await recorder.callService("automation", "trigger", data: ["entity_id": HouseholdSettingsConfig.Admin.powerRecoveryAutomation])
         try await recorder.callService("light", "turn_on", data: [:])

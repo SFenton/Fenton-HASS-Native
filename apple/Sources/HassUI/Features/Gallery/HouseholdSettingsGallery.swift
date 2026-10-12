@@ -50,7 +50,7 @@ struct HouseholdSettingsGallery: View {
 
 /// The last-call line as its own view, so it observes the recorder itself: read from the gallery's body inside
 /// `navigationDestination`, it missed updates on the iPhone Duo.
-private struct HouseholdGalleryLastCall: View {
+struct HouseholdGalleryLastCall: View {
     var recorder: HouseholdGalleryRecorder
 
     var body: some View {

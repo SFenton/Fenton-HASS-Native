@@ -38,8 +38,8 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
 
     /// Scrolls the page until `element` can be tapped.
     @discardableResult
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
-        let scroll = app.scrollViews.firstMatch
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication, scroller: XCUIElement? = nil) -> XCUIElement {
+        let scroll = scroller ?? app.scrollViews.firstMatch
         // The gallery's last-call bar covers the bottom of the page, and a tile under it still reads as hittable.
         let bar = lastCall(app)
         func clear() -> Bool {
@@ -262,27 +262,41 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
     /// inside the pages, so the house is never switched.
     func testSettingsRowsOpenTheLivePages() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        // The tab bar can appear a moment after launch (unfolded iPhone Duo); the folded Duo has a rail instead.
+        showSettingsTab(app)
+        for page in ["specialDeviceModes", "guests", "machE", "admin"] {
+            let row = app.buttons["settings.topic.\(page)"]
+            XCTAssertTrue(row.waitForExistence(timeout: 5), "\(page) row missing")
+            XCTAssertGreaterThanOrEqual(row.frame.height, 43)
+            row.tap()
+            XCTAssertTrue(app.descendants(matching: .any)["household.\(page)"].waitForExistence(timeout: 10), "\(page) did not open")
+            if page != "admin" { goBack(app) }
+        }
+        // Admin last: its audit relaunches at AX5 (for the Dynamic Type check), which leaves `app` there.
+        XCTAssertTrue(waitForLiveAdmin(app), "Live state did not load")
+        try FentonHomeApp.audit(app) {
+            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
+            self.showSettingsTab(large)
+            self.reveal(large.buttons["settings.topic.admin"], in: large, scroller: large.collectionViews.firstMatch).tap()
+            XCTAssertTrue(self.waitForLiveAdmin(large), "Live state did not load at AX5")
+            return large
+        }
+    }
+
+    /// Selects the Settings tab: the tab bar can appear a moment after launch (unfolded iPhone Duo), and the
+    /// folded Duo has a rail instead.
+    private func showSettingsTab(_ app: XCUIApplication) {
         let barTab = app.tabBars.buttons["Settings"]
         let tab = barTab.waitForExistence(timeout: 10)
             ? barTab
             : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
         XCTAssertTrue(tab.waitForExistence(timeout: 10))
         tab.tap()
-        for page in ["admin", "specialDeviceModes", "guests", "machE"] {
-            let row = app.buttons["settings.topic.\(page)"]
-            XCTAssertTrue(row.waitForExistence(timeout: 5), "\(page) row missing")
-            XCTAssertGreaterThanOrEqual(row.frame.height, 43)
-            row.tap()
-            XCTAssertTrue(app.descendants(matching: .any)["household.\(page)"].waitForExistence(timeout: 10), "\(page) did not open")
-            if page == "admin" {
-                let autoLock = tile(app, "input_boolean.is_front_door_auto_lock_enabled")
-                XCTAssertTrue(autoLock.waitForExistence(timeout: 15))
-                XCTAssertNotEqual(autoLock.value as? String, "Unavailable", "Live state did not load")
-                try FentonHomeApp.audit(app)
-            }
-            goBack(app)
-        }
+    }
+
+    /// Waits for the live Admin page's first tile to show a real state.
+    private func waitForLiveAdmin(_ app: XCUIApplication) -> Bool {
+        let autoLock = tile(app, "input_boolean.is_front_door_auto_lock_enabled")
+        return autoLock.waitForExistence(timeout: 15) && autoLock.value as? String != "Unavailable"
     }
 }
 
