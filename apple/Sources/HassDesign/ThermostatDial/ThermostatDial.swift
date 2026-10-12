@@ -158,7 +158,11 @@ public struct ThermostatDial: View {
                     if configuration.valueStyle == nil {
                         Label(caption, systemImage: "thermometer.medium")
                     } else {
+                        // Value-style captions ("Level 5 • 41% current") run longer than a temperature;
+                        // two lines keep them whole in a small dial (unfolded iPhone Duo landscape).
                         Text(caption)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
                     }
                 }
                 .font(.footnote.weight(.bold))
