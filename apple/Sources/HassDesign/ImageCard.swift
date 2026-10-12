@@ -131,9 +131,10 @@ public struct RemoteImage: View {
     }
 
     public var body: some View {
-        // A faint fill: a stronger one (0.12) differs from the card's material enough that rendered-contrast
-        // sampling counts it as text and measures image cards at ~1.1:1.
-        Color.secondary.opacity(0.05)
+        // No fill of its own: the card's surface shows through behind the placeholder, so the card is one
+        // surface. A tinted fill (even 5%) was a second surface that rendered-contrast sampling read as text,
+        // measuring image cards at ~1.1:1 on iPad. Loaded images cover the area.
+        Color.clear
             .overlay {
                 if let current {
                     AsyncImage(url: current, transaction: Transaction(animation: .easeOut(duration: 0.2))) { self.phase($0) }
