@@ -324,9 +324,16 @@ struct WakeLightEditor: View {
         }
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             Text("Alarm Name").font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
-            TextField("Alarm Name", text: Binding(get: { draft.label }, set: { draft.label = String($0.prefix(40)) }))
-                .textFieldStyle(.roundedBorder)
+            // Grows with Dynamic Type: the rounded-border (UITextField) style keeps a fixed height and clipped at AX5.
+            TextField("Alarm Name", text: Binding(get: { draft.label }, set: {
+                draft.label = String($0.filter { $0 != "\n" }.prefix(40))
+            }), axis: .vertical)
+                .lineLimit(1...3)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, HassTokens.Spacing.m)
+                .padding(.vertical, HassTokens.Spacing.s)
                 .frame(minHeight: HassTokens.minTarget)
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.secondary.opacity(0.4)))
                 .accessibilityIdentifier("wake.editor.name")
         }
         if draft.kind == .weekly {
