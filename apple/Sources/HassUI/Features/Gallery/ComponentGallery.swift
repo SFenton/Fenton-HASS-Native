@@ -10,6 +10,7 @@ public struct ComponentGallery: View {
         case thermostatDial = "thermostat-dial"
         case floatingActions = "floating-actions"
         case inventory
+        case vacuums
         case roomDevices = "room-devices"
         case householdSettings = "household-settings"
     }
@@ -40,6 +41,7 @@ public struct ComponentGallery: View {
                 #else
                 EmptyView()
                 #endif
+            case .vacuums: VacuumGallery()
             case .roomDevices: RoomDevicesGallery()
             case .householdSettings: HouseholdSettingsGallery()
             }

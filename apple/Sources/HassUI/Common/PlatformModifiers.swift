@@ -45,4 +45,24 @@ extension View {
         self
         #endif
     }
+
+    /// Hides the content from assistive technologies only while `hidden` is true, without un-hiding
+    /// descendants (FestivalNativeApps `accessibilityHidden(while:)`). `.accessibilityHidden(someBool)`
+    /// did not reach the pages of the UIKit-backed root `TabView`.
+    func accessibilityHidden(while hidden: Bool) -> some View {
+        modifier(AccessibilityHiddenWhile(hidden: hidden))
+    }
+}
+
+/// Implementation of ``SwiftUI/View/accessibilityHidden(while:)``.
+private struct AccessibilityHiddenWhile: ViewModifier {
+    var hidden: Bool
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, macOS 15.0, *) {
+            content.accessibilityHidden(true, isEnabled: hidden)
+        } else {
+            content.accessibilityHidden(hidden)
+        }
+    }
 }

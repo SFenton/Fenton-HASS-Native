@@ -253,7 +253,8 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
             openSheet(app, "autoReset")
             keepScreenshot(app, "auto-reset-\(suffix)")
         }
-        XCUIDevice.shared.orientation = .portrait
+        // Only iPad rotates here; setting the orientation on an unfolded Duo hangs the runner (devices.md).
+        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
 
     // MARK: - Live
@@ -269,7 +270,8 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(row.frame.height, 43)
             row.tap()
             XCTAssertTrue(app.descendants(matching: .any)["household.\(page)"].waitForExistence(timeout: 10), "\(page) did not open")
-            if page != "admin" { goBack(app) }
+            // Where Settings splits, the next row replaces the trailing pane; elsewhere go back to the list.
+            if page != "admin", !app.buttons["split.close"].exists { goBack(app) }
         }
         // Admin last: its audit relaunches at AX5 (for the Dynamic Type check), which leaves `app` there.
         XCTAssertTrue(waitForLiveAdmin(app), "Live state did not load")
@@ -282,9 +284,17 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         }
     }
 
-    /// Selects the Settings tab: the tab bar can appear a moment after launch (unfolded iPhone Duo), and the
-    /// folded Duo has a rail instead.
+    /// Goes to Settings: through the navigation flyout in regular width (iPad, unfolded Duo), else the
+    /// tab. The tab bar can appear a moment after launch, and the folded Duo has a rail instead.
     private func showSettingsTab(_ app: XCUIApplication) {
+        let open = app.buttons["nav.open"]
+        if open.waitForExistence(timeout: 3) {
+            open.tap()
+            let row = app.buttons["nav.settings"]
+            XCTAssertTrue(row.waitForExistence(timeout: 5), "Flyout Settings row not found")
+            row.tap()
+            return
+        }
         let barTab = app.tabBars.buttons["Settings"]
         let tab = barTab.waitForExistence(timeout: 10)
             ? barTab

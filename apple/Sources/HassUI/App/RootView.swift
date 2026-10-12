@@ -22,6 +22,7 @@ public struct RootView: View {
                         .environment(connection)
                         .environment(connection.store)
                         .environment(session)
+                        .readsWindowHinge()
                         .onChange(of: connection.status) { _, status in
                             if status == .rejected { session.signOut() }
                         }
