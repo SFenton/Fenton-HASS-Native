@@ -40,7 +40,7 @@ enum RenderedContrast {
             }
             guard drawn else { return nil }
             return Capture(pixels: pixels, width: width, height: height, scale: screenshot.image.scale,
-                           orientation: screenshot.image.imageOrientation)
+                           orientation: .up)
         }
     }
 

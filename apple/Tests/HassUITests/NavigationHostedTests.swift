@@ -313,7 +313,7 @@ struct NavigationFlyoutHostedTests {
 @MainActor
 @Suite(.serialized)
 struct SettingsHostedTests {
-    /// Settings renders its list, placeholder and every topic beside the list in landscape.
+    /// Settings renders its list, placeholder and every household page beside the list in landscape.
     @Test func settingsRendersListPlaceholderAndTopics() async {
         let (session, connection) = offlineEnvironment()
         let model = SplitModel()
@@ -323,14 +323,14 @@ struct SettingsHostedTests {
             @Bindable var model: SplitModel
             var probe: ViewProbe
             var body: some View {
-                let topic = Binding<SettingsTopic?>(
-                    get: { model.openItem.flatMap(SettingsTopic.init(rawValue:)) },
+                let topic = Binding<HouseholdSettingsPage?>(
+                    get: { model.openItem.flatMap(HouseholdSettingsPage.init(rawValue:)) },
                     set: { model.openItem = $0?.rawValue }
                 )
                 OnDemandSplitStack(path: $model.path, openItem: topic, alwaysSplit: true) {
                     SettingsScreen(openTopic: topic)
-                } detail: { topic in
-                    SettingsTopicScreen(topic: topic).probed("detail.\(topic.rawValue)", probe)
+                } detail: { page in
+                    Text(page.pageTitle).probed("detail.\(page.rawValue)", probe)
                 } placeholder: {
                     Color.clear.probed("placeholder", probe)
                 }
@@ -347,7 +347,7 @@ struct SettingsHostedTests {
         defer { hosted.close() }
         await hosted.settle(until: { probe.visible.contains("placeholder") })
         #expect(probe.visible.contains("placeholder"))
-        for topic in SettingsTopic.allCases {
+        for topic in HouseholdSettingsPage.allCases {
             model.openItem = topic.rawValue
             await hosted.settle(0.3)
             #expect(probe.visible.contains("detail.\(topic.rawValue)"))
@@ -368,14 +368,6 @@ struct SettingsHostedTests {
         defer { hosted.close() }
         await hosted.settle()
         #expect(hosted.window.contentView != nil)
-    }
-
-    /// Every topic has a title, subtitle and symbol.
-    @Test func topicsAreComplete() {
-        for topic in SettingsTopic.allCases {
-            #expect(!topic.title.isEmpty && !topic.subtitle.isEmpty && !topic.symbol.isEmpty)
-            #expect(topic.id == topic.rawValue)
-        }
     }
 }
 #endif

@@ -21,6 +21,10 @@ apple/Sources/HassCore/Config/MediaRemote*.swift,
 apple/Sources/HassCore/MediaRemote/,
 apple/Sources/HassUI/Features/MediaRemote/,
 apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote lane (claude/project-thread-go5jtz)
+apple/Sources/HassCore/Config/HouseholdSettingsConfig.swift,
+apple/Sources/HassCore/Settings/,
+apple/Sources/HassUI/Features/Settings/Household/,
+apple/Sources/HassUI/Features/Gallery/HouseholdSettingsGallery.swift → household settings lane (claude/project-thread-fww01h)
 apple/Tests/**                                             → tests for your own files only
 .agents/pages/<id>/, .agents/controls/<id>/                → the lane for that page/control
 .agents/** (everything else)                               → orchestrator
@@ -45,7 +49,7 @@ apple/Tests/**                                             → tests for your ow
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
 | Security, Climate, Chores | Placeholders |
-| Settings | Web topic list (topics are placeholders) that splits on demand; Home Assistant Settings opens the full-screen modal (server, account, signed-in web pages, Sign Out) |
+| Settings | Household topic list that splits on demand: Admin (presence overrides, auto-reset), Special Device Modes, Guest Controls, Mach-E; Home Assistant Settings opens the full-screen modal (server, account, signed-in Settings/Profile web pages, Sign Out); Vacation and To-Do not ported |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | `OnDemandSplitStack` built and verified on the Mac: divider at the exact midpoint on iPad landscape, on the hinge on the unfolded Duo landscape; rotation moves the open item between pane and push; Settings is the first adopter |
 | iPad / unfolded Duo flyout | Built and verified on iPad and the unfolded Duo: overlay flyout in regular width, tab bar (folded Duo: vertical bar) in compact width |
@@ -63,7 +67,8 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11: Home Assistant settings modal verified on the Mac (`claude/project-thread-4ttpvm`): the Settings web page opens signed in through the `localStorage.hassTokens` hand-off (no web login form). Settings journeys and audits pass on iPhone, Duo folded / unfolded portrait / unfolded landscape and iPad portrait / landscape; 52 `swift test` tests; new files ≥ 95% logic / ≥ 95.7% UX. `apple_coverage.sh` now measures every test bundle (repo-wide 63% / 61%, below the bars before this change too). Simulators under heavy host load crash backboardd at random; crashed journeys were re-run alone. Redacted screenshots in `docs/screenshots/ha-settings/`.
 - 2026-10-11: shared thermostat dial (single and heat/cool range, VoiceOver-adjustable handles) with its debug gallery page.
 - 2026-10-11: PR #4 verified on the Mac: dial journeys, hosted VoiceOver-adjust tests and audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad (portrait and landscape); 69 `swift test` tests pass. Screenshots in `docs/screenshots/thermostat-dial/`.
+- 2026-10-11: household Settings pages (`claude/project-thread-fww01h`): Admin with the presence-override and auto-reset sheets, Special Device Modes, Guest Controls and Mach-E; explicit on/off with optimistic state; `SettingsSection`, `InlineAlert` and `SelectableOptionRow` in HassDesign; feature-local read-only `GlassStateTile`; gallery page `FENTON_GALLERY=household-settings`.
 - 2026-10-11: app navigation: regular-width overlay flyout (`App/Shell/`), `OnDemandSplitStack` with hinge-aware geometry, Settings list/detail split.
 - 2026-10-11: PR #3 verified on the Mac. Fixed: the split never turning off after rotating to portrait (it measured its own fixed-width panes); the hinge not being read (read in `onGeometryChange`, inactive division while flat); content under the flyout still reachable by VoiceOver (UIKit tab controller hidden too); the full-window scrim winning the accessibility hit test over the rows; white-on-accent selected row (2.5:1); the edge strip eating taps, then the edge swipe also activating the control under it (now a UIKit screen-edge pan); a `DynamicGridLayout` crash on unbounded widths; the coverage script measuring one of three bundles. Redacted screenshots in `docs/screenshots/pr-3/`.
 - 2026-10-11 (after merging #4/#7): known failure not from PR #3: the four `MediaRemoteJourneyTests` tab audits fail in iPad landscape on clean `origin/main` (74c98f2) exactly as on the navigation branch ('Last call: None' 1.2:1, toggle 'On' 1.0:1). The audited screenshot is a portrait-shaped capture of a landscape screen, so `RenderedContrast` samples the wrong pixels. Owner: the media-remote lane.
-
+- 2026-10-12: merged #11 into the navigation branch: the Settings split now opens the household pages (`HouseholdSettingsPage`) in place of the placeholder topics.

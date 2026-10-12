@@ -2,64 +2,21 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-// MARK: - Topics
-
-/// The Settings topics that open in place, in the web's order (`ha-sfenton-react-dash:src/constants/portedDashboard.ts`
-/// `SETTINGS_PAGE_ITEMS`; copy from `i18n/locales/en/pageSettings.json`). The web's last item, Home Assistant
-/// Settings, is not a topic: it opens ``HomeAssistantSettingsView`` full screen.
-enum SettingsTopic: String, CaseIterable, Identifiable, Hashable, Sendable {
-    case admin, specialDeviceModes, guests, vacation, todo, machE
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .admin: "Admin Controls"
-        case .specialDeviceModes: "Special Device Modes"
-        case .guests: "Guest Controls"
-        case .vacation: "Vacation"
-        case .todo: "To-Do"
-        case .machE: "Mach-E"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .admin: "Presence-Based Toggles, Automation Overrides, and More"
-        case .specialDeviceModes: "Allows enabling special device modes, such as High AQI Mode."
-        case .guests: "Toggle automations when guests stay over."
-        case .vacation: "Set away dates and prepare the house for vacation."
-        case .todo: "An admin panel for to-do tasks."
-        case .machE: "Controls for the Mustang Mach-E."
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .admin: SymbolMap.symbol(for: "mdi:shield-account")
-        case .specialDeviceModes: SymbolMap.symbol(for: "mdi:tune-vertical")
-        case .guests: SymbolMap.symbol(for: "mdi:account-multiple")
-        case .vacation: SymbolMap.symbol(for: "mdi:airplane")
-        case .todo: SymbolMap.symbol(for: "mdi:clipboard-list")
-        case .machE: SymbolMap.symbol(for: "mdi:car-estate")
-        }
-    }
-}
-
 // MARK: - Stack
 
-/// The Settings section: the list stays in the leading pane and a topic opens beside it where the window
-/// splits (iPad landscape, unfolded Duo landscape), with a placeholder while nothing is selected;
-/// elsewhere a topic pushes full screen (`.agents/design/apple/split-view.md` screen classification).
+/// The Settings section: the list stays in the leading pane and a household page opens beside it where
+/// the window splits (iPad landscape, unfolded Duo landscape), with a placeholder while nothing is
+/// selected; elsewhere a page pushes full screen (`.agents/design/apple/split-view.md` screen
+/// classification).
 struct SettingsStack: View {
     @Binding var path: NavigationPath
-    @SceneStorage("settings.openTopic") private var openTopic: SettingsTopic?
+    @SceneStorage("settings.openTopic") private var openTopic: HouseholdSettingsPage?
 
     var body: some View {
         OnDemandSplitStack(path: $path, openItem: $openTopic, alwaysSplit: true) {
             SettingsScreen(openTopic: $openTopic)
-        } detail: { topic in
-            SettingsTopicScreen(topic: topic)
+        } detail: { page in
+            HouseholdSettingsDestination(page: page)
         } placeholder: {
             ContentUnavailableView("Select a Setting", systemImage: "gearshape", description: Text("Choose a setting from the list."))
                 .accessibilityIdentifier("settings.placeholder")
@@ -69,30 +26,32 @@ struct SettingsStack: View {
 
 // MARK: - List
 
-/// The Settings list: the web's topics, then Home Assistant Settings, which opens full screen.
+/// The Settings list: the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`; Vacation and
+/// To-Do land with their own pages), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
+/// as a full-screen modal (`.agents/design/apple/split-view.md`).
 struct SettingsScreen: View {
-    @Binding var openTopic: SettingsTopic?
+    @Binding var openTopic: HouseholdSettingsPage?
     @State private var showsHomeAssistant = false
 
     /// Creates the list.
     /// - Parameter openTopic: The topic open beside or above the list; constant nil for a static render.
-    init(openTopic: Binding<SettingsTopic?> = .constant(nil)) {
+    init(openTopic: Binding<HouseholdSettingsPage?> = .constant(nil)) {
         _openTopic = openTopic
     }
 
     var body: some View {
         List {
             Section {
-                ForEach(SettingsTopic.allCases) { topic in
+                ForEach(HouseholdSettingsPage.allCases) { page in
                     Button {
-                        openTopic = topic
+                        openTopic = page
                     } label: {
-                        SettingsLinkRow(title: topic.title, subtitle: topic.subtitle, symbol: topic.symbol)
+                        SettingsLinkRow(title: page.rowTitle, subtitle: page.subtitle, symbol: page.symbol)
                     }
                     .buttonStyle(.plain)
-                    .listRowBackground(openTopic == topic ? Color.accentColor.opacity(0.18) : nil)
-                    .accessibilityAddTraits(openTopic == topic ? .isSelected : [])
-                    .accessibilityIdentifier("settings.topic.\(topic.rawValue)")
+                    .listRowBackground(openTopic == page ? Color.accentColor.opacity(0.18) : nil)
+                    .accessibilityAddTraits(openTopic == page ? .isSelected : [])
+                    .accessibilityIdentifier("settings.topic.\(page.rawValue)")
                 }
                 Button { showsHomeAssistant = true } label: {
                     SettingsLinkRow(
@@ -162,18 +121,5 @@ extension View {
         #else
         sheet(isPresented: isPresented) { HomeAssistantSettingsView() }
         #endif
-    }
-}
-
-// MARK: - Topic
-
-/// A Settings topic. Each topic's page lands in its own feature lane; until then it says so.
-struct SettingsTopicScreen: View {
-    var topic: SettingsTopic
-
-    var body: some View {
-        ContentUnavailableView(topic.title, systemImage: topic.symbol, description: Text("Coming in a later update."))
-            .navigationTitle(topic.title)
-            .accessibilityIdentifier("settings.detail.\(topic.rawValue)")
     }
 }

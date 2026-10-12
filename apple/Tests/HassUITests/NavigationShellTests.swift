@@ -148,19 +148,3 @@ struct SplitGeometryTests {
         #expect(geometry.trailingWidth == 499.5)
     }
 }
-
-/// Settings topics mirror the web's `SETTINGS_PAGE_ITEMS`.
-struct SettingsTopicTests {
-    @Test func topicsFollowTheWebOrder() {
-        #expect(SettingsTopic.allCases.map(\.title) == [
-            "Admin Controls", "Special Device Modes", "Guest Controls", "Vacation", "To-Do", "Mach-E",
-        ])
-        #expect(SettingsTopic.allCases.allSatisfy { !$0.subtitle.isEmpty && !$0.symbol.isEmpty })
-    }
-}
-
-extension SettingsTopicTests {
-    @Test func everyTopicHasAMappedSymbol() {
-        #expect(SettingsTopic.allCases.allSatisfy { $0.symbol != "circle" })
-    }
-}

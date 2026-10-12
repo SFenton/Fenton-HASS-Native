@@ -73,11 +73,11 @@ final class NavigationJourneyTests: XCTestCase {
             XCTAssertTrue(tab(title, in: app).exists, "\(title) tab missing")
         }
         open("settings", title: "Settings", in: app)
-        app.buttons["settings.topic.vacation"].tap()
-        XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 5))
+        app.buttons["settings.topic.specialDeviceModes"].tap()
+        XCTAssertTrue(app.navigationBars["Special Device Modes"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["split.close"].exists, "Compact width split")
         goBack(in: app)
-        XCTAssertTrue(app.buttons["settings.topic.vacation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.topic.specialDeviceModes"].waitForExistence(timeout: 5))
     }
 
     /// The Settings list audits clean in compact width, AX5 included.
@@ -95,25 +95,25 @@ final class NavigationJourneyTests: XCTestCase {
         // The pushed topic page too.
         app = try FentonHomeApp.launchSignedIn()
         open("settings", title: "Settings", in: app)
-        app.buttons["settings.topic.vacation"].tap()
-        XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 5))
+        app.buttons["settings.topic.specialDeviceModes"].tap()
+        XCTAssertTrue(app.navigationBars["Special Device Modes"].waitForExistence(timeout: 5))
         sleep(1)
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
             self.open("settings", title: "Settings", in: large)
-            let vacation = large.buttons["settings.topic.vacation"]
-            for _ in 0..<8 where !(vacation.exists && vacation.isHittable) { large.collectionViews.firstMatch.swipeUp() }
-            vacation.tap()
-            XCTAssertTrue(large.navigationBars["Vacation"].waitForExistence(timeout: 5))
+            let modes = large.buttons["settings.topic.specialDeviceModes"]
+            for _ in 0..<8 where !(modes.exists && modes.isHittable) { large.collectionViews.firstMatch.swipeUp() }
+            modes.tap()
+            XCTAssertTrue(large.navigationBars["Special Device Modes"].waitForExistence(timeout: 5))
             sleep(1)
             return large
         }
         app = try FentonHomeApp.launchSignedIn()
         open("settings", title: "Settings", in: app)
-        app.buttons["settings.topic.vacation"].tap()
-        XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 5))
+        app.buttons["settings.topic.specialDeviceModes"].tap()
+        XCTAssertTrue(app.navigationBars["Special Device Modes"].waitForExistence(timeout: 5))
         goBack(in: app)
-        XCTAssertTrue(app.buttons["settings.topic.vacation"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings.topic.specialDeviceModes"].waitForExistence(timeout: 5))
     }
 
     // MARK: - Regular width
@@ -254,8 +254,8 @@ final class NavigationJourneyTests: XCTestCase {
         app.buttons["settings.topic.guests"].tap()
         XCTAssertTrue(app.buttons["split.close"].waitForExistence(timeout: 3))
 
-        app.buttons["settings.topic.vacation"].tap()
-        XCTAssertTrue(app.navigationBars["Vacation"].waitForExistence(timeout: 3), "Selecting another topic did not replace the pane")
+        app.buttons["settings.topic.specialDeviceModes"].tap()
+        XCTAssertTrue(app.navigationBars["Special Device Modes"].waitForExistence(timeout: 3), "Selecting another topic did not replace the pane")
         app.buttons["split.close"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["settings.placeholder"].waitForExistence(timeout: 3))
 
@@ -279,7 +279,7 @@ final class NavigationJourneyTests: XCTestCase {
         open("settings", title: "Settings", in: app)
         XCTAssertFalse(app.descendants(matching: .any)["settings.placeholder"].exists, "Portrait placeholder pane")
         app.buttons["settings.topic.admin"].tap()
-        XCTAssertTrue(app.navigationBars["Admin Controls"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.navigationBars["Admin"].waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["split.close"].exists)
     }
 
