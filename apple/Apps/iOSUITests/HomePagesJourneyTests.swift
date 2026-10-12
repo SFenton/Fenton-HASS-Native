@@ -193,11 +193,18 @@ final class HomePagesJourneyTests: XCTestCase {
         XCTAssertLessThan(manual.frame.minY, before - 40, "A vertical drag starting on a tile scrolls the page")
     }
 
+    // One test per page, as for Sprinklers: a host-load crash costs one page.
     func testCustomLightsAuditsAndScreenshots() throws {
         try auditAndCapture("custom-lights") { self.launch("custom-lights", ["FENTON_GALLERY_CLEAN": "1"], waitFor: "customLights.manual") }
+    }
+
+    func testCustomLightsModesAuditsAndScreenshots() throws {
         try auditAndCapture("custom-lights-modes") {
             self.launch("custom-lights", ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_PICKER": "1"], waitFor: "customLights.mode.Custom")
         }
+    }
+
+    func testCustomLightSheetAuditsAndScreenshots() throws {
         try auditAndCapture("custom-light-sheet") {
             self.launch("custom-lights", ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_LIGHT": "light.front_door_bollard_1"],
                         waitFor: "customLight.brightness")
