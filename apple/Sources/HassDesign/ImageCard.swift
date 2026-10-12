@@ -144,6 +144,10 @@ public struct RemoteImage: View {
                 }
             }
             .clipped()
+            // Decorative and never a touch target. `.clipped()` limits drawing, not hit testing: a fill-scaled
+            // photo overflowing its frame covered the recipe tabs above it and swallowed their taps (live recipe
+            // on iPad, 2026-10-12). Cards keep their taps through the button's content shape.
+            .allowsHitTesting(false)
             .accessibilityHidden(true)
     }
 
