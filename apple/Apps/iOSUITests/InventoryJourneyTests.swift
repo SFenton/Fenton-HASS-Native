@@ -162,11 +162,11 @@ final class InventoryJourneyTests: XCTestCase {
         XCTAssertEqual(name.value as? String, "Greek Yogurt")
         // Each step's button is retried until its step shows: taps landing mid-transition are dropped.
         let step = { (id: String) in app.descendants(matching: .any)["scan.\(id)"].exists }
-        app.buttons["scan.forward"].tap(until: { step("expiry") })
+        app.buttons["scan.forward"].tap(until: { step("expiry") }, stillOn: { step("barcode") })
 
         XCTAssertTrue(app.buttons["scan.simulate"].waitForExistence(timeout: 5))
         app.buttons["scan.simulate"].tap(until: { app.buttons["scan.forward"].label == "Next" })
-        app.buttons["scan.forward"].tap(until: { step("review") })
+        app.buttons["scan.forward"].tap(until: { step("review") }, stillOn: { step("expiry") })
 
         XCTAssertTrue(app.buttons["scan.add"].waitForExistence(timeout: 5))
         app.buttons["scan.add"].tap(until: { app.buttons["scan.done"].exists })
@@ -184,13 +184,15 @@ final class InventoryJourneyTests: XCTestCase {
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
         name.typeText("Oat Milk")
-        app.buttons["scan.forward"].tap(until: { app.descendants(matching: .any)["scan.expiry"].exists })
+        app.buttons["scan.forward"].tap(until: { app.descendants(matching: .any)["scan.expiry"].exists },
+                                        stillOn: { app.descendants(matching: .any)["scan.barcode"].exists })
         XCTAssertTrue(app.buttons["scan.manualExpiry"].waitForExistence(timeout: 5))
         app.buttons["scan.manualExpiry"].tap(until: { app.buttons["scan.quick.1-week"].exists })
         XCTAssertTrue(app.buttons["scan.quick.1-week"].waitForExistence(timeout: 5))
         app.buttons["scan.quick.1-week"].tap()
         XCTAssertTrue(app.buttons["scan.quick.1-week"].isSelected)
-        app.buttons["scan.forward"].tap(until: { app.descendants(matching: .any)["scan.review"].exists })
+        app.buttons["scan.forward"].tap(until: { app.descendants(matching: .any)["scan.review"].exists },
+                                        stillOn: { app.descendants(matching: .any)["scan.expiry"].exists })
         XCTAssertTrue(app.buttons["scan.add"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["scan.location.dispensa"].isSelected || app.buttons["scan.location.frigo"].isSelected)
     }
@@ -269,14 +271,17 @@ final class InventoryJourneyTests: XCTestCase {
                 // At AX5 the step's buttons scroll with the form. Forward stays disabled while the lookup runs;
                 // tap until the expiry step shows.
                 reveal(app.buttons["scan.forward"], in: app)
-                    .tap(until: { app.descendants(matching: .any)["scan.expiry"].exists })
+                    .tap(until: { app.descendants(matching: .any)["scan.expiry"].exists },
+                         stillOn: { app.descendants(matching: .any)["scan.barcode"].exists })
                 reveal(app.buttons["scan.manualExpiry"], in: app)
             }
             if step >= 3 {
                 reveal(app.buttons["scan.manualExpiry"], in: app)
                     .tap(until: { app.switches["scan.hasExpiry"].exists || app.buttons["scan.quick.1-month"].exists })
                 reveal(app.buttons["scan.quick.1-month"], in: app).tap()
-                reveal(app.buttons["scan.forward"], in: app).tap()
+                reveal(app.buttons["scan.forward"], in: app)
+                    .tap(until: { app.descendants(matching: .any)["scan.review"].exists },
+                         stillOn: { app.descendants(matching: .any)["scan.expiry"].exists })
                 XCTAssertTrue(app.descendants(matching: .any)["scan.review"].waitForExistence(timeout: 5))
             }
             sleep(1)
@@ -293,16 +298,17 @@ final class InventoryJourneyTests: XCTestCase {
 
 private extension XCUIElement {
     /// Taps, then retries (up to three taps) until `done` holds: a tap that lands while a sheet or alert is
-    /// still animating in is dropped on a loaded host.
-    func tap(until done: () -> Bool) {
+    /// still animating in is dropped on a loaded host. `stillOn` guards a retry: a slow transition can put a
+    /// same-identifier button of the next step (Add Item's forward) under the retry, which would skip a step.
+    func tap(until done: () -> Bool, stillOn: () -> Bool = { true }) {
         for _ in 0..<3 {
             tap()
-            let deadline = Date().addingTimeInterval(4)
+            let deadline = Date().addingTimeInterval(8)
             while Date() < deadline {
                 if done() { return }
                 usleep(250_000)
             }
-            guard exists, isHittable else { return }
+            guard !done(), stillOn(), exists, isHittable else { return }
         }
     }
 
