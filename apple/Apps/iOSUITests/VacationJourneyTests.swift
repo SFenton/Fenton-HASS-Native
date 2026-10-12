@@ -250,7 +250,7 @@ final class VacationJourneyTests: XCTestCase {
         case .soloTripEditor: element("soloTrip.toggle", in: app)
         default: nil
         }
-        try FentonHomeApp.audit(app, presenter: presenter) { self.open(page, clean: true, arguments: FentonHomeApp.ax5) }
+        try FentonHomeApp.audit(app, ax5Page: { self.open(page, clean: true, arguments: FentonHomeApp.ax5) }, presenter: presenter)
     }
 
     func testChooserPassesAudit() throws { try audit(.chooser) }
