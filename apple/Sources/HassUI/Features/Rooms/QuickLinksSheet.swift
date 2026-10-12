@@ -54,9 +54,10 @@ struct QuickLinksSheet: View {
     var caller: (any HassServiceCalling)?
     var onNavigate: (HomeRoute) -> Void
     @Environment(\.dismiss) private var dismiss
+    @State private var path: [QuickLink.Detail] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 QuickLinksGrid(onNavigate: open)
                 .padding(HassTokens.Spacing.l)
@@ -91,9 +92,12 @@ struct QuickLinksSheet: View {
         }
     }
 
-    /// A page link: close the sheet and open its page.
+    /// Rooms and Security System push inside the sheet; page links close it and open their page.
     func open(_ link: QuickLink) {
-        if case let .navigate(path) = link.action, let route = HomeRoute(path: path) { go(route) }
+        switch link.action {
+        case let .detail(detail): path.append(detail)
+        case let .navigate(path): if let route = HomeRoute(path: path) { go(route) }
+        }
     }
 
     func go(_ route: HomeRoute) {
@@ -116,37 +120,26 @@ struct QuickLinksGrid: View {
         }
     }
 
-    @ViewBuilder
     private func tile(_ link: QuickLink) -> some View {
-        let face = QuickLinkTile(link: link)
-        let subtitle = QuickLinkTile.subtitle(link, store: store)
-        switch link.action {
-        case let .detail(detail):
-            NavigationLink(value: detail) { face }
-                .buttonStyle(.plain)
-                .quickLinkAccessibility(link, subtitle: subtitle)
-        case .navigate:
-            Button { onNavigate(link) } label: { face }
-                .buttonStyle(.plain)
-                .quickLinkAccessibility(link, subtitle: subtitle)
-        }
+        // The tile is the control. (A Button or NavigationLink around a tile drawn with hit testing off never
+        // received taps: a label that is not hit-testable leaves the outer control nothing to tap.)
+        QuickLinkTile(link: link) { onNavigate(link) }
+            .accessibilityHint(link.action.isDetail ? "Opens \(link.title) in Quick Links" : "Opens the \(link.title) page")
+            .accessibilityIdentifier("quickLinks.\(link.id)")
     }
 }
 
-private extension View {
-    /// One element per tile: the face is drawing only, so VoiceOver activates the parent link or button.
-    func quickLinkAccessibility(_ link: QuickLink, subtitle: String?) -> some View {
-        accessibilityElement(children: .ignore)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityLabel(link.title)
-            .accessibilityValue(subtitle ?? "")
-            .accessibilityIdentifier("quickLinks.\(link.id)")
+private extension QuickLink.Action {
+    var isDetail: Bool {
+        if case .detail = self { return true }
+        return false
     }
 }
 
 /// One Quick Links tile (web `QuickLinkTile`): a disclosure tile, tinted by the alarm state for Security System.
 struct QuickLinkTile: View {
     var link: QuickLink
+    var action: () -> Void = {}
     @Environment(EntityStore.self) private var store
 
     /// The tile's state line, which the parent control also reads to VoiceOver.
@@ -165,9 +158,7 @@ struct QuickLinkTile: View {
         let wash: Color? = security.map { $0.color.color.opacity(0.5) } ?? link.backgroundColor?.color
         GlassTile(title: link.title, subtitle: subtitle, symbol: SymbolMap.symbol(for: security?.icon ?? link.icon),
                   tint: link.tone.color, isActive: true, kind: .navigate,
-                  wash: ScreenshotPrivacy.isRedacting && security != nil ? nil : wash)
-            // The parent link or button is the control; this face only draws.
-            .allowsHitTesting(false)
+                  wash: ScreenshotPrivacy.isRedacting && security != nil ? nil : wash, action: action)
     }
 }
 
@@ -200,18 +191,10 @@ struct RoomNavigationGrid: View {
     var body: some View {
         DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
             ForEach(RoomNavigation.ranked { store.entity($0).state?.state }) { item in
-                Button { open(item) } label: {
-                    GlassTile(title: item.title, symbol: SymbolMap.symbol(for: item.icon), tint: item.color.color,
-                              isActive: true, kind: .navigate, wash: item.color.color.opacity(0.45))
-                        .allowsHitTesting(false)
-                }
-                .buttonStyle(.plain)
-                // One element: the tile face is drawing only, so VoiceOver activates this button.
-                .accessibilityElement(children: .ignore)
-                .accessibilityAddTraits(.isButton)
-                .accessibilityLabel(item.title)
-                .accessibilityHint("Opens the \(item.title) page")
-                .accessibilityIdentifier("rooms.\(item.path)")
+                GlassTile(title: item.title, symbol: SymbolMap.symbol(for: item.icon), tint: item.color.color,
+                          isActive: true, kind: .navigate, wash: item.color.color.opacity(0.45)) { open(item) }
+                    .accessibilityHint("Opens the \(item.title) page")
+                    .accessibilityIdentifier("rooms.\(item.path)")
             }
         }
         .accessibilityElement(children: .contain)
