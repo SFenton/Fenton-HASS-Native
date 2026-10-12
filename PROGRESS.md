@@ -21,6 +21,9 @@ apple/Sources/HassCore/Config/MediaRemote*.swift,
 apple/Sources/HassCore/MediaRemote/,
 apple/Sources/HassUI/Features/MediaRemote/,
 apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote lane (claude/project-thread-go5jtz)
+apple/Sources/HassCore/Bedroom/,
+apple/Sources/HassUI/Features/Bedroom/,
+apple/Sources/HassUI/Features/Gallery/BedroomGallery.swift   → bedroom devices lane (claude/project-thread-hmhfaj)
 apple/Sources/HassCore/Config/HouseholdSettingsConfig.swift,
 apple/Sources/HassCore/Settings/,
 apple/Sources/HassUI/Features/Settings/Household/,
@@ -56,6 +59,7 @@ apple/Tests/**                                             → tests for your ow
 | Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`), which now measures every test bundle: repo-wide 54.2% logic / 70.5% UX on 2026-10-11 (below the bars; the gaps are HassCore connection/Keychain, Login, the Home chip sheets and RootView/AppSession) |
 | Media remote (sheet, 4 remotes, Hue Sync) | Shared component + debug gallery; not yet opened from a page (Rooms/Media lanes wire it) |
 | Watch app | Target stub only |
+| Bedroom devices (wake light, SleepyPod bed sides) | Tiles, sheets, alarm editors, active alarm, Solo Trip routing; debug gallery `FENTON_GALLERY=bedroom`; Rooms lane places them. Verified on the Mac 2026-10-12: journeys and audits pass on iPhone, iPad (both orientations) and folded Duo; unfolded Duo portrait journeys 14/15 (one simulator crash), unfolded audits/captures not run (Device Hub unscriptable); Bedroom coverage 98.0% logic / 92.1% UX |
 | Vacuums (page, sheet, Valetudo map, area editor) | `VacuumsScreen` + `VacuumSheet`; reached from Home until side navigation lands; debug gallery `FENTON_GALLERY=vacuums` |
 | Room device sheets (fan, air quality, humidifier, grill) | Sheets + debug gallery `FENTON_GALLERY=room-devices`; Room pages wire them in |
 | Thermostat dial (shared control) | `ThermostatDial` + `ClimateThermostatDial`; debug gallery `FENTON_GALLERY=thermostat-dial` |
