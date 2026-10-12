@@ -38,7 +38,11 @@ final class ClimateJourneyTests: XCTestCase {
             // Scroll inside the sheet when one is up: an iPad sheet doesn't cover the window, and a drag on the
             // dimmed area outside it scrolls nothing.
             let sheets = app.scrollViews.matching(NSPredicate(format: "identifier BEGINSWITH 'climate.sheet.' OR identifier == 'climate.detail'"))
-            let area = sheets.allElementsBoundByIndex.last { $0.exists && $0.isHittable } ?? window
+            // The one holding the element: after Back the popped detail's scroll view can linger in the tree.
+            let holder = element.exists
+                ? sheets.allElementsBoundByIndex.first { $0.descendants(matching: .any)[element.identifier].exists }
+                : nil
+            let area = holder ?? sheets.allElementsBoundByIndex.last { $0.exists && $0.isHittable } ?? window
             let frame = area.frame
             // Clear of the bars: navigation bar and the gallery's last-call line at the top, home indicator below.
             let top = frame.minY + Swift.min(frame.height * 0.18, 160)
