@@ -9,7 +9,7 @@ public struct FilterSheet<Content: View>: View {
     public var title: String
     /// Apply is enabled only when the draft differs from what is applied.
     public var canApply: Bool
-    /// Reset is enabled only when the draft differs from the defaults.
+    /// Reset is shown only when the draft differs from the defaults.
     public var canReset: Bool
     public var onApply: () -> Void
     public var onReset: () -> Void
@@ -32,10 +32,19 @@ public struct FilterSheet<Content: View>: View {
         NavigationStack {
             Form {
                 content()
-                Section {
-                    Button("Reset to Defaults", role: .destructive, action: onReset)
-                        .disabled(!canReset)
+                // Shown only when there is something to reset: a disabled row fails the contrast audit, and
+                // plain ink (not the destructive red) keeps 4.5:1 on the grouped background in both modes.
+                if canReset {
+                    Section {
+                        Button(action: onReset) {
+                            Label("Reset to Defaults", systemImage: "arrow.counterclockwise")
+                                .foregroundStyle(HassTokens.Ink.primary)
+                                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                         .accessibilityIdentifier("filterSheet.reset")
+                    }
                 }
             }
             .navigationTitle(title)
@@ -66,6 +75,32 @@ public struct FilterSheet<Content: View>: View {
     }
 }
 
+/// A titled `Form` section for a filter sheet. Use it instead of `Section("…")`: the system header's
+/// secondary label measured 3.1:1 on the sheet's grouped background, so the header uses primary ink.
+public struct FilterSection<Content: View>: View {
+    public var title: String
+    @ViewBuilder public var content: () -> Content
+
+    /// Creates a section.
+    public init(_ title: String, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.content = content
+    }
+
+    public var body: some View {
+        Section {
+            content()
+        } header: {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(HassTokens.Ink.primary)
+                .textCase(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+        }
+    }
+}
+
 /// A single-choice row with a title, optional subtitle and a checkmark (web radio rows in sort/filter modals).
 public struct FilterOptionRow: View {
     public var title: String
@@ -87,9 +122,10 @@ public struct FilterOptionRow: View {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
                     Text(title).foregroundStyle(HassTokens.Ink.primary)
                     if let subtitle {
+                        // Primary ink: the 72% secondary ink measured 4.2:1 on the iPad sheet's grouped rows.
                         Text(subtitle)
                             .font(.footnote)
-                            .foregroundStyle(HassTokens.Ink.secondary)
+                            .foregroundStyle(HassTokens.Ink.primary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

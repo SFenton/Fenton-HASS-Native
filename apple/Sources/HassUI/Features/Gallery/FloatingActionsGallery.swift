@@ -48,7 +48,7 @@ struct FloatingActionsGallery: View {
             if sheet == .sort {
                 FilterSheet(title: "Sort Rows", canApply: draftSort != sort, canReset: draftSort != .available,
                             onApply: { sort = draftSort; lastAction = "sort \(sort.rawValue)" }, onReset: { draftSort = .available }) {
-                    Section {
+                    FilterSection("Sort By") {
                         ForEach(Sort.allCases, id: \.self) { option in
                             FilterOptionRow(title: option.rawValue, subtitle: "Sort by \(option.rawValue.lowercased()).", isSelected: draftSort == option) {
                                 draftSort = option
@@ -60,7 +60,7 @@ struct FloatingActionsGallery: View {
             } else {
                 FilterSheet(title: "Filter Rows", canApply: draftMinimum != minimum, canReset: draftMinimum != 0,
                             onApply: { minimum = draftMinimum; lastAction = "filter \(Int(minimum))" }, onReset: { draftMinimum = 0 }) {
-                    Section("Minimum Ingredients Available") {
+                    FilterSection("Minimum Ingredients Available") {
                         Slider(value: $draftMinimum, in: 0...100, step: 5) { Text("Minimum Ingredients Available") }
                             .accessibilityValue("\(Int(draftMinimum)) percent")
                             .accessibilityIdentifier("gallery.filter.minimum")
