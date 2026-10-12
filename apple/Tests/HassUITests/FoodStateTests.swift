@@ -162,6 +162,13 @@ struct FoodStateTests {
         #expect(SuggestedRecipesCarousel.adjusted(0, .decrement, pageCount: 5) == 0)
     }
 
+    @Test func percentSliderStepsByFive() {
+        #expect(PercentSliderRow.adjusted(25, .increment) == 30)
+        #expect(PercentSliderRow.adjusted(100, .increment) == 100)
+        #expect(PercentSliderRow.adjusted(5, .decrement) == 0)
+        #expect(PercentSliderRow.adjusted(0, .decrement) == 0)
+    }
+
     @Test func galleryRendersItsRoutes() {
         #expect(render(FoodGallery()) != nil)
         #expect(render(FoodGallery(), size: .accessibility5) != nil)
