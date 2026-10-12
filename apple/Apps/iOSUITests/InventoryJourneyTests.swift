@@ -254,8 +254,16 @@ final class InventoryJourneyTests: XCTestCase {
         /// footer's large buttons leave the form a short window, so it can take several swipes.
         @discardableResult
         func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+            // Clear of the pinned footer too: on the short iPad landscape sheet a row behind the footer still reads
+            // as hittable, and tapping it pressed the footer's Skip instead (the journey jumped to review).
+            func clear() -> Bool {
+                guard element.waitForExistence(timeout: 2), element.isHittable else { return false }
+                let forward = app.buttons["scan.forward"]
+                guard forward.exists, element.identifier != "scan.forward" else { return true }
+                return element.frame.maxY <= forward.frame.minY - 8 || element.frame.minY >= forward.frame.maxY
+            }
             var swipes = 0
-            while !(element.waitForExistence(timeout: 2) && element.isHittable), swipes < 10 {
+            while !clear(), swipes < 10 {
                 app.swipeUp()
                 swipes += 1
             }
