@@ -307,9 +307,16 @@ final class NavigationJourneyTests: XCTestCase {
                 tab("Settings", in: app).tap()
             }
             XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+            // Show the end of the list: it closes with the Home Assistant row (below the fold on
+            // phones and in the split's leading pane).
+            let list = app.collectionViews.firstMatch
+            let homeAssistant = app.buttons["settings.homeAssistant"]
+            for _ in 0..<6 where !(homeAssistant.exists && homeAssistant.isHittable) { list.swipeUp() }
             sleep(1)
             keep(app, "settings-\(suffix)")
-            app.buttons["settings.topic.guests"].tap()
+            let guests = app.buttons["settings.topic.guests"]
+            for _ in 0..<6 where !(guests.exists && guests.isHittable) { list.swipeDown() }
+            guests.tap()
             sleep(1)
             keep(app, "settings-topic-\(suffix)")
             // Close it: the open topic is scene-restored on the next launch, which would hide the
