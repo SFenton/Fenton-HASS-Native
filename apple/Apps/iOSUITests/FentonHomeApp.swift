@@ -140,8 +140,15 @@ enum FentonHomeApp {
             issues.append(issue)
             return true
         }
+        // Page text under the floating action bar's hard scroll edge is faded out, and its contrast issue can come
+        // back without an element (FloatingActions gallery, iPhone 2026-10-12). Like the tab bar rule, accept an
+        // element-less contrast issue only while page text really sits under the bar. Read once, after the audit.
+        let textUnderFloatingBar = floatingBarTop.map { top in
+            app.staticTexts.allElementsBoundByIndex.contains { !$0.label.isEmpty && $0.frame.maxY > top && $0.frame.minY < top + 52 }
+        } ?? false
         for issue in issues {
             if isSystemDrawn(issue, in: app, popover: popover) { continue }
+            if issue.auditType == .contrast, issue.element == nil, textUnderFloatingBar { continue }
             var measured = ""
             if issue.auditType == .contrast, let element = issue.element, let capture,
                var ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
