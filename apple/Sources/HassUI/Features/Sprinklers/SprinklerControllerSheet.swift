@@ -34,9 +34,15 @@ struct SprinklerControllerSheet: View {
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 }
                 .navigationDestination(for: SprinklerDetail.self) { detail in
-                    switch detail {
-                    case let .water(zone): SprinklerWaterPage(controller: controller, zone: zone) { pop() }
-                    case let .schedule(zone): SprinklerSchedulePage(controller: controller, zone: zone) { pop() }
+                    Group {
+                        switch detail {
+                        case let .water(zone): SprinklerWaterPage(controller: controller, zone: zone) { pop() }
+                        case let .schedule(zone): SprinklerSchedulePage(controller: controller, zone: zone) { pop() }
+                        }
+                    }
+                    // Done on every level, so the sheet closes from a pushed page too (HIG: Sheets).
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                     }
                 }
         }
