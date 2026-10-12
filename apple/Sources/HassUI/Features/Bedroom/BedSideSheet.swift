@@ -547,7 +547,7 @@ struct BedAlarmEditor: View {
                     Button(role: .destructive) { confirmingDelete = true } label: {
                         Text("Delete").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderedProminent) // Filled like Stop: red on the bordered pink fill missed 4.5:1.
                     .tint(BedroomStyle.danger)
                     .disabled(saving || !controller.alarmsEditable)
                     .accessibilityIdentifier("bed.editor.delete")
