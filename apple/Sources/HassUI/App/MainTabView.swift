@@ -53,10 +53,10 @@ struct MainTabView: View {
         default:
             NavigationStack(path: navigator.path(for: section)) {
                 Group {
-                    if section == .home {
-                        HomeScreen()
-                    } else {
-                        PlaceholderScreen(title: section.title, symbol: section.symbol)
+                    switch section {
+                    case .home: HomeScreen()
+                    case .climate: ClimateScreen()
+                    default: PlaceholderScreen(title: section.title, symbol: section.symbol)
                     }
                 }
                 .sectionRootChrome()

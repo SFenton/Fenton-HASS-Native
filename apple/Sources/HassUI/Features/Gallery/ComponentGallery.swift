@@ -12,6 +12,7 @@ public struct ComponentGallery: View {
         case vacuums
         case roomDevices = "room-devices"
         case householdSettings = "household-settings"
+        case climate
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -37,6 +38,7 @@ public struct ComponentGallery: View {
             case .vacuums: VacuumGallery()
             case .roomDevices: RoomDevicesGallery()
             case .householdSettings: HouseholdSettingsGallery()
+            case .climate: ClimateGallery()
             }
         }
     }

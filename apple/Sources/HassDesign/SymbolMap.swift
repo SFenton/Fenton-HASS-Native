@@ -128,6 +128,22 @@ public enum SymbolMap {
         "mdi:car-door-lock": "lock",
         "mdi:car-seat": "carseat.left",
         "mdi:car-defrost-front": "windshield.front.and.heat.waves",
+        // Climate (`ClimateConfig`, `.agents/pages/climate/spec.md`)
+        "mdi:home-thermometer": "thermometer.variable",
+        "mdi:home-thermometer-outline": "thermometer.and.liquid.waves",
+        "mdi:thermometer-check": "thermometer.medium",
+        "mdi:thermometer-off": "thermometer.medium.slash",
+        "mdi:thermometer-alert": "thermometer.high",
+        "mdi:thermostat-auto": "dial.medium",
+        "mdi:leaf-circle": "leaf.circle",
+        "mdi:home-export-outline": "figure.walk.departure",
+        "mdi:home-check": "checkmark.circle",
+        "mdi:hvac": "air.conditioner.horizontal",
+        "mdi:fan-check": "fan.fill",
+        "mdi:snowflake": "snowflake",
+        "mdi:sun-snowflake-variant": "sun.snow",
+        "mdi:door-open": "door.left.hand.open",
+        "mdi:window-open": "window.vertical.open",
     ]
 
     /// The SF Symbol name for an MDI icon.
