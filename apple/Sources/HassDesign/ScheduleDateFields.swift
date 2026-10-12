@@ -61,28 +61,40 @@ struct ScheduleDatePicker: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        // The label wraps instead of truncating; at accessibility sizes the picker drops below it.
-        let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
-            : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.s))
-        layout {
-            Text(field.label)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            DatePicker(field.label, selection: selection, displayedComponents: field.part == .date ? .date : .hourAndMinute)
-                .labelsHidden()
-                .accessibilityLabel(field.label)
-                .accessibilityIdentifier(field.identifier)
+        // Label and picker side by side when the label fits on one line, else the picker drops below
+        // it (narrow iPad sheet columns, accessibility sizes); the label never truncates.
+        ViewThatFits(in: .horizontal) {
+            if !typeSize.isAccessibilitySize {
+                HStack(spacing: HassTokens.Spacing.s) {
+                    label.fixedSize()
+                    Spacer(minLength: 0)
+                    picker
+                }
+            }
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                label.fixedSize(horizontal: false, vertical: true)
+                picker
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .font(.body)
         .foregroundStyle(HassTokens.Ink.primary)
         .frame(minHeight: HassTokens.minTarget)
         .padding(.horizontal, HassTokens.Spacing.m)
-        .padding(.vertical, typeSize.isAccessibilitySize ? HassTokens.Spacing.s : 0)
+        .padding(.vertical, HassTokens.Spacing.xs)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
             // The saved value moved (an echo or another device): drop the draft.
             .onChange(of: field.value) { _, _ in draft = nil }
             .onDisappear { commit?.cancel() }
+    }
+
+    private var label: some View { Text(field.label) }
+
+    private var picker: some View {
+        DatePicker(field.label, selection: selection, displayedComponents: field.part == .date ? .date : .hourAndMinute)
+            .labelsHidden()
+            .accessibilityLabel(field.label)
+            .accessibilityIdentifier(field.identifier)
     }
 
     private var selection: Binding<Date> {

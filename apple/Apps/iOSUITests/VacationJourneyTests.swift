@@ -245,7 +245,12 @@ final class VacationJourneyTests: XCTestCase {
     /// is dimmed by the modal).
     private func audit(_ page: Page) throws {
         let app = open(page, clean: true)
-        try FentonHomeApp.audit(app) { self.open(page, clean: true, arguments: FentonHomeApp.ax5) }
+        let presenter: XCUIElement? = switch page {
+        case .confirmSheet: element("vacation.modeCard", in: app)
+        case .soloTripEditor: element("soloTrip.toggle", in: app)
+        default: nil
+        }
+        try FentonHomeApp.audit(app, presenter: presenter) { self.open(page, clean: true, arguments: FentonHomeApp.ax5) }
     }
 
     func testChooserPassesAudit() throws { try audit(.chooser) }
