@@ -8,6 +8,7 @@ public struct ComponentGallery: View {
     public enum Page: String, CaseIterable, Sendable {
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
+        case roomDevices = "room-devices"
         case householdSettings = "household-settings"
     }
 
@@ -30,6 +31,7 @@ public struct ComponentGallery: View {
             switch page {
             case .mediaRemote: MediaRemoteGallery()
             case .thermostatDial: ThermostatDialGallery()
+            case .roomDevices: RoomDevicesGallery()
             case .householdSettings: HouseholdSettingsGallery()
             }
         }
