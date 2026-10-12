@@ -273,7 +273,8 @@ final class InventoryJourneyTests: XCTestCase {
                 reveal(app.buttons["scan.manualExpiry"], in: app)
             }
             if step >= 3 {
-                reveal(app.buttons["scan.manualExpiry"], in: app).tap()
+                reveal(app.buttons["scan.manualExpiry"], in: app)
+                    .tap(until: { app.switches["scan.hasExpiry"].exists || app.buttons["scan.quick.1-month"].exists })
                 reveal(app.buttons["scan.quick.1-month"], in: app).tap()
                 reveal(app.buttons["scan.forward"], in: app).tap()
                 XCTAssertTrue(app.descendants(matching: .any)["scan.review"].waitForExistence(timeout: 5))
