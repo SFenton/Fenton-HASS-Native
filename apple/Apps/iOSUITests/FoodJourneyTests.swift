@@ -58,8 +58,11 @@ final class FoodJourneyTests: XCTestCase {
         return XCTWaiter().wait(for: [expectation], timeout: timeout) == .completed
     }
 
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
-        for _ in 0..<12 where !(element.exists && element.isHittable) { app.swipeUp() }
+    /// Swipes up until `element` is on screen; `container` (e.g. the recipe's scroll view in a split pane)
+    /// receives the swipes, the app otherwise.
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication, swiping container: XCUIElement? = nil) {
+        let target = container ?? app
+        for _ in 0..<12 where !(element.exists && element.isHittable) { target.swipeUp() }
         XCTAssertTrue(element.isHittable, "\(element) never came into view")
     }
 
@@ -103,20 +106,25 @@ final class FoodJourneyTests: XCTestCase {
 
     /// Hub tiles are controls of their own: All Recipes pushes the grid, a space tile pushes its inventory page.
     func testHubTilesOpenTheirPages() {
-        let app = launch("hub")
+        // A fresh launch per tile: the back button's place differs per layout (and in Duo landscape).
+        var app = launch("hub")
         let allRecipes = element("food.allRecipes", in: app)
         XCTAssertTrue(allRecipes.waitForExistence(timeout: 15))
         allRecipes.tap()
         XCTAssertTrue(app.navigationBars["Recipes"].waitForExistence(timeout: 10), "All Recipes did not open the grid")
         waitForGrid(app)
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        app = launch("hub")
         let fridge = element("food.space.frigo", in: app)
+        XCTAssertTrue(fridge.waitForExistence(timeout: 15))
         reveal(fridge, in: app)
         fridge.tap()
         XCTAssertTrue(app.navigationBars["Fridge"].waitForExistence(timeout: 10), "The Fridge tile did not open its page")
         XCTAssertTrue(app.staticTexts["Coming in a later update."].exists)
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        app = launch("hub")
         let allFood = element("food.allFood", in: app)
+        XCTAssertTrue(allFood.waitForExistence(timeout: 15))
         reveal(allFood, in: app)
         allFood.tap()
         XCTAssertTrue(app.navigationBars["All Food"].waitForExistence(timeout: 10), "All Food did not open its page")
@@ -199,7 +207,8 @@ final class FoodJourneyTests: XCTestCase {
         let app = launch("recipes")
         waitForGrid(app)
         let last = element("recipes.card.120", in: app)
-        for _ in 0..<60 where !last.exists { app.swipeUp() }
+        let grid = element("recipes.grid", in: app)
+        for _ in 0..<100 where !last.exists { grid.swipeUp(velocity: .fast) }
         XCTAssertTrue(last.exists, "infinite scroll stopped early")
         expectCall("recipe_query kind=browse q= sort=availability cursor=100", in: app)
     }
@@ -232,7 +241,7 @@ final class FoodJourneyTests: XCTestCase {
         keepScreenshot(app, "food-recipe-ingredients-\(device)")
         try FentonHomeApp.audit(app)
         let add = element("recipe.grocery.add", in: app)
-        reveal(add, in: app)
+        reveal(add, in: app, swiping: element("recipe.scroll", in: app))
         assertTarget(add)
         add.tap()
         expectCall("recipe_grocery_add recipe_id=6 selections=1,4", in: app)

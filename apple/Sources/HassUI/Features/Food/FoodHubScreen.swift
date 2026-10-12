@@ -11,9 +11,8 @@ struct FoodHubScreen: View {
     @Environment(EntityStore.self) private var store: EntityStore?
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var window = WindowMetrics()
-    @State private var openRecipe: RecipeCard?
-    /// Held here, not built in the sheet's closure: live entity updates re-render the hub, and a model rebuilt
-    /// on each render reset the open recipe's tab (seen on iPad, 2026-10-11).
+    /// The open recipe, as the sheet's item. Held here, not built in the sheet's closure: live entity updates
+    /// re-render the hub, and a model rebuilt on each render reset the open recipe's tab (iPad, 2026-10-11).
     @State private var openDetail: RecipeDetailModel?
     /// The page a hub tile opened. Tiles are `GlassTile`s with their own action: a tile drawn with
     /// `.allowsHitTesting(false)` inside a `NavigationLink` label left the link nothing to tap on iPhone
@@ -56,9 +55,7 @@ struct FoodHubScreen: View {
         .navigationTitle("Food & Recipes")
         .onAppear { models.suggestions.appear() }
         .navigationDestination(item: $pushed) { FoodNavigation.destination($0, models: models) }
-        .sheet(item: $openRecipe) { _ in
-            if let openDetail { RecipeDetailSheet(model: openDetail) }
-        }
+        .sheet(item: $openDetail) { RecipeDetailSheet(model: $0) }
     }
 
     // MARK: - Sections
@@ -102,7 +99,6 @@ struct FoodHubScreen: View {
 
     private func open(_ recipe: RecipeCard) {
         openDetail = models.detailModel(for: recipe)
-        openRecipe = recipe
     }
 
     static func tint(_ rgb: (red: Double, green: Double, blue: Double)) -> Color {

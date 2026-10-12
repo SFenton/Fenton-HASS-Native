@@ -458,3 +458,8 @@ final class RecipeDetailModel {
         return text.isEmpty ? fallback : text
     }
 }
+
+/// Sheets present an open recipe by its model.
+extension RecipeDetailModel: @MainActor Identifiable {
+    var id: Int { recipe.id }
+}
