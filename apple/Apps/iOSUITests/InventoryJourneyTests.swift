@@ -36,6 +36,14 @@ final class InventoryJourneyTests: XCTestCase {
         return app
     }
 
+    /// `values`, or the comma-separated subset named in the `key` environment variable. Runs can split a long audit
+    /// loop across simulator boots: many audits in one session crash the iPad simulator's backboardd.
+    private static func only<T: LosslessStringConvertible & Equatable>(_ values: [T], _ key: String) -> [T] {
+        guard let list = ProcessInfo.processInfo.environment[key], !list.isEmpty else { return values }
+        let wanted = list.split(separator: ",").compactMap { T(String($0)) }
+        return values.filter { wanted.contains($0) }
+    }
+
     private func row(_ app: XCUIApplication, _ name: String) -> XCUIElement {
         app.descendants(matching: .any)["inventory.row.\(name)"]
     }
@@ -202,7 +210,7 @@ final class InventoryJourneyTests: XCTestCase {
     // MARK: - Audits and screenshots
 
     func testPagesPassAccessibilityAudit() throws {
-        for space in ["all-food", "pantry", "fridge", "freezer", "spice-rack", "cabinet"] {
+        for space in Self.only(["all-food", "pantry", "fridge", "freezer", "spice-rack", "cabinet"], "FENTON_UITEST_SPACES") {
             let app = launch(space: space, clean: true)
             XCTAssertTrue(app.descendants(matching: .any)["inventory.\(space)"].waitForExistence(timeout: 10))
             XCTAssertTrue(app.buttons["fab.inventory.scan"].waitForExistence(timeout: 10))
@@ -273,7 +281,7 @@ final class InventoryJourneyTests: XCTestCase {
             sleep(1)
             return app
         }
-        for step in 1...3 {
+        for step in Self.only([1, 2, 3], "FENTON_UITEST_SCAN_STEPS") {
             let app = atStep(step, [])
             keepScreenshot(app, "inventory-scan-step\(step)-\(layout)")
             try FentonHomeApp.audit(app) { atStep(step, FentonHomeApp.ax5) }
