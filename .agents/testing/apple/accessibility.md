@@ -32,7 +32,7 @@
 
 Add a row here and in `isSystemDrawn` together, with the evidence.
 
-- `RenderedContrast` draws the screenshot through `UIImage` so the capture follows the interface orientation; the raw `CGImage` stays portrait in landscape and sampled the wrong pixels (every iPad landscape text measured ~1:1, 2026-10-11).
+- `RenderedContrast` draws the screenshot through `UIImage` so the capture follows the interface orientation; the raw `CGImage` stays portrait in landscape and sampled the wrong pixels (every iPad landscape text measured ~1:1, 2026-10-11). The upright capture's orientation is then `.up`: keeping the raw `.left` turned frames twice and measured every landscape text at 1.0:1 again (Vacation pages, 2026-10-11).
 
 ## Open findings
 
