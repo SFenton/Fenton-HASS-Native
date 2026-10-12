@@ -247,14 +247,16 @@ private struct BatchSection: View {
             Button(role: .destructive) {
                 Task { if let prompt = await EditorPrompt.delete(batch, in: model) { ask(prompt) } }
             } label: {
-                HStack {
-                    Label("Delete", systemImage: "trash")
-                        .fixedSize(horizontal: false, vertical: true)
+                // Icon and text rather than a Label: the Label's title was reported clipped at large sizes.
+                HStack(spacing: HassTokens.Spacing.m) {
+                    Image(systemName: "trash").accessibilityHidden(true)
+                    Text("Delete").fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
                     if case .delete(batch.key) = model.busy {
-                        Spacer()
                         ProgressView()
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .foregroundStyle(InventoryTone.color(.expired))
             }
             .disabled(disabled)
