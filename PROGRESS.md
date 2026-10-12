@@ -24,6 +24,9 @@ apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote 
 apple/Sources/HassUI/Features/{Media,CustomLights,Sprinklers}/,
 apple/Sources/HassCore/Sprinklers/, HassCore/Config/{MediaPage,CustomLights,Sprinklers}Config.swift,
 apple/Sources/HassUI/Features/Gallery/HomePagesGallery.swift → Home pages lane (claude/project-thread-mjn2gu)
+apple/Sources/HassCore/Bedroom/,
+apple/Sources/HassUI/Features/Bedroom/,
+apple/Sources/HassUI/Features/Gallery/BedroomGallery.swift   → bedroom devices lane (claude/project-thread-hmhfaj)
 apple/Sources/HassCore/Config/HouseholdSettingsConfig.swift,
 apple/Sources/HassCore/Settings/,
 apple/Sources/HassUI/Features/Settings/Household/,
@@ -51,7 +54,8 @@ apple/Tests/**                                             → tests for your ow
 | Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
-| Security, Climate, Chores | Placeholders |
+| Climate | Page, Thermostat Hub pickers and the advanced-controls sheet (Rooms, Automation, Tracking and their detail pages); gallery `FENTON_GALLERY=climate` |
+| Security, Chores | Placeholders |
 | Settings | Household topic list that splits on demand: Admin (presence overrides, auto-reset), Special Device Modes, Guest Controls, Mach-E; Home Assistant Settings opens the full-screen modal (server, account, signed-in Settings/Profile web pages, Sign Out); Vacation and To-Do not ported |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | `OnDemandSplitStack` built and verified on the Mac: divider at the exact midpoint on iPad landscape, on the hinge on the unfolded Duo landscape; rotation moves the open item between pane and push; Settings is the first adopter |
@@ -60,6 +64,7 @@ apple/Tests/**                                             → tests for your ow
 | Media remote (sheet, 4 remotes, Hue Sync) | Shared component + debug gallery; not yet opened from a page (Rooms/Media lanes wire it) |
 | Watch app | Target stub only |
 | Media, Custom Lights, Sprinklers (Home pages) | Ported; reached from the Quick Links sheet via `HomeRouteDestination` (Room pages lane); gallery pages `media-page`, `custom-lights`, `sprinklers` |
+| Bedroom devices (wake light, SleepyPod bed sides) | Tiles, sheets, alarm editors, active alarm, Solo Trip routing; debug gallery `FENTON_GALLERY=bedroom`; Rooms lane places them. Verified on the Mac 2026-10-12: journeys and audits pass on iPhone, iPad (both orientations) and folded Duo; unfolded Duo portrait journeys 14/15 (one simulator crash), unfolded audits/captures not run (Device Hub unscriptable); Bedroom coverage 98.0% logic / 92.1% UX |
 | Vacuums (page, sheet, Valetudo map, area editor) | `VacuumsScreen` + `VacuumSheet`; reached from Home until side navigation lands; debug gallery `FENTON_GALLERY=vacuums` |
 | Room device sheets (fan, air quality, humidifier, grill) | Sheets + debug gallery `FENTON_GALLERY=room-devices`; Room pages wire them in |
 | Thermostat dial (shared control) | `ThermostatDial` + `ClimateThermostatDial`; debug gallery `FENTON_GALLERY=thermostat-dial` |
@@ -83,4 +88,4 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11 (after merging #4/#7): known failure not from PR #3: the four `MediaRemoteJourneyTests` tab audits fail in iPad landscape on clean `origin/main` (74c98f2) exactly as on the navigation branch ('Last call: None' 1.2:1, toggle 'On' 1.0:1). The audited screenshot is a portrait-shaped capture of a landscape screen, so `RenderedContrast` samples the wrong pixels. Owner: the media-remote lane. Resolved by #11's `RenderedContrast` change: all four pass on iPad after the 2026-10-12 merge.
 - 2026-10-12: merged #11 into the navigation branch: the Settings split now opens the household pages (`HouseholdSettingsPage`) in place of the placeholder topics.
 - 2026-10-12 (after merging #11): known failures not from PR #3, reproduced on clean `origin/main` (e75b80c) on iPad and the folded iPhone Duo: `HouseholdSettingsJourneyTests.testPresenceOverrideSetsTheRoomMode` and `testUnavailableEntitiesDisableTheirControls` expect an unavailable presence room to be disabled, but `AdminSettingsContent` deliberately keeps it openable ("Unavailable rooms stay openable"); `testPagesPassAccessibilityAudit` fails on iPad and the folded Duo with text that has no element behind the form sheet once a presence detail is pushed (the audit's sheet exception expects Done in the bar). Owner: the household-settings lane.
-
+- 2026-10-12: Climate page (`claude/climate-page`): Whole Home dial (eco-away while away, range fan-out to the eleven rooms), Thermostat Hub mode and fan pickers, away notice, Automatic Thermostat warning, open contacts, and the Thermostat · Advanced Controls sheet (Rooms, Automation, Tracking, room, Predictive Comfort, Eco option and tracking pages). Journeys and audits pass on iPhone (light and dark), Duo folded, unfolded landscape and unfolded portrait, and iPad portrait and landscape; backboardd crashes under host load were rerun alone. New Climate files 100% logic, 91.5–98.4% UX. Shared `SheetTabPicker`; Device Hub's own window buttons (device_hub_ax select-row + press) set Duo poses when Xcode's menu route fails. Screenshots in `docs/screenshots/climate/`.

@@ -8,7 +8,7 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 |---|---|---|---|
 | Home | `/at-a-glance/overview` | [home/spec.md](home/spec.md) | Scaffolded ([ios.md](home/ios.md)) |
 | Security | `/at-a-glance/security` | TODO | Placeholder |
-| Climate | `/at-a-glance/thermostat` | TODO | Placeholder |
+| Climate | `/at-a-glance/thermostat` | [climate/spec.md](climate/spec.md) | Ported ([ios.md](climate/ios.md)) |
 | Chores | `/at-a-glance/chores` | TODO | Placeholder |
 | Media | `/at-a-glance/media` | [media/spec.md](media/spec.md) | Ported ([ios.md](media/ios.md)) |
 | Custom Lights | `/at-a-glance/custom-lights` | [custom-lights/spec.md](custom-lights/spec.md) | Ported ([ios.md](custom-lights/ios.md)) |
