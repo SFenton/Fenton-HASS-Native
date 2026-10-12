@@ -296,7 +296,7 @@ struct SprinklerSchedulePage: View {
                     // No fixed frame: a List row is already 44 pt tall and grows with the text (AX5 flagged clipping).
                     // Icon and text laid out by hand: the audit flagged the Label's title as clipping at AX5.
                     HStack(spacing: HassTokens.Spacing.m) {
-                        Image(systemName: "play.fill").accessibilityHidden(true)
+                        Image(systemName: "play.fill")
                         Text("Start program")
                             .lineLimit(nil)
                             .fixedSize(horizontal: false, vertical: true)
@@ -304,6 +304,8 @@ struct SprinklerSchedulePage: View {
                     }
                 }
                 .disabled(!controller.canStartWatering || !enabled)
+                // One name for the row (a hidden glyph read as unexposed text to the audit).
+                .accessibilityLabel("Start program")
                 .accessibilityIdentifier("sprinkler.schedule.start")
             }
             Section {
