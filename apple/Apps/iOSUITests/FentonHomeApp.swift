@@ -249,6 +249,12 @@ enum FentonHomeApp {
                !app.buttons["home.chip.lights"].isHittable {
                 return true
             }
+            // The same for an inventory page behind an iPad form sheet (Sort, Filter, Add Item, the editor).
+            if issue.auditType == .elementDetection,
+               app.navigationBars.buttons["Done"].exists || app.navigationBars.buttons["Cancel"].exists,
+               app.buttons["inventory.row.cart"].firstMatch.exists, !app.buttons["inventory.row.cart"].firstMatch.isHittable {
+                return true
+            }
             // When contrast runs with the Dynamic Type or text-clipping checks, the disabled Sign In
             // button's issue loses its element (probed 2026-10-10: the same audit otherwise reports it
             // on that button). Accept it only while that button is on screen and disabled.

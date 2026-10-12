@@ -32,8 +32,12 @@ struct InventoryScreen: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            // The page identifier and the floating actions belong to the list column: on the whole row the
+            // identifier replaced the editor pane's identifiers, and the bar covered the pane.
             list
                 .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("inventory.\(space.rawValue)")
+                .floatingActionBar(showsFloatingActions ? floatingActions : [], search: showsFloatingActions ? floatingSearch : nil)
             if canSplit, let editing {
                 InventoryItemEditor(model: editing, style: .pane) { presentation.editing = nil }
                     .frame(maxWidth: .infinity)
@@ -50,8 +54,6 @@ struct InventoryScreen: View {
             }
         }
         .navigationTitle(space.title)
-        .accessibilityIdentifier("inventory.\(space.rawValue)")
-        .floatingActionBar(model.phase == .content ? floatingActions : [], search: floatingSearch)
         .task {
             await model.load()
             presentation.open(launch, in: model)
@@ -167,6 +169,12 @@ struct InventoryScreen: View {
         }
         actions.append(FloatingAction(id: "inventory.scan", title: "Scan Item", symbol: "barcode.viewfinder", showsTitle: !hasControls) { presentation.sheet = .scan })
         return actions
+    }
+
+    /// Floating actions show once rows load, and hide while a sheet is up: beside an iPad form sheet they were
+    /// drawn above its dimming and stayed reachable under the modal.
+    private var showsFloatingActions: Bool {
+        model.phase == .content && presentation.sheet == nil && presentation.sheetEditor == nil
     }
 
     /// The search FAB, once the page has loaded rows (or a search is running).

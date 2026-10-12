@@ -21,13 +21,35 @@ struct InventoryItemEditor: View {
         Group {
             switch style {
             case .sheet:
-                NavigationStack { form }
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(model.dismissalBlocked ? .hidden : .visible)
-                    .interactiveDismissDisabled(model.dismissalBlocked)
+                NavigationStack {
+                    form
+                        .navigationTitle(model.title)
+                        .inlineNavigationTitle()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) { closeButton }
+                        }
+                }
+                .presentationDetents([.large])
+                .presentationDragIndicator(model.dismissalBlocked ? .hidden : .visible)
+                .interactiveDismissDisabled(model.dismissalBlocked)
             case .pane:
-                NavigationStack { form }
-                    .overlay(alignment: .leading) { Divider().ignoresSafeArea() }
+                // Its own header rather than a nested NavigationStack, which took over the window's navigation
+                // bar (the page title disappeared and Close moved to the window's bar).
+                VStack(spacing: 0) {
+                    HStack(spacing: HassTokens.Spacing.m) {
+                        Text(model.title)
+                            .font(.headline)
+                            .foregroundStyle(HassTokens.Ink.primary)
+                            .accessibilityAddTraits(.isHeader)
+                        Spacer(minLength: 0)
+                        closeButton.buttonStyle(.bordered)
+                    }
+                    .padding(.horizontal, HassTokens.Spacing.l)
+                    .frame(minHeight: 56)
+                    Divider()
+                    form
+                }
+                .overlay(alignment: .leading) { Divider().ignoresSafeArea() }
             }
         }
         // The app accent reads 2.5:1 as button text (Reset, Save); the floating actions' teal reads 5.8:1.
@@ -57,16 +79,13 @@ struct InventoryItemEditor: View {
                 BatchSection(model: model, batch: batch) { prompt = $0; promptText = "1" }
             }
         }
-        .navigationTitle(model.title)
-        .inlineNavigationTitle()
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button(style == .pane ? "Close" : "Done", action: onClose)
-                    .disabled(model.dismissalBlocked)
-                    .accessibilityIdentifier("inventory.editor.close")
-            }
-        }
         .accessibilityIdentifier("inventory.editor")
+    }
+
+    private var closeButton: some View {
+        Button(style == .pane ? "Close" : "Done", action: onClose)
+            .disabled(model.dismissalBlocked)
+            .accessibilityIdentifier("inventory.editor.close")
     }
 
     // MARK: - Prompts

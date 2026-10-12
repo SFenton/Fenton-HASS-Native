@@ -27,7 +27,9 @@ struct InventorySortSheet: View {
             onReset: {
                 mode = .title
                 direction = .ascending
-            }
+            },
+            // Six options: cut off at the medium detent in iPad landscape.
+            detents: [.large]
         ) {
             Section("Sort By") {
                 ForEach(InventorySortMode.allCases) { option in
