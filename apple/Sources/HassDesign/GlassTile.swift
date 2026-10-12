@@ -21,6 +21,8 @@ public struct GlassTile<Accessory: View>: View {
     public var progress: Double?
     /// The progress fill's color; defaults to ``tint``.
     public var progressTint: Color?
+    /// Identifier for the tile's own control only (``tileIdentifier(_:)``).
+    private var identifier: String?
     public var action: () -> Void
     private let accessory: Accessory
 
@@ -89,6 +91,7 @@ public struct GlassTile<Accessory: View>: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(title)
                 .accessibilityValue(accessibilityValue)
+                .modifier(TileIdentifier(identifier: identifier))
         } else {
             Button(action: action) { face }
                 .buttonStyle(.plain)
@@ -100,7 +103,17 @@ public struct GlassTile<Accessory: View>: View {
                 .accessibilityAddTraits(traits)
                 // Outside the combined element too, so assistive technologies report the tile as dimmed.
                 .disabled(isUnavailable)
+                .modifier(TileIdentifier(identifier: identifier))
         }
+    }
+
+    /// Sets the accessibility identifier on the tile's control only. Use this, not `.accessibilityIdentifier`, on a
+    /// tile with an accessory: an identifier on the whole tile also lands on the accessory's buttons and hides
+    /// theirs (bathroom fan Lock and Power, 2026-10-12).
+    public func tileIdentifier(_ identifier: String) -> GlassTile {
+        var tile = self
+        tile.identifier = identifier
+        return tile
     }
 
     private var traits: AccessibilityTraits {
@@ -232,5 +245,14 @@ struct GlassTileFace: View {
         }
         .opacity(isUnavailable ? 0.5 : 1)
         .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+    }
+}
+
+/// Applies an identifier only when one is set.
+private struct TileIdentifier: ViewModifier {
+    var identifier: String?
+
+    func body(content: Content) -> some View {
+        if let identifier { content.accessibilityIdentifier(identifier) } else { content }
     }
 }

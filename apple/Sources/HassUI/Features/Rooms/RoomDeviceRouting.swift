@@ -103,7 +103,7 @@ struct BathroomFanRoomTile: View {
                 }
             }
         }
-        .accessibilityIdentifier("room.card.\(card.title)")
+        .tileIdentifier("room.card.\(card.title)")
     }
 
     private func accessory(_ label: String, symbol: String, isOn: Bool, isAvailable: Bool, id: String,
