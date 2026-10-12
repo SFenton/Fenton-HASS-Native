@@ -294,9 +294,14 @@ struct SprinklerSchedulePage: View {
                 .accessibilityIdentifier("sprinkler.schedule.enabled")
                 Button { controller.startProgram(zone: zone) } label: {
                     // No fixed frame: a List row is already 44 pt tall and grows with the text (AX5 flagged clipping).
-                    Label("Start program", systemImage: "play.fill")
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // Icon and text laid out by hand: the audit flagged the Label's title as clipping at AX5.
+                    HStack(spacing: HassTokens.Spacing.m) {
+                        Image(systemName: "play.fill").accessibilityHidden(true)
+                        Text("Start program")
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
                 }
                 .disabled(!controller.canStartWatering || !enabled)
                 .accessibilityIdentifier("sprinkler.schedule.start")
