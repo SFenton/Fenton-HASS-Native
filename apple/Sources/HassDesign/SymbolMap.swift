@@ -47,6 +47,22 @@ public enum SymbolMap {
         "mdi:movie-open": "film",
         "mdi:lightbulb-multiple": "lightbulb.2",
         "mdi:gauge": "gauge.with.dots.needle.50percent",
+        // Household settings (`HouseholdSettingsConfig`, `.agents/pages/settings/household.md`)
+        "mdi:lock-clock": "lock.shield",
+        "mdi:toggle-switch": "switch.2",
+        "mdi:flash": "bolt.fill",
+        "mdi:water": "drop",
+        "mdi:string-lights": "sparkles",
+        "mdi:autorenew": "arrow.triangle.2.circlepath",
+        "mdi:lightbulb-auto": "lightbulb.max",
+        "mdi:lightbulb-off": "lightbulb.slash",
+        "mdi:pause-circle": "pause.circle",
+        "mdi:alert-circle": "exclamationmark.circle",
+        "mdi:air-purifier": "air.purifier",
+        "mdi:ev-station": "ev.charger",
+        "mdi:car-door-lock": "lock",
+        "mdi:car-seat": "carseat.left",
+        "mdi:car-defrost-front": "windshield.front.and.heat.waves",
     ]
 
     /// The SF Symbol name for an MDI icon.
