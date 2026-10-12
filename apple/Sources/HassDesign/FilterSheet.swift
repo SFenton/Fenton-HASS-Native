@@ -37,8 +37,10 @@ public struct FilterSheet<Content: View>: View {
                 if canReset {
                     Section {
                         Button(action: onReset) {
-                            Label("Reset to Defaults", systemImage: "arrow.counterclockwise")
+                            // Plain text that wraps: a Label's fixed-size icon reported partial Dynamic Type support.
+                            Text("Reset to Defaults")
                                 .foregroundStyle(HassTokens.Ink.primary)
+                                .fixedSize(horizontal: false, vertical: true)
                                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
