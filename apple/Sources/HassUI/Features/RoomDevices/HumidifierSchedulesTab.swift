@@ -52,7 +52,9 @@ struct HumidifierSchedulesTab: View {
 
             if schedules.canEdit {
                 Button(action: onAdd) {
+                    // Primary ink: system blue on the bordered fill measured 2.1:1 on the iPad sheet.
                     Label("Add Scheduled Activity", systemImage: "plus")
+                        .foregroundStyle(HassTokens.Ink.primary)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
