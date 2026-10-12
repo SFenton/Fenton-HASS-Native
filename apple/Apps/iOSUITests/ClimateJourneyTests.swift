@@ -80,12 +80,19 @@ final class ClimateJourneyTests: XCTestCase {
         return XCTWaiter().wait(for: [match], timeout: 3) == .completed
     }
 
-    private func back(_ app: XCUIApplication) {
-        if app.buttons["BackButton"].exists { app.buttons["BackButton"].tap(); return }
-        // The bar button that isn't Done: on iPad Done can come first in the sheet's bar.
-        let back = app.navigationBars.buttons.allElementsBoundByIndex.first { $0.label != "Done" && $0.isHittable }
-        XCTAssertNotNil(back, "No Back button")
-        back?.tap()
+    /// Back to the parent page, confirmed by its heading (`parent`, default the sheet's root title). Tries the
+    /// `BackButton` (folded Duo rail, iPad), then the bar button that isn't Done.
+    private func back(_ app: XCUIApplication, to parent: String = "Thermostat · Advanced Controls",
+                      file: StaticString = #filePath, line: UInt = #line) {
+        var candidates: [XCUIElement] = [app.buttons["BackButton"]]
+        candidates += app.navigationBars.buttons.allElementsBoundByIndex.filter { $0.label != "Done" }
+        for button in candidates where button.exists && button.isHittable {
+            button.tap()
+            // Hittable, not just present: the root page stays in the tree under a pushed detail.
+            let shown = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: heading(parent, in: app))
+            if XCTWaiter().wait(for: [shown], timeout: 4) == .completed { return }
+        }
+        XCTFail("Back did not return to \(parent)", file: file, line: line)
     }
 
     // MARK: - Page
