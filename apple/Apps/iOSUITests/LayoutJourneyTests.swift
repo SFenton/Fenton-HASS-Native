@@ -5,7 +5,12 @@ import XCTest
 @MainActor
 final class LayoutJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
-    override func tearDown() { MainActor.assumeIsolated { XCUIDevice.shared.orientation = .portrait } }
+    /// Only iPad and iPhone rotate here; setting the orientation on an unfolded Duo hangs the runner (devices.md).
+    override func tearDown() {
+        MainActor.assumeIsolated {
+            if FentonHomeApp.family != .iPhoneDuo { XCUIDevice.shared.orientation = .portrait }
+        }
+    }
 
     /// iPhone is locked to portrait.
     func testIPhoneStaysPortrait() throws {
