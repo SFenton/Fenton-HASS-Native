@@ -380,6 +380,7 @@ struct RoomsTests {
         #expect(RoomFormat.temperature(e("sensor.t", "unavailable")) == "Unavailable")
         #expect(RoomFormat.temperature(e("sensor.t", "71.2", ["unit_of_measurement": .string("°F")])) == "71.2°F")
         #expect(RoomFormat.temperature(nil) == "Unavailable")
+        #expect(RoomFormat.temperature(e("sensor.t", "21")) == "21")
     }
 
     @Test func bedWashesFollowEveryClimateAction() {

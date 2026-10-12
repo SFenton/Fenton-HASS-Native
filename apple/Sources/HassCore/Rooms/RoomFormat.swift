@@ -148,15 +148,15 @@ public enum RoomFormat {
         }
         func summary(window: Bool) -> String {
             let noun = window ? "Window" : "Door"
-            let (openCount, totalCount) = (open[window] ?? 0, total[window] ?? 0)
+            let (openCount, totalCount) = (open[window, default: 0], total[window, default: 0])
             if totalCount == 1 { return openCount == 1 ? "\(noun) Open" : "\(noun) Closed" }
             if openCount == 0 { return "All \(noun)s Closed" }
             if openCount == totalCount { return "All \(noun)s Open" }
             return "\(openCount) \(noun)\(openCount == 1 ? "" : "s") Open"
         }
-        let kinds = [true, false].filter { (total[$0] ?? 0) > 0 }
+        let kinds = [true, false].filter { total[$0, default: 0] > 0 }
         if kinds.count == 1 { return summary(window: kinds[0]) }
-        let parts = kinds.filter { (open[$0] ?? 0) > 0 }.map { summary(window: $0) }
+        let parts = kinds.filter { open[$0, default: 0] > 0 }.map { summary(window: $0) }
         return parts.isEmpty ? "All Closed" : parts.joined(separator: ", ")
     }
 
