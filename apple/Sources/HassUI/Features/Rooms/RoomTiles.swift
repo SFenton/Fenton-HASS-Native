@@ -63,11 +63,15 @@ struct RoomCardTile: View {
             isActive: !display.isOff,
             isUnavailable: card.hasInteraction && !display.isEnabled,
             kind: kind(display.semantics),
-            wash: display.background?.color
-        ) {
-            if controller.tap(card) == .openSheet { onOpen() }
-        }
+            wash: display.background?.color,
+            action: activate
+        )
         .accessibilityIdentifier("room.card.\(card.title)")
+    }
+
+    /// Runs the card's action, or opens its sheet.
+    func activate() {
+        if controller.tap(card) == .openSheet { onOpen() }
     }
 
     private func kind(_ semantics: RoomTileSemantics) -> GlassTileKind {

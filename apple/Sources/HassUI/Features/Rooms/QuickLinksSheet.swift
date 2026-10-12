@@ -58,28 +58,14 @@ struct QuickLinksSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                QuickLinksGrid { link in
-                    if case let .navigate(path) = link.action, let route = HomeRoute(path: path) { go(route) }
-                }
+                QuickLinksGrid(onNavigate: open)
                 .padding(HassTokens.Spacing.l)
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
             }
             .navigationTitle(QuickLinks.title)
             .inlineNavigationTitle()
-            .navigationDestination(for: QuickLink.Detail.self) { detail in
-                switch detail {
-                case .rooms:
-                    ScrollView {
-                        RoomNavigationGrid(caller: caller) { go(.room($0)) }
-                            .padding(HassTokens.Spacing.l)
-                    }
-                    .navigationTitle("Rooms")
-                    .inlineNavigationTitle()
-                case .securitySystem:
-                    QuickLinksSecurityDetail()
-                }
-            }
+            .navigationDestination(for: QuickLink.Detail.self, destination: detailView)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
@@ -89,7 +75,28 @@ struct QuickLinksSheet: View {
         .accessibilityIdentifier("quickLinks.sheet")
     }
 
-    private func go(_ route: HomeRoute) {
+    /// Rooms and Security System push inside the sheet.
+    @ViewBuilder
+    func detailView(_ detail: QuickLink.Detail) -> some View {
+        switch detail {
+        case .rooms:
+            ScrollView {
+                RoomNavigationGrid(caller: caller) { go(.room($0)) }
+                    .padding(HassTokens.Spacing.l)
+            }
+            .navigationTitle("Rooms")
+            .inlineNavigationTitle()
+        case .securitySystem:
+            QuickLinksSecurityDetail()
+        }
+    }
+
+    /// A page link: close the sheet and open its page.
+    func open(_ link: QuickLink) {
+        if case let .navigate(path) = link.action, let route = HomeRoute(path: path) { go(route) }
+    }
+
+    func go(_ route: HomeRoute) {
         onNavigate(route)
         dismiss()
     }
@@ -193,10 +200,7 @@ struct RoomNavigationGrid: View {
     var body: some View {
         DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
             ForEach(RoomNavigation.ranked { store.entity($0).state?.state }) { item in
-                Button {
-                    if let caller { RoomController.recordVisit(item, caller: caller) }
-                    onOpen(item.path)
-                } label: {
+                Button { open(item) } label: {
                     GlassTile(title: item.title, symbol: SymbolMap.symbol(for: item.icon), tint: item.color.color,
                               isActive: true, kind: .navigate, wash: item.color.color.opacity(0.45))
                         .allowsHitTesting(false)
@@ -212,5 +216,11 @@ struct RoomNavigationGrid: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Rooms")
+    }
+
+    /// Counts the visit, then opens the room.
+    func open(_ item: RoomNavigationItem) {
+        if let caller { RoomController.recordVisit(item, caller: caller) }
+        onOpen(item.path)
     }
 }

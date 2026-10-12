@@ -131,6 +131,66 @@ struct RoomsViewTests {
         #expect(render(RoomSheetFallback(card: xbox), size: Self.phone) != nil)
     }
 
+    // MARK: Handlers
+
+    @Test func roomPageOpensRemotesAndSheetsAndRendersThem() {
+        let store = EntityStore()
+        store.replaceAll(RoomsFixtures.states)
+        let living = RoomsConfig.page(id: "living-room")!
+        let content = RoomPageContent(page: living, store: store, caller: NullCaller(), imageServer: nil)
+        let controller = RoomController(page: living, store: store, caller: NullCaller())
+        let remoteCard = living.allCards.first { $0.title == "Living Room Remote" }!
+        let vents = living.allCards.first { $0.title == "Vents" }!
+        guard case let .remote(shared) = RoomPageContent.opening(remoteCard, controller: controller) else {
+            Issue.record("The remote card opens the remote sheet")
+            return
+        }
+        if case .remote = RoomPageContent.opening(vents, controller: controller) { Issue.record("Vents open the room sheet") }
+        content.open(remoteCard)
+        content.open(vents)
+        content.quickLinksDismissed()
+        let selection = RemoteSelection(controller: shared)
+        #expect(selection.id == shared.config.id)
+        #expect(render(content.cardSheet(vents), size: Self.phone) != nil)
+        #expect(render(content.remoteSheet(selection), size: Self.phone) != nil)
+        #expect(render(content.quickLinksSheet(), size: Self.phone) != nil)
+    }
+
+    @Test func quickLinksAndRoomGridHandlersNavigateAndCountVisits() async {
+        var routes: [HomeRoute] = []
+        let caller = NullCaller()
+        let sheet = QuickLinksSheet(caller: caller) { routes.append($0) }
+        for link in QuickLinks.items { sheet.open(link) }
+        #expect(routes.contains(.media) && routes.contains(.food))
+        #expect(render(sheet.detailView(.rooms), size: Self.phone) != nil)
+        #expect(render(sheet.detailView(.securitySystem), size: Self.phone) != nil)
+
+        var opened: [String] = []
+        let grid = RoomNavigationGrid(caller: caller) { opened.append($0) }
+        grid.open(RoomNavigation.item(for: "gym")!)
+        RoomNavigationGrid(caller: nil) { opened.append($0) }.open(RoomNavigation.item(for: "office")!)
+        #expect(opened == ["gym", "office"])
+        for _ in 0..<200 where caller.calls.isEmpty { await Task.yield() }
+        #expect(caller.calls == ["script.turn_on"])
+    }
+
+    @Test func cardTilesRunActionsOrOpenSheets() async {
+        let store = EntityStore()
+        store.replaceAll(RoomsFixtures.states)
+        let caller = NullCaller()
+        let bath = RoomsConfig.page(id: "guest-bathroom")!
+        let controller = RoomController(page: bath, store: store, caller: caller)
+        var opens = 0
+        let towel = bath.allCards.first { $0.title == "Towel Rack" }!
+        RoomCardTile(controller: controller, card: towel) { opens += 1 }.activate()
+        await controller.waitForCalls()
+        #expect(caller.calls.count == 1 && caller.calls[0].hasPrefix("switch.turn_"))
+        if let sheetCard = bath.allCards.first(where: { $0.sheet != nil && $0.action == nil }) {
+            RoomCardTile(controller: controller, card: sheetCard) { opens += 1 }.activate()
+            #expect(opens == (controller.display(sheetCard).isEnabled ? 1 : 0))
+        }
+    }
+
     // MARK: Symbols
 
     @Test func everyRoomIconMapsToARealSymbol() {

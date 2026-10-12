@@ -355,4 +355,44 @@ struct RoomsTests {
         #expect(RoomNavigation.accessCount("") == 0)
         #expect(RoomNavigation.accessCount(nil) == 0)
     }
+
+    // MARK: Formatting edge cases
+
+    @Test func compactAndLabelStatesCoverEveryBranch() {
+        func e(_ id: String, _ state: String, _ attributes: [String: JSONValue] = [:]) -> EntityState {
+            EntityState(entityId: id, state: state, attributes: attributes)
+        }
+        #expect(RoomFormat.compact(e("sensor.a", "unavailable")) == "Unavailable")
+        #expect(RoomFormat.compact(e("binary_sensor.contact_front_door", "on")) == "Open")
+        #expect(RoomFormat.compact(e("binary_sensor.contact_front_door", "off")) == "Closed")
+        #expect(RoomFormat.compact(e("binary_sensor.motion", "on")) == "Active")
+        #expect(RoomFormat.compact(e("binary_sensor.motion", "off")) == "Clear")
+        #expect(RoomFormat.occupancy(e("binary_sensor.motion", "unavailable")) == "Unavailable")
+        #expect(RoomFormat.occupancy(e("binary_sensor.motion", "unknown")) == "Unknown")
+        #expect(RoomFormat.occupancy(e("binary_sensor.motion", "paused")) == "Paused")
+        #expect(RoomFormat.contact(e("binary_sensor.door", "unavailable")) == "Unavailable")
+        #expect(RoomFormat.contact(e("binary_sensor.door", "unknown")) == "Unknown")
+        #expect(RoomFormat.contact(e("binary_sensor.door", "ajar")) == "Ajar")
+        #expect(RoomFormat.isActive(e("alarm_control_panel.home", "armed_away")))
+        #expect(!RoomFormat.isActive(e("alarm_control_panel.home", "disarmed")))
+        #expect(RoomFormat.airMetric(e("sensor.pm", "unavailable")) == "Unavailable")
+        #expect(RoomFormat.airMetric(e("sensor.pm", " ")) == " ")
+        #expect(RoomFormat.temperature(e("sensor.t", "unavailable")) == "Unavailable")
+        #expect(RoomFormat.temperature(e("sensor.t", "71.2", ["unit_of_measurement": .string("°F")])) == "71.2°F")
+        #expect(RoomFormat.temperature(nil) == "Unavailable")
+    }
+
+    @Test func bedWashesFollowEveryClimateAction() {
+        let bed = card("master-bedroom", "Stephen's Bed")
+        func wash(_ action: String?, state: String = "heat_cool", presence: String? = nil) -> RoomColor? {
+            let attributes: [String: JSONValue] = action.map { ["hvac_action": .string($0)] } ?? [:]
+            return RoomFormat.background(bed, EntityState(entityId: bed.entityId, state: state, attributes: attributes),
+                                         presence: presence.map { EntityState(entityId: "binary_sensor.bed_presence", state: $0) })
+        }
+        #expect(wash("cooling") == RoomColor(25, 84, 130, opacity: 0.6))
+        #expect(wash("idle") == RoomColor(229, 57, 53, opacity: 0.6))
+        #expect(wash(nil, state: "off", presence: "on") == RoomColor(0, 150, 136, opacity: 0.6))
+        #expect(wash(nil, state: "off", presence: "off") == nil)
+        #expect(RoomFormat.background(bed, nil, presence: nil) == nil)
+    }
 }

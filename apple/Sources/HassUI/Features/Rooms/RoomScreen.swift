@@ -64,22 +64,10 @@ struct RoomPageContent: View {
                 QuickLinksButton { showsQuickLinks = true }
             }
         }
-        .sheet(item: $sheetCard) { card in
-            RoomCardSheet(controller: controller, card: card)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-        }
-        .sheet(item: Binding(get: { remote.map { RemoteSelection(controller: $0) } }, set: { remote = $0?.controller })) { selection in
-            MediaRemoteSheet(controller: selection.controller, imageServer: imageServer, initialTab: .controls)
-                .mediaRemotePresentation()
-        }
-        .sheet(isPresented: $showsQuickLinks, onDismiss: {
-            // Push once the sheet has gone so the push never races the dismissal.
-            route = pendingRoute
-            pendingRoute = nil
-        }) {
-            QuickLinksSheet(caller: controller.caller) { pendingRoute = $0 }
-        }
+        .sheet(item: $sheetCard, content: cardSheet)
+        .sheet(item: Binding(get: { remote.map { RemoteSelection(controller: $0) } }, set: { remote = $0?.controller }),
+               content: remoteSheet)
+        .sheet(isPresented: $showsQuickLinks, onDismiss: quickLinksDismissed, content: quickLinksSheet)
         .homeRouteDestination($route)
     }
 
@@ -106,19 +94,53 @@ struct RoomPageContent: View {
         }
     }
 
+    // MARK: Sheets
+
+    func cardSheet(_ card: RoomCard) -> some View {
+        RoomCardSheet(controller: controller, card: card)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+    }
+
+    func remoteSheet(_ selection: RemoteSelection) -> some View {
+        MediaRemoteSheet(controller: selection.controller, imageServer: imageServer, initialTab: .controls)
+            .mediaRemotePresentation()
+    }
+
+    func quickLinksSheet() -> some View {
+        QuickLinksSheet(caller: controller.caller) { pendingRoute = $0 }
+    }
+
+    /// Pushes the page Quick Links chose once the sheet has gone, so the push never races the dismissal.
+    func quickLinksDismissed() {
+        route = pendingRoute
+        pendingRoute = nil
+    }
+
     /// Opens a card: its remote sheet when it has one, else its room sheet.
-    private func open(_ card: RoomCard) {
-        if case let .mediaRemote(id) = controller.sheet(for: card), let shared = controller.remote(id) {
-            remote = shared
-        } else {
-            sheetCard = card
+    func open(_ card: RoomCard) {
+        switch Self.opening(card, controller: controller) {
+        case let .remote(shared): remote = shared
+        case .sheet: sheetCard = card
         }
     }
+
+    /// Where opening a card goes: the shared remote sheet for remote cards, else the room sheet.
+    static func opening(_ card: RoomCard, controller: RoomController) -> RoomCardOpening {
+        if case let .mediaRemote(id) = controller.sheet(for: card), let shared = controller.remote(id) { return .remote(shared) }
+        return .sheet
+    }
+}
+
+/// Where a room card opens (``RoomPageContent/opening(_:controller:)``).
+enum RoomCardOpening {
+    case remote(MediaRemoteController)
+    case sheet
 }
 
 /// Wraps a remote controller for `.sheet(item:)`.
 @MainActor
-private struct RemoteSelection: Identifiable {
+struct RemoteSelection: Identifiable {
     var controller: MediaRemoteController
     let id: String
 
