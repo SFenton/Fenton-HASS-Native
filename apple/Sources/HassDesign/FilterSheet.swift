@@ -32,20 +32,14 @@ public struct FilterSheet<Content: View>: View {
         NavigationStack {
             Form {
                 content()
-                // Shown only when there is something to reset: a disabled row fails the contrast audit, and
-                // plain ink (not the destructive red) keeps 4.5:1 on the grouped background in both modes.
+                // Shown only when there is something to reset: a disabled row fails the contrast audit.
                 if canReset {
                     Section {
-                        Button(action: onReset) {
-                            // Plain text that wraps: a Label's fixed-size icon reported partial Dynamic Type support.
-                            Text("Reset to Defaults")
-                                .foregroundStyle(HassTokens.Ink.primary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("filterSheet.reset")
+                        // A system Form button scales with Dynamic Type on its own; a plain-styled custom row
+                        // reported partial support. Primary ink instead of the accent keeps 4.5:1 in both modes.
+                        Button("Reset to Defaults", action: onReset)
+                            .tint(HassTokens.Ink.primary)
+                            .accessibilityIdentifier("filterSheet.reset")
                     }
                 }
             }
