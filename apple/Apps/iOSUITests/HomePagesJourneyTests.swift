@@ -222,7 +222,8 @@ final class HomePagesJourneyTests: XCTestCase {
 
     /// While one zone waters, another zone's row still opens and says why it can't start.
     func testBusyControllerExplainsWhyAZoneCannotStart() {
-        let app = launch("sprinklers", ["FENTON_GALLERY_SPRINKLER": "backyard"], waitFor: "sprinkler.overview")
+        // Wait on a row: the list's own center is not hittable on the unfolded iPhone Duo in landscape.
+        let app = launch("sprinklers", ["FENTON_GALLERY_SPRINKLER": "backyard"], waitFor: "sprinkler.zone.0")
         tap("sprinkler.zone.0", in: app)
         XCTAssertTrue(element("sprinkler.waterBlocked", in: app).waitForExistence(timeout: 10), "The reason shows")
         XCTAssertFalse(element("sprinkler.startWatering", in: app).isEnabled, "Start waits for the running zone")
@@ -250,7 +251,7 @@ final class HomePagesJourneyTests: XCTestCase {
     func testSprinklersAuditsAndScreenshots() throws {
         try auditAndCapture("sprinklers") { self.launch("sprinklers", ["FENTON_GALLERY_CLEAN": "1"], waitFor: "sprinklers.controller.frontYard") }
         try auditAndCapture("sprinkler-controller") {
-            self.launch("sprinklers", ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_SPRINKLER": "backyard"], waitFor: "sprinkler.overview")
+            self.launch("sprinklers", ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_SPRINKLER": "backyard"], waitFor: "sprinkler.zone.0")
         }
         try auditAndCapture("sprinkler-water") {
             self.launch("sprinklers", ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_SPRINKLER": "frontYard", "FENTON_GALLERY_DETAIL": "water-0"],
