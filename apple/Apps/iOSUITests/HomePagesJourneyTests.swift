@@ -93,19 +93,20 @@ final class HomePagesJourneyTests: XCTestCase {
     }
 
     /// Audits (with the AX5 relaunch) and keeps a screenshot, in portrait and, on iPad, landscape too.
+    /// Each pass sets its orientation first: a test that audits several pages would otherwise start the next
+    /// page's "portrait" pass still in the previous page's landscape.
     private func auditAndCapture(_ name: String, relaunch: @escaping () -> XCUIApplication) throws {
-        var app = relaunch()
         for orientation in FentonHomeApp.family == .iPad ? ["portrait", "landscape"] : ["portrait"] {
-            if orientation == "landscape" {
-                XCUIDevice.shared.orientation = .landscapeLeft
+            if FentonHomeApp.family == .iPad {
+                XCUIDevice.shared.orientation = orientation == "landscape" ? .landscapeLeft : .portrait
                 sleep(1)
             }
+            let app = relaunch()
             try FentonHomeApp.audit(app) {
                 self.nextLaunchIsAX5 = true
                 return relaunch()
             }
-            app = relaunch()
-            keepScreenshot(app, "\(name)-\(orientation)")
+            keepScreenshot(relaunch(), "\(name)-\(orientation)")
         }
     }
 
