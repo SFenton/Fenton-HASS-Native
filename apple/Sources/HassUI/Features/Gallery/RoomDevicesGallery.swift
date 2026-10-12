@@ -61,7 +61,7 @@ struct RoomDevicesGallery: View {
     private var lastCall: some View {
         Text("Last call: \(recorder.lastCall)")
             .font(.caption.monospaced())
-            .foregroundStyle(HassTokens.Ink.secondary)
+            .foregroundStyle(HassTokens.Ink.primary) // Secondary ink rendered 2.2:1 on the iPad sheet's bar.
             .lineLimit(3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityIdentifier("gallery.lastCall")
