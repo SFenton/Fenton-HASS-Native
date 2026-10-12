@@ -43,6 +43,13 @@ final class FoodJourneyTests: XCTestCase {
         return app
     }
 
+    /// The accessibility audit, unless `TEST_RUNNER_FENTON_SKIP_AUDIT=1` (screenshot-only passes, so a failing
+    /// audit cannot stop a journey before its later pages are captured).
+    private func audit(_ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil) throws {
+        guard ProcessInfo.processInfo.environment["FENTON_SKIP_AUDIT"] != "1" else { return }
+        try FentonHomeApp.audit(app, ax5Page: ax5Page)
+    }
+
     private func element(_ id: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[id].firstMatch
     }
@@ -97,7 +104,7 @@ final class FoodJourneyTests: XCTestCase {
         app.swipeDown()
         sleep(1)
         keepScreenshot(app, "food-hub-\(device)")
-        try FentonHomeApp.audit(app) { self.launch("hub", arguments: FentonHomeApp.ax5) }
+        try audit(app) { self.launch("hub", arguments: FentonHomeApp.ax5) }
 
         first.tap()
         XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10), "Recipe sheet did not open")
@@ -141,7 +148,7 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(element("food.suggestion.1", in: app).waitForExistence(timeout: 15))
         sleep(1)
         keepScreenshot(app, "food-hub-\(device)-ax5")
-        try FentonHomeApp.audit(app)
+        try audit(app)
     }
 
     // MARK: - Recipes
@@ -151,7 +158,7 @@ final class FoodJourneyTests: XCTestCase {
         waitForGrid(app)
         expectCall("recipe_query kind=browse q= sort=availability cursor=-", in: app)
         keepScreenshot(app, "food-recipes-\(device)")
-        try FentonHomeApp.audit(app) { self.launch("recipes", arguments: FentonHomeApp.ax5) }
+        try audit(app) { self.launch("recipes", arguments: FentonHomeApp.ax5) }
 
         for id in ["fab.sort", "fab.filter", "fab.search"] { assertTarget(element(id, in: app)) }
 
@@ -163,7 +170,7 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(element("recipes.sort.alphabetical", in: app).isSelected)
         sleep(1)
         keepScreenshot(app, "food-recipes-sort-\(device)")
-        try FentonHomeApp.audit(app)
+        try audit(app)
         app.buttons["filterSheet.apply"].tap()
         expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
         XCTAssertTrue(element("fab.sort", in: app).isSelected, "an applied sort marks the button")
@@ -175,7 +182,7 @@ final class FoodJourneyTests: XCTestCase {
         element("recipes.filter.expiringOnly", in: app).switches.firstMatch.tap()
         sleep(1)
         keepScreenshot(app, "food-recipes-filter-\(device)")
-        try FentonHomeApp.audit(app)
+        try audit(app)
         app.buttons["filterSheet.apply"].tap()
         expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
         XCTAssertTrue(element("fab.filter", in: app).wait(for: \.isSelected, toEqual: true, timeout: 5), "applied filters mark the button")
@@ -196,11 +203,12 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(element("recipes.error", in: failing).waitForExistence(timeout: 15))
         assertTarget(element("recipes.retry", in: failing))
         keepScreenshot(failing, "food-recipes-error-\(device)")
-        try FentonHomeApp.audit(failing)
+        try audit(failing)
 
         let empty = launch("recipes", mode: "empty")
         XCTAssertTrue(element("recipes.empty", in: empty).waitForExistence(timeout: 15))
-        try FentonHomeApp.audit(empty)
+        keepScreenshot(empty, "food-recipes-empty-\(device)")
+        try audit(empty)
     }
 
     func testRecipesLoadMoreOnScroll() {
@@ -229,7 +237,7 @@ final class FoodJourneyTests: XCTestCase {
             XCTAssertEqual(split, frame.width > frame.height, "the pane shows only where a split is allowed")
         }
         keepScreenshot(app, "food-recipe-general-\(device)")
-        try FentonHomeApp.audit(app)
+        try audit(app)
 
         let tabs = element("recipe.tabs", in: app)
         tabs.buttons["Ingredients"].tap()
@@ -239,7 +247,7 @@ final class FoodJourneyTests: XCTestCase {
         // Audit before scrolling: rows scrolled half under the sheet's edge measure ~1.1:1.
         sleep(1)
         keepScreenshot(app, "food-recipe-ingredients-\(device)")
-        try FentonHomeApp.audit(app)
+        try audit(app)
         let add = element("recipe.grocery.add", in: app)
         reveal(add, in: app, swiping: element("recipe.scroll", in: app))
         assertTarget(add)
@@ -250,7 +258,7 @@ final class FoodJourneyTests: XCTestCase {
         tabs.buttons["Instructions"].tap()
         XCTAssertTrue(app.staticTexts["Heat the oven to 425°F and zest the lemons."].waitForExistence(timeout: 5))
         keepScreenshot(app, "food-recipe-instructions-\(device)")
-        try FentonHomeApp.audit(app)
+        try audit(app)
     }
 
     func testCookidooRecipeLinksOut() throws {
@@ -262,19 +270,19 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(element("recipe.openCookidoo", in: app).waitForExistence(timeout: 5))
         assertTarget(element("recipe.openCookidoo", in: app))
         keepScreenshot(app, "food-recipe-cookidoo-\(device)")
-        try FentonHomeApp.audit(app)
+        try audit(app)
     }
 
     func testRecipeDetailAtAX5() throws {
         let app = launch("recipes", arguments: FentonHomeApp.ax5)
         waitForGrid(app)
         keepScreenshot(app, "food-recipes-\(device)-ax5")
-        try FentonHomeApp.audit(app)
+        try audit(app)
         element("recipes.card.6", in: app).tap()
         XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10))
         sleep(1)
         keepScreenshot(app, "food-recipe-general-\(device)-ax5")
-        try FentonHomeApp.audit(app)
+        try audit(app)
     }
 
     // MARK: - Poses
@@ -288,7 +296,7 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(element("food.suggestion.1", in: hub).waitForExistence(timeout: 15))
         sleep(1)
         keepScreenshot(hub, "food-hub-\(device)-landscape")
-        try FentonHomeApp.audit(hub)
+        try audit(hub)
 
         let app = launch("recipes")
         waitForGrid(app)
@@ -310,7 +318,7 @@ final class FoodJourneyTests: XCTestCase {
         }
         sleep(1)
         keepScreenshot(app, "food-recipe-general-\(device)-landscape")
-        try FentonHomeApp.audit(app)
+        try audit(app)
     }
 
     // MARK: - Live
