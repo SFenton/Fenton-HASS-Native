@@ -193,9 +193,11 @@ struct RoomSectionView: View {
         .accessibilityIdentifier("room.section.\(section.title)")
     }
 
-    /// The default grid (2–4 columns, cells near 280 pt), or exactly `columns` filling the width.
+    /// The default grid (up to 4 columns), or at most `columns` filling the width. Both keep the scaled minimum tile
+    /// width, so they reflow to one column at accessibility sizes (a fixed two columns clipped single long words such
+    /// as "Humidifier" at AX5 on iPad, HIG: Typography).
     private func grid(_ cards: [RoomCard], columns: Int? = nil) -> some View {
-        DynamicGridLayout(minCellWidth: columns == nil ? minTileWidth : 1, maxColumns: columns ?? 4) {
+        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: columns ?? 4) {
             ForEach(cards) { item in
                 card(item).gridSpan(item.isFullWidth ? 4 : 1)
             }
