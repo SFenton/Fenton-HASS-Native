@@ -109,9 +109,22 @@ final class FoodJourneyTests: XCTestCase {
         first.tap()
         XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10), "Recipe sheet did not open")
         expectCall("recipe_detail recipe_id=1", in: app)
-        // The hub's own sheet switches tabs (on iPad a live hub sheet ignored the tap, 2026-10-12).
-        element("recipe.tabs", in: app).buttons["Ingredients"].tap()
+    }
+
+    /// The hub's recipe sheet switches tabs (on iPad a live hub sheet ignored taps on the picker, 2026-10-12).
+    func testHubSheetSwitchesTabs() {
+        let app = launch("hub")
+        let suggestion = element("food.suggestion.2", in: app)
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 15))
+        suggestion.tap()
+        let tabs = element("recipe.tabs", in: app)
+        XCTAssertTrue(tabs.waitForExistence(timeout: 10), "Recipe sheet did not open")
+        sleep(1)
+        let ingredients = tabs.buttons["Ingredients"]
+        ingredients.tap()
         XCTAssertTrue(element("recipe.ingredient.0", in: app).waitForExistence(timeout: 10), "The hub's recipe sheet did not switch to Ingredients")
+        tabs.buttons["Instructions"].tap()
+        XCTAssertTrue(app.staticTexts["Heat the oven to 425°F and zest the lemons."].waitForExistence(timeout: 10))
     }
 
     /// Hub tiles are controls of their own: All Recipes pushes the grid, a space tile pushes its inventory page.
