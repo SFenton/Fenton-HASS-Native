@@ -3,7 +3,7 @@
 > **What:** paired date and time pickers for schedules. **Read when:** a page edits a start, end or alarm time.
 
 - Canonical component: `HassDesign/ScheduleDateFields.swift` (`ScheduleDateFields`, `ScheduleDateField`). Web: `NativePickerField` pairs inside `ScheduleConfirmationForm` (`src/components/core`).
-- Each field is a labeled compact `DatePicker` (`.date` or `.hourAndMinute`) on a material row at least 44 pt tall, two per row when the width allows (`DynamicGridLayout`, min 260 pt). HIG: Date pickers.
+- Each field is a labeled compact `DatePicker` (`.date` or `.hourAndMinute`) on a material row at least 44 pt tall, two per row when the width allows (`DynamicGridLayout`, min 320 pt: at 260 an iPad form sheet split into two ~270 pt columns where "Departure Date" no longer fitted beside its picker, 2026-10-11). HIG: Date pickers.
 - The row is a wrapping `Text` label beside a `labelsHidden()` picker (labeled for VoiceOver); at accessibility Dynamic Type sizes the picker drops below the label. The picker's own label truncated ("Departure Time", text-clipped audit, iPhone 2026-10-11).
 - Values are `Date`s; callers convert. Home Assistant wall-clock parts (`YYYY-MM-DD`, `HH:MM`) go through `WallClock` (HassCore); `ScheduleDateField(_:_:_:id:onChange:)` in `HassUI/Features/Vacation` keeps the other part when one changes.
 - Fields that call a service on every change pass `commitDelay`: the picker shows the new value at once and reports it after that much quiet (so one wheel turn is one call). The draft clears when the saved value changes or 3 s after reporting.

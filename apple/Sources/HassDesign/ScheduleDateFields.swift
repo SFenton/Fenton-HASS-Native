@@ -43,7 +43,7 @@ public struct ScheduleDateFields: View {
     }
 
     public var body: some View {
-        DynamicGridLayout(minCellWidth: 260, maxColumns: 2, spacing: HassTokens.Spacing.s) {
+        DynamicGridLayout(minCellWidth: 320, maxColumns: 2, spacing: HassTokens.Spacing.s) {
             ForEach(fields) { field in
                 ScheduleDatePicker(field: field, commitDelay: commitDelay)
             }
