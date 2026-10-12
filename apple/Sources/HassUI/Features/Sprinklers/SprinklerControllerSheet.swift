@@ -410,32 +410,32 @@ struct DayPicker: View {
         // One row when seven 44 pt buttons fit; else Sunday-Wednesday over Thursday-Saturday (the folded iPhone
         // Duo's row left 42 pt each).
         ViewThatFits(in: .horizontal) {
-            row(0..<7)
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                row(0..<4)
-                row(4..<7)
+            HStack(spacing: HassTokens.Spacing.xs) { buttons(0..<7) }
+            // Two rows on a shared four-column grid, so Thursday-Saturday line up under Sunday-Tuesday.
+            Grid(horizontalSpacing: HassTokens.Spacing.xs, verticalSpacing: HassTokens.Spacing.s) {
+                GridRow { buttons(0..<4) }
+                GridRow { buttons(4..<7) }
             }
         }
     }
 
-    private func row(_ range: Range<Int>) -> some View {
-        HStack(spacing: HassTokens.Spacing.xs) {
-            ForEach(range, id: \.self) { day in
-                let on = days.contains(day)
-                Button {
-                    if on { days.remove(day) } else { days.insert(day) }
-                } label: {
-                    Text(SprinklerFormat.dayLetters[day])
-                        .font(.subheadline.weight(.semibold))
-                        .frame(minWidth: HassTokens.minTarget, maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                        .foregroundStyle(on ? Color.white : HassTokens.Ink.primary)
-                        .background(on ? SprinklerStyle.water : Color.secondary.opacity(0.15), in: Circle())
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel(SprinklerFormat.dayNames[day])
-                .accessibilityAddTraits(on ? .isSelected : [])
-                .accessibilityIdentifier("sprinkler.schedule.day.\(day)")
+    @ViewBuilder
+    private func buttons(_ range: Range<Int>) -> some View {
+        ForEach(range, id: \.self) { day in
+            let on = days.contains(day)
+            Button {
+                if on { days.remove(day) } else { days.insert(day) }
+            } label: {
+                Text(SprinklerFormat.dayLetters[day])
+                    .font(.subheadline.weight(.semibold))
+                    .frame(minWidth: HassTokens.minTarget, maxWidth: .infinity, minHeight: HassTokens.minTarget)
+                    .foregroundStyle(on ? Color.white : HassTokens.Ink.primary)
+                    .background(on ? SprinklerStyle.water : Color.secondary.opacity(0.15), in: Circle())
             }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(SprinklerFormat.dayNames[day])
+            .accessibilityAddTraits(on ? .isSelected : [])
+            .accessibilityIdentifier("sprinkler.schedule.day.\(day)")
         }
     }
 }
