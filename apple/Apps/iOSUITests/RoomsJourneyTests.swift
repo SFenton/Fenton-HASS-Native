@@ -116,8 +116,9 @@ final class RoomsJourneyTests: XCTestCase {
     /// their lane's sheets (fan, air quality); fixture state only.
     func testBathroomFanTileAndDeviceSheets() {
         let app = launch(room: "guest-bathroom")
-        let power = app.buttons["room.fan.switch.guest_bathroom_fan_switch_top.power"]
-        let lock = app.buttons["room.fan.switch.guest_bathroom_fan_switch_top.lock"]
+        // Toggle accessories are switches to XCUITest (like the towel rack).
+        let power = app.switches["room.fan.switch.guest_bathroom_fan_switch_top.power"]
+        let lock = app.switches["room.fan.switch.guest_bathroom_fan_switch_top.lock"]
         reveal(power, in: app)
         XCTAssertEqual(power.value as? String, "Off")
         XCTAssertEqual(lock.value as? String, "Off")
