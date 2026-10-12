@@ -46,10 +46,18 @@ final class HomePagesJourneyTests: XCTestCase {
         XCTAssertTrue(matched, "Last call was '\(label.label)'", file: file, line: line)
     }
 
-    /// Scrolls the page in short drags until `element` is hittable (full swipes overshoot at AX5 and on the Duo).
+    /// Hittable and clear of the navigation bar: a card scrolled under the bar reports hittable, but a tap
+    /// there lands on the bar (seen on the folded iPhone Duo).
+    private func inView(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        guard element.isHittable else { return false }
+        let bar = app.navigationBars.firstMatch
+        return !bar.exists || element.frame.midY > bar.frame.maxY
+    }
+
+    /// Scrolls the page in short drags until `element` is in view (full swipes overshoot at AX5 and on the Duo).
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         let window = app.windows.firstMatch.frame
-        for _ in 0..<20 where !element.isHittable {
+        for _ in 0..<20 where !inView(element, in: app) {
             let above = element.exists && element.frame.midY < window.midY
             var x = window.midX
             if FentonHomeApp.family == .iPhoneDuo { x = min(x, window.maxX - 96) }
@@ -59,7 +67,7 @@ final class HomePagesJourneyTests: XCTestCase {
             from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: above ? 220 : -220)),
                        withVelocity: .slow, thenHoldForDuration: 0.3)
         }
-        XCTAssertTrue(element.isHittable, "\(element) never came into view")
+        XCTAssertTrue(inView(element, in: app), "\(element) never came into view")
     }
 
     private func tap(_ id: String, in app: XCUIApplication) {

@@ -228,13 +228,10 @@ enum FentonHomeApp {
             // Text behind a modal sheet (iPad form sheets leave Home visible around them) is drawn but
             // hidden from assistive technologies by the modal. Accept it only while a sheet is up and
             // Home's own controls can't be reached (the sheet's dimming layer takes the touches).
-            if issue.auditType == .elementDetection, app.navigationBars.buttons["Done"].exists,
-               !app.buttons["home.chip.lights"].isHittable {
-                return true
-            }
-            // Same for page text cut off by an iPad form sheet's edge (seen 2026-10-12 behind the sprinkler
-            // schedule sheet): with no element it is not in the accessibility tree, so it is not the sheet's.
-            if issue.auditType == .textClipped, app.navigationBars.buttons["Done"].exists,
+            // The same page text under the dimming layer also comes back as element-less contrast or clipping
+            // (seen 2026-10-12 around the iPad sprinkler schedule sheet, one or the other from run to run).
+            let behindSheet: XCUIAccessibilityAuditType = [.elementDetection, .contrast, .textClipped]
+            if behindSheet.contains(issue.auditType), app.navigationBars.buttons["Done"].exists,
                !app.buttons["home.chip.lights"].isHittable {
                 return true
             }

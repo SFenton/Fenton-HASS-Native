@@ -407,15 +407,27 @@ struct DayPicker: View {
     @Binding var days: Set<Int>
 
     var body: some View {
+        // One row when seven 44 pt buttons fit; else Sunday-Wednesday over Thursday-Saturday (the folded iPhone
+        // Duo's row left 42 pt each).
+        ViewThatFits(in: .horizontal) {
+            row(0..<7)
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                row(0..<4)
+                row(4..<7)
+            }
+        }
+    }
+
+    private func row(_ range: Range<Int>) -> some View {
         HStack(spacing: HassTokens.Spacing.xs) {
-            ForEach(0..<7, id: \.self) { day in
+            ForEach(range, id: \.self) { day in
                 let on = days.contains(day)
                 Button {
                     if on { days.remove(day) } else { days.insert(day) }
                 } label: {
                     Text(SprinklerFormat.dayLetters[day])
                         .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
+                        .frame(minWidth: HassTokens.minTarget, maxWidth: .infinity, minHeight: HassTokens.minTarget)
                         .foregroundStyle(on ? Color.white : HassTokens.Ink.primary)
                         .background(on ? SprinklerStyle.water : Color.secondary.opacity(0.15), in: Circle())
                 }
