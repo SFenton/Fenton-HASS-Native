@@ -356,13 +356,29 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertFalse(element("recipe.error", in: app).waitForExistence(timeout: 3), "Live recipe detail failed")
         sleep(2)
         keepScreenshot(app, "food-live-recipe-general-\(device)")
-        element("recipe.tabs", in: app).buttons["Ingredients"].tap()
+        let tabs = element("recipe.tabs", in: app)
+        let ingredients = tabs.buttons["Ingredients"]
+        diagnose("before Ingredients", app: app, tabs: tabs, segment: ingredients)
+        ingredients.tap()
         sleep(2)
+        diagnose("after Ingredients", app: app, tabs: tabs, segment: ingredients)
         keepScreenshot(app, "food-live-recipe-ingredients-\(device)")
         XCTAssertTrue(first("recipe.ingredient.", in: app).waitForExistence(timeout: 30), "No live ingredients")
         element("recipe.tabs", in: app).buttons["Instructions"].tap()
         sleep(1)
         keepScreenshot(app, "food-live-recipe-instructions-\(device)")
+    }
+
+    /// Logs the tab picker's state and the hierarchy around a tap (iPad live-sheet investigation, 2026-10-12).
+    private func diagnose(_ moment: String, app: XCUIApplication, tabs: XCUIElement, segment: XCUIElement) {
+        let count = app.descendants(matching: .any).matching(identifier: "recipe.tabs").count
+        print("FOODDIAG \(moment): pickers=\(count) tabs.frame=\(tabs.frame) segment.exists=\(segment.exists) "
+              + "hittable=\(segment.exists && segment.isHittable) frame=\(segment.frame) selected=\(segment.isSelected)")
+        let tree = XCTAttachment(string: app.debugDescription)
+        tree.name = "hierarchy \(moment)"
+        tree.lifetime = .keepAlways
+        add(tree)
+        print("FOODDIAG-TREE \(moment) BEGIN\n\(app.debugDescription)\nFOODDIAG-TREE END")
     }
 
     /// Live server: the Recipes grid's first browse page loads.
