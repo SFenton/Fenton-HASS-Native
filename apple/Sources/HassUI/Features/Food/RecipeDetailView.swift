@@ -42,6 +42,7 @@ struct RecipeDetailPane: View {
                     .accessibilityAddTraits(.isHeader)
                 Button("Close", action: onClose)
                     .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
+                    .tint(FoodStyle.action) // The app accent on white is 2.5:1.
                     .accessibilityIdentifier("recipe.close")
             }
             .padding(.horizontal, HassTokens.Spacing.l)
