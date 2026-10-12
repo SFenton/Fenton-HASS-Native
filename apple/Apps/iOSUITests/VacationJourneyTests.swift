@@ -62,8 +62,19 @@ final class VacationJourneyTests: XCTestCase {
     /// Scrolls the page until `target` can be tapped.
     @discardableResult
     private func reveal(_ target: XCUIElement, in app: XCUIApplication) -> XCUIElement {
-        for _ in 0..<6 where !(target.exists && target.isHittable) {
-            app.swipeUp()
+        // Toward the target, until it sits inside the content area: at AX5 a control can sit above the screen
+        // after an earlier reveal, and a partly visible one is "hittable" while its center is under the
+        // status bar (the tap then scrolls to the top instead).
+        let window = app.windows.firstMatch.frame
+        let content = CGRect(x: window.minX, y: window.minY + 90, width: window.width, height: window.height - 120)
+        func inView() -> Bool {
+            guard target.exists, target.isHittable else { return false }
+            let frame = target.frame
+            return frame.height > content.height ? content.contains(CGPoint(x: frame.midX, y: frame.midY))
+                : content.contains(frame)
+        }
+        for _ in 0..<8 where !inView() {
+            if target.exists, target.frame.midY < content.midY { app.swipeDown() } else { app.swipeUp() }
         }
         XCTAssertTrue(target.isHittable, "\(target) never came into view")
         return target
@@ -71,7 +82,12 @@ final class VacationJourneyTests: XCTestCase {
 
     private func tap(_ id: String, in app: XCUIApplication) {
         let target = element(id, in: app)
-        XCTAssertTrue(target.waitForExistence(timeout: 10), "\(id) not found")
+        // A List only exposes rows it has laid out: at AX5 on the folded iPhone Duo the second chooser row
+        // starts below the screen.
+        if !target.waitForExistence(timeout: 10) {
+            for _ in 0..<6 where !target.exists { app.swipeUp() }
+        }
+        XCTAssertTrue(target.exists, "\(id) not found")
         reveal(target, in: app).tap()
     }
 
@@ -138,7 +154,8 @@ final class VacationJourneyTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["One traveler, one home resident"].exists)
         tap("vacation.chooser.vacationMode", in: app)
         XCTAssertTrue(element("vacation.modeCard", in: app).waitForExistence(timeout: 5))
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        // The folded iPhone Duo moves the back button from the bar to its rail.
+        app.buttons["BackButton"].firstMatch.tap()
         tap("vacation.chooser.soloTrip", in: app)
         XCTAssertTrue(element("soloTrip.toggle", in: app).waitForExistence(timeout: 5))
     }
@@ -228,7 +245,7 @@ final class VacationJourneyTests: XCTestCase {
         let app = try FentonHomeApp.launchSignedIn()
         let tab = app.tabBars.buttons["Settings"].exists
             ? app.tabBars.buttons["Settings"]
-            : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
+            : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND (identifier == 'gearshape' OR identifier == '')")).firstMatch
         XCTAssertTrue(tab.waitForExistence(timeout: 15), "Settings tab not found")
         tab.tap()
         assertTarget("settings.vacation", in: app)
@@ -269,7 +286,8 @@ final class VacationJourneyTests: XCTestCase {
             (.soloTripIdle, "soloTrip.traveler.steph"), (.soloTripEditor, "soloTrip.editor.confirm"),
         ]
         for (page, id) in checks {
-            let app = open(page, arguments: FentonHomeApp.ax5)
+            // Clean: at AX5 the debug last-call bar grows over the bottom of the page and takes the taps.
+            let app = open(page, clean: true, arguments: FentonHomeApp.ax5)
             reveal(element(id, in: app), in: app)
             app.terminate()
         }

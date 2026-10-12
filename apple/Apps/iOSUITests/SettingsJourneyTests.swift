@@ -21,7 +21,8 @@ final class SettingsJourneyTests: XCTestCase {
     private func settingsTab(_ app: XCUIApplication) -> XCUIElement {
         app.tabBars.buttons["Settings"].exists
             ? app.tabBars.buttons["Settings"]
-            : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
+            // The rail's button had the `gearshape` identifier; on the folded Duo it now has none (2026-10-11).
+            : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND (identifier == 'gearshape' OR identifier == '')")).firstMatch
     }
 
     /// Selects the Settings tab and waits for its Home Assistant row.
@@ -66,7 +67,9 @@ final class SettingsJourneyTests: XCTestCase {
         XCTAssertTrue(tab.waitForExistence(timeout: 10), "Settings tab not found")
         tab.tap()
         let row = app.buttons["settings.homeAssistant"]
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        // At AX5 on the folded iPhone Duo the row starts below the screen, and a List only exposes laid-out rows.
+        if !row.waitForExistence(timeout: 5) { reveal(row, in: app) }
+        XCTAssertTrue(row.exists)
         XCTAssertGreaterThanOrEqual(row.frame.height, 43)
         row.tap()
         XCTAssertTrue(app.buttons["haSettings.done"].waitForExistence(timeout: 5))
