@@ -109,6 +109,9 @@ final class FoodJourneyTests: XCTestCase {
         first.tap()
         XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10), "Recipe sheet did not open")
         expectCall("recipe_detail recipe_id=1", in: app)
+        // The hub's own sheet switches tabs (on iPad a live hub sheet ignored the tap, 2026-10-12).
+        element("recipe.tabs", in: app).buttons["Ingredients"].tap()
+        XCTAssertTrue(element("recipe.ingredient.0", in: app).waitForExistence(timeout: 10), "The hub's recipe sheet did not switch to Ingredients")
     }
 
     /// Hub tiles are controls of their own: All Recipes pushes the grid, a space tile pushes its inventory page.
@@ -393,9 +396,21 @@ final class FoodJourneyTests: XCTestCase {
     /// Live server: the Recipes grid's first browse page loads.
     func testLiveRecipesGrid() throws {
         let app = try launchLive("recipes")
-        XCTAssertTrue(first("recipes.card.", in: app).waitForExistence(timeout: 45), "No live recipes")
+        let card = first("recipes.card.", in: app)
+        XCTAssertTrue(card.waitForExistence(timeout: 45), "No live recipes")
         XCTAssertFalse(element("recipes.error", in: app).exists)
         sleep(2)
         keepScreenshot(app, "food-live-recipes-\(device)")
+        // A live recipe opened from the grid switches tabs too (compare the hub's sheet).
+        card.tap()
+        let tabs = element("recipe.tabs", in: app)
+        XCTAssertTrue(tabs.waitForExistence(timeout: 30), "Recipe detail did not open from the grid")
+        sleep(2)
+        let ingredients = tabs.buttons["Ingredients"]
+        diagnose("grid before Ingredients", app: app, tabs: tabs, segment: ingredients)
+        ingredients.tap()
+        sleep(2)
+        diagnose("grid after Ingredients", app: app, tabs: tabs, segment: ingredients)
+        XCTAssertTrue(first("recipe.ingredient.", in: app).waitForExistence(timeout: 30), "No live ingredients from the grid")
     }
 }
