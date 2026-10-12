@@ -258,7 +258,11 @@ final class FoodJourneyTests: XCTestCase {
         waitForGrid(app)
         element("fab.sort", in: app).tap()
         XCTAssertTrue(app.buttons["filterSheet.apply"].waitForExistence(timeout: 5))
-        element("recipes.sort.alphabetical", in: app).tap()
+        let alphabetical = element("recipes.sort.alphabetical", in: app)
+        let sheet = app.collectionViews.firstMatch
+        // At AX5 the row starts below the fold, and the Form only creates rows on screen.
+        for _ in 0..<6 where !(alphabetical.exists && alphabetical.isHittable) { sheet.swipeUp() }
+        alphabetical.tap()
         sleep(1)
         return app
     }
@@ -268,7 +272,10 @@ final class FoodJourneyTests: XCTestCase {
         waitForGrid(app)
         element("fab.filter", in: app).tap()
         XCTAssertTrue(app.buttons["filterSheet.apply"].waitForExistence(timeout: 5))
-        element("recipes.filter.expiringOnly", in: app).switches.firstMatch.tap()
+        let toggle = element("recipes.filter.expiringOnly", in: app).switches.firstMatch
+        let sheet = app.collectionViews.firstMatch
+        for _ in 0..<6 where !(toggle.exists && toggle.isHittable) { sheet.swipeUp() }
+        toggle.tap()
         sleep(1)
         return app
     }
