@@ -88,13 +88,13 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         XCTAssertTrue(autoLock.waitForExistence(timeout: 5))
         XCTAssertEqual(autoLock.value as? String, "On")
         XCTAssertGreaterThanOrEqual(autoLock.frame.height, 44)
-        autoLock.tap()
+        autoLock.tapCenter()
         expectLastCall(app, "input_boolean.turn_off entity_id=input_boolean.is_front_door_auto_lock_enabled")
         XCTAssertTrue(waitForValue(autoLock, "Off"), "autoLock value is \(autoLock.value ?? "nil")")
 
         let faucets = reveal(tile(app, "input_boolean.show_outdoor_faucets"), in: app)
         XCTAssertEqual(faucets.value as? String, "Off")
-        faucets.tap()
+        faucets.tapCenter()
         expectLastCall(app, "input_boolean.turn_on entity_id=input_boolean.show_outdoor_faucets")
     }
 
@@ -109,7 +109,7 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         let app = launch("admin")
         let warning = app.descendants(matching: .any)["admin.relayWarning"]
         XCTAssertTrue(reveal(warning, in: app).exists, "Relay warning missing")
-        tile(app, "input_boolean.relay_control_mode").tap()
+        tile(app, "input_boolean.relay_control_mode").tapCenter()
         expectLastCall(app, "input_boolean.turn_off entity_id=input_boolean.relay_control_mode")
         XCTAssertTrue(warning.waitForNonExistence(timeout: 3), "Relay warning stayed after relay mode turned off")
     }
@@ -143,7 +143,7 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         let kitchen = tile(app, "switch.kitchen_auto_re_enable_presence_lighting")
         XCTAssertTrue(kitchen.waitForExistence(timeout: 5))
         XCTAssertEqual(kitchen.value as? String, "On")
-        kitchen.tap()
+        kitchen.tapCenter()
         XCTAssertTrue(waitForValue(kitchen, "Off"), "kitchen value is \(kitchen.value ?? "nil")")
         app.buttons["household.sheet.done"].tap()
         expectLastCall(app, "switch.turn_off entity_id=switch.kitchen_auto_re_enable_presence_lighting")
@@ -156,7 +156,7 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         let aqi = tile(app, "input_boolean.high_aqi_mode")
         XCTAssertTrue(aqi.waitForExistence(timeout: 5))
         XCTAssertEqual(aqi.value as? String, "Off")
-        aqi.tap()
+        aqi.tapCenter()
         expectLastCall(app, "input_boolean.turn_on entity_id=input_boolean.high_aqi_mode")
         XCTAssertTrue(waitForValue(aqi, "On"), "aqi value is \(aqi.value ?? "nil")")
     }
@@ -166,7 +166,7 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
         for id in ["guest_room", "music_room", "theater_room"] {
             XCTAssertTrue(tile(app, "input_boolean.guests_staying_in_\(id)").waitForExistence(timeout: 5), id)
         }
-        tile(app, "input_boolean.guests_staying_in_music_room").tap()
+        tile(app, "input_boolean.guests_staying_in_music_room").tapCenter()
         expectLastCall(app, "input_boolean.turn_on entity_id=input_boolean.guests_staying_in_music_room")
     }
 
@@ -233,6 +233,8 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
             XCTAssertTrue(app.buttons["presence.option.enabled"].waitForExistence(timeout: 5))
             sleep(1)
             keepScreenshot(app, "presence-detail-\(suffix)")
+            goBack(app) // Done sits on the sheet's root, not the pushed detail.
+            XCTAssertTrue(app.buttons["household.sheet.done"].waitForExistence(timeout: 5))
             app.buttons["household.sheet.done"].tap()
             openSheet(app, "autoReset")
             keepScreenshot(app, "auto-reset-\(suffix)")
@@ -265,5 +267,13 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
             }
             goBack(app)
         }
+    }
+}
+
+private extension XCUIElement {
+    /// Taps the middle of a toggle tile. Plain `tap()` on these switch-type elements often didn't reach the
+    /// tile on the iPhone Duo (iOS 27.1) while button tiles were fine; the tile takes taps anywhere.
+    func tapCenter() {
+        coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
     }
 }

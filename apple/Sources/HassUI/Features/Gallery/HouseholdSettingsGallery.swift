@@ -45,7 +45,15 @@ struct HouseholdSettingsGallery: View {
     }
 
     /// The last service call, which journeys read to check what a control sent.
-    private var lastCall: some View {
+    private var lastCall: some View { HouseholdGalleryLastCall(recorder: recorder) }
+}
+
+/// The last-call line as its own view, so it observes the recorder itself: read from the gallery's body inside
+/// `navigationDestination`, it missed updates on the iPhone Duo.
+private struct HouseholdGalleryLastCall: View {
+    var recorder: HouseholdGalleryRecorder
+
+    var body: some View {
         Text("Last call: \(recorder.lastCall)")
             .font(.caption.monospaced())
             .foregroundStyle(HassTokens.Ink.secondary)
