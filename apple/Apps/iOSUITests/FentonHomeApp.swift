@@ -249,9 +249,11 @@ enum FentonHomeApp {
                !app.buttons["home.chip.lights"].isHittable {
                 return true
             }
-            // The same for an inventory page behind an iPad form sheet (Sort, Filter, Add Item, the editor).
+            // The same for an inventory page behind an iPad form sheet (Sort, Filter, Add Item, the editor;
+            // Add Item's later steps show Back instead of Cancel).
             if issue.auditType == .elementDetection,
-               app.navigationBars.buttons["Done"].exists || app.navigationBars.buttons["Cancel"].exists,
+               app.navigationBars.buttons["Done"].exists || app.navigationBars.buttons["Cancel"].exists
+                || app.buttons["scan.back"].exists,
                app.buttons["inventory.row.cart"].firstMatch.exists, !app.buttons["inventory.row.cart"].firstMatch.isHittable {
                 return true
             }

@@ -42,7 +42,8 @@ struct InventoryItemEditor: View {
                             .foregroundStyle(HassTokens.Ink.primary)
                             .accessibilityAddTraits(.isHeader)
                         Spacer(minLength: 0)
-                        closeButton.buttonStyle(.bordered)
+                        // Ink tint: the teal label on its teal fill read 3.1:1 (iPad landscape).
+                        closeButton.buttonStyle(.bordered).tint(HassTokens.Ink.primary)
                     }
                     .padding(.horizontal, HassTokens.Spacing.l)
                     .frame(minHeight: 56)
