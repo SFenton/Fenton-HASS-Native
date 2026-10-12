@@ -392,7 +392,8 @@ final class ClimateJourneyTests: XCTestCase {
         for orientation in orientations {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
-            for view in views where !captured("climate-\(view.name)-\(suffix)") {
+            for view in views where !captured("climate-\(view.name)-\(suffix)")
+                || (view.name == "page" && !captured("climate-hub-picker-\(suffix)")) {
                 let app = launch(open: view.open, clean: true)
                 sleep(1)
                 keepScreenshot(app, "climate-\(view.name)-\(suffix)")
