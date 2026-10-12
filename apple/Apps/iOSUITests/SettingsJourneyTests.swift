@@ -19,7 +19,8 @@ final class SettingsJourneyTests: XCTestCase {
 
     /// The Settings tab: in the tab bar, or the tab rail the folded iPhone Duo shows instead.
     private func settingsTab(_ app: XCUIApplication) -> XCUIElement {
-        app.tabBars.buttons["Settings"].exists
+        // The tab bar can appear a moment after launch (unfolded iPhone Duo).
+        app.tabBars.buttons["Settings"].waitForExistence(timeout: 10)
             ? app.tabBars.buttons["Settings"]
             : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
     }

@@ -256,8 +256,10 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
     /// inside the pages, so the house is never switched.
     func testSettingsRowsOpenTheLivePages() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        let tab = app.tabBars.buttons["Settings"].exists
-            ? app.tabBars.buttons["Settings"]
+        // The tab bar can appear a moment after launch (unfolded iPhone Duo); the folded Duo has a rail instead.
+        let barTab = app.tabBars.buttons["Settings"]
+        let tab = barTab.waitForExistence(timeout: 10)
+            ? barTab
             : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
         XCTAssertTrue(tab.waitForExistence(timeout: 10))
         tab.tap()
