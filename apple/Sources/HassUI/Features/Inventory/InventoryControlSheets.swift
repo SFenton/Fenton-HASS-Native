@@ -29,23 +29,19 @@ struct InventorySortSheet: View {
                 direction = .ascending
             }
         ) {
-            Section {
+            Section("Sort By") {
                 ForEach(InventorySortMode.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.subtitle, isSelected: mode == option) { mode = option }
                         .accessibilityIdentifier("inventory.sort.\(option.rawValue)")
                 }
-            } header: {
-                FilterSectionHeader("Sort By")
             }
             // Option rows rather than a segmented control and footnote: both were reported clipped at large
             // text sizes; rows wrap like Sort By above.
-            Section {
+            Section("Sort Direction") {
                 ForEach(InventorySortDirection.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.hint, isSelected: direction == option) { direction = option }
                         .accessibilityIdentifier("inventory.sort.direction.\(option.rawValue)")
                 }
-            } header: {
-                FilterSectionHeader("Sort Direction")
             }
         }
     }

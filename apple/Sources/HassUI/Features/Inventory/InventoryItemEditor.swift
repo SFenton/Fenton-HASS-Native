@@ -167,6 +167,21 @@ private struct BatchSection: View {
         let disabled = model.isDisabled(batch)
         let quantity = model.quantity(batch)
         Section {
+            // The batch's heading is the section's first row: as a custom section header the audit reported its
+            // text clipped at large sizes.
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.heading(batch))
+                    .font(.headline)
+                    .foregroundStyle(HassTokens.Ink.primary)
+                    .accessibilityAddTraits(.isHeader)
+                Text(model.locationLine(batch))
+                    .font(.subheadline)
+                    .foregroundStyle(HassTokens.Ink.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("inventory.editor.batch")
+
             Stepper(value: quantityBinding, in: model.minimumQuantity(batch)...InventoryCatalog.maxQuantity, step: 1) {
                 LabeledContent("Quantity", value: InventoryFormat.quantity(quantity))
             }
@@ -244,21 +259,6 @@ private struct BatchSection: View {
             .disabled(disabled)
             .accessibilityLabel(model.busy == .delete(batch.key) ? "Deleting \(qualifier)" : "Delete \(qualifier)")
             .accessibilityIdentifier("inventory.editor.delete")
-        } header: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(model.heading(batch))
-                    .font(.headline)
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .textCase(nil)
-                    .accessibilityAddTraits(.isHeader)
-                Text(model.locationLine(batch))
-                    .font(.subheadline)
-                    .foregroundStyle(HassTokens.Ink.secondary)
-                    .textCase(nil)
-            }
-            .accessibilityElement(children: .combine)
-            // On the header only: on the section it would replace every control's identifier.
-            .accessibilityIdentifier("inventory.editor.batch")
         }
     }
 
