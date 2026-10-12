@@ -55,7 +55,7 @@ apple/Tests/**                                             → tests for your ow
 | Test tooling | XCUITest journeys + audits on iPhone/Duo/iPad (`tools/ios_uitest.sh`); 95/90 coverage gate (`tools/apple_coverage.sh`) |
 | Media remote (sheet, 4 remotes, Hue Sync) | Shared component + debug gallery; not yet opened from a page (Rooms/Media lanes wire it) |
 | Watch app | Target stub only |
-| Bedroom devices (wake light, SleepyPod bed sides) | Tiles, sheets, alarm editors, active alarm, Solo Trip routing; debug gallery `FENTON_GALLERY=bedroom`; Rooms lane places them |
+| Bedroom devices (wake light, SleepyPod bed sides) | Tiles, sheets, alarm editors, active alarm, Solo Trip routing; debug gallery `FENTON_GALLERY=bedroom`; Rooms lane places them. Verified on the Mac 2026-10-12: journeys and audits pass on iPhone, iPad (both orientations) and folded Duo; unfolded Duo portrait journeys 14/15 (one simulator crash), unfolded audits/captures not run (Device Hub unscriptable); Bedroom coverage 98.0% logic / 92.1% UX |
 | Thermostat dial (shared control) | `ThermostatDial` + `ClimateThermostatDial`; debug gallery `FENTON_GALLERY=thermostat-dial` |
 
 ## 4. Log
