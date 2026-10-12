@@ -9,6 +9,7 @@ struct ScanItemSheet: View {
     var onAdded: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var camera: ScanCameraController
     @State private var reportedAdd = false
 
@@ -32,13 +33,22 @@ struct ScanItemSheet: View {
                     case .adding: addingPage
                     }
                 }
+                // At accessibility sizes the step's buttons scroll with the form: pinned, they took about 40% of
+                // the iPhone screen and left the form a short window.
+                if typeSize.isAccessibilitySize, showsFooter {
+                    Section { footerButtons }
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+                }
             }
             // On the form itself: applied after the footer inset, it would replace the footer buttons' identifiers.
             .accessibilityIdentifier("scan.\(model.step.rawValue)")
             .navigationTitle("Add Item")
             .inlineNavigationTitle()
             .toolbar { toolbar }
-            .safeAreaInset(edge: .bottom) { footer }
+            .safeAreaInset(edge: .bottom) {
+                if !typeSize.isAccessibilitySize { footer }
+            }
         }
         // The app accent reads 2.5:1 as button text on the sheet; the floating actions' teal reads 5.8:1.
         .tint(FloatingActionBar.tint)
@@ -98,32 +108,41 @@ struct ScanItemSheet: View {
         .listRowBackground(Color.clear)
     }
 
+    /// The step has buttons to show (not while processing or adding).
+    private var showsFooter: Bool {
+        !model.isProcessing && !(model.step == .adding && model.addStatus != .added)
+    }
+
     @ViewBuilder
     private var footer: some View {
-        if !model.isProcessing, !(model.step == .adding && model.addStatus != .added) {
-            VStack(spacing: HassTokens.Spacing.s) {
-                switch model.step {
-                case .barcode:
-                    footerButton(model.barcodeForwardTitle, prominent: model.hasBarcodeValue, id: "scan.forward") { model.goToExpiryStep() }
-                        .disabled(model.barcodeForwardDisabled)
-                case .expiry:
-                    if model.canReadExpiry {
-                        footerButton(model.readExpiryTitle, prominent: true, id: "scan.readExpiry") {
-                            Task { await camera.captureExpiry(for: model) }
-                        }
+        if showsFooter {
+            footerButtons
+                .padding(.horizontal, HassTokens.Spacing.l)
+                .padding(.vertical, HassTokens.Spacing.s)
+                .background(.bar)
+        }
+    }
+
+    private var footerButtons: some View {
+        VStack(spacing: HassTokens.Spacing.s) {
+            switch model.step {
+            case .barcode:
+                footerButton(model.barcodeForwardTitle, prominent: model.hasBarcodeValue, id: "scan.forward") { model.goToExpiryStep() }
+                    .disabled(model.barcodeForwardDisabled)
+            case .expiry:
+                if model.canReadExpiry {
+                    footerButton(model.readExpiryTitle, prominent: true, id: "scan.readExpiry") {
+                        Task { await camera.captureExpiry(for: model) }
                     }
-                    footerButton(model.expiryForwardTitle, prominent: model.hasExpiryValue, id: "scan.forward") { model.goToReviewStep() }
-                        .disabled(model.expiryForwardDisabled)
-                case .review:
-                    footerButton("Add", prominent: true, id: "scan.add") { Task { await model.add() } }
-                        .disabled(!model.canAdd)
-                case .adding:
-                    footerButton("Done", prominent: true, id: "scan.done") { dismiss() }
                 }
+                footerButton(model.expiryForwardTitle, prominent: model.hasExpiryValue, id: "scan.forward") { model.goToReviewStep() }
+                    .disabled(model.expiryForwardDisabled)
+            case .review:
+                footerButton("Add", prominent: true, id: "scan.add") { Task { await model.add() } }
+                    .disabled(!model.canAdd)
+            case .adding:
+                footerButton("Done", prominent: true, id: "scan.done") { dismiss() }
             }
-            .padding(.horizontal, HassTokens.Spacing.l)
-            .padding(.vertical, HassTokens.Spacing.s)
-            .background(.bar)
         }
     }
 

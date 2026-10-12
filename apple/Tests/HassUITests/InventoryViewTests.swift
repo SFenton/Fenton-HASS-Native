@@ -169,6 +169,17 @@ struct InventoryViewTests {
         #expect(rendered(ScanItemSheet(model: scan, camera: simulated, onAdded: {})))
     }
 
+    @Test func scanFooterScrollsWithTheFormAtAccessibilitySizes() async {
+        let (_, models) = models()
+        let scan = ScanItemModel(space: .pantry, client: models.everShelf)
+        let camera = ScanCameraController(source: .simulated)
+        for step in 0..<3 {
+            if step == 1 { scan.enterNameManually(); scan.setName("Oat Milk"); scan.goToExpiryStep() }
+            if step == 2 { scan.goToReviewStep() }
+            #expect(rendered(ScanItemSheet(model: scan, camera: camera, onAdded: {}), dynamicType: .accessibility5))
+        }
+    }
+
     @Test func galleryRenders() {
         #expect(rendered(ComponentGallery(page: .inventory)))
         #expect(rendered(InventoryGallery(environment: ["FENTON_GALLERY_STATE": "empty", "FENTON_GALLERY_SPACE": "fridge"])))

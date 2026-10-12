@@ -69,13 +69,12 @@ struct InventoryFilterSheet: View {
             onApply: { model.filterMode = mode },
             onReset: { mode = .all }
         ) {
+            // No "Filter Items" header: it repeated the sheet title, and the audit reported it clipped.
             Section {
                 ForEach(InventoryFilterMode.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.subtitle, isSelected: mode == option) { mode = option }
                         .accessibilityIdentifier("inventory.filter.\(option.rawValue)")
                 }
-            } header: {
-                FilterSectionHeader("Filter Items")
             }
         }
     }
