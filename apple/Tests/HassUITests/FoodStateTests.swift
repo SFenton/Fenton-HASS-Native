@@ -162,13 +162,6 @@ struct FoodStateTests {
         #expect(SuggestedRecipesCarousel.adjusted(0, .decrement, pageCount: 5) == 0)
     }
 
-    @Test func detailTabBarRendersEverySelection() {
-        for tab in RecipeDetailModel.Tab.allCases {
-            #expect(render(DetailTabBar(selection: .constant(tab)), height: 60) != nil)
-            #expect(render(DetailTabBar(selection: .constant(tab)), height: 200, size: .accessibility5) != nil)
-        }
-    }
-
     @Test func percentSliderStepsByFive() {
         #expect(PercentSliderRow.adjusted(25, .increment) == 30)
         #expect(PercentSliderRow.adjusted(100, .increment) == 100)

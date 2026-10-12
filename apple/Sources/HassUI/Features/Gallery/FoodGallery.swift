@@ -17,7 +17,13 @@ struct FoodGallery: View {
     init() {
         let environment = ProcessInfo.processInfo.environment
         _service = State(initialValue: FixtureRecipeService(mode: environment["FENTON_GALLERY_FOOD_MODE"].flatMap(FixtureRecipeService.Mode.init(rawValue:)) ?? .normal))
-        _path = State(initialValue: environment["FENTON_GALLERY_ROUTE"] == "recipes" ? [.hub, .recipes] : [.hub])
+        // `none` starts on the gallery list, e.g. to open a page with the debug launch route (FENTON_OPEN_FOOD).
+        let start: [FoodRoute] = switch environment["FENTON_GALLERY_ROUTE"] {
+        case "recipes": [.hub, .recipes]
+        case "none": []
+        default: [.hub]
+        }
+        _path = State(initialValue: start)
     }
 
     var body: some View {
