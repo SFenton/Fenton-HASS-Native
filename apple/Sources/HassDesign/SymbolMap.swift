@@ -18,6 +18,11 @@ public enum SymbolMap {
         "mdi:guitar-electric": "guitars",
         "mdi:projector": "videoprojector",
         "mdi:cctv": "video",
+        "mdi:shield-account": "person.badge.shield.checkmark",
+        "mdi:tune-vertical": "slider.vertical.3",
+        "mdi:account-multiple": "person.2",
+        "mdi:airplane": "airplane",
+        "mdi:car-estate": "car.side",
         // Media remote (`MediaRemotes`, `.agents/patterns/media-remote.md`)
         "mdi:power": "power",
         "mdi:chevron-up": "chevron.up",
