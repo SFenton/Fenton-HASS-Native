@@ -81,8 +81,11 @@ final class ClimateJourneyTests: XCTestCase {
     }
 
     private func back(_ app: XCUIApplication) {
-        let back = app.navigationBars.buttons.element(boundBy: 0)
-        if app.buttons["BackButton"].exists { app.buttons["BackButton"].tap() } else { back.tap() }
+        if app.buttons["BackButton"].exists { app.buttons["BackButton"].tap(); return }
+        // The bar button that isn't Done: on iPad Done can come first in the sheet's bar.
+        let back = app.navigationBars.buttons.allElementsBoundByIndex.first { $0.label != "Done" && $0.isHittable }
+        XCTAssertNotNil(back, "No Back button")
+        back?.tap()
     }
 
     // MARK: - Page
