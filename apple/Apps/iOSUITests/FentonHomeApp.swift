@@ -270,8 +270,10 @@ enum FentonHomeApp {
             // Text behind a modal sheet (iPad form sheets leave Home visible around them) is drawn but
             // hidden from assistive technologies by the modal. Accept it only while a sheet is up and
             // Home's own controls can't be reached (the sheet's dimming layer takes the touches).
-            if issue.auditType == .elementDetection, app.navigationBars.buttons["Done"].exists,
-               !app.buttons["home.chip.lights"].isHittable {
+            // A page pushed inside the sheet shows Back, not Done; the page behind still has its own bar, so two
+            // navigation bars also mean a modal over a page (Bedroom editors on iPad, 2026-10-12).
+            let modalUp = app.navigationBars.buttons["Done"].exists || app.navigationBars.count > 1
+            if issue.auditType == .elementDetection, modalUp, !app.buttons["home.chip.lights"].isHittable {
                 return true
             }
             // The same for an inventory page behind an iPad form sheet (Sort, Filter, Add Item, the editor;
@@ -388,7 +390,8 @@ extension XCTestCase {
         let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
         let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
         FileManager.default.createFile(atPath: ready.path, contents: nil)
-        let deadline = Date().addingTimeInterval(30)
+        // `simctl io` can take over 30 s on a loaded host; a short wait moved on and mislabeled the next capture.
+        let deadline = Date().addingTimeInterval(120)
         while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
     }
 }
