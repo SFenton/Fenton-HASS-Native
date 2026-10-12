@@ -248,15 +248,26 @@ final class HomePagesJourneyTests: XCTestCase {
         XCTAssertTrue(element("sprinkler.overview", in: app).waitForExistence(timeout: 10), "Apply returns to the overview")
     }
 
+    // One test per page: each audit relaunches the app several times, and under host load a crash should
+    // cost one page, not four.
     func testSprinklersAuditsAndScreenshots() throws {
         try auditAndCapture("sprinklers") { self.launch("sprinklers", ["FENTON_GALLERY_CLEAN": "1"], waitFor: "sprinklers.controller.frontYard") }
+    }
+
+    func testSprinklerControllerAuditsAndScreenshots() throws {
         try auditAndCapture("sprinkler-controller") {
             self.launch("sprinklers", ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_SPRINKLER": "backyard"], waitFor: "sprinkler.zone.0")
         }
+    }
+
+    func testSprinklerWaterAuditsAndScreenshots() throws {
         try auditAndCapture("sprinkler-water") {
             self.launch("sprinklers", ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_SPRINKLER": "frontYard", "FENTON_GALLERY_DETAIL": "water-0"],
                         waitFor: "sprinkler.startWatering")
         }
+    }
+
+    func testSprinklerScheduleAuditsAndScreenshots() throws {
         try auditAndCapture("sprinkler-schedule") {
             self.launch("sprinklers", ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_SPRINKLER": "frontYard", "FENTON_GALLERY_DETAIL": "schedule-0"],
                         waitFor: "sprinkler.schedule.apply")
