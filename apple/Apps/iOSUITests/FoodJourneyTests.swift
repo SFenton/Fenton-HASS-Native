@@ -127,6 +127,24 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Heat the oven to 425°F and zest the lemons."].waitForExistence(timeout: 10))
     }
 
+    /// The same check with the pages inside a TabView, as in the live app (the live iPad sheet ignored taps).
+    func testHubSheetSwitchesTabsInTabView() {
+        let app = FentonHomeApp.makeApp()
+        app.launchEnvironment["FENTON_GALLERY"] = "food"
+        app.launchEnvironment["FENTON_GALLERY_ROUTE"] = "hub"
+        app.launchEnvironment["FENTON_GALLERY_FOOD_TABS"] = "1"
+        app.launch()
+        let suggestion = element("food.suggestion.2", in: app)
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 15))
+        suggestion.tap()
+        let tabs = element("recipe.tabs", in: app)
+        XCTAssertTrue(tabs.waitForExistence(timeout: 10), "Recipe sheet did not open")
+        sleep(1)
+        tabs.buttons["Ingredients"].tap()
+        XCTAssertTrue(element("recipe.ingredient.0", in: app).waitForExistence(timeout: 10),
+                      "In a TabView the hub's recipe sheet did not switch to Ingredients")
+    }
+
     /// Hub tiles are controls of their own: All Recipes pushes the grid, a space tile pushes its inventory page.
     func testHubTilesOpenTheirPages() {
         // A fresh launch per tile: the back button's place differs per layout (and in Duo landscape).

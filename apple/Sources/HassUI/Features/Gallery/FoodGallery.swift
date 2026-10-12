@@ -21,6 +21,19 @@ struct FoodGallery: View {
     }
 
     var body: some View {
+        // FENTON_GALLERY_FOOD_TABS=1 hosts the pages in a TabView like MainTabView (the live app's presentation
+        // context), to compare sheet behavior with and without it.
+        if ProcessInfo.processInfo.environment["FENTON_GALLERY_FOOD_TABS"] == "1" {
+            TabView {
+                pages.tabItem { Label("Home", systemImage: "house") }
+                Text("Other").tabItem { Label("Other", systemImage: "gearshape") }
+            }
+        } else {
+            pages
+        }
+    }
+
+    private var pages: some View {
         NavigationStack(path: $path) {
             List {
                 NavigationLink("Food & Recipes", value: FoodRoute.hub)
