@@ -253,7 +253,8 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
             openSheet(app, "autoReset")
             keepScreenshot(app, "auto-reset-\(suffix)")
         }
-        XCUIDevice.shared.orientation = .portrait
+        // Only iPad rotates here; setting the orientation on an unfolded Duo hangs the runner (devices.md).
+        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
 
     // MARK: - Live
