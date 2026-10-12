@@ -9,6 +9,8 @@ public struct ComponentGallery: View {
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
         case vacuums
+        case roomDevices = "room-devices"
+        case householdSettings = "household-settings"
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -31,6 +33,8 @@ public struct ComponentGallery: View {
             case .mediaRemote: MediaRemoteGallery()
             case .thermostatDial: ThermostatDialGallery()
             case .vacuums: VacuumGallery()
+            case .roomDevices: RoomDevicesGallery()
+            case .householdSettings: HouseholdSettingsGallery()
             }
         }
     }

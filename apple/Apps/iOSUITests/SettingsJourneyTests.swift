@@ -19,7 +19,8 @@ final class SettingsJourneyTests: XCTestCase {
 
     /// The Settings tab: in the tab bar, or the tab rail the folded iPhone Duo shows instead.
     private func settingsTab(_ app: XCUIApplication) -> XCUIElement {
-        app.tabBars.buttons["Settings"].exists
+        // The tab bar can appear a moment after launch (unfolded iPhone Duo).
+        app.tabBars.buttons["Settings"].waitForExistence(timeout: 10)
             ? app.tabBars.buttons["Settings"]
             : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
     }
@@ -29,7 +30,19 @@ final class SettingsJourneyTests: XCTestCase {
         let tab = settingsTab(app)
         XCTAssertTrue(tab.waitForExistence(timeout: 10), "Settings tab not found")
         tab.tap()
-        XCTAssertTrue(app.buttons["settings.homeAssistant"].waitForExistence(timeout: 5))
+        XCTAssertTrue(homeAssistantRow(app).exists)
+    }
+
+    /// The Home Assistant row, scrolled into view: it sits below the household topics, which push it off
+    /// screen at AX5, and a `List` only exposes rows it has laid out.
+    private func homeAssistantRow(_ app: XCUIApplication) -> XCUIElement {
+        let row = app.buttons["settings.homeAssistant"]
+        guard app.buttons["settings.topic.admin"].waitForExistence(timeout: 5) || row.exists else { return row }
+        for _ in 0..<8 where !(row.exists && row.isHittable) {
+            app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+        }
+        if !row.exists { _ = row.waitForExistence(timeout: 2) }
+        return row
     }
 
     /// Scrolls the modal until `element` can be tapped (the folded iPhone Duo's form is taller than
@@ -65,8 +78,8 @@ final class SettingsJourneyTests: XCTestCase {
         let tab = settingsTab(app)
         XCTAssertTrue(tab.waitForExistence(timeout: 10), "Settings tab not found")
         tab.tap()
-        let row = app.buttons["settings.homeAssistant"]
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let row = homeAssistantRow(app)
+        XCTAssertTrue(row.exists)
         XCTAssertGreaterThanOrEqual(row.frame.height, 43)
         row.tap()
         XCTAssertTrue(app.buttons["haSettings.done"].waitForExistence(timeout: 5))

@@ -12,3 +12,5 @@
 | [vacuum-sheet.md](vacuum-sheet.md) | `HassUI/Features/Vacuums/VacuumSheet.swift` | `src/components/hass/VacuumCard.tsx` |
 | [valetudo-map.md](valetudo-map.md) | `HassUI/Features/Vacuums/ValetudoMapView.swift` | `src/components/hass/ValetudoMapCard.tsx` |
 | [thermostat-dial.md](thermostat-dial.md) | `HassDesign/ThermostatDial/ThermostatDial.swift` | `src/components/hass/CircularControlDial.tsx` |
+| [room-device-sheets.md](room-device-sheets.md) | `HassUI/Features/RoomDevices/` | `src/components/hass/*ModalContent.tsx` (fan, purifier, humidifier, grill) |
+| [settings-section.md](settings-section.md) | `HassDesign/SettingsSection.swift` | `src/components/core/SettingsSection.tsx` |
