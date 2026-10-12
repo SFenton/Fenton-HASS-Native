@@ -35,14 +35,19 @@ final class ClimateJourneyTests: XCTestCase {
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let window = app.windows.firstMatch
         for _ in 0..<14 {
+            // Scroll inside the sheet when one is up: an iPad sheet doesn't cover the window, and a drag on the
+            // dimmed area outside it scrolls nothing.
+            let sheets = app.scrollViews.matching(NSPredicate(format: "identifier BEGINSWITH 'climate.sheet.' OR identifier == 'climate.detail'"))
+            let area = sheets.allElementsBoundByIndex.last { $0.exists && $0.isHittable } ?? window
+            let frame = area.frame
             // Clear of the bars: navigation bar and the gallery's last-call line at the top, home indicator below.
-            let top = window.frame.minY + window.frame.height * 0.18
-            let bottom = window.frame.maxY - window.frame.height * 0.08
+            let top = frame.minY + Swift.min(frame.height * 0.18, 160)
+            let bottom = frame.maxY - frame.height * 0.08
             if element.exists, element.isHittable, element.frame.maxY <= bottom, element.frame.minY >= top { break }
             let above = element.exists && element.frame.minY < top
-            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: above ? 0.35 : 0.7))
+            let start = area.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: above ? 0.35 : 0.7))
             // Slow drag with a hold so the scroll doesn't coast: a tap during momentum only stops the scroll.
-            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: (above ? 1 : -1) * window.frame.height * 0.2)),
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: (above ? 1 : -1) * frame.height * 0.2)),
                         withVelocity: .slow, thenHoldForDuration: 0.3)
         }
         XCTAssertTrue(element.isHittable, "\(element) never came into view", file: file, line: line)

@@ -327,6 +327,7 @@ struct ClimateOptionPicker: View {
             }
         }
         // Full height like every control grid (modal-sheet pattern); at the medium detent the heading clipped.
+        .climateSheetSizing()
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }

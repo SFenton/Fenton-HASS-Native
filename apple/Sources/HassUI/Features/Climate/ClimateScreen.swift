@@ -79,6 +79,7 @@ struct ClimatePage: View {
         .sheet(item: $sheet) { request in
             ClimateSheet(controller: controller, request: request)
                 .safeAreaInset(edge: .top) { sheetAccessory }
+                .climateSheetSizing()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
