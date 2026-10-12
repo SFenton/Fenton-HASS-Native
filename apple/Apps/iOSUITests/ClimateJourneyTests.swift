@@ -365,6 +365,12 @@ final class ClimateJourneyTests: XCTestCase {
 
     // MARK: - Screenshots
 
+    /// A host capture named `name` already exists (a rerun after a simulator crash resumes where it stopped).
+    private func captured(_ name: String) -> Bool {
+        guard let folder = ProcessInfo.processInfo.environment["FENTON_CAPTURE_DIR"], !folder.isEmpty else { return false }
+        return FileManager.default.fileExists(atPath: URL(fileURLWithPath: folder).appendingPathComponent("\(name).png").path)
+    }
+
     /// The page, hub picker, each sheet tab and every detail kind, named `climate-<view>-<orientation>`
     /// (iPad: portrait and landscape).
     func testCaptureClimateScreens() {
@@ -376,7 +382,7 @@ final class ClimateJourneyTests: XCTestCase {
         for orientation in orientations {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
-            for view in views {
+            for view in views where !captured("climate-\(view.name)-\(suffix)") {
                 let app = launch(open: view.open, clean: true)
                 sleep(1)
                 keepScreenshot(app, "climate-\(view.name)-\(suffix)")
@@ -387,9 +393,11 @@ final class ClimateJourneyTests: XCTestCase {
                     keepScreenshot(app, "climate-hub-picker-\(suffix)")
                 }
             }
-            let away = launch(scenario: "away", clean: true)
-            sleep(1)
-            keepScreenshot(away, "climate-page-away-\(suffix)")
+            if !captured("climate-page-away-\(suffix)") {
+                let away = launch(scenario: "away", clean: true)
+                sleep(1)
+                keepScreenshot(away, "climate-page-away-\(suffix)")
+            }
         }
         if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
