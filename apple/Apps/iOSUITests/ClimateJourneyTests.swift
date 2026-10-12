@@ -283,7 +283,13 @@ final class ClimateJourneyTests: XCTestCase {
         XCTAssertTrue(element("thermostatDial.readout", in: app).waitForExistence(timeout: 15))
         XCTAssertTrue(element("thermostatDial.readout", in: app).label.hasPrefix("Whole Home thermostat"))
         XCTAssertTrue(element("climate.hub", in: app).label.hasPrefix("Thermostat Hub, "))
-        try FentonHomeApp.audit(app)
+        // The AX5 relaunch confirms iPad's "partially unsupported" Dynamic Type report (a known false positive).
+        try FentonHomeApp.audit(app) {
+            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
+            self.openClimateTab(large)
+            sleep(1)
+            return large
+        }
         reveal(element("climate.entry.rooms", in: app), in: app).tap()
         XCTAssertTrue(element("climate.sheet.rooms", in: app).waitForExistence(timeout: 5))
         XCTAssertEqual(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'climate.room.'")).count, 11)
