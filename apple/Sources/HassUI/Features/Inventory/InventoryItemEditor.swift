@@ -249,6 +249,7 @@ private struct BatchSection: View {
             } label: {
                 HStack {
                     Label("Delete", systemImage: "trash")
+                        .fixedSize(horizontal: false, vertical: true)
                     if case .delete(batch.key) = model.busy {
                         Spacer()
                         ProgressView()

@@ -45,7 +45,13 @@ enum FentonHomeApp {
     /// - Parameter passwordOnly: Ignore the token and go through the real login flow.
     ///   - arguments: Extra launch arguments (e.g. ``ax5``).
     ///   - environment: Extra launch environment (e.g. `FENTON_CAMERA_MODE`).
-    static func launchSignedIn(passwordOnly: Bool = false, arguments: [String] = [], environment extra: [String: String] = [:]) throws -> XCUIApplication {
+    ///   - readyIdentifier: What shows once signed in, when not Home (e.g. `inventory.pantry` with
+    ///     `FENTON_OPEN_INVENTORY`, which pushes the page over Home).
+    static func launchSignedIn(passwordOnly: Bool = false, arguments: [String] = [], environment extra: [String: String] = [:],
+                               readyIdentifier: String? = nil) throws -> XCUIApplication {
+        func ready(_ app: XCUIApplication) -> XCUIElement {
+            readyIdentifier.map { app.descendants(matching: .any)[$0] } ?? app.buttons["home.chip.lights"]
+        }
         let environment = ProcessInfo.processInfo.environment
         if !passwordOnly, let token = environment["FENTON_HASS_TOKEN"], !token.isEmpty {
             let app = makeApp()
@@ -55,7 +61,7 @@ enum FentonHomeApp {
             app.launchEnvironment.merge(extra) { _, new in new }
             if let server = environment["FENTON_HASS_SERVER"] { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
             app.launch()
-            XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30), "Home did not appear")
+            XCTAssertTrue(ready(app).waitForExistence(timeout: 30), "Home did not appear")
             return app
         }
         guard let credentials else {
@@ -81,7 +87,7 @@ enum FentonHomeApp {
         }
         XCTAssertTrue(submit.waitForExistence(timeout: 10), "Sign In button not reachable")
         submit.tap()
-        XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30), "Home did not appear after sign-in")
+        XCTAssertTrue(ready(app).waitForExistence(timeout: 30), "Home did not appear after sign-in")
         return app
     }
 
