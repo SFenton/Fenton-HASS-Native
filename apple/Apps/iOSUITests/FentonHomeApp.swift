@@ -262,6 +262,9 @@ enum FentonHomeApp {
         // Below the window's edge (a long sheet column in iPad landscape): the capture holds only part of it.
         let window = app.windows.firstMatch.frame
         if !window.isEmpty, !window.insetBy(dx: -1, dy: -1).contains(frame) { return true }
+        // Partly scrolled under a navigation bar: the bar's scroll-edge effect deliberately obscures it.
+        let bar = app.navigationBars.firstMatch.frame
+        if !bar.isEmpty, frame.minY < bar.maxY - 1, frame.maxY > bar.maxY + 1 { return true }
         // Only scroll views that hold this element (not, say, Home's behind a sheet).
         let holder = NSPredicate(format: "label == %@", element.label)
         let scrollViews = app.scrollViews.allElementsBoundByIndex

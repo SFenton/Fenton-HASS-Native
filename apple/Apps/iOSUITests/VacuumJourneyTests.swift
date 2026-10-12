@@ -30,7 +30,9 @@ final class VacuumJourneyTests: XCTestCase {
         app.launch()
         let anchor = vacuum == nil ? element("vacuums.tile.\(Self.mainFloor)", in: app) : element("vacuum.tabs", in: app)
         XCTAssertTrue(anchor.waitForExistence(timeout: 30), "Vacuums did not open")
-        XCTAssertTrue(anchor.wait(for: \.isHittable, toEqual: true, timeout: 10), "Still presenting")
+        // On phones the tab picker sits below the map and status, so the sheet's Done button proves it has presented.
+        let settled = vacuum == nil ? anchor : app.navigationBars.buttons["Done"].firstMatch
+        XCTAssertTrue(settled.wait(for: \.isHittable, toEqual: true, timeout: 10), "Still presenting")
         sleep(1) // Mid-animation frames fail contrast and clipping.
         return app
     }
@@ -48,7 +50,13 @@ final class VacuumJourneyTests: XCTestCase {
     /// Drags toward `element` in short steps until it is hittable (see MediaRemoteJourneyTests.reveal).
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, down: Bool = true) {
         let window = app.windows.firstMatch.frame
-        for _ in 0..<24 where !element.isHittable {
+        // The gallery's Last call bar floats over the bottom of the sheet; a control under it is not reachable yet.
+        let bar = app.staticTexts["gallery.lastCall"].firstMatch
+        func reachable() -> Bool {
+            guard element.isHittable else { return false }
+            return !bar.exists || element.frame.maxY <= bar.frame.minY - 4 || element.frame.minY >= bar.frame.maxY
+        }
+        for _ in 0..<24 where !reachable() {
             let above = element.exists ? element.frame.midY < window.midY : !down
             var x = element.exists && element.frame.midX > 0 ? element.frame.midX : window.midX
             if FentonHomeApp.family == .iPhoneDuo { x = min(x, window.maxX - 96) }
@@ -58,7 +66,35 @@ final class VacuumJourneyTests: XCTestCase {
             let to = from.withOffset(CGVector(dx: 0, dy: above ? 220 : -220))
             from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
         }
-        XCTAssertTrue(element.isHittable, "\(element) never came into view")
+        XCTAssertTrue(reachable(), "\(element) never came into view")
+        // Bring a control low on the screen up toward the middle, clear of anything floating at the bottom.
+        if element.frame.maxY > window.maxY - window.height * 0.3 {
+            let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+                .withOffset(CGVector(dx: -window.minX, dy: -window.minY))
+            var x = element.frame.midX
+            if FentonHomeApp.family == .iPhoneDuo { x = min(x, window.maxX - 96) }
+            let from = origin.withOffset(CGVector(dx: x, dy: window.minY + window.height * 0.6))
+            from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: window.midY - element.frame.midY)),
+                       withVelocity: .slow, thenHoldForDuration: 0.3)
+        }
+    }
+
+    /// Drags the tab picker to the top of the sheet, as a reader would, so the tab's content is on screen.
+    private func scrollToTabContent(in app: XCUIApplication) {
+        let picker = element("vacuum.tabs", in: app)
+        guard picker.exists, element("vacuum.layout.singleColumn", in: app).exists else { return }
+        // Never start a drag at the bottom edge: that is the Home gesture and backgrounds the app.
+        if !picker.isHittable { reveal(picker, in: app) }
+        let window = app.windows.firstMatch.frame
+        let top = window.minY + window.height * 0.18
+        guard picker.frame.minY > top + 40 else { return }
+        let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: -window.minX, dy: -window.minY))
+        let x = FentonHomeApp.family == .iPhoneDuo ? min(picker.frame.midX, window.maxX - 96) : picker.frame.midX
+        let from = origin.withOffset(CGVector(dx: x, dy: picker.frame.minY - 8))
+        from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: top - picker.frame.minY)),
+                   withVelocity: .slow, thenHoldForDuration: 0.4)
+        sleep(1) // Let the scroll settle: a frame captured mid-deceleration samples text at stale positions.
     }
 
     private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
@@ -66,9 +102,19 @@ final class VacuumJourneyTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(element.frame.height, 43, element.label, file: file, line: line)
     }
 
+    /// Picks a tab from the segmented control, or from its menu at accessibility sizes.
     private func tab(_ title: String, in app: XCUIApplication) {
         let picker = element("vacuum.tabs", in: app)
-        picker.buttons[title].firstMatch.tap()
+        reveal(picker, in: app, down: picker.exists && picker.frame.minY > app.windows.firstMatch.frame.midY)
+        let segment = picker.buttons[title].firstMatch
+        if segment.exists {
+            segment.tap()
+        } else {
+            picker.tap()
+            let item = app.buttons[title].firstMatch
+            XCTAssertTrue(item.waitForExistence(timeout: 5), "No \(title) menu item")
+            item.tap()
+        }
     }
 
     // MARK: - Page
@@ -76,15 +122,15 @@ final class VacuumJourneyTests: XCTestCase {
     /// Tiles name each robot and its state; the pause tile is a switch; tapping a robot opens its sheet.
     func testPageTilesAndAutoClean() {
         let app = launch()
-        let tile = app.buttons["vacuums.tile.\(Self.mainFloor)"]
+        let tile = element("vacuums.tile.\(Self.mainFloor)", in: app)
         XCTAssertTrue(tile.label.contains("Main Floor"), tile.label)
         assertTarget(tile)
         let pause = element("vacuums.autoClean.switch.main_floor_vacuum_coordinator_pause", in: app)
         reveal(pause, in: app)
-        XCTAssertEqual(pause.value as? String, "Enabled")
+        XCTAssertEqual(pause.value as? String, "On", "GlassTile toggles read On/Off (entity-tile pattern)")
         pause.tap()
         expectCall("switch.turn_on entity_id=switch.main_floor_vacuum_coordinator_pause", in: app)
-        let paused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Paused"), object: pause)
+        let paused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Off"), object: pause)
         XCTAssertEqual(XCTWaiter().wait(for: [paused], timeout: 10), .completed, "Pause tile value is \(pause.value ?? "nil")")
 
         reveal(tile, in: app, down: false)
@@ -111,12 +157,15 @@ final class VacuumJourneyTests: XCTestCase {
     func testRoomsAndClean() {
         let app = launch(Self.mainFloor)
         tab("Rooms", in: app)
-        let office = app.buttons["vacuum.room.input_boolean.main_floor_vacuum_office"]
+        // Rooms are toggles (switch role), read as On/Off.
+        let office = element("vacuum.room.input_boolean.roborock_office_toggle", in: app)
         XCTAssertTrue(office.waitForExistence(timeout: 10))
+        reveal(office, in: app)
         assertTarget(office)
-        XCTAssertFalse(office.isSelected)
+        XCTAssertEqual(office.value as? String, "Off")
         office.tap()
-        XCTAssertTrue(office.wait(for: \.isSelected, toEqual: true, timeout: 5))
+        let on = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "On"), object: office)
+        XCTAssertEqual(XCTWaiter().wait(for: [on], timeout: 5), .completed, "Office is \(office.value ?? "nil")")
         XCTAssertTrue(office.label.contains("3"), "Order badge in the label: \(office.label)")
 
         tab("Controls", in: app)
@@ -147,21 +196,32 @@ final class VacuumJourneyTests: XCTestCase {
         let area = app.buttons["vacuum.target.area"]
         reveal(area, in: app, down: true)
         area.tap()
-        if app.alerts.firstMatch.waitForExistence(timeout: 2) || app.sheets.firstMatch.exists {
-            app.buttons["Switch to Area"].firstMatch.tap()
-        }
-        let edit = app.buttons["vacuum.area.edit"]
-        reveal(edit, in: app)
-        edit.tap()
+        // The fixture has rooms selected, so Area asks before clearing them.
+        let confirm = app.buttons["Switch to Area"].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "No Switch to Area confirmation")
+        confirm.tap()
+        // Area (after confirming away from the selected rooms) opens the editor directly.
         let draw = app.buttons["vacuum.area.draw"]
-        XCTAssertTrue(draw.waitForExistence(timeout: 10))
-        // Drag across the map to draw.
+        XCTAssertTrue(draw.waitForExistence(timeout: 10), "Area did not open the editor")
+        // Draw, then drag across the map; the map reads the new size back.
+        if !draw.isSelected { draw.tap() }
         let map = element("vacuum.area.map", in: app)
+        XCTAssertEqual(map.value as? String, "No area selected")
         let start = map.coordinate(withNormalizedOffset: CGVector(dx: 0.35, dy: 0.35))
         start.press(forDuration: 0.1, thenDragTo: map.coordinate(withNormalizedOffset: CGVector(dx: 0.6, dy: 0.6)))
-        XCTAssertTrue(element("vacuum.area.dimensions", in: app).waitForExistence(timeout: 5))
+        let drawn = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value CONTAINS %@", "×"), object: map)
+        XCTAssertEqual(XCTWaiter().wait(for: [drawn], timeout: 10), .completed, "Map value is \(map.value ?? "nil")")
+        // Scroll from below the map: a drag on the map moves the area instead of the page.
         let use = app.buttons["vacuum.area.use"]
-        reveal(use, in: app)
+        let window = app.windows.firstMatch.frame
+        let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: -window.minX, dy: -window.minY))
+        for _ in 0..<8 where !use.isHittable {
+            let y = max(map.frame.maxY + 24, window.minY + window.height * 0.6)
+            guard y < window.maxY - 120 else { break } // No room below the map: let XCTest scroll it into view.
+            let from = origin.withOffset(CGVector(dx: window.midX, dy: y))
+            from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: -200)), withVelocity: .slow, thenHoldForDuration: 0.3)
+        }
         use.tap()
         let startArea = app.buttons["vacuum.action.cleanArea"]
         reveal(startArea, in: app)
@@ -179,7 +239,9 @@ final class VacuumJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["vacuum.action.dock"].exists)
         app = launch(Self.mainFloor, scenario: "resumable")
         XCTAssertTrue(app.buttons["vacuum.action.resume"].waitForExistence(timeout: 10))
-        app.buttons["vacuum.action.cancelResume"].tap()
+        let cancel = app.buttons["vacuum.action.cancelResume"]
+        reveal(cancel, in: app)
+        cancel.tap()
         expectCall("vacuum.stop entity_id=vacuum.valetudo_exaltedsneakydeer", in: app)
         app = launch(Self.musicRoom, scenario: "unavailable")
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] %@", "last reported")).firstMatch.waitForExistence(timeout: 10))
@@ -190,6 +252,7 @@ final class VacuumJourneyTests: XCTestCase {
         let app = launch(Self.mainFloor, tab: "more")
         let dock = app.buttons["vacuum.action.cleanDock"]
         XCTAssertTrue(dock.waitForExistence(timeout: 10))
+        reveal(dock, in: app)
         dock.tap()
         if app.alerts.firstMatch.waitForExistence(timeout: 2) { app.alerts.firstMatch.buttons.element(boundBy: 1).tap() }
         expectCall("script.main_floor_vacuum_mop_dock_clean", in: app)
@@ -216,6 +279,7 @@ final class VacuumJourneyTests: XCTestCase {
         for orientation in orientations {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let app = launch(vacuum, tab: tab, scenario: scenario)
+            if tab != "controls" { scrollToTabContent(in: app) }
             try FentonHomeApp.audit(app) { self.launch(vacuum, tab: tab, scenario: scenario, arguments: FentonHomeApp.ax5) }
         }
     }
@@ -248,7 +312,8 @@ final class VacuumJourneyTests: XCTestCase {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
             for (vacuum, tab, scenario, name) in shots {
-                _ = launch(vacuum, tab: tab, scenario: scenario, clean: true)
+                let app = launch(vacuum, tab: tab, scenario: scenario, clean: true)
+                if vacuum != nil && tab != "controls" { scrollToTabContent(in: app) }
                 keepScreenshot(XCUIApplication(), "vacuums-\(name)-\(suffix)")
             }
         }
