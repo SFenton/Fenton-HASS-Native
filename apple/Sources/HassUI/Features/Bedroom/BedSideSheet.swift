@@ -190,7 +190,7 @@ enum BedDial {
             primaryUnitOverride: .some(nil),
             targetCaption: controller.currentTemperature.map { .custom("Currently \(BedFormat.temperature($0))") } ?? .hidden
         )
-        configuration.valueStyle = .signedLevel
+        configuration.scale = .signedLevel
         let state = controller.sideAvailable ? (controller.isOn ? "\(BedSideController.titleCase(controller.action)), target \(BedLevel.format(target))" : "Off") : "Unavailable"
         let current = controller.currentTemperature.map { ", currently \(BedFormat.temperature($0))" } ?? ""
         configuration.readoutAccessibilityLabelOverride = "\(controller.config.title), \(state)\(current)"

@@ -117,16 +117,30 @@ enum FentonHomeApp {
         // The audit can dismiss a popover while it runs, so note it before starting.
         let popover = app.otherElements["PopoverDismissRegion"].exists && app.popovers.firstMatch.exists
             ? app.popovers.firstMatch.frame : nil
+        // The handler only collects: element queries made inside it count against the audit's own deadline, and on
+        // a long scrolled list (iPhone vacuum Auto-Clean tab, 2026-10-12) they made it fail "to complete in time".
+        var issues: [XCUIAccessibilityAuditIssue] = []
         try app.performAccessibilityAudit(for: .all) { issue in
-            if isSystemDrawn(issue, in: app, popover: popover) { return true }
+            issues.append(issue)
+            return true
+        }
+        for issue in issues {
+            if isSystemDrawn(issue, in: app, popover: popover) { continue }
             var measured = ""
             if issue.auditType == .contrast, let element = issue.element, let capture,
-               let ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
+               var ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
+                // The audit scrolls long sheets to inspect elements, so the frame it reports can belong to a later
+                // scroll position than the opening capture (iPad vacuum sheet, 2026-10-12: visible 19:1 text measured
+                // 1.2:1). Measure a low reading again against the screen as it is now.
+                if ratio < 4.5, let now = RenderedContrast.Capture.screen(),
+                   let fresh = RenderedContrast.ratio(of: element.frame, in: now) {
+                    ratio = max(ratio, fresh)
+                }
                 // The audit misjudges text on materials (notably on iPad); accept it when it renders >= 4.5:1.
-                if ratio >= 4.5 { return true }
+                if ratio >= 4.5 { continue }
                 // Nothing drawn at an unreachable element: it is scrolled out of view (e.g. below an iPad
                 // form sheet's edge), not low contrast.
-                if ratio < 1.5, !element.isHittable { return true }
+                if ratio < 1.5, !element.isHittable { continue }
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             if ax5Page != nil, issue.auditType == .dynamicType,
@@ -136,12 +150,11 @@ enum FentonHomeApp {
                 } else {
                     unattributedType += 1
                 }
-                return true
+                continue
             }
             let element = issue.element
             open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")'\(measured) "
                 + issue.detailedDescription)
-            return true
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
         if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 {
@@ -261,11 +274,18 @@ enum FentonHomeApp {
     /// contrast: accept it only when no scroll view's visible frame fully contains the element.
     private static func isScrolledOutOfView(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         let frame = element.frame
+        let holder = NSPredicate(format: "label == %@", element.label)
         // Below the window's edge (a long sheet column in iPad landscape): the capture holds only part of it.
         let window = app.windows.firstMatch.frame
         if !window.isEmpty, !window.insetBy(dx: -1, dy: -1).contains(frame) { return true }
+        // Scrolled under a navigation bar (wholly or partly): the bar's scroll-edge effect deliberately obscures it.
+        // The bar's own title and buttons are its descendants and stay checked.
+        for navigationBar in app.navigationBars.allElementsBoundByIndex {
+            let bar = navigationBar.frame
+            guard !bar.isEmpty, bar.intersects(frame), frame.minY < bar.maxY - 1 else { continue }
+            if !navigationBar.descendants(matching: element.elementType).matching(holder).firstMatch.exists { return true }
+        }
         // Only scroll views that hold this element (not, say, Home's behind a sheet).
-        let holder = NSPredicate(format: "label == %@", element.label)
         let scrollViews = app.scrollViews.allElementsBoundByIndex
             .filter { $0.frame.intersects(frame) && $0.descendants(matching: element.elementType).matching(holder)
                 .allElementsBoundByIndex.contains { $0.frame == frame } }

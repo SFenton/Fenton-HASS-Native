@@ -7,10 +7,9 @@ public enum BedSide: String, CaseIterable, Codable, Hashable, Sendable {
     case left, right
 }
 
-/// A day of the week as Home Assistant's schedules spell it, Sunday first (web `SCHEDULE_WEEKDAYS`).
-public enum Weekday: String, CaseIterable, Codable, Hashable, Sendable, Comparable {
-    case sunday, monday, tuesday, wednesday, thursday, friday, saturday
-
+/// Week order and the bedroom editors' day groups for ``Weekday`` (declared in `HumidifierSchedule.swift`;
+/// web `SCHEDULE_WEEKDAYS`, Sunday first).
+extension Weekday: Comparable {
     /// Position in the week, Sunday = 0.
     public var index: Int { Self.allCases.firstIndex(of: self)! }
 

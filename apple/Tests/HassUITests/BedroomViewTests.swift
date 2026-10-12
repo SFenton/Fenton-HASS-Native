@@ -69,7 +69,7 @@ struct BedroomViewTests {
         let (devices, _) = devices(.default)
         let left = BedDial.configuration(devices.bed(.left))
         #expect(left.min == -10 && left.max == 10 && left.step == 1)
-        #expect(left.valueStyle == .signedLevel)
+        #expect(left.scale == .signedLevel && left.valueStyle == nil)
         #expect(left.targets == .single(3))
         #expect(left.primaryText == "+3")
         #expect(left.actionText == "Heating")
