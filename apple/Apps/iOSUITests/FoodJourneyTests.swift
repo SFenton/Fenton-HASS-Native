@@ -280,6 +280,20 @@ final class FoodJourneyTests: XCTestCase {
         return app
     }
 
+    /// The Sort sheet alone, with the AX5 comparison page (as FloatingActionsJourneyTests does for its sheet).
+    func testSortSheetPassesAccessibilityAudit() throws {
+        let app = openSortSheet(launch("recipes"))
+        keepScreenshot(app, "food-recipes-sort-\(device)")
+        try audit(app) { self.openSortSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
+    }
+
+    /// The Filter sheet alone, with the AX5 comparison page.
+    func testFilterSheetPassesAccessibilityAudit() throws {
+        let app = openFilterSheet(launch("recipes"))
+        keepScreenshot(app, "food-recipes-filter-\(device)")
+        try audit(app) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
+    }
+
     func testRecipesErrorAndEmpty() throws {
         let failing = launch("recipes", mode: "error")
         XCTAssertTrue(element("recipes.error", in: failing).waitForExistence(timeout: 15))
