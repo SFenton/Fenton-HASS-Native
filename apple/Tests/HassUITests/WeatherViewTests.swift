@@ -44,42 +44,50 @@ struct WeatherViewTests {
         #expect(WeatherHourlyMode.allCases.map(WeatherSymbols.mode) == ["cloud.fill", "drop.fill", "wind"])
     }
 
-    @Test func pagingFitsWholeItemsPerPage() {
-        let paging = WeatherCarouselPaging(count: 24, viewportWidth: 358, minItemWidth: 50, spacing: 8)
-        #expect(paging.perPage == 6)
+    @Test func pagingSplitsItemsIntoWholePages() {
+        let paging = WeatherCarouselPaging(count: 24, perPage: 6)
         #expect(paging.pageCount == 4)
         #expect(paging.overflows)
-        #expect(abs(paging.itemWidth(viewportWidth: 358) * 6 + 8 * 5 - 358) < 0.001)
-        #expect(paging.indices(onPage: 0) == 0..<6)
-        #expect(paging.indices(onPage: 3) == 18..<24)
-        #expect(paging.indices(onPage: 9).isEmpty)
+        #expect(paging.firstIndex(ofPage: 0) == 0)
+        #expect(paging.firstIndex(ofPage: 3) == 18)
+        #expect(paging.firstIndex(ofPage: 9) == 23)
+        #expect(paging.firstIndex(ofPage: -2) == 0)
         #expect(paging.page(containing: 13) == 2)
         #expect(paging.page(containing: 99) == 3)
-        #expect(paging.clamped(nil) == 0)
+        #expect(paging.page(containing: nil) == 0)
         #expect(paging.clamped(7) == 3)
+        #expect(paging.clamped(-1) == 0)
         #expect(paging.pageDescription(1) == "Page 2 of 4")
+        #expect(paging.pageDescription(40) == "Page 4 of 4")
     }
 
-    @Test func pagingShrinksPagesAsTextGrowsAndHandlesTheLastPartialPage() {
-        let large = WeatherCarouselPaging(count: 24, viewportWidth: 358, minItemWidth: 120, spacing: 8)
-        #expect(large.perPage == 2)
-        #expect(large.pageCount == 12)
-        let partial = WeatherCarouselPaging(count: 10, viewportWidth: 358, minItemWidth: 50, spacing: 8)
+    @Test func pagingHandlesPartialLastPagesAndTinyCounts() {
+        let partial = WeatherCarouselPaging(count: 10, perPage: 6)
         #expect(partial.pageCount == 2)
-        #expect(partial.indices(onPage: 1) == 6..<10)
-        let tiny = WeatherCarouselPaging(count: 5, viewportWidth: 20, minItemWidth: 120, spacing: 8)
-        #expect(tiny.perPage == 1)
-        #expect(tiny.pageCount == 5)
+        #expect(partial.firstIndex(ofPage: 1) == 6)
+        let fits = WeatherCarouselPaging(count: 4, perPage: 6)
+        #expect(fits.pageCount == 1)
+        #expect(!fits.overflows)
+        let empty = WeatherCarouselPaging(count: 0, perPage: 0)
+        #expect(empty.perPage == 1)
+        #expect(empty.pageCount == 1)
+        #expect(empty.firstIndex(ofPage: 0) == 0)
+        #expect(WeatherCarouselPaging(count: -3, perPage: 4).count == 0)
     }
 
-    @Test func pagingBeforeMeasurementUsesTheDefault() {
-        let unmeasured = WeatherCarouselPaging(count: 24, viewportWidth: 0, minItemWidth: 44, spacing: 8)
-        #expect(unmeasured.perPage == WeatherCarouselPaging.defaultPerPage)
-        #expect(unmeasured.itemWidth(viewportWidth: 0) == 44)
-        let empty = WeatherCarouselPaging(count: 0, viewportWidth: 300, minItemWidth: 44, spacing: 8)
-        #expect(empty.pageCount == 1)
-        #expect(!empty.overflows)
-        #expect(empty.indices(onPage: 0).isEmpty)
+    @Test func hoursPerPageFollowsSizeClassAndTextSize() {
+        func hours(_ sizeClass: UserInterfaceSizeClass?, _ size: DynamicTypeSize) -> Int {
+            WeatherCarouselPaging.hoursPerPage(compact: 6, regular: 9, sizeClass: sizeClass, typeSize: size)
+        }
+        #expect(hours(.compact, .large) == 6)
+        #expect(hours(nil, .large) == 6)
+        #expect(hours(.regular, .large) == 9)
+        #expect(hours(.compact, .xxxLarge) == 5)
+        #expect(hours(.compact, .accessibility1) == 3)
+        #expect(hours(.compact, .accessibility5) == 2)
+        #expect(hours(.regular, .accessibility5) == 3)
+        // Never fewer than two hours on a page.
+        #expect(WeatherCarouselPaging.hoursPerPage(compact: 3, regular: 3, sizeClass: .compact, typeSize: .accessibility5) == 2)
     }
 
     // MARK: - Accessibility text
