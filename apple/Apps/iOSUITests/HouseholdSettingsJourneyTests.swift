@@ -78,8 +78,11 @@ final class HouseholdSettingsJourneyTests: XCTestCase {
     /// Back from the presence detail to the room grid. Prefers the detail's own bar: with the sheet over the
     /// page, the first `BackButton` can be the page's (behind the sheet) on the unfolded iPhone Duo.
     private func backFromPresenceDetail(_ app: XCUIApplication) {
-        let bar = app.navigationBars.matching(NSPredicate(format: "identifier ENDSWITH 'Presence Lighting'")).firstMatch
-        let back = bar.buttons.firstMatch
+        // The detail's bar is titled with the room and carries the sheet's Done; the grid's is the sheet title.
+        let bar = app.navigationBars.containing(.button, identifier: "household.sheet.done")
+            .matching(NSPredicate(format: "identifier != 'Presence-Based Overrides'")).firstMatch
+        // The detail's bar also carries the sheet's Done, which closes the whole sheet: never pick that.
+        let back = bar.buttons.matching(NSPredicate(format: "identifier != 'household.sheet.done'")).firstMatch
         if back.exists, back.isHittable { back.tap() } else { goBack(app) }
     }
 

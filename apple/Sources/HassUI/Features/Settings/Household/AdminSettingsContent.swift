@@ -200,7 +200,9 @@ struct PresenceOverrideDetail: View {
                     .padding(.horizontal)
             }
         }
-        .navigationTitle("\(room.title) Presence Lighting")
+        // Just the room: the bar also holds Back and Done, and "<Room> Presence Lighting" clipped at large text
+        // sizes (HIG: Navigation bars, keep titles short). The sheet's title already says what the rooms are for.
+        .navigationTitle(room.title)
         .inlineNavigationTitle()
         .modifier(OptionalSheetDone(done: done))
         .accessibilityIdentifier("presence.detail")
