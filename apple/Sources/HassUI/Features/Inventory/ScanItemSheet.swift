@@ -21,34 +21,37 @@ struct ScanItemSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                header
-                if model.isProcessing {
-                    processing
-                } else {
-                    switch model.step {
-                    case .barcode: barcodePage
-                    case .expiry: expiryPage
-                    case .review: reviewPage
-                    case .adding: addingPage
+            // The form and the step's buttons are stacked, not overlaid: as a bottom safe-area inset the buttons
+            // covered the form's last row at its maximum scroll on short screens (unfolded Duo landscape, iPad
+            // landscape), so Manually Enter Name could not be reached.
+            VStack(spacing: 0) {
+                Form {
+                    header
+                    if model.isProcessing {
+                        processing
+                    } else {
+                        switch model.step {
+                        case .barcode: barcodePage
+                        case .expiry: expiryPage
+                        case .review: reviewPage
+                        case .adding: addingPage
+                        }
+                    }
+                    // At accessibility sizes the step's buttons scroll with the form: pinned, they took about 40% of
+                    // the iPhone screen and left the form a short window.
+                    if typeSize.isAccessibilitySize, showsFooter {
+                        Section { footerButtons }
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
                     }
                 }
-                // At accessibility sizes the step's buttons scroll with the form: pinned, they took about 40% of
-                // the iPhone screen and left the form a short window.
-                if typeSize.isAccessibilitySize, showsFooter {
-                    Section { footerButtons }
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets())
-                }
+                // On the form itself: on the stack it would replace the footer buttons' identifiers.
+                .accessibilityIdentifier("scan.\(model.step.rawValue)")
+                if !typeSize.isAccessibilitySize { footer }
             }
-            // On the form itself: applied after the footer inset, it would replace the footer buttons' identifiers.
-            .accessibilityIdentifier("scan.\(model.step.rawValue)")
             .navigationTitle("Add Item")
             .inlineNavigationTitle()
             .toolbar { toolbar }
-            .safeAreaInset(edge: .bottom) {
-                if !typeSize.isAccessibilitySize { footer }
-            }
         }
         // The app accent reads 2.5:1 as button text on the sheet; the floating actions' teal reads 5.8:1.
         .tint(FloatingActionBar.tint)
