@@ -26,5 +26,5 @@ The skill's own rule is "check the deployment target first". Ours is **iOS 17 / 
 | No computed `some View` helpers | Extract when a helper is reused or the body is long; small private helpers of one concern can stay |
 | Shared constants enum for spacing, fonts, radii | That enum is `HassDesign` tokens. Extend it, never add a second one |
 | Size-class layout, never device checks | Same as our `SplitPolicy` rule ([split-view](../design/apple/split-view.md)); iPhone stays portrait-locked |
-| Prefer system sheets and `presentationDetents` | Use `.sheet` with `HassSheet` chrome ([modal-sheet](../patterns/modal-sheet.md)); detents follow that record |
+| Prefer system sheets and `presentationDetents` | Present with `.sheet(item:)` and the detents in [modal-sheet](../patterns/modal-sheet.md). There is no shared sheet chrome type yet (see [audit/ui](../audit/ui.md)) |
 | Apple HIG | Still cite the HIG via the `apple-hig` skill; SwiftUI Pro does not replace it |
