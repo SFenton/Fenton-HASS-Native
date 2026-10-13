@@ -118,10 +118,15 @@ final class FeedbackJourneyTests: XCTestCase {
         }
     }
 
-    private func submit(_ app: XCUIApplication) -> XCUIElement {
+    /// Submit, scrolled back into view: the folded iPhone Duo hides its bar while the form is scrolled down.
+    private func submitButton(_ app: XCUIApplication) -> XCUIElement {
         let submit = app.buttons["feedback.submit"]
-        // The folded iPhone Duo hides its bar (and Submit) while the form is scrolled down.
         for _ in 0..<6 where !(submit.exists && submit.isHittable) { app.collectionViews.firstMatch.swipeDown(velocity: .slow) }
+        return submit
+    }
+
+    private func submit(_ app: XCUIApplication) -> XCUIElement {
+        let submit = submitButton(app)
         XCTAssertTrue(submit.waitForExistence(timeout: 5))
         let enabled = NSPredicate(format: "isEnabled == true")
         expectation(for: enabled, evaluatedWith: submit)
@@ -132,27 +137,11 @@ final class FeedbackJourneyTests: XCTestCase {
 
     // MARK: - Journeys
 
-    /// Both rows open their form; an empty form closes without asking; the forms and rows pass the audit.
+    /// Both rows open their form and an empty form closes without asking; the Settings list passes the audit.
     func testRowsOpenFormsAndPassAudit() throws {
         let app = try launch()
-        goToSettings(app)
-        XCTAssertTrue(feedbackRow(app, "feature").exists)
-        try FentonHomeApp.audit(app) {
-            let large = try self.launch(arguments: FentonHomeApp.ax5)
-            self.goToSettings(large)
-            _ = self.feedbackRow(large, "bug")
-            return large
-        }
-        feedbackRow(app, "bug").tap()
-        XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5))
+        openForm(app, "bug")
         XCTAssertFalse(app.buttons["feedback.submit"].isEnabled, "Submit enabled on an empty form")
-        XCTAssertTrue(app.textViews["feedback.field.repro"].exists || reveal(app.textViews["feedback.field.repro"], in: app).exists)
-        sleep(1)
-        try FentonHomeApp.audit(app, ax5Page: {
-            let large = try self.launch(arguments: FentonHomeApp.ax5)
-            self.openForm(large, "bug")
-            return large
-        }, presenter: app.buttons["settings.feedback.bug"])
         reveal(app.buttons["feedback.close"], in: app, up: false).tap()
         XCTAssertTrue(app.buttons["feedback.submit"].waitForNonExistence(timeout: 5), "Empty form asked before closing")
         sleep(1) // Let the sheet finish dismissing before opening the next one.
@@ -161,11 +150,42 @@ final class FeedbackJourneyTests: XCTestCase {
             _ = app.buttons["feedback.submit"].waitForExistence(timeout: 5)
         }
         XCTAssertTrue(app.buttons["feedback.submit"].exists, "Feature form did not open")
+        reveal(app.buttons["feedback.close"], in: app, up: false).tap()
+        XCTAssertTrue(app.buttons["feedback.submit"].waitForNonExistence(timeout: 5))
+        // Audited last: the AX5 relaunch replaces this app instance.
+        XCTAssertTrue(feedbackRow(app, "feature").exists)
+        try FentonHomeApp.audit(app) {
+            let large = try self.launch(arguments: FentonHomeApp.ax5)
+            self.goToSettings(large)
+            _ = self.feedbackRow(large, "bug")
+            return large
+        }
+    }
+
+    /// The bug form: reproduction boxes, Submit disabled while empty, and the audit with its AX5 relaunch.
+    func testBugFormPassesAudit() throws {
+        let app = try launch()
+        openForm(app, "bug")
+        XCTAssertTrue(reveal(app.textViews["feedback.field.repro"], in: app).exists, "Steps to Reproduce missing")
+        reveal(app.buttons["feedback.close"], in: app, up: false)
+        try FentonHomeApp.audit(app, ax5Page: {
+            let large = try self.launch(arguments: FentonHomeApp.ax5)
+            self.openForm(large, "bug")
+            return large
+        }, presenter: app.buttons["settings.feedback.bug"])
+    }
+
+    /// The feature form: no reproduction boxes, the Sending-as row, and the audit with its AX5 relaunch (its own
+    /// launch, so the AX5 comparison measures two separate app instances).
+    func testFeatureFormPassesAudit() throws {
+        let app = try launch()
+        openForm(app, "feature")
         XCTAssertFalse(app.textViews["feedback.field.repro"].exists, "Feature form shows Steps to Reproduce")
         XCTAssertTrue(reveal(app.buttons["feedback.github"], in: app).exists, "Sending-as row missing")
         try FentonHomeApp.audit(app, ax5Page: {
             let large = try self.launch(arguments: FentonHomeApp.ax5)
             self.openForm(large, "feature")
+            _ = self.reveal(large.buttons["feedback.github"], in: large)
             return large
         }, presenter: app.buttons["settings.feedback.feature"])
     }
@@ -206,7 +226,7 @@ final class FeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(access.label.contains("Add GitHub Access"))
         fill(app, title: "Arrival lights")
         XCTAssertTrue(reveal(app.staticTexts["feedback.validation"], in: app).label.contains("GitHub access token"))
-        XCTAssertFalse(app.buttons["feedback.submit"].isEnabled)
+        XCTAssertFalse(submitButton(app).isEnabled)
         let field = app.secureTextFields["feedback.github.token"]
         openAccess(app)
         XCTAssertTrue(field.waitForExistence(timeout: 5), "GitHub Access page did not open")
