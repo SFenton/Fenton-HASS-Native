@@ -7,4 +7,5 @@
 3. **Pattern check.** If the behavior exists elsewhere, extend the canonical component in [patterns](../patterns/README.md).
 4. **Implement** in your lane's folders. Entity IDs go in `HassCore/Config`, never inline in views.
 5. **Test.** Unit tests for logic in `HassCore`/`HassDesign`; UI and accessibility tests with each UI change.
-6. **Verify** on the simulator, then commit small and update [PROGRESS.md](../../PROGRESS.md).
+6. **Review** your diff with `/swiftui-pro` ([how](swiftui-pro.md)) and fix what it finds in your files.
+7. **Verify** on the simulator, then commit small and update [PROGRESS.md](../../PROGRESS.md).
