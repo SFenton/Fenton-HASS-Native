@@ -79,6 +79,65 @@ public enum ThermostatThermalStatus: String, Sendable {
     }
 }
 
+// MARK: - Non-temperature dials
+
+/// An sRGB color for dial parts, kept out of SwiftUI so the model stays plain values.
+public struct DialTint: Hashable, Sendable {
+    public var red: Double
+    public var green: Double
+    public var blue: Double
+    public var opacity: Double
+
+    /// Creates a color from 0–255 components (as the web's `rgba()` values are written).
+    public init(red: Double, green: Double, blue: Double, opacity: Double = 1) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+        self.opacity = opacity
+    }
+}
+
+/// A colored stretch of the ring between two values (web `CircularDialTrail`), e.g. a humidity comfort band.
+public struct DialTrail: Hashable, Sendable, Identifiable {
+    public var id: String
+    public var from: Double
+    public var to: Double
+    public var tint: DialTint
+
+    /// Creates a trail.
+    public init(id: String, from: Double, to: Double, tint: DialTint) {
+        self.id = id
+        self.from = from
+        self.to = to
+        self.tint = tint
+    }
+}
+
+/// How a dial that isn't a thermostat reads (web `SingleValueCircularDial` props). With one, the large number is
+/// the setpoint and follows the handle while dragging, the handle and marker take ``tint``, and VoiceOver speaks
+/// ``handleLabel`` and ``spokenUnit`` instead of temperatures.
+public struct DialValueStyle: Hashable, Sendable {
+    /// The handle, marker and accent color.
+    public var tint: DialTint
+    /// The handle's VoiceOver label, e.g. `Mist level`.
+    public var handleLabel: String
+    /// Spoken after the value (`percent`), or empty for a bare number.
+    public var spokenUnit: String
+    /// The readout's VoiceOver label.
+    public var readoutLabel: String
+    /// Colored stretches drawn under the handle.
+    public var trails: [DialTrail]
+
+    /// Creates a style.
+    public init(tint: DialTint, handleLabel: String, spokenUnit: String = "", readoutLabel: String, trails: [DialTrail] = []) {
+        self.tint = tint
+        self.handleLabel = handleLabel
+        self.spokenUnit = spokenUnit
+        self.readoutLabel = readoutLabel
+        self.trails = trails
+    }
+}
+
 // MARK: - Configuration
 
 /// Everything a ``ThermostatDial`` draws, as plain values. Callers map a climate entity into this
@@ -126,6 +185,23 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
     public var targetCaption: TargetCaption
     /// Forces the dimmed state on or off.
     public var inactiveOverride: Bool?
+    /// Makes this a single-value dial for something other than temperature (humidity, mist level).
+    public var valueStyle: DialValueStyle?
+
+    // MARK: Non-temperature scales
+
+    /// How handle values are spoken and what the single handle is called, when there is no ``valueStyle``.
+    public enum ValueScale: Equatable, Sendable {
+        /// `72.5 degrees`; handle "<title> target temperature".
+        case temperature
+        /// `+3`, `0`, `-2` (the bed Pod's level scale); handle "<title> target level".
+        case signedLevel
+    }
+
+    /// How handle values read (default: temperatures).
+    public var scale: ValueScale = .temperature
+    /// Replaces the readout's VoiceOver label.
+    public var readoutAccessibilityLabelOverride: String?
 
     /// Creates a configuration.
     public init(
@@ -133,7 +209,7 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
         current: Double?, targets: ThermostatTargets?, action: String, unit: String = "°F",
         isUnavailable: Bool = false, isOff: Bool = false, isInteractive: Bool = true,
         actionTextOverride: String? = nil, primaryValueOverride: String? = nil, primaryUnitOverride: String?? = nil,
-        targetCaption: TargetCaption = .automatic, inactiveOverride: Bool? = nil
+        targetCaption: TargetCaption = .automatic, inactiveOverride: Bool? = nil, valueStyle: DialValueStyle? = nil
     ) {
         self.title = title
         self.min = min
@@ -151,6 +227,7 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
         self.primaryUnitOverride = primaryUnitOverride
         self.targetCaption = targetCaption
         self.inactiveOverride = inactiveOverride
+        self.valueStyle = valueStyle
     }
 
     // MARK: Derived
@@ -184,6 +261,14 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
         primaryValueOverride ?? (isUnavailable ? "--" : Self.compact(current))
     }
 
+    /// The large text for the displayed (possibly pending) setpoints: with a ``valueStyle`` it is the setpoint
+    /// itself, so it follows a drag; ``primaryValueOverride`` still wins (`Off`, `Sleep`).
+    public func primaryText(for targets: ThermostatTargets?) -> String {
+        guard valueStyle != nil, primaryValueOverride == nil else { return primaryText }
+        guard !isUnavailable, case let .single(value)? = targets else { return "--" }
+        return Self.compact(value)
+    }
+
     /// The unit beside ``primaryText``, or `nil` to hide it.
     public var primaryUnit: String? {
         if let primaryUnitOverride { return primaryUnitOverride }
@@ -208,8 +293,9 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
 
     /// The VoiceOver label for `handle`.
     public func accessibilityLabel(for handle: ThermostatTargets.Handle) -> String {
-        switch handle {
-        case .target: "\(title) target temperature"
+        if let valueStyle { return valueStyle.handleLabel }
+        return switch handle {
+        case .target: scale == .signedLevel ? "\(title) target level" : "\(title) target temperature"
         case .low: "\(title) heat to"
         case .high: "\(title) cool to"
         }
@@ -220,8 +306,28 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
         "\(compact(value)) degrees"
     }
 
+    /// A handle's spoken value: a temperature, a signed level (`+3`), or the value with the style's unit
+    /// (`50 percent`, `5`).
+    public func spokenValue(_ value: Double) -> String {
+        guard let valueStyle else {
+            switch scale {
+            case .temperature: return Self.spokenTemperature(value)
+            case .signedLevel: return value > 0 ? "+" + Self.compact(value) : Self.compact(value)
+            }
+        }
+        return valueStyle.spokenUnit.isEmpty ? Self.compact(value) : "\(Self.compact(value)) \(valueStyle.spokenUnit)"
+    }
+
     /// The readout's VoiceOver label: name, action and current temperature.
+    /// The readout's VoiceOver value: `set to 72.0°F`, or a value dial's caption as is.
+    public func readoutAccessibilityValue(for targets: ThermostatTargets?) -> String {
+        guard let caption = caption(for: targets) else { return "" }
+        return valueStyle == nil ? "set to \(caption)" : caption
+    }
+
     public var readoutAccessibilityLabel: String {
+        if let readoutAccessibilityLabelOverride { return readoutAccessibilityLabelOverride }
+        if let valueStyle { return valueStyle.readoutLabel }
         let current = isUnavailable || self.current == nil ? "current temperature unknown" : "currently \(primaryText)\(primaryUnit ?? "")"
         return "\(title) thermostat, \(actionText), \(current)"
     }

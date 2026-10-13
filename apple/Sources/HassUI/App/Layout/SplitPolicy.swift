@@ -45,4 +45,53 @@ public enum SplitPolicy {
         if let hingeMidX, hingeMidX > 0, hingeMidX < width { return hingeMidX }
         return width / 2
     }
+
+    /// Width of the band between panes when no hinge crosses the window: the panes meet at the midpoint
+    /// with no drawn line (Festival `split-panes` R1; a 1 pt hairline only under Increase Contrast).
+    public static let midpointBandWidth: CGFloat = 1
+
+    /// Pane widths for a split container, or nil when the container may not split.
+    ///
+    /// The band is the vertical hinge when one crosses the container (the leading pane ends at its
+    /// leading edge, the trailing pane starts at its trailing edge), else ``midpointBandWidth`` centred
+    /// on the container's midpoint. Each pane must be at least ``minimumPaneWidth``.
+    /// - Parameters:
+    ///   - container: The split container's frame in window coordinates.
+    ///   - isRegularWidth: Horizontal size class is regular.
+    ///   - hinge: The device's division frame in window coordinates, if any (iPhone Duo).
+    public static func geometry(container: CGRect, isRegularWidth: Bool, hinge: CGRect?) -> SplitGeometry? {
+        guard allowsSplit(size: container.size, isRegularWidth: isRegularWidth) else { return nil }
+        var band: ClosedRange<CGFloat>
+        var isHinge = false
+        if let hinge, hinge.height >= hinge.width, hinge.midX > container.minX, hinge.midX < container.maxX {
+            band = hinge.minX...hinge.maxX
+            isHinge = true
+        } else {
+            band = container.midX...container.midX
+        }
+        if band.upperBound - band.lowerBound < midpointBandWidth {
+            let mid = (band.lowerBound + band.upperBound) / 2
+            band = (mid - midpointBandWidth / 2)...(mid + midpointBandWidth / 2)
+        }
+        let leading = band.lowerBound - container.minX
+        let trailing = container.maxX - band.upperBound
+        guard leading >= minimumPaneWidth, trailing >= minimumPaneWidth else { return nil }
+        return SplitGeometry(
+            leadingWidth: leading, bandWidth: band.upperBound - band.lowerBound,
+            trailingWidth: trailing, isHinge: isHinge
+        )
+    }
 }
+
+/// Resolved pane widths for an open split.
+public struct SplitGeometry: Sendable, Equatable {
+    /// Leading (list) pane width.
+    public var leadingWidth: CGFloat
+    /// Gap between the panes: the hinge, or the 1 pt midpoint band.
+    public var bandWidth: CGFloat
+    /// Trailing (detail) pane width.
+    public var trailingWidth: CGFloat
+    /// The band is the device hinge.
+    public var isHinge: Bool
+}
+
