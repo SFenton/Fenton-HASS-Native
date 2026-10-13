@@ -320,7 +320,7 @@ final class FoodJourneyTests: XCTestCase {
     func testFilterSheetPassesAccessibilityAudit() throws {
         // The Ranking Strength section (scrolled to its last row, so no row is cut by the sheet's edge; the AX5
         // page shows the header it measures), then Reset to Defaults.
-        for (reveal, ax5Reveal) in [("Expiry Weight", "Ranking Strength"), ("Reset to Defaults", "Reset to Defaults")] {
+        for (reveal, ax5Reveal) in [("Reset to Defaults", "Reset to Defaults"), ("Expiry Weight", "Ranking Strength")] {
             let app = openFilterSheet(launch("recipes"), reveal: reveal)
             keepScreenshot(app, "food-recipes-filter-\(device)")
             logResetFrame("filter \(reveal)", in: app)
