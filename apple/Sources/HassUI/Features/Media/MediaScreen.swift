@@ -45,6 +45,7 @@ public struct MediaScreen: View {
             .padding(.horizontal, HassTokens.Spacing.l)
             .padding(.vertical, HassTokens.Spacing.m)
         }
+        .scrollTelemetry("Media")
         .accessibilityIdentifier("media.scroll")
         .navigationTitle("Media")
         .sheet(item: $remote) { config in

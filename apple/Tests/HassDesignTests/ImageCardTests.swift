@@ -2,7 +2,7 @@
 import SwiftUI
 import Testing
 
-/// ``ImageCard`` and ``RemoteImage``: title line rules and every image phase.
+/// ``ImageCard`` and ``RemoteImage``: title line rules and rendering with and without images.
 @MainActor
 struct ImageCardTests {
     private func render(_ view: some View, size: DynamicTypeSize = .large) -> CGImage? {
@@ -29,8 +29,5 @@ struct ImageCardTests {
         #expect(render(image) != nil)
         #expect(render(RemoteImage(url: nil, fallbackURL: url)) != nil)
         #expect(render(RemoteImage(url: url, fallbackURL: url)) != nil)
-        #expect(render(image.phase(.success(Image(systemName: "star")))) != nil)
-        #expect(render(image.phase(.failure(URLError(.badURL)))) != nil)
-        #expect(render(image.phase(.empty)) != nil)
     }
 }

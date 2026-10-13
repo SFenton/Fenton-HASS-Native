@@ -199,6 +199,7 @@ struct RecipeGrid: View {
             footer
         }
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width - 2 * HassTokens.Spacing.l }) { width = $0 }
+        .scrollTelemetry("Recipes")
         .accessibilityIdentifier("recipes.grid")
     }
 

@@ -43,13 +43,7 @@ struct AppTile: View {
             ZStack {
                 shape.fill(app.whiteBackground ? Color.white : RemoteStyle.buttonFill)
                 if let imageURL {
-                    AsyncImage(url: imageURL) { phase in
-                        if case let .success(image) = phase {
-                            image.resizable().scaledToFill()
-                        } else {
-                            fallback
-                        }
-                    }
+                    CachedImage(url: imageURL) { fallback }
                 } else {
                     fallback
                 }

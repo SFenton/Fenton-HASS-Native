@@ -39,7 +39,8 @@ struct TodoListSection: View {
                     ForEach(items) { row($0) }
                 }
             } else {
-                VStack(spacing: HassTokens.Spacing.s) {
+                // Lazy: long lists (groceries) build only the rows on screen.
+                LazyVStack(spacing: HassTokens.Spacing.s) {
                     ForEach(items) { row($0) }
                 }
             }

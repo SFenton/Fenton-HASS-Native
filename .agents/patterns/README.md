@@ -21,3 +21,7 @@
 | [bedroom-devices.md](bedroom-devices.md) | `HassUI/Features/Bedroom/BedSideSheet.swift`, `WakeLightSheet.swift` | `src/components/hass/wakeLights/`, SleepyPod in `DashboardViewPage.tsx` |
 | [room-device-sheets.md](room-device-sheets.md) | `HassUI/Features/RoomDevices/` | `src/components/hass/*ModalContent.tsx` (fan, purifier, humidifier, grill) |
 | [settings-section.md](settings-section.md) | `HassDesign/SettingsSection.swift` | `src/components/core/SettingsSection.tsx` |
+| [optimistic-actions.md](optimistic-actions.md) | `HassCore/Optimism/OptimisticActions.swift` | `src/hooks/useOptimisticState.ts`, `src/components/hass/optimisticActionState.ts` |
+| [content-gate.md](content-gate.md) | `HassDesign/Loading/ContentGate.swift` | `src/components/hass/recipes/useRecipeCollection.ts` (criteria phases) |
+| [image-cache.md](image-cache.md) | `HassDesign/Images/ImagePipeline.swift`, `CachedImage.swift` | browser HTTP cache (`decoding="async"` images) |
+| [telemetry.md](telemetry.md) | `HassTelemetry/`, `HassUI/Diagnostics/` | none (native only) |

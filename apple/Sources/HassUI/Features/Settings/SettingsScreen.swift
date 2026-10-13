@@ -85,6 +85,15 @@ struct SettingsScreen: View {
                 .accessibilityIdentifier("settings.homeAssistant")
                 .accessibilityHint("Opens server, account and sign-out options.")
             }
+            Section {
+                NavigationLink {
+                    PerformanceScreen()
+                } label: {
+                    SettingsLinkRow(title: "Performance", subtitle: "Scrolling, loading and image cache measurements on this device.",
+                                    symbol: "gauge.with.dots.needle.67percent", showsChevron: false)
+                }
+                .accessibilityIdentifier("settings.performance")
+            }
         }
         .navigationTitle("Settings")
         .homeAssistantSettingsCover(isPresented: $showsHomeAssistant)
