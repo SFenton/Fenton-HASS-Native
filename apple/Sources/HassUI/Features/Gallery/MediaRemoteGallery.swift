@@ -1,3 +1,4 @@
+#if DEBUG
 import HassCore
 import HassDesign
 import Observation
@@ -208,3 +209,4 @@ enum MediaRemoteFixtures {
         ]
     }()
 }
+#endif

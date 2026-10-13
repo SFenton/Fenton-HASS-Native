@@ -1,3 +1,4 @@
+#if DEBUG
 import HassDesign
 import SwiftUI
 
@@ -67,3 +68,4 @@ struct ThermostatDialGallery: View {
         }
     }
 }
+#endif

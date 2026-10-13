@@ -184,23 +184,10 @@ public final class HassConnection {
 
     /// Sends a websocket command once (no retry across reconnects) and returns one string field of its result.
     private func requestString(_ command: String, data: [String: any Sendable], field: String) async throws -> String {
-        let request = HARequest(type: .webSocket(command), data: data, shouldRetry: false)
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
-            connection.send(request) { result in
-                switch result {
-                case let .success(.dictionary(values)):
-                    if let value = values[field] as? String {
-                        continuation.resume(returning: value)
-                    } else {
-                        continuation.resume(throwing: UnexpectedResponse(command: command))
-                    }
-                case .success:
-                    continuation.resume(throwing: UnexpectedResponse(command: command))
-                case let .failure(error):
-                    continuation.resume(throwing: error)
-                }
-            }
+        guard case let .dictionary(values) = try await sendCommand(command, data: data), let value = values[field] as? String else {
+            throw UnexpectedResponse(command: command)
         }
+        return value
     }
 
     /// Applies one HAKit delivery. HAKit's states cache always delivers the full set (thousands of entities)

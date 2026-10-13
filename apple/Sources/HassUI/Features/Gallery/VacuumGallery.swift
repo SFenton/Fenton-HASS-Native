@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import HassCore
 import HassDesign
@@ -171,3 +172,4 @@ enum VacuumFixtures {
 private extension String {
     func dropPrefix(_ prefix: String) -> String { hasPrefix(prefix) ? String(dropFirst(prefix.count)) : self }
 }
+#endif

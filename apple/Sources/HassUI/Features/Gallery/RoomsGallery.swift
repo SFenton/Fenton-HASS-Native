@@ -1,3 +1,4 @@
+#if DEBUG
 import HassCore
 import HassDesign
 import SwiftUI
@@ -184,3 +185,4 @@ enum RoomsFixtures {
         return [:]
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if DEBUG
 import HassCore
 import HassDesign
 import Observation
@@ -358,3 +359,4 @@ enum BedroomFixtures {
         return EntityState(entityId: MasterBedroom.wakeLight.statusEntityId, state: waking ? "ramping" : "scheduled", attributes: attributes)
     }
 }
+#endif

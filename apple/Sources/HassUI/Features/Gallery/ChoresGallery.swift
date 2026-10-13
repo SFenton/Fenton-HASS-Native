@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import HassCore
 import HassDesign
@@ -163,3 +164,4 @@ final class ChoresFixtureService: TodoServicing {
         change(&lists[entityId]![index])
     }
 }
+#endif

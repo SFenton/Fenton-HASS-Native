@@ -1,10 +1,10 @@
 import Foundation
 @preconcurrency import HAKit
 
-/// Something that can call a Home Assistant service and read the data it returns (`return_response`).
+/// Something that can call a Home Assistant service and read the `response` member it returns (`return_response`).
 ///
-/// EverShelf's inventory, barcode and expiry services answer with data (`SupportsResponse.OPTIONAL` or
-/// `.ONLY`), so the inventory feature talks through this instead of ``HassServiceCalling`` alone.
+/// EverShelf's inventory, barcode and expiry services and the todo pages read this. ``HassServiceResponding`` is the
+/// same call returning the whole result; both go through ``HassConnection/callServiceReturningResult(_:_:data:)``.
 @MainActor
 public protocol EverShelfCalling: HassServiceCalling {
     /// Calls `domain.service` with `return_response: true`.
@@ -16,20 +16,7 @@ extension HassConnection: EverShelfCalling {
     /// Sends `call_service` with `return_response: true` over the app's websocket, once (no retry across
     /// reconnects, so a mutation is never applied twice).
     public func callServiceForResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
-        let request = HARequest(
-            type: .webSocket("call_service"),
-            data: ["domain": domain, "service": service, "service_data": data, "return_response": true],
-            shouldRetry: false
-        )
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
-            connection.send(request) { result in
-                switch result {
-                case let .success(.dictionary(values)): continuation.resume(returning: JSONValue(any: values["response"]))
-                case .success: continuation.resume(returning: .null)
-                case let .failure(error): continuation.resume(throwing: error)
-                }
-            }
-        }
+        try await callServiceReturningResult(domain, service, data: data)["response"] ?? .null
     }
 }
 

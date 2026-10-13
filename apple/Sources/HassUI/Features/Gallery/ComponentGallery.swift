@@ -41,13 +41,20 @@ public struct ComponentGallery: View {
     public init(page: Page) { self.page = page }
 
     public var body: some View {
+        // Every gallery file is compiled into Debug builds only; release builds never show a gallery.
+        #if DEBUG
+        pages
+        #else
+        EmptyView()
+        #endif
+    }
+
+    #if DEBUG
+    @ViewBuilder
+    private var pages: some View {
         if page == .food {
             // Owns its navigation stack so journeys can start on a pushed page.
-            #if DEBUG
             FoodGallery()
-            #else
-            EmptyView()
-            #endif
         } else if page == .vacation {
             // Owns its stack, so its last-call line stays under pushed pages too.
             VacationGallery()
@@ -69,19 +76,13 @@ public struct ComponentGallery: View {
                 case .householdSettings: HouseholdSettingsGallery()
                 case .climate: ClimateGallery()
                 case .floatingActions: FloatingActionsGallery()
-                case .inventory:
-                    #if DEBUG
-                    InventoryGallery()
-                    #else
-                    EmptyView()
-                    #endif
+                case .inventory: InventoryGallery()
                 case .chores: ChoresGallery()
                 case .performance: PerformanceGallery()
-                case .rooms: EmptyView()
-                case .vacation: EmptyView()
-                case .food: EmptyView()
+                case .rooms, .vacation, .food: EmptyView()
                 }
             }
         }
     }
+    #endif
 }

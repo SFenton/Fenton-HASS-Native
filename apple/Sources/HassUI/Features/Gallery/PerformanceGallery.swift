@@ -1,3 +1,4 @@
+#if DEBUG
 import HassDesign
 import HassTelemetry
 import SwiftUI
@@ -90,3 +91,4 @@ private struct GridWorkload: View {
         .navigationTitle("Grid Workload")
     }
 }
+#endif

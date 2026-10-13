@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import HassCore
 import HassDesign
@@ -185,3 +186,4 @@ enum VacationFixtures {
         return states
     }
 }
+#endif

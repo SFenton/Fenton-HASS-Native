@@ -1,3 +1,4 @@
+#if DEBUG
 import HassCore
 import HassDesign
 import Observation
@@ -144,3 +145,4 @@ enum HouseholdSettingsFixtures {
         return states
     }
 }
+#endif

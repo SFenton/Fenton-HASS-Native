@@ -4,43 +4,25 @@ import Foundation
 /// What todo pages need from Home Assistant beyond plain service calls. ``HassConnection`` is the app's
 /// implementation; tests and the debug gallery use fixtures, so automated runs never touch the house.
 @MainActor
-public protocol TodoServicing: HassServiceCalling {
+public protocol TodoServicing: EverShelfCalling {
     /// The items of a `todo` list (`todo/item/list`).
     func todoItems(entityId: String) async throws -> [TodoItem]
-    /// Calls a service that returns data (`return_response`), e.g. `donetick.get_task`.
-    func callServiceForResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue
     /// Creates an admin to-do with images (multipart POST to ``ChoresConfig/adminTodoUploadPath``).
     func uploadAdminTodo(_ upload: AdminTodoUpload, accessToken: String) async throws
 }
 
 extension HassConnection: TodoServicing {
     public func todoItems(entityId: String) async throws -> [TodoItem] {
-        let result = try await sendCommand("todo/item/list", data: ["entity_id": entityId])
+        let result = try await requestJSON("todo/item/list", data: ["entity_id": entityId])
         guard let items = result["items"]?.array else { throw UnexpectedResponse(command: "todo/item/list") }
         return items.compactMap(TodoItem.init(json:))
     }
-
-    // `callServiceForResponse` comes from the `EverShelfCalling` conformance (HassConnection+ServiceResponse.swift).
 
     public func uploadAdminTodo(_ upload: AdminTodoUpload, accessToken: String) async throws {
         let request = upload.request(server: server, accessToken: accessToken)
         let (_, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw UnexpectedResponse(command: ChoresConfig.adminTodoUploadPath)
-        }
-    }
-
-    /// Sends a websocket command once (no retry across reconnects) and returns its result as JSON.
-    func sendCommand(_ command: String, data: [String: any Sendable]) async throws -> JSONValue {
-        let request = HARequest(type: .webSocket(command), data: data, shouldRetry: false)
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
-            connection.send(request) { result in
-                switch result {
-                case let .success(.dictionary(values)): continuation.resume(returning: JSONValue(any: values))
-                case .success: continuation.resume(returning: .null)
-                case let .failure(error): continuation.resume(throwing: error)
-                }
-            }
         }
     }
 }
