@@ -67,15 +67,19 @@ extension RoomColor {
 
 // MARK: - Section header
 
-/// A room section's title (web `SectionHeader`): a heading for VoiceOver's rotor.
+/// A room section's title (web `SectionHeader`, and `RoomSectionHeader` inside room sheets): a heading for
+/// VoiceOver's rotor.
 struct RoomSectionHeader: View {
     var title: String
+    /// Inside a sheet the title is a step smaller and sits a little below the run above it.
+    var inSheet = false
 
     var body: some View {
         Text(title)
-            .font(.title3.weight(.semibold))
+            .font(inSheet ? .headline : .title3.weight(.semibold))
             .foregroundStyle(HassTokens.Ink.primary)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, inSheet ? HassTokens.Spacing.s : 0)
             .accessibilityAddTraits(.isHeader)
     }
 }

@@ -24,7 +24,7 @@ struct RoomGroupDetail: View {
             if kind == .lights {
                 // "Lights", then the whole room at once, then each light (web `RoomLightDetailHeader` with its
                 // group slider above `RoomLightDetailCards`).
-                if let title = sections.first?.title { RoomOverviewHeading(title: title) }
+                if let title = sections.first?.title { RoomSectionHeader(title: title, inSheet: true) }
                 if let groupLight = RoomOverview.groupLightEntityId(group) {
                     LightGroupTile(title: RoomOverview.detailTitle(kind, group), entityId: groupLight, state: read(groupLight), send: send)
                         .accessibilityIdentifier("room.lightGroup.\(groupLight)")
@@ -32,7 +32,7 @@ struct RoomGroupDetail: View {
             }
             DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
                 ForEach(sections) { section in
-                    if kind != .lights, let title = section.title { RoomOverviewHeading(title: title).gridHeader() }
+                    if kind != .lights, let title = section.title { RoomSectionHeader(title: title, inSheet: true).gridHeader() }
                     ForEach(section.items) { item in tile(item) }
                 }
             }

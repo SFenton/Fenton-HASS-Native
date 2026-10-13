@@ -153,27 +153,26 @@ public enum WeatherPresentation {
         public var spoken: String
     }
 
-    /// Reads a bearing in degrees or as a compass abbreviation (`windBearingPresentation`).
-    public static func windBearing(_ value: WeatherWindBearing?) -> WindBearingReading? {
-        var degrees: Double
-        var reportedAsDegrees = false
+    /// A bearing's degrees, and whether Home Assistant reported degrees rather than a compass abbreviation. With
+    /// `principalOnly`, only the eight principal points read as abbreviations (the briefing's `bearingValue`).
+    public static func bearingDegrees(_ value: WeatherWindBearing?, principalOnly: Bool = false) -> (degrees: Double, reported: Bool)? {
         switch value {
         case let .degrees(number)?:
-            degrees = number
-            reportedAsDegrees = true
+            return (number, true)
         case let .cardinal(text)?:
             let normalized = text.trimmingCharacters(in: .whitespaces).uppercased()
-            if let numeric = Double(normalized), numeric.isFinite {
-                degrees = numeric
-                reportedAsDegrees = true
-            } else if let index = compassPoints.firstIndex(where: { $0.abbreviation == normalized }) {
-                degrees = Double(index) * 22.5
-            } else {
-                return nil
-            }
+            if let numeric = Double(normalized), numeric.isFinite { return (numeric, true) }
+            guard let index = compassPoints.firstIndex(where: { $0.abbreviation == normalized }),
+                  !principalOnly || index.isMultiple(of: 2) else { return nil }
+            return (Double(index) * 22.5, false)
         case nil:
             return nil
         }
+    }
+
+    /// Reads a bearing in degrees or as a compass abbreviation (`windBearingPresentation`).
+    public static func windBearing(_ value: WeatherWindBearing?) -> WindBearingReading? {
+        guard let (degrees, reportedAsDegrees) = bearingDegrees(value) else { return nil }
         let source = normalizeBearingDegrees(degrees)
         let point = compassPoints[Int(((source + 11.25) / 22.5).rounded(.down)) % compassPoints.count]
         return WindBearingReading(
