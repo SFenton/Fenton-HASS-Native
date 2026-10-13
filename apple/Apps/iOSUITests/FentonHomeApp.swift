@@ -102,7 +102,7 @@ enum FentonHomeApp {
     /// the system's dimmed style on disabled controls (exempt from WCAG 1.4.3).
     /// Collects every remaining issue so one run lists them all, then fails once with the list.
     ///
-    /// "Dynamic Type font sizes are partially unsupported" is a known false positive on iPad (Festival's
+    /// "Dynamic Type font sizes are (partially) unsupported" is a known false positive on iPad (Festival's
     /// `dynamic-type-grows` waiver). With `ax5Page` (relaunches the same page at AX5) such an issue is
     /// accepted only when the same text is at least 1.35x taller there; an issue with no element only
     /// when every sampled text on the page grew that much.
@@ -152,7 +152,7 @@ enum FentonHomeApp {
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             if ax5Page != nil, issue.auditType == .dynamicType,
-               issue.compactDescription.localizedCaseInsensitiveContains("partially unsupported") {
+               issue.compactDescription.localizedCaseInsensitiveContains("font sizes are") {
                 if let element = issue.element, !element.label.isEmpty {
                     unconfirmedType.append((element.label, element.frame.height))
                 } else {
@@ -176,7 +176,10 @@ enum FentonHomeApp {
                 var texts: [(String, CGRect)] = []
                 func walk(_ node: XCUIElementSnapshot) {
                     if node.elementType == .navigationBar { bars.append(node.frame) }
-                    if node.elementType == .staticText, !node.label.isEmpty { texts.append((node.label, node.frame)) }
+                    // Buttons too: a Form button (a sheet's Reset row) is a button element, not static text.
+                    if [.staticText, .button].contains(node.elementType), !node.label.isEmpty {
+                        texts.append((node.label, node.frame))
+                    }
                     node.children.forEach(walk)
                 }
                 walk(root)
@@ -358,8 +361,10 @@ extension XCTestCase {
         let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
         let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
         FileManager.default.createFile(atPath: ready.path, contents: nil)
-        // `simctl io` can take over 30 s on a loaded host; a short wait moved on and mislabeled the next capture.
-        let deadline = Date().addingTimeInterval(120)
+        // A loaded host can take well over 30 s to capture; moving on early let a late capture land on the next
+        // screen under this name. Wait longer, and withdraw the request on timeout so a miss is a gap, not a mislabel.
+        let deadline = Date().addingTimeInterval(180)
         while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
+        if !FileManager.default.fileExists(atPath: done.path) { try? FileManager.default.removeItem(at: ready) }
     }
 }

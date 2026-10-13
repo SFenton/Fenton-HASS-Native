@@ -60,7 +60,7 @@ struct VacationInteractionTests {
         let vacation = try controller(VacationModeController.self, of: screen)
         let hosted = SheetHostWindow(NavigationStack { screen })
 
-        let tile = try #require(ControlProbe.first(GlassTile.self, in: screen.body))
+        let tile = try #require(ControlProbe.first(GlassTile<EmptyView>.self, in: screen.body))
         #expect(tile.title == "Vacation Mode")
         #expect(tile.kind == .toggle)
         #expect(!tile.isActive)
@@ -183,7 +183,7 @@ struct VacationInteractionTests {
         TravelerTileView(tile: tile) { trip.selectTraveler(tile.resident) }.action()
         #expect(trip.selectedTraveler == .stephen)
 
-        let toggle = try #require(ControlProbe.all(GlassTile.self, in: screen.body).first { $0.title == SoloTripCopy.title })
+        let toggle = try #require(ControlProbe.all(GlassTile<EmptyView>.self, in: screen.body).first { $0.title == SoloTripCopy.title })
         toggle.action()
         #expect(await eventually { trip.editorOpen })
         hosted.settle()
@@ -234,7 +234,7 @@ struct VacationInteractionTests {
     @Test func endingARunningTripFromItsStatus() async throws {
         let h = makeHouse(.soloActive)
         let screen = SoloTripScreen(household: h.household, viewer: .stephen)
-        let toggle = try #require(ControlProbe.all(GlassTile.self, in: screen.body).first { $0.title == SoloTripCopy.title })
+        let toggle = try #require(ControlProbe.all(GlassTile<EmptyView>.self, in: screen.body).first { $0.title == SoloTripCopy.title })
         #expect(toggle.isActive)
         toggle.action()
         #expect(await eventually { h.household.snapshot.state == .idle })

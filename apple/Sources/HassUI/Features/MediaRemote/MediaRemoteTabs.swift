@@ -148,7 +148,7 @@ struct RemoteGlassTile: View {
         }
     }
 
-    private var kind: GlassTile.Kind {
+    private var kind: GlassTileKind {
         if case .toggle = semantics { return .toggle }
         return .command
     }
