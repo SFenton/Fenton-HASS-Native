@@ -76,7 +76,7 @@ public enum SecurityConfig {
 
     /// The tone for a tile showing `state`.
     public static func tone(for kind: TileKind, state: String?) -> Tone {
-        guard let state, !isUnavailable(state) else { return .neutral }
+        guard let state, !EntityState.isUnavailable(state) else { return .neutral }
         switch kind {
         case .garageDoor:
             switch state {
@@ -163,10 +163,5 @@ public enum SecurityConfig {
     // MARK: - Text
 
     /// Title-cased state (`titleCaseState`): `armed_home` → `Armed Home`; missing → `Unknown`.
-    public static func stateText(_ state: String?) -> String {
-        guard let state, !state.isEmpty else { return "Unknown" }
-        return state.split(separator: "_").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
-    }
-
-    static func isUnavailable(_ state: String) -> Bool { state == "unavailable" || state == "unknown" }
+    public static func stateText(_ state: String?) -> String { StateText.titleCase(state) }
 }

@@ -2,29 +2,17 @@ import Foundation
 
 /// State helpers shared by the remote's controls (web `MediaRemoteModalContent.tsx:54-71`, `entityState.ts:48`).
 public enum MediaRemoteState {
-    /// Missing, `unavailable` or `unknown`.
-    public static func isUnavailable(_ state: String?) -> Bool {
-        guard let state else { return true }
-        return state == "unavailable" || state == "unknown"
-    }
 
     /// Unavailable or `off`.
-    public static func isOff(_ state: String?) -> Bool { isUnavailable(state) || state == "off" }
+    public static func isOff(_ state: String?) -> Bool { EntityState.isUnavailable(state) || state == "off" }
 
-    /// `titleCaseState`: `armed_away` → `Armed Away`; a missing state reads `Unknown`.
-    public static func titleCase(_ state: String?) -> String {
-        guard let state, !state.isEmpty else { return "Unknown" }
-        return state.split(separator: "_", omittingEmptySubsequences: false)
-            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-            .joined(separator: " ")
-    }
 
     /// `formatMediaState`: the subtitle for a device or HDMI port.
     public static func format(_ state: String?) -> String {
         switch state {
         case nil, "unavailable": "Unavailable"
         case "unknown": "Unknown"
-        case let state?: titleCase(state)
+        case let state?: StateText.titleCase(state)
         }
     }
 

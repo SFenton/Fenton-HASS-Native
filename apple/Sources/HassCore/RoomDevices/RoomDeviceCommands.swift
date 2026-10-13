@@ -91,23 +91,12 @@ public final class RoomDeviceCommands {
 
 /// State parsing the device sheets share (web `entityState.ts`).
 public enum DeviceState {
-    /// Missing, `unavailable` or `unknown`.
-    public static func isUnavailable(_ state: String?) -> Bool {
-        guard let state else { return true }
-        return state == "unavailable" || state == "unknown"
-    }
 
     /// `on` / `off` / `unavailable` (web `binaryFlag`).
     public static func binaryFlag(_ state: String?) -> String {
-        isUnavailable(state) ? "unavailable" : state == "on" ? "on" : "off"
+        EntityState.isUnavailable(state) ? "unavailable" : state == "on" ? "on" : "off"
     }
 
-    /// `heat_cool` → `Heat Cool` (web `titleCaseState`).
-    public static func titleCase(_ state: String) -> String {
-        state.split(whereSeparator: { $0 == "_" || $0 == " " })
-            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-            .joined(separator: " ")
-    }
 
     /// A number parsed from the state.
     public static func number(_ entity: EntityState?) -> Double? {
@@ -121,6 +110,6 @@ public enum DeviceState {
         if entity.state == "unavailable" { return "Unavailable" }
         if entity.entityId.hasPrefix("binary_sensor.") { return entity.state == "on" ? "Active" : "Clear" }
         if entity.entityId.hasPrefix("sensor.") { return entity.state }
-        return titleCase(entity.state)
+        return StateText.titleCase(entity.state)
     }
 }

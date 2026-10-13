@@ -45,7 +45,7 @@ public final class HumidifierScheduleController {
 
     /// The helper was loaded, so activities can be added and saved.
     public var ready: Bool { schedule != nil }
-    public var masterAvailable: Bool { !DeviceState.isUnavailable(commands.entity(config.scheduleEnabledEntityId)?.state) }
+    public var masterAvailable: Bool { !EntityState.isUnavailable(commands.entity(config.scheduleEnabledEntityId)?.state) }
     public var enabled: Bool { commands.displayed(config.scheduleEnabledEntityId) == "on" }
     public var scheduleActive: Bool { commands.entity(config.scheduleEntityId)?.state == "on" }
     public var vacationActive: Bool { commands.entity(config.vacationModeEntityId)?.state == "on" }
@@ -196,18 +196,6 @@ extension HassConnection: HassScheduleStoring {
                 case let .failure(error): continuation.resume(throwing: error)
                 }
             }
-        }
-    }
-}
-
-extension JSONValue {
-    /// Converts a HAKit result.
-    init(haData: HAData) {
-        switch haData {
-        case let .dictionary(values): self = JSONValue(any: values)
-        case let .array(values): self = .array(values.map(JSONValue.init(haData:)))
-        case let .primitive(value): self = JSONValue(any: value)
-        case .empty: self = .null
         }
     }
 }
