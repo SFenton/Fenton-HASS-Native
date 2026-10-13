@@ -42,7 +42,11 @@ public struct ComponentGallery: View {
     public var body: some View {
         if page == .food {
             // Owns its navigation stack so journeys can start on a pushed page.
+            #if DEBUG
             FoodGallery()
+            #else
+            EmptyView()
+            #endif
         } else if page == .vacation {
             // Owns its stack, so its last-call line stays under pushed pages too.
             VacationGallery()

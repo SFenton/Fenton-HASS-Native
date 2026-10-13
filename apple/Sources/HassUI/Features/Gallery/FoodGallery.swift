@@ -1,3 +1,4 @@
+#if DEBUG
 import HassCore
 import HassDesign
 import Observation
@@ -264,3 +265,4 @@ enum FoodFixtures {
         return store
     }
 }
+#endif
