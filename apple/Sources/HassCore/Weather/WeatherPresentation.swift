@@ -254,7 +254,7 @@ public enum WeatherPresentation {
     ///   - nextRising: The `next_rising` attribute.
     ///   - nextSetting: The `next_setting` attribute.
     public static func sun(state: String?, nextRising: String?, nextSetting: String?, now: Date = Date()) -> SunReading? {
-        guard let rising = nextRising.flatMap(WeatherDates.parse), let setting = nextSetting.flatMap(WeatherDates.parse) else { return nil }
+        guard let rising = nextRising.flatMap(HassDates.iso8601), let setting = nextSetting.flatMap(HassDates.iso8601) else { return nil }
         if state == "above_horizon" {
             let previousRising = rising.addingTimeInterval(-86_400)
             let duration = setting.timeIntervalSince(previousRising)

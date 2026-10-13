@@ -46,17 +46,17 @@ public struct WeatherCurrent: Equatable, Sendable {
         let attributes = entity.attributes
         self.init(
             condition: entity.state.isEmpty ? nil : entity.state,
-            temperature: attributes["temperature"]?.lenientNumber,
-            apparentTemperature: attributes["apparent_temperature"]?.lenientNumber,
+            temperature: attributes["temperature"]?.finiteNumber,
+            apparentTemperature: attributes["apparent_temperature"]?.finiteNumber,
             temperatureUnit: attributes["temperature_unit"]?.string,
-            humidity: attributes["humidity"]?.lenientNumber,
-            windSpeed: attributes["wind_speed"]?.lenientNumber,
-            windGustSpeed: attributes["wind_gust_speed"]?.lenientNumber,
+            humidity: attributes["humidity"]?.finiteNumber,
+            windSpeed: attributes["wind_speed"]?.finiteNumber,
+            windGustSpeed: attributes["wind_gust_speed"]?.finiteNumber,
             windSpeedUnit: attributes["wind_speed_unit"]?.string,
             windBearing: WeatherWindBearing(json: attributes["wind_bearing"]),
-            pressure: attributes["pressure"]?.lenientNumber,
+            pressure: attributes["pressure"]?.finiteNumber,
             pressureUnit: attributes["pressure_unit"]?.string,
-            visibility: attributes["visibility"]?.lenientNumber,
+            visibility: attributes["visibility"]?.finiteNumber,
             visibilityUnit: attributes["visibility_unit"]?.string,
             precipitationUnit: attributes["precipitation_unit"]?.string
         )
@@ -72,30 +72,8 @@ public struct WeatherCurrent: Equatable, Sendable {
     public var conditionLabel: String { WeatherConditionInfo(isUnavailableState ? nil : condition).label }
 
     /// Home Assistant reports `unavailable` / `unknown` for a weather entity that lost its provider.
-    var isUnavailableState: Bool { condition == "unavailable" || condition == "unknown" }
+    var isUnavailableState: Bool { EntityState.isUnavailable(condition) }
 
     /// The condition to draw; `nil` when unavailable.
     public var drawnCondition: String? { isUnavailableState ? nil : condition }
-}
-
-/// The `sun.sun` entity's fields the sheet reads.
-public struct WeatherSunInput: Equatable, Sendable {
-    public var state: String?
-    public var nextRising: String?
-    public var nextSetting: String?
-
-    public init(state: String?, nextRising: String?, nextSetting: String?) {
-        self.state = state
-        self.nextRising = nextRising
-        self.nextSetting = nextSetting
-    }
-
-    /// Reads a `sun.sun` entity; `nil` when the entity is missing.
-    public init?(entity: EntityState?) {
-        guard let entity else { return nil }
-        self.init(state: entity.state, nextRising: entity.attributes["next_rising"]?.string, nextSetting: entity.attributes["next_setting"]?.string)
-    }
-
-    /// `below_horizon` means night.
-    public var isNight: Bool { state == "below_horizon" }
 }

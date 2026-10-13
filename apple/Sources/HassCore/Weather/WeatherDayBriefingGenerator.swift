@@ -505,8 +505,8 @@ public enum WeatherDayBriefingGenerator {
     }
 
     private static func sunSentence(_ sunrise: String?, _ sunset: String?, _ dateKey: String, _ zone: TimeZone) -> WeatherBriefingRef? {
-        guard let rise = alignToDay(sunrise.flatMap(WeatherDates.parse), dateKey, zone),
-              let set = alignToDay(sunset.flatMap(WeatherDates.parse), dateKey, zone), set > rise else { return nil }
+        guard let rise = alignToDay(sunrise.flatMap(HassDates.iso8601), dateKey, zone),
+              let set = alignToDay(sunset.flatMap(HassDates.iso8601), dateKey, zone), set > rise else { return nil }
         let totalMinutes = Int(WeatherFormat.round(set.timeIntervalSince(rise) / 60))
         let hours = totalMinutes / 60
         let minutes = totalMinutes % 60

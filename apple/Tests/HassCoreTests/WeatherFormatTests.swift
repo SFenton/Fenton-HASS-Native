@@ -74,15 +74,15 @@ struct WeatherFormatTests {
     }
 
     @Test func parsesDatesWithAndWithoutFractions() {
-        #expect(WeatherDates.parse("2026-09-05T12:00:00+00:00") == WeatherDates.parse("2026-09-05T12:00:00.000Z"))
-        #expect(WeatherDates.parse("2026-09-05T05:00:00-07:00") == WeatherDates.parse("2026-09-05T12:00:00Z"))
-        #expect(WeatherDates.parse("") == nil)
-        #expect(WeatherDates.parse("tomorrow") == nil)
+        #expect(HassDates.iso8601("2026-09-05T12:00:00+00:00") == HassDates.iso8601("2026-09-05T12:00:00.000Z"))
+        #expect(HassDates.iso8601("2026-09-05T05:00:00-07:00") == HassDates.iso8601("2026-09-05T12:00:00Z"))
+        #expect(HassDates.iso8601("") == nil)
+        #expect(HassDates.iso8601("tomorrow") == nil)
     }
 
     @Test func keysTheLocalDay() {
         let la = TimeZone(identifier: "America/Los_Angeles")!
-        let instant = WeatherDates.parse("2026-01-15T00:30:00Z")!
+        let instant = HassDates.iso8601("2026-01-15T00:30:00Z")!
         #expect(WeatherDates.dateKey(instant, in: utc) == "2026-01-15")
         #expect(WeatherDates.dateKey(instant, in: la) == "2026-01-14")
         #expect(WeatherDates.parts(instant, in: la) == .init(year: 2026, month: 1, day: 14, hour: 16, minute: 30))

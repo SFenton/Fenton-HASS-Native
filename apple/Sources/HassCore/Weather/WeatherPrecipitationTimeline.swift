@@ -1,25 +1,5 @@
 import Foundation
 
-/// One hour of the precipitation charts.
-public struct PrecipitationPoint: Equatable, Sendable {
-    /// Hourly accumulation; `nil` when the provider gave none.
-    public var amount: Double?
-    /// Running total; `nil` from the first missing hour on (a gap makes the total unknowable).
-    public var cumulative: Double?
-    public var endTime: Date?
-    public var index: Int
-    /// 0...100.
-    public var probability: Double?
-    public var startTime: Date?
-}
-
-/// An axis for the accumulation chart.
-public struct PrecipitationAmountAxis: Equatable, Sendable {
-    public var domain: Double
-    public var maximumFractionDigits: Int
-    public var step: Double
-}
-
 /// Chart math for the Precipitation highlight tiles.
 /// Source: `ha-sfenton-react-dash@f5a7bf9:src/components/hass/precipitationTimeline.ts`.
 public enum WeatherPrecipitationTimeline {
@@ -123,31 +103,5 @@ public enum WeatherPrecipitationTimeline {
         if plotWidth <= 0 || widestLabelWidth <= 0 { return max(1, Int((Double(count) / 4).rounded(.up))) }
         let capacity = max(1, Int((plotWidth / (widestLabelWidth + gap)).rounded(.down)))
         return max(1, Int((Double(count) / Double(capacity)).rounded(.up)))
-    }
-}
-
-/// One hour of the humidity and cloud-cover tiles.
-public struct HourlyMetricPoint: Equatable, Sendable {
-    public var cloudCover: Double?
-    public var humidity: Double?
-    public var index: Int
-    public var time: Date?
-}
-
-/// The six-hour humidity and cloud-cover series.
-/// Source: `ha-sfenton-react-dash@f5a7bf9:src/components/hass/WeatherHourlyMetricTiles.tsx:60`.
-public enum WeatherHourlyMetrics {
-    /// Hours each small chart shows.
-    public static let hours = 6
-
-    /// Points for the first six hours; values clamp to 0...100.
-    public static func points(_ forecasts: [WeatherForecast]) -> [HourlyMetricPoint] {
-        forecasts.prefix(hours).enumerated().map { index, forecast in
-            HourlyMetricPoint(
-                cloudCover: forecast.cloudCoverage.flatMap { $0.isFinite ? min(100, max(0, $0)) : nil },
-                humidity: forecast.humidity.flatMap { $0.isFinite ? min(100, max(0, $0)) : nil },
-                index: index, time: forecast.start
-            )
-        }
     }
 }

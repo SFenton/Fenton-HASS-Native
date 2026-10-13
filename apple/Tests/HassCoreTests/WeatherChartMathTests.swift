@@ -13,7 +13,7 @@ struct WeatherChartMathTests {
         #expect(points.map(\.probability) == [94, 40, 20])
         #expect(points.map(\.amount) == [0, 0.07, 0.02])
         #expect(try abs(#require(WeatherPrecipitationTimeline.total(points)) - 0.09) < 1e-9)
-        #expect(points[0].endTime == WeatherDates.parse("2026-08-27T20:00:00Z"))
+        #expect(points[0].endTime == HassDates.iso8601("2026-08-27T20:00:00Z"))
         #expect(WeatherPrecipitationTimeline.peakChance(points) == 94)
     }
 
@@ -112,6 +112,6 @@ struct WeatherChartMathTests {
         #expect(points[0].humidity == 100)
         #expect(points[5].cloudCover == 100)
         #expect(points[3].cloudCover == 60)
-        #expect(points[1].time == WeatherDates.parse("2026-09-05T01:00:00Z"))
+        #expect(points[1].time == HassDates.iso8601("2026-09-05T01:00:00Z"))
     }
 }

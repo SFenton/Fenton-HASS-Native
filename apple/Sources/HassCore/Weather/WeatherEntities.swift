@@ -10,11 +10,3 @@ public enum WeatherEntities {
     /// `sun.sun`: next sunrise and sunset, and whether it is night.
     public static let sun = "sun.sun"
 }
-
-public extension WeatherForecastStore {
-    /// A value that changes when the weather entity updates, standing in for the web's `last_updated`:
-    /// the entity's state and attributes change whenever the provider publishes new data.
-    nonisolated static func revision(of entity: EntityState?) -> String? {
-        entity.map { String($0.hashValue) }
-    }
-}

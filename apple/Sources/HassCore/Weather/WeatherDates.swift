@@ -1,28 +1,8 @@
 import Foundation
 
-/// Date parsing and formatting for weather, matching the web's `en-US` output regardless of the device locale
+/// Date formatting for weather (parsing is `HassDates.iso8601`), matching the web's `en-US` output regardless of the device locale
 /// (`ha-sfenton-react-dash@f5a7bf9:src/i18n/formatters.ts`).
 public enum WeatherDates {
-    // `ISO8601DateFormatter` is documented thread safe; building one per call dominated the briefing's run time.
-    nonisolated(unsafe) private static let withFraction: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
-
-    nonisolated(unsafe) private static let plain: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter
-    }()
-
-    /// Parses an ISO 8601 timestamp with or without fractional seconds (`Date.parse`). `nil` when invalid.
-    public static func parse(_ value: String) -> Date? {
-        let trimmed = value.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return nil }
-        return withFraction.date(from: trimmed) ?? plain.date(from: trimmed)
-    }
-
     /// The calendar fields of an instant in a time zone (`zonedDateParts`).
     public struct Parts: Equatable, Sendable {
         public var year: Int

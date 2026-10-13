@@ -29,7 +29,7 @@ struct WeatherBriefingTests {
         sunrise: String? = nil, sunset: String? = nil, aqi: Double? = nil
     ) -> WeatherDayBriefing {
         WeatherDayBriefingGenerator.generate(WeatherDayBriefingInput(
-            aqi: aqi, daily: daily, generatedAt: WeatherDates.parse(generatedAt)!, hourly: hourly,
+            aqi: aqi, daily: daily, generatedAt: HassDates.iso8601(generatedAt)!, hourly: hourly,
             precipitationUnit: precipitationUnit, sunrise: sunrise, sunset: sunset, temperatureUnit: temperatureUnit,
             timeZone: Self.zone, windSpeedUnit: windSpeedUnit
         ))
@@ -272,13 +272,13 @@ struct WeatherBriefingTests {
     @Test func plannerWritesOncePerDayAtOrAfterOneMinutePastMidnight() {
         let hourly = steadyDay("sunny")
         let current = generate(hourly: hourly)
-        let now = WeatherDates.parse("2026-01-15T09:00:00-08:00")!
+        let now = HassDates.iso8601("2026-01-15T09:00:00-08:00")!
         #expect(!WeatherBriefingPlanner.shouldGenerate(current: current, now: now, timeZone: Self.zone, hourly: hourly, daily: []))
-        let nextDay = WeatherDates.parse("2026-01-16T09:00:00-08:00")!
+        let nextDay = HassDates.iso8601("2026-01-16T09:00:00-08:00")!
         let tomorrow = day("2026-01-16", [(8, WeatherForecast(condition: "sunny"))])
         #expect(WeatherBriefingPlanner.shouldGenerate(current: current, now: nextDay, timeZone: Self.zone, hourly: tomorrow, daily: []))
         // Before 00:01 an existing briefing is kept; the first ever is written at once.
-        let midnight = WeatherDates.parse("2026-01-16T00:00:30-08:00")!
+        let midnight = HassDates.iso8601("2026-01-16T00:00:30-08:00")!
         #expect(!WeatherBriefingPlanner.shouldGenerate(current: current, now: midnight, timeZone: Self.zone, hourly: tomorrow, daily: []))
         #expect(WeatherBriefingPlanner.shouldGenerate(current: nil, now: midnight, timeZone: Self.zone, hourly: tomorrow, daily: []))
         // Needs forecast data for today.
