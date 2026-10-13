@@ -188,6 +188,21 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
     /// Makes this a single-value dial for something other than temperature (humidity, mist level).
     public var valueStyle: DialValueStyle?
 
+    // MARK: Non-temperature scales
+
+    /// How handle values are spoken and what the single handle is called, when there is no ``valueStyle``.
+    public enum ValueScale: Equatable, Sendable {
+        /// `72.5 degrees`; handle "<title> target temperature".
+        case temperature
+        /// `+3`, `0`, `-2` (the bed Pod's level scale); handle "<title> target level".
+        case signedLevel
+    }
+
+    /// How handle values read (default: temperatures).
+    public var scale: ValueScale = .temperature
+    /// Replaces the readout's VoiceOver label.
+    public var readoutAccessibilityLabelOverride: String?
+
     /// Creates a configuration.
     public init(
         title: String, min: Double = 45, max: Double = 95, step: Double = 0.5,
@@ -280,7 +295,7 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
     public func accessibilityLabel(for handle: ThermostatTargets.Handle) -> String {
         if let valueStyle { return valueStyle.handleLabel }
         return switch handle {
-        case .target: "\(title) target temperature"
+        case .target: scale == .signedLevel ? "\(title) target level" : "\(title) target temperature"
         case .low: "\(title) heat to"
         case .high: "\(title) cool to"
         }
@@ -291,9 +306,15 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
         "\(compact(value)) degrees"
     }
 
-    /// A handle's spoken value: a temperature, or the value with the style's unit (`50 percent`, `5`).
+    /// A handle's spoken value: a temperature, a signed level (`+3`), or the value with the style's unit
+    /// (`50 percent`, `5`).
     public func spokenValue(_ value: Double) -> String {
-        guard let valueStyle else { return Self.spokenTemperature(value) }
+        guard let valueStyle else {
+            switch scale {
+            case .temperature: return Self.spokenTemperature(value)
+            case .signedLevel: return value > 0 ? "+" + Self.compact(value) : Self.compact(value)
+            }
+        }
         return valueStyle.spokenUnit.isEmpty ? Self.compact(value) : "\(Self.compact(value)) \(valueStyle.spokenUnit)"
     }
 
@@ -305,6 +326,7 @@ public struct ThermostatDialConfiguration: Equatable, Sendable {
     }
 
     public var readoutAccessibilityLabel: String {
+        if let readoutAccessibilityLabelOverride { return readoutAccessibilityLabelOverride }
         if let valueStyle { return valueStyle.readoutLabel }
         let current = isUnavailable || self.current == nil ? "current temperature unknown" : "currently \(primaryText)\(primaryUnit ?? "")"
         return "\(title) thermostat, \(actionText), \(current)"

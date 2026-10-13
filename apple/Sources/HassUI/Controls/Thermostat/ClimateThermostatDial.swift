@@ -57,23 +57,39 @@ public struct ClimateThermostatDial: View {
     public var title: String
     public var size: ThermostatDial.Size
     public var commitEntityIds: ((ThermostatTargets) -> [String])?
+    /// Shown instead of the entity's `hvac_action` (the Whole Home dial always shows the global thermostat's).
+    public var action: String?
+    /// Where commits go; `nil` uses the environment's ``HassConnection``.
+    public var caller: (any HassServiceCalling)?
 
     @Environment(EntityStore.self) private var store
-    @Environment(HassConnection.self) private var connection
+    @Environment(HassConnection.self) private var connection: HassConnection?
 
     /// Creates a bound dial.
-    public init(entityId: String, title: String, size: ThermostatDial.Size = .page, commitEntityIds: ((ThermostatTargets) -> [String])? = nil) {
+    public init(
+        entityId: String, title: String, size: ThermostatDial.Size = .page, action: String? = nil,
+        caller: (any HassServiceCalling)? = nil, commitEntityIds: ((ThermostatTargets) -> [String])? = nil
+    ) {
         self.entityId = entityId
         self.title = title
         self.size = size
+        self.action = action
+        self.caller = caller
         self.commitEntityIds = commitEntityIds
     }
 
     public var body: some View {
-        ThermostatDial(ThermostatDialConfiguration(entity: store.entity(entityId).state, title: title), size: size) { targets in
-            let data = setTemperatureData(for: targets)
-            Task { try? await connection.callService("climate", "set_temperature", data: data) }
-        }
+        var configuration = ThermostatDialConfiguration(entity: store.entity(entityId).state, title: title)
+        if let action { configuration.action = action }
+        return ThermostatDial(configuration, size: size) { commit($0) }
+    }
+
+    /// Sends a commit to ``caller``, else the environment's connection.
+    @discardableResult
+    func commit(_ targets: ThermostatTargets) -> Task<Void, Never>? {
+        let data = setTemperatureData(for: targets)
+        guard let target: any HassServiceCalling = caller ?? connection else { return nil }
+        return Task { try? await target.callService("climate", "set_temperature", data: data) }
     }
 
     /// The `climate.set_temperature` data a commit sends: this entity, or `commitEntityIds` when set.
