@@ -9,12 +9,12 @@
 | iPad | `iPad Pro 11-inch (M5)` (`FENTON_SIM_IPAD`) | Any | Journeys rotate to landscape themselves |
 
 ```bash
-tools/ios_uitest.sh --env /path/to/temp.env            # all three, one simulator at a time
+tools/ios_uitest.sh --env /path/to/temp.env            # all three, one simulator at a time, waiting for capacity
 tools/ios_uitest.sh --env /path/to/temp.env --only duo  # one family
 ```
 
 - `--env` reads credentials locally and passes them as `TEST_RUNNER_FENTON_HASS_*`; signed-in journeys skip without them. Never print, log or commit them.
-- One product simulator at a time; never touch other projects' simulators.
+- The script compiles once under a `build` slot, then runs each family under its device gate and a `simulator` slot ([capacity](../../platforms/apple/capacity.md)); it waits when the Mac is full. Anything else that boots or drives a simulator (pose setup, host captures) goes inside `python3 tools/devcap.py run --sim <UDID> -- …`. Never touch other projects' simulators.
 - Result bundles land in `apple/.build/uitest-<family>.xcresult` (git-ignored).
 - `FENTON_KEEP_SIM=1` leaves the simulator booted after the run, so a Duo pose set in Device Hub survives into the next run (folded → unfolded portrait → unfolded landscape).
 - Use the product Duo `FENTON_SIM_DUO="iPhone Duo (HASS)"`; the bare `iPhone Duo` device is shared.
