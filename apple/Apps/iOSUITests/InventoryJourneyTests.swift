@@ -44,6 +44,27 @@ final class InventoryJourneyTests: XCTestCase {
         return values.filter { wanted.contains($0) }
     }
 
+    /// Scrolls until `element` is hittable and clear of Add Item's pinned footer. At AX5 wrapped text pushes
+    /// controls below the fold, where the form loads them once scrolled to; on short sheets (iPad landscape,
+    /// unfolded Duo landscape) a row behind the footer still reads as hittable, and tapping it pressed the
+    /// footer's forward button instead.
+    @discardableResult
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+        func clear() -> Bool {
+            guard element.waitForExistence(timeout: 2), element.isHittable else { return false }
+            let forward = app.buttons["scan.forward"]
+            guard forward.exists, element.identifier != "scan.forward" else { return true }
+            return element.frame.maxY <= forward.frame.minY - 8 || element.frame.minY >= forward.frame.maxY
+        }
+        var swipes = 0
+        while !clear(), swipes < 10 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(element.exists, "\(element) not found")
+        return element
+    }
+
     private func row(_ app: XCUIApplication, _ name: String) -> XCUIElement {
         app.descendants(matching: .any)["inventory.row.\(name)"]
     }
@@ -154,18 +175,16 @@ final class InventoryJourneyTests: XCTestCase {
     func testScanFlowAddsItem() {
         // All Food: the fixture's location suggestion files Greek Yogurt in the fridge, not the pantry.
         let app = launch(space: "all-food", open: "scan")
-        let simulate = app.buttons["scan.simulate"]
-        XCTAssertTrue(simulate.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["scan.cancel"].waitForExistence(timeout: 10))
         let name = app.textFields["scan.name"]
-        simulate.tap(until: { name.exists })
+        reveal(app.buttons["scan.simulate"], in: app).tap(until: { name.exists })
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         XCTAssertEqual(name.value as? String, "Greek Yogurt")
         // Each step's button is retried until its step shows: taps landing mid-transition are dropped.
         let step = { (id: String) in app.descendants(matching: .any)["scan.\(id)"].exists }
         app.buttons["scan.forward"].tap(until: { step("expiry") }, stillOn: { step("barcode") })
 
-        XCTAssertTrue(app.buttons["scan.simulate"].waitForExistence(timeout: 5))
-        app.buttons["scan.simulate"].tap(until: { app.buttons["scan.forward"].label == "Next" })
+        reveal(app.buttons["scan.simulate"], in: app).tap(until: { app.buttons["scan.forward"].label == "Next" })
         app.buttons["scan.forward"].tap(until: { step("review") }, stillOn: { step("expiry") })
 
         XCTAssertTrue(app.buttons["scan.add"].waitForExistence(timeout: 5))
@@ -178,18 +197,16 @@ final class InventoryJourneyTests: XCTestCase {
     /// Manual entry: type a name, pick a quick date, review.
     func testManualEntryFlow() {
         let app = launch(open: "scan")
-        XCTAssertTrue(app.buttons["scan.manualName"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["scan.cancel"].waitForExistence(timeout: 10))
         let name = app.textFields["scan.name"]
-        app.buttons["scan.manualName"].tap(until: { name.exists })
+        reveal(app.buttons["scan.manualName"], in: app).tap(until: { name.exists })
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
         name.typeText("Oat Milk")
         app.buttons["scan.forward"].tap(until: { app.descendants(matching: .any)["scan.expiry"].exists },
                                         stillOn: { app.descendants(matching: .any)["scan.barcode"].exists })
-        XCTAssertTrue(app.buttons["scan.manualExpiry"].waitForExistence(timeout: 5))
-        app.buttons["scan.manualExpiry"].tap(until: { app.buttons["scan.quick.1-week"].exists })
-        XCTAssertTrue(app.buttons["scan.quick.1-week"].waitForExistence(timeout: 5))
-        app.buttons["scan.quick.1-week"].tap()
+        reveal(app.buttons["scan.manualExpiry"], in: app).tap(until: { app.buttons["scan.quick.1-week"].exists })
+        reveal(app.buttons["scan.quick.1-week"], in: app).tap()
         XCTAssertTrue(app.buttons["scan.quick.1-week"].isSelected)
         app.buttons["scan.forward"].tap(until: { app.descendants(matching: .any)["scan.review"].exists },
                                         stillOn: { app.descendants(matching: .any)["scan.expiry"].exists })
@@ -250,26 +267,6 @@ final class InventoryJourneyTests: XCTestCase {
     }
 
     func testScanStepsPassAccessibilityAudit() throws {
-        /// At AX5 wrapped text pushes controls below the fold, where the form loads them once scrolled to; the
-        /// footer's large buttons leave the form a short window, so it can take several swipes.
-        @discardableResult
-        func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
-            // Clear of the pinned footer too: on the short iPad landscape sheet a row behind the footer still reads
-            // as hittable, and tapping it pressed the footer's Skip instead (the journey jumped to review).
-            func clear() -> Bool {
-                guard element.waitForExistence(timeout: 2), element.isHittable else { return false }
-                let forward = app.buttons["scan.forward"]
-                guard forward.exists, element.identifier != "scan.forward" else { return true }
-                return element.frame.maxY <= forward.frame.minY - 8 || element.frame.minY >= forward.frame.maxY
-            }
-            var swipes = 0
-            while !clear(), swipes < 10 {
-                app.swipeUp()
-                swipes += 1
-            }
-            XCTAssertTrue(element.exists, "\(element) not found")
-            return element
-        }
         func atStep(_ step: Int, _ arguments: [String]) -> XCUIApplication {
             let app = launch(open: "scan", arguments: arguments, clean: true)
             XCTAssertTrue(app.buttons["scan.cancel"].waitForExistence(timeout: 10))
