@@ -99,9 +99,11 @@ final class HomeJourneyTests: XCTestCase {
     /// Scrolls the status rail sideways until the chip is on screen (later chips start past the iPhone's edge).
     private func revealChip(_ chip: XCUIElement, in app: XCUIApplication) {
         let window = app.windows.firstMatch
-        for _ in 0..<4 where !chip.isHittable {
+        // `isHittable` reports chips clipped by the rail as hittable, so compare frames instead.
+        func offScreen() -> Bool { chip.frame.maxX > window.frame.maxX - 8 || chip.frame.minX < window.frame.minX + 8 }
+        for _ in 0..<6 where offScreen() {
             let y = chip.frame.midY
-            let direction: CGFloat = chip.frame.minX > window.frame.midX ? -1 : 1
+            let direction: CGFloat = chip.frame.maxX > window.frame.maxX - 8 ? -1 : 1
             let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: window.frame.midX, dy: y))
             start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: direction * window.frame.width * 0.4, dy: 0)))
         }
