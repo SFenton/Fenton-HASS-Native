@@ -12,6 +12,8 @@
 | [vacuum-sheet.md](vacuum-sheet.md) | `HassUI/Features/Vacuums/VacuumSheet.swift` | `src/components/hass/VacuumCard.tsx` |
 | [valetudo-map.md](valetudo-map.md) | `HassUI/Features/Vacuums/ValetudoMapView.swift` | `src/components/hass/ValetudoMapCard.tsx` |
 | [thermostat-dial.md](thermostat-dial.md) | `HassDesign/ThermostatDial/ThermostatDial.swift` | `src/components/hass/CircularControlDial.tsx` |
+| [schedule-date-fields.md](schedule-date-fields.md) | `HassDesign/ScheduleDateFields.swift` | `NativePickerField` in `ScheduleConfirmationForm` |
+| [info-box.md](info-box.md) | `HassDesign/InfoBox.swift` | `src/components/core/InfoBox.tsx` |
 | [status-pill.md](status-pill.md) | `HassDesign/StatusPill.swift` | `src/components/core/StatusPill.tsx` |
 | [option-picker.md](option-picker.md) | `HassDesign/OptionPickerSheet.swift` | `src/components/core/OptionPickerDialog.tsx` |
 | [bedroom-devices.md](bedroom-devices.md) | `HassUI/Features/Bedroom/BedSideSheet.swift`, `WakeLightSheet.swift` | `src/components/hass/wakeLights/`, SleepyPod in `DashboardViewPage.tsx` |

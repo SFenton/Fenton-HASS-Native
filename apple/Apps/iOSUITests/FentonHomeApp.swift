@@ -106,8 +106,11 @@ enum FentonHomeApp {
     /// `dynamic-type-grows` waiver). With `ax5Page` (relaunches the same page at AX5) such an issue is
     /// accepted only when the same text is at least 1.35x taller there; an issue with no element only
     /// when every sampled text on the page grew that much.
+    ///
+    /// `presenter` names a control on the page under a sheet: element-less "potentially inaccessible
+    /// text" is the page showing around an iPad form sheet, accepted only while that control can't be hit.
     static func audit(
-        _ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil,
+        _ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil, presenter: XCUIElement? = nil,
         file: StaticString = #filePath, line: UInt = #line
     ) throws {
         var open: [String] = []
@@ -126,6 +129,11 @@ enum FentonHomeApp {
         }
         for issue in issues {
             if isSystemDrawn(issue, in: app, popover: popover) { continue }
+            // The presenting page around an iPad form sheet, hidden from assistive technologies by the modal.
+            if issue.element == nil, issue.auditType == .elementDetection, let presenter,
+               presenter.exists, !presenter.isHittable {
+                continue
+            }
             var measured = ""
             if issue.auditType == .contrast, let element = issue.element, let capture,
                var ratio = RenderedContrast.ratio(of: element.frame, in: capture) {

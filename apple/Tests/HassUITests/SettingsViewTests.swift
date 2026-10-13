@@ -98,6 +98,21 @@ struct SettingsViewTests {
         }
     }
 
+    /// At accessibility sizes the icon stacks above the text, so a long subtitle keeps the row's width
+    /// (beside the icon, the Vacation row grew to 749 pt on the folded iPhone Duo at AX5).
+    @Test func linkRowStacksTheIconAtAccessibilitySizes() throws {
+        func height(_ size: DynamicTypeSize) throws -> Int {
+            let row = SettingsLinkRow(title: "Vacation", subtitle: "Set away dates and prepare the house for vacation.",
+                                      symbol: "airplane", showsChevron: false)
+                .dynamicTypeSize(size)
+                .frame(width: 362)
+            return try #require(ImageRenderer(content: row).cgImage).height
+        }
+        let large = try height(.large), ax5 = try height(.accessibility5)
+        #expect(ax5 > large)
+        #expect(ax5 < large * 8)
+    }
+
     @Test func modalRendersTheAccount() {
         #expect(render(HomeAssistantSettingsView(user: admin)) != nil)
         #expect(render(HomeAssistantSettingsView(user: member)) != nil)

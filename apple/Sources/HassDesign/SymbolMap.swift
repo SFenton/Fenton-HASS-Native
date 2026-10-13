@@ -52,6 +52,10 @@ public enum SymbolMap {
         "mdi:movie-open": "film",
         "mdi:lightbulb-multiple": "lightbulb.2",
         "mdi:gauge": "gauge.with.dots.needle.50percent",
+        "mdi:bag-suitcase": "suitcase",
+        "mdi:account": "person",
+        "mdi:home-account": "house",
+        "mdi:account-arrow-right-outline": "figure.walk.departure",
         "mdi:lock-open": "lock.open",
         "mdi:garage-open": "door.garage.open",
         // Media, Custom Lights and Sprinklers pages
