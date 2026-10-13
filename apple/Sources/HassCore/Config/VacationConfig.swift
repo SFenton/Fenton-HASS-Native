@@ -59,7 +59,7 @@ public enum Vacation {
         /// The combined end picker's label.
         public static let ends = "Ends"
         public static let disableAlertTitle = "Are you sure you want to turn off Vacation Mode?"
-        public static let disableAlertConfirm = "Yes"
+        public static let disableAlertConfirm = "Turn Off"
         public static let disableAlertCancel = "Cancel"
         public static let pending = "Pending"
         public static let on = "On"

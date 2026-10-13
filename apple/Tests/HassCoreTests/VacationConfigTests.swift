@@ -90,7 +90,7 @@ struct VacationConfigTests {
         #expect(Vacation.Copy.confirmAction == "Confirm Vacation")
         #expect([Vacation.Copy.starts, Vacation.Copy.ends] == ["Starts", "Ends"])
         #expect(Vacation.Copy.disableAlertTitle == "Are you sure you want to turn off Vacation Mode?")
-        #expect([Vacation.Copy.disableAlertConfirm, Vacation.Copy.disableAlertCancel] == ["Yes", "Cancel"])
+        #expect([Vacation.Copy.disableAlertConfirm, Vacation.Copy.disableAlertCancel] == ["Turn Off", "Cancel"])
         #expect([Vacation.Copy.pending, Vacation.Copy.on, Vacation.Copy.off, Vacation.Copy.unavailable]
             == ["Pending", "On", "Off", "Unavailable"])
         #expect(Vacation.Copy.dateRangeError.hasPrefix("Start date and time must be before end date and time."))

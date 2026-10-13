@@ -169,7 +169,7 @@ public final class VacationModeController {
         blockedEnableAttempted = false
     }
 
-    /// Turns the vacation off after the alert's Yes. Doesn't depend on ``isConfirmingDisable``: SwiftUI may
+    /// Turns the vacation off after the alert's Turn Off. Doesn't depend on ``isConfirmingDisable``: SwiftUI may
     /// clear the alert's binding before or after it runs the button's action.
     public func confirmDisable() {
         isConfirmingDisable = false

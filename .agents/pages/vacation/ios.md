@@ -17,7 +17,7 @@ Spec: [spec.md](spec.md) (web source `ha-sfenton-react-dash@9ac2a46`).
 - **Dates** use `ScheduleDateFields` ([pattern](../../patterns/schedule-date-fields.md)). Fields that write to Home Assistant at once (Vacation Dates, Solo Trip return) commit after 0.9 s without a change, so turning a wheel sends one call (spec open question 1). The sheets keep drafts and send on confirm.
 - **Departures from web (owner, 2026-10-13):**
   - Each moment is one date-and-time picker: Vacation "Starts"/"Ends", Solo Trip "Departs"/"Returns" (web: four Date/Time fields).
-  - Turning an engaged Vacation Mode off asks first: alert "Are you sure you want to turn off Vacation Mode?", destructive **Yes** and **Cancel** (HIG Alerts: confirm destructive actions). "Yes" is the owner's wording; HIG prefers a verb such as "Turn Off", recorded here as a deliberate departure.
+  - Turning an engaged Vacation Mode off asks first: alert "Are you sure you want to turn off Vacation Mode?", destructive **Turn Off** and **Cancel** (HIG Alerts: confirm destructive actions with a verb; the owner approved "Turn Off" over "Yes", 2026-10-13).
   - No section title repeats the navigation title on Vacation Mode or Solo Trip; the description stays.
   - The Vacation Mode section shows no Household Away command error. The web's per-page controller made that error Vacation-only; the native controller is shared, so it carried Solo Trip errors ("could not apply the Solo Trip change") onto Vacation Mode.
   - Confirmed vacation dates stay on screen until both `input_datetime` helpers echo (10 s fallback). The helpers echo one at a time, and in between the new start against the previous end flashed the range error.
