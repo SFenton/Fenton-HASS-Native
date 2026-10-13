@@ -16,3 +16,5 @@ Live-server screenshots are not committed.
 Pages: `food-hub-*` (hub; `-spaces` scrolled to the inventory tiles), `food-recipes-*` (grid), `-sort` / `-filter`
 (sheets), `food-recipe-general|ingredients|instructions-*` (detail tabs), `food-recipe-cookidoo-*` (Cookidoo link-out),
 `food-recipes-error|empty-*`, and `*-ax5` at the largest accessibility text size.
+
+`evidence/filter-sheet-reset-ipad-portrait*.png`: the Filter sheet scrolled to Reset to Defaults on iPad portrait at the standard size and at AX5 (FilterSheet edfc05b), the pages behind the audit finding reported to PR #9 on 2026-10-13.
