@@ -291,6 +291,9 @@ final class FoodJourneyTests: XCTestCase {
     private func scroll(to label: String, in app: XCUIApplication, sheet: XCUIElement) {
         let target = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
         for _ in 0..<8 where !(target.exists && target.isHittable) { sheet.swipeUp() }
+        // One more so the row clears the sheet's bottom edge: a row cut by the edge reads as clipped text with
+        // unsupported Dynamic Type. Headers stay put so the AX5 page still shows them.
+        if !["Ranking Strength", "Sort By"].contains(label) { sheet.swipeUp() }
         sleep(1)
     }
 
