@@ -10,6 +10,7 @@
 | Add or change a control | [skills/add-control](skills/add-control/SKILL.md) |
 | Touch shared behavior (grids, tiles, chips, sheets) | [patterns/README.md](patterns/README.md) |
 | A design choice the owner hasn't made | [skills/design-decision](skills/design-decision/SKILL.md) |
+| Write or review SwiftUI | [.claude/skills/swiftui-pro](../.claude/skills/swiftui-pro/SKILL.md), applied per [workflow/swiftui-pro.md](workflow/swiftui-pro.md) |
 | Fix a reported issue | [skills/fix-reported-issue](skills/fix-reported-issue/SKILL.md) |
 | Sign-in, tokens, Keychain | [platforms/apple/auth.md](platforms/apple/auth.md) |
 | Websocket, backgrounding, caching | [platforms/apple/connection-lifecycle.md](platforms/apple/connection-lifecycle.md) |
