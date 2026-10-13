@@ -5,12 +5,20 @@ import XCTest
 final class CameraJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
+    static let cameras = [("front_door", "Front Door"), ("garage_camera", "Driveway"),
+                          ("upper_deck", "Upper Deck"), ("lower_deck", "Lower Deck")]
+
+    /// The Home tile for a camera, scrolled into view.
+    private func tile(_ app: XCUIApplication, _ streamId: String) -> XCUIElement {
+        let tile = app.buttons["home.camera.\(streamId)"]
+        XCTAssertTrue(tile.waitForExistence(timeout: 10))
+        for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
+        return tile
+    }
+
     /// Opens the Front Door camera and returns its video element.
     private func openCamera(_ app: XCUIApplication, _ streamId: String = "front_door") -> XCUIElement {
-        let tile = app.buttons["home.camera.\(streamId)"]
-        if !tile.isHittable { app.swipeUp() }
-        XCTAssertTrue(tile.waitForExistence(timeout: 10))
-        tile.tap()
+        tile(app, streamId).tap()
         let video = app.descendants(matching: .any)["camera.viewer.video"]
         XCTAssertTrue(video.waitForExistence(timeout: 5))
         return video
@@ -20,6 +28,97 @@ final class CameraJourneyTests: XCTestCase {
         let live = NSPredicate(format: "value == %@", value)
         let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: live, object: element)], timeout: timeout)
         XCTAssertEqual(result, .completed, "Camera stayed '\(element.value as? String ?? "")', expected '\(value)'")
+    }
+
+    /// Every tile opens its own camera wherever the tap lands. The fill-scaled Driveway picture (10:3 in a 16:9
+    /// tile) used to overflow its tile and take taps meant for Front Door beside it.
+    func testEveryTileOpensItsOwnCamera() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        _ = tile(app, "front_door")
+        sleep(4) // Snapshots and live video load first: the overflow only existed once a picture was drawn.
+        for (stream, title) in Self.cameras {
+            for x in [0.08, 0.5, 0.92] {
+                tile(app, stream).coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.5)).tap()
+                XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5),
+                              "A tap at \(x) across the \(title) tile opened \(app.navigationBars.firstMatch.identifier)")
+                app.buttons["Done"].tap()
+                XCTAssertTrue(app.buttons["home.camera.\(stream)"].waitForExistence(timeout: 5))
+            }
+        }
+    }
+
+    /// The viewer shows the tile's stream (web shared stream manager): a camera that is live on its tile is live
+    /// the moment its viewer opens, with no reconnect.
+    func testViewerSharesTheTilesLiveStream() throws {
+        let app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_CAMERA_MODE": "webrtc"])
+        let front = tile(app, "front_door")
+        waitForValue(front, "Live")
+        front.tap()
+        let video = app.descendants(matching: .any)["camera.viewer.video"]
+        XCTAssertTrue(video.waitForExistence(timeout: 5))
+        waitForValue(video, "Live", timeout: 1.5)
+        app.buttons["Done"].tap()
+        waitForValue(tile(app, "front_door"), "Live", timeout: 1.5)
+    }
+
+    /// Snapshot, Sound and Record (web `CameraModalContent`). Record is read, never pressed: it records on the house.
+    func testViewerControls() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        let video = openCamera(app)
+        waitForValue(video, "Live")
+        let sound = app.buttons["camera.control.sound"]
+        XCTAssertEqual(sound.label, "Sound")
+        XCTAssertEqual(sound.value as? String, "Off", "Cameras open muted")
+        sound.tap()
+        waitForValue(sound, "On", timeout: 3)
+        sound.tap()
+        waitForValue(sound, "Off", timeout: 3)
+
+        let record = app.buttons["camera.control.record"]
+        XCTAssertEqual(record.label, "Record")
+        XCTAssertTrue(["Recording", "Not recording"].contains(record.value as? String ?? ""))
+
+        let snapshot = app.buttons["camera.control.snapshot"]
+        XCTAssertEqual(snapshot.label, "Snapshot")
+        addUIInterruptionMonitor(withDescription: "Photos") { alert in
+            for title in ["Allow", "Allow Access", "OK"] where alert.buttons[title].exists {
+                alert.buttons[title].tap()
+                return true
+            }
+            return false
+        }
+        snapshot.tap()
+        app.tap() // Lets the interruption monitor answer the Photos prompt.
+        waitForValue(snapshot, "Saved to Photos", timeout: 15)
+        for control in [snapshot, sound, record] {
+            XCTAssertGreaterThanOrEqual(control.frame.height, 44)
+            XCTAssertGreaterThanOrEqual(control.frame.width, 44)
+        }
+        // Closing mutes: reopening starts muted again.
+        sound.tap()
+        waitForValue(sound, "On", timeout: 3)
+        app.buttons["Done"].tap()
+        _ = openCamera(app)
+        XCTAssertEqual(app.buttons["camera.control.sound"].value as? String, "Off")
+    }
+
+    /// Video beside controls only where splits are allowed (iPad landscape); stacked everywhere else.
+    func testViewerLayoutFollowsThePose() throws {
+        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .landscapeLeft }
+        defer { if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait } }
+        let app = try FentonHomeApp.launchSignedIn()
+        _ = openCamera(app)
+        let window = app.windows.firstMatch.frame
+        let splits = FentonHomeApp.family != .iPhone && window.width > window.height && window.width >= 1000
+        let layout = app.descendants(matching: .any)[splits ? "camera.layout.split" : "camera.layout.stacked"]
+        XCTAssertTrue(layout.waitForExistence(timeout: 5), "\(FentonHomeApp.family) \(window.size)")
+        let video = app.descendants(matching: .any)["camera.viewer.video"].frame
+        let controls = app.buttons["camera.control.snapshot"].frame
+        if splits {
+            XCTAssertLessThanOrEqual(video.maxX, controls.minX, "Controls trail the video")
+        } else {
+            XCTAssertLessThanOrEqual(video.maxY, controls.minY, "Controls sit under the video")
+        }
     }
 
     func testWebRTCGoesLive() throws {

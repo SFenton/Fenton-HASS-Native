@@ -35,6 +35,7 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSCameraUsageDescription: Scan item barcodes and printed expiration dates to add groceries to your inventory.
+        NSPhotoLibraryAddUsageDescription: Save camera snapshots to your photo library.
         UILaunchScreen:
           UIColorName: LaunchBackground
         # Lets ProMotion iPhones scroll and animate at 120 Hz; without it the app is capped at 60 Hz.

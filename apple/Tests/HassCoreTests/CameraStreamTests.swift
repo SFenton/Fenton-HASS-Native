@@ -115,3 +115,66 @@ struct WebRTCSignalTests {
         #expect(WebRTCSignal(text: #"{"type":"webrtc/candidate"}"#) == .candidate(""))
     }
 }
+
+struct CameraStreamRetentionTests {
+    @Test func firstViewStartsAndLaterViewsShareTheStream() {
+        var retention = CameraStreamRetention()
+        #expect(retention.appear("front", isRunning: false) == .start)
+        #expect(retention.appear("front", isRunning: true) == .none, "The viewer attaches to the tile's stream")
+        #expect(retention.viewers["front"] == 2)
+    }
+
+    @Test func shownStreamsAreRetainedAfterTheirLastView() {
+        var retention = CameraStreamRetention()
+        _ = retention.appear("front", isRunning: false)
+        #expect(retention.disappear("front") == .none)
+        #expect(retention.shouldRun("front"))
+        #expect(retention.viewers["front"] == nil)
+        #expect(retention.appear("front", isRunning: true) == .none, "A later page reuses the retained stream")
+    }
+
+    @Test func withoutRetentionTheLastViewStops() {
+        var retention = CameraStreamRetention(retainsShownStreams: false)
+        _ = retention.appear("front", isRunning: false)
+        _ = retention.appear("front", isRunning: true)
+        #expect(retention.disappear("front") == .none, "Another view still shows it")
+        #expect(retention.disappear("front") == .stop)
+        #expect(retention.disappear("front") == .stop, "Extra disappearances never go negative")
+        #expect(!retention.shouldRun("front"))
+    }
+
+    @Test func aFailedStreamDropsItsRetention() {
+        var retention = CameraStreamRetention()
+        _ = retention.appear("front", isRunning: false)
+        retention.failed("front")
+        #expect(retention.shouldRun("front"), "Its view is still up")
+        #expect(retention.disappear("front") == .stop)
+        #expect(retention.appear("front", isRunning: false) == .start, "The next view starts fresh")
+    }
+
+    @Test func backgroundStopsEverythingAndForegroundRestartsShownStreams() {
+        var retention = CameraStreamRetention()
+        _ = retention.appear("front", isRunning: false)
+        _ = retention.appear("drive", isRunning: false)
+        _ = retention.disappear("drive")
+        #expect(retention.enterBackground() == ["front", "drive"])
+        #expect(!retention.shouldRun("front"))
+        #expect(retention.appear("deck", isRunning: false) == .none, "Nothing starts in the background")
+        #expect(retention.enterForeground() == ["front", "drive", "deck"])
+        #expect(retention.shouldRun("drive"))
+    }
+}
+
+struct CameraConfigTests {
+    @Test func everyHomeCameraRecordsThroughItsScript() {
+        for camera in HomeConfig.cameras {
+            #expect(camera.recordingEntityId?.hasPrefix("input_boolean.is_") == true)
+            let call = camera.recordCall
+            #expect(call?.domain == "script")
+            #expect(call?.service == "turn_on")
+            #expect(call?.target == camera.recordingScriptEntityId)
+        }
+        let plain = HomeConfig.Camera(title: "Test", entityId: "camera.test", rtcStreamId: "test", aspectRatio: 1)
+        #expect(plain.recordCall == nil)
+    }
+}

@@ -11,31 +11,36 @@ import WebRTC
 
 /// Live video for one camera, over its latest snapshot.
 ///
-/// The snapshot stays on top until the stream shows a frame, then cross-fades out; if every mode fails it
-/// stays with a retry. Streams stop when the view leaves or the app goes to the background and restart on
-/// return. With `FENTON_REDACT_PRIVATE` the blurred snapshot always covers the video, so shared screenshots
-/// show the live badge but never the picture.
+/// The stream comes from ``CameraStreamPool``, so a tile and the viewer it opens show the same frames. The
+/// snapshot stays on top until the stream shows a frame, then cross-fades out; if every mode fails it stays
+/// (with a retry in the viewer). With `FENTON_REDACT_PRIVATE` the blurred snapshot always covers the video,
+/// so shared screenshots show the live badge but never the picture.
 struct CameraLiveView: View {
-    var camera: HomeConfig.Camera
-    @Environment(HassConnection.self) private var connection
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var model: CameraLiveModel
-    @State private var pausedInBackground = false
-
-    init(camera: HomeConfig.Camera) {
-        self.camera = camera
-        _model = State(initialValue: CameraLiveModel(camera: camera))
+    /// Where the video is shown.
+    enum Style {
+        /// A grid tile: fills and crops, no badge, not hit-testable (the tile's button takes the tap).
+        case tile
+        /// The camera viewer: fits, with the status badge and a retry.
+        case viewer
     }
 
+    var camera: HomeConfig.Camera
+    var style: Style = .viewer
+    @Environment(HassConnection.self) private var connection
+    @Environment(\.cameraStreamPool) private var poolOverride
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var pool: CameraStreamPool { poolOverride ?? .shared }
+
     var body: some View {
-        // The black frame sets the size; the fill-scaled snapshot must not grow it past the viewer's
-        // aspect ratio, or the badge lands outside the clip.
+        let model = pool.model(for: camera)
+        // The black frame sets the size; the fill-scaled snapshot must not grow it past the frame, or the
+        // badge lands outside the clip and the overflow steals taps from neighbouring tiles.
         Rectangle().fill(.black)
             .overlay {
                 // Redacted runs keep the player decoding (so the state still reaches Live) but never show
                 // it: the Metal video view can draw above the snapshot that covers it.
-                player.opacity(ScreenshotPrivacy.isRedacting ? 0 : 1)
+                player(model).opacity(ScreenshotPrivacy.isRedacting ? 0 : 1)
             }
             .overlay {
                 if model.state.phase != .live || ScreenshotPrivacy.isRedacting {
@@ -44,46 +49,37 @@ struct CameraLiveView: View {
                 }
             }
             .clipped()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(camera.title) camera")
-        .accessibilityValue(Self.statusText(model.state))
-        .accessibilityIdentifier("camera.viewer.video")
-        .overlay(alignment: .topLeading) { badge }
-        .overlay(alignment: .bottom) { retry }
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: model.state.phase)
-        .onAppear { model.start(connection: connection) }
-        .onDisappear { model.stop() }
-        .onChange(of: scenePhase) { _, phase in
-            switch phase {
-            case .active where pausedInBackground:
-                pausedInBackground = false
-                model.start(connection: connection)
-            case .background:
-                pausedInBackground = true
-                model.stop()
-            default: break
+            .allowsHitTesting(false)
+            .modifier(VideoAccessibility(style: style, camera: camera, state: model.state))
+            .overlay(alignment: .topLeading) {
+                if style == .viewer { badge(model.state) }
             }
-        }
+            .overlay(alignment: .bottom) {
+                if style == .viewer { retry(model.state) }
+            }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: model.state.phase)
+            .onAppear { pool.appear(camera, connection: connection) }
+            .onDisappear { pool.disappear(camera) }
     }
 
     // MARK: - Pieces
 
-    @ViewBuilder private var player: some View {
+    @ViewBuilder private func player(_ model: CameraLiveModel) -> some View {
         #if canImport(UIKit)
         if let hls = model.hlsPlayer {
-            HLSPlayerView(player: hls)
+            HLSPlayerView(player: hls, fills: style == .tile)
         }
         #if canImport(WebRTC)
         if let peer = model.webRTCPeer {
-            WebRTCVideoView(track: peer.videoTrack) { model.firstFrame(.webRTC) }
+            WebRTCVideoView(track: peer.videoTrack, fills: style == .tile)
         }
         #endif
         #endif
     }
 
-    private var badge: some View {
+    private func badge(_ state: CameraStreamState) -> some View {
         HStack(spacing: HassTokens.Spacing.xs) {
-            switch model.state.phase {
+            switch state.phase {
             case .connecting:
                 ProgressView().controlSize(.mini).tint(.white)
             case .live:
@@ -91,7 +87,7 @@ struct CameraLiveView: View {
             case .failed:
                 Image(systemName: "photo")
             }
-            Text(Self.badgeText(model.state))
+            Text(Self.badgeText(state))
         }
         .font(.caption.weight(.semibold))
         .foregroundStyle(.white)
@@ -102,13 +98,13 @@ struct CameraLiveView: View {
         .accessibilityHidden(true) // Read as the video's value.
     }
 
-    @ViewBuilder private var retry: some View {
-        if model.state.phase == .failed, !model.state.modes.isEmpty {
+    @ViewBuilder private func retry(_ state: CameraStreamState) -> some View {
+        if state.phase == .failed, !state.modes.isEmpty {
             Button {
-                model.start(connection: connection)
+                pool.retry(camera, connection: connection)
             } label: {
                 Label("Retry Live Video", systemImage: "arrow.clockwise")
-                    .frame(minHeight: 44)
+                    .frame(minHeight: HassTokens.minTarget)
             }
             .buttonStyle(.borderedProminent)
             .padding(HassTokens.Spacing.s)
@@ -137,20 +133,47 @@ struct CameraLiveView: View {
     }
 }
 
+/// The viewer's video is one element that reads its live state; a tile's video is hidden because the tile's
+/// button already names the camera and reads the state.
+private struct VideoAccessibility: ViewModifier {
+    var style: CameraLiveView.Style
+    var camera: HomeConfig.Camera
+    var state: CameraStreamState
+
+    func body(content: Content) -> some View {
+        switch style {
+        case .viewer:
+            content
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(camera.title) camera")
+                .accessibilityValue(CameraLiveView.statusText(state))
+                .accessibilityIdentifier("camera.viewer.video")
+        case .tile:
+            content.accessibilityHidden(true)
+        }
+    }
+}
+
 #if canImport(UIKit)
-/// An `AVPlayerLayer` host with no controls (live HLS has nothing to scrub).
+/// An `AVPlayerLayer` host with no controls (live HLS has nothing to scrub). Several layers can show one
+/// player (a tile and its viewer).
 struct HLSPlayerView: UIViewRepresentable {
     var player: AVPlayer
+    /// Fill crops to the frame (tiles); fit letterboxes (the viewer).
+    var fills = false
 
     func makeUIView(context: Context) -> PlayerLayerView {
         let view = PlayerLayerView()
-        view.playerLayer.videoGravity = .resizeAspect
+        view.playerLayer.videoGravity = fills ? .resizeAspectFill : .resizeAspect
         view.playerLayer.player = player
+        view.clipsToBounds = true
+        view.isUserInteractionEnabled = false
         view.isAccessibilityElement = false
         return view
     }
 
     func updateUIView(_ view: PlayerLayerView, context: Context) {
+        view.playerLayer.videoGravity = fills ? .resizeAspectFill : .resizeAspect
         if view.playerLayer.player !== player { view.playerLayer.player = player }
     }
 
