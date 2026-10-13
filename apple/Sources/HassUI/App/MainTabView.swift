@@ -94,10 +94,10 @@ struct MainTabView: View {
                     }
                     .badge(NavigationMenu.badge(for: section, overdue: navigator.overdueChores) ?? 0)
                 }
-                if style == .tabBar && layout.hasQuickLinksTab {
-                    Tab(QuickLinks.title, systemImage: QuickLinksButton.symbol, value: RootTab.quickLinks, role: .search) {
-                        QuickLinksTab(caller: connection)
-                    }
+                // Always declared: a conditional role tab lost its trailing placement. Under the flyout the bar is
+                // hidden and nothing selects it (``ShellNavigator/closeQuickLinks()``).
+                Tab(QuickLinks.title, systemImage: QuickLinksButton.symbol, value: RootTab.quickLinks, role: .search) {
+                    QuickLinksTab(caller: connection)
                 }
             }
         } else {
