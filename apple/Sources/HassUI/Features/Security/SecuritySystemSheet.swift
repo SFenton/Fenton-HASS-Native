@@ -7,56 +7,66 @@ import SwiftUI
 /// Disarming asks first, since it opens the house (HIG: Alerts). Tapping the current mode does nothing.
 struct SecuritySystemSheet: View {
     var caller: any HassServiceCalling
-    @Environment(EntityStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            SecurityControls(caller: caller)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                }
+        }
+    }
+}
+
+/// The current mode and the mode grid (web `SecurityControls`), titled for a navigation stack. Shared by the
+/// Security sheet and the Security System detail in Quick Links.
+struct SecurityControls: View {
+    var caller: any HassServiceCalling
+    @Environment(EntityStore.self) private var store
     @State private var confirmingDisarm = false
     @ScaledMetric(relativeTo: .subheadline) private var minModeWidth: CGFloat = 130
 
     var body: some View {
         let state = store.entity(SecurityConfig.alarmEntityId).state
         let unavailable = state?.isUnavailable ?? true
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-                    // Label and value instead of a longer replacement label: the clipping audit measures the
-                    // label against the drawn text's frame.
-                    Text(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(state?.state)))
-                        .font(.headline)
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityLabel("Current mode")
-                        .accessibilityValue(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(state?.state)))
-                        .accessibilityIdentifier("security.system.state")
-                    Text("Mode")
-                        .font(.title3.weight(.semibold))
-                        .accessibilityAddTraits(.isHeader)
-                    DynamicGridLayout(minCellWidth: minModeWidth, maxColumns: 4) {
-                        ForEach(SecurityConfig.alarmModes) { mode in
-                            AlarmModeButton(
-                                mode: mode,
-                                isSelected: !ScreenshotPrivacy.isRedacting && state?.state == mode.state,
-                                isUnavailable: unavailable
-                            ) {
-                                select(mode, current: state?.state)
-                            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
+                // Label and value instead of a longer replacement label: the clipping audit measures the
+                // label against the drawn text's frame.
+                Text(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(state?.state)))
+                    .font(.headline)
+                    .foregroundStyle(HassTokens.Ink.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel("Current mode")
+                    .accessibilityValue(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(state?.state)))
+                    .accessibilityIdentifier("security.system.state")
+                Text("Mode")
+                    .font(.title3.weight(.semibold))
+                    .accessibilityAddTraits(.isHeader)
+                DynamicGridLayout(minCellWidth: minModeWidth, maxColumns: 4) {
+                    ForEach(SecurityConfig.alarmModes) { mode in
+                        AlarmModeButton(
+                            mode: mode,
+                            isSelected: !ScreenshotPrivacy.isRedacting && state?.state == mode.state,
+                            isUnavailable: unavailable
+                        ) {
+                            select(mode, current: state?.state)
                         }
                     }
                 }
-                .padding()
             }
-            .navigationTitle("Security System")
-            .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
-            .alert("Disarm the security system?", isPresented: $confirmingDisarm) {
-                Button("Disarm", role: .destructive) { send(SecurityConfig.disarmMode) }
-                    .accessibilityIdentifier("security.disarm.confirm")
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Doors and motion stop triggering the alarm.")
-            }
+            .padding()
+        }
+        .navigationTitle("Security System")
+        .inlineNavigationTitle()
+        .alert("Disarm the security system?", isPresented: $confirmingDisarm) {
+            Button("Disarm", role: .destructive) { send(SecurityConfig.disarmMode) }
+                .accessibilityIdentifier("security.disarm.confirm")
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Doors and motion stop triggering the alarm.")
         }
     }
 
