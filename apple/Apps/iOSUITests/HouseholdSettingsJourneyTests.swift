@@ -4,18 +4,7 @@ import XCTest
 /// debug gallery (`FENTON_GALLERY=household-settings`) on fixture state with a recording caller, so no journey
 /// switches anything in the house; the signed-in journey only opens the live pages and audits them.
 @MainActor
-final class HouseholdSettingsJourneyTests: XCTestCase {
-    override func setUp() {
-        continueAfterFailure = false
-        if FentonHomeApp.family == .iPad, ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" {
-            XCUIDevice.shared.orientation = .landscapeLeft
-        }
-    }
-
-    override func tearDown() {
-        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
-    }
-
+final class HouseholdSettingsJourneyTests: JourneyTestCase {
     // MARK: - Helpers
 
     /// Opens the gallery on `page` (`admin`, `specialDeviceModes`, `guests`, `machE`).
