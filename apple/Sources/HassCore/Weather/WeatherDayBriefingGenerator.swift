@@ -134,7 +134,6 @@ public enum WeatherDayBriefingGenerator {
     }
 
     private static let windWords = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]
-    private static let windAbbreviations = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
 
     private static func bearingWord(_ bearing: Double?) -> String? {
         guard let bearing else { return nil }
@@ -144,13 +143,7 @@ public enum WeatherDayBriefingGenerator {
 
     /// The briefing only reads the eight principal points (`bearingValue`).
     private static func bearingDegrees(_ value: WeatherWindBearing?) -> Double? {
-        switch value {
-        case let .degrees(number)?: return number
-        case let .cardinal(text)?:
-            if let number = Double(text.trimmingCharacters(in: .whitespaces)), number.isFinite { return number }
-            return windAbbreviations.firstIndex(of: text.trimmingCharacters(in: .whitespaces).uppercased()).map { Double($0) * 45 }
-        case nil: return nil
-        }
+        WeatherPresentation.bearingDegrees(value, principalOnly: true)?.degrees
     }
 
     private static func averageBearing(_ samples: [HourSample]) -> Double? {

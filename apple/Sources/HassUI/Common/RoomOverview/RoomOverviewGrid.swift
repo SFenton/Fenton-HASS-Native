@@ -13,13 +13,13 @@ struct RoomOverviewGrid: View {
     var body: some View {
         DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 6, equalRowHeights: true) {
             if kind == .airQuality {
-                RoomOverviewHeading(title: "Rooms").gridHeader()
+                RoomSectionHeader(title: "Rooms", inSheet: true).gridHeader()
                 ForEach(RoomOverview.airQualityRooms) { room in
                     AirQualityRoomTile(room: room)
                 }
             } else {
                 ForEach(sections) { section in
-                    RoomOverviewHeading(title: section.title)
+                    RoomSectionHeader(title: section.title, inSheet: true)
                         .gridHeader()
                         .accessibilityIdentifier("overview.\(kind.rawValue).section.\(section.title)")
                     ForEach(section.groups, id: \.room) { group in

@@ -165,4 +165,17 @@ struct WeatherPresentationTests {
     @Test func aMissingConditionIsTheNeutralScene() {
         #expect(WeatherScene(condition: nil) == .neutral)
     }
+
+    /// One bearing parser for the tiles (16 points) and the briefing (eight principal points only).
+    @Test func bearingDegreesReadsDegreesAndCompassPoints() {
+        #expect(WeatherPresentation.bearingDegrees(.degrees(200))?.degrees == 200)
+        #expect(WeatherPresentation.bearingDegrees(.degrees(200))?.reported == true)
+        #expect(WeatherPresentation.bearingDegrees(.cardinal(" 90 "))?.degrees == 90)
+        #expect(WeatherPresentation.bearingDegrees(.cardinal("nne"))?.degrees == 22.5)
+        #expect(WeatherPresentation.bearingDegrees(.cardinal("NNE"))?.reported == false)
+        #expect(WeatherPresentation.bearingDegrees(.cardinal("NNE"), principalOnly: true) == nil)
+        #expect(WeatherPresentation.bearingDegrees(.cardinal("SW"), principalOnly: true)?.degrees == 225)
+        #expect(WeatherPresentation.bearingDegrees(.cardinal("nowhere")) == nil)
+        #expect(WeatherPresentation.bearingDegrees(nil) == nil)
+    }
 }

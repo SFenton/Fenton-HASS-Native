@@ -233,7 +233,7 @@ public enum RoomOverview {
     /// The room's range text with each number truncated to one decimal ("70.0 - 72.4°F"), or `nil` when the helper is
     /// missing, unknown or unavailable (web `normalizeClimateRangeText`).
     public static func normalizedRange(_ text: String?) -> String? {
-        guard let text, !text.isEmpty, text != "unknown", text != "unavailable" else { return nil }
+        guard let text, !text.isEmpty, !EntityState.isUnavailable(text) else { return nil }
         let pattern = /-?\d+(?:\.\d+)?/
         return text.replacing(pattern) { match in
             truncatedOneDecimal(Double(match.output) ?? 0)
