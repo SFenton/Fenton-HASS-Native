@@ -119,7 +119,7 @@ public extension HomeConfig {
         }
         guard let entity = value(chip.entityId), !entity.isUnavailable else { return "Unavailable" }
         switch chip.sheet {
-        case .security: return MediaRemoteState.titleCase(entity.state)
+        case .security: return StateText.titleCase(entity.state)
         case .occupancy: return RoomFormat.occupancy(entity)
         default: return entity.state
         }
