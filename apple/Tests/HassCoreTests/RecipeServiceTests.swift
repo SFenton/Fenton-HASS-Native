@@ -11,6 +11,10 @@ final class RecordingResponder: HassServiceResponding {
     private(set) var calls: [Call] = []
     var responses: [Result<JSONValue, Error>] = []
 
+    func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
+        calls.append(Call(domain: domain, service: service, data: data))
+    }
+
     func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
         calls.append(Call(domain: domain, service: service, data: data))
         return try responses.isEmpty ? .null : responses.removeFirst().get()
@@ -135,7 +139,7 @@ struct RecipeServiceTests {
         return try #require(mock.pendingRequests.first)
     }
 
-    @Test func callServiceWithResponseUnwrapsTheResponse() async throws {
+    @Test func callServiceWithResponseResultsUnwrapForRecipes() async throws {
         let (connection, mock) = makeConnection()
         async let value = connection.callServiceWithResponse("evershelf", "recipe_query", data: ["kind": "recommendations"])
         let request = try await pendingRequest(mock)
@@ -145,18 +149,19 @@ struct RecipeServiceTests {
         #expect(request.request.data["return_response"] as? Bool == true)
         #expect((request.request.data["service_data"] as? [String: Any])?["kind"] as? String == "recommendations")
         request.completion(.success(HAData(value: ["context": ["id": "x"], "response": ["items": []]])))
-        #expect(try await value == .object(["items": .array([])]))
+        // The connection returns the whole result; the recipe parsers unwrap `response`.
+        #expect(RecipeParsing.payload(try await value) == .object(["items": .array([])]))
     }
 
     @Test func callServiceWithResponseHandlesBareAndFailedResults() async throws {
         let (connection, mock) = makeConnection()
-        let bare = Task { try await connection.callServiceWithResponse("evershelf", "recipe_detail") }
+        let bare = Task { try await connection.callServiceWithResponse("evershelf", "recipe_detail", data: [:]) }
         let first = try await pendingRequest(mock)
         first.completion(.success(.empty))
         #expect(try await bare.value == .null)
 
         mock.pendingRequests.removeAll()
-        let failed = Task { try await connection.callServiceWithResponse("evershelf", "recipe_detail") }
+        let failed = Task { try await connection.callServiceWithResponse("evershelf", "recipe_detail", data: [:]) }
         let second = try await pendingRequest(mock)
         second.completion(.failure(.internal(debugDescription: "offline")))
         await #expect(throws: HAError.self) { try await failed.value }

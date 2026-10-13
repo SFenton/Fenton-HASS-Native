@@ -19,17 +19,52 @@ final class SettingsJourneyTests: XCTestCase {
 
     /// The Settings tab: in the tab bar, or the tab rail the folded iPhone Duo shows instead.
     private func settingsTab(_ app: XCUIApplication) -> XCUIElement {
-        app.tabBars.buttons["Settings"].exists
-            ? app.tabBars.buttons["Settings"]
-            : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
+        // The tab bar can appear a moment after launch (unfolded iPhone Duo), and the folded Duo shows a
+        // vertical bar that XCUITest reports as a toolbar. Poll every form until one shows up: waiting on
+        // the tab bar alone used up the time before the folded Duo's bar was checked.
+        let rail = app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
+        let candidates = [app.tabBars.buttons["Settings"], app.toolbars.buttons["Settings"], rail]
+        let deadline = Date().addingTimeInterval(15)
+        repeat {
+            if let found = candidates.first(where: \.exists) { return found }
+            usleep(500_000)
+        } while Date() < deadline
+        return rail
     }
 
-    /// Selects the Settings tab and waits for its Home Assistant row.
+    /// Goes to Settings: through the navigation flyout in regular width (iPad, unfolded Duo), else the tab.
+    private func goToSettings(_ app: XCUIApplication) {
+        let open = app.buttons["nav.open"]
+        if open.waitForExistence(timeout: 3) {
+            open.tap()
+            let row = app.buttons["nav.settings"]
+            XCTAssertTrue(row.waitForExistence(timeout: 5), "Flyout Settings row not found")
+            row.tap()
+        } else {
+            let tab = settingsTab(app)
+            XCTAssertTrue(tab.waitForExistence(timeout: 10), "Settings tab not found")
+            tab.tap()
+        }
+    }
+
+    /// Selects Settings and waits for its Home Assistant row, scrolled into view: it ends the topic list,
+    /// below the fold on iPhone, and a `List` only exposes rows it has laid out.
     private func showSettingsTab(_ app: XCUIApplication) {
-        let tab = settingsTab(app)
-        XCTAssertTrue(tab.waitForExistence(timeout: 10), "Settings tab not found")
-        tab.tap()
-        XCTAssertTrue(app.buttons["settings.homeAssistant"].waitForExistence(timeout: 5))
+        goToSettings(app)
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(homeAssistantRow(app).exists)
+    }
+
+    /// The Home Assistant row, scrolled into view: it sits below the household topics, which push it off
+    /// screen at AX5, and a `List` only exposes rows it has laid out.
+    private func homeAssistantRow(_ app: XCUIApplication) -> XCUIElement {
+        let row = app.buttons["settings.homeAssistant"]
+        guard app.buttons["settings.topic.admin"].waitForExistence(timeout: 5) || row.exists else { return row }
+        for _ in 0..<8 where !(row.exists && row.isHittable) {
+            app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+        }
+        if !row.exists { _ = row.waitForExistence(timeout: 2) }
+        return row
     }
 
     /// Scrolls the modal until `element` can be tapped (the folded iPhone Duo's form is taller than
@@ -62,11 +97,9 @@ final class SettingsJourneyTests: XCTestCase {
 
     /// Opens the modal from a signed-in launch.
     private func openSettings(_ app: XCUIApplication) {
-        let tab = settingsTab(app)
-        XCTAssertTrue(tab.waitForExistence(timeout: 10), "Settings tab not found")
-        tab.tap()
+        showSettingsTab(app)
         let row = app.buttons["settings.homeAssistant"]
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(row.exists)
         XCTAssertGreaterThanOrEqual(row.frame.height, 43)
         row.tap()
         XCTAssertTrue(app.buttons["haSettings.done"].waitForExistence(timeout: 5))
@@ -189,6 +222,7 @@ final class SettingsJourneyTests: XCTestCase {
             sleep(1)
             keepScreenshot(app, "ha-web-config-\(suffix)")
         }
-        XCUIDevice.shared.orientation = .portrait
+        // Only iPad rotates here; setting the orientation on an unfolded Duo hangs the runner (devices.md).
+        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
 }

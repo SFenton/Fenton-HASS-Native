@@ -105,8 +105,9 @@ enum FentonHomeApp {
     /// "Dynamic Type font sizes are (partially) unsupported" is a known false positive on iPad (Festival's
     /// `dynamic-type-grows` waiver). With `ax5Page` (relaunches the same page at AX5) such an issue is
     /// accepted only when the same text is at least 1.35x taller there; an issue with no element only
-    /// when every sampled text on the page grew that much (the sample: unique on-screen texts and buttons). A flagged label that is unique on the audited page
-    /// but absent from the AX5 page (e.g. scrolled out of a sheet) is inconclusive: logged, not failed.
+    /// when every sampled text on the page grew that much (the sample: unique on-screen texts and buttons).
+    /// A flagged label that is unique on the audited page but absent from the AX5 page (e.g. scrolled out of a
+    /// sheet) is inconclusive: logged, not failed.
     /// "Text clipped" on a labelled element is waived only when the element is fully inside the window on both
     /// pages and measured at least 1.35x taller at AX5 (the reason is logged); any other clip stays open.
     static func audit(
@@ -121,16 +122,30 @@ enum FentonHomeApp {
         // The audit can dismiss a popover while it runs, so note it before starting.
         let popover = app.otherElements["PopoverDismissRegion"].exists && app.popovers.firstMatch.exists
             ? app.popovers.firstMatch.frame : nil
+        // The handler only collects: element queries made inside it count against the audit's own deadline, and on
+        // a long scrolled list (iPhone vacuum Auto-Clean tab, 2026-10-12) they made it fail "to complete in time".
+        var issues: [XCUIAccessibilityAuditIssue] = []
         try app.performAccessibilityAudit(for: .all) { issue in
-            if isSystemDrawn(issue, in: app, popover: popover) { return true }
+            issues.append(issue)
+            return true
+        }
+        for issue in issues {
+            if isSystemDrawn(issue, in: app, popover: popover) { continue }
             var measured = ""
             if issue.auditType == .contrast, let element = issue.element, let capture,
-               let ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
+               var ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
+                // The audit scrolls long sheets to inspect elements, so the frame it reports can belong to a later
+                // scroll position than the opening capture (iPad vacuum sheet, 2026-10-12: visible 19:1 text measured
+                // 1.2:1). Measure a low reading again against the screen as it is now.
+                if ratio < 4.5, let now = RenderedContrast.Capture.screen(),
+                   let fresh = RenderedContrast.ratio(of: element.frame, in: now) {
+                    ratio = max(ratio, fresh)
+                }
                 // The audit misjudges text on materials (notably on iPad); accept it when it renders >= 4.5:1.
-                if ratio >= 4.5 { return true }
+                if ratio >= 4.5 { continue }
                 // Nothing drawn at an unreachable element: it is scrolled out of view (e.g. below an iPad
                 // form sheet's edge), not low contrast.
-                if ratio < 1.5, !element.isHittable { return true }
+                if ratio < 1.5, !element.isHittable { continue }
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             if ax5Page != nil, issue.auditType == .dynamicType,
@@ -140,18 +155,17 @@ enum FentonHomeApp {
                 } else {
                     unattributedType += 1
                 }
-                return true
+                continue
             }
             // "Text clipped" on a labelled element: decided against the AX5 page below.
             if ax5Page != nil, issue.auditType == .textClipped, let element = issue.element, !element.label.isEmpty {
                 clipped.append((element.label, element.frame,
                                 "\(issue.compactDescription): \(element.elementType.rawValue) '\(element.label)' \(issue.detailedDescription)"))
-                return true
+                continue
             }
             let element = issue.element
             open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")'\(measured) "
                 + issue.detailedDescription)
-            return true
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
         if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 || !clipped.isEmpty {
@@ -288,8 +302,26 @@ enum FentonHomeApp {
             // Text behind a modal sheet (iPad form sheets leave Home visible around them) is drawn but
             // hidden from assistive technologies by the modal. Accept it only while a sheet is up and
             // Home's own controls can't be reached (the sheet's dimming layer takes the touches).
-            if issue.auditType == .elementDetection, app.navigationBars.buttons["Done"].exists,
-               !app.buttons["home.chip.lights"].isHittable {
+            // The same page text under the dimming layer also comes back as element-less contrast or clipping
+            // (seen 2026-10-12 around the iPad sprinkler schedule sheet, one or the other from run to run).
+            // A page pushed inside the sheet shows Back, not Done; the page behind still has its own bar, so two
+            // navigation bars also mean a modal over a page (Bedroom editors on iPad, 2026-10-12).
+            let behindSheet: XCUIAccessibilityAuditType = [.elementDetection, .contrast, .textClipped]
+            let modalUp = app.navigationBars.buttons["Done"].exists || app.navigationBars.count > 1
+            if behindSheet.contains(issue.auditType), modalUp, !app.buttons["home.chip.lights"].isHittable {
+                return true
+            }
+            // The same for the navigation flyout: the page under its scrim is drawn but hidden from
+            // assistive technologies while it is open. Accept it only while the flyout is up and Home's
+            // controls are out of the accessibility tree.
+            if issue.auditType == .elementDetection, app.descendants(matching: .any)["nav.flyout"].exists,
+               !app.buttons["home.chip.lights"].exists {
+                return true
+            }
+            // A list row scrolled under the glass tab bar is sampled against the bar and sometimes
+            // loses its element (iPhone Settings, 2026-10-11: the "Home Assistant" header). Accept an
+            // element-less contrast issue only while some page text really sits under the tab bar.
+            if issue.auditType == .contrast, isPageTextUnderTabBar(in: app) {
                 return true
             }
             // When contrast runs with the Dynamic Type or text-clipping checks, the disabled Sign In
@@ -305,6 +337,9 @@ enum FentonHomeApp {
             // the popover's dismiss region; the popover's own buttons stay checked.
             if let popover, !popover.contains(element.frame) { return true }
             if isScrolledOutOfView(element, in: app) { return true }
+            // A row scrolled under the glass tab bar is sampled against the bar (iPhone Settings'
+            // last row, 2026-10-11: 1.2:1); the bar's own items stay checked.
+            if isUnderTabBar(element, in: app) { return true }
             if element.elementType == .button && app.navigationBars.buttons[element.label].exists { return true }
             return element.elementType == .staticText && systemSectionHeaders.contains(element.label)
         case .dynamicType:
@@ -319,16 +354,40 @@ enum FentonHomeApp {
     /// contrast: accept it only when no scroll view's visible frame fully contains the element.
     private static func isScrolledOutOfView(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         let frame = element.frame
+        let holder = NSPredicate(format: "label == %@", element.label)
         // Below the window's edge (a long sheet column in iPad landscape): the capture holds only part of it.
         let window = app.windows.firstMatch.frame
         if !window.isEmpty, !window.insetBy(dx: -1, dy: -1).contains(frame) { return true }
+        // Scrolled under a navigation bar (wholly or partly): the bar's scroll-edge effect deliberately obscures it.
+        // The bar's own title and buttons are its descendants and stay checked.
+        for navigationBar in app.navigationBars.allElementsBoundByIndex {
+            let bar = navigationBar.frame
+            guard !bar.isEmpty, bar.intersects(frame), frame.minY < bar.maxY - 1 else { continue }
+            if !navigationBar.descendants(matching: element.elementType).matching(holder).firstMatch.exists { return true }
+        }
         // Only scroll views that hold this element (not, say, Home's behind a sheet).
-        let holder = NSPredicate(format: "label == %@", element.label)
         let scrollViews = app.scrollViews.allElementsBoundByIndex
             .filter { $0.frame.intersects(frame) && $0.descendants(matching: element.elementType).matching(holder)
                 .allElementsBoundByIndex.contains { $0.frame == frame } }
             .map(\.frame)
         return !scrollViews.isEmpty && !scrollViews.contains { $0.insetBy(dx: -1, dy: -1).contains(frame) }
+    }
+
+    /// Whether a page text (not the tab bar's own labels) overlaps the tab bar, i.e. is scrolled under it.
+    private static func isPageTextUnderTabBar(in app: XCUIApplication) -> Bool {
+        let bar = app.tabBars.firstMatch
+        guard bar.exists else { return false }
+        let barFrame = bar.frame
+        return app.staticTexts.allElementsBoundByIndex.contains { text in
+            !text.label.isEmpty && text.frame.intersects(barFrame) && !bar.staticTexts[text.label].exists
+        }
+    }
+
+    /// Whether a page element (not one of the tab bar's own items) overlaps the tab bar.
+    private static func isUnderTabBar(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        let bar = app.tabBars.firstMatch
+        guard bar.exists, element.frame.intersects(bar.frame) else { return false }
+        return !bar.descendants(matching: element.elementType)[element.label].exists
     }
 
     /// `Form` section headers, styled by the system.
@@ -352,7 +411,8 @@ extension XCTestCase {
         let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
         let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
         FileManager.default.createFile(atPath: ready.path, contents: nil)
-        let deadline = Date().addingTimeInterval(30)
+        // `simctl io` can take over 30 s on a loaded host; a short wait moved on and mislabeled the next capture.
+        let deadline = Date().addingTimeInterval(120)
         while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
     }
 }

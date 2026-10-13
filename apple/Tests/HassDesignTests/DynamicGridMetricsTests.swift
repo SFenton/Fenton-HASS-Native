@@ -1,3 +1,4 @@
+import CoreGraphics
 @testable import HassDesign
 import SwiftUI
 import Testing
@@ -31,7 +32,16 @@ struct DynamicGridMetricsTests {
         #expect(placements.last?.column == 0)
     }
 
-    @MainActor @Test func unboundedWidthDoesNotTrap() {
+    /// An unbounded size probe (`.infinity`) must not trap converting the column count to `Int`.
+    @Test func unboundedWidthUsesEveryColumnAtMinimumWidth() {
+        for width in [CGFloat.infinity, .nan] {
+            let metrics = DynamicGridMetrics(width: width, minCellWidth: 160, maxColumns: 4, spacing: 12)
+            #expect(metrics.columns == 4)
+            #expect(metrics.cellWidth == 160)
+        }
+    }
+
+    @MainActor @Test func unboundedWidthDoesNotTrapInLayout() {
         #expect(DynamicGridMetrics(width: .infinity, minCellWidth: 150, maxColumns: 4, spacing: 12).columns == 4)
         let grid = DynamicGridLayout { ForEach(0..<5, id: \.self) { Text("Tile \($0)") } }
         let probed = HStack { grid.frame(maxWidth: .infinity) }.fixedSize(horizontal: true, vertical: false)

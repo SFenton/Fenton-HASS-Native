@@ -104,6 +104,25 @@ final class GalleryServiceRecorder: HassServiceCalling {
                 set(MediaRemotes.MusicRoom.hueSyncPowerEntityId, "on")
                 set(MediaRemotes.MusicRoom.hueSyncLightSyncEntityId, "on")
             }
+        case ("homeassistant", "toggle"):
+            if let target { set(target, store.value(target)?.state == "on" ? "off" : "on") }
+        case ("climate", "set_hvac_mode"):
+            if let target, let mode = data["hvac_mode"] as? String { set(target, mode) }
+        case ("climate", "set_fan_mode"):
+            if let target, var entity = store.value(target), let mode = data["fan_mode"] as? String {
+                entity.attributes["fan_mode"] = .string(mode)
+                store.apply([entity])
+            }
+        case ("climate", "set_temperature"):
+            let targets = (data["entity_id"] as? [String]) ?? target.map { [$0] } ?? []
+            let changed: [EntityState] = targets.compactMap { id in
+                guard var entity = store.value(id) else { return nil }
+                for key in ["temperature", "target_temp_low", "target_temp_high"] {
+                    if let value = data[key] as? Double { entity.attributes[key] = .number(value) }
+                }
+                return entity
+            }
+            store.apply(changed)
         case ("number", "set_value"):
             if let target, let value = data["value"] { set(target, "\(value)") }
         case ("media_player", "volume_set"):
@@ -125,7 +144,13 @@ final class GalleryServiceRecorder: HassServiceCalling {
         case ("script", "music_room_tv_off"):
             set(MediaRemotes.MusicRoom.controlEntityId, "off")
             set(MediaRemotes.MusicRoom.activeMediaSourceEntityId, "Off")
-        default: break
+        case ("input_boolean", "turn_on"), ("automation", "turn_on"): if let target { set(target, "on") }
+        case ("input_boolean", "turn_off"), ("automation", "turn_off"): if let target { set(target, "off") }
+        case ("input_select", "select_option"):
+            if let target, let option = data["option"] as? String { set(target, option) }
+        default:
+            // Vacuums: the robot reacts as Valetudo would, so journeys see the next state without a real run.
+            VacuumFixtures.echo(domain, service, target: target, store: store)
         }
     }
 }

@@ -2,13 +2,9 @@ import Foundation
 
 // MARK: - Transport
 
-/// Anything that can call a Home Assistant service and return its response (`return_response: true`).
-/// ``HassConnection`` is the app's implementation; tests and the gallery answer from fixtures.
-@MainActor
-public protocol HassServiceResponding: AnyObject, Sendable {
-    /// Calls `domain.service` with `data` and returns the service's `response` object.
-    func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue
-}
+// Responses come through ``HassServiceResponding`` (`Bedroom/ServiceResponses.swift`, shared with the Bedroom
+// pages): `HassConnection.callServiceWithResponse` returns the whole result, and ``RecipeParsing/payload(_:)``
+// unwraps its `response`.
 
 // MARK: - Recipes
 

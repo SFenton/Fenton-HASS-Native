@@ -5,7 +5,12 @@ import XCTest
 @MainActor
 final class ThermostatDialJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
-    override func tearDown() { MainActor.assumeIsolated { XCUIDevice.shared.orientation = .portrait } }
+    /// Only iPad rotates here; setting the orientation on an unfolded Duo hangs the runner (devices.md).
+    override func tearDown() {
+        MainActor.assumeIsolated {
+            if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
+        }
+    }
 
     private func launch(arguments: [String] = []) -> XCUIApplication {
         let app = FentonHomeApp.launchGallery("thermostat-dial", arguments: arguments)

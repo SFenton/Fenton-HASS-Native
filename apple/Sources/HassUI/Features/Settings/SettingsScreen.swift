@@ -2,15 +2,57 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// The Settings tab. Until the household settings topics (Admin, Guests, Vacation…) are ported, it
-/// lists only the web's last item, Home Assistant Settings (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`),
-/// which opens ``HomeAssistantSettingsView`` as a full-screen modal (`.agents/design/apple/split-view.md`).
+// MARK: - Stack
+
+/// The Settings section: the list stays in the leading pane and a household page opens beside it where
+/// the window splits (iPad landscape, unfolded Duo landscape), with a placeholder while nothing is
+/// selected; elsewhere a page pushes full screen (`.agents/design/apple/split-view.md` screen
+/// classification).
+struct SettingsStack: View {
+    @Binding var path: NavigationPath
+    @SceneStorage("settings.openTopic") private var openTopic: HouseholdSettingsPage?
+
+    var body: some View {
+        OnDemandSplitStack(path: $path, openItem: $openTopic, alwaysSplit: true) {
+            SettingsScreen(openTopic: $openTopic)
+        } detail: { page in
+            HouseholdSettingsDestination(page: page)
+        } placeholder: {
+            ContentUnavailableView("Select a Setting", systemImage: "gearshape", description: Text("Choose a setting from the list."))
+                .accessibilityIdentifier("settings.placeholder")
+        }
+    }
+}
+
+// MARK: - List
+
+/// The Settings list: the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`; Vacation and
+/// To-Do land with their own pages), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
+/// as a full-screen modal (`.agents/design/apple/split-view.md`).
 struct SettingsScreen: View {
+    @Binding var openTopic: HouseholdSettingsPage?
     @State private var showsHomeAssistant = false
+
+    /// Creates the list.
+    /// - Parameter openTopic: The topic open beside or above the list; constant nil for a static render.
+    init(openTopic: Binding<HouseholdSettingsPage?> = .constant(nil)) {
+        _openTopic = openTopic
+    }
 
     var body: some View {
         List {
             Section {
+                ForEach(HouseholdSettingsPage.allCases) { page in
+                    Button {
+                        openTopic = page
+                    } label: {
+                        SettingsLinkRow(title: page.rowTitle, subtitle: page.subtitle, symbol: page.symbol)
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(openTopic == page ? Color.accentColor.opacity(0.18) : nil)
+                    .accessibilityAddTraits(openTopic == page ? .isSelected : [])
+                    .accessibilityIdentifier("settings.topic.\(page.rawValue)")
+                }
                 Button { showsHomeAssistant = true } label: {
                     SettingsLinkRow(
                         title: HomeAssistantSettingsView.linkTitle,
@@ -18,6 +60,7 @@ struct SettingsScreen: View {
                         symbol: SymbolMap.symbol(for: "mdi:cog")
                     )
                 }
+                .buttonStyle(.plain)
                 .accessibilityIdentifier("settings.homeAssistant")
                 .accessibilityHint("Opens server, account and sign-out options.")
             }
@@ -47,6 +90,9 @@ struct SettingsLinkRow: View {
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(HassTokens.Ink.primary)
+                    // Wraps instead of truncating in the half-width split pane at large sizes (iPad
+                    // landscape audit, 2026-10-11: "Home Assistant Settings" may be clipped).
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundStyle(HassTokens.Ink.secondary)

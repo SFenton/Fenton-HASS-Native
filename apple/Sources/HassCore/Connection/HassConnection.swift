@@ -141,33 +141,6 @@ public final class HassConnection {
         }
     }
 
-    /// Calls a Home Assistant service that returns data (`return_response: true`), such as `evershelf.recipe_query`.
-    /// - Parameters:
-    ///   - domain: e.g. `evershelf`.
-    ///   - service: e.g. `recipe_query`.
-    ///   - data: Service data.
-    /// - Returns: The result's `response` object (the whole result when the server sends no `response` key).
-    public func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable] = [:]) async throws -> JSONValue {
-        let request = HARequest(type: .webSocket("call_service"), data: [
-            "domain": domain,
-            "service": service,
-            "service_data": data,
-            "return_response": true,
-        ], shouldRetry: false) // A resend after a reconnect could add groceries twice.
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
-            connection.send(request) { result in
-                switch result {
-                case let .success(.dictionary(values)):
-                    continuation.resume(returning: JSONValue(any: values["response"] ?? values))
-                case .success:
-                    continuation.resume(returning: .null)
-                case let .failure(error):
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-
     /// Sends a light power or brightness command (``LightControl``).
     public func send(_ command: LightControl.Command) async throws {
         try await callService(command.domain, command.service, data: command.serviceData)
@@ -270,8 +243,3 @@ extension EntityState {
         )
     }
 }
-
-// MARK: - Service responses
-
-/// Declared here: a `Sendable` conformance must live in the class's own file.
-extension HassConnection: HassServiceResponding {}
