@@ -35,11 +35,17 @@ public struct FilterSheet<Content: View>: View {
                 // Shown only when there is something to reset: a disabled row fails the contrast audit.
                 if canReset {
                     Section {
-                        // A system Form button scales with Dynamic Type on its own; a plain-styled custom row
-                        // reported partial support. Primary ink instead of the accent keeps 4.5:1 in both modes.
-                        Button("Reset to Defaults", action: onReset)
-                            .tint(HassTokens.Ink.primary)
-                            .accessibilityIdentifier("filterSheet.reset")
+                        // Wrapping text in a growing row: the system Form button clipped its title at AX5 on
+                        // iPad. Primary ink instead of the accent keeps 4.5:1 in both modes.
+                        Button(action: onReset) {
+                            Text("Reset to Defaults")
+                                .foregroundStyle(HassTokens.Ink.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("filterSheet.reset")
                     }
                 }
             }

@@ -155,7 +155,10 @@ enum FentonHomeApp {
                 var texts: [(String, CGRect)] = []
                 func walk(_ node: XCUIElementSnapshot) {
                     if node.elementType == .navigationBar { bars.append(node.frame) }
-                    if node.elementType == .staticText, !node.label.isEmpty { texts.append((node.label, node.frame)) }
+                    // Buttons too: a Form button (a sheet's Reset row) is a button element, not static text.
+                    if [.staticText, .button].contains(node.elementType), !node.label.isEmpty {
+                        texts.append((node.label, node.frame))
+                    }
                     node.children.forEach(walk)
                 }
                 walk(root)
