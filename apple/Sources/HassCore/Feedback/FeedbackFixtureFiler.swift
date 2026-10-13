@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 
 /// A ``FeedbackFiling`` that never reaches GitHub, for UI tests, the gallery and previews
@@ -49,3 +50,4 @@ public final class FeedbackFixtureFiler: FeedbackFiling, @unchecked Sendable {
         return FiledIssue(number: 1, url: URL(string: "https://github.com/\(FeedbackDestination.requests.slug)/issues/1")!)
     }
 }
+#endif

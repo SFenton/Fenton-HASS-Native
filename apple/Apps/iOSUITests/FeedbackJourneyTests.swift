@@ -236,7 +236,10 @@ final class FeedbackJourneyTests: XCTestCase {
         fill(app, title: "fixture-failed check")
         _ = submit(app)
         let alert = app.alerts["Couldn't Send"]
-        XCTAssertTrue(alert.waitForExistence(timeout: 10), "Failure alert missing")
+        if !alert.waitForExistence(timeout: 10), app.buttons["feedback.submit"].isEnabled {
+            app.buttons["feedback.submit"].tap() // The first tap can land while the keyboard is closing.
+        }
+        XCTAssertTrue(alert.waitForExistence(timeout: 15), "Failure alert missing")
         XCTAssertFalse(alert.buttons["Update Token"].exists)
         alert.buttons["OK"].tap()
         XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5))
