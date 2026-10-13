@@ -94,9 +94,10 @@ struct MainTabView: View {
                     }
                     .badge(NavigationMenu.badge(for: section, overdue: navigator.overdueChores) ?? 0)
                 }
-                // Always declared: a conditional role tab lost its trailing placement. Under the flyout the bar is
-                // hidden and nothing selects it (``ShellNavigator/closeQuickLinks()``).
-                Tab(QuickLinks.title, systemImage: QuickLinksButton.symbol, value: RootTab.quickLinks, role: Self.quickLinksRole) {
+                // The trailing tab. The system draws it inside the bar here (FestivalNativeApps' Search tab, whose
+                // page is `.searchable`, is drawn apart). Under the flyout the bar is hidden and nothing selects it
+                // (``ShellNavigator/closeQuickLinks()``).
+                Tab(QuickLinks.title, systemImage: QuickLinksButton.symbol, value: RootTab.quickLinks, role: .search) {
                     QuickLinksTab(caller: connection)
                 }
             }
@@ -147,13 +148,6 @@ struct MainTabView: View {
         #else
         return nil
         #endif
-    }
-
-    /// The trailing tab's role: iOS 27 separates a `.prominent` tab from the bar; iOS 26 separates `.search`.
-    @available(iOS 18.0, macOS 15.0, *)
-    private static var quickLinksRole: TabRole {
-        if #available(iOS 27.0, macOS 27.0, *) { return .prominent }
-        return .search
     }
 
     #if os(iOS)
