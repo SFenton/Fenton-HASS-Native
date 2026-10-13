@@ -24,6 +24,9 @@ struct SoloTripScreen: View {
         }
         .navigationTitle(SoloTripCopy.title)
         .onAppear { controller.viewer = viewer }
+        // Errors belong to this page: leaving drops them so the shared controller doesn't carry a Solo Trip
+        // error onto the Vacation Mode page.
+        .onDisappear { controller.household.clearError() }
         .onChange(of: viewer) { _, viewer in controller.viewer = viewer }
         .sheet(isPresented: editorOpen) {
             SoloTripEditorSheet(controller: controller)
@@ -32,8 +35,9 @@ struct SoloTripScreen: View {
 
     // MARK: - Sections
 
+    /// No section title: the navigation title already says Solo Trip (owner, 2026-10-13).
     private var toggleSection: some View {
-        AwaySection(title: SoloTripCopy.title) {
+        AwaySection {
             if let notice = controller.notice { SoloTripNoticeBox(notice: notice) }
             Text(SoloTripCopy.description)
                 .font(.subheadline)
@@ -63,10 +67,7 @@ struct SoloTripScreen: View {
             }
             if controller.showsReturnFields {
                 ScheduleDateFields(fields: [
-                    ScheduleDateField(SoloTripCopy.endDate, .date, controller.returnDraft, id: "soloTrip.return.date") { end in
-                        Task { await controller.updateReturn(end) }
-                    },
-                    ScheduleDateField(SoloTripCopy.endTime, .time, controller.returnDraft, id: "soloTrip.return.time") { end in
+                    ScheduleDateField(SoloTripCopy.returns, .dateAndTime, controller.returnDraft, id: "soloTrip.return") { end in
                         Task { await controller.updateReturn(end) }
                     },
                 ], commitDelay: liveDateCommitDelay)
@@ -156,16 +157,10 @@ struct SoloTripEditorSheet: View {
                         .foregroundStyle(HassTokens.Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     ScheduleDateFields(fields: [
-                        ScheduleDateField(SoloTripCopy.startDate, .date, controller.scheduleDraft.start, id: "soloTrip.editor.startDate") {
+                        ScheduleDateField(SoloTripCopy.departs, .dateAndTime, controller.scheduleDraft.start, id: "soloTrip.editor.start") {
                             controller.scheduleDraft.start = $0
                         },
-                        ScheduleDateField(SoloTripCopy.startTime, .time, controller.scheduleDraft.start, id: "soloTrip.editor.startTime") {
-                            controller.scheduleDraft.start = $0
-                        },
-                        ScheduleDateField(SoloTripCopy.endDate, .date, controller.scheduleDraft.end, id: "soloTrip.editor.endDate") {
-                            controller.scheduleDraft.end = $0
-                        },
-                        ScheduleDateField(SoloTripCopy.endTime, .time, controller.scheduleDraft.end, id: "soloTrip.editor.endTime") {
+                        ScheduleDateField(SoloTripCopy.returns, .dateAndTime, controller.scheduleDraft.end, id: "soloTrip.editor.end") {
                             controller.scheduleDraft.end = $0
                         },
                     ])

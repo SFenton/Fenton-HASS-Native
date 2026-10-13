@@ -36,14 +36,20 @@ struct VacationModeScreen: View {
         .sheet(isPresented: confirming) {
             VacationConfirmationSheet(controller: controller)
         }
+        .alert(Vacation.Copy.disableAlertTitle, isPresented: confirmingDisable) {
+            Button(Vacation.Copy.disableAlertConfirm, role: .destructive) { controller.confirmDisable() }
+                .accessibilityIdentifier("vacation.disable.confirm")
+            Button(Vacation.Copy.disableAlertCancel, role: .cancel) { controller.cancelDisable() }
+                .accessibilityIdentifier("vacation.disable.cancel")
+        }
     }
 
     // MARK: - Sections
 
+    /// No section title: the navigation title already says Vacation Mode (as on Solo Trip, owner 2026-10-13).
     private var modeSection: some View {
-        AwaySection(title: Vacation.Copy.modeTitle, description: Vacation.Copy.modeDescription) {
+        AwaySection(description: Vacation.Copy.modeDescription) {
             if controller.showsPreChecklistError { InlineAlert(Vacation.Copy.preChecklistError, severity: .error) }
-            if let error = SoloTripCopy.commandError(controller.household.errorCode) { InlineAlert(error, severity: .error) }
             GlassTile(
                 title: Vacation.Copy.modeTitle,
                 subtitle: controller.cardSubtitle,
@@ -55,7 +61,7 @@ struct VacationModeScreen: View {
             ) { controller.tapCard() }
                 .disabled(controller.cardDisabled)
                 .accessibilityValue(controller.cardSubtitle)
-                .accessibilityHint(controller.cardOpensSheet ? "Asks for the vacation dates." : "")
+                .accessibilityHint(controller.cardOpensSheet ? "Asks for the vacation dates." : controller.cardEnabled ? "Asks before turning Vacation Mode off." : "")
                 .accessibilityIdentifier("vacation.modeCard")
         }
     }
@@ -89,6 +95,10 @@ struct VacationModeScreen: View {
     }
 
     // MARK: - Helpers
+
+    private var confirmingDisable: Binding<Bool> {
+        Binding { controller.isConfirmingDisable } set: { if !$0 { controller.cancelDisable() } }
+    }
 
     private var confirming: Binding<Bool> {
         Binding { controller.isConfirming } set: { if !$0 { controller.cancelConfirmation() } }
@@ -144,7 +154,8 @@ struct VacationChecklistRow: View {
 
 // MARK: - Dates
 
-/// The vacation's four date and time fields with the range error (web `VacationDateControls`).
+/// The vacation's start and end, each one date-and-time picker, with the range error (web
+/// `VacationDateControls`, whose four fields the owner asked to condense, 2026-10-13).
 struct VacationDateFields: View {
     var range: Vacation.DateRange
     var invalid: Bool
@@ -162,16 +173,10 @@ struct VacationDateFields: View {
                 .fixedSize(horizontal: false, vertical: true)
             if invalid { InlineAlert(Vacation.Copy.dateRangeError, severity: .error) }
             ScheduleDateFields(fields: [
-                ScheduleDateField(Vacation.Copy.startDate, .date, range.start, id: "\(identifierPrefix).startDate") {
+                ScheduleDateField(Vacation.Copy.starts, .dateAndTime, range.start, id: "\(identifierPrefix).start") {
                     onChange(Vacation.DateRange(start: $0, end: range.end), false)
                 },
-                ScheduleDateField(Vacation.Copy.startTime, .time, range.start, id: "\(identifierPrefix).startTime") {
-                    onChange(Vacation.DateRange(start: $0, end: range.end), false)
-                },
-                ScheduleDateField(Vacation.Copy.endDate, .date, range.end, id: "\(identifierPrefix).endDate") {
-                    onChange(Vacation.DateRange(start: range.start, end: $0), true)
-                },
-                ScheduleDateField(Vacation.Copy.endTime, .time, range.end, id: "\(identifierPrefix).endTime") {
+                ScheduleDateField(Vacation.Copy.ends, .dateAndTime, range.end, id: "\(identifierPrefix).end") {
                     onChange(Vacation.DateRange(start: range.start, end: $0), true)
                 },
             ], commitDelay: commitDelay)

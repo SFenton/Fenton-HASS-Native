@@ -89,10 +89,12 @@ public final class SoloTripController {
     public var isEngaged: Bool { snapshot.isEngaged(.soloTrip) }
     public var isVacationEngaged: Bool { snapshot.isEngaged(.vacation) }
 
-    /// Why scheduling can't happen (web `householdAwaySetupError`).
+    /// Why scheduling can't happen (web `householdAwaySetupError`). "Setup required" waits out the brief
+    /// unavailable status Home Assistant publishes mid-transition (``HouseholdAwayController/setupUnavailable``);
+    /// the web showed it for that moment, which read as an error flicker after ending a trip.
     public var setupError: String? {
         if isVacationEngaged { return SoloTripCopy.vacationConflict }
-        if !snapshot.canCommand { return SoloTripCopy.setupRequired }
+        if household.setupUnavailable { return SoloTripCopy.setupRequired }
         return nil
     }
 
@@ -147,7 +149,7 @@ public final class SoloTripController {
 
     public var toggleSubtitle: String {
         if toggleChecked { return SoloTripCopy.toggleOn }
-        if setupError != nil { return snapshot.canCommand ? SoloTripCopy.toggleOff : SoloTripCopy.setupRequiredSubtitle }
+        if setupError != nil { return household.setupUnavailable ? SoloTripCopy.setupRequiredSubtitle : SoloTripCopy.toggleOff }
         return selectedTraveler != nil ? SoloTripCopy.toggleOff : SoloTripCopy.toggleDisabled
     }
 

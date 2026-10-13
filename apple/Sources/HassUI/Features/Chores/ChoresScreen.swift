@@ -14,13 +14,19 @@ struct ChoresScreen: View {
 
 /// The Chores tab's content once its model exists (the gallery hosts it over fixtures).
 struct ChoresContent: View {
+    @Environment(ChoresModel.self) private var model
+
     var body: some View {
         TodoPageView(page: ChoresConfig.chores) {
             ChoreQuickLinks()
         }
         .navigationTitle("Chores")
         .navigationDestination(for: ChoresConfig.Page.self) { page in
-            TodoPageScreen(page: page).pageChrome()
+            // A pushed page takes its environment from the section's NavigationStack, above the
+            // ChoresModelHost, so the model is handed on explicitly (without it every quick link crashed).
+            TodoPageScreen(page: page)
+                .environment(model)
+                .pageChrome()
         }
     }
 }

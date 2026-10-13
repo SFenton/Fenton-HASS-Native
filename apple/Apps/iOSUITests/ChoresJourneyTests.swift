@@ -209,4 +209,26 @@ final class ChoresJourneyTests: XCTestCase {
         groceries.tap()
         XCTAssertTrue(element(app, "todo.page.groceries").waitForExistence(timeout: 10))
     }
+
+    /// Signed in, every Chores quick link opens its page without crashing and comes back (owner report
+    /// 2026-10-13: Steph's Chores crashed). Nothing is checked off.
+    func testLiveEveryChoresPageOpens() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        let tab = app.tabBars.buttons["Chores"].exists
+            ? app.tabBars.buttons["Chores"]
+            : app.buttons.matching(NSPredicate(format: "label == 'Chores'")).firstMatch
+        XCTAssertTrue(tab.waitForExistence(timeout: 10))
+        tab.tap()
+        for page in ["groceries", "stephens-chores", "stephs-chores", "unassigned-chores", "home-improvement-chores"] {
+            let link = element(app, "chores.link.\(page)")
+            XCTAssertTrue(link.waitForExistence(timeout: 15), "\(page) link missing")
+            reveal(link, in: app).tap()
+            XCTAssertTrue(element(app, "todo.page.\(page)").waitForExistence(timeout: 10), "\(page) did not open")
+            // Let the lists load and draw before leaving.
+            _ = element(app, "todo.empty").waitForExistence(timeout: 4)
+            XCTAssertEqual(app.state, .runningForeground, "\(page) crashed the app")
+            app.navigationBars.buttons.firstMatch.tap()
+            XCTAssertTrue(link.waitForExistence(timeout: 10), "Back from \(page) failed")
+        }
+    }
 }

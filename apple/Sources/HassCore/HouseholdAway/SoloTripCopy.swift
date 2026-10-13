@@ -27,10 +27,10 @@ public enum SoloTripCopy {
     public static let editorTitle = "Schedule Solo Trip"
     public static let editorDescription = "Choose when Solo Trip starts and ends for the selected traveler."
     public static let editorConfirm = "Schedule Solo Trip"
-    public static let startDate = "Departure Date"
-    public static let startTime = "Departure Time"
-    public static let endDate = "Return Date"
-    public static let endTime = "Return Time"
+    /// The combined departure picker (the web's Departure Date and Departure Time fields in one row).
+    public static let departs = "Departs"
+    /// The combined return picker.
+    public static let returns = "Returns"
     public static let endAfterStart = "Return must be after departure."
     public static let endInFuture = "Return date/time must be in the future."
 

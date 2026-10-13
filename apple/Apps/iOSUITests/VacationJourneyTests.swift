@@ -112,7 +112,7 @@ final class VacationJourneyTests: XCTestCase {
             return app
         case .vacationDates:
             let app = launch("vacation", clean: clean, arguments: arguments)
-            XCTAssertTrue(element("vacation.dates.startDate", in: app).waitForExistence(timeout: 15))
+            XCTAssertTrue(element("vacation.dates.start", in: app).waitForExistence(timeout: 15))
             return app
         case .confirmSheet:
             let app = launch("ready", clean: clean, arguments: arguments)
@@ -181,7 +181,7 @@ final class VacationJourneyTests: XCTestCase {
         XCTAssertTrue(element("vacation.confirm.action", in: app).waitForExistence(timeout: 5))
         tap("vacation.confirm.action", in: app)
         waitForCall("input_boolean.turn_on entity_id=input_boolean.vacation_mode", in: app)
-        XCTAssertTrue(element("vacation.dates.startDate", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(element("vacation.dates.start", in: app).waitForExistence(timeout: 5))
         XCTAssertEqual(element("vacation.modeCard", in: app).value as? String, "On")
     }
 
@@ -199,7 +199,19 @@ final class VacationJourneyTests: XCTestCase {
         let app = open(.vacationDates)
         let card = element("vacation.modeCard", in: app)
         XCTAssertEqual(card.value as? String, "On")
+        // Cancel keeps it on and calls nothing.
         card.tap()
+        let cancel = app.alerts.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout: 5), "No turn-off alert")
+        XCTAssertTrue(app.alerts["Are you sure you want to turn off Vacation Mode?"].exists)
+        cancel.tap()
+        XCTAssertEqual(card.value as? String, "On")
+        XCTAssertEqual(lastCall(app), "Last call: None")
+        // Yes turns it off.
+        card.tap()
+        let yes = app.alerts.buttons["Yes"]
+        XCTAssertTrue(yes.waitForExistence(timeout: 5))
+        yes.tap()
         waitForCall("vacation_checklist_trash_and_recycles_taken_out", in: app)
         XCTAssertTrue(element("vacation.checklist.0", in: app).waitForExistence(timeout: 5))
     }
@@ -221,7 +233,7 @@ final class VacationJourneyTests: XCTestCase {
         XCTAssertTrue(waitForValue("On", of: toggle), "Solo Trip never turned on")
         XCTAssertEqual(stephen.value as? String, "Away")
         XCTAssertEqual(element("soloTrip.traveler.steph", in: app).value as? String, "Home")
-        XCTAssertTrue(element("soloTrip.return.date", in: app).exists)
+        XCTAssertTrue(element("soloTrip.return", in: app).exists)
         toggle.tap()
         waitForCall("operation=end_now", in: app)
         XCTAssertTrue(waitForValue("", of: stephen), "Stephen still shows \(stephen.value ?? "nil")")

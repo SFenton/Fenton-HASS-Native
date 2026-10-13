@@ -2,8 +2,9 @@ import SwiftUI
 
 /// One date or time picker in ``ScheduleDateFields``.
 public struct ScheduleDateField: Identifiable {
-    /// Which part of the moment the picker edits.
-    public enum Part: Sendable { case date, time }
+    /// Which part of the moment the picker edits: the date, the time, or both in one row (the Calendar
+    /// app's Starts/Ends idiom; HIG Pickers, "Date pickers").
+    public enum Part: Sendable { case date, time, dateAndTime }
 
     public var label: String
     public var part: Part
@@ -51,6 +52,17 @@ public struct ScheduleDateFields: View {
     }
 }
 
+extension ScheduleDateField.Part {
+    /// The picker's components.
+    var components: DatePickerComponents {
+        switch self {
+        case .date: .date
+        case .time: .hourAndMinute
+        case .dateAndTime: [.date, .hourAndMinute]
+        }
+    }
+}
+
 /// One picker, holding a draft while a delayed commit is pending.
 struct ScheduleDatePicker: View {
     var field: ScheduleDateField
@@ -91,7 +103,7 @@ struct ScheduleDatePicker: View {
     private var label: some View { Text(field.label) }
 
     private var picker: some View {
-        DatePicker(field.label, selection: selection, displayedComponents: field.part == .date ? .date : .hourAndMinute)
+        DatePicker(field.label, selection: selection, displayedComponents: field.part.components)
             .labelsHidden()
             .accessibilityLabel(field.label)
             .accessibilityIdentifier(field.identifier)

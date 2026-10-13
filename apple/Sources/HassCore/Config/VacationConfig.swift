@@ -54,10 +54,13 @@ public enum Vacation {
         public static let dateRangeError = "Start date and time must be before end date and time. Vacation mode is disabled until the dates are fixed."
         public static let confirmTitle = "Confirm Vacation"
         public static let confirmAction = "Confirm Vacation"
-        public static let startDate = "Start Date"
-        public static let startTime = "Start Time"
-        public static let endDate = "End Date"
-        public static let endTime = "End Time"
+        /// The combined start picker's label (the Calendar app's "Starts").
+        public static let starts = "Starts"
+        /// The combined end picker's label.
+        public static let ends = "Ends"
+        public static let disableAlertTitle = "Are you sure you want to turn off Vacation Mode?"
+        public static let disableAlertConfirm = "Yes"
+        public static let disableAlertCancel = "Cancel"
         public static let pending = "Pending"
         public static let on = "On"
         public static let off = "Off"
