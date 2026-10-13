@@ -34,13 +34,24 @@ final class ChoresJourneyTests: XCTestCase {
 
     private func lastCall(_ app: XCUIApplication) -> String { app.staticTexts["gallery.lastCall"].label }
 
-    /// Scrolls the page until `element` is hittable.
+    /// Scrolls the page until `element` is hittable and clear of the floating Add bar and the gallery's
+    /// last-call line (XCUITest calls an element under them hittable, but the tap lands on the overlay).
     @discardableResult
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
-        for _ in 0..<8 where !(element.exists && element.isHittable) {
-            app.scrollViews.firstMatch.swipeUp()
+        func clear() -> Bool {
+            guard element.exists, element.isHittable else { return false }
+            let overlays = [app.buttons["fab.add"], app.staticTexts["gallery.lastCall"]].filter(\.exists)
+            let top = overlays.map(\.frame.minY).min() ?? .greatestFiniteMagnitude
+            return element.frame.maxY <= top
         }
-        XCTAssertTrue(element.isHittable, "\(element) never came into view")
+        for _ in 0..<8 where !clear() {
+            // A short drag, not a fling, so the row stops where it lands and the next tap isn't eaten
+            // by deceleration.
+            let scroll = app.scrollViews.firstMatch
+            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.7))
+                .press(forDuration: 0.05, thenDragTo: scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.4)))
+        }
+        XCTAssertTrue(clear(), "\(element) never came into view")
         return element
     }
 
