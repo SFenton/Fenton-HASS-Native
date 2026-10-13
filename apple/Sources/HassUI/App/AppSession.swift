@@ -63,6 +63,7 @@ public final class AppSession {
         tokenStore.clear()
         snapshotCache.clear()
         TodoItemsCache().clear()
+        WeatherForecastDiskCache().clear()
         UserDefaults.standard.removeObject(forKey: ChoresModel.viewerDefaultsKey)
         tokens = nil
         phase = .signedOut
