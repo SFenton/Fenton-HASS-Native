@@ -201,16 +201,18 @@ final class VacationJourneyTests: XCTestCase {
         XCTAssertEqual(card.value as? String, "On")
         // Cancel keeps it on and calls nothing.
         card.tap()
-        let cancel = app.alerts.buttons["Cancel"]
+        let cancel = app.alerts.buttons["vacation.disable.cancel"].firstMatch
         XCTAssertTrue(cancel.waitForExistence(timeout: 5), "No turn-off alert")
+        XCTAssertEqual(cancel.label, "Cancel")
         XCTAssertTrue(app.alerts["Are you sure you want to turn off Vacation Mode?"].exists)
         cancel.tap()
         XCTAssertEqual(card.value as? String, "On")
         XCTAssertEqual(lastCall(app), "Last call: None")
         // Yes turns it off.
         card.tap()
-        let yes = app.alerts.buttons["Yes"]
+        let yes = app.alerts.buttons["vacation.disable.confirm"].firstMatch
         XCTAssertTrue(yes.waitForExistence(timeout: 5))
+        XCTAssertEqual(yes.label, "Yes")
         yes.tap()
         waitForCall("vacation_checklist_trash_and_recycles_taken_out", in: app)
         XCTAssertTrue(element("vacation.checklist.0", in: app).waitForExistence(timeout: 5))

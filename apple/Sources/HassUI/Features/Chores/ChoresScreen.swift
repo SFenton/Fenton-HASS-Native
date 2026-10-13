@@ -15,6 +15,7 @@ struct ChoresScreen: View {
 /// The Chores tab's content once its model exists (the gallery hosts it over fixtures).
 struct ChoresContent: View {
     @Environment(ChoresModel.self) private var model
+    @Environment(EntityStore.self) private var store
 
     var body: some View {
         TodoPageView(page: ChoresConfig.chores) {
@@ -24,8 +25,10 @@ struct ChoresContent: View {
         .navigationDestination(for: ChoresConfig.Page.self) { page in
             // A pushed page takes its environment from the section's NavigationStack, above the
             // ChoresModelHost, so the model is handed on explicitly (without it every quick link crashed).
+            // The store too: the app injects it above the stack, but the debug gallery injects it below.
             TodoPageScreen(page: page)
                 .environment(model)
+                .environment(store)
                 .pageChrome()
         }
     }

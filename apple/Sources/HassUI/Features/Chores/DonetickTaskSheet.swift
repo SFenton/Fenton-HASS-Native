@@ -177,7 +177,10 @@ struct DonetickTaskFormFields: View {
                 Toggle("Hide While On Vacation", isOn: $form.hideOnVacation)
                     .accessibilityIdentifier("task.hideOnVacation")
             } footer: {
+                // Label ink, not the system footer's vibrant secondary: that measured 3.3:1 over the
+                // translucent sheet (iPhone audit, 2026-10-13).
                 Text("This task will not show up in your chores lists while Vacation Mode is active.")
+                    .foregroundStyle(HassTokens.Ink.secondary)
             }
             Section("Description") {
                 TextField("Description", text: $form.description, axis: .vertical)
