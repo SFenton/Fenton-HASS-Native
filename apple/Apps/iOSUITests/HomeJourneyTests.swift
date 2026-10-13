@@ -74,25 +74,36 @@ final class HomeJourneyTests: XCTestCase {
         app.buttons["Done"].tap()
     }
 
-    /// Each chip opens its overview, a room pushes its detail, and both pages pass the audit at default and AX5 size.
-    func testChipSheetsAndRoomDetailsPassAccessibilityAudit() throws {
-        let rooms = ["lights": "Kitchen", "climate": "Office", "occupancy": "Office", "contacts": "Office"]
-        for chip in ["lights", "climate", "occupancy", "contacts", "airQuality", "security"] {
-            let app = try FentonHomeApp.launchSignedIn()
-            openChip(chip, in: app)
-            try FentonHomeApp.audit(app) {
-                let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
-                self.openChip(chip, in: large)
-                return large
-            }
-            guard let room = rooms[chip] else { continue }
-            let detail = try FentonHomeApp.launchSignedIn()
-            openRoom(room, chip: chip, in: detail)
-            try FentonHomeApp.audit(detail) {
-                let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
-                self.openRoom(room, chip: chip, in: large)
-                return large
-            }
+    // Each chip opens its overview and a room pushes its detail; both pages pass the audit at default and AX5 size.
+    // One test per page, so a simulator crash under host load costs one rerun, not the whole sweep.
+    func testLightsOverviewAudit() throws { try auditChip("lights") }
+    func testLightsDetailAudit() throws { try auditRoom("Kitchen", chip: "lights") }
+    func testClimateOverviewAudit() throws { try auditChip("climate") }
+    func testClimateDetailAudit() throws { try auditRoom("Office", chip: "climate") }
+    func testOccupancyOverviewAudit() throws { try auditChip("occupancy") }
+    func testOccupancyDetailAudit() throws { try auditRoom("Office", chip: "occupancy") }
+    func testContactsOverviewAudit() throws { try auditChip("contacts") }
+    func testContactsDetailAudit() throws { try auditRoom("Office", chip: "contacts") }
+    func testAirQualityOverviewAudit() throws { try auditChip("airQuality") }
+    func testSecuritySheetAudit() throws { try auditChip("security") }
+
+    private func auditChip(_ chip: String) throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        openChip(chip, in: app)
+        try FentonHomeApp.audit(app) {
+            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
+            self.openChip(chip, in: large)
+            return large
+        }
+    }
+
+    private func auditRoom(_ room: String, chip: String) throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        openRoom(room, chip: chip, in: app)
+        try FentonHomeApp.audit(app) {
+            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
+            self.openRoom(room, chip: chip, in: large)
+            return large
         }
     }
 
