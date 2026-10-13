@@ -182,8 +182,11 @@ enum FentonHomeApp {
                 if ratio < 1.5, let floatingBarTop, element.frame.maxY > floatingBarTop { continue }
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
-            if ax5Page != nil, issue.auditType == .dynamicType,
-               issue.compactDescription.localizedCaseInsensitiveContains("font sizes are") {
+            // "May be clipped at larger sizes" is disproved the same way as partial support: at AX5 the text is
+            // 1.35x taller, so it wraps rather than clips (a FilterSection header wrapped to three lines, 2026-10-12).
+            if ax5Page != nil, issue.auditType == .textClipped
+                || (issue.auditType == .dynamicType
+                    && issue.compactDescription.localizedCaseInsensitiveContains("font sizes are")) {
                 if let element = issue.element, !element.label.isEmpty {
                     unconfirmedType.append((element.label, element.frame.height))
                 } else {
@@ -198,7 +201,7 @@ enum FentonHomeApp {
                 continue
             }
             let element = issue.element
-            open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")'\(measured) "
+            open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")' at \(element.map { "\($0.frame)" } ?? "?")\(measured) "
                 + issue.detailedDescription)
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
