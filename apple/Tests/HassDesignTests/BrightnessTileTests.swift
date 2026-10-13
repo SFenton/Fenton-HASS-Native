@@ -34,6 +34,15 @@ struct BrightnessTileTests {
 }
 
 struct BrightnessInteractionTests {
+    @Test func cancelledDragCommitsNothing() {
+        var state = BrightnessInteraction()
+        state.dragChanged(translation: CGSize(width: 20, height: 2), x: 60, width: 200)
+        #expect(state.shown(live: 80) == 30)
+        state.dragCancelled()
+        #expect(state.shown(live: 80) == 80)
+        #expect(state.dragEnded(x: 60, width: 200, live: 80) == nil)
+    }
+
     @Test func tapTurnsOnShowingFullThenOff() {
         var state = BrightnessInteraction()
         #expect(state.flip(live: 0, isUnavailable: false) == .power(true))
