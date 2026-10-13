@@ -87,6 +87,7 @@ struct ImagePipelineTests {
         #expect(ImagePipeline.freshness(of: meta, for: url, now: now) == .fresh)
         #expect(ImagePipeline.freshness(of: meta, for: url, now: Date(timeIntervalSince1970: 1300)) == .stale)
         #expect(ImagePipeline.freshness(of: meta, for: URL(string: "https://ha.local/a.jpg?token=2")!, now: now) == .replaced)
+        #expect(!meta.source.contains("ha.local"), "Tokenized URLs are never written to disk")
     }
 
     @Test func maxAgeReadsCacheControl() {

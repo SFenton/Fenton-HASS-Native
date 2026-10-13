@@ -2,7 +2,7 @@
 
 > **What:** how a control shows its new value at once and stays honest. **Read when:** a control calls a service and should not wait for Home Assistant before it looks changed.
 
-- **Component:** `OptimisticActions` (`HassCore/Optimism/OptimisticActions.swift`) over `OptimisticOverlay` (`HassCore/MediaRemote/OptimisticOverlay.swift`). Web source: `useOptimisticState` and `runOptimisticServiceCommand` (`ha-sfenton-react-dash@f5a7bf9:src/hooks/useOptimisticState.ts`, `src/components/hass/optimisticActionState.ts`).
+- **Component:** `OptimisticActions` (`HassCore/Optimism/OptimisticActions.swift`) over `OptimisticOverlay` (`HassCore/Entities/OptimisticOverlay.swift`). Web source: `useOptimisticState` and `runOptimisticServiceCommand` (`ha-sfenton-react-dash@f5a7bf9:src/hooks/useOptimisticState.ts`, `src/components/hass/optimisticActionState.ts`).
 - **Behavior (web parity):**
   - `perform(call, showing: [OptimisticIntent], resetting: [OptimisticReset])` shows the intents immediately, then sends the call.
   - The pending value clears quietly when the live value matches it (`.confirmation`), or on any live change (`.liveChange`).

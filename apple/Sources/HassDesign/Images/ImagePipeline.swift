@@ -22,8 +22,9 @@ public final class ImagePipeline: Sendable {
 
     /// What the disk store keeps beside each image's bytes.
     public struct Metadata: Codable, Equatable, Sendable {
-        /// The exact URL the bytes came from.
-        public var sourceURL: URL
+        /// A digest of the exact URL the bytes came from. The URL itself isn't stored: Home Assistant's camera
+        /// and media URLs carry access tokens, which have no place on disk.
+        public var source: String
         /// When the bytes were fetched or last revalidated.
         public var validatedAt: Date
         /// The server's `ETag`.
@@ -35,7 +36,7 @@ public final class ImagePipeline: Sendable {
 
         /// Creates metadata.
         public init(sourceURL: URL, validatedAt: Date, etag: String? = nil, lastModified: String? = nil, maxAge: TimeInterval) {
-            self.sourceURL = sourceURL
+            source = ImagePipeline.digest(sourceURL.absoluteString)
             self.validatedAt = validatedAt
             self.etag = etag
             self.lastModified = lastModified
@@ -70,11 +71,9 @@ public final class ImagePipeline: Sendable {
     private final class MemoryEntry {
         let image: CGImage
         let maxPixel: Int
-        let sourceURL: URL
-        init(image: CGImage, maxPixel: Int, sourceURL: URL) {
+        init(image: CGImage, maxPixel: Int) {
             self.image = image
             self.maxPixel = maxPixel
-            self.sourceURL = sourceURL
         }
     }
 
@@ -127,7 +126,7 @@ public final class ImagePipeline: Sendable {
 
     /// Whether cached bytes described by `metadata` can be used for `url` without asking the server.
     public static func freshness(of metadata: Metadata, for url: URL, now: Date = .now) -> Freshness {
-        if metadata.sourceURL != url { return .replaced }
+        if metadata.source != digest(url.absoluteString) { return .replaced }
         return now.timeIntervalSince(metadata.validatedAt) < metadata.maxAge ? .fresh : .stale
     }
 
@@ -173,28 +172,28 @@ public final class ImagePipeline: Sendable {
     private func load(_ url: URL, maxPixel: Int, yield: @Sendable (CGImage) -> Void) async {
         let key = Self.key(for: url)
         let stored = readMetadata(key)
-        var shownSource: URL?
+        var shown = false
 
         if let entry = memory.cache.object(forKey: key as NSString), entry.maxPixel >= maxPixel {
             Telemetry.count("image.memoryHits")
             yield(entry.image)
-            shownSource = entry.sourceURL
+            shown = true
         } else if let stored, let data = readData(key), let image = decode(data, maxPixel: maxPixel) {
             Telemetry.count("image.diskHits")
-            remember(image, key: key, maxPixel: maxPixel, source: stored.sourceURL)
+            remember(image, key: key, maxPixel: maxPixel)
             yield(image)
-            shownSource = stored.sourceURL
+            shown = true
         }
 
         let freshness = stored.map { Self.freshness(of: $0, for: url) }
-        if shownSource != nil, freshness == .fresh { return }
+        if shown, freshness == .fresh { return }
         guard !Task.isCancelled else { return }
 
         // Stale (same URL) revalidates with validators; replaced or missing fetches in full.
         let conditional = freshness == .stale ? stored : nil
         guard let data = await fetch(url, key: key, conditional: conditional) else { return }
         guard !Task.isCancelled, let image = decode(data, maxPixel: maxPixel) else { return }
-        remember(image, key: key, maxPixel: maxPixel, source: url)
+        remember(image, key: key, maxPixel: maxPixel)
         yield(image)
     }
 
@@ -274,16 +273,20 @@ public final class ImagePipeline: Sendable {
         }
     }
 
-    private func remember(_ image: CGImage, key: String, maxPixel: Int, source: URL) {
-        memory.cache.setObject(MemoryEntry(image: image, maxPixel: maxPixel, sourceURL: source),
+    private func remember(_ image: CGImage, key: String, maxPixel: Int) {
+        memory.cache.setObject(MemoryEntry(image: image, maxPixel: maxPixel),
                                forKey: key as NSString, cost: image.bytesPerRow * image.height)
     }
 
     // MARK: - Disk
 
+    /// Hex SHA-256 of `text`, for file names and stored source URLs.
+    static func digest(_ text: String) -> String {
+        SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
     private func fileURL(_ key: String, _ suffix: String) -> URL {
-        let digest = SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
-        return directory.appendingPathComponent(digest + suffix)
+        directory.appendingPathComponent(Self.digest(key) + suffix)
     }
 
     private func readMetadata(_ key: String) -> Metadata? {
