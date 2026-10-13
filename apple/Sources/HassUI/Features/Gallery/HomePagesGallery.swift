@@ -262,6 +262,8 @@ enum HomePageFixtures {
 #endif
 
 #if !DEBUG
+import SwiftUI
+
 extension View {
     /// Release builds have no gallery, so the banner adds nothing.
     func galleryLastCallBanner() -> some View { self }
