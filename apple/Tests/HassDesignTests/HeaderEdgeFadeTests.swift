@@ -14,6 +14,17 @@ struct HeaderEdgeFadeTests {
         #expect(HeaderEdgeFade.headerHeight(safeAreaInset: .infinity, containerOffset: .nan) == 0)
     }
 
+    @Test func clearBandStopsAtTheInlineBarSoLargeTitlesShow() {
+        // Expanded large title: the inset (170) includes the title; the bar ends at 106.
+        #expect(HeaderEdgeFade.clearHeight(header: 170, smallestInset: 170, cap: 106) == 106)
+        // Once the title collapsed, the smallest inset is the bar itself.
+        #expect(HeaderEdgeFade.clearHeight(header: 170, smallestInset: 104, cap: 110) == 104)
+        // A sheet's inline bar sits below any window estimate.
+        #expect(HeaderEdgeFade.clearHeight(header: 56, smallestInset: 56, cap: 106) == 56)
+        #expect(HeaderEdgeFade.clearHeight(header: 80, smallestInset: nil, cap: nil) == 80)
+        #expect(HeaderEdgeFade.clearHeight(header: 80, smallestInset: .nan, cap: -1) == 80)
+    }
+
     @Test func fadeGrowsLinearlyOverTheFirstFortyPoints() {
         #expect(HeaderEdgeFade.rampHeight == 40)
         #expect(HeaderEdgeFade.progress(scrollOffset: 0) == 0)

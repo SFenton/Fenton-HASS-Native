@@ -7,7 +7,7 @@ import SwiftUI
 /// `.agents/patterns/modal-sheet.md`).
 ///
 /// The web puts its `ModalIconTabNav` at the bottom of the modal; native keeps a segmented control at the top,
-/// pinned under the header (``SwiftUI/View/modalTabBar(_:label:title:symbol:selection:identifier:)``). HIG
+/// pinned under the header (``SwiftUI/View/modalTabBar(_:label:title:symbol:selection:identifier:placement:)``). HIG
 /// Segmented controls (iOS, iPadOS): "Consider it for switching between closely related subviews; use a tab bar
 /// for completely separate app sections", and HIG Tab bars: "Use tabs for navigation, not current-view actions",
 /// navigating "an app's top-level sections". A modal's sections are closely related views of one device, so a
@@ -62,14 +62,22 @@ struct ModalTabBar<Tab: Hashable & Identifiable>: View {
     }
 }
 
+/// Where ``SwiftUI/View/modalTabBar(_:label:title:symbol:selection:identifier:placement:)`` pins the control.
+enum ModalTabBarPlacement: Sendable {
+    /// Under the header (the HIG's segmented-control placement; the default).
+    case top
+    /// Along the bottom edge (reserved for the design direction's glass control).
+    case bottom
+}
+
 extension View {
-    /// Pins a ``ModalTabBar`` under this modal page's header. Apply it after ``modalChrome()`` so the content
-    /// fades out under the tab bar as well as the title.
+    /// Pins a ``ModalTabBar`` to this modal page, under the header by default. Apply it after ``modalChrome()`` so
+    /// the content fades out under the tab bar as well as the title.
     func modalTabBar<Tab: Hashable & Identifiable>(
         _ tabs: [Tab], label: String, title: @escaping (Tab) -> String, symbol: ((Tab) -> String)? = nil,
-        selection: Binding<Tab>, identifier: String
+        selection: Binding<Tab>, identifier: String, placement: ModalTabBarPlacement = .top
     ) -> some View {
-        safeAreaInset(edge: .top, spacing: 0) {
+        safeAreaInset(edge: placement == .top ? .top : .bottom, spacing: 0) {
             ModalTabBar(tabs: tabs, label: label, title: title, symbol: symbol, selection: selection, identifier: identifier)
                 .padding(.horizontal, HassTokens.Spacing.l)
                 .padding(.vertical, HassTokens.Spacing.s)

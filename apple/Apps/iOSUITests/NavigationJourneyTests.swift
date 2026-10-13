@@ -318,7 +318,7 @@ final class NavigationJourneyTests: XCTestCase {
                 app.buttons["nav.settings"].tap()
             } else {
                 keep(app, "nav-tabbar-\(suffix)")
-                tab("Settings", in: app).tap()
+                open("settings", title: "Settings", in: app)
             }
             XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
             // Show the end of the list: it closes with the Home Assistant row (below the fold on

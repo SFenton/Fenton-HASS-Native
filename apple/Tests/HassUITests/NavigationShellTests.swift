@@ -191,6 +191,27 @@ struct ShellChromeTests {
         #expect(navigator.rootTab == .section(.home))
     }
 
+    @Test func settingsPushesWhereItIsNotATab() {
+        let navigator = ShellNavigator(selection: .climate)
+        navigator.settingsIsTab = false
+        navigator.rootTab = .quickLinks
+        navigator.openFlyout()
+        navigator.select(.settings)
+        #expect(navigator.selection == .climate)
+        #expect(navigator.paths[.climate]?.count == 1)
+        #expect(!navigator.isQuickLinksActive && !navigator.isFlyoutOpen)
+        // The window turned compact while Settings was the selected tab.
+        let resized = ShellNavigator(selection: .settings)
+        resized.settingsIsTab = false
+        resized.settingsLeftTabBar()
+        #expect(resized.selection == .home)
+        #expect(resized.paths[.home]?.count == 1)
+        // Where Settings is a tab it is simply selected.
+        let regular = ShellNavigator()
+        regular.select(.settings)
+        #expect(regular.selection == .settings && regular.paths[.home] == nil)
+    }
+
     @Test func profileNamePersistsBetweenLaunches() {
         let saved = UserDefaults.standard.string(forKey: ShellNavigator.profileNameKey)
         defer { UserDefaults.standard.set(saved, forKey: ShellNavigator.profileNameKey) }
