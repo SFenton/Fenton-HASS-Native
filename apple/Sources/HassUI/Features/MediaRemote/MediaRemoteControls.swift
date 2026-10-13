@@ -196,6 +196,7 @@ struct DirectionalPad: View {
                 button(config.up)
                 // Power stays enabled while the directions are disabled: it is how the device turns on.
                 PowerButton(controller: controller, diameter: diameter) { presses += 1 }
+                    .accessibilitySortPriority(1) // Read first, as it was above the pad.
             }
             GridRow {
                 button(config.left)
@@ -294,6 +295,7 @@ struct KeyboardPrompt: Equatable {
 /// Volume, navigation (with the inline keyboard) and playback (web `MediaRemoteModalTabContent`, controls tab).
 struct RemoteControlsTab: View {
     var controller: MediaRemoteController
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var keyboard: KeyboardPrompt
     @State private var volume = SliderDraft()
     @FocusState private var fieldFocused: Bool
@@ -419,7 +421,7 @@ struct RemoteControlsTab: View {
                 keyboardButtons
             }
         }
-        .transition(.opacity.combined(with: .move(edge: .top)))
+        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
     }
 }
 

@@ -48,6 +48,9 @@ final class CameraStreamPool {
     // MARK: - Models
 
     /// The shared model for a camera, created on first use (not started).
+    ///
+    /// A memoizing lookup: views call it from `body`, and since the cache is not observed, filling it never
+    /// invalidates a view. Views observe the returned model's own state.
     func model(for camera: HomeConfig.Camera) -> CameraLiveModel {
         if let model = models[camera.id] { return model }
         let model = CameraLiveModel(camera: camera, modes: modes)
@@ -83,6 +86,7 @@ final class CameraStreamPool {
     /// Restarts a camera whose modes all failed (the viewer's retry).
     func retry(_ camera: HomeConfig.Camera, connection: HassConnection) {
         self.connection = connection
+        retention.retry(camera.id)
         model(for: camera).start(connection: connection)
     }
 

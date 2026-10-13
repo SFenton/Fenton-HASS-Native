@@ -53,11 +53,12 @@ struct CameraControlsTests {
         model.stop()
     }
 
-    @Test func retryRestartsTheCamera() {
+    @Test func retryRestartsTheCameraAndRetainsItAgain() {
         let pool = CameraStreamPool(modes: [.hls], observesApp: false)
         let front = HomeConfig.cameras[0]
         pool.retry(front, connection: connection())
         #expect(pool.model(for: front).isRunning)
+        #expect(pool.shouldRun(front), "A recovered stream stays retained after its viewer closes")
         pool.model(for: front).stop()
         #expect(!pool.model(for: front).isRunning)
     }
@@ -72,7 +73,7 @@ struct CameraControlsTests {
         model.setMuted(false)
         #expect(!model.isMuted)
         #expect(changes == 1)
-        #expect(model.liveFrame() == nil, "Nothing is playing")
+        #expect(model.liveFrameSource() == nil, "Nothing is playing")
     }
 
     // MARK: Controls

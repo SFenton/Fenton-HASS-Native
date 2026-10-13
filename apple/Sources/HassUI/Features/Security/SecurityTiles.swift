@@ -33,17 +33,31 @@ struct SecurityTile: View {
     var canSend: Bool
     var openSystem: () -> Void
     @Environment(EntityStore.self) private var store
+    @State private var failure: String?
 
     var body: some View {
-        switch tile.kind {
-        case .alarm:
-            AlarmTile(tile: tile, state: store.entity(tile.entityId).state, action: openSystem)
-        case .lock, .vehicle:
-            LockTile(tile: tile, state: store.entity(tile.entityId).state) { call in
-                Task { try? await caller.call(call) }
+        Group {
+            switch tile.kind {
+            case .alarm:
+                AlarmTile(tile: tile, state: store.entity(tile.entityId).state, action: openSystem)
+            case .lock, .vehicle:
+                LockTile(tile: tile, state: store.entity(tile.entityId).state) { call in
+                    Task {
+                        do {
+                            try await caller.call(call)
+                        } catch {
+                            failure = "Home Assistant didn't update \(tile.title). Check the connection and try again."
+                        }
+                    }
+                }
+            case .garageDoor:
+                GarageDoorTile(tile: tile, liveState: store.entity(tile.entityId).state?.state, caller: caller, canSend: canSend)
             }
-        case .garageDoor:
-            GarageDoorTile(tile: tile, liveState: store.entity(tile.entityId).state?.state, caller: caller, canSend: canSend)
+        }
+        .alert("Couldn't Update \(tile.title)", isPresented: Binding { failure != nil } set: { if !$0 { failure = nil } }) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(failure ?? "")
         }
     }
 }

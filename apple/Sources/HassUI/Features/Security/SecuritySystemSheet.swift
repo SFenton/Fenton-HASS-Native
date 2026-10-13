@@ -24,6 +24,7 @@ struct SecurityControls: View {
     var caller: any HassServiceCalling
     @Environment(EntityStore.self) private var store
     @State private var confirmingDisarm = false
+    @State private var failure: String?
     @ScaledMetric(relativeTo: .subheadline) private var minModeWidth: CGFloat = 130
 
     var body: some View {
@@ -67,6 +68,15 @@ struct SecurityControls: View {
         } message: {
             Text("Doors and motion stop triggering the alarm.")
         }
+        .alert("Couldn't Change the Alarm", isPresented: failureShown) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(failure ?? "")
+        }
+    }
+
+    private var failureShown: Binding<Bool> {
+        Binding { failure != nil } set: { if !$0 { failure = nil } }
     }
 
     /// Sends the mode, asking first when it disarms.
@@ -80,7 +90,13 @@ struct SecurityControls: View {
     }
 
     private func send(_ mode: SecurityConfig.AlarmMode) {
-        Task { try? await caller.call(mode.call) }
+        Task {
+            do {
+                try await caller.call(mode.call)
+            } catch {
+                failure = "Home Assistant didn't switch to \(mode.title). Check the connection and try again."
+            }
+        }
     }
 }
 

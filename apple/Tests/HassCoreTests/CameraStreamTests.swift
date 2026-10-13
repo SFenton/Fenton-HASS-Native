@@ -152,6 +152,16 @@ struct CameraStreamRetentionTests {
         #expect(retention.appear("front", isRunning: false) == .start, "The next view starts fresh")
     }
 
+    @Test func retryRetainsAgain() {
+        var retention = CameraStreamRetention()
+        retention.failed("front")
+        retention.retry("front")
+        #expect(retention.shouldRun("front"))
+        var unretained = CameraStreamRetention(retainsShownStreams: false)
+        unretained.retry("front")
+        #expect(!unretained.shouldRun("front"))
+    }
+
     @Test func backgroundStopsEverythingAndForegroundRestartsShownStreams() {
         var retention = CameraStreamRetention()
         _ = retention.appear("front", isRunning: false)

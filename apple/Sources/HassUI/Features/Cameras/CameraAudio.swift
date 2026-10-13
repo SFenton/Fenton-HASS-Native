@@ -26,12 +26,17 @@ final class CameraAudioSession {
         if audible {
             try? session.setCategory(.playback, mode: .moviePlayback)
             try? session.setActive(true)
+            #if canImport(WebRTC)
+            CameraPlayoutDevice.shared.setAudible(true)
+            #endif
         } else {
+            // Stop the engine first: deactivating with I/O running fails ("busy"), which would leave the session
+            // active and the interrupted app silent.
+            #if canImport(WebRTC)
+            CameraPlayoutDevice.shared.setAudible(false)
+            #endif
             try? session.setActive(false, options: .notifyOthersOnDeactivation)
         }
-        #if canImport(WebRTC)
-        CameraPlayoutDevice.shared.setAudible(audible)
-        #endif
     }
 }
 
@@ -53,6 +58,16 @@ final class CameraPlayoutDevice: NSObject, RTCAudioDevice, @unchecked Sendable {
     private static let maxFrames = 8_192
 
     private let lock = NSLock()
+    /// Serializes engine starts and stops, which come from the main thread and WebRTC's worker thread. The
+    /// render block never takes it, so holding it across `start()` is safe.
+    private let transition = NSLock()
+    private var observers: [NSObjectProtocol] = []
+    /// Delivers audio notifications off the posting thread: an engine posts while starting, inside `transition`.
+    private let notifications: OperationQueue = {
+        let queue = OperationQueue()
+        queue.maxConcurrentOperationCount = 1
+        return queue
+    }()
     private var delegate: (any RTCAudioDeviceDelegate)?
     private var engine: AVAudioEngine?
     private var playoutRequested = false
@@ -61,7 +76,36 @@ final class CameraPlayoutDevice: NSObject, RTCAudioDevice, @unchecked Sendable {
     /// Scratch buffer for WebRTC's Int16 samples; allocated once so the render thread never allocates.
     private let scratch = UnsafeMutablePointer<Int16>.allocate(capacity: CameraPlayoutDevice.maxFrames)
 
-    override private init() { super.init() }
+    override private init() {
+        super.init()
+        // The engine stops on an interruption, a route change or a media-services reset; start a fresh one.
+        let center = NotificationCenter.default
+        let restart: @Sendable (Notification) -> Void = { [weak self] _ in self?.restartEngine() }
+        observers = [
+            center.addObserver(forName: .AVAudioEngineConfigurationChange, object: nil, queue: notifications, using: restart),
+            center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: notifications, using: restart),
+            center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: notifications) { [weak self] note in
+                let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+                if raw == AVAudioSession.InterruptionType.ended.rawValue { self?.restartEngine() }
+            },
+        ]
+    }
+
+    /// Drops a stopped engine and starts again if sound is still wanted.
+    private func restartEngine() {
+        let dropped = transition.withLock { () -> Bool in
+            let stale = lock.withLock { () -> AVAudioEngine? in
+                guard let engine, !engine.isRunning else { return nil }
+                self.engine = nil
+                return engine
+            }
+            stale?.stop()
+            return stale != nil
+        }
+        guard dropped else { return }
+        if lock.withLock({ audible }) { try? AVAudioSession.sharedInstance().setActive(true) }
+        updateEngine()
+    }
 
     /// Starts or stops sound (``CameraAudioSession`` calls this on the main thread).
     func setAudible(_ audible: Bool) {
@@ -72,6 +116,8 @@ final class CameraPlayoutDevice: NSObject, RTCAudioDevice, @unchecked Sendable {
     // MARK: Engine
 
     private func updateEngine() {
+        transition.lock()
+        defer { transition.unlock() }
         let (shouldRun, pull) = lock.withLock { (audible && playoutRequested, delegate?.getPlayoutData) }
         if shouldRun, let pull {
             guard lock.withLock({ engine == nil }) else { return }

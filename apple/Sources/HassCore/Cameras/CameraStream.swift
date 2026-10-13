@@ -220,6 +220,11 @@ public struct CameraStreamRetention: Equatable, Sendable {
         retained.remove(id)
     }
 
+    /// The viewer retried a failed stream: retain it again, as a newly shown stream would be.
+    public mutating func retry(_ id: String) {
+        if retainsShownStreams { retained.insert(id) }
+    }
+
     /// The app went to the background: every running stream stops.
     /// - Returns: The cameras to stop.
     public mutating func enterBackground() -> Set<String> {

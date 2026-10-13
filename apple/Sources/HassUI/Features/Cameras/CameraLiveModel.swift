@@ -85,6 +85,7 @@ final class CameraLiveModel {
         stop()
         state.restart()
         isRunning = state.phase != .failed
+        if !isRunning { onExhausted?() } // No live modes: the snapshot is all there is.
         connectCurrentMode()
     }
 
@@ -107,17 +108,16 @@ final class CameraLiveModel {
         onMuteChange?()
     }
 
-    /// The current live frame as an image (web `webrtc-screenshot`), or `nil` while nothing is playing.
-    func liveFrame() -> CGImage? {
+    /// The current live frame (web `webrtc-screenshot`), or `nil` while nothing is playing. Grabbing it is cheap;
+    /// ``CameraFrame/image()`` converts it off the main actor.
+    func liveFrameSource() -> CameraFrame? {
         #if canImport(WebRTC) && canImport(UIKit)
-        if let frame = webRTCPeer?.frames.snapshot() { return frame }
+        if let frame = webRTCPeer?.frames.latestFrame() { return .webRTC(frame) }
         #endif
         guard let player = hlsPlayer, let output = hlsVideoOutput else { return nil }
         let time = output.itemTime(forHostTime: CACurrentMediaTime())
         let current = output.hasNewPixelBuffer(forItemTime: time) ? time : player.currentTime()
-        guard let pixels = output.copyPixelBuffer(forItemTime: current, itemTimeForDisplay: nil) else { return nil }
-        let image = CIImage(cvPixelBuffer: pixels)
-        return CIContext().createCGImage(image, from: image.extent)
+        return output.copyPixelBuffer(forItemTime: current, itemTimeForDisplay: nil).map(CameraFrame.pixels)
     }
 
     private func applyMute() {
@@ -236,4 +236,32 @@ final class CameraLiveModel {
         webRTCPeer = nil
         #endif
     }
+}
+
+/// A grabbed live frame, converted to an image off the main actor.
+enum CameraFrame: @unchecked Sendable {
+    /// An HLS frame from `AVPlayerItemVideoOutput`.
+    case pixels(CVPixelBuffer)
+    #if canImport(WebRTC) && canImport(UIKit)
+    /// A decoded WebRTC frame.
+    case webRTC(RTCVideoFrame)
+    #endif
+
+    /// The frame as an upright image.
+    nonisolated func image() async -> CGImage? {
+        switch self {
+        case let .pixels(buffer):
+            let image = CIImage(cvPixelBuffer: buffer)
+            return CameraFrameContext.shared.createCGImage(image, from: image.extent)
+        #if canImport(WebRTC) && canImport(UIKit)
+        case let .webRTC(frame):
+            return CameraFrameImage.image(from: frame)
+        #endif
+        }
+    }
+}
+
+/// One Core Image context for every frame conversion (contexts are expensive and thread-safe).
+enum CameraFrameContext {
+    nonisolated(unsafe) static let shared = CIContext(options: [.cacheIntermediates: false])
 }

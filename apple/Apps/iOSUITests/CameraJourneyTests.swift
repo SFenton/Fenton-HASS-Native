@@ -56,9 +56,10 @@ final class CameraJourneyTests: XCTestCase {
         front.tap()
         let video = app.descendants(matching: .any)["camera.viewer.video"]
         XCTAssertTrue(video.waitForExistence(timeout: 5))
-        waitForValue(video, "Live", timeout: 1.5)
+        // Live on the first read: a fresh connection would read "Connecting to live video" for a second or more.
+        XCTAssertEqual(video.value as? String, "Live", "The viewer attached to the tile's stream")
         app.buttons["Done"].tap()
-        waitForValue(tile(app, "front_door"), "Live", timeout: 1.5)
+        XCTAssertEqual(tile(app, "front_door").value as? String, "Live", "The tile kept its stream")
     }
 
     /// Snapshot, Sound and Record (web `CameraModalContent`). Record is read, never pressed: it records on the house.
@@ -66,15 +67,18 @@ final class CameraJourneyTests: XCTestCase {
         let app = try FentonHomeApp.launchSignedIn()
         let video = openCamera(app)
         waitForValue(video, "Live")
-        let sound = app.buttons["camera.control.sound"]
+        // Sound and Record are toggles (`.isToggle`), which XCUITest reports as switches.
+        let sound = app.switches["camera.control.sound"]
         XCTAssertEqual(sound.label, "Sound")
         XCTAssertEqual(sound.value as? String, "Off", "Cameras open muted")
-        sound.tap()
-        waitForValue(sound, "On", timeout: 3)
-        sound.tap()
-        waitForValue(sound, "Off", timeout: 3)
+        // Tap the middle: XCUITest's switch tap aims at where a system switch's knob would be.
+        let middle = sound.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        middle.tap()
+        waitForValue(sound, "On", timeout: 5)
+        middle.tap()
+        waitForValue(sound, "Off", timeout: 5)
 
-        let record = app.buttons["camera.control.record"]
+        let record = app.switches["camera.control.record"]
         XCTAssertEqual(record.label, "Record")
         XCTAssertTrue(["Recording", "Not recording"].contains(record.value as? String ?? ""))
 
@@ -95,11 +99,11 @@ final class CameraJourneyTests: XCTestCase {
             XCTAssertGreaterThanOrEqual(control.frame.width, 44)
         }
         // Closing mutes: reopening starts muted again.
-        sound.tap()
-        waitForValue(sound, "On", timeout: 3)
+        middle.tap()
+        waitForValue(sound, "On", timeout: 5)
         app.buttons["Done"].tap()
         _ = openCamera(app)
-        XCTAssertEqual(app.buttons["camera.control.sound"].value as? String, "Off")
+        XCTAssertEqual(app.switches["camera.control.sound"].value as? String, "Off")
     }
 
     /// Video beside controls only where splits are allowed (iPad landscape); stacked everywhere else.
@@ -180,9 +184,12 @@ final class CameraJourneyTests: XCTestCase {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
             let app = try FentonHomeApp.launchSignedIn()
-            waitForValue(openCamera(app), "Live")
+            waitForValue(openCamera(app), "Live", timeout: 45)
             sleep(1)
             keepScreenshot(app, "camera-\(suffix)")
+            app.buttons["Done"].tap()
+            sleep(2)
+            keepScreenshot(app, "camera-tiles-\(suffix)")
         }
         // Only iPad rotates here; setting the orientation on an unfolded Duo hangs the runner (devices.md).
         if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }

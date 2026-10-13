@@ -78,9 +78,6 @@ final class WebRTCCameraPeer: NSObject, @unchecked Sendable {
         set { audioTrack?.isEnabled = !newValue }
     }
 
-    /// Whether the answer included an audio track.
-    var hasAudio: Bool { audioTrack != nil }
-
     // MARK: - Lifecycle
 
     /// Opens the socket and sends the offer.
@@ -238,18 +235,15 @@ final class WebRTCFrameMonitor: NSObject, RTCVideoRenderer, @unchecked Sendable 
         if first { onFirstFrame() }
     }
 
-    /// The latest decoded frame as an upright image, or `nil` before the first frame.
-    func snapshot() -> CGImage? {
-        guard let frame = lock.withLock({ latest }) else { return nil }
-        return CameraFrameImage.image(from: frame)
+    /// The latest decoded frame, or `nil` before the first frame.
+    func latestFrame() -> RTCVideoFrame? {
+        lock.withLock { latest }
     }
 }
 
 /// Converts decoded WebRTC frames to images.
 enum CameraFrameImage {
-    private static let context = CIContext(options: [.cacheIntermediates: false])
-
-    static func image(from frame: RTCVideoFrame) -> CGImage? {
+    nonisolated static func image(from frame: RTCVideoFrame) -> CGImage? {
         let image: CIImage
         if let buffer = frame.buffer as? RTCCVPixelBuffer {
             image = CIImage(cvPixelBuffer: buffer.pixelBuffer)
@@ -265,11 +259,11 @@ enum CameraFrameImage {
         default: .up
         }
         let upright = image.oriented(orientation)
-        return context.createCGImage(upright, from: upright.extent)
+        return CameraFrameContext.shared.createCGImage(upright, from: upright.extent)
     }
 
     /// Copies an I420 frame (software decode) into a bi-planar 4:2:0 pixel buffer Core Image can read.
-    private static func pixelBuffer(from i420: any RTCI420BufferProtocol) -> CVPixelBuffer? {
+    nonisolated private static func pixelBuffer(from i420: any RTCI420BufferProtocol) -> CVPixelBuffer? {
         let width = Int(i420.width), height = Int(i420.height)
         var output: CVPixelBuffer?
         CVPixelBufferCreate(nil, width, height, kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange, nil, &output)

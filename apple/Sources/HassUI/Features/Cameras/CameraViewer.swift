@@ -90,11 +90,14 @@ struct CameraControls: View {
     var axis: Axis
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var snapshot = CameraSnapshotFeedback.idle
     @State private var showsPhotosDenied = false
+    @State private var recordFailed = false
 
     var body: some View {
-        let layout = axis == .horizontal
+        // Accessibility sizes stack the controls: three across break their labels mid-word at AX5.
+        let layout = axis == .horizontal && !typeSize.isAccessibilitySize
             ? AnyLayout(HStackLayout(alignment: .top, spacing: HassTokens.Spacing.m))
             : AnyLayout(VStackLayout(spacing: HassTokens.Spacing.m))
         layout {
@@ -117,7 +120,7 @@ struct CameraControls: View {
                     isActive: isRecording, tint: HassTokens.Ink.danger, pulses: isRecording,
                     accessibilityLabel: "Record", accessibilityValue: isRecording ? "Recording" : "Not recording", isToggle: true,
                     identifier: "camera.control.record"
-                ) { Task { try? await caller.call(call) } }
+                ) { record(call) }
                 .sensoryFeedback(.impact(weight: .medium), trigger: isRecording)
             }
         }
@@ -140,16 +143,33 @@ struct CameraControls: View {
         } message: {
             Text("Snapshots are saved to your photo library. Allow Home to add photos in Settings.")
         }
+        .alert("Couldn't Start Recording", isPresented: $recordFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Home Assistant didn't run the \(camera.title) recording script. Check the connection and try again.")
+        }
+    }
+
+    // MARK: - Record
+
+    private func record(_ call: ServiceCall) {
+        Task {
+            do {
+                try await caller.call(call)
+            } catch {
+                recordFailed = true
+            }
+        }
     }
 
     // MARK: - Snapshot
 
     private func takeSnapshot() {
         snapshot = .saving
-        let model = model
+        let frame = model.liveFrameSource()
         let fallbackURL = snapshotURL
         Task {
-            let result = await CameraSnapshotSaver.save(frame: model.liveFrame(), fallbackURL: fallbackURL)
+            let result = await CameraSnapshotSaver.save(frame: await frame?.image(), fallbackURL: fallbackURL)
             switch result {
             case .saved: snapshot = .saved
             case .denied:
