@@ -52,14 +52,14 @@ for arg in ${EXTRA[@]+"${EXTRA[@]}"}; do
 done
 LANE="$(basename "$ROOT")"
 
-# Runs one family's journeys, then shuts its simulator down, inside its devcap hold.
+# Runs one family's journeys inside its devcap hold; devcap --shutdown then shuts the simulator down
+# before releasing it, even when the hold times out (FENTON_KEEP_SIM=1 keeps it booted).
 run_family() {
   local family="$1" udid="$2" status=0
   xcodebuild test-without-building -project FentonHome.xcodeproj -scheme FentonHome \
     -destination "platform=iOS Simulator,id=$udid" \
     -resultBundlePath "$ROOT/apple/.build/uitest-$family.xcresult" \
     ${EXTRA[@]+"${EXTRA[@]}"} || status=1
-  [[ -n "${FENTON_KEEP_SIM:-}" ]] || xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
   return $status
 }
 export -f run_family
@@ -81,7 +81,8 @@ for family in iphone duo ipad; do
   udid="$(xcrun simctl list devices available | NAME="$name" awk '{ line = $0; sub(/^ +/, "", line); if (match(line, / \([0-9A-F-]{36}\)/) && substr(line, 1, RSTART - 1) == ENVIRON["NAME"]) { print substr(line, RSTART + 2, 36); exit } }')"
   echo "== $family: $name ($udid)"
   rm -rf "$ROOT/apple/.build/uitest-$family.xcresult"
-  "${DEVCAP[@]}" --sim "$udid" --purpose "Fenton uitest $family ($LANE)" -- \
+  SHUTDOWN=(); [[ -n "${FENTON_KEEP_SIM:-}" ]] || SHUTDOWN=(--shutdown)
+  "${DEVCAP[@]}" --sim "$udid" ${SHUTDOWN[@]+"${SHUTDOWN[@]}"} --purpose "Fenton uitest $family ($LANE)" -- \
     bash -c 'EXTRA=("${@:3}"); run_family "$1" "$2"' _ "$family" "$udid" ${EXTRA[@]+"${EXTRA[@]}"} || STATUS=1
 done
 exit $STATUS
