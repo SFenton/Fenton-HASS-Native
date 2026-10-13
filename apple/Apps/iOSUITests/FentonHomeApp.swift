@@ -111,7 +111,11 @@ enum FentonHomeApp {
     /// "Dynamic Type font sizes are (partially) unsupported" is a known false positive on iPad (Festival's
     /// `dynamic-type-grows` waiver). With `ax5Page` (relaunches the same page at AX5) such an issue is
     /// accepted only when the same text is at least 1.35x taller there; an issue with no element only
-    /// when every sampled text on the page grew that much.
+    /// when every sampled text on the page grew that much (the sample: unique on-screen texts and buttons).
+    /// A flagged label that is unique on the audited page but absent from the AX5 page (e.g. scrolled out of a
+    /// sheet) is inconclusive: logged, not failed.
+    /// "Text clipped" on a labelled element is waived only when the element is fully inside the window on both
+    /// pages and measured at least 1.35x taller at AX5 (the reason is logged); any other clip stays open.
     ///
     /// `presenter` names a control on the page under a sheet: element-less "potentially inaccessible
     /// text" is the page showing around an iPad form sheet, accepted only while that control can't be hit.
@@ -122,6 +126,7 @@ enum FentonHomeApp {
         var open: [String] = []
         var unconfirmedType: [(label: String, height: CGFloat)] = []
         var unattributedType = 0
+        var clipped: [(label: String, frame: CGRect, issue: String)] = []
         let capture = RenderedContrast.Capture.screen()
         // Read once: per-issue queries add up, and many accessibility requests crash the iPad simulator's backboardd.
         let floatingBarTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fab.'"))
@@ -186,12 +191,18 @@ enum FentonHomeApp {
                 }
                 continue
             }
+            // "Text clipped" on a labelled element: decided against the AX5 page below.
+            if ax5Page != nil, issue.auditType == .textClipped, let element = issue.element, !element.label.isEmpty {
+                clipped.append((element.label, element.frame,
+                                "\(issue.compactDescription): \(element.elementType.rawValue) '\(element.label)' \(issue.detailedDescription)"))
+                continue
+            }
             let element = issue.element
             open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")'\(measured) "
                 + issue.detailedDescription)
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
-        if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 {
+        if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 || !clipped.isEmpty {
             // Only labels that name one content text on the page: bar titles are left out (they barely
             // scale and can repeat a section header, like the Home Assistant modal's), and comparing two
             // different texts proves nothing. Read from one snapshot per page: per-label queries ran
@@ -214,18 +225,25 @@ enum FentonHomeApp {
                 return Dictionary(content.filter { counts[$0.0] == 1 }, uniquingKeysWith: { first, _ in first })
             }
             let before = uniqueTexts(in: app)
-            let sample = app.staticTexts.allElementsBoundByIndex.prefix(12)
-                .filter { before[$0.label] != nil && $0.isHittable }
-                .map { ($0.label, $0.frame.height) }
+            // The page check samples the same texts and buttons uniqueTexts collects, on screen (inside the
+            // window) but not necessarily hittable: under an iPad form sheet the page's own texts are rarely
+            // hittable, and requiring it left the sample empty.
+            let window = app.windows.firstMatch.frame
+            let sample = before.filter { window.contains($0.value) }
+                .sorted { ($0.value.minY, $0.value.minX) < ($1.value.minY, $1.value.minX) }
+                .prefix(12)
+                .map { ($0.key, $0.value.height) }
             // Decided before the relaunch: `large` is the same app, so `app` then shows the AX5 page.
-            let uniqueBefore = Set(sample.map(\.0) + unconfirmedType.map(\.label).filter { before[$0] != nil })
+            let uniqueBefore = Set(sample.map(\.0) + (unconfirmedType.map(\.label) + clipped.map(\.label)).filter { before[$0] != nil })
             let large = try ax5Page()
             // AX5 pushes rows below the fold (the folded iPhone Duo shows one or two), so scroll the
             // page to measure every text this audit needs.
             var largeHeights: [String: CGFloat] = [:]
+            var largeFrames: [String: CGRect] = [:]
             for _ in 0..<8 {
                 for (label, frame) in uniqueTexts(in: large) where uniqueBefore.contains(label) && largeHeights[label] == nil {
                     largeHeights[label] = frame.height
+                    largeFrames[label] = frame
                 }
                 let scroller = large.collectionViews.firstMatch.exists ? large.collectionViews.firstMatch : large.scrollViews.firstMatch
                 guard largeHeights.count < uniqueBefore.count, scroller.exists else { break }
@@ -242,10 +260,50 @@ enum FentonHomeApp {
             let pageGrew = !compared.isEmpty && compared.allSatisfy { $0.1 >= $0.0 }
                 && compared.map(\.1).reduce(0, +) >= 1.35 * compared.map(\.0).reduce(0, +)
             var missed = false
-            for (label, height) in unconfirmedType where !(grew(label, height) ?? pageGrew) {
+            var inconclusive: [String] = []
+            for (label, height) in unconfirmedType {
+                if let grewEnough = grew(label, height) {
+                    if grewEnough { continue }
+                } else if uniqueBefore.contains(label) {
+                    // Unique on the audited page but not on the AX5 page: no evidence either way.
+                    inconclusive.append(label)
+                    continue
+                } else if pageGrew {
+                    continue
+                }
                 let measured = largeHeights[label].map { String(format: " (%.1f → %.1f pt)", height, $0) } ?? ""
                 open.append("Dynamic Type: '\(label)' did not grow 1.35x at AX5\(measured)")
                 missed = true
+            }
+            // A clip on a labelled element is waived only when it is fully on screen on both pages and is
+            // measured 1.35x taller at AX5 (it grows instead of truncating); otherwise it stays open.
+            let largeWindow = large.windows.firstMatch.frame
+            for item in clipped {
+                let reason: String
+                if !window.contains(item.frame) {
+                    reason = "partly off screen on the audited page"
+                } else if let largeFrame = largeFrames[item.label] {
+                    if !largeWindow.contains(largeFrame) {
+                        reason = "partly off screen on the AX5 page"
+                    } else if largeFrame.height >= item.frame.height * 1.35 {
+                        let note = String(format: "Text clipped waived: '%@' grows %.1f → %.1f pt at AX5, fully on screen",
+                                          item.label, item.frame.height, largeFrame.height)
+                        print(note)
+                        XCTContext.runActivity(named: note) { _ in }
+                        continue
+                    } else {
+                        reason = String(format: "grew %.1f → %.1f pt at AX5 (needs 1.35x)", item.frame.height, largeFrame.height)
+                    }
+                } else {
+                    reason = "not measured on the AX5 page"
+                }
+                open.append(item.issue + " [not waived: \(reason)]")
+                missed = true
+            }
+            if !inconclusive.isEmpty {
+                let note = "Dynamic Type inconclusive (not on the AX5 page): " + inconclusive.map { "'\($0)'" }.joined(separator: ", ")
+                print(note)
+                XCTContext.runActivity(named: note) { _ in }
             }
             if missed || (unattributedType > 0 && !pageGrew) {
                 let evidence = XCTAttachment(screenshot: large.screenshot())

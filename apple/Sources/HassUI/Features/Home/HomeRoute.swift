@@ -105,7 +105,9 @@ struct HomeRouteDestination: View {
             if let connection { CustomLightsScreen(store: connection.store, caller: connection) } else { placeholder }
         case .sprinklers:
             if let connection { SprinklersScreen(store: connection.store, caller: connection) } else { placeholder }
-        case .food, .groceryList:
+        case .food:
+            FoodEntryScreen()
+        case .groceryList:
             placeholder
         }
     }

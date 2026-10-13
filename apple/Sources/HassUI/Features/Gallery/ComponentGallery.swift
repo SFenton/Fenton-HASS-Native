@@ -6,6 +6,7 @@ import SwiftUI
 public struct ComponentGallery: View {
     /// A gallery page.
     public enum Page: String, CaseIterable, Sendable {
+        case food
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
         case vacation
@@ -38,7 +39,10 @@ public struct ComponentGallery: View {
     public init(page: Page) { self.page = page }
 
     public var body: some View {
-        if page == .vacation {
+        if page == .food {
+            // Owns its navigation stack so journeys can start on a pushed page.
+            FoodGallery()
+        } else if page == .vacation {
             // Owns its stack, so its last-call line stays under pushed pages too.
             VacationGallery()
         } else if page == .rooms {
@@ -67,6 +71,7 @@ public struct ComponentGallery: View {
                     #endif
                 case .rooms: EmptyView()
                 case .vacation: EmptyView()
+                case .food: EmptyView()
                 }
             }
         }
