@@ -102,7 +102,7 @@ enum FentonHomeApp {
     /// the system's dimmed style on disabled controls (exempt from WCAG 1.4.3).
     /// Collects every remaining issue so one run lists them all, then fails once with the list.
     ///
-    /// "Dynamic Type font sizes are partially unsupported" is a known false positive on iPad (Festival's
+    /// "Dynamic Type font sizes are (partially) unsupported" is a known false positive on iPad (Festival's
     /// `dynamic-type-grows` waiver). With `ax5Page` (relaunches the same page at AX5) such an issue is
     /// accepted only when the same text is at least 1.35x taller there; an issue with no element only
     /// when every sampled text on the page grew that much.
@@ -130,7 +130,7 @@ enum FentonHomeApp {
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             if ax5Page != nil, issue.auditType == .dynamicType,
-               issue.compactDescription.localizedCaseInsensitiveContains("partially unsupported") {
+               issue.compactDescription.localizedCaseInsensitiveContains("font sizes are") {
                 if let element = issue.element, !element.label.isEmpty {
                     unconfirmedType.append((element.label, element.frame.height))
                 } else {
