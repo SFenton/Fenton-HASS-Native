@@ -3,6 +3,10 @@
 # iPad, one simulator at a time. Credentials are read at runtime from a local env file and passed as
 # TEST_RUNNER_ variables; they are never printed or committed.
 #
+# Capacity: the app compiles once under a machine-wide `build` slot, then each family runs under its
+# device gate plus a `simulator` slot (tools/devcap.py, shared with FestivalNativeApps). When the Mac is
+# full the script waits its turn; `python3 tools/devcap.py status` shows who holds what.
+#
 # Usage: tools/ios_uitest.sh [--env path/to/temp.env] [--only iphone|duo|ipad] [extra xcodebuild args]
 set -euo pipefail
 
@@ -40,8 +44,32 @@ if [[ -n "$ENV_FILE" ]]; then
   [[ -n "$SERVER" ]] && export TEST_RUNNER_FENTON_HASS_SERVER="$SERVER"
 fi
 
+DEVCAP=(python3 "$ROOT/tools/devcap.py" run --hold "${FENTON_DEVCAP_HOLD:-3600}")
+# Build settings (NAME=value) also apply to the compile; test options (-only-testing:…) only to the runs.
+SETTINGS=()
+for arg in ${EXTRA[@]+"${EXTRA[@]}"}; do
+  [[ "$arg" =~ ^[A-Z_][A-Z0-9_]*= ]] && SETTINGS+=("$arg")
+done
+LANE="$(basename "$ROOT")"
+
+# Runs one family's journeys, then shuts its simulator down, inside its devcap hold.
+run_family() {
+  local family="$1" udid="$2" status=0
+  xcodebuild test-without-building -project FentonHome.xcodeproj -scheme FentonHome \
+    -destination "platform=iOS Simulator,id=$udid" \
+    -resultBundlePath "$ROOT/apple/.build/uitest-$family.xcresult" \
+    ${EXTRA[@]+"${EXTRA[@]}"} || status=1
+  [[ -n "${FENTON_KEEP_SIM:-}" ]] || xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+  return $status
+}
+export -f run_family
+export ROOT
+
 cd "$ROOT/apple"
 xcodegen generate --quiet
+"${DEVCAP[@]}" --pool build --purpose "Fenton uitest build ($LANE)" -- \
+  xcodebuild build-for-testing -project FentonHome.xcodeproj -scheme FentonHome \
+    -destination 'generic/platform=iOS Simulator' ${SETTINGS[@]+"${SETTINGS[@]}"}
 STATUS=0
 for family in iphone duo ipad; do
   [[ -n "$ONLY" && "$ONLY" != "$family" ]] && continue
@@ -53,10 +81,7 @@ for family in iphone duo ipad; do
   udid="$(xcrun simctl list devices available | NAME="$name" awk '{ line = $0; sub(/^ +/, "", line); if (match(line, / \([0-9A-F-]{36}\)/) && substr(line, 1, RSTART - 1) == ENVIRON["NAME"]) { print substr(line, RSTART + 2, 36); exit } }')"
   echo "== $family: $name ($udid)"
   rm -rf "$ROOT/apple/.build/uitest-$family.xcresult"
-  xcodebuild test -project FentonHome.xcodeproj -scheme FentonHome \
-    -destination "platform=iOS Simulator,id=$udid" \
-    -resultBundlePath "$ROOT/apple/.build/uitest-$family.xcresult" \
-    ${EXTRA[@]+"${EXTRA[@]}"} || STATUS=1
-  [[ -n "${FENTON_KEEP_SIM:-}" ]] || xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
+  "${DEVCAP[@]}" --sim "$udid" --purpose "Fenton uitest $family ($LANE)" -- \
+    bash -c 'EXTRA=("${@:3}"); run_family "$1" "$2"' _ "$family" "$udid" ${EXTRA[@]+"${EXTRA[@]}"} || STATUS=1
 done
 exit $STATUS

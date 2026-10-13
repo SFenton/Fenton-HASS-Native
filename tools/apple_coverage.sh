@@ -4,6 +4,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Compile and test under a machine-wide `build` slot (tools/devcap.py), waiting when the Mac is full.
+if [[ ",${DEVCAP_HELD:-}," != *",build,"* ]]; then
+  exec python3 "$ROOT/tools/devcap.py" run --pool build --hold "${FENTON_DEVCAP_HOLD:-3600}" \
+    --purpose "Fenton coverage ($(basename "$ROOT"))" -- bash "$0" "$@"
+fi
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 cd "$ROOT/apple"
 swift test --enable-code-coverage
