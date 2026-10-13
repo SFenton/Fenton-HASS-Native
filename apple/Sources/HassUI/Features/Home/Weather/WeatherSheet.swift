@@ -36,7 +36,6 @@ struct WeatherSheet: View {
             .background { WeatherBackdrop(scene: scene).ignoresSafeArea() }
             .navigationTitle("Weather")
             .inlineNavigationTitle()
-            .weatherSubtitle(WeatherCopy.text("subtitle", ["temperature": current.degreeText, "condition": current.conditionLabel]))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }

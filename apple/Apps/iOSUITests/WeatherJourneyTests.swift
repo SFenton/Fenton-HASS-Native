@@ -39,12 +39,22 @@ final class WeatherJourneyTests: XCTestCase {
         return XCTWaiter().wait(for: [matches], timeout: timeout) == .completed
     }
 
-    /// Scrolls the sheet until `element` is hittable.
+    /// Scrolls the sheet, up or down, until `element` is hittable and clear of the bars.
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        for _ in 0..<14 where !(element.exists && element.isHittable) {
-            let area = app.windows.firstMatch
-            let start = area.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.7))
-            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -area.frame.height * 0.3)), withVelocity: .slow, thenHoldForDuration: 0.3)
+        let window = app.windows.firstMatch
+        for _ in 0..<60 {
+            let top = window.frame.minY + window.frame.height * 0.14
+            let bottom = window.frame.maxY - window.frame.height * 0.08
+            if element.exists, element.isHittable {
+                // A tile taller than the clear band can never fit inside it; on screen is enough.
+                let fits = element.frame.minY >= top && element.frame.maxY <= bottom
+                if fits || element.frame.height > bottom - top { break }
+            }
+            // Below or not laid out yet: drag up (scroll down); above: drag down.
+            let above = element.exists && element.frame.maxY < top
+            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: above ? 0.35 : 0.7))
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: (above ? 1 : -1) * window.frame.height * 0.25)),
+                        withVelocity: .slow, thenHoldForDuration: 0.3)
         }
         XCTAssertTrue(element.isHittable, "\(element) never came into view", file: file, line: line)
     }
@@ -163,13 +173,13 @@ final class WeatherJourneyTests: XCTestCase {
         XCTAssertTrue(element("weather.hour.0", in: app).label.hasPrefix("Now Rain"), element("weather.hour.0", in: app).label)
         XCTAssertTrue(element("weather.day.0", in: app).waitForExistence(timeout: 8))
         XCTAssertTrue(element("weather.day.0", in: app).label.hasPrefix("Today "))
+        reveal(element("weather.highlight.aqi", in: app), in: app)
+        XCTAssertEqual(element("weather.highlight.aqi", in: app).label, "Outdoor air quality 72, Moderate")
         for kind in ["precipitation", "accumulation", "humidity", "cloud", "feels", "uv", "wind", "visibility", "pressure"] {
             let tile = element("weather.highlight.\(kind)", in: app)
             reveal(tile, in: app)
             XCTAssertFalse(tile.label.isEmpty, kind)
         }
-        reveal(element("weather.highlight.aqi", in: app), in: app)
-        XCTAssertEqual(element("weather.highlight.aqi", in: app).label, "Outdoor air quality 72, Moderate")
         XCTAssertEqual(element("weather.highlight.pressure", in: app).label, "Pressure 29.92 inHg")
         XCTAssertTrue(element("weather.highlight.wind", in: app).label.hasPrefix("Wind 9 mph; Gusts 14 mph; From "))
         app.buttons["Done"].tap()
