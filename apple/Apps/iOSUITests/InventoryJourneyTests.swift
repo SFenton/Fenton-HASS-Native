@@ -179,8 +179,8 @@ final class InventoryJourneyTests: XCTestCase {
     func testManualEntryFlow() {
         let app = launch(open: "scan")
         XCTAssertTrue(app.buttons["scan.manualName"].waitForExistence(timeout: 10))
-        app.buttons["scan.manualName"].tap()
         let name = app.textFields["scan.name"]
+        app.buttons["scan.manualName"].tap(until: { name.exists })
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         name.tap()
         name.typeText("Oat Milk")
