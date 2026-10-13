@@ -221,9 +221,9 @@ public final class VacuumController {
     public func powerSettings(in mode: VacuumRuntimeMode) -> [Setting] {
         guard mode == .full else { return [] }
         let disabled = controlsDisabled
-        let mode = entity(vacuum.modeEntityId)
-        let hasMode = vacuum.modeEntityId != nil && !(mode?.isUnavailable ?? true)
-        let shownMode = hasMode ? displayedValue(vacuum.modeEntityId ?? "") : mode?.state
+        let modeEntity = entity(vacuum.modeEntityId)
+        let hasMode = vacuum.modeEntityId != nil && !(modeEntity?.isUnavailable ?? true)
+        let shownMode = hasMode ? displayedValue(vacuum.modeEntityId ?? "") : modeEntity?.state
         let modeText = live(vacuum.modeTextEntityId)
         let meaningful = modeText.map { !VacuumStatusResolver.isUnavailable($0) } ?? false
         var settings: [Setting] = []

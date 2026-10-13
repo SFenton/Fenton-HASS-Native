@@ -125,6 +125,19 @@ struct SmoothContentSwapTests {
         #expect(!swap.isHidden)
     }
 
+    @Test func reduceMotionMidFadeDropsTheOldSequence() {
+        let (swap, animator) = make()
+        var swaps: [String] = []
+        swap.didSwap = { swaps.append($0) }
+        swap.show("b") // fade-out pending
+        swap.show("c", reduceMotion: true)
+        swap.show("d") // a new sequence while the old completion is still queued
+        animator.settle()
+        #expect(swap.displayed == "d")
+        #expect(swaps == ["c", "d"], "The stale fade-out never swaps")
+        #expect(!swap.isHidden)
+    }
+
     @Test func swiftUIAnimatorRunsTheBodyAndCompletes() async {
         var ran = false
         SmoothContentSwap<String>.swiftUIAnimator(.default, { ran = true }) {}

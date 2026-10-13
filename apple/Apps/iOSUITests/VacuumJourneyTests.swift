@@ -230,6 +230,7 @@ final class VacuumJourneyTests: XCTestCase {
         let app = launch(Self.musicRoom)
         let mode = element("vacuum.setting.Mode", in: app)
         reveal(mode, in: app)
+        assertTarget(mode)
         // A menu picker reads its name and value together ("Mode, Vacuum And Mop").
         let reading = "\(mode.label) \(mode.value as? String ?? "")"
         XCTAssertTrue(reading.hasPrefix("Mode") && reading.contains("Vacuum") && reading.contains("Mop"), reading)

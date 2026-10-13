@@ -64,8 +64,8 @@ public struct ClimateThermostatDial: View {
 
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection: HassConnection?
-    /// Rejected commits so far; each one rolls the dial's handles back to the entity's setpoints.
-    @State private var rejections = 0
+    /// The latest rejected commit; the dial rolls it back if it is still the edit on screen.
+    @State private var rejection: ThermostatRejection?
 
     /// Creates a bound dial.
     public init(
@@ -83,7 +83,7 @@ public struct ClimateThermostatDial: View {
     public var body: some View {
         var configuration = ThermostatDialConfiguration(entity: store.entity(entityId).state, title: title)
         if let action { configuration.action = action }
-        return ThermostatDial(configuration, size: size, rejections: rejections) { commit($0) }
+        return ThermostatDial(configuration, size: size, rejection: rejection) { commit($0) }
     }
 
     /// Sends a commit to ``caller``, else the environment's connection. A rejected call rolls the handles back to
@@ -92,12 +92,12 @@ public struct ClimateThermostatDial: View {
     func commit(_ targets: ThermostatTargets) -> Task<Void, Never>? {
         let data = setTemperatureData(for: targets)
         guard let target: any HassServiceCalling = caller ?? connection else { return nil }
-        let rejections = $rejections
+        let rejection = $rejection
         return Task {
             do {
                 try await target.callService("climate", "set_temperature", data: data)
             } catch {
-                rejections.wrappedValue += 1
+                rejection.wrappedValue = ThermostatRejection(targets: targets, count: (rejection.wrappedValue?.count ?? 0) + 1)
             }
         }
     }

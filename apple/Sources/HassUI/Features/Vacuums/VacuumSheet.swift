@@ -13,6 +13,8 @@ public struct VacuumSheet: View {
     @State private var mapState: VacuumMapState
     @State private var content: VacuumSheetContent
     @State private var path: [Route] = []
+    /// The navigation bar's height over the tab column's scroll view.
+    @State private var barInset: CGFloat = 0
     @State private var window = WindowMetrics()
     private let server: HassServer?
     private let catalog: (any HassServiceCatalog)?
@@ -63,6 +65,7 @@ public struct VacuumSheet: View {
                                 .frame(width: proxy.size.width / 2)
                             ScrollViewReader { reader in
                                 ScrollView { tabColumn(reader: reader).padding(HassTokens.Spacing.l) }
+                                    .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { barInset = $0 }
                             }
                             .coordinateSpace(.named(VacuumSheetLayout.tabScrollSpace))
                             .frame(width: proxy.size.width / 2)
@@ -78,6 +81,7 @@ public struct VacuumSheet: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(HassTokens.Spacing.l)
                             }
+                            .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { barInset = $0 }
                             .coordinateSpace(.named(VacuumSheetLayout.tabScrollSpace))
                         }
                     }
@@ -116,7 +120,9 @@ public struct VacuumSheet: View {
     }
 
     private func tabColumn(reader: ScrollViewProxy) -> some View {
-        VacuumTabColumn(controller: controller, mapState: mapState, content: content, reader: reader) { path.append(.areaEditor) }
+        VacuumTabColumn(controller: controller, mapState: mapState, content: content, reader: reader, barInset: barInset) {
+            path.append(.areaEditor)
+        }
     }
 }
 
@@ -175,10 +181,12 @@ struct VacuumTabColumn: View {
     var mapState: VacuumMapState
     var content: VacuumSheetContent
     var reader: ScrollViewProxy
+    /// The navigation bar's height over the scroll view.
+    var barInset: CGFloat
     var onEditArea: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// The tab control has scrolled up under the bar or off the top, so a new tab would open mid-content.
-    @State private var pickerAbove = false
+    /// The tab control's top edge in the scroll view.
+    @State private var pickerTop: CGFloat = .infinity
 
     var body: some View {
         let shown = content.swap.displayed
@@ -189,9 +197,9 @@ struct VacuumTabColumn: View {
                 VacuumTabPicker(tabs: tabs, title: controller.vacuum.title,
                                 selection: Binding(get: { content.selection(in: tabs) }, set: { content.requestedTab = $0 }))
                     .id(VacuumSheetLayout.tabTopID)
-                    .onGeometryChange(for: Bool.self) { proxy in
-                        proxy.frame(in: .named(VacuumSheetLayout.tabScrollSpace)).minY < VacuumSheetLayout.topBand
-                    } action: { pickerAbove = $0 }
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.frame(in: .named(VacuumSheetLayout.tabScrollSpace)).minY
+                    } action: { pickerTop = $0 }
             }
             panel(shown)
                 .opacity(content.swap.isHidden ? 0 : 1)
@@ -203,7 +211,9 @@ struct VacuumTabColumn: View {
             content.swap.show(next, reduceMotion: reduceMotion)
         }
         .onChange(of: content.scrollResets) { _, _ in
-            if pickerAbove { reader.scrollTo(VacuumSheetLayout.tabTopID, anchor: .top) }
+            // Only when the tab control has scrolled under the bar or off the top, so a new tab would open mid-content;
+            // scrolling on every tab change jumped the sheet (owner report 2026-10-13).
+            if pickerTop < barInset { reader.scrollTo(VacuumSheetLayout.tabTopID, anchor: .top) }
         }
     }
 
@@ -226,10 +236,6 @@ enum VacuumSheetLayout {
     static let tabTopID = "vacuum.tabTop"
     /// The scroll view holding the tab column.
     static let tabScrollSpace = "vacuum.tabScroll"
-    /// The band at the top of the scroll view that the navigation bar covers, with a margin. A tab change scrolls the
-    /// tab control back into view only when it sits in or above this band; otherwise the column stays put (scrolling
-    /// on every tab change jumped the sheet, owner report 2026-10-13).
-    static let topBand: CGFloat = 100
 }
 
 /// Wraps a report so it can ride the navigation path (equal by day and room statuses).

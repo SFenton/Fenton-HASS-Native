@@ -243,10 +243,10 @@ struct HubMenu: View {
 
     var body: some View {
         Menu {
-            Picker(label, selection: Binding(get: { selected ?? "" }, set: onSelect)) {
+            Picker(label, selection: Binding(get: { selected }, set: { if let value = $0 { onSelect(value) } })) {
                 ForEach(options) { option in
                     Label(option.label, systemImage: ClimateStyle.symbol(option.icon ?? "mdi:thermometer-check"))
-                        .tag(option.value)
+                        .tag(Optional(option.value))
                 }
             }
             .pickerStyle(.inline)

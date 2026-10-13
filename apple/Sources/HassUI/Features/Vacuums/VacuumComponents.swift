@@ -266,7 +266,6 @@ struct VacuumSettingRow: View {
                 .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: false)
                 .tint(VacuumStyle.primaryFill)
                 .frame(minHeight: HassTokens.minTarget)
-                .accessibilityHint(setting.detail ?? "")
                 .accessibilityIdentifier("vacuum.setting.\(setting.title)")
             }
             .padding(.horizontal, HassTokens.Spacing.m)

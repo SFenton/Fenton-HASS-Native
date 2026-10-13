@@ -36,6 +36,8 @@ final class SmoothContentSwap<Key: Equatable> {
     @ObservationIgnored var didSwap: (Key) -> Void = { _ in }
     @ObservationIgnored private let animator: Animator
     @ObservationIgnored private var running = false
+    /// Bumped whenever a sequence is cut short, so completions from an older sequence are ignored.
+    @ObservationIgnored private var generation = 0
 
     /// Creates the swapper showing `initial`.
     init(_ initial: Key, animator: @escaping Animator = SmoothContentSwap.swiftUIAnimator) {
@@ -49,6 +51,7 @@ final class SmoothContentSwap<Key: Equatable> {
     func show(_ key: Key, reduceMotion: Bool = false) {
         target = key
         if reduceMotion {
+            generation += 1
             running = false
             isHidden = false
             guard displayed != key else { return }
@@ -58,17 +61,20 @@ final class SmoothContentSwap<Key: Equatable> {
         }
         guard !running, displayed != key else { return }
         running = true
-        animator(.easeOut(duration: timing.fadeOut), { isHidden = true }) { [weak self] in self?.swap() }
+        generation += 1
+        let generation = generation
+        animator(.easeOut(duration: timing.fadeOut), { isHidden = true }) { [weak self] in self?.swap(generation) }
     }
 
-    private func swap() {
-        guard running else { return }
+    private func swap(_ generation: Int) {
+        guard running, generation == self.generation else { return }
         let next = target
         let previous = displayed
         if next != previous, animatesLayout(previous, next) {
             animator(.easeInOut(duration: timing.layout), { displayed = next }) { [weak self] in
-                self?.didSwap(next)
-                self?.fadeIn()
+                guard let self, generation == self.generation else { return }
+                didSwap(next)
+                fadeIn(generation)
             }
         } else {
             if next != previous {
@@ -77,16 +83,16 @@ final class SmoothContentSwap<Key: Equatable> {
                 withTransaction(transaction) { displayed = next }
                 didSwap(next)
             }
-            fadeIn()
+            fadeIn(generation)
         }
     }
 
-    private func fadeIn() {
-        guard running else { return }
+    private func fadeIn(_ generation: Int) {
+        guard running, generation == self.generation else { return }
         // A newer key arrived during the swap: swap again while still hidden.
-        if target != displayed { swap(); return }
+        if target != displayed { swap(generation); return }
         animator(.easeOut(duration: timing.fadeIn), { isHidden = false }) { [weak self] in
-            guard let self else { return }
+            guard let self, generation == self.generation else { return }
             running = false
             if target != displayed { show(target) }
         }
