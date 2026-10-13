@@ -120,6 +120,8 @@ final class FeedbackJourneyTests: XCTestCase {
 
     private func submit(_ app: XCUIApplication) -> XCUIElement {
         let submit = app.buttons["feedback.submit"]
+        // The folded iPhone Duo hides its bar (and Submit) while the form is scrolled down.
+        for _ in 0..<6 where !(submit.exists && submit.isHittable) { app.collectionViews.firstMatch.swipeDown(velocity: .slow) }
         XCTAssertTrue(submit.waitForExistence(timeout: 5))
         let enabled = NSPredicate(format: "isEnabled == true")
         expectation(for: enabled, evaluatedWith: submit)
@@ -223,7 +225,7 @@ final class FeedbackJourneyTests: XCTestCase {
         field.tap()
         field.typeText(XCUIKeyboardKey.delete.rawValue + "fixture-token")
         app.buttons["feedback.github.save"].tap()
-        XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 10), "Saving did not return to the form")
+        XCTAssertTrue(app.secureTextFields["feedback.github.token"].waitForNonExistence(timeout: 10), "Saving did not return to the form")
         XCTAssertTrue(reveal(app.buttons["feedback.github"], in: app).label.contains("fixture-user"), "Sending-as row missing")
         _ = submit(app)
         XCTAssertTrue(app.buttons["feedback.done"].firstMatch.waitForExistence(timeout: 10), "Sent alert missing")
