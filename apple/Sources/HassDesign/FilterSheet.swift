@@ -16,6 +16,7 @@ public struct FilterSheet<Content: View>: View {
     @ViewBuilder public var content: () -> Content
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Creates a sheet.
     public init(title: String, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void, onReset: @escaping () -> Void,
@@ -71,7 +72,8 @@ public struct FilterSheet<Content: View>: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        // Full height at accessibility sizes: half a sheet clips rows at the sheet's edge (iPad audits at AX5).
+        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
         .presentationDragIndicator(.visible)
         #if os(iOS)
         // Opaque, not glass: at the medium detent the page's floating buttons otherwise show through and fail contrast.

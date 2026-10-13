@@ -286,6 +286,15 @@ final class FoodJourneyTests: XCTestCase {
         return app
     }
 
+    /// Logs Reset to Defaults' frame against the sheet and window (evidence for the FilterSheet audit findings).
+    private func logResetFrame(_ moment: String, in app: XCUIApplication) {
+        let reset = app.buttons["Reset to Defaults"]
+        let sheet = app.collectionViews.firstMatch
+        print("FOODDIAG reset \(moment): exists=\(reset.exists) hittable=\(reset.exists && reset.isHittable) "
+              + "frame=\(reset.exists ? reset.frame : .zero) sheet=\(sheet.frame) window=\(app.windows.firstMatch.frame) "
+              + "keyboard=\(app.keyboards.firstMatch.exists)")
+    }
+
     /// Scrolls the sheet until the text or button labeled `label` is on screen, so the AX5 comparison page can
     /// measure it (the Form only creates rows on screen).
     private func scroll(to label: String, in app: XCUIApplication, sheet: XCUIElement) {
@@ -314,7 +323,13 @@ final class FoodJourneyTests: XCTestCase {
         for (reveal, ax5Reveal) in [("Expiry Weight", "Ranking Strength"), ("Reset to Defaults", "Reset to Defaults")] {
             let app = openFilterSheet(launch("recipes"), reveal: reveal)
             keepScreenshot(app, "food-recipes-filter-\(device)")
-            try audit(app) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5), reveal: ax5Reveal) }
+            logResetFrame("filter \(reveal)", in: app)
+            try audit(app) {
+                let large = self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5), reveal: ax5Reveal)
+                self.logResetFrame("filter AX5 \(ax5Reveal)", in: large)
+                self.keepScreenshot(large, "food-recipes-filter-\(self.device)-ax5-\(ax5Reveal == "Reset to Defaults" ? "reset" : "ranking")")
+                return large
+            }
         }
     }
 
