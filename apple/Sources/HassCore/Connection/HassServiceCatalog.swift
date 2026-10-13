@@ -12,19 +12,10 @@ public protocol HassServiceCatalog: AnyObject {
 extension HassConnection: HassServiceCatalog {
     /// Every `domain.service` name (`get_services`).
     public func serviceNames() async throws -> Set<String> {
-        let request = HARequest(type: .webSocket("get_services"), data: [:], shouldRetry: false)
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Set<String>, Error>) in
-            connection.send(request) { result in
-                switch result {
-                case let .success(.dictionary(domains)):
-                    continuation.resume(returning: HassServices.names(domains))
-                case .success:
-                    continuation.resume(throwing: UnexpectedResponse(command: "get_services"))
-                case let .failure(error):
-                    continuation.resume(throwing: error)
-                }
-            }
+        guard case let .dictionary(domains) = try await sendCommand("get_services", data: [:]) else {
+            throw UnexpectedResponse(command: "get_services")
         }
+        return HassServices.names(domains)
     }
 }
 

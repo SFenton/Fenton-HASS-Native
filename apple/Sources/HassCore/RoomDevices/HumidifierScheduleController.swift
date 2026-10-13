@@ -185,17 +185,4 @@ extension HassConnection: HassScheduleStoring {
     }
 
     public func userIsAdmin() async throws -> Bool { try await currentUser().isAdmin }
-
-    /// Sends a websocket command once and returns its whole result.
-    func requestJSON(_ command: String, data: [String: any Sendable]) async throws -> JSONValue {
-        let request = HARequest(type: .webSocket(command), data: data, shouldRetry: false)
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
-            connection.send(request) { result in
-                switch result {
-                case let .success(value): continuation.resume(returning: JSONValue(haData: value))
-                case let .failure(error): continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
 }
