@@ -9,20 +9,21 @@ public struct FilterSheet<Content: View>: View {
     public var title: String
     /// Apply is enabled only when the draft differs from what is applied.
     public var canApply: Bool
-    /// Reset is enabled only when the draft differs from the defaults.
+    /// Reset is shown only when the draft differs from the defaults.
     public var canReset: Bool
     public var onApply: () -> Void
     public var onReset: () -> Void
-    /// Sheet heights. A list longer than the medium detent opens `[.large]`: rows cut by the sheet's edge read as
-    /// clipped text to the accessibility audit.
-    public var detents: Set<PresentationDetent>
+    /// Sheet heights; `nil` keeps the default (medium and large, large only at accessibility sizes). A list longer
+    /// than the medium detent passes `[.large]`: rows cut by the sheet's edge read as clipped text to the audit.
+    public var detents: Set<PresentationDetent>?
     @ViewBuilder public var content: () -> Content
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Creates a sheet.
     public init(title: String, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void, onReset: @escaping () -> Void,
-                detents: Set<PresentationDetent> = [.medium, .large], @ViewBuilder content: @escaping () -> Content) {
+                detents: Set<PresentationDetent>? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.canApply = canApply
         self.canReset = canReset
@@ -36,10 +37,24 @@ public struct FilterSheet<Content: View>: View {
         NavigationStack {
             Form {
                 content()
-                Section {
-                    Button("Reset to Defaults", role: .destructive, action: onReset)
-                        .disabled(!canReset)
+                // Shown only when there is something to reset: a disabled row fails the contrast audit.
+                if canReset {
+                    Section {
+                        // A bordered button whose bezel hugs its wrapping title, not a full Form row: the row's
+                        // fixed height (74 pt on iPad) left the element growing only 1.26x at AX5, and the system
+                        // Form button clipped its title. Primary ink keeps 4.5:1 in both modes.
+                        Button(action: onReset) {
+                            Text("Reset to Defaults")
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(HassTokens.Ink.primary)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
                         .accessibilityIdentifier("filterSheet.reset")
+                    }
                 }
             }
             .navigationTitle(title)
@@ -61,13 +76,39 @@ public struct FilterSheet<Content: View>: View {
                 }
             }
         }
-        .presentationDetents(detents)
+        // Full height at accessibility sizes: half a sheet clips rows at the sheet's edge (iPad audits at AX5).
+        .presentationDetents(detents ?? (dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large]))
         .presentationDragIndicator(.visible)
         #if os(iOS)
-        // Opaque: at the medium detent the glass sheet let the page's floating actions show through behind the
-        // options' footnotes (failed contrast on iPhone).
-        .presentationBackground(Color(uiColor: .systemGroupedBackground))
+        // Opaque, not glass: at the medium detent the page's floating buttons otherwise show through and fail contrast.
+        .presentationBackground(Color(.systemGroupedBackground))
         #endif
+    }
+}
+
+/// A titled `Form` section for a filter sheet. Use it instead of `Section("…")`: the system header's
+/// secondary label measured 3.1:1 on the sheet's grouped background, so the header uses primary ink.
+public struct FilterSection<Content: View>: View {
+    public var title: String
+    @ViewBuilder public var content: () -> Content
+
+    /// Creates a section.
+    public init(_ title: String, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.content = content
+    }
+
+    public var body: some View {
+        Section {
+            content()
+        } header: {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(HassTokens.Ink.primary)
+                .textCase(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+        }
     }
 }
 
@@ -92,9 +133,10 @@ public struct FilterOptionRow: View {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
                     Text(title).foregroundStyle(HassTokens.Ink.primary)
                     if let subtitle {
+                        // Primary ink: the 72% secondary ink measured 4.2:1 on the iPad sheet's grouped rows.
                         Text(subtitle)
                             .font(.footnote)
-                            .foregroundStyle(HassTokens.Ink.secondary)
+                            .foregroundStyle(HassTokens.Ink.primary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

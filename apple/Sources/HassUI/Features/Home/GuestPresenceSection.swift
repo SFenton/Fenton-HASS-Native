@@ -5,8 +5,11 @@ import SwiftUI
 /// Guest stays (web `GuestPresenceSecuritySection`, first pass: the stay toggles only).
 /// Shown only while a guest toggle is on, matching the web.
 struct GuestPresenceSection: View {
+    /// Where toggles go; `nil` uses the environment's connection. The Security gallery passes its recorder.
+    var caller: (any HassServiceCalling)?
     @Environment(EntityStore.self) private var store
-    @Environment(HassConnection.self) private var connection
+    /// Optional so the section also renders in galleries and hosted tests that have no connection.
+    @Environment(HassConnection.self) private var connection: HassConnection?
 
     var body: some View {
         let anyGuests = HomeConfig.guestToggles.contains { store.entity($0.entityId).state?.state == "on" }
@@ -29,7 +32,9 @@ struct GuestPresenceSection: View {
                             isActive: state?.state == "on",
                             isUnavailable: state?.isUnavailable ?? true
                         ) {
-                            Task { try? await connection.toggle(toggle.entityId) }
+                            guard let target = caller ?? connection else { return }
+                            let domain = String(toggle.entityId.prefix { $0 != "." })
+                            Task { try? await target.callService(domain, "toggle", data: ["entity_id": toggle.entityId]) }
                         }
                     }
                 }

@@ -49,12 +49,14 @@ for family in iphone duo ipad; do
   if ! xcrun simctl list devices available | grep -q "    $name ("; then
     echo "GAP: no available simulator named '$name' for $family (a gap, not a pass)"; STATUS=1; continue
   fi
-  echo "== $family: $name"
+  # Resolve the UDID: xcodebuild's name= matcher misses names with parentheses ("iPhone 17 Pro (Rooms)").
+  udid="$(xcrun simctl list devices available | NAME="$name" awk '{ line = $0; sub(/^ +/, "", line); if (match(line, / \([0-9A-F-]{36}\)/) && substr(line, 1, RSTART - 1) == ENVIRON["NAME"]) { print substr(line, RSTART + 2, 36); exit } }')"
+  echo "== $family: $name ($udid)"
   rm -rf "$ROOT/apple/.build/uitest-$family.xcresult"
   xcodebuild test -project FentonHome.xcodeproj -scheme FentonHome \
-    -destination "platform=iOS Simulator,name=$name" \
+    -destination "platform=iOS Simulator,id=$udid" \
     -resultBundlePath "$ROOT/apple/.build/uitest-$family.xcresult" \
     ${EXTRA[@]+"${EXTRA[@]}"} || STATUS=1
-  [[ -n "${FENTON_KEEP_SIM:-}" ]] || xcrun simctl shutdown "$name" >/dev/null 2>&1 || true
+  [[ -n "${FENTON_KEEP_SIM:-}" ]] || xcrun simctl shutdown "$udid" >/dev/null 2>&1 || true
 done
 exit $STATUS

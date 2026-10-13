@@ -95,8 +95,8 @@ final class GalleryServiceRecorder: HassServiceCalling {
         }
         switch (domain, service) {
         case ("media_player", "toggle"): if let target { flip(target) }
-        case ("switch", "turn_on"): if let target { set(target, "on") }
-        case ("switch", "turn_off"): if let target { set(target, "off") }
+        case ("switch", "turn_on"), ("light", "turn_on"): if let target { set(target, "on") }
+        case ("switch", "turn_off"), ("light", "turn_off"): if let target { set(target, "off") }
         case ("select", "select_option"):
             if let target, let option = data["option"] as? String { set(target, option) }
             // Choosing a sync mode starts syncing, as the Sync Box does.
@@ -104,6 +104,25 @@ final class GalleryServiceRecorder: HassServiceCalling {
                 set(MediaRemotes.MusicRoom.hueSyncPowerEntityId, "on")
                 set(MediaRemotes.MusicRoom.hueSyncLightSyncEntityId, "on")
             }
+        case ("homeassistant", "toggle"):
+            if let target { set(target, store.value(target)?.state == "on" ? "off" : "on") }
+        case ("climate", "set_hvac_mode"):
+            if let target, let mode = data["hvac_mode"] as? String { set(target, mode) }
+        case ("climate", "set_fan_mode"):
+            if let target, var entity = store.value(target), let mode = data["fan_mode"] as? String {
+                entity.attributes["fan_mode"] = .string(mode)
+                store.apply([entity])
+            }
+        case ("climate", "set_temperature"):
+            let targets = (data["entity_id"] as? [String]) ?? target.map { [$0] } ?? []
+            let changed: [EntityState] = targets.compactMap { id in
+                guard var entity = store.value(id) else { return nil }
+                for key in ["temperature", "target_temp_low", "target_temp_high"] {
+                    if let value = data[key] as? Double { entity.attributes[key] = .number(value) }
+                }
+                return entity
+            }
+            store.apply(changed)
         case ("number", "set_value"):
             if let target, let value = data["value"] { set(target, "\(value)") }
         case ("media_player", "volume_set"):
@@ -112,7 +131,11 @@ final class GalleryServiceRecorder: HassServiceCalling {
                 store.apply([entity])
             }
         case ("input_button", "press"):
-            set("input_boolean.theater_pc_power", target == "input_button.theater_pc_on" ? "on" : "off")
+            // `input_button.<pc>_on` / `_off` drive `input_boolean.<pc>_power` (theater and office PCs).
+            if let target, let cut = target.range(of: "_o", options: .backwards) {
+                let prefix = target[target.index(target.startIndex, offsetBy: "input_button.".count)..<cut.lowerBound]
+                set("input_boolean.\(prefix)_power", target.hasSuffix("_on") ? "on" : "off")
+            }
         case ("remote", "send_command") where data["command"] as? String == "POWER":
             flip("media_player.living_room_shield_2", on: "playing")
         case ("script", "apple_tv_power_on_off"):

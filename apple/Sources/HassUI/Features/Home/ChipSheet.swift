@@ -7,7 +7,8 @@ import SwiftUI
 struct ChipSheet: View {
     var kind: HomeConfig.ChipSheet
     @Environment(EntityStore.self) private var store
-    @Environment(HassConnection.self) private var connection
+    /// Optional so the read-only sheets also open from the Security gallery, which has no connection.
+    @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.dismiss) private var dismiss
     /// Grows with Dynamic Type so tiles drop to fewer columns instead of clipping their titles.
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
@@ -31,7 +32,7 @@ struct ChipSheet: View {
                 DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 6) {
                     ForEach(HomeConfig.lightGroups) { group in
                         LightGroupTile(group: group, state: store.entity(group.toggleEntityId).state) { command in
-                            Task { try? await connection.send(command) }
+                            Task { try? await connection?.send(command) }
                         }
                         .accessibilityIdentifier("lights.group.\(group.toggleEntityId)")
                     }
@@ -66,17 +67,32 @@ struct ChipSheet: View {
 
 /// One light group in the Lights sheet: a brightness tile when the light dims, else a power tile.
 /// Both send explicit `turn_on` / `turn_off` (``LightControl``), never `toggle`.
+/// Room Lights sheets reuse it per light.
 struct LightGroupTile: View {
-    var group: HomeConfig.LightGroup
+    var title: String
+    var entityId: String
     var state: EntityState?
     var send: (LightControl.Command) -> Void
 
+    /// A tile for a Home light group.
+    init(group: HomeConfig.LightGroup, state: EntityState?, send: @escaping (LightControl.Command) -> Void) {
+        self.init(title: group.title, entityId: group.toggleEntityId, state: state, send: send)
+    }
+
+    /// A tile for any light or switch.
+    init(title: String, entityId: String, state: EntityState?, send: @escaping (LightControl.Command) -> Void) {
+        self.title = title
+        self.entityId = entityId
+        self.state = state
+        self.send = send
+    }
+
     var body: some View {
-        let id = group.toggleEntityId
+        let id = entityId
         let unavailable = state?.isUnavailable ?? true
         if LightControl.isDimmable(state) {
             BrightnessTile(
-                title: group.title,
+                title: title,
                 tint: HassTokens.Tint.light,
                 fillTint: LightControl.rgb(of: state).map { Color(red: $0.red, green: $0.green, blue: $0.blue) },
                 percent: LightControl.percent(of: state),
@@ -87,7 +103,7 @@ struct LightGroupTile: View {
         } else {
             let on = state?.state == "on"
             GlassTile(
-                title: group.title,
+                title: title,
                 subtitle: state.map { $0.isUnavailable ? "Unavailable" : (on ? "On" : "Off") },
                 symbol: "lightbulb",
                 tint: HassTokens.Tint.light,

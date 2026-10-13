@@ -8,12 +8,19 @@ public struct ComponentGallery: View {
     public enum Page: String, CaseIterable, Sendable {
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
-        case floatingActions = "floating-actions"
-        case inventory
+        case vacation
+        case security
+        case rooms
+        case mediaPage = "media-page"
+        case customLights = "custom-lights"
+        case sprinklers
         case bedroom = "bedroom"
         case vacuums
         case roomDevices = "room-devices"
         case householdSettings = "household-settings"
+        case climate
+        case floatingActions = "floating-actions"
+        case inventory
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -31,21 +38,36 @@ public struct ComponentGallery: View {
     public init(page: Page) { self.page = page }
 
     public var body: some View {
-        NavigationStack {
-            switch page {
-            case .mediaRemote: MediaRemoteGallery()
-            case .thermostatDial: ThermostatDialGallery()
-            case .floatingActions: FloatingActionsGallery()
-            case .inventory:
-                #if DEBUG
-                InventoryGallery()
-                #else
-                EmptyView()
-                #endif
-            case .bedroom: BedroomGallery()
-            case .vacuums: VacuumGallery()
-            case .roomDevices: RoomDevicesGallery()
-            case .householdSettings: HouseholdSettingsGallery()
+        if page == .vacation {
+            // Owns its stack, so its last-call line stays under pushed pages too.
+            VacationGallery()
+        } else if page == .rooms {
+            // Owns its stack so pushed rooms inherit the fixture store and caller.
+            RoomsGallery()
+        } else {
+            NavigationStack {
+                switch page {
+                case .mediaRemote: MediaRemoteGallery()
+                case .thermostatDial: ThermostatDialGallery()
+                case .security: SecurityGallery()
+                case .mediaPage: HomePageGallery(kind: .media)
+                case .customLights: HomePageGallery(kind: .customLights)
+                case .sprinklers: HomePageGallery(kind: .sprinklers)
+                case .bedroom: BedroomGallery()
+                case .vacuums: VacuumGallery()
+                case .roomDevices: RoomDevicesGallery()
+                case .householdSettings: HouseholdSettingsGallery()
+                case .climate: ClimateGallery()
+                case .floatingActions: FloatingActionsGallery()
+                case .inventory:
+                    #if DEBUG
+                    InventoryGallery()
+                    #else
+                    EmptyView()
+                    #endif
+                case .rooms: EmptyView()
+                case .vacation: EmptyView()
+                }
             }
         }
     }

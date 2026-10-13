@@ -53,11 +53,12 @@ struct MainTabView: View {
         default:
             NavigationStack(path: navigator.path(for: section)) {
                 Group {
-                    if section == .home {
-                        // Inventory pages until the Food & Recipes hub links them (FENTON_OPEN_INVENTORY in debug).
-                        HomeScreen().inventoryDestinations()
-                    } else {
-                        PlaceholderScreen(title: section.title, symbol: section.symbol)
+                    switch section {
+                    // Inventory pages until the Food & Recipes hub links them (FENTON_OPEN_INVENTORY in debug).
+                    case .home: HomeScreen().inventoryDestinations()
+                    case .security: SecurityScreen()
+                    case .climate: ClimateScreen()
+                    default: PlaceholderScreen(title: section.title, symbol: section.symbol)
                     }
                 }
                 .sectionRootChrome()

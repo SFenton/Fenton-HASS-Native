@@ -69,6 +69,7 @@ struct HouseholdSettingsViewTests {
         #expect(render(PresenceOverridesSheet(controller: settings)) != nil)
         #expect(render(PresenceOverridesSheet(controller: settings, initialRoom: room)) != nil)
         #expect(render(NavigationStack { PresenceOverrideDetail(room: room, controller: settings) }) != nil)
+        #expect(render(NavigationStack { PresenceOverrideDetail(room: room, controller: settings, done: {}) }) != nil)
         #expect(render(NavigationStack { PresenceOverrideDetail(room: room, controller: controller(unavailable: true)) }) != nil)
         #expect(render(AutoResetSheet(controller: settings)) != nil)
     }

@@ -55,16 +55,22 @@ struct FloatingActionBarTests {
     }
 
     @Test func filterSheetAndRowsRender() {
-        let sheet = FilterSheet(title: "Sort", canApply: true, canReset: false, onApply: {}, onReset: {}) {
-            Section {
+        let sheet = FilterSheet(title: "Sort", canApply: true, canReset: true, onApply: {}, onReset: {}) {
+            FilterSection("Sort By") {
                 FilterOptionRow(title: "Alphabetical", subtitle: "Sort titles from A to Z.", isSelected: true) {}
                 FilterOptionRow(title: "Expiring Soon", isSelected: false) {}
             }
         }
         #expect(render(sheet.frame(height: 600)) != nil)
-        #expect(sheet.detents == [.medium, .large])
+        #expect(render(FilterSection("Minimum Ingredients Available") { Text("Any") }.dynamicTypeSize(.accessibility5)) != nil)
+        #expect(render(FilterOptionRow(title: "Alphabetical", isSelected: true) {}.dynamicTypeSize(.accessibility5)) != nil)
+    }
+
+    @Test func filterSheetDetentsDefaultUnlessGiven() {
+        let standard = FilterSheet(title: "Sort", canApply: false, canReset: false, onApply: {}, onReset: {}) { EmptyView() }
+        #expect(standard.detents == nil)
         let tall = FilterSheet(title: "Filter", canApply: false, canReset: false, onApply: {}, onReset: {}, detents: [.large]) { EmptyView() }
         #expect(tall.detents == [.large])
-        #expect(render(FilterOptionRow(title: "Alphabetical", isSelected: true) {}.dynamicTypeSize(.accessibility5)) != nil)
+        #expect(render(tall.frame(height: 600)) != nil)
     }
 }

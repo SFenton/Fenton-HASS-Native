@@ -108,12 +108,15 @@ enum FentonHomeApp {
     /// the system's dimmed style on disabled controls (exempt from WCAG 1.4.3).
     /// Collects every remaining issue so one run lists them all, then fails once with the list.
     ///
-    /// "Dynamic Type font sizes are partially unsupported" is a known false positive on iPad (Festival's
+    /// "Dynamic Type font sizes are (partially) unsupported" is a known false positive on iPad (Festival's
     /// `dynamic-type-grows` waiver). With `ax5Page` (relaunches the same page at AX5) such an issue is
     /// accepted only when the same text is at least 1.35x taller there; an issue with no element only
     /// when every sampled text on the page grew that much.
+    ///
+    /// `presenter` names a control on the page under a sheet: element-less "potentially inaccessible
+    /// text" is the page showing around an iPad form sheet, accepted only while that control can't be hit.
     static func audit(
-        _ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil,
+        _ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil, presenter: XCUIElement? = nil,
         file: StaticString = #filePath, line: UInt = #line
     ) throws {
         var open: [String] = []
@@ -149,6 +152,11 @@ enum FentonHomeApp {
         for issue in issues {
             if isSystemDrawn(issue, in: app, popover: popover) { continue }
             if issue.auditType == .contrast, issue.element == nil, textUnderFloatingBar { continue }
+            // The presenting page around an iPad form sheet, hidden from assistive technologies by the modal.
+            if issue.element == nil, issue.auditType == .elementDetection, let presenter,
+               presenter.exists, !presenter.isHittable {
+                continue
+            }
             var measured = ""
             if issue.auditType == .contrast, let element = issue.element, let capture,
                var ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
@@ -170,7 +178,7 @@ enum FentonHomeApp {
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             if ax5Page != nil, issue.auditType == .dynamicType,
-               issue.compactDescription.localizedCaseInsensitiveContains("partially unsupported") {
+               issue.compactDescription.localizedCaseInsensitiveContains("font sizes are") {
                 if let element = issue.element, !element.label.isEmpty {
                     unconfirmedType.append((element.label, element.frame.height))
                 } else {
@@ -194,8 +202,8 @@ enum FentonHomeApp {
                 var texts: [(String, CGRect)] = []
                 func walk(_ node: XCUIElementSnapshot) {
                     if node.elementType == .navigationBar { bars.append(node.frame) }
-                    // Buttons too: a button's own label (Form rows, capsules) has no static text child to measure.
-                    if node.elementType == .staticText || node.elementType == .button, !node.label.isEmpty {
+                    // Buttons too: a Form button (a sheet's Reset row) is a button element, not static text.
+                    if [.staticText, .button].contains(node.elementType), !node.label.isEmpty {
                         texts.append((node.label, node.frame))
                     }
                     node.children.forEach(walk)
@@ -270,10 +278,13 @@ enum FentonHomeApp {
             // Text behind a modal sheet (iPad form sheets leave Home visible around them) is drawn but
             // hidden from assistive technologies by the modal. Accept it only while a sheet is up and
             // Home's own controls can't be reached (the sheet's dimming layer takes the touches).
+            // The same page text under the dimming layer also comes back as element-less contrast or clipping
+            // (seen 2026-10-12 around the iPad sprinkler schedule sheet, one or the other from run to run).
             // A page pushed inside the sheet shows Back, not Done; the page behind still has its own bar, so two
             // navigation bars also mean a modal over a page (Bedroom editors on iPad, 2026-10-12).
+            let behindSheet: XCUIAccessibilityAuditType = [.elementDetection, .contrast, .textClipped]
             let modalUp = app.navigationBars.buttons["Done"].exists || app.navigationBars.count > 1
-            if issue.auditType == .elementDetection, modalUp, !app.buttons["home.chip.lights"].isHittable {
+            if behindSheet.contains(issue.auditType), modalUp, !app.buttons["home.chip.lights"].isHittable {
                 return true
             }
             // The same for an inventory page behind an iPad form sheet (Sort, Filter, Add Item, the editor;
@@ -391,8 +402,10 @@ extension XCTestCase {
         let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
         let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
         FileManager.default.createFile(atPath: ready.path, contents: nil)
-        // `simctl io` can take over 30 s on a loaded host; a short wait moved on and mislabeled the next capture.
-        let deadline = Date().addingTimeInterval(120)
+        // A loaded host can take well over 30 s to capture; moving on early let a late capture land on the next
+        // screen under this name. Wait longer, and withdraw the request on timeout so a miss is a gap, not a mislabel.
+        let deadline = Date().addingTimeInterval(180)
         while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
+        if !FileManager.default.fileExists(atPath: done.path) { try? FileManager.default.removeItem(at: ready) }
     }
 }

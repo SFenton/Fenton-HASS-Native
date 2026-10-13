@@ -31,7 +31,7 @@ struct InventorySortSheet: View {
             // Six options: cut off at the medium detent in iPad landscape.
             detents: [.large]
         ) {
-            Section("Sort By") {
+            FilterSection("Sort By") {
                 ForEach(InventorySortMode.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.subtitle, isSelected: mode == option) { mode = option }
                         .accessibilityIdentifier("inventory.sort.\(option.rawValue)")
@@ -39,7 +39,7 @@ struct InventorySortSheet: View {
             }
             // Option rows rather than a segmented control and footnote: both were reported clipped at large
             // text sizes; rows wrap like Sort By above.
-            Section("Sort Direction") {
+            FilterSection("Sort Direction") {
                 ForEach(InventorySortDirection.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.hint, isSelected: direction == option) { direction = option }
                         .accessibilityIdentifier("inventory.sort.direction.\(option.rawValue)")
