@@ -217,7 +217,7 @@ struct WeatherForecastStoreTests {
     }
 
     @Test func expiresPastHourlyBucketsExactlyAtTheirEndWhileARefreshIsPending() async {
-        let clock = WeatherTestClock(WeatherDates.parse("2026-09-05T12:59:00Z")!)
+        let clock = WeatherTestClock(HassDates.iso8601("2026-09-05T12:59:00Z")!)
         let h = makeHarness(clock: clock)
         let entries = [
             WeatherFixtures.entry("2026-09-05T11:00:00Z", 50),

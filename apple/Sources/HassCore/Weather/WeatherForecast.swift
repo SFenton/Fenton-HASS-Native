@@ -1,36 +1,5 @@
 import Foundation
 
-/// Which Home Assistant forecast a request asks for (`weather.get_forecasts` `type`).
-public enum WeatherForecastKind: String, Codable, Sendable, CaseIterable {
-    case daily
-    case hourly
-
-    /// How many entries the app keeps: seven days, or the next 24 hours (web `extractForecasts`).
-    public var limit: Int { self == .daily ? 7 : 24 }
-}
-
-/// A wind direction as the weather integration reports it: degrees, or a compass abbreviation (`"WNW"`).
-public enum WeatherWindBearing: Hashable, Sendable {
-    case degrees(Double)
-    case cardinal(String)
-
-    /// Reads a bearing from a Home Assistant attribute; `nil` for anything else.
-    public init?(json: JSONValue?) {
-        switch json {
-        case let .number(value) where value.isFinite: self = .degrees(value)
-        case let .string(value) where !value.trimmingCharacters(in: .whitespaces).isEmpty: self = .cardinal(value)
-        default: return nil
-        }
-    }
-
-    var json: JSONValue {
-        switch self {
-        case let .degrees(value): .number(value)
-        case let .cardinal(value): .string(value)
-        }
-    }
-}
-
 /// One daily or hourly forecast entry from `weather.get_forecasts`.
 ///
 /// Fields mirror the web `WeatherForecast` interface; every field is optional because providers omit them.
@@ -83,19 +52,19 @@ public struct WeatherForecast: Codable, Hashable, Sendable {
         self.init(
             datetime: json["datetime"]?.string,
             condition: json["condition"]?.string,
-            temperature: json["temperature"]?.lenientNumber,
-            templow: json["templow"]?.lenientNumber,
-            apparentTemperature: json["apparent_temperature"]?.lenientNumber,
-            cloudCoverage: json["cloud_coverage"]?.lenientNumber,
-            dewPoint: json["dew_point"]?.lenientNumber,
-            humidity: json["humidity"]?.lenientNumber,
-            precipitation: json["precipitation"]?.lenientNumber,
-            precipitationProbability: json["precipitation_probability"]?.lenientNumber,
-            pressure: json["pressure"]?.lenientNumber,
-            uvIndex: json["uv_index"]?.lenientNumber,
+            temperature: json["temperature"]?.finiteNumber,
+            templow: json["templow"]?.finiteNumber,
+            apparentTemperature: json["apparent_temperature"]?.finiteNumber,
+            cloudCoverage: json["cloud_coverage"]?.finiteNumber,
+            dewPoint: json["dew_point"]?.finiteNumber,
+            humidity: json["humidity"]?.finiteNumber,
+            precipitation: json["precipitation"]?.finiteNumber,
+            precipitationProbability: json["precipitation_probability"]?.finiteNumber,
+            pressure: json["pressure"]?.finiteNumber,
+            uvIndex: json["uv_index"]?.finiteNumber,
             windBearing: WeatherWindBearing(json: json["wind_bearing"]),
-            windGustSpeed: json["wind_gust_speed"]?.lenientNumber,
-            windSpeed: json["wind_speed"]?.lenientNumber
+            windGustSpeed: json["wind_gust_speed"]?.finiteNumber,
+            windSpeed: json["wind_speed"]?.finiteNumber
         )
     }
 
@@ -127,34 +96,7 @@ public struct WeatherForecast: Codable, Hashable, Sendable {
     }
 
     /// The start of the period, parsed from ``datetime``.
-    public var start: Date? { datetime.flatMap(WeatherDates.parse) }
-}
-
-extension JSONValue {
-    /// A number, or a string holding one (`numberValue` in the web code); `nil` otherwise.
-    var lenientNumber: Double? {
-        switch self {
-        case let .number(value): value.isFinite ? value : nil
-        case let .string(value):
-            Double(value.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite ? $0 : nil }
-        default: nil
-        }
-    }
-}
-
-/// Why a forecast response could not be used.
-public struct WeatherForecastError: Error, Equatable, LocalizedError, Sendable {
-    /// The user-facing message (`forecast.dailyError` / `forecast.hourlyError`).
-    public var message: String
-    public var errorDescription: String? { message }
-
-    /// The malformed-response error for a forecast kind.
-    public static func malformed(_ kind: WeatherForecastKind) -> WeatherForecastError {
-        WeatherForecastError(message: WeatherCopy.forecastFailure(kind))
-    }
-
-    /// The websocket dropped or was not ready; the store retries quietly instead of showing an error.
-    public static let connectionLost = WeatherForecastError(message: "Connection lost")
+    public var start: Date? { datetime.flatMap(HassDates.iso8601) }
 }
 
 public extension WeatherForecast {

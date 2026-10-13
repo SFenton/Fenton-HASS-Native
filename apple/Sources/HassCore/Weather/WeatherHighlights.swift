@@ -1,44 +1,5 @@
 import Foundation
 
-/// A highlight tile of the weather sheet (everything under "Highlights" except the chart tiles).
-public struct WeatherHighlight: Identifiable, Equatable, Sendable {
-    public enum Kind: String, Sendable, CaseIterable {
-        case aqi, feels, uv, wind, sun, visibility, pressure
-    }
-
-    /// Wind tile details.
-    public struct Wind: Equatable, Sendable {
-        public var bearingDegrees: Double?
-        public var destinationDegrees: Double?
-        public var directionLabel: String
-        public var directionValue: String
-        public var gustIsForecast: Bool
-        public var gustLabel: String
-        public var gustValue: String
-        public var showVector: Bool
-        public var speedLabel: String
-        public var speedValue: String
-    }
-
-    public var kind: Kind
-    public var id: String { kind.rawValue }
-    /// Spoken name for the whole tile, when it differs from "title value".
-    public var accessibilityLabel: String
-    public var available: Bool
-    /// Web MDI icon name.
-    public var icon: String
-    /// 0...100 marker position on the tile's gauge.
-    public var percent: Double?
-    public var rotation: Double?
-    /// Category text, e.g. `Moderate`.
-    public var status: String?
-    public var title: String
-    public var value: String
-    public var wind: Wind?
-    /// A mild tone key for the AQI tile (the level name), `unavailable` otherwise.
-    public var tone: String?
-}
-
 /// Builds the highlight tiles from current conditions, today's forecast and the sun.
 /// Source: `ha-sfenton-react-dash@f5a7bf9:src/components/hass/WeatherSummary.tsx:511` (`highlightTiles`) and
 /// `WeatherAqiTile` (`:1006`).
@@ -147,57 +108,6 @@ public enum WeatherHighlights {
         return WeatherHighlight(
             kind: .aqi, accessibilityLabel: label, available: reading != nil, icon: "mdi:air-filter", percent: reading?.markerPercent,
             rotation: nil, status: category, title: WeatherCopy.text("aqi.title"), value: value, wind: nil, tone: reading?.level.rawValue ?? "unavailable"
-        )
-    }
-}
-
-/// A temperature range drawn as a rail: where the span starts, how long it is and where "now" sits (all 0...100).
-public struct WeatherRailRange: Equatable, Sendable {
-    public var markerPercent: Double?
-    public var rangeSizePercent: Double?
-    public var rangeStartPercent: Double?
-
-    public init(markerPercent: Double? = nil, rangeSizePercent: Double? = nil, rangeStartPercent: Double? = nil) {
-        self.markerPercent = markerPercent
-        self.rangeSizePercent = rangeSizePercent
-        self.rangeStartPercent = rangeStartPercent
-    }
-}
-
-/// Rail geometry for the Today row and the seven-day rows.
-/// Source: `ha-sfenton-react-dash@f5a7bf9:src/components/hass/WeatherSummary.tsx:457`.
-public enum WeatherRails {
-    /// A day's low-to-high span positioned inside the week's overall span; day 0 carries the current-temperature marker.
-    public static func week(forecast: WeatherForecast, all forecasts: [WeatherForecast], currentTemperature: Double?, index: Int) -> WeatherRailRange? {
-        let ranges = forecasts.compactMap { item -> (low: Double, high: Double)? in
-            guard let low = item.templow, let high = item.temperature, high >= low else { return nil }
-            return (low, high)
-        }
-        guard let low = forecast.templow, let high = forecast.temperature, high >= low, !ranges.isEmpty else { return nil }
-        let minLow = ranges.map(\.low).min() ?? low
-        let maxHigh = ranges.map(\.high).max() ?? high
-        let spread = maxHigh - minLow
-        let current = index == 0 ? currentTemperature : nil
-        if spread == 0 {
-            return WeatherRailRange(markerPercent: current.map { $0 < low ? 0 : $0 > high ? 100 : 50 }, rangeSizePercent: 0, rangeStartPercent: 50)
-        }
-        return WeatherRailRange(
-            markerPercent: current.map { WeatherPresentation.clampPercent(($0 - minLow) / spread * 100) },
-            rangeSizePercent: WeatherPresentation.clampPercent((high - low) / spread * 100),
-            rangeStartPercent: WeatherPresentation.clampPercent((low - minLow) / spread * 100)
-        )
-    }
-
-    /// Today's rail spans the whole track; the marker is the current temperature between low and high.
-    public static func hero(forecast: WeatherForecast, currentTemperature: Double?) -> WeatherRailRange? {
-        guard let low = forecast.templow, let high = forecast.temperature, high >= low else { return nil }
-        let spread = high - low
-        if spread == 0 {
-            return WeatherRailRange(markerPercent: currentTemperature.map { $0 < low ? 0 : $0 > high ? 100 : 50 }, rangeSizePercent: 0, rangeStartPercent: 50)
-        }
-        return WeatherRailRange(
-            markerPercent: currentTemperature.map { WeatherPresentation.clampPercent(($0 - low) / spread * 100) },
-            rangeSizePercent: 100, rangeStartPercent: 0
         )
     }
 }

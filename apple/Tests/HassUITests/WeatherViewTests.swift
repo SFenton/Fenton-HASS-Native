@@ -279,7 +279,7 @@ struct WeatherViewTests {
     @Test func galleryFixturesAreRelativeToNow() throws {
         let hourly = WeatherFixtures.hourly()
         #expect(hourly.count == 24)
-        let first = try #require(hourly.first?["datetime"]?.string.flatMap(WeatherDates.parse))
+        let first = try #require(hourly.first?["datetime"]?.string.flatMap(HassDates.iso8601))
         #expect(first <= Date() && Date().timeIntervalSince(first) < 3600)
         #expect(WeatherFixtures.daily().count == 7)
         #expect(WeatherFixtures.states(condition: "sunny", night: false, airQuality: false).count == 2)

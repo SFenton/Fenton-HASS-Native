@@ -1,34 +1,6 @@
 import Foundation
 import Observation
 
-/// The inputs from entities that the day briefing reads besides the forecasts.
-public struct WeatherBriefingContext: Equatable, Sendable {
-    public var aqi: Double?
-    public var precipitationUnit: String?
-    public var sunrise: String?
-    public var sunset: String?
-    public var temperatureUnit: String?
-    public var windSpeedUnit: String?
-
-    public init(aqi: Double? = nil, precipitationUnit: String? = nil, sunrise: String? = nil, sunset: String? = nil, temperatureUnit: String? = nil, windSpeedUnit: String? = nil) {
-        self.aqi = aqi
-        self.precipitationUnit = precipitationUnit
-        self.sunrise = sunrise
-        self.sunset = sunset
-        self.temperatureUnit = temperatureUnit
-        self.windSpeedUnit = windSpeedUnit
-    }
-
-    /// Builds the context from the weather, air-quality and sun entities.
-    public init(current: WeatherCurrent, aqiState: String?, sun: WeatherSunInput?) {
-        self.init(
-            aqi: aqiState.flatMap { Double($0.trimmingCharacters(in: .whitespaces)) },
-            precipitationUnit: current.precipitationUnit, sunrise: sun?.nextRising, sunset: sun?.nextSetting,
-            temperatureUnit: current.temperatureUnit, windSpeedUnit: current.windSpeedUnit
-        )
-    }
-}
-
 /// The app's one source of weather forecasts, shared by the Home card and the Weather sheet.
 ///
 /// Port of the web `WeatherForecastCache`: daily and hourly forecasts are fetched through `weather.get_forecasts`,
@@ -388,5 +360,13 @@ public final class WeatherForecastStore {
         guard let server, let cache else { return }
         let snapshot = WeatherForecastDiskCache.snapshot(server: server, savedAt: clock(), daily: daily, hourly: hourly, briefing: briefing)
         try? cache.save(snapshot)
+    }
+}
+
+public extension WeatherForecastStore {
+    /// A value that changes when the weather entity updates, standing in for the web's `last_updated`:
+    /// the entity's state and attributes change whenever the provider publishes new data.
+    nonisolated static func revision(of entity: EntityState?) -> String? {
+        entity.map { String($0.hashValue) }
     }
 }

@@ -99,7 +99,7 @@ struct WeatherHighlightsTests {
     @Test func sunTileShowsTheNextEventAndDaylightProgress() throws {
         let sunset = "2026-09-05T19:30:00Z"
         let sun = WeatherSunInput(state: "above_horizon", nextRising: "2026-09-06T13:00:00Z", nextSetting: sunset)
-        let now = WeatherDates.parse("2026-09-05T18:00:00Z")!
+        let now = HassDates.iso8601("2026-09-05T18:00:00Z")!
         let tile = try tile(.sun, WeatherHighlights.tiles(current: current, today: nil, sun: sun, now: now, timeZone: zone))
         #expect(tile.title == "Sunset")
         #expect(tile.value == "12:30 PM")

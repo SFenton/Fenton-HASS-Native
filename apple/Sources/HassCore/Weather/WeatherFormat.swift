@@ -80,14 +80,14 @@ public enum WeatherFormat {
     /// `Today` for the first day, then the short weekday (`forecastDayLabel`).
     public static func dayLabel(_ datetime: String?, index: Int, timeZone: TimeZone = .current) -> String {
         let fallback = index == 0 ? "Today" : "Day \(index + 1)"
-        guard let datetime, let date = WeatherDates.parse(datetime) else { return fallback }
+        guard let datetime, let date = HassDates.iso8601(datetime) else { return fallback }
         return index == 0 ? "Today" : WeatherDates.weekday(date, in: timeZone)
     }
 
     /// `Now` for the first hour, then `7 PM` (`hourlyLabel`).
     public static func hourLabel(_ datetime: String?, index: Int, timeZone: TimeZone = .current) -> String {
         if index == 0 { return "Now" }
-        guard let datetime, let date = WeatherDates.parse(datetime) else { return "\(index)h" }
+        guard let datetime, let date = HassDates.iso8601(datetime) else { return "\(index)h" }
         return WeatherDates.hour(date, in: timeZone)
     }
 
@@ -112,10 +112,4 @@ public enum WeatherFormat {
         if low == "--" { return WeatherCopy.text("hero.high", ["high": high]) }
         return WeatherCopy.text("hero.highLow", ["high": high, "low": low])
     }
-}
-
-/// Unit defaults used across the weather logic.
-public enum WeatherUnits {
-    public static let defaultWindSpeedUnit = "mph"
-    public static let defaultPrecipitationUnit = "in"
 }

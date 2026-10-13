@@ -21,10 +21,7 @@ public struct WeatherConditionInfo: Equatable, Sendable {
             label = WeatherCopy.text("condition.\(condition)")
         } else {
             icon = "mdi:cloud"
-            label = condition.replacingOccurrences(of: "-", with: " ").replacingOccurrences(of: "_", with: " ")
-                .split(separator: " ", omittingEmptySubsequences: false)
-                .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-                .joined(separator: " ")
+            label = StateText.titleCase(condition.replacingOccurrences(of: "-", with: "_"))
         }
     }
 
@@ -39,25 +36,4 @@ public struct WeatherConditionInfo: Equatable, Sendable {
         "snowy-rainy": "mdi:weather-snowy-rainy", "sunny": "mdi:weather-sunny", "windy": "mdi:weather-windy",
         "windy-variant": "mdi:weather-windy-variant",
     ]
-}
-
-/// The atmosphere behind the weather sheet (web `WeatherScene`).
-public enum WeatherScene: String, Sendable, CaseIterable {
-    case sunny, night, clouds, fog, rain, storm, snow, wind, exceptional, neutral
-
-    /// Maps a condition to its scene; `isNight` turns a sunny sky into the night scene (`weatherSceneForCondition`).
-    public init(condition: String?, isNight: Bool = false) {
-        switch condition {
-        case "clear-night": self = .night
-        case "sunny": self = isNight ? .night : .sunny
-        case "partlycloudy", "cloudy": self = .clouds
-        case "fog": self = .fog
-        case "rainy", "pouring": self = .rain
-        case "lightning", "lightning-rainy", "hail": self = .storm
-        case "snowy", "snowy-rainy": self = .snow
-        case "windy", "windy-variant": self = .wind
-        case "exceptional": self = .exceptional
-        default: self = .neutral
-        }
-    }
 }

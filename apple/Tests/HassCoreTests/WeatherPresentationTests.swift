@@ -130,7 +130,7 @@ struct WeatherPresentationTests {
     }
 
     @Test func selectsTheNextSolarEventAndDaylightProgress() {
-        let now = WeatherDates.parse("2026-08-25T20:00:00.000Z")!
+        let now = HassDates.iso8601("2026-08-25T20:00:00.000Z")!
         let above = WeatherPresentation.sun(state: "above_horizon", nextRising: "2026-08-26T13:20:00.000Z", nextSetting: "2026-08-26T03:00:00.000Z", now: now)
         #expect(above?.primary == .sunset)
         #expect(above?.secondary == .sunrise)

@@ -22,7 +22,7 @@ struct WeatherForecastParsingTests {
             cloudCoverage: 40, dewPoint: 50, humidity: 55, precipitation: 0.02, precipitationProbability: 30, pressure: 1012,
             uvIndex: 6, windBearing: .degrees(250), windGustSpeed: 20, windSpeed: 9
         ))
-        #expect(forecast.start == WeatherDates.parse("2026-09-05T12:00:00Z"))
+        #expect(forecast.start == HassDates.iso8601("2026-09-05T12:00:00Z"))
     }
 
     @Test func acceptsNumericStringsAndIgnoresJunk() {

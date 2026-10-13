@@ -62,10 +62,10 @@ struct WeatherBarChart: View {
         .frame(height: plotHeight)
         .background {
             GeometryReader { proxy in
-                Color.clear.preference(key: ChartWidthKey.self, value: proxy.size.width)
+                Color.clear.preference(key: WidthKey.self, value: proxy.size.width)
             }
         }
-        .onPreferenceChange(ChartWidthKey.self) { plotWidth = $0 }
+        .onPreferenceChange(WidthKey.self) { plotWidth = $0 }
     }
 
     /// Hour labels on a uniform cadence that fits the plot (web `precipitationLabelCadence`).
@@ -89,9 +89,9 @@ struct WeatherBarChart: View {
             }
         }
     }
-}
 
-private struct ChartWidthKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+    private struct WidthKey: PreferenceKey {
+        static let defaultValue: CGFloat = 0
+        static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+    }
 }
