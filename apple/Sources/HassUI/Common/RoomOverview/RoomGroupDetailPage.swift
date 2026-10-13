@@ -7,6 +7,8 @@ import SwiftUI
 struct RoomGroupDetailPage: View {
     var kind: RoomOverviewKind
     var group: RoomGroup
+    /// Closes the whole sheet from this page, so Done stays in the bar at every depth (HIG: Sheets).
+    var onDone: (() -> Void)?
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.roomServiceCaller) private var callerOverride
@@ -17,7 +19,7 @@ struct RoomGroupDetailPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-                Text(RoomOverview.detailSubtitle(kind, group, read: read))
+                Text(ScreenshotPrivacy.isRedacting && kind == .occupancy ? "Hidden" : RoomOverview.detailSubtitle(kind, group, read: read))
                     .font(.subheadline)
                     .foregroundStyle(HassTokens.Ink.secondary)
                     .accessibilityIdentifier("overview.detail.subtitle")
@@ -30,6 +32,11 @@ struct RoomGroupDetailPage: View {
         .navigationTitle(RoomOverview.detailTitle(kind, group))
         .inlineNavigationTitle()
         .accessibilityIdentifier("overview.detail.\(group.room)")
+        .toolbar {
+            if let onDone {
+                ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) }
+            }
+        }
         .alert("Couldn't Change the Light", isPresented: $showsFailure) {
             Button("OK", role: .cancel) {}
         } message: {

@@ -96,6 +96,17 @@ final class HomeJourneyTests: XCTestCase {
         }
     }
 
+    /// Scrolls the status rail sideways until the chip is on screen (later chips start past the iPhone's edge).
+    private func revealChip(_ chip: XCUIElement, in app: XCUIApplication) {
+        let window = app.windows.firstMatch
+        for _ in 0..<4 where !chip.isHittable {
+            let y = chip.frame.midY
+            let direction: CGFloat = chip.frame.minX > window.frame.midX ? -1 : 1
+            let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: window.frame.midX, dy: y))
+            start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: direction * window.frame.width * 0.4, dy: 0)))
+        }
+    }
+
     /// Goes back one page: the system Back button wherever the bar puts it (the folded iPhone Duo moves bar items into
     /// its vertical bar), else the leading-edge back swipe (devices.md).
     private func goBack(in app: XCUIApplication) {
@@ -110,7 +121,10 @@ final class HomeJourneyTests: XCTestCase {
     }
 
     private func openChip(_ chip: String, in app: XCUIApplication) {
-        app.buttons["home.chip.\(chip)"].tap()
+        let button = app.buttons["home.chip.\(chip)"]
+        XCTAssertTrue(button.waitForExistence(timeout: 10), chip)
+        revealChip(button, in: app)
+        button.tap()
         XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5), chip)
         sleep(1) // Let the sheet finish presenting; mid-animation frames fail contrast and clipping.
     }

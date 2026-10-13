@@ -109,11 +109,12 @@ struct RoomEntityGrid: View {
 struct RoomAllContacts: View {
     var controller: RoomController
     @State private var selected: RoomGroup?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         RoomOverviewGrid(kind: .contacts) { selected = $0 }
             .navigationDestination(item: $selected) { group in
-                RoomGroupDetailPage(kind: .contacts, group: group)
+                RoomGroupDetailPage(kind: .contacts, group: group) { dismiss() }
             }
     }
 }

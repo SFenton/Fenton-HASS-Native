@@ -26,7 +26,7 @@ struct RoomOverviewSheet: View {
             .navigationTitle(RoomOverview.sheetTitle(kind, read: read))
             .inlineNavigationTitle()
             .navigationDestination(for: RoomGroup.self) { group in
-                RoomGroupDetailPage(kind: kind, group: group)
+                RoomGroupDetailPage(kind: kind, group: group) { dismiss() }
             }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }

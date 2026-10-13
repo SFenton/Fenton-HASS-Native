@@ -18,7 +18,7 @@ struct RoomOverviewGrid: View {
                     AirQualityRoomTile(room: room)
                 }
             } else {
-                ForEach(RoomOverview.sections(kind, read: read)) { section in
+                ForEach(sections) { section in
                     RoomOverviewHeading(title: section.title)
                         .gridHeader()
                         .accessibilityIdentifier("overview.\(kind.rawValue).section.\(section.title)")
@@ -29,6 +29,14 @@ struct RoomOverviewGrid: View {
             }
         }
         .equalHeightTiles()
+    }
+
+    /// Shared screenshots hide who is home, so redacted occupancy lists every room under one heading.
+    private var sections: [RoomOverviewSection] {
+        if ScreenshotPrivacy.isRedacting, kind == .occupancy {
+            return [RoomOverviewSection(title: "Rooms", groups: RoomOverview.groups(kind))]
+        }
+        return RoomOverview.sections(kind, read: read)
     }
 
     private func read(_ id: String) -> EntityState? { store.entity(id).state }
