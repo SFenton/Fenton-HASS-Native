@@ -34,9 +34,10 @@ final class ChromeJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5), "\(title) did not appear")
     }
 
-    /// Closes the front modal with its circle-X Close.
+    /// Closes the front modal with its circle-X Close (in the navigation bar, or the folded Duo's vertical bar).
     private func closeModal(_ app: XCUIApplication) {
-        let close = app.navigationBars.buttons["Close"].firstMatch
+        let inBar = app.navigationBars.buttons["Close"].firstMatch
+        let close = inBar.waitForExistence(timeout: 3) ? inBar : app.buttons["Close"].firstMatch
         XCTAssertTrue(close.waitForExistence(timeout: 5), "Modal has no Close")
         close.tap()
         XCTAssertTrue(close.waitForNonExistence(timeout: 5), "Modal did not close")
@@ -95,7 +96,7 @@ final class ChromeJourneyTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["quickLinks.rooms"].waitForExistence(timeout: 5))
         sleep(1)
         keepScreenshot(app, "chrome-quick-links-\(suffix)")
-        if app.navigationBars.buttons["Close"].exists { closeModal(app) }
+        if app.buttons["quickLinks.close"].exists { closeModal(app) }
 
         for (section, title) in [("security", "Security"), ("climate", "Climate"), ("chores", "Chores")] {
             open(section, title: title, in: app)
