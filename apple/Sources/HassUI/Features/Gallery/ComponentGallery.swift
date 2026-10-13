@@ -8,6 +8,14 @@ public struct ComponentGallery: View {
     public enum Page: String, CaseIterable, Sendable {
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
+        case mediaPage = "media-page"
+        case customLights = "custom-lights"
+        case sprinklers
+        case bedroom = "bedroom"
+        case vacuums
+        case roomDevices = "room-devices"
+        case householdSettings = "household-settings"
+        case climate
         case floatingActions = "floating-actions"
     }
 
@@ -30,6 +38,14 @@ public struct ComponentGallery: View {
             switch page {
             case .mediaRemote: MediaRemoteGallery()
             case .thermostatDial: ThermostatDialGallery()
+            case .mediaPage: HomePageGallery(kind: .media)
+            case .customLights: HomePageGallery(kind: .customLights)
+            case .sprinklers: HomePageGallery(kind: .sprinklers)
+            case .bedroom: BedroomGallery()
+            case .vacuums: VacuumGallery()
+            case .roomDevices: RoomDevicesGallery()
+            case .householdSettings: HouseholdSettingsGallery()
+            case .climate: ClimateGallery()
             case .floatingActions: FloatingActionsGallery()
             }
         }

@@ -110,7 +110,8 @@ final class HomeJourneyTests: XCTestCase {
             keepScreenshot(app, "lights-\(suffix)")
             app.buttons["Done"].tap()
         }
-        XCUIDevice.shared.orientation = .portrait
+        // Only iPad rotates here; setting the orientation on an unfolded Duo hangs the runner (devices.md).
+        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
 
     /// Keeps a screenshot of live Home in the result bundle.
