@@ -350,8 +350,10 @@ extension XCTestCase {
         let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
         let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
         FileManager.default.createFile(atPath: ready.path, contents: nil)
-        // `simctl io` can take over 30 s on a loaded host; a short wait moved on and mislabeled the next capture.
-        let deadline = Date().addingTimeInterval(120)
+        // A loaded host can take well over 30 s to capture; moving on early let a late capture land on the next
+        // screen under this name. Wait longer, and withdraw the request on timeout so a miss is a gap, not a mislabel.
+        let deadline = Date().addingTimeInterval(180)
         while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
+        if !FileManager.default.fileExists(atPath: done.path) { try? FileManager.default.removeItem(at: ready) }
     }
 }
