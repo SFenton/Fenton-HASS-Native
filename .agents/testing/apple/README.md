@@ -7,3 +7,4 @@
 | [strategy.md](strategy.md) | Phases, accessibility tests with every change, certification gates |
 | [accessibility.md](accessibility.md) | Audit rules and evidence |
 | [devices.md](devices.md) | iPhone, iPhone Duo, iPad matrix and how to run it |
+| [ha-companion.md](ha-companion.md) | The official Home Assistant app on our simulators, for comparison |
