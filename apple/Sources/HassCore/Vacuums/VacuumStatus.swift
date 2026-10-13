@@ -385,7 +385,6 @@ public struct VacuumVisual: Equatable, Sendable {
 // MARK: - Formatting
 
 public enum VacuumFormat {
-
     /// A state for display (`formatStateValue`).
     public static func state(_ value: String?, fallback: String = "Unavailable") -> String {
         guard let value, !value.isEmpty else { return fallback }

@@ -8,7 +8,6 @@ public typealias EntityLookup = (String) -> EntityState?
 public enum ClimateLogic {
     // MARK: - Formatting
 
-
     /// Short state text (web `formatCompactEntityState`): sensors and text read as-is, everything else is title-cased.
     /// - Parameters:
     ///   - entity: The entity, `nil` when the server doesn't know it.

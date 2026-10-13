@@ -2,10 +2,8 @@ import Foundation
 
 /// State helpers shared by the remote's controls (web `MediaRemoteModalContent.tsx:54-71`, `entityState.ts:48`).
 public enum MediaRemoteState {
-
     /// Unavailable or `off`.
     public static func isOff(_ state: String?) -> Bool { EntityState.isUnavailable(state) || state == "off" }
-
 
     /// `formatMediaState`: the subtitle for a device or HDMI port.
     public static func format(_ state: String?) -> String {

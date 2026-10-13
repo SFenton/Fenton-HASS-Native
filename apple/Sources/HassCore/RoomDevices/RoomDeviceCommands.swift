@@ -91,12 +91,10 @@ public final class RoomDeviceCommands {
 
 /// State parsing the device sheets share (web `entityState.ts`).
 public enum DeviceState {
-
     /// `on` / `off` / `unavailable` (web `binaryFlag`).
     public static func binaryFlag(_ state: String?) -> String {
         EntityState.isUnavailable(state) ? "unavailable" : state == "on" ? "on" : "off"
     }
-
 
     /// A number parsed from the state.
     public static func number(_ entity: EntityState?) -> Double? {
