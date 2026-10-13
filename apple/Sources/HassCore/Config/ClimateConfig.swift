@@ -134,7 +134,7 @@ public enum ClimateConfig {
     // MARK: - Copy
 
     /// Sheet title (`THERMOSTAT_MODAL_TITLE`).
-    public static let sheetTitle = "Thermostat · Advanced Controls"
+    public static let sheetTitle = "Advanced Controls"
 
     /// Section descriptions (`THERMOSTAT_SECTION_DESCRIPTIONS`, `DashboardViewPage.tsx:2977`).
     public enum Copy {

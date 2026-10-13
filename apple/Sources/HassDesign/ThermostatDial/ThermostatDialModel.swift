@@ -393,6 +393,20 @@ public struct ThermostatCommitGate: Sendable {
 
 // MARK: - Editing
 
+/// A commit Home Assistant rejected, numbered so the same targets rejected twice still count as a new event.
+public struct ThermostatRejection: Equatable, Sendable {
+    /// The rejected setpoints.
+    public var targets: ThermostatTargets
+    /// Rejections so far, from the caller.
+    public var count: Int
+
+    /// Creates a rejection.
+    public init(targets: ThermostatTargets, count: Int) {
+        self.targets = targets
+        self.count = count
+    }
+}
+
 /// The dial's interaction state machine, kept out of the view so every gesture path is unit-testable.
 /// Each call takes the current configuration (Home Assistant's latest values) and returns the setpoints
 /// to commit, if any.
@@ -440,6 +454,15 @@ public struct ThermostatDialEditor: Sendable {
         let geometry = configuration.geometry
         move(handle, to: geometry.snapped(current + (increment ? geometry.step : -geometry.step)), in: configuration)
         return commit(configuration, now: now)
+    }
+
+    /// Home Assistant rejected the commit of `rejected`: if that is still the edit on screen and no handle is being
+    /// dragged, drop it so the handles return to the entity's setpoints. A late failure of an older commit never
+    /// undoes a newer edit. The same value may be sent again (pattern optimistic-actions: roll back, no error state).
+    public mutating func rollBack(rejected: ThermostatTargets) {
+        gate = ThermostatCommitGate()
+        guard pending?.value == rejected, activeHandle == nil else { return }
+        pending = nil
     }
 
     // MARK: Private

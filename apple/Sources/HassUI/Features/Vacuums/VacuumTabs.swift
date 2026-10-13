@@ -30,6 +30,9 @@ struct VacuumTabPicker: View {
 struct VacuumControlsTab: View {
     var controller: VacuumController
     var mapState: VacuumMapState
+    /// The runtime mode drawn. While a clean starts or ends the sheet keeps drawing the outgoing mode as it fades out
+    /// (web `useVacuumRuntimeContentTransition`).
+    var mode: VacuumRuntimeMode
     var onOpenRooms: () -> Void
     var onEditArea: () -> Void
     @State private var confirming: Confirmation?
@@ -42,7 +45,7 @@ struct VacuumControlsTab: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
             stateSection
-            let settings = controller.powerSettings
+            let settings = controller.powerSettings(in: mode)
             if !settings.isEmpty {
                 VacuumSection("Power Settings") {
                     ForEach(settings) { setting in
@@ -76,8 +79,9 @@ struct VacuumControlsTab: View {
     private var confirmTitle: String { confirming == .toRooms ? "Switch to Rooms" : "Switch to Area?" }
 
     @ViewBuilder private var stateSection: some View {
-        let actions = controller.runtimeActions
-        let setup = controller.showsCleaningSetup
+        // The live mode's actions (Pause, Stop) wait for the swap rather than popping into the fading setup.
+        let actions = mode == controller.runtimeMode ? controller.runtimeActions : []
+        let setup = controller.showsCleaningSetup(in: mode)
         if setup || !actions.isEmpty || controller.cleanError != nil {
             VacuumSection(VacuumFormat.state(controller.state, fallback: "Vacuum")) {
                 if setup {
@@ -145,7 +149,7 @@ struct VacuumControlsTab: View {
             }
         }
         if let passes = controller.passesSetting {
-            VacuumSettingRow(setting: passes, hideTitle: false) { controller.select(passes.entityId, option: $0) }
+            VacuumSettingRow(setting: passes) { controller.select(passes.entityId, option: $0) }
         }
         VacuumActionButton(action: controller.cleanAction) { controller.run(.clean) }
     }
@@ -179,6 +183,10 @@ struct VacuumRoomsTab: View {
     var controller: VacuumController
     @State private var pendingZone: VacuumConfig.Zone?
     @ScaledMetric(relativeTo: .subheadline) private var minCellWidth: CGFloat = 150
+    /// Room cards are tile-sized (76 pt minimum, icon above the title), larger than the web's 58 px buttons, so
+    /// the two-column iPhone grid reads as tappable cards (owner, 2026-10-13). A floor, not scaled: larger text grows the
+    /// card through its content. HIG: Layout, Buttons.
+    private let cardHeight: CGFloat = 76
 
     var body: some View {
         VacuumSection("Rooms") {
@@ -204,28 +212,34 @@ struct VacuumRoomsTab: View {
         return Button {
             if controller.roomToggleNeedsConfirmation(zone) { pendingZone = zone } else { controller.toggleRoom(zone) }
         } label: {
-            HStack(spacing: HassTokens.Spacing.s) {
-                Image(systemName: VacuumStyle.symbol(zone.icon))
-                    .foregroundStyle(selected ? VacuumStyle.primaryFill : HassTokens.Ink.secondary)
+            // Tile layout (icon and order badge on top, title below) so the title gets the card's full width:
+            // beside the icon and badge, "Kitchen" broke mid-word on iPhone.
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                HStack(alignment: .top) {
+                    Image(systemName: VacuumStyle.symbol(zone.icon))
+                        .font(.title2)
+                        .foregroundStyle(selected ? VacuumStyle.primaryFill : HassTokens.Ink.secondary)
+                    Spacer(minLength: HassTokens.Spacing.xs)
+                    if let order {
+                        Text("\(order)")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(minWidth: 28, minHeight: 28)
+                            .background(VacuumStyle.primaryFill, in: Circle())
+                    }
+                }
                 Text(zone.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(HassTokens.Ink.primary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: HassTokens.Spacing.xs)
-                if let order {
-                    Text("\(order)")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 24, minHeight: 24)
-                        .background(VacuumStyle.primaryFill, in: Circle())
-                }
             }
-            .padding(.horizontal, HassTokens.Spacing.m)
-            .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget + 8, alignment: .leading)
-            .background(VacuumStyle.rowFill, in: VacuumStyle.rowShape)
-            .overlay { VacuumStyle.rowShape.strokeBorder(selected ? VacuumStyle.primaryFill : .clear, lineWidth: 2) }
-            .contentShape(VacuumStyle.rowShape)
+            .padding(HassTokens.Spacing.m)
+            // Fills the row the grid proposes, so cards in a row match the tallest title.
+            .frame(maxWidth: .infinity, minHeight: cardHeight, maxHeight: .infinity, alignment: .topLeading)
+            .background(VacuumStyle.rowFill, in: VacuumStyle.cardShape)
+            .overlay { VacuumStyle.cardShape.strokeBorder(selected ? VacuumStyle.primaryFill : .clear, lineWidth: 2) }
+            .contentShape(VacuumStyle.cardShape)
         }
         .buttonStyle(.plain)
         .disabled(!controller.roomsEditable)
@@ -243,6 +257,8 @@ struct VacuumRoomsTab: View {
 struct VacuumAutoCleanTab: View {
     var controller: VacuumController
     @ScaledMetric(relativeTo: .subheadline) private var minCellWidth: CGFloat = 150
+    /// Matches the Rooms tab's card height.
+    private let cardHeight: CGFloat = 76
 
     var body: some View {
         VacuumSection("Disabled Auto-Clean Rooms") {
@@ -252,19 +268,22 @@ struct VacuumAutoCleanTab: View {
                     let skipped = controller.isAutoCleanDisabled(room)
                     let unavailable = VacuumStatusResolver.isUnavailable(controller.store.entity(room.entityId).state?.state)
                     Button { controller.toggleAutoClean(room) } label: {
-                        HStack(spacing: HassTokens.Spacing.s) {
+                        HStack(spacing: HassTokens.Spacing.m) {
                             Image(systemName: skipped ? "checkmark.square.fill" : "square")
+                                .font(.title2)
                                 .foregroundStyle(skipped ? VacuumStyle.primaryFill : HassTokens.Ink.secondary)
+                                .frame(minWidth: 32)
                             Text(room.title)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.body.weight(.semibold))
                                 .foregroundStyle(HassTokens.Ink.primary)
                                 .fixedSize(horizontal: false, vertical: true)
                             Spacer(minLength: 0)
                         }
                         .padding(.horizontal, HassTokens.Spacing.m)
-                        .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget + 8, alignment: .leading)
-                        .background(VacuumStyle.rowFill, in: VacuumStyle.rowShape)
-                        .contentShape(VacuumStyle.rowShape)
+                        .padding(.vertical, HassTokens.Spacing.s)
+                        .frame(maxWidth: .infinity, minHeight: cardHeight, maxHeight: .infinity, alignment: .leading)
+                        .background(VacuumStyle.rowFill, in: VacuumStyle.cardShape)
+                        .contentShape(VacuumStyle.cardShape)
                     }
                     .buttonStyle(.plain)
                     .disabled(unavailable)

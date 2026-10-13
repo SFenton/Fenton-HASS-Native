@@ -64,7 +64,7 @@ apple/Tests/**                                             → tests for your ow
 |---|---|
 | Sign-in (login flow, MFA step, Keychain) | Verified on the live server (password sign-in, relaunch skips sign-in) on iPhone, Duo and iPad |
 | Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
-| Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
+| Home | Status rail (six web chips), weather card with 24-hour carousel and Weather sheet, guest presence, camera snapshots; chip sheets are the shared room overview (rooms → room detail) |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
 | Security | Alarm modes (disarm confirms), front door lock, garage doors (command state machine), hidden Vehicle tile, cameras; gallery `FENTON_GALLERY=security` |
 | Climate | Page, Thermostat Hub pickers and the advanced-controls sheet (Rooms, Automation, Tracking and their detail pages); gallery `FENTON_GALLERY=climate` |
@@ -91,6 +91,7 @@ apple/Tests/**                                             → tests for your ow
 
 ## 4. Log
 
+- 2026-10-13: Home chip sheets and weather (`claude/project-thread-8gh1yh`): one room overview sheet for Lights, Climate, Occupancy, Contact Sensors and the new Air Quality chip (`.agents/patterns/room-overview-sheet.md`), pushing a room's detail (lights with the group brightness tile and explicit on/off through `OptimisticActions`); Security chip opens `SecuritySystemSheet`; Security's contact chip and room group sheets share the detail; `DynamicGridLayout(equalRowHeights:)` with `gridHeader()` so tiles share the tallest height. Weather card with paging hourly carousel, Weather sheet (Today briefing, Conditions modes, seven days, Highlights) and a disk-cached forecast store (`.agents/patterns/weather.md`). Journeys and per-page audits pass on iPhone 18 Pro and iPad (portrait and landscape); backboardd crashes under host load were rerun alone.
 - 2026-10-10: initial scaffold.
 - 2026-10-11: PR #1 verified on the Mac: journeys and accessibility audits green on iPhone, Duo (folded, unfolded portrait and landscape) and iPad; 32 `swift test` tests pass. Redacted screenshots were attached to the thread.
 - 2026-10-11: Lights sheet sends explicit `turn_on` / `turn_off` instead of `toggle` (Presence Based Lighting's Presence Lock reverts toggles in empty rooms), and dimmable groups get `BrightnessTile` (drag to set brightness, web `LightBrightnessCard`).

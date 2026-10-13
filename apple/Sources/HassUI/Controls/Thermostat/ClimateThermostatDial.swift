@@ -64,6 +64,8 @@ public struct ClimateThermostatDial: View {
 
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection: HassConnection?
+    /// The latest rejected commit; the dial rolls it back if it is still the edit on screen.
+    @State private var rejection: ThermostatRejection?
 
     /// Creates a bound dial.
     public init(
@@ -81,15 +83,23 @@ public struct ClimateThermostatDial: View {
     public var body: some View {
         var configuration = ThermostatDialConfiguration(entity: store.entity(entityId).state, title: title)
         if let action { configuration.action = action }
-        return ThermostatDial(configuration, size: size) { commit($0) }
+        return ThermostatDial(configuration, size: size, rejection: rejection) { commit($0) }
     }
 
-    /// Sends a commit to ``caller``, else the environment's connection.
+    /// Sends a commit to ``caller``, else the environment's connection. A rejected call rolls the handles back to
+    /// Home Assistant's setpoints (pattern optimistic-actions: no error state between the pending and live value).
     @discardableResult
     func commit(_ targets: ThermostatTargets) -> Task<Void, Never>? {
         let data = setTemperatureData(for: targets)
         guard let target: any HassServiceCalling = caller ?? connection else { return nil }
-        return Task { try? await target.callService("climate", "set_temperature", data: data) }
+        let rejection = $rejection
+        return Task {
+            do {
+                try await target.callService("climate", "set_temperature", data: data)
+            } catch {
+                rejection.wrappedValue = ThermostatRejection(targets: targets, count: (rejection.wrappedValue?.count ?? 0) + 1)
+            }
+        }
     }
 
     /// The `climate.set_temperature` data a commit sends: this entity, or `commitEntityIds` when set.

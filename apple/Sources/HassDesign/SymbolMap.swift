@@ -164,6 +164,7 @@ public enum SymbolMap {
         "mdi:bathtub": "bathtub",
         "mdi:food-fork-drink": "fork.knife",
         "mdi:window-closed": "window.vertical.closed",
+        "mdi:blur": "aqi.medium",
         "mdi:motion-sensor-off": "figure.stand",
         "mdi:weather-sunset-up": "sunrise",
         "mdi:apple": "apple.logo",

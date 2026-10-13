@@ -48,6 +48,7 @@ struct StatusChipView: View {
         case .climate: HassTokens.Tint.climate
         case .presence: HassTokens.Tint.presence
         case .contact: HassTokens.Tint.contact
+        case .air: RoomTone.air.color
         }
     }
 }

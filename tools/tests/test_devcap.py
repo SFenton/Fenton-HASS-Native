@@ -8,6 +8,8 @@ open file), which lets most cases run in-process.
 
 import json
 import os
+import shutil
+import stat
 import subprocess
 import sys
 import threading
@@ -17,10 +19,34 @@ import unittest.mock
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from tools import devcap
-from tools.devcap import Gate, Hold, WaitTimeout, gate_names, parse_ticket, queue_order
+os.environ["DEVCAP_NO_DEFER"] = "1"  # test this checkout, never the machine's shared install
+from tools import devcap  # noqa: E402
+from tools.devcap import Gate, Hold, WaitTimeout, gate_names, parse_ticket, queue_order  # noqa: E402
 
 TOOL = Path(devcap.__file__)
+REAL_SHUTDOWN_SIMS = devcap.shutdown_sims
+UDID = "0D77CC23-71D3-46F4-B491-EDAA73B6B65A"
+
+#: Stands in for ``xcrun``: logs its arguments and which simulator slots are
+#: still held at that moment (probed with the same OS lock devcap uses).
+FAKE_XCRUN = """#!/usr/bin/env python3
+import fcntl, os, sys
+if sys.argv[1:3] == ["simctl", "list"]:
+    print(os.environ.get("FAKE_BOOTED", '{"devices": {}}'))
+    sys.exit(0)
+gate = os.path.join(os.environ["DEVCAP_DIR"], "simulator")
+held = []
+for name in sorted(os.listdir(gate) if os.path.isdir(gate) else []):
+    if name.endswith(".lock"):
+        handle = open(os.path.join(gate, name), "a+b")
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            held.append(name)
+        handle.close()
+with open(os.environ["FAKE_XCRUN_LOG"], "a") as log:
+    log.write(" ".join(sys.argv[1:]) + " held=" + ",".join(held) + "\\n")
+"""
 
 
 class DevcapTestCase(unittest.TestCase):
@@ -31,8 +57,19 @@ class DevcapTestCase(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(self.tmp.cleanup)
-        for key in [k for k in os.environ if k.startswith("DEVCAP_SLOTS_") or k == devcap.HELD_ENV]:
+        for key in [k for k in os.environ if k.startswith("DEVCAP_SLOTS_") or k == devcap.HELD_ENV
+                    or k == "DEVCAP_REAP_GRACE"]:
             os.environ.pop(key)
+        # Never read or touch the real Mac's simulators from tests.
+        self.booted = []
+        os.environ["DEVCAP_HUB"] = "off"
+        for name, value in (("list_sims", lambda: [{**b, "booted": b.get("booted", True)} for b in self.booted]),
+                            ("debugged_sims", lambda: set()),
+                            ("shutdown_sims", lambda udids: self.shutdowns.extend(udids))):
+            patcher = unittest.mock.patch.object(devcap, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.shutdowns = []
 
     def gate(self, name="simulator", slots=1):
         return Gate(name, self.root, slots)
@@ -214,16 +251,20 @@ class HoldTests(DevcapTestCase):
 
 
 class CliTests(DevcapTestCase):
+    def setUp(self):
+        super().setUp()
+        self.fake_log = self.install_fake_xcrun()  # subprocesses never reach the real simctl
+
     def cli(self, *args, **kwargs):
         return subprocess.run([sys.executable, str(TOOL), *args], capture_output=True, text=True,
                               env={**os.environ}, timeout=30, **kwargs)
 
     def test_run_passes_exit_code_and_held_gates(self):
-        result = self.cli("run", "--sim", "abc", "--pool", "build", "--purpose", "t", "--",
+        result = self.cli("run", "--sim", UDID, "--pool", "build", "--purpose", "t", "--",
                           sys.executable, "-c",
                           "import os, sys; print(os.environ['DEVCAP_HELD']); sys.exit(3)")
         self.assertEqual(result.returncode, 3, result.stderr)
-        self.assertEqual(result.stdout.strip(), "build,device-ABC,simulator")
+        self.assertEqual(result.stdout.strip(), f"build,device-{UDID},simulator")
 
     def test_run_requires_a_gate_and_a_command(self):
         self.assertEqual(self.cli("run", "--", "true").returncode, 2)
@@ -265,17 +306,344 @@ class CliTests(DevcapTestCase):
             os.environ.pop(devcap.HELD_ENV)
             report = json.loads(self.cli("status", "--json").stdout)
             text = self.cli("status").stdout
-        by_gate = {entry["gate"]: entry for entry in report}
+        by_gate = {entry["gate"]: entry for entry in report["gates"]}
         self.assertEqual(by_gate["device-ABC"]["holders"][0]["purpose"], "journey")
         self.assertEqual(len(by_gate["simulator"]["holders"]), 1)
         self.assertIn("build", by_gate)
         self.assertIn("device-ABC: 1/1 held", text)
         self.assertIn("journey", text)
 
+    def test_shutdown_runs_after_the_command_inside_the_hold(self):
+        calls = []
+
+        def record(udids):
+            calls.append((list(udids), [h["purpose"] for h in Gate("simulator", self.root).holders()]))
+
+        with unittest.mock.patch.object(devcap, "shutdown_sims", record):
+            code = devcap.main(["run", "--sim", UDID, "--shutdown", "--purpose", "p", "--",
+                                sys.executable, "-c", "pass"])
+            devcap.main(["run", "--sim", UDID, "--", sys.executable, "-c", "pass"])
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [([UDID], ["p"])])  # once, while the slot was still held
+
+    def test_shutdown_runs_when_the_hold_overruns(self):
+        calls = []
+        held = Hold(["simulator"], "x", wait_seconds=1, hold_seconds=0.2, root=self.root)
+        held.cleanup = lambda: calls.append("shutdown")
+        held.acquire()
+        with unittest.mock.patch.object(devcap.os, "_exit", lambda code: calls.append(code)):
+            code = devcap.run_command(held, [sys.executable, "-c", "import time; time.sleep(30)"])
+            deadline = time.monotonic() + 10
+            while len(calls) < 2 and time.monotonic() < deadline:  # the watchdog finishes
+                time.sleep(0.05)
+        self.assertEqual(code, devcap.HOLD_TIMEOUT_EXIT)
+        self.assertEqual(calls, ["shutdown", devcap.HOLD_TIMEOUT_EXIT])
+
+    def test_overrun_skips_cleanup_when_every_gate_is_inherited(self):
+        calls = []
+        os.environ[devcap.HELD_ENV] = "simulator"
+        held = Hold(["simulator"], "nested", wait_seconds=1, hold_seconds=0.1, root=self.root)
+        held.cleanup = lambda: calls.append("shutdown")
+        with unittest.mock.patch.object(devcap.os, "_exit", lambda code: calls.append(code)):
+            held.acquire()
+            deadline = time.monotonic() + 10
+            while not calls and time.monotonic() < deadline:
+                time.sleep(0.05)
+        self.assertEqual(calls, [devcap.HOLD_TIMEOUT_EXIT])
+
+    @unittest.skipIf(os.name == "nt", "simulators are macOS-only")
+    def test_cli_nested_shutdown_leaves_the_parents_simulator_alone(self):
+        log = self.fake_xcrun()
+        inner = f"{sys.executable} {TOOL} run --sim {UDID} --shutdown --hold 1 -- sleep 30"
+        result = self.cli("run", "--sim", UDID, "--", "/bin/sh", "-c", inner)
+        self.assertEqual(result.returncode, devcap.HOLD_TIMEOUT_EXIT, result.stderr)
+        self.assertFalse(log.exists(), "the nested run shut down its parent's simulator")
+
+    def test_shutdown_sims_survives_missing_xcrun(self):
+        with unittest.mock.patch.object(devcap.subprocess, "run", side_effect=FileNotFoundError):
+            REAL_SHUTDOWN_SIMS([UDID])
+
+    def test_shutdown_sims_never_passes_a_non_udid(self):
+        with unittest.mock.patch.object(devcap.subprocess, "run") as run:
+            REAL_SHUTDOWN_SIMS(["all", "booted", "iPhone 17 Pro"])
+        run.assert_not_called()
+
+    def test_sim_must_be_a_udid(self):
+        for value in ("all", "booted", "abc"):
+            result = self.cli("run", "--sim", value, "--shutdown", "--", "true")
+            self.assertEqual(result.returncode, 2, value)
+            self.assertIn("simulator UDID", result.stderr)
+
+    def install_fake_xcrun(self):
+        bin_dir = Path(self.tmp.name + "-bin")
+        bin_dir.mkdir()
+        self.addCleanup(shutil.rmtree, bin_dir, True)
+        xcrun = bin_dir / "xcrun"
+        xcrun.write_text(FAKE_XCRUN.replace("/usr/bin/env python3", sys.executable))
+        xcrun.chmod(0o755)
+        log = self.root / "xcrun.log"
+        os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
+        os.environ["FAKE_XCRUN_LOG"] = str(log)
+        return log
+
+    def fake_xcrun(self):
+        os.environ["DEVCAP_SLOTS_SIMULATOR"] = "1"
+        return self.fake_log
+
+    @unittest.skipIf(os.name == "nt", "simulators are macOS-only")
+    def test_cli_shutdown_runs_while_the_slot_is_held(self):
+        log = self.fake_xcrun()
+        result = self.cli("run", "--sim", UDID, "--shutdown", "--", sys.executable, "-c", "pass")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(log.read_text(), f"simctl shutdown {UDID} held=slot-0.lock\n")
+
+    @unittest.skipIf(os.name == "nt", "simulators are macOS-only")
+    def test_cli_shutdown_runs_after_a_hold_timeout_before_the_slot_frees(self):
+        log = self.fake_xcrun()
+        for _ in range(3):
+            log.unlink(missing_ok=True)
+            result = self.cli("run", "--sim", UDID, "--shutdown", "--hold", "1", "--",
+                              sys.executable, "-c", "import time; time.sleep(30)")
+            self.assertEqual(result.returncode, devcap.HOLD_TIMEOUT_EXIT, result.stderr)
+            self.assertTrue(log.exists(), "xcrun was never called")
+            self.assertEqual(log.read_text(), f"simctl shutdown {UDID} held=slot-0.lock\n")
+            self.assertEqual(Gate("simulator", self.root).holders(), [])
+
     def test_slots_and_version(self):
         os.environ["DEVCAP_SLOTS_SIMULATOR"] = "2"
         self.assertIn("simulator=2", self.cli("slots").stdout)
         self.assertEqual(self.cli("--version").stdout.strip(), devcap.VERSION)
+
+
+LEAKED = "11111111-2222-4333-8444-555555555555"
+
+
+class UnmanagedSimTests(DevcapTestCase):
+    """Simulators booted outside any hold count against the slots and can be reaped."""
+
+    def waiter(self, slots=2):
+        os.environ["DEVCAP_SLOTS_SIMULATOR"] = str(slots)
+        return Gate("simulator", self.root)
+
+    def test_unmanaged_simulators_take_slots(self):
+        self.booted = [{"udid": LEAKED, "name": "Leaked"}]
+        holder = self.waiter()
+        holder.acquire("one", 1)
+        messages = []
+        with self.assertRaises(WaitTimeout):
+            self.waiter().acquire("two", 0.3, 0.05, announce=messages.append)
+        self.assertIn("2/2 in use", messages[0])
+        self.assertIn("'Leaked' booted outside any hold", messages[0])
+        self.assertEqual(self.shutdowns, [], "nothing is reaped within the grace period")
+        holder.release()
+
+    def test_own_and_held_simulators_are_not_unmanaged(self):
+        self.booted = [{"udid": UDID, "name": "Mine"}, {"udid": LEAKED, "name": "Held"}]
+        with devcap.hold(sims=[LEAKED], hold_seconds=None, root=self.root):
+            os.environ.pop(devcap.HELD_ENV)
+            self.assertEqual(devcap.scan_unmanaged(self.root, exclude=[UDID], reap=False), [])
+        [entry] = devcap.scan_unmanaged(self.root, exclude=[UDID], reap=False)
+        self.assertEqual(entry["name"], "Held")  # its hold ended, so it is unmanaged now
+
+    def test_reaps_only_after_the_grace_period(self):
+        self.booted = [{"udid": LEAKED, "name": "Leaked"}]
+        [entry] = devcap.scan_unmanaged(self.root, grace=60)
+        self.assertEqual(entry["name"], "Leaked")
+        self.assertEqual(self.shutdowns, [])
+        state = json.loads((self.root / "reaper.json").read_text())
+        state["first_unheld"][LEAKED] -= 61
+        (self.root / "reaper.json").write_text(json.dumps(state))
+        self.assertEqual(devcap.scan_unmanaged(self.root, grace=60), [])
+        self.assertEqual(self.shutdowns, [LEAKED])
+        self.assertIn("reap Leaked", (self.root / "devcap.log").read_text())
+
+    def test_never_reaps_debugged_held_or_unknown(self):
+        self.booted = [{"udid": LEAKED, "name": "Leaked"}]
+        with unittest.mock.patch.object(devcap, "debugged_sims", lambda: {LEAKED}):
+            [entry] = devcap.scan_unmanaged(self.root, grace=0)
+        self.assertTrue(entry["debugged"])
+        with unittest.mock.patch.object(devcap, "debugged_sims", lambda: None):  # ps failed
+            devcap.scan_unmanaged(self.root, grace=0)
+        with devcap.hold(devices=[LEAKED], hold_seconds=None, root=self.root):
+            self.assertEqual(devcap.scan_unmanaged(self.root, grace=0), [])
+        self.assertEqual(self.shutdowns, [])
+
+    def test_waiter_reaps_when_configured_and_then_proceeds(self):
+        os.environ["DEVCAP_REAP_GRACE"] = "0"
+        self.booted = [{"udid": LEAKED, "name": "Leaked"}]
+        gate = self.waiter(slots=1)
+        gate.acquire("needs room", 1, 0.05, announce=lambda _: None)
+        self.assertEqual(self.shutdowns, [LEAKED])
+        gate.release()
+
+    def test_finishing_a_simulator_hold_sweeps_leaked_simulators(self):
+        os.environ["DEVCAP_REAP_GRACE"] = "0"
+        with devcap.hold(sims=[UDID], hold_seconds=None, root=self.root):
+            self.booted = [{"udid": LEAKED, "name": "Leaked"}]
+            self.shutdowns.clear()  # the acquire-time scan saw nothing
+        self.assertEqual(self.shutdowns, [LEAKED])
+
+    def test_unreadable_simctl_blocks_nobody(self):
+        with unittest.mock.patch.object(devcap, "list_sims", lambda: None):
+            self.assertIsNone(devcap.scan_unmanaged(self.root, grace=0))
+            gate = self.waiter(slots=1)
+            gate.acquire("x", 1, 0.05)
+            gate.release()
+
+    def test_reap_grace_setting(self):
+        self.assertEqual(devcap.reap_grace(self.root), devcap.DEFAULT_REAP_GRACE_SECONDS)
+        (self.root / "config.json").write_text(json.dumps({"reap_grace_seconds": 120}))
+        self.assertEqual(devcap.reap_grace(self.root), 120)
+        for raw, expected in (("off", None), ("30", 30.0), ("junk", devcap.DEFAULT_REAP_GRACE_SECONDS)):
+            os.environ["DEVCAP_REAP_GRACE"] = raw
+            self.assertEqual(devcap.reap_grace(self.root), expected)
+
+    def test_windows_to_close_keeps_in_use_and_new_windows(self):
+        windows = [{"pid": 7, "window": i, "title": t} for i, t in enumerate([
+            "iPhone Duo (Home) \u2013 iOS 27.1", "Devices \u2013 No Selection", "Devices \u2013 No Selection",
+            "iPhone 17 Pro (Media) \u2013 iOS 27.0"])]
+        to_close, seen = devcap.windows_to_close(windows, {"iPhone Duo (Home)"}, {}, now=1000, grace=60)
+        self.assertEqual(to_close, [])  # all new
+        to_close, _ = devcap.windows_to_close(windows[:3], {"iPhone Duo (Home)"}, seen, now=1061, grace=60)
+        self.assertEqual([w["window"] for w in to_close], [2, 1])  # highest index first, in-use kept
+        self.assertEqual(devcap.hub_device_name("iPhone 17 Pro (Rooms) \u2013 iOS 27.0"), "iPhone 17 Pro (Rooms)")
+
+    def test_scan_closes_stale_windows_of_unused_devices(self):
+        self.booted = [{"udid": UDID, "name": "Live"}]
+        windows = [{"pid": 7, "window": 0, "title": "Live \u2013 iOS 27.1"},
+                   {"pid": 7, "window": 1, "title": "Devices \u2013 No Selection"}]
+        calls = []
+        with devcap.hold(sims=[UDID], hold_seconds=None, root=self.root), \
+                unittest.mock.patch.object(devcap, "hub_windows", lambda root: (Path("/hub"), windows)), \
+                unittest.mock.patch.object(devcap.subprocess, "run", lambda argv, **kw: calls.append(argv)):
+            devcap.scan_unmanaged(self.root, grace=0)
+        self.assertEqual(calls, [["/hub", "close", "7", "1"]])
+        self.assertIn("close Device Hub window 'Devices", (self.root / "devcap.log").read_text())
+
+    def test_held_physical_device_named_like_a_simulator_keeps_its_window(self):
+        self.booted = [{"udid": UDID, "name": "Twin", "booted": False}]
+        windows = [{"pid": 7, "window": 0, "title": "Twin \u2013 iOS 27.0"},
+                   {"pid": 7, "window": 1, "title": "Devices \u2013 No Selection"}]
+        calls = []
+        with devcap.hold(devices=["00008110-001A2B3C4D5E6F70"], hold_seconds=None, root=self.root), \
+                unittest.mock.patch.object(devcap, "hub_windows", lambda root: (Path("/hub"), windows)), \
+                unittest.mock.patch.object(devcap.subprocess, "run", lambda argv, **kw: calls.append(argv)):
+            devcap.scan_unmanaged(self.root, grace=0)
+        self.assertEqual(calls, [["/hub", "close", "7", "1"]])
+
+    def test_physical_device_windows_are_never_closed(self):
+        windows = [{"pid": 7, "window": 0, "title": "Stephen's iPhone \u2013 iOS 27.0"},
+                   {"pid": 7, "window": 1, "title": "Old Sim \u2013 iOS 27.0"},
+                   {"pid": 7, "window": 2, "title": "Devices \u2013 No Selection"}]
+        to_close, _ = devcap.windows_to_close(windows, set(), {}, now=0, grace=0, sim_names={"Old Sim"})
+        self.assertEqual([w["window"] for w in to_close], [2, 1])
+
+    def test_debugged_from_ps(self):
+        app = f"/Users/x/Library/Developer/CoreSimulator/Devices/{LEAKED.lower()}/data/Containers/Bundle/A/App.app/App"
+        text = "\n".join([
+            "10 1 /Applications/Xcode.app/Contents/SharedFrameworks/LLDB.framework/Resources/debugserver --native-regs",
+            f"11 10 {app}",
+            f"12 1 /Users/x/Library/Developer/CoreSimulator/Devices/{UDID}/data/Containers/Bundle/B/App.app/App",
+        ])
+        self.assertEqual(devcap.debugged_from_ps(text), {LEAKED})
+
+
+class UnmanagedCliTests(DevcapTestCase):
+    cli = CliTests.cli
+    install_fake_xcrun = CliTests.install_fake_xcrun
+
+    def setUp(self):
+        super().setUp()
+        self.fake_log = self.install_fake_xcrun()
+
+    def test_status_lists_unmanaged_simulators(self):
+        os.environ["FAKE_BOOTED"] = json.dumps({"devices": {"iOS": [
+            {"udid": LEAKED, "name": "Leaked", "state": "Booted"},
+            {"udid": UDID, "name": "Off", "state": "Shutdown"}]}})
+        text = self.cli("status").stdout
+        self.assertIn("booted outside any hold (count against 'simulator'): 1", text)
+        self.assertIn(f"Leaked ({LEAKED})", text)
+        report = json.loads(self.cli("status", "--json").stdout)
+        self.assertEqual([u["name"] for u in report["unmanaged"]], ["Leaked"])
+
+    def test_reap_command_shuts_down_idle_unmanaged_simulators(self):
+        os.environ["FAKE_BOOTED"] = json.dumps({"devices": {"iOS": [
+            {"udid": LEAKED, "name": "Leaked", "state": "Booted"}]}})
+        self.assertIn("Leaked", self.cli("reap", "--dry-run").stdout)
+        self.assertFalse(self.fake_log.exists())
+        result = self.cli("reap", "--grace", "0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.fake_log.read_text(), f"simctl shutdown {LEAKED} held=\n")
+
+
+class SharedInstallTests(DevcapTestCase):
+    """Every copy from 1.2.1 on runs the newest version installed with ``devcap install``."""
+
+    def cli(self, *args, env=None):
+        environment = {k: v for k, v in os.environ.items() if k != devcap.NO_DEFER_ENV}
+        return subprocess.run([sys.executable, str(TOOL), *args], capture_output=True, text=True,
+                              env={**environment, **(env or {})}, timeout=60)
+
+    def install_newer(self, body=None):
+        """Install this copy, then rewrite the installed one as a newer version."""
+        self.assertEqual(self.cli("install").returncode, 0)
+        installed = devcap.installed_path(self.root)
+        newer = devcap.VERSION + "9"
+        text = installed.read_text().replace(f'VERSION = "{devcap.VERSION}"', f'VERSION = "{newer}"')
+        installed.write_text(text if body is None else f'VERSION = "{newer}"\n{body}')
+        installed.chmod(0o644)
+        return installed, newer
+
+    def test_older_copies_defer_to_a_newer_install(self):
+        installed, newer = self.install_newer()
+        self.assertEqual(stat.S_IMODE(installed.parent.stat().st_mode), 0o700)
+        self.assertEqual(self.cli("--version").stdout.strip(), newer)
+        self.assertEqual(self.cli("--version", env={devcap.NO_DEFER_ENV: "1"}).stdout.strip(), devcap.VERSION)
+
+    def test_install_from_an_older_copy_never_downgrades(self):
+        installed, newer = self.install_newer()
+        for env in (None, {devcap.NO_DEFER_ENV: "1"}):  # with and without deferral
+            refused = self.cli("install", env=env)
+            self.assertEqual(refused.returncode, 1, refused.stdout)
+            self.assertIn(f"already has newer {newer}; this copy is {devcap.VERSION}", refused.stderr)
+            self.assertEqual(devcap.file_version(installed), newer)
+        forced = self.cli("install", "--force")
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertEqual(devcap.file_version(installed), devcap.VERSION)
+
+    def test_untrusted_install_is_ignored(self):
+        installed, newer = self.install_newer()
+        installed.chmod(0o666)
+        self.assertEqual(self.cli("--version").stdout.strip(), devcap.VERSION)
+        installed.chmod(0o644)
+        installed.parent.chmod(0o770)
+        self.assertEqual(self.cli("--version").stdout.strip(), devcap.VERSION)
+        installed.parent.chmod(0o700)
+        link = installed.with_name("real.py")
+        installed.rename(link)
+        installed.symlink_to(link)
+        self.assertEqual(self.cli("--version").stdout.strip(), devcap.VERSION)
+
+    def test_broken_install_falls_back_to_the_local_copy(self):
+        for body in ("def broken(:\n", "raise RuntimeError('boom')\n", "main = None\n"):
+            installed, _ = self.install_newer(body)
+            result = self.cli("--version")
+            self.assertEqual(result.stdout.strip(), devcap.VERSION, body)
+            self.assertIn("ignoring shared install", result.stderr)
+            installed.unlink()
+        installed.write_bytes(b'VERSION = "9.9.9"\n\xff\xfe not utf-8\n')
+        self.assertEqual(self.cli("--version").stdout.strip(), devcap.VERSION)
+        self.assertIsNone(devcap.file_version(installed))
+
+    def test_an_older_install_is_ignored(self):
+        installed = devcap.installed_path(self.root)
+        installed.parent.mkdir(mode=0o700)
+        installed.write_text('VERSION = "1.0.0"\nraise SystemExit("old install ran")\n')
+        self.assertEqual(self.cli("--version").stdout.strip(), devcap.VERSION)
+
+    def test_version_key(self):
+        self.assertLess(devcap.version_key("1.2.9"), devcap.version_key("1.2.10"))
+        self.assertIsNone(devcap.file_version(self.root / "missing.py"))
 
 
 class AgeTests(unittest.TestCase):

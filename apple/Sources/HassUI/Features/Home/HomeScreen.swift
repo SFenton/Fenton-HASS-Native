@@ -33,7 +33,7 @@ struct HomeScreen: View {
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case let .chip(kind):
-                ChipSheet(kind: kind)
+                chipSheet(kind)
                     .presentationDetents(Self.detents(for: kind))
                     .presentationDragIndicator(.visible)
             case let .camera(camera):
@@ -44,11 +44,21 @@ struct HomeScreen: View {
 }
 
 extension HomeScreen {
-    /// The Lights sheet holds every room's tiles, so it opens full height; at the medium detent the
-    /// lower tiles sat below the screen edge and failed the clipping and contrast audits. Short
-    /// read-only lists keep the medium detent.
+    /// The room overviews hold a grid of every room, so they open full height (at the medium detent the lower tiles
+    /// sat below the screen edge and failed the clipping and contrast audits). Security's controls keep the
+    /// medium detent, as on the Security page.
     static func detents(for kind: HomeConfig.ChipSheet) -> Set<PresentationDetent> {
-        kind == .lights ? [.large] : [.medium, .large]
+        kind == .security ? [.medium, .large] : [.large]
+    }
+
+    /// The sheet a chip opens: the Security page's alarm controls (web `SecurityControls`), else a room overview.
+    @ViewBuilder
+    private func chipSheet(_ kind: HomeConfig.ChipSheet) -> some View {
+        if let overview = kind.overview {
+            RoomOverviewSheet(kind: overview)
+        } else if let caller = callerOverride ?? connection {
+            SecuritySystemSheet(caller: caller)
+        }
     }
 }
 

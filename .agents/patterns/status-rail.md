@@ -4,4 +4,5 @@
 
 - Chips come from config (`HomeConfig.statusChips`) with an entity, symbol, tone and the sheet they open. Pages pass their own subset to `StatusRail(chips:idPrefix:)` (Security shows Security and Contact Sensors).
 - The rail scrolls horizontally; chips keep fixed widths so live values never shift neighbors.
+- Home has six chips in web order: Lights, Security, Climate, Occupancy, Contact Sensors, Air Quality. Summaries follow the web (`HomeConfig.summary`): Lights and Contact Sensors count their rooms' entities, Occupancy reads Detected/Clear, Air Quality joins the AQI and PM2.5 range helpers. Every chip but Security opens a [room overview sheet](room-overview-sheet.md); Security opens `SecuritySystemSheet`.
 - Each chip is a button with the label "<title>, <summary>" for VoiceOver and opens a sheet.

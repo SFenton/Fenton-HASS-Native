@@ -82,7 +82,7 @@ final class ClimateJourneyTests: XCTestCase {
 
     /// Back to the parent page, confirmed by its heading (`parent`, default the sheet's root title). Tries the
     /// `BackButton` (folded Duo rail, iPad), then the bar button that isn't Done.
-    private func back(_ app: XCUIApplication, to parent: String = "Thermostat · Advanced Controls",
+    private func back(_ app: XCUIApplication, to parent: String = "Advanced Controls",
                       file: StaticString = #filePath, line: UInt = #line) {
         var candidates: [XCUIElement] = [app.buttons["BackButton"]]
         candidates += app.navigationBars.buttons.allElementsBoundByIndex.filter { $0.label != "Done" }
@@ -133,25 +133,28 @@ final class ClimateJourneyTests: XCTestCase {
         XCTAssertEqual(element("thermostatDial.handle.low", in: app).value as? String, "62 degrees")
     }
 
-    /// The HVAC mode picker stays open after a choice and sends `climate.set_hvac_mode`; the fan picker closes.
-    func testHubModePickerStaysOpenAndFanPickerCloses() {
+    /// A choice in the hub's dropdown menu (the system menu's item button).
+    private func menuItem(_ title: String, in app: XCUIApplication) -> XCUIElement {
+        app.collectionViews.buttons[title].exists ? app.collectionViews.buttons[title] : app.buttons[title].firstMatch
+    }
+
+    /// The hub's mode and fan dropdowns are native menus with the current choice checked; a choice closes the menu
+    /// and sends `climate.set_hvac_mode` / `climate.set_fan_mode`.
+    func testHubDropdownsSendModeAndFan() {
         let app = launch()
         element("climate.hub.mode", in: app).tap()
-        let cool = element("climate.picker.cool", in: app)
-        XCTAssertTrue(cool.waitForExistence(timeout: 5))
-        XCTAssertTrue(element("climate.picker.heat", in: app).isSelected)
+        let cool = menuItem("Cool", in: app)
+        XCTAssertTrue(cool.waitForExistence(timeout: 5), "Mode menu did not open")
+        XCTAssertTrue(menuItem("Heat", in: app).isSelected, "The current mode is checked")
         cool.tap()
-        XCTAssertTrue(cool.wait(for: \.isSelected, toEqual: true, timeout: 3))
-        XCTAssertTrue(heading("Thermostat Hub Mode", in: app).exists, "Mode picker stays open")
-        app.buttons["Done"].tap()
         waitForCall("climate.set_hvac_mode entity_id=climate.thermostat_hub_w200 hvac_mode=cool", in: app)
         XCTAssertTrue(hasValue(element("climate.hub.mode", in: app), "Cool"))
 
         element("climate.hub.fan", in: app).tap()
-        let on = element("climate.picker.on", in: app)
-        XCTAssertTrue(on.waitForExistence(timeout: 5))
+        let on = menuItem("On", in: app)
+        XCTAssertTrue(on.waitForExistence(timeout: 5), "Fan menu did not open")
         on.tap()
-        XCTAssertTrue(element("climate.hub.fan", in: app).waitForExistence(timeout: 5), "Fan picker closes after a choice")
+        XCTAssertTrue(element("climate.hub.fan", in: app).waitForExistence(timeout: 5), "Fan menu closes after a choice")
         waitForCall("climate.set_fan_mode entity_id=climate.thermostat_hub_w200 fan_mode=on", in: app)
     }
 
@@ -162,7 +165,7 @@ final class ClimateJourneyTests: XCTestCase {
         let app = launch()
         reveal(element("climate.entry.tracking", in: app), in: app).tap()
         XCTAssertTrue(element("climate.sheet.tracking", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(heading("Thermostat · Advanced Controls", in: app).exists)
+        XCTAssertTrue(heading("Advanced Controls", in: app).exists)
         let tabs = app.segmentedControls["climate.sheet.tabs"]
         if tabs.exists {
             tabs.buttons["Rooms"].tap()
@@ -357,7 +360,7 @@ final class ClimateJourneyTests: XCTestCase {
     func testHubPickerPassesAudit() throws {
         try audit { app in
             self.element("climate.hub.mode", in: app).tap()
-            XCTAssertTrue(self.element("climate.picker.cool", in: app).waitForExistence(timeout: 5))
+            XCTAssertTrue(self.menuItem("Cool", in: app).waitForExistence(timeout: 5))
         }
     }
 
@@ -406,7 +409,7 @@ final class ClimateJourneyTests: XCTestCase {
                 keepScreenshot(app, "climate-\(view.name)-\(suffix)")
                 if view.name == "page" {
                     element("climate.hub.mode", in: app).tap()
-                    XCTAssertTrue(element("climate.picker.cool", in: app).waitForExistence(timeout: 5))
+                    XCTAssertTrue(menuItem("Cool", in: app).waitForExistence(timeout: 5))
                     sleep(1)
                     keepScreenshot(app, "climate-hub-picker-\(suffix)")
                 }
