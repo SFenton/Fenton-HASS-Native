@@ -10,13 +10,13 @@ Source: `ha-sfenton-react-dash@9ac2a46:src/pages/DashboardViewPage.tsx` `Thermos
    - Dial titled "Whole Home" on `climate.thermostat_contact_sensors_global_virtual_thermostat`, or on `climate.thermostat_contact_sensors_eco_away_virtual_thermostat` while effectively away. The action line always reads the global entity's `hvac_action`.
    - **Effective away** = `sensor.thermostat_effective_home_away` is `Away`, or it is unknown/unavailable/missing and `binary_sensor.thermostat_contact_sensors_away_mode_active` is `on` (web `thermostatEffectiveAway`).
    - Commits: a heat/cool range set on the global thermostat goes to all eleven room thermostats (web `useCommitThermostatTemperature`); the eco-away thermostat and single targets go to the dial's own entity.
-   - **Thermostat Hub** pill (`climate.thermostat_hub_w200`): thermostat icon, "Thermostat Hub", state text; border and icon tinted by `hvac_action` (heat `#cd5401`, cool `#2c8e98`). Trailing HVAC mode picker (`hvac_modes` → `climate.set_hvac_mode`, compact grid, stays open after a choice; labels `Heat/Cool` for `heat_cool`, icons `HVAC_MODE_ICONS`) and fan picker (`fan_modes` → `climate.set_fan_mode`, hidden when there are none, closes after a choice).
+   - **Thermostat Hub** pill (`climate.thermostat_hub_w200`): thermostat icon, "Thermostat Hub", state text; border and icon tinted by `hvac_action` (heat `#cd5401`, cool `#2c8e98`). Trailing HVAC mode dropdown (`hvac_modes` → `climate.set_hvac_mode`; labels `Heat/Cool` for `heat_cool`, icons `HVAC_MODE_ICONS`) and fan dropdown (`fan_modes` → `climate.set_fan_mode`, hidden when there are none).
    - **Away notice** when effectively away or the effective state is `Away`/`Unknown`/`Unavailable`: "{Vacation Mode|Away Mode} Active. The room may be cooler or warmer than your heat/cool targets to save energy while away." (Vacation Mode while `input_boolean.vacation_mode` is on) else "{state} Mode. {reason}" with `sensor.thermostat_home_away_reason`, falling back to "Home Assistant has not provided an effective-mode reason."
 2. **Warning** when `input_boolean.enable_disable_thermostat_contact_sensors_integration` is `off`: "Automatic Thermostat is off. Open Advanced Configuration to turn Home Assistant's thermostat control back on."
 3. **Open Contact Sensors**, only while `binary_sensor.contact_sensors` is on: one read-only card per open sensor (window icon when the title names a window, else door).
 4. Three **entries** in a grid of up to three columns, each a section header, description and disclosure tile: Room Thermostats → Rooms tab, Advanced Configuration → Automation tab, Room Tracking → Tracking tab (copy in `ClimateConfig.Tab`).
 
-## Sheet "Thermostat · Advanced Controls"
+## Sheet "Advanced Controls"
 
 Tabs Rooms / Automation / Tracking; detail pages push with Back to their tab.
 
@@ -48,4 +48,6 @@ Optimistic values clear on confirmation, on failure, or after 2 s (web `DEFAULT_
 
 - An `unknown` effective home/away state counts as Unknown. The web passes a sensor's raw lowercase `unknown` through `formatCompactEntityState`, so its `Unknown` checks never match; the spec's intent (unknown falls back to Away Mode) wins.
 - Unavailable switches are disabled (the web's room checkboxes stay tappable).
+- The hub's mode and fan pickers are native dropdown menus with the current choice checked (owner, 2026-10-13), not the web's option-tile dialog; a menu closes after each choice, so the mode no longer stays open.
+- The sheet is titled "Advanced Controls" (owner, 2026-10-13), not the web's "Thermostat · Advanced Controls".
 - The Predictive Comfort detail shows the recommendation as a "Recommendation: …" line under the title instead of a sheet subtitle.

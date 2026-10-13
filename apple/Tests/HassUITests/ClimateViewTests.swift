@@ -87,14 +87,14 @@ struct ClimateViewTests {
         #expect(render(VStack { PredictiveComfortTile(controller: climate) {} }, controller: climate) != nil)
     }
 
-    @Test func optionPickerRendersSelectedAndUnselected() {
+    @Test func hubMenusRenderEnabledAndEmpty() {
         let climate = controller()
         let hub = climate.entity(ClimateConfig.hubEntityId)
-        let picker = ClimateOptionPicker(title: "Thermostat Hub Mode", options: ClimateLogic.hvacModeOptions(hub), selected: "heat",
-                                         keepsOpen: true, tint: { ClimateStyle.tint(action: $0) }) { _ in }
-        #expect(render(picker, controller: climate) != nil)
-        #expect(render(picker, controller: climate, typeSize: .accessibility5) != nil)
-        #expect(render(HubPickerButton(symbol: "power", label: "Mode", value: "Heat", isDisabled: true) {}, controller: climate) != nil)
+        let menu = HubMenu(symbol: "power", label: "Thermostat Hub Mode", value: "Heat", options: ClimateLogic.hvacModeOptions(hub),
+                           selected: "heat") { _ in }
+        #expect(render(menu, controller: climate) != nil)
+        #expect(render(menu, controller: climate, typeSize: .accessibility5) != nil)
+        #expect(render(HubMenu(symbol: "power", label: "Mode", value: "Heat", options: [], selected: nil) { _ in }, controller: climate) != nil)
     }
 
     // MARK: Rules
@@ -115,6 +115,21 @@ struct ClimateViewTests {
         #expect(caller.calls == ["climate.set_temperature"])
         let climate = controller()
         #expect(render(dial, controller: climate) != nil)
+    }
+
+    /// A rejected commit is not swallowed: the dial's task runs the rollback path.
+    @Test func boundDialSurvivesARejectedCommit() async {
+        final class Rejecting: HassServiceCalling {
+            var attempts = 0
+            func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
+                attempts += 1
+                throw URLError(.badServerResponse)
+            }
+        }
+        let caller = Rejecting()
+        let dial = ClimateThermostatDial(entityId: "climate.office", title: "Office", caller: caller)
+        await dial.commit(.single(71))?.value
+        #expect(caller.attempts == 1)
     }
 
     @Test func routeTokensAndTitles() {

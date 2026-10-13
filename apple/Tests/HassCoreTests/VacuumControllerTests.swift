@@ -91,6 +91,16 @@ struct VacuumControllerTests {
         #expect(vacuum.observedEntityIds.contains(main.passesEntityId))
     }
 
+    @Test func modeScopedReadsFollowTheGivenMode() {
+        let (vacuum, _, _, _, _) = make()
+        #expect(vacuum.tabs(in: .full) == vacuum.tabs)
+        #expect(vacuum.tabs(in: .minimal) == [.controls, .autoClean, .info])
+        #expect(vacuum.powerSettings(in: .minimal).isEmpty)
+        #expect(vacuum.powerSettings(in: .full).map(\.title) == vacuum.powerSettings.map(\.title))
+        #expect(vacuum.showsCleaningSetup(in: .full))
+        #expect(!vacuum.showsCleaningSetup(in: .minimal))
+    }
+
     @Test func unavailableVacuumShowsUnknowns() {
         let (vacuum, _, _, _, _) = make([main.entityId: "unavailable"])
         #expect(!vacuum.status.primaryAvailable)

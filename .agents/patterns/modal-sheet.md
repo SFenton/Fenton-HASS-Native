@@ -5,4 +5,4 @@
 - Web hash routes (`#lights-overview`) map to a `HomeSheet` enum driving `.sheet(item:)`. The URL hash is not needed natively.
 - Detents: `.large` for control grids and media (content below a medium detent sits off screen and fails the audit); `.medium, .large` only for short read-only lists. Drag indicator visible.
 - A sheet that navigates (room → lights) pushes inside its own `NavigationStack` with Back, matching the web's in-sheet back.
-- A tabbed sheet (media remote, thermostat) puts `HassUI/Common/SheetTabPicker.swift` at the top: segmented, a menu at accessibility sizes. Never a second tab control.
+- A tabbed sheet (media remote, thermostat) puts `HassUI/Common/SheetTabPicker.swift` at the top: segmented, a menu at accessibility sizes. Never a second tab control. To change a tab's content without a hard cut, drive the panel with `HassUI/Common/SmoothContentSwap.swift` (fade out, swap while hidden, fade in; Reduce Motion swaps at once); the vacuum sheet does.
