@@ -105,34 +105,3 @@ struct VacuumsPage<Sheet: View>: View {
         }
     }
 }
-
-/// The Home entry that opens the Vacuums page (web At a Glance "Vacuums" quick link). Until the navigation
-/// flyout lands this is the page's only route.
-struct VacuumsHomeLink: View {
-    var body: some View {
-        NavigationLink {
-            VacuumsScreen()
-        } label: {
-            HStack(spacing: HassTokens.Spacing.m) {
-                Image(systemName: VacuumStyle.symbol("mdi:robot-vacuum"))
-                    .font(.title3)
-                    .foregroundStyle(.tint)
-                    .accessibilityHidden(true)
-                Text("Vacuums")
-                    .font(.headline)
-                    .foregroundStyle(HassTokens.Ink.primary)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.secondary)
-                    .accessibilityHidden(true)
-            }
-            .padding(HassTokens.Spacing.m)
-            .frame(minHeight: HassTokens.minTarget + 12)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("home.vacuums")
-    }
-}
