@@ -88,7 +88,7 @@ struct QuickLinksSheet: View {
             .navigationTitle("Rooms")
             .inlineNavigationTitle()
         case .securitySystem:
-            QuickLinksSecurityDetail()
+            QuickLinksSecurityDetail(caller: caller)
         }
     }
 
@@ -162,14 +162,23 @@ struct QuickLinkTile: View {
     }
 }
 
-/// Security System inside Quick Links. Hook point: the Security lane replaces this with its alarm controls
-/// (web `SecurityControls`).
+/// Security System inside Quick Links: the Security page's alarm modes (web `SecurityControls`). Without a caller
+/// (no connection yet) it shows the state only.
 struct QuickLinksSecurityDetail: View {
+    var caller: (any HassServiceCalling)?
     @Environment(EntityStore.self) private var store
 
     var body: some View {
+        if let caller {
+            SecurityControls(caller: caller)
+        } else {
+            stateOnly
+        }
+    }
+
+    private var stateOnly: some View {
         let state = store.entity(QuickLinks.securityEntityId).state
-        ContentUnavailableView {
+        return ContentUnavailableView {
             Label("Security System", systemImage: SymbolMap.symbol(for: QuickLinks.securityAppearance(state?.state).icon))
         } description: {
             Text(ScreenshotPrivacy.isRedacting ? "Hidden" : RoomFormat.compact(state))

@@ -108,7 +108,7 @@ struct HomeRouteDestination: View {
         case .groceryList:
             if connection != nil { ChoresModelHost { TodoPageScreen(page: ChoresConfig.groceries) } } else { placeholder }
         case .food:
-            placeholder
+            FoodEntryScreen()
         }
     }
 

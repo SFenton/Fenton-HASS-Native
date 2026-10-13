@@ -86,7 +86,7 @@ struct ChoresViewTests {
         await loadAll(fixture)
         sections = TodoPageLayout.sections(for: page, viewerUserId: nil, store: fixture.store, todos: fixture.model.todos)
         #expect(sections.map(\.isShown) == [false, true, true, false])
-        #expect(sections.allSatisfy(\.isSettled))
+        #expect(sections.allSatisfy { $0.isSettled })
         #expect(sections[1].id == "todo.steph_s_due_today")
 
         let empty = self.fixture(empty: true)
