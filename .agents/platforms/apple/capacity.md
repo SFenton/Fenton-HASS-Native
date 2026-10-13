@@ -4,7 +4,7 @@
 
 Many lanes (this repo's and FestivalNativeApps') run on one Mac. Every simulator, physical device and heavy compile goes through `tools/devcap.py`, which hands out machine-wide slots first come, first served. When the Mac is full a lane waits its turn instead of booting another simulator.
 
-`tools/devcap.py` is vendored byte for byte from `SFenton/FestivalNativeApps` `tools/devcap.py` (canonical copy, with `tools/tests/test_devcap.py`). Change it there first, then copy both files here; `python3 tools/devcap.py --version` must match.
+`tools/devcap.py` is vendored byte for byte from `SFenton/FestivalNativeApps` `tools/devcap.py` (canonical copy, with `tools/tests/test_devcap.py`). Change it there first, then copy both files here; `python3 tools/devcap.py --version` must match. Worktrees keep the copy they branched with, so every copy from 1.2.1 on defers to the shared install at `~/.devcap/lib/devcap.py` when it is newer; after a devcap change merges, run `python3 tools/devcap.py install` from an up-to-date `main` checkout. A worktree with a copy older than 1.2.1 (or none) must rebase on `main`.
 
 ## Gates
 
