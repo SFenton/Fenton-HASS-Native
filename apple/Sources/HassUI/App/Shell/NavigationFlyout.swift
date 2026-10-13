@@ -196,12 +196,13 @@ private struct SectionRootChrome: ViewModifier {
                     }
                 }
             }
-            .quickLinks(caller: callerOverride ?? connection, showsButton: chrome.showsQuickLinksButton)
+            // Declared before Quick Links: the bar lays out later toolbars first, so Profile ends up trailing-most.
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     ProfileButton(name: navigator?.profileName) { showsProfile = true }
                 }
             }
+            .quickLinks(caller: callerOverride ?? connection, showsButton: chrome.showsQuickLinksButton)
             .homeAssistantSettingsCover(isPresented: $showsProfile)
             .onChange(of: navigator?.focusReturnToken) { _, _ in buttonFocused = true }
     }

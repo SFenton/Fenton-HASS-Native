@@ -44,6 +44,8 @@ struct MainTabView: View {
                 NavigationFlyout()
             }
         }
+        // Also behind the root, where no page draws: under the tab bar and the home indicator.
+        .background { HouseBackdrop() }
         // The window's full size, which the page backdrop photo fills on every page (``HouseBackdrop``).
         .background {
             Color.clear
