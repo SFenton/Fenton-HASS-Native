@@ -90,6 +90,20 @@ public final class EntityStore {
         }
     }
 
+    /// Applies changes and removals from a live delivery without touching unchanged entities.
+    /// - Parameters:
+    ///   - changes: New or changed entities.
+    ///   - removed: Entity ids the server no longer reports.
+    ///   - freshness: The resulting freshness.
+    public func apply(_ changes: [EntityState], removing removed: [String], freshness: Freshness) {
+        for id in removed where values[id] != nil {
+            values[id] = nil
+            publish(id, nil)
+        }
+        apply(changes)
+        if self.freshness != freshness { self.freshness = freshness }
+    }
+
     /// Clears everything (sign out).
     public func reset() {
         for id in values.keys { publish(id, nil) }

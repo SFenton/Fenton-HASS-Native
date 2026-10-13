@@ -111,7 +111,8 @@ public struct ImageCard: View {
     }
 }
 
-/// An `AsyncImage` that tries a fallback URL, then a symbol, and never shows a broken image.
+/// A cached remote image (``CachedImage``) that tries a fallback URL, then a symbol, and never shows a broken
+/// image. Holds an enclosing ``ContentGate`` until it draws.
 public struct RemoteImage: View {
     public var url: URL?
     public var fallbackURL: URL?
@@ -137,8 +138,10 @@ public struct RemoteImage: View {
         Color.clear
             .overlay {
                 if let current {
-                    AsyncImage(url: current, transaction: Transaction(animation: .easeOut(duration: 0.2))) { self.phase($0) }
-                        .id(current)
+                    CachedImage(url: current, onFailure: { if !useFallback, fallbackURL != nil { useFallback = true } }) {
+                        placeholder
+                    }
+                    .id(current)
                 } else {
                     placeholder
                 }
@@ -149,20 +152,6 @@ public struct RemoteImage: View {
             // on iPad, 2026-10-12). Cards keep their taps through the button's content shape.
             .allowsHitTesting(false)
             .accessibilityHidden(true)
-    }
-
-    /// What one `AsyncImage` phase draws: the image, the placeholder (switching to the fallback URL once)
-    /// or a spinner.
-    @ViewBuilder
-    func phase(_ phase: AsyncImagePhase) -> some View {
-        switch phase {
-        case let .success(image):
-            image.resizable().scaledToFill()
-        case .failure:
-            placeholder.onAppear { if !useFallback, fallbackURL != nil { useFallback = true } }
-        default:
-            ProgressView()
-        }
     }
 
     private var placeholder: some View {

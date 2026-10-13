@@ -1,5 +1,6 @@
 import Foundation
 @preconcurrency import HAKit
+import HassTelemetry
 import Observation
 
 /// The app's one Home Assistant connection: a HAKit websocket feeding ``EntityStore``.
@@ -38,6 +39,8 @@ public final class HassConnection {
     @ObservationIgnored private var statesSubscription: HACancellable?
     @ObservationIgnored private var stateObserver: NSObjectProtocol?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
+    /// The HAKit entities last applied, so each delivery converts only what changed.
+    @ObservationIgnored private var lastDelivered: [String: HAEntity] = [:]
 
     /// How long live updates are batched before the disk snapshot is rewritten.
     static let snapshotDebounce: Duration = .seconds(2)
@@ -98,8 +101,8 @@ public final class HassConnection {
         connection.connect()
         guard statesSubscription == nil else { return }
         statesSubscription = connection.caches.states().subscribe { [weak self] _, cached in
-            let states = cached.all.map(EntityState.init(haEntity:))
-            MainActor.assumeIsolated { self?.receive(states) }
+            let entities = cached.all
+            MainActor.assumeIsolated { self?.receive(entities) }
         }
     }
 
@@ -200,10 +203,48 @@ public final class HassConnection {
         }
     }
 
-    private func receive(_ states: [EntityState]) {
-        // HAKit's states cache always delivers the full set; the store diffs it in place.
-        store.replaceAll(states, freshness: .live)
+    /// Applies one HAKit delivery. HAKit's states cache always delivers the full set (thousands of entities)
+    /// on every change, so converting and comparing all of them per event cost whole frames while scrolling.
+    /// Only entities whose `last_updated` or state moved are converted (`HAEntity ==` compares those).
+    func receive(_ entities: Set<HAEntity>) {
+        let interval = Telemetry.begin(Telemetry.Name.entityUpdate)
+        let delta = Self.delta(from: lastDelivered, to: entities)
+        lastDelivered = delta.delivered
+        if delta.isFirst {
+            // The first live set replaces the disk snapshot, dropping entities the server no longer has.
+            store.replaceAll(delta.changed, freshness: .live)
+        } else {
+            store.apply(delta.changed, removing: delta.removed, freshness: .live)
+        }
+        Telemetry.end(interval, value: Double(delta.changed.count + delta.removed.count))
+        Telemetry.count("entity.deliveries")
+        Telemetry.count("entity.changed", by: delta.changed.count)
         scheduleSnapshotSave()
+    }
+
+    /// What changed between two HAKit deliveries.
+    struct Delta {
+        /// The new delivery keyed by entity id.
+        var delivered: [String: HAEntity]
+        /// Converted states for new or changed entities (every entity on the first delivery).
+        var changed: [EntityState]
+        /// Entity ids that disappeared.
+        var removed: [String]
+        /// No previous delivery: `changed` is the full set.
+        var isFirst: Bool
+    }
+
+    /// Diffs `entities` against the previous delivery, converting only the entities that changed.
+    static func delta(from previous: [String: HAEntity], to entities: Set<HAEntity>) -> Delta {
+        var delivered: [String: HAEntity] = [:]
+        delivered.reserveCapacity(entities.count)
+        var changed: [EntityState] = []
+        for entity in entities {
+            delivered[entity.entityId] = entity
+            if previous[entity.entityId] != entity { changed.append(EntityState(haEntity: entity)) }
+        }
+        let removed = previous.isEmpty ? [] : previous.keys.filter { delivered[$0] == nil }
+        return Delta(delivered: delivered, changed: changed, removed: removed, isFirst: previous.isEmpty)
     }
 
     private func scheduleSnapshotSave() {
