@@ -41,6 +41,8 @@ apple/Sources/HassCore/Config/HouseholdSettingsConfig.swift,
 apple/Sources/HassCore/Settings/,
 apple/Sources/HassUI/Features/Settings/Household/,
 apple/Sources/HassUI/Features/Gallery/HouseholdSettingsGallery.swift → household settings lane (claude/project-thread-fww01h)
+apple/Sources/HassCore/Feedback/, apple/Sources/HassUI/Features/Settings/Feedback/,
+tools/triage/, .agents/workflow/triage-agent.md, .agents/pages/settings/feedback.md → feedback and triage lane (claude/project-thread-g7zt61)
 apple/Tests/**                                             → tests for your own files only
 .agents/pages/<id>/, .agents/controls/<id>/                → the lane for that page/control
 .agents/** (everything else)                               → orchestrator
@@ -54,7 +56,7 @@ apple/Tests/**                                             → tests for your ow
 4. **Rooms and detail pages:** room pages, Food & Recipes, Groceries, vacuums, media.
 5. **Live cameras:** snapshot tiles, then HLS, then WebRTC (go2rtc).
 6. **Watch app:** glanceable status and a handful of controls.
-7. **Report an Issue / Feature Request:** port from FestivalNativeApps with its own request repo.
+7. **Report an Issue / Feature Request:** ported from FestivalNativeApps; files into the private request repo `SFenton/fenton-hass-requests`, worked by the [triage agent](.agents/workflow/triage-agent.md) on the MacBook.
 
 ## 3. Status
 
@@ -76,6 +78,7 @@ apple/Tests/**                                             → tests for your ow
 | Media remote (sheet, 4 remotes, Hue Sync) | Shared component + debug gallery; not yet opened from a page (Rooms/Media lanes wire it) |
 | Rooms (16 pages, Quick Links, room grid) | Config-driven pages with status rail, sections, group sheets and the media remote; device sheets fall back to read-only tiles until their lanes land |
 | Watch app | Target stub only |
+| Report an Issue / Request a Feature | Settings → Feedback files issues (media, diagnostics, labels) in the private request repo with the person's GitHub token ([feedback](.agents/pages/settings/feedback.md)); the hourly triage agent on the MacBook works them into verified PRs labelled `Ready to Merge` ([triage-agent](.agents/workflow/triage-agent.md)) |
 | Food & Recipes | Hub, Recipes grid (search, sort, filter, paging, hydration), recipe detail with grocery add; debug gallery `FENTON_GALLERY=food` |
 | Inventory (6 pages, item editor, Add Item scan) | EverShelf client and models, pages, editor (sheet or split pane), AVFoundation scan; gallery `FENTON_GALLERY=inventory`; linked from Food & Recipes once it lands |
 | Media, Custom Lights, Sprinklers (Home pages) | Ported; reached from the Quick Links sheet via `HomeRouteDestination` (Room pages lane); gallery pages `media-page`, `custom-lights`, `sprinklers` |
@@ -115,3 +118,4 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11: shared floating action bar and filter sheet (`.agents/patterns/floating-actions.md`) for Chores, Groceries, To-Do, Recipes and Inventory.
 - 2026-10-11: Vacation and Solo Trip pages (`claude/project-thread-d1pa5r`): `HouseholdAwayController` (return-response script calls, revision floor, timeout), `VacationModeController`, `SoloTripController`, shared `ScheduleDateFields` and `InfoBox`, Settings → Vacation, fixture gallery and journeys.
 - 2026-10-13: merged main into the Vacation branch: Vacation stays a pushing row above the household topics (follow-up: make it a split topic). Mac runs before the merge: iPhone journeys, audits and screenshots passed in full; iPad (portrait and landscape) and folded Duo fixes were pushed from those runs; unfolded Duo runs skipped (Stephen, 2026-10-13: merge without them; run once a Duo can unfold). Swift was not rebuilt after the merge.
+- 2026-10-13: Report an Issue and Request a Feature in Settings (`claude/project-thread-g7zt61`): port of FestivalNativeApps' feedback form that files straight into the private request repo `SFenton/fenton-hass-requests` (fine-grained token in iCloud Keychain, media stripped of location and fitted to 10 MB, diagnostics), and the MacBook triage agent (`tools/triage/hass_triage.py`, hourly launchd job) that works each request into a verified PR labelled `Ready to Merge`. Nothing on the Mac merges (owner: coordinator merges).

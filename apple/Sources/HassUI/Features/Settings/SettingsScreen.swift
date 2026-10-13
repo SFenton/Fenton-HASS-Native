@@ -32,6 +32,7 @@ struct SettingsStack: View {
 struct SettingsScreen: View {
     @Binding var openTopic: HouseholdSettingsPage?
     @State private var showsHomeAssistant = false
+    @State private var feedbackForm: FeedbackKind?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
 
     /// Creates the list.
@@ -85,9 +86,11 @@ struct SettingsScreen: View {
                 .accessibilityIdentifier("settings.homeAssistant")
                 .accessibilityHint("Opens server, account and sign-out options.")
             }
+            FeedbackSettingsSection(openForm: $feedbackForm)
         }
         .navigationTitle("Settings")
         .homeAssistantSettingsCover(isPresented: $showsHomeAssistant)
+        .feedbackFormSheet(item: $feedbackForm)
     }
 }
 

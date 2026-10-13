@@ -1,0 +1,96 @@
+{
+  "request_repo": "SFenton/fenton-hass-requests",
+  "product_repo": "SFenton/Fenton-HASS-Native",
+  "product_base": "main",
+  "authors": [
+    "SFenton"
+  ],
+  "root": "~/hass-agents",
+  "env_file": "~/repos/Fenton-HASS-Native/temp.env",
+  "agent": {
+    "command": "claude",
+    "model": "claude-opus-5-5",
+    "effort": "high",
+    "permission_mode": "auto",
+    "disallowed_tools": [
+      "Bash(xcrun simctl shutdown all*)",
+      "Bash(xcrun simctl erase all*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(gh pr merge*)",
+      "Bash(gh repo delete*)",
+      "Bash(gh secret*)"
+    ],
+    "timeout_minutes": 300,
+    "max_attempts": 2
+  },
+  "merge": {
+    "label": "Ready to Merge",
+    "failed_label": "Merge Failed",
+    "wait_hours": 168
+  },
+  "budget_hours": 10,
+  "interval_seconds": 3600,
+  "labels": {
+    "Bug": [
+      "d73a4a",
+      "Something in the app is broken"
+    ],
+    "Feature": [
+      "a2eeef",
+      "A new feature or change request"
+    ],
+    "From App": [
+      "5319e7",
+      "Filed from the app's Settings"
+    ],
+    "iOS": [
+      "1d76db",
+      "iPhone"
+    ],
+    "iPadOS": [
+      "0e8a16",
+      "iPad"
+    ],
+    "iPhone Duo": [
+      "006b75",
+      "iPhone Duo (folded or unfolded)"
+    ],
+    "In Progress": [
+      "fbca04",
+      "The triage agent is working on it"
+    ],
+    "Merging": [
+      "c2e0c6",
+      "A verified pull request is waiting for review and merge"
+    ],
+    "Blocked": [
+      "b60205",
+      "The agent stopped; comment /retry to try again"
+    ],
+    "Needs Decision": [
+      "d93f0b",
+      "The agent needs the owner's choice"
+    ],
+    "Done": [
+      "0e8a16",
+      "Fixed or built and merged"
+    ],
+    "No Changes": [
+      "cfd3d7",
+      "Closed without code changes"
+    ],
+    "Priority": [
+      "b60205",
+      "Worked before other items"
+    ],
+    "On Hold": [
+      "c5def5",
+      "The agent skips it"
+    ],
+    "Split": [
+      "bfdadc",
+      "Split into separate issues"
+    ]
+  }
+}
