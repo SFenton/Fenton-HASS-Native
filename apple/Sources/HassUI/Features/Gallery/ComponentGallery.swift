@@ -24,6 +24,7 @@ public struct ComponentGallery: View {
         case inventory
         case chores
         case performance
+        case weather
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -79,6 +80,7 @@ public struct ComponentGallery: View {
                 case .inventory: InventoryGallery()
                 case .chores: ChoresGallery()
                 case .performance: PerformanceGallery()
+                case .weather: WeatherGallery()
                 case .rooms, .vacation, .food: EmptyView()
                 }
             }

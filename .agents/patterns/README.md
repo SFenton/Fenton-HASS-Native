@@ -7,6 +7,7 @@
 | [dynamic-grid.md](dynamic-grid.md) | `HassDesign/DynamicGridLayout.swift` | `src/components/core/DynamicGrid.tsx` |
 | [entity-tile.md](entity-tile.md) | `HassDesign/GlassTile.swift` | `src/components/core/GlassTile.tsx` |
 | [status-rail.md](status-rail.md) | `HassUI/Features/Home/StatusRail.swift` | `src/components/hass/StatusRail.tsx` |
+| [room-overview-sheet.md](room-overview-sheet.md) | `HassUI/Common/RoomOverview/RoomOverviewSheet.swift` | `src/pages/AtAGlancePage.tsx` (`LightsSheet`, `OccupancySheet`, `ContactSheet`, …) |
 | [modal-sheet.md](modal-sheet.md) | SwiftUI `.sheet` with `HassSheet` chrome | `src/components/core/ModalSheet.tsx` |
 | [media-remote.md](media-remote.md) | `HassUI/Features/MediaRemote/MediaRemoteSheet.swift` | `src/components/hass/MediaRemoteModalContent.tsx` |
 | [floating-actions.md](floating-actions.md) | `HassDesign/FloatingActionBar.swift`, `HassDesign/FilterSheet.swift` | `src/components/core/FloatingActionButton.tsx`, `src/components/shell/DashboardFloatingAction.tsx` |
@@ -25,3 +26,4 @@
 | [content-gate.md](content-gate.md) | `HassDesign/Loading/ContentGate.swift` | `src/components/hass/recipes/useRecipeCollection.ts` (criteria phases) |
 | [image-cache.md](image-cache.md) | `HassDesign/Images/ImagePipeline.swift`, `CachedImage.swift` | browser HTTP cache (`decoding="async"` images) |
 | [telemetry.md](telemetry.md) | `HassTelemetry/`, `HassUI/Diagnostics/` | none (native only) |
+| [weather.md](weather.md) | `HassUI/Features/Home/Weather/WeatherSummaryCard.swift`, `WeatherSheet.swift`, `WeatherPagedCarousel.swift`; logic in `HassCore/Weather` | `src/components/hass/WeatherSummary.tsx`, `useWeatherForecasts.ts`, `weatherPresentation.ts`, `weatherDayBriefing.ts` |

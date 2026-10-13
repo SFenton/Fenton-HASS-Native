@@ -39,7 +39,7 @@ struct SecurityViewTests {
         let caller = Caller()
         let guests = GuestPresenceSection(caller: caller).environment(store).frame(width: 402)
         #expect(ImageRenderer(content: guests).cgImage != nil)
-        let contacts = ChipSheet(kind: .contacts).environment(store).frame(width: 402, height: 500)
+        let contacts = RoomOverviewSheet(kind: .contacts).environment(store).frame(width: 402, height: 500)
         #expect(ImageRenderer(content: contacts).cgImage != nil)
     }
 

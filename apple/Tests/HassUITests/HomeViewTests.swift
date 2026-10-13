@@ -7,11 +7,11 @@ import Testing
 @MainActor
 struct HomeViewTests {
     @Test func weatherConditionsMapToNamesAndSymbols() {
-        #expect(WeatherSummaryCard.conditionName("partlycloudy") == "Partly Cloudy")
-        #expect(WeatherSummaryCard.conditionName(nil) == "Unavailable")
-        #expect(WeatherSummaryCard.conditionName("rainy") == "Rainy")
-        #expect(WeatherSummaryCard.symbol(for: "sunny") == "sun.max.fill")
-        #expect(WeatherSummaryCard.symbol(for: nil) == "cloud.fill")
+        #expect(WeatherConditionInfo("partlycloudy").label == "Partly Cloudy")
+        #expect(WeatherConditionInfo(nil).label == "Weather Unavailable")
+        #expect(WeatherConditionInfo("rainy").label == "Rain")
+        #expect(WeatherSymbols.condition("sunny") == "sun.max.fill")
+        #expect(WeatherSymbols.condition(nil) == "cloud.fill")
     }
 
     @Test func homeSheetIdsAreUnique() {
@@ -45,8 +45,10 @@ struct HomeViewTests {
 
 @MainActor
 struct HomeSheetDetentTests {
-    @Test func lightsOpensFullHeightAndListsKeepMedium() {
-        #expect(HomeScreen.detents(for: .lights) == [.large])
+    @Test func overviewsOpenFullHeightAndSecurityKeepsMedium() {
+        for kind in HomeConfig.ChipSheet.allCases where kind != .security {
+            #expect(HomeScreen.detents(for: kind) == [.large])
+        }
         #expect(HomeScreen.detents(for: .security) == [.medium, .large])
     }
 }
@@ -56,13 +58,14 @@ struct LightGroupTileTests {
     /// Dimmable groups draw the brightness tile; on/off-only entities fall back to a power tile.
     @Test func rendersBothTileKinds() {
         let group = HomeConfig.lightGroups[0]
+        let id = group.entityId ?? ""
         let states: [EntityState?] = [
-            EntityState(entityId: group.toggleEntityId, state: "on", attributes: ["brightness": .number(128), "rgb_color": .array([.number(255), .number(160), .number(60)])]),
-            EntityState(entityId: group.toggleEntityId, state: "off", attributes: ["supported_color_modes": .array([.string("onoff")])]),
+            EntityState(entityId: id, state: "on", attributes: ["brightness": .number(128), "rgb_color": .array([.number(255), .number(160), .number(60)])]),
+            EntityState(entityId: id, state: "off", attributes: ["supported_color_modes": .array([.string("onoff")])]),
             nil,
         ]
         for state in states {
-            let tile = LightGroupTile(group: group, state: state) { _ in }.frame(width: 170)
+            let tile = LightGroupTile(title: group.room, entityId: id, state: state) { _ in }.frame(width: 170)
             #expect(ImageRenderer(content: tile).cgImage != nil)
         }
     }
