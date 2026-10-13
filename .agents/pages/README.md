@@ -14,6 +14,7 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Custom Lights | `/at-a-glance/custom-lights` | [custom-lights/spec.md](custom-lights/spec.md) | Ported ([ios.md](custom-lights/ios.md)) |
 | Sprinklers | `/at-a-glance/sprinklers` | [sprinklers/spec.md](sprinklers/spec.md) | Ported ([ios.md](sprinklers/ios.md)) |
 | Settings | `/at-a-glance/settings` | `plans/settings-household-spec.md` | Home Assistant settings modal ([ios.md](settings/ios.md)); Vacation; Admin, Special Device Modes, Guest Controls, Mach-E ([household.md](settings/household.md)) |
+| Inventory (All Food, Pantry, Fridge, Freezer, Spice Rack, Cabinet) | `/food-and-recipes/<space>` | [inventory/spec.md](inventory/spec.md) | Pages, item editor and Add Item ([ios.md](inventory/ios.md)); reached from the Food & Recipes hub once it lands |
 | Vacuums | `/vacuums` | [vacuums/spec.md](vacuums/spec.md) | Page, sheet and map ([ios.md](vacuums/ios.md)) |
 | Food & Recipes | `/food`, `/food/recipes` | [food/spec.md](food/spec.md) | Hub, Recipes grid, recipe detail ([ios.md](food/ios.md)) |
 | Rooms (16) | `/<room>` | [rooms/spec.md](rooms/spec.md) | Config-driven pages, Quick Links, room grid ([ios.md](rooms/ios.md)); room device sheets and the vacuum sheet wired in |

@@ -180,7 +180,6 @@ final class FoodJourneyTests: XCTestCase {
         reveal(fridge, in: app)
         fridge.tap()
         XCTAssertTrue(app.navigationBars["Fridge"].waitForExistence(timeout: 10), "The Fridge tile did not open its page")
-        XCTAssertTrue(app.staticTexts["Coming in a later update."].exists)
 
         app = launch("hub")
         let allFood = element("food.allFood", in: app)

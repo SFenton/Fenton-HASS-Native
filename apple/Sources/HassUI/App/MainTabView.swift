@@ -54,7 +54,8 @@ struct MainTabView: View {
             NavigationStack(path: navigator.path(for: section)) {
                 Group {
                     switch section {
-                    case .home: HomeScreen()
+                    // Inventory pages until the Food & Recipes hub links them (FENTON_OPEN_INVENTORY in debug).
+                    case .home: HomeScreen().inventoryDestinations()
                     case .security: SecurityScreen()
                     case .climate: ClimateScreen()
                     default: PlaceholderScreen(title: section.title, symbol: section.symbol)

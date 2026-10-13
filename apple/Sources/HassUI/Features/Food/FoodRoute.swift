@@ -11,8 +11,8 @@ public enum FoodRoute: Hashable, Sendable {
     case hub
     /// All recipes (web `RecipesPage`).
     case recipes
-    /// An inventory page: nil is All Food, otherwise an EverShelf location (`dispensa`, `frigo`, …).
-    case inventory(location: String?)
+    /// An inventory page (Inventory lane's ``InventorySpace``: All Food or one of the five spaces).
+    case inventory(InventorySpace)
 }
 
 public extension View {
@@ -63,9 +63,8 @@ struct FoodNavigation: ViewModifier {
         switch route {
         case .hub: FoodHubScreen(models: models)
         case .recipes: RecipesScreen(models: models)
-        case let .inventory(location):
-            // The inventory pages land with their own thread (`plans/inventory-spec.md`).
-            PlaceholderScreen(title: Self.inventoryTitle(location), symbol: "refrigerator")
+        case let .inventory(space):
+            FoodInventoryScreen(space: space)
         }
     }
 
@@ -79,11 +78,6 @@ struct FoodNavigation: ViewModifier {
         #else
         nil
         #endif
-    }
-
-    static func inventoryTitle(_ location: String?) -> String {
-        guard let location else { return "All Food" }
-        return FoodConfig.spaces.first { $0.location == location }?.title ?? "Food"
     }
 }
 
@@ -101,5 +95,31 @@ struct FoodEntryScreen: View {
                 // The hub's own onAppear may have run first, without a service.
                 models.suggestions.appear()
             }
+    }
+}
+
+/// An inventory page pushed from the Food hub: the Inventory lane's page with the stack's ``InventoryModels``
+/// (the gallery's fixture server, else the signed-in connection), the same way ``inventoryDestinations()``
+/// builds it.
+struct FoodInventoryScreen: View {
+    let space: InventorySpace
+    @Environment(\.inventoryModels) private var injected
+    @Environment(HassConnection.self) private var connection: HassConnection?
+    @State private var holder = InventoryModelsHolder()
+
+    var body: some View {
+        InventoryDestinationScreen(route: .space(space), models: injected ?? connection.map(holder.models(for:)))
+    }
+
+    /// The inventory page for one of the hub's EverShelf locations (`FoodConfig.spaces`).
+    static func space(forLocation location: String) -> InventorySpace? {
+        switch location {
+        case "dispensa": .pantry
+        case "frigo": .fridge
+        case "freezer": .freezer
+        case "spice_rack": .spiceRack
+        case "cabinet": .cabinet
+        default: nil
+        }
     }
 }

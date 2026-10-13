@@ -186,12 +186,15 @@ struct FoodStateTests {
 
     @Test func routesBuildTheirPages() {
         let models = FoodModels(service: FixtureRecipeService(delay: .zero))
-        for route in [FoodRoute.hub, .recipes, .inventory(location: nil), .inventory(location: "frigo")] {
+        for route in [FoodRoute.hub, .recipes, .inventory(.allFood), .inventory(.fridge)] {
             #expect(render(NavigationStack { FoodNavigation.destination(route, models: models) }) != nil)
         }
-        #expect(FoodNavigation.inventoryTitle(nil) == "All Food")
-        #expect(FoodNavigation.inventoryTitle("frigo") == "Fridge")
-        #expect(FoodNavigation.inventoryTitle("garage") == "Food")
+        // Every hub space tile opens its inventory page.
+        #expect(FoodConfig.spaces.map { FoodInventoryScreen.space(forLocation: $0.location) }
+                == [.pantry, .fridge, .freezer, .spiceRack, .cabinet])
+        #expect(FoodInventoryScreen.space(forLocation: "garage") == nil)
+        let fixtures = InventoryModels(client: EverShelfClient(caller: EverShelfFixtureServer.sample()))
+        #expect(render(NavigationStack { FoodInventoryScreen(space: .fridge) }.environment(\.inventoryModels, fixtures)) != nil)
         #expect(render(NavigationStack { Text("Food").foodNavigation(service: FixtureRecipeService()) }) != nil)
     }
 

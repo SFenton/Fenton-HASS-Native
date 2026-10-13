@@ -79,7 +79,7 @@ struct FoodHubScreen: View {
                     title: "All Food", subtitle: FoodConfig.allFoodSubtitle(state: state),
                     symbol: FoodSymbols.symbol(for: "mdi:food-variant"), tint: Self.tint(FoodConfig.allFoodTint),
                     isActive: true, kind: .navigate
-                ) { pushed = .inventory(location: nil) }
+                ) { pushed = .inventory(.allFood) }
                 .accessibilityIdentifier("food.allFood")
             }
         }
@@ -90,7 +90,9 @@ struct FoodHubScreen: View {
                         title: space.title, subtitle: FoodConfig.spaceSubtitle(space, state: state),
                         symbol: FoodSymbols.symbol(for: space.icon), tint: Self.tint((space.red, space.green, space.blue)),
                         isActive: true, kind: .navigate
-                    ) { pushed = .inventory(location: space.location) }
+                    ) {
+                        if let inventory = FoodInventoryScreen.space(forLocation: space.location) { pushed = .inventory(inventory) }
+                    }
                     .accessibilityIdentifier("food.space.\(space.location)")
                 }
             }

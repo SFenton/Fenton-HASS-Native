@@ -12,6 +12,11 @@ struct FoodGallery: View {
     @State private var store = FoodFixtures.store()
     @State private var service: FixtureRecipeService
     @State private var path: [FoodRoute]
+    @State private var inventoryModels = InventoryModels(client: EverShelfClient(caller: {
+        let server = EverShelfFixtureServer.sample()
+        server.latency = .milliseconds(150)
+        return server
+    }()))
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init() {
@@ -52,6 +57,8 @@ struct FoodGallery: View {
             .foodNavigation(service: service)
         }
         .environment(store)
+        // The hub's space tiles open the Inventory lane's pages on its fixture server.
+        .environment(\.inventoryModels, inventoryModels)
         .safeAreaInset(edge: .bottom) {
             // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out, as do accessibility text sizes,
             // where it would be clipped and cover the page (the AX5 journeys never read it).
