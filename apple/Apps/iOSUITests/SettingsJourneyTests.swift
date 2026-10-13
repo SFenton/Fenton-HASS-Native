@@ -20,9 +20,10 @@ final class SettingsJourneyTests: XCTestCase {
     /// The Settings tab: in the tab bar, or the tab rail the folded iPhone Duo shows instead.
     private func settingsTab(_ app: XCUIApplication) -> XCUIElement {
         // The tab bar can appear a moment after launch (unfolded iPhone Duo), and the folded Duo shows a
-        // vertical bar that XCUITest reports as a toolbar. Poll every form until one shows up: waiting on
+        // vertical bar that XCUITest reports as a toolbar (its Settings button lost the `gearshape` id on the
+        // folded Duo, 2026-10-11). Poll every form until one shows up: waiting on
         // the tab bar alone used up the time before the folded Duo's bar was checked.
-        let rail = app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
+        let rail = app.buttons.matching(NSPredicate(format: "label == 'Settings' AND (identifier == 'gearshape' OR identifier == '')")).firstMatch
         let candidates = [app.tabBars.buttons["Settings"], app.toolbars.buttons["Settings"], rail]
         let deadline = Date().addingTimeInterval(15)
         repeat {

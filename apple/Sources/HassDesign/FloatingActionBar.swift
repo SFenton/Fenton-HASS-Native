@@ -163,11 +163,25 @@ public struct FloatingActionBar: View {
 public extension View {
     /// Pins floating actions to the bottom trailing corner and insets the page so content scrolls clear of them.
     /// No actions and no search draws nothing.
+    ///
+    /// On iOS 26 and later the bar is a `safeAreaBar` with a hard scroll edge effect, so rows scrolled under the
+    /// buttons are covered instead of showing through at low contrast (HIG: Materials › Scroll edge effects).
+    @ViewBuilder
     func floatingActionBar(_ actions: [FloatingAction], search: FloatingSearch? = nil) -> some View {
-        safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
+        let bar = Group {
             if !actions.isEmpty || search != nil {
                 FloatingActionBar(actions: actions, search: search)
             }
         }
+        #if os(watchOS)
+        safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
+        #else
+        if #available(iOS 26, macOS 26, *) {
+            safeAreaBar(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
+                .scrollEdgeEffectStyle(.hard, for: .bottom)
+        } else {
+            safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
+        }
+        #endif
     }
 }

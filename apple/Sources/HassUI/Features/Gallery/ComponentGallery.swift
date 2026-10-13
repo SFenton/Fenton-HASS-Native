@@ -8,6 +8,7 @@ public struct ComponentGallery: View {
     public enum Page: String, CaseIterable, Sendable {
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
+        case vacation
         case security
         case rooms
         case mediaPage = "media-page"
@@ -19,6 +20,7 @@ public struct ComponentGallery: View {
         case householdSettings = "household-settings"
         case climate
         case floatingActions = "floating-actions"
+        case inventory
         case chores
     }
 
@@ -37,7 +39,10 @@ public struct ComponentGallery: View {
     public init(page: Page) { self.page = page }
 
     public var body: some View {
-        if page == .rooms {
+        if page == .vacation {
+            // Owns its stack, so its last-call line stays under pushed pages too.
+            VacationGallery()
+        } else if page == .rooms {
             // Owns its stack so pushed rooms inherit the fixture store and caller.
             RoomsGallery()
         } else {
@@ -55,8 +60,15 @@ public struct ComponentGallery: View {
                 case .householdSettings: HouseholdSettingsGallery()
                 case .climate: ClimateGallery()
                 case .floatingActions: FloatingActionsGallery()
+                case .inventory:
+                    #if DEBUG
+                    InventoryGallery()
+                    #else
+                    EmptyView()
+                    #endif
                 case .chores: ChoresGallery()
                 case .rooms: EmptyView()
+                case .vacation: EmptyView()
                 }
             }
         }

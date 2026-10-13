@@ -13,6 +13,9 @@ public struct FilterSheet<Content: View>: View {
     public var canReset: Bool
     public var onApply: () -> Void
     public var onReset: () -> Void
+    /// Sheet heights; `nil` keeps the default (medium and large, large only at accessibility sizes). A list longer
+    /// than the medium detent passes `[.large]`: rows cut by the sheet's edge read as clipped text to the audit.
+    public var detents: Set<PresentationDetent>?
     @ViewBuilder public var content: () -> Content
 
     @Environment(\.dismiss) private var dismiss
@@ -20,12 +23,13 @@ public struct FilterSheet<Content: View>: View {
 
     /// Creates a sheet.
     public init(title: String, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void, onReset: @escaping () -> Void,
-                @ViewBuilder content: @escaping () -> Content) {
+                detents: Set<PresentationDetent>? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.canApply = canApply
         self.canReset = canReset
         self.onApply = onApply
         self.onReset = onReset
+        self.detents = detents
         self.content = content
     }
 
@@ -73,7 +77,7 @@ public struct FilterSheet<Content: View>: View {
             }
         }
         // Full height at accessibility sizes: half a sheet clips rows at the sheet's edge (iPad audits at AX5).
-        .presentationDetents(dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large])
+        .presentationDetents(detents ?? (dynamicTypeSize.isAccessibilitySize ? [.large] : [.medium, .large]))
         .presentationDragIndicator(.visible)
         #if os(iOS)
         // Opaque, not glass: at the medium detent the page's floating buttons otherwise show through and fail contrast.

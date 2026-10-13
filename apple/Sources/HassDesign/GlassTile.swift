@@ -94,7 +94,7 @@ public struct GlassTile<Accessory: View>: View {
                 .modifier(TileIdentifier(identifier: identifier))
         } else {
             Button(action: action) { face }
-                .buttonStyle(.plain)
+                .buttonStyle(GlassTileButtonStyle())
                 .disabled(isUnavailable)
                 // Label and value go on the Button itself: wrapping it in `.accessibilityElement(children: .ignore)`
                 // left the Button exposed beside a second element, so identifiers and disabled state split between them.
@@ -128,6 +128,18 @@ public struct GlassTile<Accessory: View>: View {
         if isUnavailable { return "Unavailable" }
         if kind == .toggle { return isActive ? "On" : "Off" }
         return subtitle ?? ""
+    }
+}
+
+// MARK: - Button style
+
+/// Presses like `.plain` but never fades the label when disabled: a locked tile still carries its state
+/// ("Away", "Select the user … first"), so its text must keep 4.5:1. ``GlassTileFace`` mutes only the icon
+/// and border instead, and VoiceOver still reads the tile as dimmed.
+struct GlassTileButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.8 : 1)
     }
 }
 
@@ -204,6 +216,8 @@ public struct GlassTileFace: View {
         self.trailingInset = trailingInset
     }
 
+    @Environment(\.isEnabled) private var isEnabled
+
     public var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             HStack {
@@ -212,7 +226,7 @@ public struct GlassTileFace: View {
                 Image(systemName: symbol)
                     .font(.title3)
                     .symbolVariant(isActive ? .fill : .none)
-                    .foregroundStyle(isActive ? tint : .secondary)
+                    .foregroundStyle(isActive && isEnabled ? tint : .secondary)
                     .accessibilityHidden(true)
                 Spacer(minLength: 0)
                 if showsChevron {
@@ -259,7 +273,7 @@ public struct GlassTileFace: View {
         }
         .overlay {
             RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
-                .strokeBorder(isActive ? tint.opacity(0.5) : .clear, lineWidth: 1)
+                .strokeBorder(isActive ? tint.opacity(isEnabled ? 0.5 : 0.25) : .clear, lineWidth: 1)
         }
         .opacity(isUnavailable ? 0.5 : 1)
         .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))

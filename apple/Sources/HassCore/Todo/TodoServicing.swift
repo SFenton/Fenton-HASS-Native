@@ -20,12 +20,7 @@ extension HassConnection: TodoServicing {
         return items.compactMap(TodoItem.init(json:))
     }
 
-    public func callServiceForResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
-        let result = try await sendCommand("call_service", data: [
-            "domain": domain, "service": service, "service_data": data, "return_response": true,
-        ])
-        return result["response"] ?? .null
-    }
+    // `callServiceForResponse` comes from the `EverShelfCalling` conformance (HassConnection+ServiceResponse.swift).
 
     public func uploadAdminTodo(_ upload: AdminTodoUpload, accessToken: String) async throws {
         let request = upload.request(server: server, accessToken: accessToken)
