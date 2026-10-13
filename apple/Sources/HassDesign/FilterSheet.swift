@@ -35,16 +35,19 @@ public struct FilterSheet<Content: View>: View {
                 // Shown only when there is something to reset: a disabled row fails the contrast audit.
                 if canReset {
                     Section {
-                        // Wrapping text in a growing row: the system Form button clipped its title at AX5 on
-                        // iPad. Primary ink instead of the accent keeps 4.5:1 in both modes.
+                        // A bordered button whose bezel hugs its wrapping title, not a full Form row: the row's
+                        // fixed height (74 pt on iPad) left the element growing only 1.26x at AX5, and the system
+                        // Form button clipped its title. Primary ink keeps 4.5:1 in both modes.
                         Button(action: onReset) {
                             Text("Reset to Defaults")
-                                .foregroundStyle(HassTokens.Ink.primary)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
-                                .contentShape(Rectangle())
+                                .frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.bordered)
+                        .controlSize(.large)
+                        .tint(HassTokens.Ink.primary)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
                         .accessibilityIdentifier("filterSheet.reset")
                     }
                 }
