@@ -45,7 +45,13 @@ enum FentonHomeApp {
     /// - Parameter passwordOnly: Ignore the token and go through the real login flow.
     ///   - arguments: Extra launch arguments (e.g. ``ax5``).
     ///   - environment: Extra launch environment (e.g. `FENTON_CAMERA_MODE`).
-    static func launchSignedIn(passwordOnly: Bool = false, arguments: [String] = [], environment extra: [String: String] = [:]) throws -> XCUIApplication {
+    ///   - readyIdentifier: What shows once signed in, when not Home (e.g. `inventory.pantry` with
+    ///     `FENTON_OPEN_INVENTORY`, which pushes the page over Home).
+    static func launchSignedIn(passwordOnly: Bool = false, arguments: [String] = [], environment extra: [String: String] = [:],
+                               readyIdentifier: String? = nil) throws -> XCUIApplication {
+        func ready(_ app: XCUIApplication) -> XCUIElement {
+            readyIdentifier.map { app.descendants(matching: .any)[$0] } ?? app.buttons["home.chip.lights"]
+        }
         let environment = ProcessInfo.processInfo.environment
         if !passwordOnly, let token = environment["FENTON_HASS_TOKEN"], !token.isEmpty {
             let app = makeApp()
@@ -55,7 +61,7 @@ enum FentonHomeApp {
             app.launchEnvironment.merge(extra) { _, new in new }
             if let server = environment["FENTON_HASS_SERVER"] { app.launchEnvironment["FENTON_HASS_SERVER"] = server }
             app.launch()
-            XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30), "Home did not appear")
+            XCTAssertTrue(ready(app).waitForExistence(timeout: 30), "Home did not appear")
             return app
         }
         guard let credentials else {
@@ -81,7 +87,7 @@ enum FentonHomeApp {
         }
         XCTAssertTrue(submit.waitForExistence(timeout: 10), "Sign In button not reachable")
         submit.tap()
-        XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30), "Home did not appear after sign-in")
+        XCTAssertTrue(ready(app).waitForExistence(timeout: 30), "Home did not appear after sign-in")
         return app
     }
 
@@ -117,18 +123,35 @@ enum FentonHomeApp {
         var unconfirmedType: [(label: String, height: CGFloat)] = []
         var unattributedType = 0
         let capture = RenderedContrast.Capture.screen()
+        // Read once: per-issue queries add up, and many accessibility requests crash the iPad simulator's backboardd.
+        let floatingBarTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fab.'"))
+            .allElementsBoundByIndex.map(\.frame.minY).min()
         // The audit can dismiss a popover while it runs, so note it before starting.
         let popover = app.otherElements["PopoverDismissRegion"].exists && app.popovers.firstMatch.exists
             ? app.popovers.firstMatch.frame : nil
         // The handler only collects: element queries made inside it count against the audit's own deadline, and on
         // a long scrolled list (iPhone vacuum Auto-Clean tab, 2026-10-12) they made it fail "to complete in time".
+        // Contrast runs as its own pass: alongside the Dynamic Type or text-clipping checks its issues can lose their
+        // element (probed 2026-10-11: a row half under the floating action bar came back unattributed), and an
+        // unattributed issue cannot be measured or placed.
         var issues: [XCUIAccessibilityAuditIssue] = []
-        try app.performAccessibilityAudit(for: .all) { issue in
+        try app.performAccessibilityAudit(for: .contrast) { issue in
             issues.append(issue)
             return true
         }
+        try app.performAccessibilityAudit(for: XCUIAccessibilityAuditType.all.subtracting(.contrast)) { issue in
+            issues.append(issue)
+            return true
+        }
+        // Page text under the floating action bar's hard scroll edge is faded out, and its contrast issue can come
+        // back without an element (FloatingActions gallery, iPhone 2026-10-12). Like the tab bar rule, accept an
+        // element-less contrast issue only while page text really sits under the bar. Read once, after the audit.
+        let textUnderFloatingBar = floatingBarTop.map { top in
+            app.staticTexts.allElementsBoundByIndex.contains { !$0.label.isEmpty && $0.frame.maxY > top && $0.frame.minY < top + 52 }
+        } ?? false
         for issue in issues {
             if isSystemDrawn(issue, in: app, popover: popover) { continue }
+            if issue.auditType == .contrast, issue.element == nil, textUnderFloatingBar { continue }
             // The presenting page around an iPad form sheet, hidden from assistive technologies by the modal.
             if issue.element == nil, issue.auditType == .elementDetection, let presenter,
                presenter.exists, !presenter.isHittable {
@@ -149,6 +172,9 @@ enum FentonHomeApp {
                 // Nothing drawn at an unreachable element: it is scrolled out of view (e.g. below an iPad
                 // form sheet's edge), not low contrast.
                 if ratio < 1.5, !element.isHittable { continue }
+                // Nothing drawn under the floating action bar: its hard scroll edge covers rows that scroll
+                // beneath it (inventory All Food, 2026-10-11), so the text is hidden, not low contrast.
+                if ratio < 1.5, let floatingBarTop, element.frame.maxY > floatingBarTop { continue }
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             if ax5Page != nil, issue.auditType == .dynamicType,
@@ -261,6 +287,15 @@ enum FentonHomeApp {
             if behindSheet.contains(issue.auditType), modalUp, !app.buttons["home.chip.lights"].isHittable {
                 return true
             }
+            // The same for an inventory page behind an iPad form sheet (Sort, Filter, Add Item, the editor;
+            // Add Item's later steps show Back instead of Cancel): its dimmed text is sampled through the scrim, and
+            // contrast issues there come back without an element (iPad, 2026-10-12).
+            if issue.auditType == .elementDetection || issue.auditType == .contrast,
+               app.navigationBars.buttons["Done"].exists || app.navigationBars.buttons["Cancel"].exists
+                || app.buttons["scan.back"].exists,
+               app.buttons["inventory.row.cart"].firstMatch.exists, !app.buttons["inventory.row.cart"].firstMatch.isHittable {
+                return true
+            }
             // The same for the navigation flyout: the page under its scrim is drawn but hidden from
             // assistive technologies while it is open. Accept it only while the flyout is up and Home's
             // controls are out of the accessibility tree.
@@ -292,7 +327,8 @@ enum FentonHomeApp {
             if isUnderTabBar(element, in: app) { return true }
             if element.elementType == .button && app.navigationBars.buttons[element.label].exists { return true }
             return element.elementType == .staticText && systemSectionHeaders.contains(element.label)
-        case .dynamicType:
+        case .dynamicType, .textClipped:
+            // Toolbar buttons are system-drawn and offer the Large Content Viewer instead of scaling.
             return element.elementType == .button && app.navigationBars.buttons[element.label].exists
         default:
             return false
@@ -341,7 +377,12 @@ enum FentonHomeApp {
     }
 
     /// `Form` section headers, styled by the system.
-    private static let systemSectionHeaders: Set<String> = ["Home Assistant", "Two-factor code"]
+    private static let systemSectionHeaders: Set<String> = [
+        "Home Assistant", "Two-factor code",
+        // Inventory sort sheet and Add Item (measured 3.3:1 on iPhone, 2026-10-11).
+        "Sort By", "Sort Direction", "What item are you adding?", "How many are you adding?", "Where should it be stored?",
+        "When does it expire?", "Quick Expiration Dates", "Prepared Food",
+    ]
 }
 
 // MARK: - Screenshots
