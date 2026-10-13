@@ -114,29 +114,6 @@ public struct MediaRemoteSheet: View {
     }
 }
 
-// MARK: - Presentation
-
-public extension View {
-    /// Presents a remote sheet the way the pattern requires: full height, drag indicator visible, and a page-size
-    /// sheet on iPad so the landscape layout has room for two columns.
-    func mediaRemotePresentation() -> some View {
-        modifier(MediaRemotePresentation())
-    }
-}
-
-private struct MediaRemotePresentation: ViewModifier {
-    func body(content: Content) -> some View {
-        let sheet = content
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-        if #available(iOS 18.0, macOS 15.0, *) {
-            sheet.presentationSizing(.page)
-        } else {
-            sheet
-        }
-    }
-}
-
 // MARK: - Layout policy
 
 /// When the remote uses two columns (owner's split rules, `.agents/design/apple/split-view.md`).

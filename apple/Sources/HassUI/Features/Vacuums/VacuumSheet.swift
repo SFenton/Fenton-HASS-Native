@@ -247,8 +247,3 @@ struct VacuumOutcomeContractBox: Hashable {
         for room in contract.rooms { hasher.combine(room.roomId); hasher.combine(room.status.rawValue) }
     }
 }
-
-public extension View {
-    /// Presents the vacuum sheet like the remote: full height, drag indicator, page-size on iPad.
-    func vacuumPresentation() -> some View { mediaRemotePresentation() }
-}

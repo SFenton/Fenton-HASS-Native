@@ -12,6 +12,7 @@ struct MainTabView: View {
     @SceneStorage("selectedTab") private var storedSelection: AppSection = .home
     @State private var navigator = ShellNavigator()
     @State private var canvas: CGSize = .zero
+    @State private var windowTop: CGFloat = 0
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(HassConnection.self) private var connection: HassConnection?
 
@@ -25,6 +26,13 @@ struct MainTabView: View {
     }
 
     private var chrome: ShellChrome { .resolve(style: style, layout: layout) }
+
+    /// Sections shown as tabs: all of them under the flyout (the bar is hidden), else the compact layout's.
+    private var tabSections: [AppSection] {
+        style == .flyout ? AppSection.allCases : layout.visibleSections
+    }
+
+    private var settingsIsTab: Bool { tabSections.contains(.settings) }
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -42,11 +50,24 @@ struct MainTabView: View {
                 .ignoresSafeArea()
                 .onGeometryChange(for: CGSize.self) { $0.size } action: { canvas = $0 }
         }
+        // The status bar's height, for where the inline navigation bar ends (``headerEdgeCap``).
+        .background {
+            Color.clear.onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top.rounded() } action: { windowTop = $0 }
+        }
         .environment(navigator)
         .environment(\.shellNavigationStyle, style)
         .environment(\.shellChrome, chrome)
         .environment(\.backdropCanvas, canvas)
-        .onAppear { navigator.selection = storedSelection }
+        .environment(\.headerEdgeCap, headerEdgeCap)
+        .onAppear {
+            navigator.settingsIsTab = settingsIsTab
+            navigator.selection = storedSelection
+            if !settingsIsTab { navigator.settingsLeftTabBar() }
+        }
+        .onChange(of: settingsIsTab) { _, isTab in
+            navigator.settingsIsTab = isTab
+            if !isTab { navigator.settingsLeftTabBar() }
+        }
         .onChange(of: navigator.selection) { _, section in storedSelection = section }
         .onChange(of: style) { _, newStyle in
             if newStyle == .tabBar, !chrome.showsMenuButton { navigator.dismissFlyout() }
@@ -59,15 +80,19 @@ struct MainTabView: View {
     @ViewBuilder
     private var tabs: some View {
         if #available(iOS 26.0, macOS 26.0, *) {
-            @Bindable var navigator = navigator
-            TabView(selection: $navigator.rootTab) {
-                ForEach(AppSection.allCases) { section in
+            let navigator = navigator, settingsIsTab = settingsIsTab
+            // A selection the bar does not show (Settings while the window turns compact) reads as Home until
+            // ``ShellNavigator/settingsLeftTabBar()`` moves it, so the tab view never selects a missing tab.
+            let selection = Binding<RootTab>(
+                get: { navigator.rootTab == .section(.settings) && !settingsIsTab ? .section(.home) : navigator.rootTab },
+                set: { navigator.rootTab = $0 }
+            )
+            TabView(selection: selection) {
+                ForEach(tabSections) { section in
                     Tab(section.title, systemImage: section.symbol, value: RootTab.section(section)) {
                         sectionStack(for: section)
                     }
                     .badge(NavigationMenu.badge(for: section, overdue: navigator.overdueChores) ?? 0)
-                    // Settings leaves the compact bar for the menu; it stays a tab so the menu can select it.
-                    .hidden(style == .tabBar && !layout.visibleSections.contains(section))
                 }
                 if style == .tabBar && layout.hasQuickLinksTab {
                     Tab(QuickLinks.title, systemImage: QuickLinksButton.symbol, value: RootTab.quickLinks, role: .search) {
@@ -108,9 +133,26 @@ struct MainTabView: View {
                 }
                 .sectionRootChrome()
                 .pageChrome()
+                .navigationDestination(for: ShellRoute.self) { _ in SettingsPage() }
             }
         }
     }
+
+    /// Where the inline navigation bar ends: the status bar plus a compact bar
+    /// (`UINavigationBar.sizeThatFits`), so the header fade never hides a page's expanded large title.
+    private var headerEdgeCap: CGFloat? {
+        #if os(iOS)
+        guard windowTop > 0 else { return nil }
+        return windowTop + Self.barHeight
+        #else
+        return nil
+        #endif
+    }
+
+    #if os(iOS)
+    /// A compact navigation bar's height on this device.
+    private static let barHeight: CGFloat = UINavigationBar().sizeThatFits(CGSize(width: 1000, height: 1000)).height
+    #endif
 
     /// Reads the signed-in user's name for the profile button; the cached name shows until it arrives.
     private func loadProfileName() async {

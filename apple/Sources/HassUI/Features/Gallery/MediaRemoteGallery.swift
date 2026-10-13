@@ -41,7 +41,7 @@ struct MediaRemoteGallery: View {
                     // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
                     if !Self.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
                 }
-                .mediaRemotePresentation()
+                .hassSheet(.page)
         }
     }
 

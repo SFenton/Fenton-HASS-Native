@@ -81,7 +81,7 @@ struct BedroomGallery: View {
             .safeAreaInset(edge: .top) {
                 if !MediaRemoteGallery.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
             }
-            .bedroomSheetPresentation()
+            .hassSheet(.page)
         }
     }
 

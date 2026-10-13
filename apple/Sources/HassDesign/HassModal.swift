@@ -108,12 +108,66 @@ public extension View {
     /// The header treatment of a page inside a modal: no translucent band behind the header, and content that
     /// fades out before it reaches it (``HeaderEdgeFade``). ``HassModal`` applies it to its root; apply it to a
     /// modal's own root and to each page pushed inside a modal.
-    func modalChrome() -> some View { headerEdgeFade() }
+    ///
+    /// The page's background (the grouped background, behind lists and plain content alike) fills the whole
+    /// sheet, header included, outside the fade, so the header never reads as a band of another color.
+    func modalChrome() -> some View {
+        headerEdgeFade()
+            .scrollContentBackground(.hidden)
+            .background { ModalBackground().ignoresSafeArea() }
+    }
 
     /// Presents this modal at full height on iPhone with a visible grabber (owner, 2026-10-13: "All modals
-    /// (security system, cameras, etc.) need to open to full height on iPhone"). iPad shows its form sheet.
-    func hassSheet() -> some View {
-        presentationDetents([.large])
+    /// (security system, cameras, etc.) need to open to full height on iPhone"), the one sheet sizing API.
+    /// - Parameter width: The iPad sheet size: the system default, a form sheet or a page sheet (two-column
+    ///   remotes, thermostat and bedroom sheets, the humidifier). No effect on iPhone. HIG: Sheets ("Prefer page
+    ///   or form sheet styles in an iPadOS app").
+    func hassSheet(_ width: HassSheetWidth = .automatic) -> some View {
+        modifier(HassSheetPresentation(width: width))
+    }
+}
+
+/// How wide a ``SwiftUI/View/hassSheet(_:)`` modal is on iPad.
+public enum HassSheetWidth: Sendable {
+    /// The system's default for the presentation.
+    case automatic
+    /// A form sheet (device controls, short forms).
+    case form
+    /// A page sheet, with room for two columns.
+    case page
+}
+
+/// Implementation of ``SwiftUI/View/hassSheet(_:)``.
+private struct HassSheetPresentation: ViewModifier {
+    var width: HassSheetWidth
+
+    func body(content: Content) -> some View {
+        let sheet = content
+            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+        #if os(watchOS)
+        sheet
+        #else
+        if #available(iOS 18.0, macOS 15.0, *) {
+            switch width {
+            case .automatic: sheet
+            case .form: sheet.presentationSizing(.form)
+            case .page: sheet.presentationSizing(.page)
+            }
+        } else {
+            sheet
+        }
+        #endif
+    }
+}
+
+/// The modal page background: the system grouped background, so rows and tiles on it keep their contrast.
+private struct ModalBackground: View {
+    var body: some View {
+        #if canImport(UIKit)
+        Color(uiColor: .systemGroupedBackground)
+        #else
+        Color(nsColor: .windowBackgroundColor)
+        #endif
     }
 }

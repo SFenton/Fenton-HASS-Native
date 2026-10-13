@@ -90,6 +90,13 @@ enum ShellNavigationStyle: Equatable, Sendable {
 
 // MARK: - Compact tab bar
 
+/// A section page pushed on another section's stack because it is not a tab in this window: Settings, chosen
+/// from the menu where the compact bar leaves it out (FestivalNativeApps' drawer pushes a dropped section the
+/// same way). A hidden tab can't be selected: UIKit asserts.
+enum ShellRoute: Hashable, Sendable {
+    case settings
+}
+
 /// A tab in the root tab view: a section, or the trailing Quick Links tab.
 enum RootTab: Hashable, Sendable {
     case section(AppSection)

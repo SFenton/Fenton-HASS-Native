@@ -10,7 +10,7 @@ Owner, 2026-10-13: "No background image (blurred) of the house like web? Image s
 - **R2. Every page, the same crop.** `pageChrome()` draws `HouseBackdrop` as the navigation container background. The photo fills the window (`backdropCanvas`, measured by `MainTabView`) and each page or split pane shows the part under its own frame, so pushes, tabs and splits all show one picture.
 - **R3. Modals have none.** Sheets keep the system sheet background.
 - **R4. Pages are transparent.** `pageChrome()` hides list backgrounds (`scrollContentBackground(.hidden)`); a page never paints an opaque full-page background of its own.
-- **R5. Dark and light.** Dark mode follows the web: `brightness(0.76)` and the `rgba(3,6,10,0.08 → 0.42)` scrim over `#111723`. The web has no light theme; light mode washes the photo with white (62 → 72%) so dark text on it keeps its contrast.
+- **R5. Dark and light.** Dark mode follows the web: `brightness(0.76)` and the `rgba(3,6,10,0.08 → 0.42)` scrim over `#111723`. The web has no light theme; light mode washes the photo with white (38 → 52%) so dark text on it keeps its contrast.
 - **R6. Reduce Transparency** draws the plain base color with no photo.
 
 ## Tests

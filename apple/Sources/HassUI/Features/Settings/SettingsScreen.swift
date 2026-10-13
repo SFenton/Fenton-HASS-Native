@@ -24,6 +24,20 @@ struct SettingsStack: View {
     }
 }
 
+/// Settings pushed on another section's stack where it is not a tab (the iOS 26 compact bar; ``ShellRoute``): the
+/// list, with each topic pushed after it. Compact windows never split, so it needs no ``OnDemandSplitStack``.
+struct SettingsPage: View {
+    @State private var openTopic: HouseholdSettingsPage?
+
+    var body: some View {
+        SettingsScreen(openTopic: $openTopic)
+            .pageChrome()
+            .navigationDestination(item: $openTopic) { page in
+                HouseholdSettingsDestination(page: page).pageChrome()
+            }
+    }
+}
+
 // MARK: - List
 
 /// The Settings list: the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`: Vacation, which

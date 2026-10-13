@@ -174,7 +174,7 @@ extension View {
 /// HIG Toolbars: "Trailing: important always-available items"; Profile is the trailing-most item, as in
 /// FestivalNativeApps (`page-tools-and-nav-chrome` R2).
 private struct SectionRootChrome: ViewModifier {
-    @Environment(ShellNavigator.self) private var navigator
+    @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
     @Environment(\.shellChrome) private var chrome
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.roomServiceCaller) private var callerOverride
@@ -187,7 +187,7 @@ private struct SectionRootChrome: ViewModifier {
                 if chrome.showsMenuButton {
                     ToolbarItem(placement: .navigation) {
                         Button {
-                            navigator.openFlyout()
+                            navigator?.openFlyout()
                         } label: {
                             Label("Open Navigation", systemImage: "line.3.horizontal")
                         }
@@ -199,11 +199,11 @@ private struct SectionRootChrome: ViewModifier {
             .quickLinks(caller: callerOverride ?? connection, showsButton: chrome.showsQuickLinksButton)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    ProfileButton(name: navigator.profileName) { showsProfile = true }
+                    ProfileButton(name: navigator?.profileName) { showsProfile = true }
                 }
             }
             .homeAssistantSettingsCover(isPresented: $showsProfile)
-            .onChange(of: navigator.focusReturnToken) { _, _ in buttonFocused = true }
+            .onChange(of: navigator?.focusReturnToken) { _, _ in buttonFocused = true }
     }
 }
 
@@ -240,6 +240,9 @@ struct ProfileButton: View {
                 Image(systemName: "person.crop.circle")
             }
         }
+        // The whole 44 pt bar item is the target, not just the 30 pt monogram (HIG Buttons).
+        .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
+        .contentShape(Circle())
         .accessibilityLabel("Profile")
         .accessibilityValue(name ?? "")
         .accessibilityHint("Opens Home Assistant settings and your account")

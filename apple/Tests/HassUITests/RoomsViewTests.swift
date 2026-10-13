@@ -162,8 +162,9 @@ struct RoomsViewTests {
         let sheet = QuickLinksSheet(caller: caller) { routes.append($0) }
         for link in QuickLinks.items { sheet.open(link) }
         #expect(routes.contains(.media) && routes.contains(.food))
-        #expect(render(sheet.detailView(.rooms), size: Self.phone) != nil)
-        #expect(render(sheet.detailView(.securitySystem), size: Self.phone) != nil)
+        #expect(render(QuickLinksDetailView(detail: .rooms, caller: caller) { _ in }, size: Self.phone) != nil)
+        #expect(render(QuickLinksDetailView(detail: .securitySystem, caller: caller) { _ in }, size: Self.phone) != nil)
+        #expect(render(QuickLinksTab(caller: caller), size: Self.phone) != nil)
 
         var opened: [String] = []
         let grid = RoomNavigationGrid(caller: caller) { opened.append($0) }

@@ -256,11 +256,6 @@ struct BedroomTabPicker<Tab: Hashable & Identifiable>: View {
     }
 }
 
-/// Sheet presentation shared by the bedroom sheets: full height and a page-size sheet on iPad, so landscape has
-/// room for the hero beside the tabs.
-extension View {
-    func bedroomSheetPresentation() -> some View { mediaRemotePresentation() }
-}
 
 /// A once-a-second clock for countdowns.
 struct EverySecond<Content: View>: View {

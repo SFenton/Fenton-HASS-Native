@@ -115,37 +115,3 @@ struct DeviceAlert: View {
     }
 }
 
-// MARK: - Presentation
-
-/// How large a device sheet is on iPad.
-public enum RoomDeviceSheetSize: Sendable {
-    /// A form-size sheet (fan, purifier, grill).
-    case form
-    /// A page-size sheet with room for two columns (humidifier).
-    case page
-}
-
-public extension View {
-    /// Presents a device sheet: full height with the drag indicator (content below a medium detent fails the
-    /// audit), form or page size on iPad.
-    func roomDevicePresentation(_ size: RoomDeviceSheetSize = .form) -> some View {
-        modifier(RoomDevicePresentation(size: size))
-    }
-}
-
-private struct RoomDevicePresentation: ViewModifier {
-    var size: RoomDeviceSheetSize
-
-    func body(content: Content) -> some View {
-        let sheet = content
-            .hassSheet()
-        if #available(iOS 18.0, macOS 15.0, *) {
-            switch size {
-            case .form: sheet.presentationSizing(.form)
-            case .page: sheet.presentationSizing(.page)
-            }
-        } else {
-            sheet
-        }
-    }
-}

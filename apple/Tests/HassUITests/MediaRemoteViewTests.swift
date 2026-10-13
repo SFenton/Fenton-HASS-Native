@@ -203,7 +203,7 @@ struct MediaRemoteViewTests {
         let controller = MediaRemoteController(config: MediaRemotes.theaterRoomShield, store: store, caller: NullCaller())
         let open = KeyboardPrompt(target: "media_player.theater_room_shield", text: "it's")
         #expect(ImageRenderer(content: RemoteControlsTab(controller: controller, keyboard: open).frame(width: 402)).cgImage != nil)
-        #expect(ImageRenderer(content: Color.clear.mediaRemotePresentation().frame(width: 10, height: 10)).cgImage != nil)
+        #expect(ImageRenderer(content: Color.clear.hassSheet(.page).frame(width: 10, height: 10)).cgImage != nil)
         let apps = RemoteAppsTab(controller: controller, imageServer: .fentonHome).frame(width: 402)
         #expect(ImageRenderer(content: apps).cgImage != nil)
         // Public initializers: a caller of your own, or the app's connection.

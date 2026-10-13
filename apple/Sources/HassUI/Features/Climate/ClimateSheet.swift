@@ -124,18 +124,6 @@ extension View {
     }
 }
 
-extension View {
-    /// Page sizing for the thermostat sheets: on iPad the default form sheet cut the Automation tab off at its
-    /// bottom edge; a page sheet shows the whole column. No effect on iPhone. HIG: Sheets.
-    @ViewBuilder
-    func climateSheetSizing() -> some View {
-        if #available(iOS 18, macOS 15, *) {
-            presentationSizing(.page)
-        } else {
-            self
-        }
-    }
-}
 
 /// The page heading ``View/climateSheetTitle(_:)`` draws.
 struct ClimateSheetHeading: View {

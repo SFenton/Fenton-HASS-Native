@@ -176,7 +176,7 @@ enum HouseBackdropStyle {
 
     /// Over the photo. Dark mode is the web's `brightness(0.76)` plus its scrim (`rgba(3,6,10,0.08)` to
     /// `rgba(3,6,10,0.42)` over `rgba(6,10,16,0.12)`). Light mode, which the web lacks, washes the photo
-    /// toward white so dark text on it keeps its contrast.
+    /// toward white (38 → 52%) so dark text on it keeps its contrast.
     @ViewBuilder
     static func scrim(_ scheme: ColorScheme) -> some View {
         if scheme == .dark {
@@ -188,7 +188,7 @@ enum HouseBackdropStyle {
                                startPoint: .top, endPoint: .bottom)
             }
         } else {
-            LinearGradient(colors: [Color.white.opacity(0.62), Color.white.opacity(0.72)],
+            LinearGradient(colors: [Color.white.opacity(0.38), Color.white.opacity(0.52)],
                            startPoint: .top, endPoint: .bottom)
         }
     }

@@ -31,6 +31,24 @@ public enum HeaderEdgeFade {
         return max(0, readings.max() ?? 0)
     }
 
+    /// The band kept clear above the content: the header, but never a page's large title.
+    ///
+    /// On iOS 26 an expanded large title is drawn with the page's content and counts toward its top inset, so
+    /// clearing the whole inset hid the title. The band stops at the inline bar's bottom edge instead: the
+    /// smallest inset seen so far (the bar once the title has collapsed) or the window's estimate
+    /// (``SwiftUI/EnvironmentValues/headerEdgeCap``), whichever is lower. The large title then fades under the
+    /// bar with the rest of the content.
+    ///
+    /// - Parameters:
+    ///   - header: The full header from ``headerHeight(safeAreaInset:containerOffset:)``.
+    ///   - smallestInset: The smallest top inset seen on this page; nil before the first reading.
+    ///   - cap: The window's estimate of the inline bar's bottom edge; nil where unknown.
+    /// - Returns: The height to keep clear, at most `header`.
+    public static func clearHeight(header: CGFloat, smallestInset: CGFloat?, cap: CGFloat?) -> CGFloat {
+        let limits = [smallestInset, cap].compactMap { $0 }.filter { $0.isFinite && $0 > 0 }
+        return max(0, min(header, limits.min() ?? header))
+    }
+
     /// How far the fade has grown.
     ///
     /// - Parameters:
@@ -69,6 +87,15 @@ public enum HeaderEdgeFade {
     }
 }
 
+// MARK: - Environment
+
+extension EnvironmentValues {
+    /// The window's estimate of where the inline navigation bar ends (status bar plus a compact bar), so a page's
+    /// expanded large title is not taken for header (``HeaderEdgeFade/clearHeight(header:smallestInset:cap:)``).
+    /// Set by the app's root; nil keeps the whole measured header clear.
+    @Entry public var headerEdgeCap: CGFloat?
+}
+
 // MARK: - Modifier
 
 extension View {
@@ -89,6 +116,8 @@ struct HeaderEdgeFadeModifier: ViewModifier {
     @State private var safeAreaInset: CGFloat = 0
     @State private var containerOffset: CGFloat = 0
     @State private var scrollOffset: CGFloat = 0
+    @State private var smallestInset: CGFloat?
+    @Environment(\.headerEdgeCap) private var cap
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorSchemeContrast) private var contrast
 
@@ -103,7 +132,10 @@ struct HeaderEdgeFadeModifier: ViewModifier {
     }
 
     private var headerHeight: CGFloat {
-        HeaderEdgeFade.headerHeight(safeAreaInset: safeAreaInset, containerOffset: containerOffset)
+        HeaderEdgeFade.clearHeight(
+            header: HeaderEdgeFade.headerHeight(safeAreaInset: safeAreaInset, containerOffset: containerOffset),
+            smallestInset: smallestInset, cap: cap
+        )
     }
 
     func body(content: Content) -> some View {
@@ -112,7 +144,10 @@ struct HeaderEdgeFadeModifier: ViewModifier {
             .modifier(HeaderBackgroundHidden())
             .background {
                 Color.clear
-                    .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top.rounded() } action: { safeAreaInset = $0 }
+                    .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top.rounded() } action: { inset in
+                        safeAreaInset = inset
+                        if inset > 0, inset < (smallestInset ?? .infinity) { smallestInset = inset }
+                    }
                     .accessibilityHidden(true)
             }
             .background {
