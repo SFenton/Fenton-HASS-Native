@@ -39,14 +39,7 @@ public enum ClimateLogic {
     }
 
     /// A number from a JSON value or numeric string (web `numberValue`).
-    public static func number(_ value: JSONValue?) -> Double? {
-        switch value {
-        case let .number(number): number.isFinite ? number : nil
-        case let .string(text):
-            text.trimmingCharacters(in: .whitespaces).isEmpty ? nil : Double(text).flatMap { $0.isFinite ? $0 : nil }
-        default: nil
-        }
-    }
+    public static func number(_ value: JSONValue?) -> Double? { value?.finiteNumber }
 
     /// `72.0°F`, or `--°F` when not a number (web `formatTemperatureValue`).
     public static func temperature(_ value: Double?, unit: String = "°F") -> String {

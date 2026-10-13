@@ -22,13 +22,13 @@ public enum RecipeParsing {
     /// A card, or nil when it lacks a positive id or a title (web `normalizeRecipeCard`).
     public static func card(_ value: JSONValue) -> RecipeCard? {
         guard case .object = value else { return nil }
-        guard let rawId = value.first("id", "recipe_id")?.loose, rawId.isFinite else { return nil }
+        guard let rawId = value.first("id", "recipe_id")?.finiteNumber, rawId.isFinite else { return nil }
         let id = Int(rawId.rounded())
         let title = value.first("title", "name")?.text ?? ""
         guard id > 0, !title.isEmpty else { return nil }
         let requiredTotal = value.first("required_total", "requiredTotal").nonNegativeInt ?? 0
         let rawMatched = value.first("matched_required", "matchedRequired").nonNegativeInt ?? 0
-        let soonest = value.first("soonest_expiry_days", "soonestExpiryDays")?.loose
+        let soonest = value.first("soonest_expiry_days", "soonestExpiryDays")?.finiteNumber
         return RecipeCard(
             id: id,
             dedupeKey: value.first("dedupe_key", "dedupeKey")?.text,
@@ -36,7 +36,7 @@ public enum RecipeParsing {
             imageURL: value.first("image_url", "imageUrl")?.text.flatMap(httpURL),
             thumbnailURL: value.first("thumbnail_url", "thumbnailUrl")?.text.flatMap(httpURL),
             source: value.first("source", "provider")?.text ?? "Unknown source",
-            coverage: coveragePercent(value.first("coverage")?.loose ?? 0),
+            coverage: coveragePercent(value.first("coverage")?.finiteNumber ?? 0),
             matchedRequired: requiredTotal > 0 ? min(requiredTotal, rawMatched) : rawMatched,
             requiredTotal: requiredTotal,
             soonestExpiryDays: soonest.flatMap { $0.isFinite ? Int($0.rounded()) : nil },
@@ -65,7 +65,7 @@ public enum RecipeParsing {
     /// A hydration poll (web `normalizeRecipeHydrationEnvelope`).
     public static func hydration(_ result: JSONValue) -> RecipeHydration {
         let record = payload(result)
-        let poll = record.first("next_poll_ms", "nextPollMs")?.loose
+        let poll = record.first("next_poll_ms", "nextPollMs")?.finiteNumber
         return RecipeHydration(
             searchId: record.first("search_id", "searchId")?.text ?? "",
             status: record.first("status")?.text ?? "complete",
@@ -188,7 +188,7 @@ public enum RecipeParsing {
             primaryImageURL: images.first("primary")?.text.flatMap(httpURL),
             thumbnailURL: images.first("thumbnail")?.text.flatMap(httpURL),
             general: .init(
-                yieldQuantity: yield.first("quantity")?.loose.flatMap { $0 >= 0 ? $0 : nil },
+                yieldQuantity: yield.first("quantity")?.finiteNumber.flatMap { $0 >= 0 ? $0 : nil },
                 yieldUnit: yield.first("unit")?.text.map { bounded($0, 80) },
                 prepTimeSeconds: general.first("prep_time_seconds", "prepTimeSeconds").integer(minimum: 0),
                 cookTimeSeconds: general.first("cook_time_seconds", "cookTimeSeconds").integer(minimum: 0),
@@ -257,8 +257,8 @@ public enum RecipeParsing {
             overrideAvailability: override?.first("availability")?.string.flatMap(RecipeDetail.AvailabilityOverride.init(rawValue:)),
             overrideProductName: selected?.first("id", "product_id", "productId").integer(minimum: 1) != nil
                 ? selected?.first("name")?.text.map { bounded($0, 200) } : nil,
-            amountQuantity: amount.first("quantity")?.loose.flatMap { $0 >= 0 ? $0 : nil },
-            amountQuantityMax: amount.first("quantity_max", "quantityMax")?.loose.flatMap { $0 >= 0 ? $0 : nil },
+            amountQuantity: amount.first("quantity")?.finiteNumber.flatMap { $0 >= 0 ? $0 : nil },
+            amountQuantityMax: amount.first("quantity_max", "quantityMax")?.finiteNumber.flatMap { $0 >= 0 ? $0 : nil },
             amountUnit: amount.first("unit")?.text.map { bounded($0, 80) },
             amountText: amount.first("text")?.text.map { bounded($0, 160) },
             inventoryState: inventory.first("state")?.string.flatMap(RecipeDetail.InventoryState.init(rawValue:)) ?? .uncertain,
@@ -475,14 +475,6 @@ extension JSONValue {
         return trimmed.isEmpty ? nil : trimmed
     }
 
-    /// A number from a number or a numeric string (web `finiteNumber`).
-    var loose: Double? {
-        switch self {
-        case let .number(value): value.isFinite ? value : nil
-        case let .string(value): Double(value.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite ? $0 : nil }
-        default: nil
-        }
-    }
 
     /// A boolean from a bool, number or yes/no style string (web `booleanValue`).
     var flag: Bool? {
@@ -502,11 +494,11 @@ extension JSONValue {
 
 extension Optional where Wrapped == JSONValue {
     /// A rounded, non-negative integer (web `nonNegativeInteger`).
-    var nonNegativeInt: Int? { self?.loose.map { max(0, Int($0.rounded())) } }
+    var nonNegativeInt: Int? { self?.finiteNumber.map { max(0, Int($0.rounded())) } }
 
     /// An exact integer at or above `minimum` (web `nullableInteger`).
     func integer(minimum: Int) -> Int? {
-        guard let number = self?.loose, number == number.rounded(), number >= Double(minimum), abs(number) < 1e15 else { return nil }
+        guard let number = self?.finiteNumber, number == number.rounded(), number >= Double(minimum), abs(number) < 1e15 else { return nil }
         return Int(number)
     }
 }

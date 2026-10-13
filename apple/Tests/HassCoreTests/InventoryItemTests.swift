@@ -161,9 +161,9 @@ struct InventoryItemTests {
     // MARK: Lenient JSON helpers
 
     @Test func looseAccessors() {
-        #expect(JSONValue.number(2).looseNumber == 2)
-        #expect(JSONValue.string(" 2.5 ").looseNumber == 2.5)
-        #expect(JSONValue.bool(true).looseNumber == nil)
+        #expect(JSONValue.number(2).finiteNumber == 2)
+        #expect(JSONValue.string(" 2.5 ").finiteNumber == 2.5)
+        #expect(JSONValue.bool(true).finiteNumber == nil)
         #expect(JSONValue.string("a").looseString == "a")
         #expect(JSONValue.number(2.5).looseString == "2.5")
         #expect(JSONValue.number(12).looseString == "12")

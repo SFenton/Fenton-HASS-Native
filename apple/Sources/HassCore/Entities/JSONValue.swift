@@ -39,6 +39,15 @@ public enum JSONValue: Codable, Hashable, Sendable {
     public var array: [JSONValue]? { if case let .array(value) = self { value } else { nil } }
     /// Member lookup for objects.
     public subscript(key: String) -> JSONValue? { if case let .object(value) = self { value[key] } else { nil } }
+    /// A finite number from a number or a numeric string, trimmed (web `finiteNumber`). The one lenient number
+    /// reader: `" 5 "` is 5; `"inf"`, `"nan"`, blank text and other types are `nil`.
+    public var finiteNumber: Double? {
+        switch self {
+        case let .number(value): value.isFinite ? value : nil
+        case let .string(text): Double(text.trimmingCharacters(in: .whitespaces)).flatMap { $0.isFinite ? $0 : nil }
+        default: nil
+        }
+    }
 
     // MARK: - Codable
 

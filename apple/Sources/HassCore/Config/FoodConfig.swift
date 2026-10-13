@@ -93,7 +93,7 @@ public enum FoodConfig {
     }
 
     static func expiresWithinWeek(_ item: JSONValue, now: Date, calendar: Calendar) -> Bool {
-        if let days = item["days_remaining"]?.loose { return days >= 0 && days <= 7 }
+        if let days = item["days_remaining"]?.finiteNumber { return days >= 0 && days <= 7 }
         guard let text = item["expiry_date"]?.string, text.count >= 10 else { return false }
         let parts = text.prefix(10).split(separator: "-").compactMap { Int($0) }
         guard parts.count == 3, let expiry = calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2])) else { return false }

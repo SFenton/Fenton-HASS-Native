@@ -240,10 +240,7 @@ public enum RecipeFormatting {
     }
 
     static func parseDate(_ text: String) -> Date? {
-        if let date = try? Date(text, strategy: .iso8601) { return date }
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = fractional.date(from: text) { return date }
+        if let date = HassDates.iso8601(text) { return date }
         let day = DateFormatter()
         day.locale = Locale(identifier: "en_US_POSIX")
         day.dateFormat = "yyyy-MM-dd"

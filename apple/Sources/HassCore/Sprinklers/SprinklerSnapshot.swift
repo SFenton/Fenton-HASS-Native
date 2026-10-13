@@ -124,13 +124,7 @@ public struct SprinklerSnapshot: Equatable, Sendable {
         return !entity.isUnavailable
     }
 
-    static func number(_ value: JSONValue?) -> Double? {
-        switch value {
-        case let .number(number)?: number.isFinite ? number : nil
-        case let .string(text)?: Double(text).flatMap { $0.isFinite ? $0 : nil }
-        default: nil
-        }
-    }
+    static func number(_ value: JSONValue?) -> Double? { value?.finiteNumber }
 
     static func program(_ entity: EntityState?, entityId: String) -> Program {
         let runTimes = entity?.attributes["run_times"]?.array ?? []
@@ -177,12 +171,5 @@ public struct SprinklerSnapshot: Equatable, Sendable {
     }
 
     /// Parses Home Assistant timestamps (ISO 8601, with or without fractional seconds).
-    static func date(_ text: String?) -> Date? {
-        guard let text, !text.isEmpty else { return nil }
-        let plain = ISO8601DateFormatter()
-        if let date = plain.date(from: text) { return date }
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return fractional.date(from: text)
-    }
+    static func date(_ text: String?) -> Date? { HassDates.iso8601(text) }
 }

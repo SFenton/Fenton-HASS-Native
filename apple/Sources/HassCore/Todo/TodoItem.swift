@@ -65,11 +65,7 @@ public struct TodoItem: Codable, Hashable, Sendable, Identifiable {
             guard parts.count == 3 else { return nil }
             return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
         }
-        let withFraction = ISO8601DateFormatter()
-        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = withFraction.date(from: value) { return date }
-        let plain = ISO8601DateFormatter()
-        if let date = plain.date(from: value) { return date }
+        if let date = HassDates.iso8601(value) { return date }
         // A date-time without a zone is local time.
         let local = DateFormatter()
         local.locale = Locale(identifier: "en_US_POSIX")

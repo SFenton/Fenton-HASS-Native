@@ -205,13 +205,7 @@ public struct BedAlarm: Hashable, Sendable, Identifiable {
         )
     }
 
-    static func number(_ value: JSONValue) -> Double? {
-        switch value {
-        case let .number(number): number.isFinite ? number : nil
-        case let .string(text): Double(text.trimmingCharacters(in: .whitespaces))
-        default: nil
-        }
-    }
+    static func number(_ value: JSONValue) -> Double? { value.finiteNumber }
 
     /// The payload object Home Assistant expects for this alarm.
     var payload: JSONValue {
