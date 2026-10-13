@@ -34,11 +34,16 @@ public struct ThermostatDial: View {
     public var size: Size
     /// Called with the new setpoints when a drag ends, the ring is tapped or VoiceOver adjusts a handle.
     public var onCommit: (ThermostatTargets) -> Void
+    /// Set by the caller each time Home Assistant rejects a commit; the dial drops that edit if it is still showing.
+    public var rejection: ThermostatRejection?
 
     /// Creates a dial.
-    public init(_ configuration: ThermostatDialConfiguration, size: Size = .page, onCommit: @escaping (ThermostatTargets) -> Void) {
+    /// - Parameter rejection: The caller's latest rejected commit, which rolls the handles back.
+    public init(_ configuration: ThermostatDialConfiguration, size: Size = .page, rejection: ThermostatRejection? = nil,
+                onCommit: @escaping (ThermostatTargets) -> Void) {
         self.configuration = configuration
         self.size = size
+        self.rejection = rejection
         self.onCommit = onCommit
     }
 
@@ -80,6 +85,9 @@ public struct ThermostatDial: View {
         .frame(maxWidth: size.maxSide + Self.gutter * 2)
         .animation(reduceMotion || activeHandle != nil ? nil : .snappy(duration: 0.2), value: displayed)
         .sensoryFeedback(.selection, trigger: displayed) { _, _ in activeHandle != nil }
+        .onChange(of: rejection) { _, rejection in
+            if let rejection { editor.rollBack(rejected: rejection.targets) }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("thermostatDial")
     }

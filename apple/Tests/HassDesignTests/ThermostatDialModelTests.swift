@@ -157,6 +157,30 @@ struct ThermostatDialEditorTests {
         #expect(editor.displayed(echoed) == .single(73))
     }
 
+    @Test func aRejectedCommitRollsBackAndCanBeSentAgain() {
+        var editor = ThermostatDialEditor()
+        #expect(editor.endDrag(.target, at: point(74, single), side: 300, in: single, now: start) == .single(74))
+        editor.rollBack(rejected: .single(74))
+        #expect(editor.pending == nil)
+        #expect(editor.displayed(single) == .single(72), "Back to Home Assistant's setpoint")
+        #expect(editor.endDrag(.target, at: point(74, single), side: 300, in: single, now: start.addingTimeInterval(0.1)) == .single(74),
+                "The same value is not dropped as a duplicate after a rollback")
+    }
+
+    @Test func aLateRejectionNeverUndoesANewerEdit() {
+        var editor = ThermostatDialEditor()
+        _ = editor.adjust(.target, increment: true, in: single, now: start)
+        _ = editor.adjust(.target, increment: true, in: single, now: start.addingTimeInterval(0.5))
+        let newer = editor.displayed(single)
+        editor.rollBack(rejected: .single(72.5))
+        #expect(editor.displayed(single) == newer, "The older commit's failure leaves the newer edit")
+        editor.drag(.target, to: point(75, single), side: 300, in: single)
+        let dragging = editor.displayed(single)
+        editor.rollBack(rejected: dragging!)
+        #expect(editor.displayed(single) == dragging, "No rollback mid-drag")
+        #expect(ThermostatRejection(targets: .single(72), count: 1) != ThermostatRejection(targets: .single(72), count: 2))
+    }
+
     @Test func releasingWhereItStartedSendsNothing() {
         var editor = ThermostatDialEditor()
         #expect(editor.endDrag(.target, at: point(72, single), side: 300, in: single, now: start) == nil)

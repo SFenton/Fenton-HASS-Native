@@ -46,7 +46,7 @@ enum ClimateRoute: Hashable {
     }
 }
 
-/// "Thermostat · Advanced Controls": Rooms, Automation and Tracking tabs with detail pages pushed on a
+/// "Advanced Controls": Rooms, Automation and Tracking tabs with detail pages pushed on a
 /// `NavigationStack` (Back returns to the tab, like the web's in-sheet back). Pattern: modal-sheet.
 struct ClimateSheet: View {
     var controller: ClimateController
@@ -102,7 +102,7 @@ struct ClimateSheet: View {
 
 extension View {
     /// The sheet's title as a wrapping heading at the top of the content instead of an inline bar title, which
-    /// truncated "Thermostat · Advanced Controls" and "Eco Mode Critical Tracking" beside Back and Done on iPhone
+    /// truncated "Advanced Controls" and "Eco Mode Critical Tracking" beside Back and Done on iPhone
     /// and can't grow with Dynamic Type. `navigationTitle` still names the page for Back and VoiceOver.
     /// HIG: Navigation bars, Typography (Dynamic Type).
     @ViewBuilder

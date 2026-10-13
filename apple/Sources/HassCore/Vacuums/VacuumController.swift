@@ -147,7 +147,12 @@ public final class VacuumController {
     }
 
     /// Tabs for the current mode.
-    public var tabs: [VacuumTab] { VacuumRuntime.tabs(for: vacuum, mode: runtimeMode, dockState: live(vacuum.dockControls?.dockStatusEntityId)) }
+    public var tabs: [VacuumTab] { tabs(in: runtimeMode) }
+
+    /// Tabs for `mode`: the sheet keeps showing the outgoing mode's tabs while its content fades out.
+    public func tabs(in mode: VacuumRuntimeMode) -> [VacuumTab] {
+        VacuumRuntime.tabs(for: vacuum, mode: mode, dockState: live(vacuum.dockControls?.dockStatusEntityId))
+    }
 
     /// The state shown in the status pill (live while unavailable).
     public var statusState: String { status.primaryAvailable ? state : liveState }
@@ -210,12 +215,15 @@ public final class VacuumController {
     }
 
     /// Mode, fan and water, as the web's Power Settings shows them.
-    public var powerSettings: [Setting] {
-        guard runtimeMode == .full else { return [] }
+    public var powerSettings: [Setting] { powerSettings(in: runtimeMode) }
+
+    /// Power settings as shown in `mode` (none in minimal mode).
+    public func powerSettings(in mode: VacuumRuntimeMode) -> [Setting] {
+        guard mode == .full else { return [] }
         let disabled = controlsDisabled
-        let mode = entity(vacuum.modeEntityId)
-        let hasMode = vacuum.modeEntityId != nil && !(mode?.isUnavailable ?? true)
-        let shownMode = hasMode ? displayedValue(vacuum.modeEntityId ?? "") : mode?.state
+        let modeEntity = entity(vacuum.modeEntityId)
+        let hasMode = vacuum.modeEntityId != nil && !(modeEntity?.isUnavailable ?? true)
+        let shownMode = hasMode ? displayedValue(vacuum.modeEntityId ?? "") : modeEntity?.state
         let modeText = live(vacuum.modeTextEntityId)
         let meaningful = modeText.map { !VacuumStatusResolver.isUnavailable($0) } ?? false
         var settings: [Setting] = []
@@ -370,7 +378,10 @@ public final class VacuumController {
     }
 
     /// The cleaning setup shows (full mode, no pending resume).
-    public var showsCleaningSetup: Bool { runtimeMode == .full && !isResumable }
+    public var showsCleaningSetup: Bool { showsCleaningSetup(in: runtimeMode) }
+
+    /// Whether the cleaning setup shows in `mode`.
+    public func showsCleaningSetup(in mode: VacuumRuntimeMode) -> Bool { mode == .full && !isResumable }
 
     /// The Clean button for selected rooms.
     public var cleanAction: Action {

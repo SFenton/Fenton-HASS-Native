@@ -472,7 +472,8 @@ struct VacuumSheetInteractionTests {
         let rig = SheetRig(size: size, window: WindowMetrics(size: size, isRegularWidth: true))
         defer { rig.host.close() }
         #expect(rig.host.buttonCount == 9)
-        let locate = rig.host.frames().firstIndex { $0.width < 100 }
+        // Narrow and tall: the setting rows' value menus are narrow too, but only 24 pt tall on the Mac host.
+        let locate = rig.host.frames().firstIndex { $0.width < 100 && $0.height > 30 }
         #expect(locate != nil, "Locate keeps its place on the map: \(rig.host.frames())")
         rig.host.tap(locate ?? 0)
         await rig.settle()
