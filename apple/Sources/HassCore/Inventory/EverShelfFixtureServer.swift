@@ -152,7 +152,7 @@ public final class EverShelfFixtureServer: EverShelfCalling {
 
     private func delete(_ data: [String: JSONValue]) {
         guard let id = data["inventory_id"]?.positiveInt, let index = rows.firstIndex(where: { $0.id == id }) else { return }
-        if let quantity = data["quantity"]?.looseNumber, quantity < rows[index].quantity {
+        if let quantity = data["quantity"]?.finiteNumber, quantity < rows[index].quantity {
             rows[index].quantity -= quantity
         } else {
             rows.remove(at: index)
@@ -175,7 +175,7 @@ public final class EverShelfFixtureServer: EverShelfCalling {
             return .object(["success": .bool(false), "message": .string("Missing name or location")])
         }
         let prepared = (data["prepared_food"] ?? data["inventory_prepared_food"]).map(InventoryItem.isPreparedFlag) ?? false
-        let row = Row(id: 0, name: name, quantity: data["quantity"]?.looseNumber ?? 1, location: location,
+        let row = Row(id: 0, name: name, quantity: data["quantity"]?.finiteNumber ?? 1, location: location,
                       expiryDate: data["expiry_date"]?.string, preparedFood: prepared, productId: data["product_id"]?.positiveInt)
         merge(row)
         return .object(["success": .bool(true)])
@@ -184,7 +184,7 @@ public final class EverShelfFixtureServer: EverShelfCalling {
     private func prepare(_ data: [String: JSONValue]) {
         guard let id = data["inventory_id"]?.positiveInt, let index = rows.firstIndex(where: { $0.id == id }) else { return }
         let prepared = data["prepared_food"].map(InventoryItem.isPreparedFlag) ?? true
-        let quantity = min(data["quantity"]?.looseNumber ?? rows[index].quantity, rows[index].quantity)
+        let quantity = min(data["quantity"]?.finiteNumber ?? rows[index].quantity, rows[index].quantity)
         var moved = rows[index]
         moved.quantity = quantity
         moved.preparedFood = prepared

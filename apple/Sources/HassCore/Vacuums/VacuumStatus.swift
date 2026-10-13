@@ -385,7 +385,6 @@ public struct VacuumVisual: Equatable, Sendable {
 // MARK: - Formatting
 
 public enum VacuumFormat {
-
     /// A state for display (`formatStateValue`).
     public static func state(_ value: String?, fallback: String = "Unavailable") -> String {
         guard let value, !value.isEmpty else { return fallback }
@@ -440,12 +439,7 @@ public enum VacuumFormat {
 
 /// ISO 8601 parsing that accepts fractional seconds.
 enum VacuumDates {
-    static func parse(_ text: String) -> Date? {
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = fractional.date(from: text) { return date }
-        return ISO8601DateFormatter().date(from: text)
-    }
+    static func parse(_ text: String) -> Date? { HassDates.iso8601(text) }
 }
 
 extension String {

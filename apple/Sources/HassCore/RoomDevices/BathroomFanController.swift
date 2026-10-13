@@ -124,13 +124,7 @@ public final class BathroomFanController {
     }
 
     /// Parses `2026-10-11 14:30:00` (or with a `T`) in the device's time zone, like the web's `Date.parse`.
-    static func parseLocalDateTime(_ text: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = .current
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return formatter.date(from: text.replacingOccurrences(of: "T", with: " "))
-    }
+    static func parseLocalDateTime(_ text: String) -> Date? { HassDates.localDateTime(text) }
 
     /// The closest offered length (web `normalizeBathroomFanTimerMinutes`; ties keep the earlier value).
     public static func normalizedMinutes(_ minutes: Int) -> Int {

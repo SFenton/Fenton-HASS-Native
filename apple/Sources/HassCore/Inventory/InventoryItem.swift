@@ -146,7 +146,7 @@ public struct InventoryItem: Hashable, Sendable {
         inventoryId = rowId?.positiveInt
         inventoryIds = fields["inventory_ids"]?.array?.compactMap(\.positiveInt) ?? []
         name = text("name") ?? "Untitled item"
-        let quantity = fields["quantity"]?.looseNumber ?? 0
+        let quantity = fields["quantity"]?.finiteNumber ?? 0
         self.quantity = quantity.isFinite && quantity > 0 ? quantity : 1
         unit = text("unit")
         location = text("location").flatMap(StorageLocation.init(rawValue:)).flatMap { StorageLocation.storage.contains($0) ? $0 : nil }
@@ -200,15 +200,6 @@ public struct InventoryItem: Hashable, Sendable {
 // MARK: - Lenient JSON
 
 extension JSONValue {
-    /// A number, or a string that parses as one.
-    var looseNumber: Double? {
-        switch self {
-        case let .number(value): value
-        case let .string(text): Double(text.trimmingCharacters(in: .whitespaces))
-        default: nil
-        }
-    }
-
     /// A string, or a number written out (`12`, `2.5`).
     var looseString: String? {
         switch self {
@@ -220,7 +211,7 @@ extension JSONValue {
 
     /// A positive whole number.
     var positiveInt: Int? {
-        guard let number = looseNumber, number.isFinite, number > 0, number < Double(Int.max) else { return nil }
+        guard let number = finiteNumber, number > 0, number < Double(Int.max) else { return nil }
         return Int(number)
     }
 }

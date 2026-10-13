@@ -239,10 +239,7 @@ public final class BedSideController {
         if let timestamp = restore.attributes["timestamp"].flatMap(BedAlarm.number) {
             return BedFormat.countdown(timestamp - now.timeIntervalSince1970)
         }
-        let local = DateFormatter()
-        local.locale = Locale(identifier: "en_US_POSIX")
-        local.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return local.date(from: restore.state).map { BedFormat.countdown($0.timeIntervalSince(now)) }
+        return HassDates.localDateTime(restore.state).map { BedFormat.countdown($0.timeIntervalSince(now)) }
     }
 
     /// The target can change from the dial.

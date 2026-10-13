@@ -116,8 +116,7 @@ public enum HouseholdAway {
         public var end: WallClock? { endsAt.flatMap(WallClock.init(parsing:)) }
 
         private static func integer(_ value: JSONValue?) -> Int {
-            let number = value?.number ?? value?.string.flatMap(Double.init) ?? 0
-            return number.isFinite ? max(0, Int(number.rounded())) : 0
+            max(0, Int((value?.finiteNumber ?? 0).rounded()))
         }
 
         private static func nonEmpty(_ value: JSONValue?) -> String? {
