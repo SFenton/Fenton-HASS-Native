@@ -45,8 +45,8 @@ struct RoomChip: View {
 /// A room card (web `DefaultRoomSourceCard`): a ``GlassTile`` whose kind follows the card's semantics, dimmed when
 /// off, washed by its state color.
 ///
-/// Device cards (bathroom fan, humidifier, wake light, garage door, vacuum, dishwasher) draw this generic tile until
-/// their lanes replace them in ``RoomCardView``.
+/// Device cards (humidifier, wake light, vacuum, dishwasher) draw this generic tile until their lanes replace them in
+/// ``RoomCardView``.
 struct RoomCardTile: View {
     var controller: RoomController
     var card: RoomCard
@@ -92,15 +92,28 @@ struct RoomCardView: View {
     /// The page's shared controller when this card is a bathroom fan.
     var fan: BathroomFanController?
     var onOpen: () -> Void
+    @Environment(HassConnection.self) private var connection: HassConnection?
 
     var body: some View {
-        // Hook points: garage door (`.garageDoor`), wake light and dishwasher tiles land here; until then they use
-        // the generic tile.
+        // Hook points: wake light and dishwasher tiles land here; until then they use the generic tile.
         if card.control == .bathroomFan, let fan {
             BathroomFanRoomTile(fan: fan, card: card, onOpen: onOpen)
+        } else if card.control == .garageDoor, let tile = Self.garageTile(card) {
+            // The Security page's door control (web `GarageDoorTile`), titled as the room card.
+            GarageDoorTile(tile: tile, liveState: controller.store.entity(card.entityId).state?.state,
+                           caller: controller.caller, canSend: connection.map { SecurityScreen.canSend($0.status) } ?? true)
+                .accessibilityIdentifier("room.card.\(card.title)")
         } else {
             RoomCardTile(controller: controller, card: card, onOpen: onOpen)
         }
+    }
+
+    /// The Security garage door tile for a garage card, keeping the card's title and icon.
+    static func garageTile(_ card: RoomCard) -> SecurityConfig.Tile? {
+        guard var tile = SecurityConfig.controlTiles.first(where: { $0.kind == .garageDoor && $0.entityId == card.entityId })
+        else { return nil }
+        tile.title = card.title
+        return tile
     }
 }
 

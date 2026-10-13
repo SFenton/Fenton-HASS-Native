@@ -81,6 +81,33 @@ struct SecurityViewTests {
         #expect(GarageDoorTile.subtitle(for: garage) == "Unavailable")
     }
 
+    /// Garage room cards draw the Security door tile under the card's title; other cards keep their tiles.
+    @Test func garageRoomCardsUseTheDoorTile() {
+        let garage = RoomsConfig.pages.first { $0.id == "garage" }!
+        let cards = garage.sections.flatMap(\.cards).filter { $0.control == .garageDoor }
+        #expect(cards.map(\.entityId) == [SecurityConfig.leftGarageDoorEntityId, SecurityConfig.rightGarageDoorEntityId])
+        for card in cards {
+            let tile = RoomCardView.garageTile(card)
+            #expect(tile?.title == card.title)
+            #expect(tile?.kind == .garageDoor)
+        }
+        let other = RoomsConfig.pages.flatMap(\.sections).flatMap(\.cards).first { $0.control != .garageDoor }!
+        #expect(RoomCardView.garageTile(other) == nil)
+        let store = SecurityFixtures.store()
+        let controller = RoomController(page: garage, store: store, caller: Caller())
+        let view = RoomCardView(controller: controller, card: cards[0]) {}.environment(store).frame(width: 170)
+        #expect(ImageRenderer(content: view).cgImage != nil)
+    }
+
+    /// Quick Links' Security System detail shows the mode grid with a caller and the state alone without one.
+    @Test func quickLinksSecurityDetailRenders() {
+        let store = SecurityFixtures.store()
+        for caller: (any HassServiceCalling)? in [Caller(), nil] {
+            let view = NavigationStack { QuickLinksSecurityDetail(caller: caller) }.environment(store).frame(width: 402, height: 600)
+            #expect(ImageRenderer(content: view).cgImage != nil)
+        }
+    }
+
     @Test func connectionStatusGatesCommands() {
         #expect(SecurityScreen.canSend(.connected(version: "2026.10")))
         #expect(SecurityScreen.canSend(.connecting))
