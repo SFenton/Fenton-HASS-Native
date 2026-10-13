@@ -284,6 +284,7 @@ struct RecipeFilterSheet: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(HassTokens.Ink.primary)
                     .textCase(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
             } footer: {
                 Text("Only show recipes where at least this percentage of required ingredients is currently available.")
@@ -316,6 +317,7 @@ struct RecipeFilterSheet: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(HassTokens.Ink.primary)
                     .textCase(nil)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
             } footer: {
                 Text(sortedAlphabetically

@@ -253,8 +253,9 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertFalse(field.exists)
     }
 
-    /// The Sort sheet with a changed choice (so Reset to Defaults shows), for the AX5 comparison page.
-    private func openSortSheet(_ app: XCUIApplication) -> XCUIApplication {
+    /// The Sort sheet with a changed choice (so Reset to Defaults shows), scrolled until `reveal` is on screen,
+    /// for an audit and its AX5 comparison page.
+    private func openSortSheet(_ app: XCUIApplication, reveal: String = "Reset to Defaults") -> XCUIApplication {
         waitForGrid(app)
         element("fab.sort", in: app).tap()
         XCTAssertTrue(app.buttons["filterSheet.apply"].waitForExistence(timeout: 5))
@@ -263,20 +264,17 @@ final class FoodJourneyTests: XCTestCase {
         // At AX5 the row starts below the fold, and the Form only creates rows on screen.
         for _ in 0..<6 where !(alphabetical.exists && alphabetical.isHittable) { sheet.swipeUp() }
         alphabetical.tap()
-        revealReset(in: app, sheet: sheet)
+        if reveal == "Sort By" {
+            for _ in 0..<6 { sheet.swipeDown() }
+            sleep(1)
+        } else {
+            scroll(to: reveal, in: app, sheet: sheet)
+        }
         return app
     }
 
-    /// Scrolls the sheet until Reset to Defaults is on screen, so the AX5 comparison page can measure it (the
-    /// Form only creates rows on screen).
-    private func revealReset(in app: XCUIApplication, sheet: XCUIElement) {
-        let reset = app.buttons["Reset to Defaults"]
-        for _ in 0..<8 where !(reset.exists && reset.isHittable) { sheet.swipeUp() }
-        sleep(1)
-    }
-
-    /// The Filter sheet with expiring-only on (so Reset to Defaults shows), for the AX5 comparison page.
-    private func openFilterSheet(_ app: XCUIApplication) -> XCUIApplication {
+    /// The Filter sheet with expiring-only on (so Reset to Defaults shows), scrolled until `reveal` is on screen.
+    private func openFilterSheet(_ app: XCUIApplication, reveal: String = "Reset to Defaults") -> XCUIApplication {
         waitForGrid(app)
         element("fab.filter", in: app).tap()
         XCTAssertTrue(app.buttons["filterSheet.apply"].waitForExistence(timeout: 5))
@@ -284,22 +282,36 @@ final class FoodJourneyTests: XCTestCase {
         let sheet = app.collectionViews.firstMatch
         for _ in 0..<6 where !(toggle.exists && toggle.isHittable) { sheet.swipeUp() }
         toggle.tap()
-        revealReset(in: app, sheet: sheet)
+        scroll(to: reveal, in: app, sheet: sheet)
         return app
+    }
+
+    /// Scrolls the sheet until the text or button labeled `label` is on screen, so the AX5 comparison page can
+    /// measure it (the Form only creates rows on screen).
+    private func scroll(to label: String, in app: XCUIApplication, sheet: XCUIElement) {
+        let target = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", label)).firstMatch
+        for _ in 0..<8 where !(target.exists && target.isHittable) { sheet.swipeUp() }
+        sleep(1)
     }
 
     /// The Sort sheet alone, with the AX5 comparison page (as FloatingActionsJourneyTests does for its sheet).
     func testSortSheetPassesAccessibilityAudit() throws {
-        let app = openSortSheet(launch("recipes"))
-        keepScreenshot(app, "food-recipes-sort-\(device)")
-        try audit(app) { self.openSortSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
+        // Top (the Sort By header), then scrolled to Reset to Defaults: each AX5 page shows what it measures.
+        for reveal in ["Sort By", "Reset to Defaults"] {
+            let app = openSortSheet(launch("recipes"), reveal: reveal)
+            keepScreenshot(app, "food-recipes-sort-\(device)")
+            try audit(app) { self.openSortSheet(self.launch("recipes", arguments: FentonHomeApp.ax5), reveal: reveal) }
+        }
     }
 
     /// The Filter sheet alone, with the AX5 comparison page.
     func testFilterSheetPassesAccessibilityAudit() throws {
-        let app = openFilterSheet(launch("recipes"))
-        keepScreenshot(app, "food-recipes-filter-\(device)")
-        try audit(app) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
+        // Scrolled to the Ranking Strength header, then to Reset to Defaults.
+        for reveal in ["Ranking Strength", "Reset to Defaults"] {
+            let app = openFilterSheet(launch("recipes"), reveal: reveal)
+            keepScreenshot(app, "food-recipes-filter-\(device)")
+            try audit(app) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5), reveal: reveal) }
+        }
     }
 
     func testRecipesErrorAndEmpty() throws {
