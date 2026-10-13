@@ -86,3 +86,20 @@ struct FoodNavigation: ViewModifier {
         return FoodConfig.spaces.first { $0.location == location }?.title ?? "Food"
     }
 }
+
+/// The Food hub as a pushed page from another stack (``HomeRoute/food`` from Quick Links): owns its models and
+/// uses the signed-in connection's recipe service. The hub's tiles push through its own destination.
+struct FoodEntryScreen: View {
+    @Environment(HassConnection.self) private var connection: HassConnection?
+    @State private var models = FoodModels()
+
+    var body: some View {
+        FoodHubScreen(models: models)
+            .onAppear {
+                guard models.service == nil, let connection else { return }
+                models.service = EverShelfRecipeService(caller: connection)
+                // The hub's own onAppear may have run first, without a service.
+                models.suggestions.appear()
+            }
+    }
+}

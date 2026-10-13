@@ -9,6 +9,9 @@ public struct ComponentGallery: View {
         case food
         case mediaRemote = "media-remote"
         case thermostatDial = "thermostat-dial"
+        case vacation
+        case security
+        case rooms
         case mediaPage = "media-page"
         case customLights = "custom-lights"
         case sprinklers
@@ -17,6 +20,7 @@ public struct ComponentGallery: View {
         case roomDevices = "room-devices"
         case householdSettings = "household-settings"
         case climate
+        case floatingActions = "floating-actions"
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -34,16 +38,21 @@ public struct ComponentGallery: View {
     public init(page: Page) { self.page = page }
 
     public var body: some View {
-        switch page {
-        case .food:
+        if page == .food {
             // Owns its navigation stack so journeys can start on a pushed page.
             FoodGallery()
-        default:
+        } else if page == .vacation {
+            // Owns its stack, so its last-call line stays under pushed pages too.
+            VacationGallery()
+        } else if page == .rooms {
+            // Owns its stack so pushed rooms inherit the fixture store and caller.
+            RoomsGallery()
+        } else {
             NavigationStack {
                 switch page {
-                case .food: EmptyView()
                 case .mediaRemote: MediaRemoteGallery()
                 case .thermostatDial: ThermostatDialGallery()
+                case .security: SecurityGallery()
                 case .mediaPage: HomePageGallery(kind: .media)
                 case .customLights: HomePageGallery(kind: .customLights)
                 case .sprinklers: HomePageGallery(kind: .sprinklers)
@@ -52,6 +61,10 @@ public struct ComponentGallery: View {
                 case .roomDevices: RoomDevicesGallery()
                 case .householdSettings: HouseholdSettingsGallery()
                 case .climate: ClimateGallery()
+                case .floatingActions: FloatingActionsGallery()
+                case .rooms: EmptyView()
+                case .vacation: EmptyView()
+                case .food: EmptyView()
                 }
             }
         }

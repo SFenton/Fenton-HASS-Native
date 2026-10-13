@@ -95,8 +95,8 @@ final class GalleryServiceRecorder: HassServiceCalling {
         }
         switch (domain, service) {
         case ("media_player", "toggle"): if let target { flip(target) }
-        case ("switch", "turn_on"): if let target { set(target, "on") }
-        case ("switch", "turn_off"): if let target { set(target, "off") }
+        case ("switch", "turn_on"), ("light", "turn_on"): if let target { set(target, "on") }
+        case ("switch", "turn_off"), ("light", "turn_off"): if let target { set(target, "off") }
         case ("select", "select_option"):
             if let target, let option = data["option"] as? String { set(target, option) }
             // Choosing a sync mode starts syncing, as the Sync Box does.
@@ -131,7 +131,11 @@ final class GalleryServiceRecorder: HassServiceCalling {
                 store.apply([entity])
             }
         case ("input_button", "press"):
-            set("input_boolean.theater_pc_power", target == "input_button.theater_pc_on" ? "on" : "off")
+            // `input_button.<pc>_on` / `_off` drive `input_boolean.<pc>_power` (theater and office PCs).
+            if let target, let cut = target.range(of: "_o", options: .backwards) {
+                let prefix = target[target.index(target.startIndex, offsetBy: "input_button.".count)..<cut.lowerBound]
+                set("input_boolean.\(prefix)_power", target.hasSuffix("_on") ? "on" : "off")
+            }
         case ("remote", "send_command") where data["command"] as? String == "POWER":
             flip("media_player.living_room_shield_2", on: "playing")
         case ("script", "apple_tv_power_on_off"):

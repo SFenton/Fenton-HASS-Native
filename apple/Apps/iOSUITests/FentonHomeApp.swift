@@ -110,8 +110,11 @@ enum FentonHomeApp {
     /// sheet) is inconclusive: logged, not failed.
     /// "Text clipped" on a labelled element is waived only when the element is fully inside the window on both
     /// pages and measured at least 1.35x taller at AX5 (the reason is logged); any other clip stays open.
+    ///
+    /// `presenter` names a control on the page under a sheet: element-less "potentially inaccessible
+    /// text" is the page showing around an iPad form sheet, accepted only while that control can't be hit.
     static func audit(
-        _ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil,
+        _ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil, presenter: XCUIElement? = nil,
         file: StaticString = #filePath, line: UInt = #line
     ) throws {
         var open: [String] = []
@@ -131,6 +134,11 @@ enum FentonHomeApp {
         }
         for issue in issues {
             if isSystemDrawn(issue, in: app, popover: popover) { continue }
+            // The presenting page around an iPad form sheet, hidden from assistive technologies by the modal.
+            if issue.element == nil, issue.auditType == .elementDetection, let presenter,
+               presenter.exists, !presenter.isHittable {
+                continue
+            }
             var measured = ""
             if issue.auditType == .contrast, let element = issue.element, let capture,
                var ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
@@ -411,8 +419,10 @@ extension XCTestCase {
         let ready = URL(fileURLWithPath: folder).appendingPathComponent("\(name).ready")
         let done = URL(fileURLWithPath: folder).appendingPathComponent("\(name).done")
         FileManager.default.createFile(atPath: ready.path, contents: nil)
-        // `simctl io` can take over 30 s on a loaded host; a short wait moved on and mislabeled the next capture.
-        let deadline = Date().addingTimeInterval(120)
+        // A loaded host can take well over 30 s to capture; moving on early let a late capture land on the next
+        // screen under this name. Wait longer, and withdraw the request on timeout so a miss is a gap, not a mislabel.
+        let deadline = Date().addingTimeInterval(180)
         while !FileManager.default.fileExists(atPath: done.path), Date() < deadline { usleep(200_000) }
+        if !FileManager.default.fileExists(atPath: done.path) { try? FileManager.default.removeItem(at: ready) }
     }
 }

@@ -179,6 +179,11 @@ struct FoodStateTests {
         #expect(render(SuggestedRecipesCarousel(model: loading.suggestions) { _ in }) != nil)
     }
 
+    @Test func entryScreenRendersWithoutAConnection() {
+        #expect(render(NavigationStack { FoodEntryScreen() }) != nil)
+        #expect(render(NavigationStack { HomeRouteDestination(route: .food) }) != nil)
+    }
+
     @Test func routesBuildTheirPages() {
         let models = FoodModels(service: FixtureRecipeService(delay: .zero))
         for route in [FoodRoute.hub, .recipes, .inventory(location: nil), .inventory(location: "frigo")] {

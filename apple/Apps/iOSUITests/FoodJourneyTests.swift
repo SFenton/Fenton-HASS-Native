@@ -45,9 +45,9 @@ final class FoodJourneyTests: XCTestCase {
 
     /// The accessibility audit, unless `TEST_RUNNER_FENTON_SKIP_AUDIT=1` (screenshot-only passes, so a failing
     /// audit cannot stop a journey before its later pages are captured).
-    private func audit(_ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil) throws {
+    private func audit(_ app: XCUIApplication, presenter: XCUIElement? = nil, ax5Page: (() throws -> XCUIApplication)? = nil) throws {
         guard ProcessInfo.processInfo.environment["FENTON_SKIP_AUDIT"] != "1" else { return }
-        try FentonHomeApp.audit(app, ax5Page: ax5Page)
+        try FentonHomeApp.audit(app, ax5Page: ax5Page, presenter: presenter)
     }
 
     private func element(_ id: String, in app: XCUIApplication) -> XCUIElement {
@@ -225,7 +225,7 @@ final class FoodJourneyTests: XCTestCase {
         keepScreenshot(app, "food-recipes-sort-\(device)")
         // The AX5 page lets the audit waive the stock Form button's iPad Dynamic Type false positive on
         // "Reset to Defaults" (FentonHomeApp.audit, ax5Page).
-        try audit(app) { self.openSortSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
+        try audit(app, presenter: element("fab.sort", in: app)) { self.openSortSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
         app.buttons["filterSheet.apply"].tap()
         expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
         XCTAssertTrue(element("fab.sort", in: app).isSelected, "an applied sort marks the button")
@@ -237,7 +237,7 @@ final class FoodJourneyTests: XCTestCase {
         element("recipes.filter.expiringOnly", in: app).switches.firstMatch.tap()
         sleep(1)
         keepScreenshot(app, "food-recipes-filter-\(device)")
-        try audit(app) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
+        try audit(app, presenter: element("fab.filter", in: app)) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
         app.buttons["filterSheet.apply"].tap()
         expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
         XCTAssertTrue(element("fab.filter", in: app).wait(for: \.isSelected, toEqual: true, timeout: 5), "applied filters mark the button")
@@ -312,7 +312,9 @@ final class FoodJourneyTests: XCTestCase {
         for reveal in ["Sort By", "Reset to Defaults"] {
             let app = openSortSheet(launch("recipes"), reveal: reveal)
             keepScreenshot(app, "food-recipes-sort-\(device)")
-            try audit(app) { self.openSortSheet(self.launch("recipes", arguments: FentonHomeApp.ax5), reveal: reveal) }
+            try audit(app, presenter: element("fab.sort", in: app)) {
+                self.openSortSheet(self.launch("recipes", arguments: FentonHomeApp.ax5), reveal: reveal)
+            }
         }
     }
 
@@ -324,7 +326,7 @@ final class FoodJourneyTests: XCTestCase {
             let app = openFilterSheet(launch("recipes"), reveal: reveal)
             keepScreenshot(app, "food-recipes-filter-\(device)")
             logResetFrame("filter \(reveal)", in: app)
-            try audit(app) {
+            try audit(app, presenter: element("fab.filter", in: app)) {
                 let large = self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5), reveal: ax5Reveal)
                 self.logResetFrame("filter AX5 \(ax5Reveal)", in: large)
                 self.keepScreenshot(large, "food-recipes-filter-\(self.device)-ax5-\(ax5Reveal == "Reset to Defaults" ? "reset" : "ranking")")

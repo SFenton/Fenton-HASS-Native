@@ -26,8 +26,8 @@ struct SettingsStack: View {
 
 // MARK: - List
 
-/// The Settings list: the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`; Vacation and
-/// To-Do land with their own pages), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
+/// The Settings list: the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`: Vacation, which
+/// pushes its own pages, then the household topics; To-Do lands later), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
 /// as a full-screen modal (`.agents/design/apple/split-view.md`).
 struct SettingsScreen: View {
     @Binding var openTopic: HouseholdSettingsPage?
@@ -42,6 +42,17 @@ struct SettingsScreen: View {
     var body: some View {
         List {
             Section {
+                NavigationLink {
+                    VacationRoute()
+                } label: {
+                    SettingsLinkRow(
+                        title: Vacation.Copy.settingsLinkTitle,
+                        subtitle: Vacation.Copy.settingsLinkSubtitle,
+                        symbol: SymbolMap.symbol(for: "mdi:airplane"),
+                        showsChevron: false
+                    )
+                }
+                .accessibilityIdentifier("settings.vacation")
                 ForEach(HouseholdSettingsPage.allCases) { page in
                     Button {
                         openTopic = page
@@ -79,14 +90,15 @@ struct SettingsLinkRow: View {
     /// Off inside a `NavigationLink`, which draws its own chevron.
     var showsChevron = true
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
-            Image(systemName: symbol)
-                .font(.title3)
-                .foregroundStyle(.tint)
-                .frame(minWidth: 28)
-                .accessibilityHidden(true)
+            // At accessibility sizes the icon sits above the text, so the text keeps the row's width (beside
+            // it, the Vacation row grew to 749 pt on the folded iPhone Duo at AX5, 2026-10-11).
+            if !typeSize.isAccessibilitySize { icon }
             VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+                if typeSize.isAccessibilitySize { icon }
                 Text(title)
                     .font(.headline)
                     .foregroundStyle(HassTokens.Ink.primary)
@@ -110,6 +122,14 @@ struct SettingsLinkRow: View {
         .frame(minHeight: HassTokens.minTarget)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
+    }
+
+    private var icon: some View {
+        Image(systemName: symbol)
+            .font(.title3)
+            .foregroundStyle(.tint)
+            .frame(minWidth: 28)
+            .accessibilityHidden(true)
     }
 }
 
