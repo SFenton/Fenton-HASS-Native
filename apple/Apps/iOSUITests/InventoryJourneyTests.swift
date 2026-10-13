@@ -56,9 +56,17 @@ final class InventoryJourneyTests: XCTestCase {
             guard forward.exists, element.identifier != "scan.forward" else { return true }
             return element.frame.maxY <= forward.frame.minY - 8 || element.frame.minY >= forward.frame.maxY
         }
+        // Drag in the form's leading gutter: a swipe from the window's centre starts on the camera feed and does not
+        // scroll the form (unfolded Duo landscape).
+        let form = app.collectionViews.matching(NSPredicate(format: "identifier BEGINSWITH 'scan.'")).firstMatch
         var swipes = 0
         while !clear(), swipes < 10 {
-            app.swipeUp()
+            if form.exists {
+                form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.85))
+                    .press(forDuration: 0.05, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.25)))
+            } else {
+                app.swipeUp()
+            }
             swipes += 1
         }
         XCTAssertTrue(element.exists, "\(element) not found")
@@ -290,7 +298,13 @@ final class InventoryJourneyTests: XCTestCase {
                 XCTAssertTrue(app.descendants(matching: .any)["scan.review"].waitForExistence(timeout: 5))
             }
             // Back to the top: audited mid-scroll, a header faded under the sheet's bar reads as low contrast.
-            if step >= 2 { for _ in 0..<4 { app.swipeDown() } }
+            if step >= 2 {
+                let form = app.collectionViews.matching(NSPredicate(format: "identifier BEGINSWITH 'scan.'")).firstMatch
+                for _ in 0..<4 where form.exists {
+                    form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.2))
+                        .press(forDuration: 0.05, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.9)))
+                }
+            }
             sleep(1)
             return app
         }
