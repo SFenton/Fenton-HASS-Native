@@ -91,9 +91,17 @@ final class CameraJourneyTests: XCTestCase {
             }
             return false
         }
+        // The runner grants Photos add access up front (`simctl privacy grant photos-add`); the monitor covers a prompt.
         snapshot.tap()
-        app.tap() // Lets the interruption monitor answer the Photos prompt.
-        waitForValue(snapshot, "Saved to Photos", timeout: 15)
+        // "Saved to Photos" shows for 2 s; poll faster than XCTWaiter's ~1 s so a short window is never missed.
+        var seen: [String] = []
+        let deadline = Date().addingTimeInterval(20)
+        while Date() < deadline, !seen.contains("Saved to Photos"), !app.alerts["Allow Photos Access"].exists {
+            if let value = snapshot.value as? String, !value.isEmpty, seen.last != value { seen.append(value) }
+            usleep(200_000)
+        }
+        XCTAssertFalse(app.alerts["Allow Photos Access"].exists, "Photos access was denied")
+        XCTAssertTrue(seen.contains("Saved to Photos"), "Snapshot went through \(seen)")
         for control in [snapshot, sound, record] {
             XCTAssertGreaterThanOrEqual(control.frame.height, 44)
             XCTAssertGreaterThanOrEqual(control.frame.width, 44)

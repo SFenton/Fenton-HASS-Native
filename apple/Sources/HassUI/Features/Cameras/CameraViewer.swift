@@ -184,7 +184,7 @@ struct CameraControls: View {
             #if canImport(UIKit)
             UIAccessibility.post(notification: .announcement, argument: snapshot.accessibilityValue)
             #endif
-            try? await Task.sleep(for: .seconds(1.5))
+            try? await Task.sleep(for: .seconds(2))
             snapshot = .idle
         }
     }

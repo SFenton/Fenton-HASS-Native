@@ -122,7 +122,7 @@ final class MediaRemoteJourneyTests: XCTestCase {
         XCTAssertEqual(power.value as? String, "On")
         power.tap()
         expectCall("script.music_room_tv_off", in: app)
-        XCTAssertTrue(app.staticTexts["Power On"].waitForExistence(timeout: 5), "Optimistic off shows at once")
+        XCTAssertTrue(waitFor(power, "value == %@", "Off"), "Optimistic off shows at once")
     }
 
     /// Navigation, playback and volume rows send their configured calls.
@@ -290,12 +290,12 @@ final class MediaRemoteJourneyTests: XCTestCase {
     func testDevicesTabPassesAudit() throws { try audit("theater-room-shield", tab: "devices") }
     func testHueSyncTabPassesAudit() throws { try audit("music-room-remote", tab: "hueSync") }
 
-    /// At AX5 the power pill and d-pad grow and every control stays reachable by scrolling.
+    /// At AX5 the d-pad (with power) grows and every control stays reachable by scrolling.
     func testLargestTextKeepsControlsReachable() {
         let regular = launch("living-room-shield")
-        let regularHeight = regular.staticTexts["Power Off"].frame.height
+        let regularHeight = element("remote.power", in: regular).frame.height
         let app = launch("living-room-shield", arguments: FentonHomeApp.ax5)
-        XCTAssertGreaterThan(app.staticTexts["Power Off"].frame.height, regularHeight * 1.35, "Power text grows at AX5")
+        XCTAssertGreaterThan(element("remote.power", in: app).frame.height, regularHeight * 1.2, "Power grows with the d-pad at AX5")
         for id in ["remote.button.Volume Up", "remote.button.Keyboard", "remote.button.Play"] {
             reveal(app.buttons[id], in: app)
         }
