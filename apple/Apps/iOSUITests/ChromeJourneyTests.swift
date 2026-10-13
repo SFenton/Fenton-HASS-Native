@@ -37,7 +37,10 @@ final class ChromeJourneyTests: XCTestCase {
     /// Closes the front modal with its circle-X Close (in the navigation bar, or the folded Duo's vertical bar).
     private func closeModal(_ app: XCUIApplication) {
         let inBar = app.navigationBars.buttons["Close"].firstMatch
-        let close = inBar.waitForExistence(timeout: 3) ? inBar : app.buttons["Close"].firstMatch
+        // The folded Duo moves bar items into its vertical bar, which XCUITest reports outside the navigation bar.
+        let anywhere = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == 'Close' OR identifier == 'sheet.close'")).firstMatch
+        let close = inBar.waitForExistence(timeout: 3) ? inBar : anywhere
         XCTAssertTrue(close.waitForExistence(timeout: 5), "Modal has no Close")
         close.tap()
         XCTAssertTrue(close.waitForNonExistence(timeout: 5), "Modal did not close")
