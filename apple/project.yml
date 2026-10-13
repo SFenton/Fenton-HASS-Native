@@ -11,6 +11,10 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "6.0"
+    # Device builds need a signing team; the generated project is git-ignored, so a team picked in
+    # Xcode is lost on every `xcodegen generate`.
+    DEVELOPMENT_TEAM: 3Q9X8JX23S
+    CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:

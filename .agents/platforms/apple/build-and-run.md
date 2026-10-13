@@ -9,6 +9,21 @@ xcodegen generate           # regenerates FentonHome.xcodeproj from project.yml 
 xcodebuild -project FentonHome.xcodeproj -scheme FentonHome -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build
 ```
 
+## Physical device
+
+```bash
+xcodebuild -project FentonHome.xcodeproj -scheme FentonHome -configuration Release \
+  -destination 'generic/platform=iOS' -derivedDataPath /tmp/fh-dd -allowProvisioningUpdates build
+xcrun devicectl device install app --device <UDID> /tmp/fh-dd/Build/Products/Release-iphoneos/FentonHome.app
+xcrun devicectl device process launch --device <UDID> --terminate-existing com.sfenton.home
+```
+
+- Signing team `3Q9X8JX23S` lives in `project.yml`; never set it only in Xcode, because `xcodegen generate` discards it.
+- Target the phone by UDID, not name: a simulator can share the name (for example "iPhone 18 Pro").
+- If `devicectl list devices` leaves a wired, paired phone at `connecting` and device commands hang, CoreDeviceService is wedged; quit Xcode (or `kill` your user's `CoreDeviceService` PID) and it relaunches on demand.
+
+## Notes
+
 - Coverage gate: `tools/apple_coverage.sh` (95% logic / 90% UX). Device journeys: `tools/ios_uitest.sh` ([devices](../../testing/apple/devices.md)).
 - iPhone Duo APIs (`onHingeChange`, vertical bar) need the iOS 27.1 SDK; builds with an older SDK must add `FENTON_IOS_SDK_BEFORE_27_1` to `SWIFT_ACTIVE_COMPILATION_CONDITIONS`.
 - Run one simulator at a time per host; never reset another project's devices.
