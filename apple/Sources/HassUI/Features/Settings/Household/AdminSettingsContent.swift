@@ -101,12 +101,20 @@ struct HouseholdSheet<Content: View>: View {
         content
             .navigationTitle(title)
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .accessibilityIdentifier("household.sheet.done")
-                }
+            .householdSheetDone { dismiss() }
+    }
+}
+
+extension View {
+    /// The sheet's Done. Pages pushed inside the sheet carry it too, so the sheet closes from any depth
+    /// (HIG: Sheets); they pass the sheet's own dismiss, since `dismiss` read on a pushed page only pops it.
+    func householdSheetDone(_ done: @escaping () -> Void) -> some View {
+        toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Done", action: done)
+                    .accessibilityIdentifier("household.sheet.done")
             }
+        }
     }
 }
 
@@ -117,6 +125,7 @@ struct HouseholdSheet<Content: View>: View {
 struct PresenceOverridesSheet: View {
     var controller: HouseholdSettingsController
     @State private var path: [HouseholdSettingsConfig.PresenceRoom] = []
+    @Environment(\.dismiss) private var dismiss
 
     /// Opens on a room's detail (gallery and tests).
     init(controller: HouseholdSettingsController, initialRoom: HouseholdSettingsConfig.PresenceRoom? = nil) {
@@ -143,14 +152,14 @@ struct PresenceOverridesSheet: View {
                             ) {
                                 path.append(room)
                             }
-                                            .accessibilityIdentifier("presence.room.\(room.presenceEntityId)")
+                            .accessibilityIdentifier("presence.room.\(room.presenceEntityId)")
                         }
                     }
                     .padding()
                 }
             }
             .navigationDestination(for: HouseholdSettingsConfig.PresenceRoom.self) { room in
-                PresenceOverrideDetail(room: room, controller: controller)
+                PresenceOverrideDetail(room: room, controller: controller, done: { dismiss() })
             }
         }
         .presentationDetents([.large])
@@ -162,6 +171,8 @@ struct PresenceOverridesSheet: View {
 struct PresenceOverrideDetail: View {
     var room: HouseholdSettingsConfig.PresenceRoom
     var controller: HouseholdSettingsController
+    /// Closes the whole sheet (nil outside one, e.g. hosted tests).
+    var done: (() -> Void)?
 
     var body: some View {
         let shown = controller.presence(room.presenceEntityId)
@@ -189,9 +200,21 @@ struct PresenceOverrideDetail: View {
                     .padding(.horizontal)
             }
         }
-        .navigationTitle("\(room.title) Presence Lighting")
+        // Just the room: the bar also holds Back and Done, and "<Room> Presence Lighting" clipped at large text
+        // sizes (HIG: Navigation bars, keep titles short). The sheet's title already says what the rooms are for.
+        .navigationTitle(room.title)
         .inlineNavigationTitle()
+        .modifier(OptionalSheetDone(done: done))
         .accessibilityIdentifier("presence.detail")
+    }
+}
+
+/// Adds the sheet's Done when there is a sheet to close.
+private struct OptionalSheetDone: ViewModifier {
+    var done: (() -> Void)?
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if let done { content.householdSheetDone(done) } else { content }
     }
 }
 
