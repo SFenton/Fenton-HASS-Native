@@ -11,9 +11,6 @@ struct WeatherHourlyPanel: View {
 
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// Narrowest an hour may be at the current text size.
-    @ScaledMetric(relativeTo: .subheadline) private var hourWidth: CGFloat = 62
-
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
             header
@@ -82,7 +79,7 @@ struct WeatherHourlyPanel: View {
     @ViewBuilder
     private var content: some View {
         if feed.showsPlaceholders {
-            WeatherPagedCarousel(count: 24, minItemWidth: hourWidth, label: WeatherCopy.text("carousel.conditions"), identifier: "weather.hour") { _, _ in
+            WeatherPagedCarousel(count: 24, compactPerPage: 5, regularPerPage: 7, label: WeatherCopy.text("carousel.conditions"), identifier: "weather.hour") { _ in
                 WeatherModalHourPlaceholder()
             }
             .accessibilityElement(children: .ignore)
@@ -91,8 +88,8 @@ struct WeatherHourlyPanel: View {
             message(feed.error ?? WeatherCopy.text("forecast.hourlyEmpty"))
         } else {
             WeatherPagedCarousel(
-                count: feed.forecasts.count, minItemWidth: hourWidth, label: WeatherCopy.text("carousel.conditions"), identifier: "weather.hour"
-            ) { index, _ in
+                count: feed.forecasts.count, compactPerPage: 5, regularPerPage: 7, label: WeatherCopy.text("carousel.conditions"), identifier: "weather.hour"
+            ) { index in
                 WeatherModalHour(forecast: feed.forecasts[index], index: index, mode: mode, current: current)
             }
             if let error = feed.error { message(error) }

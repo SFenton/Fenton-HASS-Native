@@ -4,77 +4,68 @@ import SwiftUI
 /// A horizontally paging row of equal-width cells with a page indicator and, on wide layouts, previous and next
 /// buttons (web `useHorizontalScrollControls`, `WeatherScrollControls`, `WeatherCarouselPagination`).
 ///
-/// Each page holds as many whole cells as fit; scrolling snaps to pages (`scrollTargetBehavior(.paging)`). Every cell
-/// stays in the accessibility tree, so VoiceOver reaches each hour and scrolls the row itself; the page indicator is
-/// an adjustable element. Wide layouts (regular horizontal size class) add 44 pt previous and next buttons, because
-/// the web shows them for pointer devices. HIG: Scroll views, Page controls.
+/// Each page holds ``WeatherCarouselPaging/perPage`` whole cells; scrolling snaps to pages
+/// (`scrollTargetBehavior(.paging)`). Every cell stays in the accessibility tree, so VoiceOver reaches each hour and
+/// scrolls the row itself; the page indicator is an adjustable element. Wide layouts (regular horizontal size class)
+/// add 44 pt previous and next buttons, because the web shows them for pointer devices. HIG: Scroll views, Page
+/// controls.
 struct WeatherPagedCarousel<Cell: View>: View {
     var count: Int
-    /// Narrowest a cell may be at the current text size.
-    var minItemWidth: CGFloat
-    var spacing: CGFloat = HassTokens.Spacing.s
+    /// Hours per page in a compact and a regular layout at the default text size.
+    var compactPerPage: Int
+    var regularPerPage: Int
     /// Spoken name of the row, e.g. `24-hour weather forecast`.
     var label: String
     /// Identifier prefix: the row is `<identifier>.carousel`, its indicator `<identifier>.pages`.
     var identifier: String
-    var cell: (_ index: Int, _ width: CGFloat) -> Cell
+    var cell: (_ index: Int) -> Cell
 
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var viewportWidth: CGFloat = 0
-    @State private var page: Int? = 0
+    /// The first hour on screen; the page is derived from it.
+    @State private var firstVisible: Int? = 0
 
     /// Space reserved at each end for the previous and next buttons.
     private let controlInset = HassTokens.minTarget + HassTokens.Spacing.s
 
-    private var showsControls: Bool { sizeClass == .regular && paging.overflows }
-
     private var paging: WeatherCarouselPaging {
-        WeatherCarouselPaging(count: count, viewportWidth: viewportWidth, minItemWidth: minItemWidth, spacing: spacing)
+        WeatherCarouselPaging(
+            count: count,
+            perPage: WeatherCarouselPaging.hoursPerPage(compact: compactPerPage, regular: regularPerPage, sizeClass: sizeClass, typeSize: typeSize)
+        )
     }
+
+    private var showsControls: Bool { sizeClass == .regular && paging.overflows }
 
     var body: some View {
         let paging = paging
-        let width = paging.itemWidth(viewportWidth: viewportWidth)
         VStack(spacing: HassTokens.Spacing.xs) {
-            strip(paging: paging, itemWidth: width)
+            strip(paging: paging)
                 .padding(.horizontal, showsControls ? controlInset : 0)
                 .overlay { if showsControls { controls(paging: paging) } }
             if paging.overflows { indicator(paging: paging) }
         }
-        .onChange(of: paging.pageCount) { _, pages in
-            if let page, page >= pages { self.page = pages - 1 }
-        }
     }
 
-    private func strip(paging: WeatherCarouselPaging, itemWidth: CGFloat) -> some View {
+    private func strip(paging: WeatherCarouselPaging) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 0) {
-                ForEach(0..<paging.pageCount, id: \.self) { pageIndex in
-                    HStack(alignment: .top, spacing: paging.spacing) {
-                        ForEach(paging.indices(onPage: pageIndex), id: \.self) { index in
-                            cell(index, itemWidth).frame(width: itemWidth)
-                        }
-                    }
-                    .containerRelativeFrame(.horizontal, alignment: .leading)
-                    .id(pageIndex)
+                ForEach(0..<count, id: \.self) { index in
+                    cell(index)
+                        .containerRelativeFrame(.horizontal, count: paging.perPage, spacing: 0)
+                        .id(index)
                 }
             }
             .scrollTargetLayout()
         }
         .scrollTargetBehavior(.paging)
-        .scrollPosition(id: $page)
-        .background {
-            GeometryReader { proxy in
-                Color.clear.preference(key: CarouselWidthKey.self, value: proxy.size.width)
-            }
-        }
-        .onPreferenceChange(CarouselWidthKey.self) { viewportWidth = $0 }
+        .scrollPosition(id: $firstVisible)
         .accessibilityIdentifier("\(identifier).carousel")
     }
 
     private func indicator(paging: WeatherCarouselPaging) -> some View {
-        let current = paging.clamped(page)
+        let current = paging.page(containing: firstVisible)
         return HStack(spacing: HassTokens.Spacing.xs + 2) {
             ForEach(0..<paging.pageCount, id: \.self) { index in
                 Capsule()
@@ -97,7 +88,7 @@ struct WeatherPagedCarousel<Cell: View>: View {
     }
 
     private func controls(paging: WeatherCarouselPaging) -> some View {
-        let current = paging.clamped(page)
+        let current = paging.page(containing: firstVisible)
         return HStack {
             controlButton(symbol: WeatherSymbols.previous, label: "Previous \(label)", id: "previous", disabled: current == 0) {
                 go(to: current - 1, paging: paging)
@@ -126,12 +117,7 @@ struct WeatherPagedCarousel<Cell: View>: View {
     }
 
     private func go(to target: Int, paging: WeatherCarouselPaging) {
-        let next = paging.clamped(target)
-        if reduceMotion { page = next } else { withAnimation(.smooth) { page = next } }
+        let first = paging.firstIndex(ofPage: paging.clamped(target))
+        if reduceMotion { firstVisible = first } else { withAnimation(.smooth) { firstVisible = first } }
     }
-}
-
-private struct CarouselWidthKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }

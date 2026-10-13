@@ -70,8 +70,6 @@ struct WeatherCardContent: View {
     @State private var didAutoOpen = false
     /// The hero glyph grows with Dynamic Type.
     @ScaledMetric(relativeTo: .title) private var glyphSize: CGFloat = 40
-    /// Narrowest an hour may be at the current text size.
-    @ScaledMetric(relativeTo: .caption2) private var hourWidth: CGFloat = 44
 
     var body: some View {
         let current = WeatherCurrent(entity: entities.entity(WeatherEntities.weather).state)
@@ -195,8 +193,8 @@ struct WeatherCardContent: View {
         let feed = forecasts.hourly
         if feed.showsPlaceholders {
             WeatherPagedCarousel(
-                count: 24, minItemWidth: hourWidth, label: WeatherCopy.text("carousel.forecast"), identifier: "home.weather"
-            ) { _, _ in WeatherCardHourPlaceholder() }
+                count: 24, compactPerPage: 6, regularPerPage: 9, label: WeatherCopy.text("carousel.forecast"), identifier: "home.weather"
+            ) { _ in WeatherCardHourPlaceholder() }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Loading 24-hour weather forecast")
         } else if feed.forecasts.isEmpty {
@@ -207,8 +205,8 @@ struct WeatherCardContent: View {
                 .accessibilityIdentifier("home.weather.hourlyMessage")
         } else {
             WeatherPagedCarousel(
-                count: feed.forecasts.count, minItemWidth: hourWidth, label: WeatherCopy.text("carousel.forecast"), identifier: "home.weather"
-            ) { index, _ in
+                count: feed.forecasts.count, compactPerPage: 6, regularPerPage: 9, label: WeatherCopy.text("carousel.forecast"), identifier: "home.weather"
+            ) { index in
                 WeatherCardHour(forecast: feed.forecasts[index], index: index, current: current)
             }
         }
