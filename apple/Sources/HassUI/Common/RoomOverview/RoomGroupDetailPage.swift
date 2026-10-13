@@ -12,9 +12,9 @@ struct RoomGroupDetailPage: View {
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.roomServiceCaller) private var callerOverride
-    /// Home Assistant's message for a light change it rejected.
-    @State private var failure = ""
-    @State private var showsFailure = false
+    /// Optimistic light power (`.agents/patterns/optimistic-actions.md`): a tap shows at once, a rejected call rolls
+    /// back, and any live change wins (Presence Based Lighting may revert a light), so lights clear on `.liveChange`.
+    @State private var lights: OptimisticActions?
 
     var body: some View {
         ScrollView {
@@ -37,24 +37,25 @@ struct RoomGroupDetailPage: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) }
             }
         }
-        .alert("Couldn't Change the Light", isPresented: $showsFailure) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(failure)
+        .onAppear {
+            guard kind == .lights, lights == nil, let caller = callerOverride ?? connection else { return }
+            let ids = group.items.map(\.entityId) + [group.entityId].compactMap { $0 }
+            lights = OptimisticActions(store: store, rules: Dictionary(ids.map { ($0, .liveChange) }) { first, _ in first },
+                                       caller: caller)
         }
     }
 
-    private func read(_ id: String) -> EntityState? { store.entity(id).state }
+    /// The live entity, with a pending light power shown in place of its state.
+    private func read(_ id: String) -> EntityState? {
+        guard var entity = store.entity(id).state else { return nil }
+        if let shown = lights?.shown(id) { entity.state = shown }
+        return entity
+    }
 
     private func send(_ command: LightControl.Command) {
-        guard let caller = callerOverride ?? connection else { return }
-        Task {
-            do {
-                try await caller.callService(command.domain, command.service, data: command.serviceData)
-            } catch {
-                failure = ServiceErrorText.message(for: error, fallback: "Home Assistant didn't accept the change. Try again.")
-                showsFailure = true
-            }
-        }
+        // Brightness above 0 and turn_on both show the light on; turn_off shows it off.
+        let shown = command.service == "turn_off" ? "off" : "on"
+        lights?.perform(command.domain, command.service, data: command.serviceData,
+                        showing: [OptimisticIntent(command.entityId, value: shown)])
     }
 }
