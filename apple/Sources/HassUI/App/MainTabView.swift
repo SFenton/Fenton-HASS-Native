@@ -58,6 +58,7 @@ struct MainTabView: View {
                     case .home: HomeScreen().inventoryDestinations()
                     case .security: SecurityScreen()
                     case .climate: ClimateScreen()
+                    case .chores: ChoresScreen()
                     default: PlaceholderScreen(title: section.title, symbol: section.symbol)
                     }
                 }
