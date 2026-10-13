@@ -8,7 +8,7 @@
 |---|---|
 | Port or change a page | [pages/README.md](pages/README.md) → `pages/<id>/spec.md` + your platform file; procedure: [skills/port-page](skills/port-page/SKILL.md) |
 | Add or change a control | [skills/add-control](skills/add-control/SKILL.md) |
-| Touch shared behavior (grids, tiles, chips, sheets) | [patterns/README.md](patterns/README.md) |
+| Touch shared behavior (grids, tiles, chips, sheets) | [patterns/README.md](patterns/README.md), then [audit/README.md](audit/README.md) for known duplicates |
 | A design choice the owner hasn't made | [skills/design-decision](skills/design-decision/SKILL.md) |
 | Write or review SwiftUI | [.claude/skills/swiftui-pro](../.claude/skills/swiftui-pro/SKILL.md), applied per [workflow/swiftui-pro.md](workflow/swiftui-pro.md) |
 | Fix a reported issue | [skills/fix-reported-issue](skills/fix-reported-issue/SKILL.md) |
@@ -38,3 +38,4 @@
 | [patterns/](patterns/README.md) | Cross-screen behavior with one canonical component each |
 | [skills/](skills/README.md) | Repeatable procedures |
 | [testing/](testing/README.md) | Test phases and tooling |
+| [audit/](audit/README.md) | The 2026-10-13 duplication and SwiftUI Pro audit, with its dedup plan |
