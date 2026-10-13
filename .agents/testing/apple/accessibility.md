@@ -29,10 +29,13 @@
 | Contrast | `Form` section headers ("Home Assistant", "Two-factor code") | System secondary header style |
 | Contrast | Text outside a confirmation popover's frame, only when `PopoverDismissRegion` was up as the audit started | iOS 27 anchors action sheets (Sign Out) as popovers; the audit samples covered text through the popover (measured 1.1–2.9:1 on 2026-10-10, iPhone); the audit itself can dismiss the popover, so it is noted first. The popover's own buttons stay checked |
 | Contrast, Dynamic Type | Navigation bar buttons (a sheet's Done) | System Liquid Glass bar buttons; the audit samples them over the sheet's glass |
+| Contrast | Content text that overlaps a navigation bar (wholly or partly under it), when it is not one of the bar's own descendants | Scrolled under the bar's scroll-edge effect, which obscures it on purpose; the Vacuums report card measured 1.1–1.2:1 there after the journey scrolled a tab into view (iPhone, 2026-10-11/12). The bar's title and buttons, and text fully below the bar, are still checked |
 
 Add a row here and in `isSystemDrawn` together, with the evidence.
 
-- `RenderedContrast` draws the screenshot through `UIImage` so the capture follows the interface orientation; the raw `CGImage` stays portrait in landscape and sampled the wrong pixels (every iPad landscape text measured ~1:1, 2026-10-11). The upright capture's orientation is then `.up`: keeping the raw `.left` turned frames twice and measured every landscape text at 1.0:1 again (Vacation pages, 2026-10-11).
+- The audit handler only collects issues; every rule above runs after `performAccessibilityAudit` returns. Element queries inside the handler count against the audit's own deadline: on the scrolled iPhone vacuum Auto-Clean tab they made it fail "to complete in time" every run (2026-10-12), while each audit type alone took under 3 s.
+- A contrast reading below 4.5:1 is measured again against a fresh capture before it counts: the audit scrolls long sheets to inspect elements, so the frame it reports can belong to a later scroll position than the capture taken when the audit started (iPad vacuum sheet, 2026-10-12: "Status" and "Docked" at 19:1 on screen measured 1.2:1). The higher reading wins; text that really renders low still fails.
+- `RenderedContrast` draws the screenshot through `UIImage` so the capture follows the interface orientation; the raw `CGImage` stays portrait in landscape and sampled the wrong pixels (every iPad landscape text measured ~1:1, 2026-10-11). The upright capture's orientation is then `.up`: keeping the raw `.left` turned frames twice and measured every landscape text at 1.0:1 again (2026-10-11).
 
 ## Open findings
 

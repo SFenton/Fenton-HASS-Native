@@ -1,39 +1,8 @@
 import Foundation
-@preconcurrency import HAKit
 import Observation
 
-/// Anything that can call a Home Assistant service and return its response (`return_response`).
-/// ``HassConnection`` is the app's implementation; tests and the gallery script the response.
-@MainActor
-public protocol HassServiceResponding: AnyObject {
-    /// Calls `domain.service` with `data` and returns the service's response (`.null` if it has none).
-    func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue
-}
-
-extension HassConnection: HassServiceResponding {
-    /// Sends `call_service` with `return_response: true`, once (no retry across reconnects, so a command
-    /// can't run twice), and returns the result's `response`.
-    public func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
-        let request = HARequest(type: .webSocket("call_service"), data: [
-            "domain": domain,
-            "service": service,
-            "service_data": data,
-            "return_response": true,
-        ], shouldRetry: false)
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
-            connection.send(request) { result in
-                switch result {
-                case let .success(.dictionary(values)):
-                    continuation.resume(returning: JSONValue(any: values["response"]))
-                case .success:
-                    continuation.resume(returning: .null)
-                case let .failure(error):
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-}
+// `HassServiceResponding` and `HassConnection.callServiceWithResponse` live in `Bedroom/ServiceResponses.swift`;
+// the connection returns the whole result, so ``HouseholdAwayController/outcome(from:)`` unwraps `response`.
 
 /// Sends Household Away commands and reads the status sensor (web `useHouseholdAwayController.ts`).
 ///

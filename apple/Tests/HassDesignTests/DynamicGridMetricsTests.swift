@@ -1,3 +1,4 @@
+import CoreGraphics
 @testable import HassDesign
 import Testing
 
@@ -28,5 +29,14 @@ struct DynamicGridMetricsTests {
         #expect(metrics.columns == 3)
         #expect(placements.last?.row == 1)
         #expect(placements.last?.column == 0)
+    }
+
+    /// An unbounded size probe (`.infinity`) must not trap converting the column count to `Int`.
+    @Test func unboundedWidthUsesEveryColumnAtMinimumWidth() {
+        for width in [CGFloat.infinity, .nan] {
+            let metrics = DynamicGridMetrics(width: width, minCellWidth: 160, maxColumns: 4, spacing: 12)
+            #expect(metrics.columns == 4)
+            #expect(metrics.cellWidth == 160)
+        }
     }
 }

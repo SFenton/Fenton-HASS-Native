@@ -32,23 +32,10 @@ struct HouseholdAwayConnectionTests {
         // A command must never run twice, so a reconnect may not resend it.
         #expect(!pending.request.shouldRetry)
         pending.completion(.success(HAData(value: ["context": ["id": "c1"], "response": ["status": "accepted", "revision": 5]])))
-        let response = try await call.value
-        #expect(response["status"]?.string == "accepted")
-        #expect(response["revision"]?.number == 5)
-    }
-
-    @Test func aResultWithoutAResponseIsNull() async throws {
-        let (connection, mock) = makeConnection()
-        let withoutResponse = Task { try await connection.callServiceWithResponse("script", "household_away_command", data: [:]) }
-        try await pendingRequest(mock).completion(.success(HAData(value: ["context": ["id": "c1"]])))
-        #expect(try await withoutResponse.value == .null)
-    }
-
-    @Test func aNonObjectResultIsNull() async throws {
-        let (connection, mock) = makeConnection()
-        let empty = Task { try await connection.callServiceWithResponse("script", "household_away_command", data: [:]) }
-        try await pendingRequest(mock).completion(.success(.empty))
-        #expect(try await empty.value == .null)
+        // The connection returns the whole result; the controller reads its `response`.
+        let result = try await call.value
+        #expect(result["response"]?["status"]?.string == "accepted")
+        #expect(HouseholdAwayController.outcome(from: .success(result)) == .accepted(revision: 5))
     }
 
     @Test func aFailureIsThrown() async throws {

@@ -29,7 +29,7 @@ struct VacationModeControllerTests {
         let responder = ScriptedResponder()
         let household = HouseholdAwayController(store: store, responder: responder)
         let controller = VacationModeController(store: store, household: household, caller: caller, scheduler: scheduler,
-                                                now: { TestClock.now }, calendar: TestClock.calendar)
+                                                now: { AwayTestClock.now }, calendar: AwayTestClock.calendar)
         return Harness(controller: controller, store: store, caller: caller, scheduler: scheduler, responder: responder)
     }
 
@@ -80,7 +80,7 @@ struct VacationModeControllerTests {
         vacation.tapCard()
         #expect(vacation.isConfirming)
         #expect(vacation.cardSubtitle == "Pending")
-        #expect(vacation.dateRange == .makeDefault(now: TestClock.now, calendar: TestClock.calendar))
+        #expect(vacation.dateRange == .makeDefault(now: AwayTestClock.now, calendar: AwayTestClock.calendar))
         let picked = Vacation.DateRange(start: WallClock(date: "2026-11-01", time: "06:00"), end: WallClock(date: "2026-11-08", time: "22:00"))
         vacation.updatePendingRange(picked)
         #expect(vacation.dateRange == picked)

@@ -1,10 +1,14 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 /// A dimmable light tile (web `LightBrightnessCard.tsx`, pattern: `.agents/patterns/entity-tile.md`).
 ///
-/// Tap flips power. A horizontal drag sets brightness from where the finger is across the tile and
-/// commits on release, as on the web; a vertical drag is left to the scroll view. VoiceOver activates
-/// to flip power and swipes up or down to step brightness by ``step``.
+/// Tap flips power, or opens the light's details when ``onOpen`` is set (web `tapAction: 'more-info'`). A
+/// horizontal drag sets brightness from where the finger is across the tile and commits on release, as on the
+/// web; a vertical drag is left to the scroll view. VoiceOver activates the tap (with a "Turn On/Off" action
+/// when tapping opens details) and swipes up or down to step brightness by ``step``.
 ///
 /// Pure UI: callers pass the live percent and receive intents; they send the service calls.
 public struct BrightnessTile: View {
@@ -22,6 +26,8 @@ public struct BrightnessTile: View {
     public var onPower: (Bool) -> Void
     /// Asked to set brightness; 0 means off.
     public var onBrightness: (Int) -> Void
+    /// When set, a tap opens the light's details (shown with a chevron) instead of flipping power.
+    public var onOpen: (() -> Void)?
 
     /// VoiceOver adjust step, in percent.
     public nonisolated static let step = 10
@@ -41,7 +47,8 @@ public struct BrightnessTile: View {
         percent: Int,
         isUnavailable: Bool = false,
         onPower: @escaping (Bool) -> Void,
-        onBrightness: @escaping (Int) -> Void
+        onBrightness: @escaping (Int) -> Void,
+        onOpen: (() -> Void)? = nil
     ) {
         self.title = title
         self.symbol = symbol
@@ -51,6 +58,7 @@ public struct BrightnessTile: View {
         self.isUnavailable = isUnavailable
         self.onPower = onPower
         self.onBrightness = onBrightness
+        self.onOpen = onOpen
     }
 
     // MARK: - Body
@@ -64,6 +72,7 @@ public struct BrightnessTile: View {
             tint: tint,
             isActive: shown > 0 && !isUnavailable,
             isUnavailable: isUnavailable,
+            showsChevron: onOpen != nil,
             level: isUnavailable ? nil : Double(shown) / 100,
             levelTint: fillTint
         )
@@ -74,9 +83,16 @@ public struct BrightnessTile: View {
                     .onTapGesture {
                         // A short horizontal drag can also end as a tap; it already set the level.
                         guard ContinuousClock.now - lastDragEnd > .milliseconds(300) else { return }
-                        flip()
+                        tap()
                     }
-                    .simultaneousGesture(drag(width: proxy.size.width), including: isUnavailable ? .none : .all)
+                    .modifier(BrightnessDrag(
+                        width: proxy.size.width, isEnabled: !isUnavailable,
+                        changed: { translation, x in
+                            interaction.dragChanged(translation: translation, x: x, width: proxy.size.width)
+                        },
+                        ended: { x in dragEnded(x: x, width: proxy.size.width) },
+                        cancelled: { interaction.dragCancelled() }
+                    ))
             }
         }
         .allowsHitTesting(!isUnavailable)
@@ -86,9 +102,14 @@ public struct BrightnessTile: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityValue(Self.status(percent: shown, isUnavailable: isUnavailable))
-        .accessibilityHint(isUnavailable ? "" : "Double-tap to turn \(shown > 0 ? "off" : "on"). Swipe up or down to adjust brightness.")
+        .accessibilityHint(Self.hint(percent: shown, isUnavailable: isUnavailable, opensDetails: onOpen != nil))
         .accessibilityAddTraits(.isButton)
-        .accessibilityAction { flip() }
+        .accessibilityAction { tap() }
+        .accessibilityActions {
+            if onOpen != nil, !isUnavailable {
+                Button(shown > 0 ? "Turn Off" : "Turn On") { flip() }
+            }
+        }
         .accessibilityAdjustableAction { direction in
             switch direction {
             case .increment: send(interaction.adjust(by: Self.step, live: percent, isUnavailable: isUnavailable))
@@ -99,6 +120,11 @@ public struct BrightnessTile: View {
     }
 
     // MARK: - Intents
+
+    /// A tap: open details when the caller asked for that, else flip power.
+    private func tap() {
+        if let onOpen { onOpen() } else { flip() }
+    }
 
     private func flip() {
         send(interaction.flip(live: percent, isUnavailable: isUnavailable))
@@ -119,16 +145,10 @@ public struct BrightnessTile: View {
         }
     }
 
-    private func drag(width: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 6)
-            .onChanged { value in
-                interaction.dragChanged(translation: value.translation, x: value.location.x, width: width)
-            }
-            .onEnded { value in
-                let intent = interaction.dragEnded(x: value.location.x, width: width, live: percent)
-                if intent != nil { lastDragEnd = .now }
-                send(intent)
-            }
+    private func dragEnded(x: CGFloat, width: CGFloat) {
+        let intent = interaction.dragEnded(x: x, width: width, live: percent)
+        if intent != nil { lastDragEnd = .now }
+        send(intent)
     }
 
     // MARK: - Pure helpers
@@ -142,6 +162,13 @@ public struct BrightnessTile: View {
     /// `value` moved by `delta`, clamped to 0...100.
     nonisolated static func stepped(_ value: Int, by delta: Int) -> Int {
         min(100, max(0, value + delta))
+    }
+
+    /// The VoiceOver hint: what a double-tap does, then how to adjust.
+    nonisolated static func hint(percent: Int, isUnavailable: Bool, opensDetails: Bool) -> String {
+        if isUnavailable { return "" }
+        let tap = opensDetails ? "Double-tap for details." : "Double-tap to turn \(percent > 0 ? "off" : "on")."
+        return tap + " Swipe up or down to adjust brightness."
     }
 
     /// The tile's status line and accessibility value: `Off`, `45%` or `Unavailable`.
@@ -205,9 +232,93 @@ struct BrightnessInteraction: Equatable {
         return commit(Int(BrightnessTile.percent(atX: x, width: width).rounded()), live: live)
     }
 
+    /// The system took the touch (a scroll won, or the tile went away): drop the drag without committing.
+    mutating func dragCancelled() {
+        dragAxis = nil
+        dragPercent = nil
+    }
+
     private mutating func commit(_ value: Int, live: Int) -> Intent? {
         guard value != shown(live: live) else { return nil }
         pendingPercent = value
         return .brightness(value)
     }
 }
+
+// MARK: - Drag
+
+/// Wires a horizontal drag to the tile without stealing vertical scrolls.
+///
+/// From iOS 18 a SwiftUI `DragGesture` attached inside a `ScrollView` (even as a simultaneous gesture) keeps the
+/// scroll view from scrolling when the drag starts on the tile, so a page of tiles could not be scrolled from them.
+/// On iOS a UIKit pan that only begins on a mostly horizontal movement sets brightness and leaves vertical
+/// movement to the scroll view; elsewhere the SwiftUI drag remains.
+struct BrightnessDrag: ViewModifier {
+    var width: CGFloat
+    var isEnabled: Bool
+    var changed: (CGSize, CGFloat) -> Void
+    var ended: (CGFloat) -> Void
+    var cancelled: () -> Void
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if #available(iOS 18.0, *) {
+            content.gesture(HorizontalPan(isEnabled: isEnabled, changed: changed, ended: ended, cancelled: cancelled))
+        } else {
+            content.simultaneousGesture(swiftUIDrag, including: isEnabled ? .all : .none)
+        }
+        #else
+        content.simultaneousGesture(swiftUIDrag, including: isEnabled ? .all : .none)
+        #endif
+    }
+
+    private var swiftUIDrag: some Gesture {
+        DragGesture(minimumDistance: 6)
+            .onChanged { changed($0.translation, $0.location.x) }
+            .onEnded { ended($0.location.x) }
+    }
+}
+
+#if os(iOS)
+/// A pan that begins only when the finger moves more sideways than up or down.
+@available(iOS 18.0, *)
+struct HorizontalPan: UIGestureRecognizerRepresentable {
+    var isEnabled: Bool
+    var changed: (CGSize, CGFloat) -> Void
+    var ended: (CGFloat) -> Void
+    var cancelled: () -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        pan.isEnabled = isEnabled
+        return pan
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        recognizer.isEnabled = isEnabled
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let x = context.converter.localLocation.x
+        switch recognizer.state {
+        case .began, .changed:
+            let moved = context.converter.localTranslation ?? .zero
+            changed(CGSize(width: moved.x, height: moved.y), x)
+        case .ended: ended(x)
+        case .cancelled, .failed: cancelled()
+        default: break
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = recognizer as? UIPanGestureRecognizer else { return true }
+            let velocity = pan.velocity(in: pan.view)
+            return abs(velocity.x) > abs(velocity.y)
+        }
+    }
+}
+#endif

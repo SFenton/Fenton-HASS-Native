@@ -4,8 +4,8 @@ import Testing
 
 /// Vacation Mode's entities, copy, date ranges, service calls and routing (`Vacation`, web `portedDashboard.ts`).
 struct VacationConfigTests {
-    let calendar = TestClock.calendar
-    let now = TestClock.now
+    let calendar = AwayTestClock.calendar
+    let now = AwayTestClock.now
 
     @Test func defaultRangeIsOneDay() {
         let range = Vacation.DateRange.makeDefault(now: now, calendar: calendar)

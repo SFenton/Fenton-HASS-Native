@@ -1,20 +1,11 @@
 import Foundation
 
-/// The two people who live in the house (web `src/constants/householdResidents.ts`).
+/// The two people who live in the house (web `src/constants/householdResidents.ts`): Home Assistant users.
 ///
 /// Solo Trip names one as the traveler and the other as the resident at home; the signed-in Home Assistant
 /// user maps to a resident so pages can say "You".
-public enum HouseholdResident: String, CaseIterable, Codable, Hashable, Sendable {
-    case stephen
-    case steph
-
-    /// Display name.
-    public var name: String {
-        switch self {
-        case .stephen: "Stephen"
-        case .steph: "Steph"
-        }
-    }
+extension HouseholdResident {
+    // The enum and `name` live in `Bedroom/BedroomConfig.swift`.
 
     /// The resident's Home Assistant user id.
     public var haUserId: String {

@@ -9,8 +9,8 @@ import Testing
 /// Drives the Vacation and Solo Trip screens the way a person does (tap a tile, turn a date wheel, press
 /// Confirm) on the gallery house, and checks what reaches Home Assistant and what the screen then shows.
 ///
-/// Controls are reached through ``ViewProbe``; sheets and `@State` need a live hierarchy, so those tests
-/// host the screen in ``HostedWindow``.
+/// Controls are reached through ``ControlProbe``; sheets and `@State` need a live hierarchy, so those tests
+/// host the screen in ``SheetHostWindow``.
 @MainActor
 @Suite(.serialized)
 struct VacationInteractionTests {
@@ -58,9 +58,9 @@ struct VacationInteractionTests {
         let h = makeHouse(.ready)
         let screen = VacationModeScreen(store: h.store, household: h.household, caller: h.house)
         let vacation = try controller(VacationModeController.self, of: screen)
-        let hosted = HostedWindow(NavigationStack { screen })
+        let hosted = SheetHostWindow(NavigationStack { screen })
 
-        let tile = try #require(ViewProbe.first(GlassTile.self, in: screen.body))
+        let tile = try #require(ControlProbe.first(GlassTile.self, in: screen.body))
         #expect(tile.title == "Vacation Mode")
         #expect(tile.kind == .toggle)
         #expect(!tile.isActive)
@@ -72,7 +72,7 @@ struct VacationInteractionTests {
         // The sheet's date wheels edit the draft, not Home Assistant.
         let sheet = VacationConfirmationSheet(controller: vacation)
         // Each field closes over the range it was built from, so rebuild the sheet after every change as SwiftUI does.
-        func fields() throws -> [ScheduleDateField] { try #require(ViewProbe.first(ScheduleDateFields.self, in: sheet.body)).fields }
+        func fields() throws -> [ScheduleDateField] { try #require(ControlProbe.first(ScheduleDateFields.self, in: sheet.body)).fields }
         #expect(try fields().map(\.identifier) == ["vacation.confirm.startDate", "vacation.confirm.startTime",
                                                    "vacation.confirm.endDate", "vacation.confirm.endTime"])
         let start = date(3), end = date(9, hour: 18)
@@ -83,7 +83,7 @@ struct VacationInteractionTests {
         #expect(draft.end.date == WallClock(end).date)
         #expect(h.house.lastCall == "None")
 
-        let confirm = try #require(ViewProbe.all(AwayActionButton.self, in: sheet.body).first)
+        let confirm = try #require(ControlProbe.all(AwayActionButton.self, in: sheet.body).first)
         #expect(confirm.title == "Confirm Vacation")
         confirm.action()
         await vacation.drain()
@@ -98,19 +98,19 @@ struct VacationInteractionTests {
         let vacation = VacationModeController(store: h.store, household: h.household, caller: h.house)
         vacation.tapCard()
         let sheet = VacationConfirmationSheet(controller: vacation)
-        #expect(ViewProbe.all(AwayActionButton.self, in: sheet.body).count == 1)
-        let fields = try #require(ViewProbe.first(ScheduleDateFields.self, in: sheet.body)).fields
+        #expect(ControlProbe.all(AwayActionButton.self, in: sheet.body).count == 1)
+        let fields = try #require(ControlProbe.first(ScheduleDateFields.self, in: sheet.body)).fields
         fields[2].onChange(date(-3))
         #expect(vacation.invalidDateRange)
-        #expect(ViewProbe.all(AwayActionButton.self, in: sheet.body).isEmpty)
-        #expect(ViewProbe.all(AwayInlineAlert.self, in: sheet.body).map(\.text) == [Vacation.Copy.dateRangeError])
+        #expect(ControlProbe.all(AwayActionButton.self, in: sheet.body).isEmpty)
+        #expect(ControlProbe.all(AwayInlineAlert.self, in: sheet.body).map(\.text) == [Vacation.Copy.dateRangeError])
     }
 
     @Test func inlineDatesWriteEachChangeToHomeAssistant() async throws {
         let h = makeHouse(.vacation)
         let screen = VacationModeScreen(store: h.store, household: h.household, caller: h.house)
         let vacation = try controller(VacationModeController.self, of: screen)
-        let fields = try #require(ViewProbe.first(ScheduleDateFields.self, in: screen.body)).fields
+        let fields = try #require(ControlProbe.first(ScheduleDateFields.self, in: screen.body)).fields
         #expect(fields.map(\.identifier) == ["vacation.dates.startDate", "vacation.dates.startTime",
                                              "vacation.dates.endDate", "vacation.dates.endTime"])
         let end = date(12)
@@ -142,7 +142,7 @@ struct VacationInteractionTests {
         let household = HouseholdAwayController(store: h.store, responder: rejecting)
         await household.cancel()
         let screen = VacationModeScreen(store: h.store, household: household, caller: h.house)
-        let alerts = ViewProbe.all(AwayInlineAlert.self, in: screen.body).map(\.text)
+        let alerts = ControlProbe.all(AwayInlineAlert.self, in: screen.body).map(\.text)
         #expect(alerts == [SoloTripCopy.commandFailed])
         #expect(render(screen) != nil)
     }
@@ -150,13 +150,13 @@ struct VacationInteractionTests {
     @Test func aSoloTripOnTheVacationPageOffersTheRestoreActions() async throws {
         let h = makeHouse(.soloRestore)
         let screen = VacationModeScreen(store: h.store, household: h.household, caller: h.house)
-        let status = try #require(ViewProbe.first(SoloTripStatusView.self, in: screen.body))
+        let status = try #require(ControlProbe.first(SoloTripStatusView.self, in: screen.body))
         #expect(status.status.actions.contains(.keepCurrent))
         status.perform(.keepCurrent)
         #expect(await eventually { h.house.lastCall.contains("resolve_restore") })
         #expect(h.house.lastCall.contains("keep_current"))
         #expect(await eventually { h.household.snapshot.state == .active })
-        let ending = try #require(ViewProbe.first(SoloTripStatusView.self, in: screen.body))
+        let ending = try #require(ControlProbe.first(SoloTripStatusView.self, in: screen.body))
         ending.perform(.endNow)
         #expect(await eventually { h.household.snapshot.state == .idle })
     }
@@ -164,7 +164,7 @@ struct VacationInteractionTests {
     @Test func restoringTheSavedPlanFromTheVacationPage() async throws {
         let h = makeHouse(.soloRestore)
         let screen = VacationModeScreen(store: h.store, household: h.household, caller: h.house)
-        let status = try #require(ViewProbe.first(SoloTripStatusView.self, in: screen.body))
+        let status = try #require(ControlProbe.first(SoloTripStatusView.self, in: screen.body))
         status.perform(.restoreSaved)
         #expect(await eventually { h.house.lastCall.contains("restore_saved") })
     }
@@ -175,7 +175,7 @@ struct VacationInteractionTests {
         let h = makeHouse(.idle)
         let screen = SoloTripScreen(household: h.household, viewer: .stephen)
         let trip = try controller(SoloTripController.self, of: screen)
-        let hosted = HostedWindow(NavigationStack { screen })
+        let hosted = SheetHostWindow(NavigationStack { screen })
 
         // The traveler tiles come from a `ForEach`, which reflection can't expand: build the tile as the screen does.
         let tile = try #require(trip.travelerTiles.first { $0.resident == .stephen })
@@ -183,14 +183,14 @@ struct VacationInteractionTests {
         TravelerTileView(tile: tile) { trip.selectTraveler(tile.resident) }.action()
         #expect(trip.selectedTraveler == .stephen)
 
-        let toggle = try #require(ViewProbe.all(GlassTile.self, in: screen.body).first { $0.title == SoloTripCopy.title })
+        let toggle = try #require(ControlProbe.all(GlassTile.self, in: screen.body).first { $0.title == SoloTripCopy.title })
         toggle.action()
         #expect(await eventually { trip.editorOpen })
         hosted.settle()
         #expect(hosted.hasSheet)
 
         let sheet = SoloTripEditorSheet(controller: trip)
-        func fields() throws -> [ScheduleDateField] { try #require(ViewProbe.first(ScheduleDateFields.self, in: sheet.body)).fields }
+        func fields() throws -> [ScheduleDateField] { try #require(ControlProbe.first(ScheduleDateFields.self, in: sheet.body)).fields }
         #expect(try fields().map(\.identifier) == ["soloTrip.editor.startDate", "soloTrip.editor.startTime",
                                                    "soloTrip.editor.endDate", "soloTrip.editor.endTime"])
         let start = date(1, hour: 8), end = date(5, hour: 19)
@@ -202,7 +202,7 @@ struct VacationInteractionTests {
         #expect(trip.scheduleDraft.start == WallClock(start))
         #expect(trip.scheduleDraft.end == WallClock(end))
 
-        let confirm = try #require(ViewProbe.all(AwayActionButton.self, in: sheet.body).first)
+        let confirm = try #require(ControlProbe.all(AwayActionButton.self, in: sheet.body).first)
         #expect(confirm.title == SoloTripCopy.editorConfirm)
         confirm.action()
         #expect(await eventually { h.household.snapshot.state == .scheduled })
@@ -214,7 +214,7 @@ struct VacationInteractionTests {
     @Test func movingTheReturnTimeOfARunningTrip() async throws {
         let h = makeHouse(.soloActive)
         let screen = SoloTripScreen(household: h.household, viewer: .stephen)
-        let fields = try #require(ViewProbe.first(ScheduleDateFields.self, in: screen.body)).fields
+        let fields = try #require(ControlProbe.first(ScheduleDateFields.self, in: screen.body)).fields
         #expect(fields.map(\.identifier) == ["soloTrip.return.date", "soloTrip.return.time"])
         let end = date(9, hour: 20)
         fields[0].onChange(end)
@@ -225,7 +225,7 @@ struct VacationInteractionTests {
     @Test func theRestoreChoiceReachesTheScript() async throws {
         let h = makeHouse(.soloRestore)
         let screen = SoloTripScreen(household: h.household, viewer: .stephen)
-        let status = try #require(ViewProbe.first(SoloTripStatusView.self, in: screen.body))
+        let status = try #require(ControlProbe.first(SoloTripStatusView.self, in: screen.body))
         status.perform(.keepCurrent)
         #expect(await eventually { h.house.lastCall.contains("keep_current") })
         #expect(await eventually { h.household.snapshot.state == .active })
@@ -234,7 +234,7 @@ struct VacationInteractionTests {
     @Test func endingARunningTripFromItsStatus() async throws {
         let h = makeHouse(.soloActive)
         let screen = SoloTripScreen(household: h.household, viewer: .stephen)
-        let toggle = try #require(ViewProbe.all(GlassTile.self, in: screen.body).first { $0.title == SoloTripCopy.title })
+        let toggle = try #require(ControlProbe.all(GlassTile.self, in: screen.body).first { $0.title == SoloTripCopy.title })
         #expect(toggle.isActive)
         toggle.action()
         #expect(await eventually { h.household.snapshot.state == .idle })
@@ -247,7 +247,7 @@ struct VacationInteractionTests {
         attributes["effects"] = VacationFixtures.effects(false)
         h.store.apply([EntityState(entityId: HouseholdAway.statusEntityId, state: "degraded", attributes: attributes)])
         let screen = SoloTripScreen(household: h.household, viewer: .stephen)
-        let status = try #require(ViewProbe.first(SoloTripStatusView.self, in: screen.body))
+        let status = try #require(ControlProbe.first(SoloTripStatusView.self, in: screen.body))
         #expect(status.status.title == SoloTripCopy.degradedTitle)
         status.perform(.endNow)
         #expect(await eventually { h.house.lastCall.contains("end_now") })
@@ -257,7 +257,7 @@ struct VacationInteractionTests {
     @Test func restoringTheSavedPlan() async throws {
         let h = makeHouse(.soloRestore)
         let screen = SoloTripScreen(household: h.household, viewer: .stephen)
-        let status = try #require(ViewProbe.first(SoloTripStatusView.self, in: screen.body))
+        let status = try #require(ControlProbe.first(SoloTripStatusView.self, in: screen.body))
         status.perform(.restoreSaved)
         #expect(await eventually { h.house.lastCall.contains("restore_saved") })
     }
@@ -267,7 +267,7 @@ struct VacationInteractionTests {
     @Test func turningTheModeOffKeepsTheEngagedPage() async throws {
         let h = makeHouse(.idle)
         let screen = VacationScreen(store: h.store, responder: h.house, caller: h.house)
-        let hosted = HostedWindow(screen)
+        let hosted = SheetHostWindow(screen)
         #expect(hosted.contains("SwiftUIOutlineListView"), "idle shows the chooser list")
 
         h.store.apply([EntityState(entityId: Vacation.modeEntityId, state: "on")])
@@ -282,7 +282,7 @@ struct VacationInteractionTests {
     @Test func aTripThatEndsKeepsItsPage() async throws {
         let h = makeHouse(.soloActive)
         let screen = VacationScreen(store: h.store, responder: h.house, caller: h.house) { HouseholdResident.stephen.haUserId }
-        let hosted = HostedWindow(screen)
+        let hosted = SheetHostWindow(screen)
         #expect(!hosted.contains("SwiftUIOutlineListView"))
         await h.household.endNow()
         let idle = VacationFixtures.states(.idle).last!
@@ -296,9 +296,9 @@ struct VacationInteractionTests {
     @Test func theGalleryPageShowsTheLastCallLine() async throws {
         let gallery = VacationGallery()
         #expect(render(gallery) != nil)
-        let hosted = HostedWindow(gallery)
+        let hosted = SheetHostWindow(gallery)
         #expect(hosted.contains("NSHostingView") || hosted.host.subviews.isEmpty == false)
-        let texts = ViewProbe.all(Text.self, in: gallery.body)
+        let texts = ControlProbe.all(Text.self, in: gallery.body)
         #expect(!texts.isEmpty)
     }
 }
@@ -306,6 +306,8 @@ struct VacationInteractionTests {
 /// Rejects every Household Away command, so the controller keeps an error code.
 @MainActor
 private final class RejectingResponder: HassServiceResponding {
+    func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {}
+
     func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
         .object(["status": .string("rejected"), "error_code": .string("stale_revision")])
     }

@@ -39,10 +39,10 @@ enum RenderedContrast {
                 return true
             }
             guard drawn else { return nil }
-            // Already drawn upright: turning it again for `.left` sampled blank pixels and measured every
-            // landscape text at 1.0:1 (Vacation pages, iPad landscape, 2026-10-11).
+            // The pixels are upright now, so frames map directly; passing the raw orientation on rotated them a
+            // second time and sampled the wrong place (1.0:1 for every iPad landscape issue, 2026-10-11).
             return Capture(pixels: pixels, width: width, height: height, scale: screenshot.image.scale,
-                           orientation: upright.imageOrientation)
+                           orientation: .up)
         }
     }
 

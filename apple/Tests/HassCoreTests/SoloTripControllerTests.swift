@@ -17,7 +17,7 @@ struct SoloTripControllerTests {
         let responder = ScriptedResponder()
         let scheduler = ManualScheduler()
         let household = HouseholdAwayController(store: store, responder: responder)
-        let trip = SoloTripController(household: household, scheduler: scheduler, now: { TestClock.now }, calendar: TestClock.calendar)
+        let trip = SoloTripController(household: household, scheduler: scheduler, now: { AwayTestClock.now }, calendar: AwayTestClock.calendar)
         return Harness(trip: trip, store: store, responder: responder, scheduler: scheduler)
     }
 
@@ -68,7 +68,7 @@ struct SoloTripControllerTests {
         trip.selectTraveler(.stephen)
         await trip.toggle()
         #expect(trip.editorOpen)
-        #expect(trip.scheduleDraft == .makeDefault(now: TestClock.now, calendar: TestClock.calendar))
+        #expect(trip.scheduleDraft == .makeDefault(now: AwayTestClock.now, calendar: AwayTestClock.calendar))
         #expect(trip.editorAlerts.isEmpty)
         #expect(!trip.editorConfirmDisabled)
         // Selection is locked while the editor is open.

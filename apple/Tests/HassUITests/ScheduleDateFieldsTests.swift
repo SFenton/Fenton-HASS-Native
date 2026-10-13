@@ -18,7 +18,7 @@ struct ScheduleDateFieldsTests {
     }
 
     private func binding(_ picker: ScheduleDatePicker) throws -> Binding<Date> {
-        try #require(ViewProbe.first(Binding<Date>.self, in: picker.body))
+        try #require(ControlProbe.first(Binding<Date>.self, in: picker.body))
     }
 
     @Test func withoutADelayEveryChangeIsReportedAtOnce() throws {
@@ -30,7 +30,7 @@ struct ScheduleDateFieldsTests {
     }
 
     /// Turns the real date wheel of a hosted picker to `date`, as the person does.
-    private func turn(_ hosted: HostedWindow, to date: Date) throws {
+    private func turn(_ hosted: SheetHostWindow, to date: Date) throws {
         let picker = try #require(hosted.views(ofType: NSDatePicker.self).first)
         picker.dateValue = date
         picker.sendAction(picker.action, to: picker.target)
@@ -38,7 +38,7 @@ struct ScheduleDateFieldsTests {
 
     @Test func withADelayOneAdjustmentIsOneReport() async throws {
         let reports = Reports()
-        let hosted = HostedWindow(picker(delay: .milliseconds(40), reports: reports).frame(width: 400, height: 80))
+        let hosted = SheetHostWindow(picker(delay: .milliseconds(40), reports: reports).frame(width: 400, height: 80))
         // Scrolling a wheel changes the value many times; only where it stops is sent.
         for step in 1...5 { try turn(hosted, to: Date(timeIntervalSince1970: 1_800_000_000 + Double(step) * 86400)) }
         #expect(reports.dates.isEmpty)
@@ -50,7 +50,7 @@ struct ScheduleDateFieldsTests {
 
     @Test func aHostedPickerWithoutADelayReportsEachChange() throws {
         let reports = Reports()
-        let hosted = HostedWindow(picker(delay: nil, reports: reports).frame(width: 400, height: 80))
+        let hosted = SheetHostWindow(picker(delay: nil, reports: reports).frame(width: 400, height: 80))
         try turn(hosted, to: Date(timeIntervalSince1970: 1_800_086_400))
         #expect(reports.dates.count == 1)
     }

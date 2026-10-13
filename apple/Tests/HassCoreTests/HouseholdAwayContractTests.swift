@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 /// A fixed Gregorian UTC calendar and clock so date tests don't depend on the machine.
-enum TestClock {
+enum AwayTestClock {
     static let calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
@@ -153,42 +153,42 @@ struct HouseholdAwayContractTests {
     }
 
     @Test func convertsToAndFromDates() {
-        let wall = WallClock(TestClock.now, calendar: TestClock.calendar)
+        let wall = WallClock(AwayTestClock.now, calendar: AwayTestClock.calendar)
         #expect(wall == WallClock(date: "2026-10-11", time: "16:30"))
-        #expect(wall.date(in: TestClock.calendar) == TestClock.now)
+        #expect(wall.date(in: AwayTestClock.calendar) == AwayTestClock.now)
         #expect(wall.timeWithSeconds == "16:30:00")
-        #expect(WallClock(date: "2026-02-30", time: "10:00").date(in: TestClock.calendar) == nil)
-        #expect(WallClock(date: "", time: "10:00").date(in: TestClock.calendar) == nil)
+        #expect(WallClock(date: "2026-02-30", time: "10:00").date(in: AwayTestClock.calendar) == nil)
+        #expect(WallClock(date: "", time: "10:00").date(in: AwayTestClock.calendar) == nil)
         #expect(WallClock(date: "2026-10-11", time: "10:00:00").timeWithSeconds == "10:00:00")
     }
 
     // MARK: Drafts
 
     @Test func defaultDraftIsThreeDays() {
-        let draft = SoloTripDraft.makeDefault(now: TestClock.now, calendar: TestClock.calendar)
+        let draft = SoloTripDraft.makeDefault(now: AwayTestClock.now, calendar: AwayTestClock.calendar)
         #expect(draft.start == WallClock(date: "2026-10-11", time: "16:30"))
         #expect(draft.end == WallClock(date: "2026-10-14", time: "16:30"))
-        #expect(draft.endAfterStart(calendar: TestClock.calendar))
-        #expect(draft.isValid(traveler: .steph, calendar: TestClock.calendar))
-        #expect(!draft.isValid(traveler: nil, calendar: TestClock.calendar))
+        #expect(draft.endAfterStart(calendar: AwayTestClock.calendar))
+        #expect(draft.isValid(traveler: .steph, calendar: AwayTestClock.calendar))
+        #expect(!draft.isValid(traveler: nil, calendar: AwayTestClock.calendar))
     }
 
     @Test func draftEndMustFollowStart() {
         let same = WallClock(date: "2026-10-11", time: "10:00")
-        #expect(!SoloTripDraft(start: same, end: same).endAfterStart(calendar: TestClock.calendar))
-        #expect(!SoloTripDraft(start: same, end: WallClock(date: "", time: "")).endAfterStart(calendar: TestClock.calendar))
+        #expect(!SoloTripDraft(start: same, end: same).endAfterStart(calendar: AwayTestClock.calendar))
+        #expect(!SoloTripDraft(start: same, end: WallClock(date: "", time: "")).endAfterStart(calendar: AwayTestClock.calendar))
     }
 
     @Test func returnValidation() {
         let start = WallClock(date: "2026-10-10", time: "09:00")
-        let future = SoloTripReturnValidation(end: WallClock(date: "2026-10-12", time: "09:00"), start: start, now: TestClock.now, calendar: TestClock.calendar)
+        let future = SoloTripReturnValidation(end: WallClock(date: "2026-10-12", time: "09:00"), start: start, now: AwayTestClock.now, calendar: AwayTestClock.calendar)
         #expect(future.isValid)
-        let past = SoloTripReturnValidation(end: WallClock(date: "2026-10-11", time: "08:00"), start: start, now: TestClock.now, calendar: TestClock.calendar)
+        let past = SoloTripReturnValidation(end: WallClock(date: "2026-10-11", time: "08:00"), start: start, now: AwayTestClock.now, calendar: AwayTestClock.calendar)
         #expect(past.endAfterStart && !past.endInFuture && !past.isValid)
-        let beforeStart = SoloTripReturnValidation(end: WallClock(date: "2026-10-12", time: "09:00"), start: WallClock(date: "2026-10-13", time: "09:00"), now: TestClock.now, calendar: TestClock.calendar)
+        let beforeStart = SoloTripReturnValidation(end: WallClock(date: "2026-10-12", time: "09:00"), start: WallClock(date: "2026-10-13", time: "09:00"), now: AwayTestClock.now, calendar: AwayTestClock.calendar)
         #expect(beforeStart.endInFuture && !beforeStart.endAfterStart)
-        #expect(!SoloTripReturnValidation(end: WallClock(date: "2026-10-12", time: "09:00"), start: nil, now: TestClock.now, calendar: TestClock.calendar).endAfterStart)
-        #expect(!SoloTripReturnValidation(end: WallClock(date: "", time: ""), start: start, now: TestClock.now, calendar: TestClock.calendar).endInFuture)
+        #expect(!SoloTripReturnValidation(end: WallClock(date: "2026-10-12", time: "09:00"), start: nil, now: AwayTestClock.now, calendar: AwayTestClock.calendar).endAfterStart)
+        #expect(!SoloTripReturnValidation(end: WallClock(date: "", time: ""), start: start, now: AwayTestClock.now, calendar: AwayTestClock.calendar).endInFuture)
     }
 
     // MARK: Residents

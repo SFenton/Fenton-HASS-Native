@@ -22,6 +22,8 @@ final class ScriptedResponder: HassServiceResponding {
         return .success(.object(response))
     }
 
+    func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {}
+
     func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
         #expect(domain == "script")
         #expect(service == "household_away_command")
