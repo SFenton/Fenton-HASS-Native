@@ -33,7 +33,8 @@ struct SecurityTile: View {
     var canSend: Bool
     var openSystem: () -> Void
     @Environment(EntityStore.self) private var store
-    @State private var failure: String?
+    /// The lock's tapped state, shown until Home Assistant reports a change (rolled back if the call fails).
+    @State private var actions: OptimisticActions?
 
     var body: some View {
         Group {
@@ -41,24 +42,23 @@ struct SecurityTile: View {
             case .alarm:
                 AlarmTile(tile: tile, state: store.entity(tile.entityId).state, action: openSystem)
             case .lock, .vehicle:
-                LockTile(tile: tile, state: store.entity(tile.entityId).state) { call in
-                    Task {
-                        do {
-                            try await caller.call(call)
-                        } catch {
-                            failure = "Home Assistant didn't update \(tile.title). Check the connection and try again."
-                        }
-                    }
+                LockTile(tile: tile, state: shownState) { call in
+                    let actions = actions ?? OptimisticActions(store: store, rules: [tile.entityId: .liveChange], caller: caller)
+                    self.actions = actions
+                    // Live change clears it: locks report "locking" and "unlocking" on the way.
+                    actions.perform(call, showing: [OptimisticIntent(tile.entityId, value: call.service == "lock" ? "locked" : "unlocked")])
                 }
             case .garageDoor:
                 GarageDoorTile(tile: tile, liveState: store.entity(tile.entityId).state?.state, caller: caller, canSend: canSend)
             }
         }
-        .alert("Couldn't Update \(tile.title)", isPresented: Binding { failure != nil } set: { if !$0 { failure = nil } }) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(failure ?? "")
-        }
+    }
+
+    /// The live state with any pending tapped value over it.
+    private var shownState: EntityState? {
+        let live = store.entity(tile.entityId).state
+        guard let live, let pending = actions?.shown(tile.entityId), pending != live.state else { return live }
+        return EntityState(entityId: live.entityId, state: pending, attributes: live.attributes)
     }
 }
 

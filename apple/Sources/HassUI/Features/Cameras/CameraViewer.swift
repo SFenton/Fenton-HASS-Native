@@ -93,7 +93,8 @@ struct CameraControls: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var snapshot = CameraSnapshotFeedback.idle
     @State private var showsPhotosDenied = false
-    @State private var recordFailed = false
+    /// The tapped recording state, shown until Home Assistant reports it (rolled back if the script call fails).
+    @State private var actions: OptimisticActions?
 
     var body: some View {
         // Accessibility sizes stack the controls: three across break their labels mid-word at AX5.
@@ -116,12 +117,12 @@ struct CameraControls: View {
             ) { model.setMuted(!model.isMuted) }
             if let call = camera.recordCall {
                 CameraControlButton(
-                    title: isRecording ? "Recording" : "Record", symbol: "record.circle",
-                    isActive: isRecording, tint: HassTokens.Ink.danger, pulses: isRecording,
-                    accessibilityLabel: "Record", accessibilityValue: isRecording ? "Recording" : "Not recording", isToggle: true,
+                    title: recording ? "Recording" : "Record", symbol: "record.circle",
+                    isActive: recording, tint: HassTokens.Ink.danger, pulses: recording,
+                    accessibilityLabel: "Record", accessibilityValue: recording ? "Recording" : "Not recording", isToggle: true,
                     identifier: "camera.control.record"
                 ) { record(call) }
-                .sensoryFeedback(.impact(weight: .medium), trigger: isRecording)
+                .sensoryFeedback(.impact(weight: .medium), trigger: recording)
             }
         }
         .accessibilityElement(children: .contain)
@@ -143,23 +144,25 @@ struct CameraControls: View {
         } message: {
             Text("Snapshots are saved to your photo library. Allow Home to add photos in Settings.")
         }
-        .alert("Couldn't Start Recording", isPresented: $recordFailed) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Home Assistant didn't run the \(camera.title) recording script. Check the connection and try again.")
-        }
     }
 
     // MARK: - Record
 
+    /// Recording as shown: the pending tap, else the live `input_boolean`.
+    private var recording: Bool {
+        guard let id = camera.recordingEntityId, let shown = actions?.shown(id) else { return isRecording }
+        return shown == "on"
+    }
+
     private func record(_ call: ServiceCall) {
-        Task {
-            do {
-                try await caller.call(call)
-            } catch {
-                recordFailed = true
-            }
+        guard let id = camera.recordingEntityId else {
+            Task { try? await caller.call(call) } // No state to show: nothing to roll back.
+            return
         }
+        let actions = actions ?? OptimisticActions(store: store, rules: [id: .confirmation], caller: caller)
+        self.actions = actions
+        // The script toggles the recording; it can take a few seconds to report.
+        actions.perform(call, showing: [OptimisticIntent(id, recording ? "off" : "on", revertAfter: .seconds(6))])
     }
 
     // MARK: - Snapshot
