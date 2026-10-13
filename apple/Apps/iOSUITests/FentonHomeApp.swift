@@ -277,8 +277,9 @@ enum FentonHomeApp {
                 return true
             }
             // The same for an inventory page behind an iPad form sheet (Sort, Filter, Add Item, the editor;
-            // Add Item's later steps show Back instead of Cancel).
-            if issue.auditType == .elementDetection,
+            // Add Item's later steps show Back instead of Cancel): its dimmed text is sampled through the scrim, and
+            // contrast issues there come back without an element (iPad, 2026-10-12).
+            if issue.auditType == .elementDetection || issue.auditType == .contrast,
                app.navigationBars.buttons["Done"].exists || app.navigationBars.buttons["Cancel"].exists
                 || app.buttons["scan.back"].exists,
                app.buttons["inventory.row.cart"].firstMatch.exists, !app.buttons["inventory.row.cart"].firstMatch.isHittable {

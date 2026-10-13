@@ -292,6 +292,8 @@ final class InventoryJourneyTests: XCTestCase {
                          stillOn: { app.descendants(matching: .any)["scan.expiry"].exists })
                 XCTAssertTrue(app.descendants(matching: .any)["scan.review"].waitForExistence(timeout: 5))
             }
+            // Back to the top: audited mid-scroll, a header faded under the sheet's bar reads as low contrast.
+            if step >= 2 { for _ in 0..<4 { app.swipeDown() } }
             sleep(1)
             return app
         }
