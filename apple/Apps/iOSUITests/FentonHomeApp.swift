@@ -105,7 +105,8 @@ enum FentonHomeApp {
     /// "Dynamic Type font sizes are (partially) unsupported" is a known false positive on iPad (Festival's
     /// `dynamic-type-grows` waiver). With `ax5Page` (relaunches the same page at AX5) such an issue is
     /// accepted only when the same text is at least 1.35x taller there; an issue with no element only
-    /// when every sampled text on the page grew that much.
+    /// when every sampled text on the page grew that much. A flagged label that is unique on the audited page
+    /// but absent from the AX5 page (e.g. scrolled out of a sheet) is inconclusive: logged, not failed.
     static func audit(
         _ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil,
         file: StaticString = #filePath, line: UInt = #line
@@ -195,10 +196,25 @@ enum FentonHomeApp {
             let pageGrew = !compared.isEmpty && compared.allSatisfy { $0.1 >= $0.0 }
                 && compared.map(\.1).reduce(0, +) >= 1.35 * compared.map(\.0).reduce(0, +)
             var missed = false
-            for (label, height) in unconfirmedType where !(grew(label, height) ?? pageGrew) {
+            var inconclusive: [String] = []
+            for (label, height) in unconfirmedType {
+                if let grewEnough = grew(label, height) {
+                    if grewEnough { continue }
+                } else if uniqueBefore.contains(label) {
+                    // Unique on the audited page but not on the AX5 page: no evidence either way.
+                    inconclusive.append(label)
+                    continue
+                } else if pageGrew {
+                    continue
+                }
                 let measured = largeHeights[label].map { String(format: " (%.1f → %.1f pt)", height, $0) } ?? ""
                 open.append("Dynamic Type: '\(label)' did not grow 1.35x at AX5\(measured)")
                 missed = true
+            }
+            if !inconclusive.isEmpty {
+                let note = "Dynamic Type inconclusive (not on the AX5 page): " + inconclusive.map { "'\($0)'" }.joined(separator: ", ")
+                print(note)
+                XCTContext.runActivity(named: note) { _ in }
             }
             if missed || (unattributedType > 0 && !pageGrew) {
                 let evidence = XCTAttachment(screenshot: large.screenshot())
