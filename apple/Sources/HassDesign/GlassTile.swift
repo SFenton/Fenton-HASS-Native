@@ -217,6 +217,7 @@ public struct GlassTileFace: View {
     }
 
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.tileFillsHeight) private var fillsHeight
 
     public var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
@@ -251,8 +252,9 @@ public struct GlassTileFace: View {
             }
         }
         .padding(.trailing, trailingInset)
-        // Text wraps and the tile grows at large Dynamic Type instead of truncating.
-        .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
+        // Text wraps and the tile grows at large Dynamic Type instead of truncating. In an equal-height grid the face
+        // also fills the row height it is offered.
+        .frame(maxWidth: .infinity, minHeight: 88, maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)
         .padding(HassTokens.Spacing.m)
         .background {
             let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
@@ -278,6 +280,26 @@ public struct GlassTileFace: View {
         .opacity(isUnavailable ? 0.5 : 1)
         .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
     }
+}
+
+// MARK: - Equal heights
+
+private struct TileFillsHeightKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+public extension EnvironmentValues {
+    /// Whether tile faces stretch to the height their container offers (``View/equalHeightTiles()``).
+    var tileFillsHeight: Bool {
+        get { self[TileFillsHeightKey.self] }
+        set { self[TileFillsHeightKey.self] = newValue }
+    }
+}
+
+public extension View {
+    /// Lets tiles inside fill the height a ``DynamicGridLayout`` with `equalRowHeights` gives them, so every tile in
+    /// the grid matches the tallest (pattern: `.agents/patterns/dynamic-grid.md`).
+    func equalHeightTiles() -> some View { environment(\.tileFillsHeight, true) }
 }
 
 /// Applies an identifier only when one is set.

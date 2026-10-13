@@ -168,11 +168,15 @@ final class SecurityJourneyTests: XCTestCase {
         expectValue(tile(Tile.alarm, in: app), "Disarmed")
     }
 
-    /// The Contact Sensors chip opens the contact list.
+    /// The Contact Sensors chip opens the rooms (web `ContactSheet`), and a room pushes its doors and windows.
     func testContactChipOpensTheList() {
         let app = launch()
         app.buttons["security.chip.contacts"].tap()
-        XCTAssertTrue(app.staticTexts["Back Door"].waitForExistence(timeout: 10))
+        let entryway = app.buttons["overview.contacts.room.Entryway"]
+        XCTAssertTrue(entryway.waitForExistence(timeout: 10))
+        entryway.tap()
+        XCTAssertTrue(app.navigationBars["Entryway Contact Sensors"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["room.entity.binary_sensor.front_door_contact_sensor_contact"].exists)
         app.buttons["Done"].firstMatch.tap()
     }
 

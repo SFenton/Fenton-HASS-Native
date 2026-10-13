@@ -46,17 +46,15 @@ struct RoomSheetBody: View {
     var body: some View {
         switch content {
         case let .lights(group):
-            RoomLightsGrid(controller: controller, group: group)
+            groupDetail(.lights, group)
         case let .climate(group):
-            RoomClimateGroupView(controller: controller, group: group)
+            groupDetail(.climate, group)
         case let .occupancy(group):
-            RoomEntityGrid(title: nil, items: group.items.map { RoomEntityItem($0.title, $0.entityId, icon: "mdi:motion-sensor") },
-                           controller: controller, format: RoomFormat.occupancy, isActive: RoomFormat.isOccupied, tone: .presence)
+            groupDetail(.occupancy, group)
         case let .contacts(group):
-            RoomEntityGrid(title: nil, items: group.items.map { RoomEntityItem($0.title, $0.entityId, icon: RoomFormat.isWindow($0) ? "mdi:window-closed" : "mdi:door") },
-                           controller: controller, format: RoomFormat.contact, isActive: RoomFormat.isOpen, tone: .contact)
+            groupDetail(.contacts, group)
         case .allContacts:
-            RoomAllContactsList(controller: controller)
+            RoomAllContacts(controller: controller)
         case let .items(items):
             RoomEntityGrid(title: nil, items: items.map { RoomEntityItem($0.title, $0.entityId, icon: $0.icon) },
                            controller: controller, format: RoomFormat.compact, isActive: RoomFormat.isActive, tone: card.kind.tone)
@@ -69,50 +67,15 @@ struct RoomSheetBody: View {
             RoomSheetFallback(card: card)
         }
     }
+
+    /// The shared room detail (Home's overview pages), reading the controller's optimistic state. The sheet's title
+    /// names occupancy and contact groups, so those drop their heading (web `hideDirectHeader`).
+    private func groupDetail(_ kind: RoomOverviewKind, _ group: RoomGroup) -> some View {
+        RoomGroupDetail(kind: kind, group: group, showsHeadings: false, read: controller.entity) { controller.send($0) }
+    }
 }
 
 // MARK: - Group content
-
-/// A room's lights: brightness tiles for dimmable lights, power tiles for the rest, explicit on/off (web
-/// `RoomLightDetailCards`).
-struct RoomLightsGrid: View {
-    var controller: RoomController
-    var group: RoomGroup
-    @Environment(\.householdViewer) private var viewer
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
-
-    var body: some View {
-        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
-            ForEach(group.items) { item in
-                LightGroupTile(title: item.title(for: viewer), entityId: item.entityId,
-                               state: controller.store.entity(item.entityId).state) { controller.send($0) }
-                    .accessibilityIdentifier("room.light.\(item.entityId)")
-            }
-        }
-    }
-}
-
-/// Temperature sensors then vents (web `ClimateSheet` direct group).
-struct RoomClimateGroupView: View {
-    var controller: RoomController
-    var group: RoomGroup
-
-    var body: some View {
-        let sensors = group.items.filter { !$0.entityId.hasPrefix("cover.") }
-        let vents = group.items.filter { $0.entityId.hasPrefix("cover.") }
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-            if !sensors.isEmpty {
-                RoomEntityGrid(title: sensors.count == 1 ? "Temperature Sensor" : "Temperature Sensors",
-                               items: sensors.map { RoomEntityItem($0.title, $0.entityId, icon: "mdi:thermometer") }, controller: controller,
-                               format: RoomFormat.temperature, isActive: { !RoomFormat.isUnavailable($0) }, tone: .climate)
-            }
-            if !vents.isEmpty {
-                RoomEntityGrid(title: vents.count == 1 ? "Vent" : "Vents", items: vents.map { RoomEntityItem($0.title, $0.entityId, icon: "mdi:air-filter") },
-                               controller: controller, format: RoomFormat.compact, isActive: RoomFormat.isActive, tone: .climate)
-            }
-        }
-    }
-}
 
 /// A grid of read-only entity tiles (web compact `Card`s in group sheets).
 struct RoomEntityGrid: View {
@@ -141,34 +104,17 @@ struct RoomEntityGrid: View {
     }
 }
 
-/// Every room's doors and windows, each room pushing its sensors (web `ContactSheet` overview with drill-down).
-struct RoomAllContactsList: View {
+/// Every room's doors and windows, each room pushing its sensors (web `ContactSheet` overview with drill-down), for
+/// rooms without their own contact group (Back Deck, Garage).
+struct RoomAllContacts: View {
     var controller: RoomController
+    @State private var selected: RoomGroup?
 
     var body: some View {
-        VStack(spacing: HassTokens.Spacing.s) {
-            ForEach(RoomGroups.allContacts, id: \.room) { group in
-                NavigationLink {
-                    ScrollView {
-                        RoomEntityGrid(title: nil, items: group.items.map { RoomEntityItem($0.title, $0.entityId, icon: RoomFormat.isWindow($0) ? "mdi:window-closed" : "mdi:door") },
-                                       controller: controller, format: RoomFormat.contact, isActive: RoomFormat.isOpen, tone: .contact)
-                            .padding(HassTokens.Spacing.l)
-                    }
-                    .navigationTitle(group.room)
-                    .inlineNavigationTitle()
-                } label: {
-                    GlassTile(title: group.room, subtitle: RoomFormat.contactSummary(group) { controller.entity($0) },
-                              symbol: SymbolMap.symbol(for: "mdi:door"), tint: RoomTone.contact.color,
-                              isActive: group.items.contains { RoomFormat.isOpen(controller.entity($0.entityId)) }, kind: .state)
-                }
-                .buttonStyle(.plain)
-                .accessibilityElement(children: .ignore)
-                .accessibilityAddTraits(.isButton)
-                .accessibilityLabel(group.room)
-                .accessibilityValue(RoomFormat.contactSummary(group) { controller.entity($0) })
-                .accessibilityIdentifier("room.contacts.\(group.room)")
+        RoomOverviewGrid(kind: .contacts) { selected = $0 }
+            .navigationDestination(item: $selected) { group in
+                RoomGroupDetailPage(kind: .contacts, group: group)
             }
-        }
     }
 }
 

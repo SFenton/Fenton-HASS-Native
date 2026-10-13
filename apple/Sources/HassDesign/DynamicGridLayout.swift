@@ -52,9 +52,20 @@ public struct GridSpanKey: LayoutValueKey {
     public static let defaultValue = 1
 }
 
+/// Marks a full-width heading row in a ``DynamicGridLayout``; equal row heights skip it.
+public struct GridHeaderKey: LayoutValueKey {
+    public static let defaultValue = false
+}
+
 public extension View {
     /// Claims `span` tracks in a ``DynamicGridLayout``.
     func gridSpan(_ span: Int) -> some View { layoutValue(key: GridSpanKey.self, value: span) }
+
+    /// Makes this child a heading that takes a whole row of a ``DynamicGridLayout`` (a section title between runs
+    /// of tiles), so one grid can hold several sections whose tiles share one height.
+    func gridHeader() -> some View {
+        layoutValue(key: GridSpanKey.self, value: Int.max).layoutValue(key: GridHeaderKey.self, value: true)
+    }
 }
 
 /// The shared responsive grid (pattern: `.agents/patterns/dynamic-grid.md`).
@@ -62,12 +73,19 @@ public struct DynamicGridLayout: Layout {
     public var minCellWidth: CGFloat
     public var maxColumns: Int
     public var spacing: CGFloat
+    /// Gives every tile row the height of the tallest tile in the grid, so a title that wraps to two lines (Master
+    /// Bedroom Closet on an iPhone) lifts every tile to match. Heading rows (``View/gridHeader()``) keep their own
+    /// height. Measured on every layout pass, so it follows Dynamic Type and rotation. Tiles fill the height they
+    /// are offered inside ``View/equalHeightTiles()``.
+    public var equalRowHeights: Bool
 
     /// Creates a grid.
-    public init(minCellWidth: CGFloat = 150, maxColumns: Int = 4, spacing: CGFloat = HassTokens.Spacing.m) {
+    public init(minCellWidth: CGFloat = 150, maxColumns: Int = 4, spacing: CGFloat = HassTokens.Spacing.m,
+                equalRowHeights: Bool = false) {
         self.minCellWidth = minCellWidth
         self.maxColumns = maxColumns
         self.spacing = spacing
+        self.equalRowHeights = equalRowHeights
     }
 
     /// Row heights measured per width during one layout pass. Scroll views and stacks propose the same width
@@ -122,12 +140,20 @@ public struct DynamicGridLayout: Layout {
         let metrics = DynamicGridMetrics(width: width, minCellWidth: minCellWidth, maxColumns: maxColumns, spacing: spacing)
         let placements = metrics.placements(spans: subviews.map { $0[GridSpanKey.self] })
         var heights: [CGFloat] = []
+        var headerRows = Set<Int>()
         for (index, subview) in subviews.enumerated() {
             let place = placements[index]
             let size = subview.sizeThatFits(ProposedViewSize(width: metrics.width(span: place.span, spacing: spacing), height: nil))
             if place.row >= heights.count { heights.append(0) }
             heights[place.row] = max(heights[place.row], size.height)
+            if subview[GridHeaderKey.self] { headerRows.insert(place.row) }
         }
-        return heights
+        return equalRowHeights ? Self.equalized(heights, headerRows: headerRows) : heights
+    }
+
+    /// Raises every non-heading row to the tallest non-heading row.
+    static func equalized(_ heights: [CGFloat], headerRows: Set<Int>) -> [CGFloat] {
+        let tallest = heights.indices.filter { !headerRows.contains($0) }.map { heights[$0] }.max() ?? 0
+        return heights.indices.map { headerRows.contains($0) ? heights[$0] : tallest }
     }
 }

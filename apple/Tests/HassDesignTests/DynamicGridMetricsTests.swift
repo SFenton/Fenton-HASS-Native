@@ -48,3 +48,41 @@ struct DynamicGridMetricsTests {
         #expect(ImageRenderer(content: probed).cgImage != nil)
     }
 }
+
+/// Equal row heights (Lights sheet, room details): every tile row takes the tallest tile's height; headings keep theirs.
+@MainActor
+struct DynamicGridEqualHeightTests {
+    @Test func equalizedRaisesTileRowsAndKeepsHeadings() {
+        #expect(DynamicGridLayout.equalized([20, 88, 120, 20, 96], headerRows: [0, 3]) == [20, 120, 120, 20, 120])
+        #expect(DynamicGridLayout.equalized([88, 104], headerRows: []) == [104, 104])
+        #expect(DynamicGridLayout.equalized([30], headerRows: [0]) == [30])
+        #expect(DynamicGridLayout.equalized([], headerRows: []) == [])
+    }
+
+    /// A wrapping title in one row lifts every row; a heading spans the whole width on its own row.
+    @Test func gridMeasuresEqualRowsAroundHeadings() {
+        let grid = DynamicGridLayout(minCellWidth: 140, maxColumns: 2, spacing: 10, equalRowHeights: true) {
+            Color.blue.frame(height: 20).gridHeader()
+            Color.red.frame(height: 50)
+            Color.red.frame(height: 90)
+            Color.red.frame(height: 40)
+        }
+        // Heading 20, then two tile rows of 90 (the tallest tile), with a 10 gap after each row.
+        let height = UIHostingSizing.measure(grid, width: 300)
+        #expect(abs(height - (20 + 10 + 90 + 10 + 90)) < 0.5, "measured \(height)")
+    }
+}
+
+/// Measures a view's height at a width.
+@MainActor
+enum UIHostingSizing {
+    static func measure(_ view: some View, width: CGFloat) -> CGFloat {
+        #if canImport(UIKit)
+        let controller = UIHostingController(rootView: view)
+        return controller.sizeThatFits(in: CGSize(width: width, height: .infinity)).height
+        #else
+        let controller = NSHostingController(rootView: view)
+        return controller.sizeThatFits(in: CGSize(width: width, height: .greatestFiniteMagnitude)).height
+        #endif
+    }
+}

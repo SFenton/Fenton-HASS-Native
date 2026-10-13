@@ -91,8 +91,8 @@ struct SecurityPage: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
             case .contacts:
-                ChipSheet(kind: .contacts)
-                    .presentationDetents([.medium, .large])
+                RoomOverviewSheet(kind: .contacts)
+                    .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
             case let .camera(camera):
                 CameraViewer(camera: camera)
