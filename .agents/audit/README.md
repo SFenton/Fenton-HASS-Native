@@ -33,16 +33,17 @@ The audit thread lands the dedup in small PRs, one concern each, rebased on `mai
 
 | # | Change | Owner | Status |
 |---|---|---|---|
-| 1 | Move infra types out of feature folders (`ServiceCall`, `HassServiceCalling`, `HassServiceResponding`, `OptimisticOverlay`, `HassServiceCatalog`, `JSONValue(haData:)`); one `StateText.titleCase` and `EntityState.isUnavailable(_:)` | Audit | In progress |
-| 2 | One JSON-number parser and one `HassDates` with cached formatters | Audit | Planned |
-| 3 | One websocket command bridge and one service-response protocol; one envelope unwrapper | Audit | Planned |
-| 4 | Controller shell: `CallTracker`, `observeEntities`, `OptimisticOverlay.perform` (one controller per commit) | Audit | Planned |
+| 1 | Move infra types out of feature folders (`ServiceCall`, `HassServiceCalling`, `HassServiceResponding`, `OptimisticOverlay`, `HassServiceCatalog`, `JSONValue(haData:)`); one `StateText.titleCase` and `EntityState.isUnavailable(_:)` | Audit | Done (#32) |
+| 2 | One JSON-number parser and one `HassDates` with cached formatters | Audit | Done (#34) |
+| 3 | One websocket command bridge (`HassConnection.sendCommand`); `TodoServicing` refines `EverShelfCalling` | Audit | In review |
+| 4 | Controller shell: superseded by `OptimisticActions` (#36, [optimistic-actions](../patterns/optimistic-actions.md)); controllers move over when their owner next touches them | Feature threads | Reported |
 | 5 | Entity ids defined once in `Config/` | Audit | Planned |
 | 6 | Notices into `InfoBox`; section headers into `SettingsSection`; `BedroomTabPicker` into `SheetTabPicker`; color tokens into `HassTokens` | Audit | Planned |
-| 7 | Gallery: one recorder base and one Last-call view, `#if DEBUG` on every gallery file | Audit | Planned |
+| 7 | Gallery: `#if DEBUG` on every gallery file (in review); one recorder base and one Last-call view (planned) | Audit | In progress |
 | 8 | Journey base class and shared helpers; a `HassTestSupport` target for fakes; dead `coverage_gate.py` branches and Food debug helpers removed | Audit | Planned |
 | 9 | Sheet chrome, presentation modifiers, `SheetTabPicker` API | App chrome thread | Reported |
-| 10 | `try?` on user actions, index identity, Reduce Motion in feature screens | Each feature's thread | Reported |
+| 10 | `try?` on user actions, index identity, Reduce Motion in feature screens | Each feature's thread; Sprinklers, Recipes and Inventory done by Audit (#33) | Reported |
+| 11 | Hosted tests that fail only in a full `swift test` on a loaded Mac: `SecurityViewTests.galleryRecorderEchoes`, `OnDemandSplitHostedTests` (frame and placeholder checks). They pass when run alone | Audit | Planned |
 
 ## Rules this audit adds
 
