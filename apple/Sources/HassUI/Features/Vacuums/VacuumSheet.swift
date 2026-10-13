@@ -11,7 +11,7 @@ import SwiftUI
 public struct VacuumSheet: View {
     @State private var controller: VacuumController
     @State private var mapState: VacuumMapState
-    @State private var tab: VacuumTab = .controls
+    @State private var content: VacuumSheetContent
     @State private var path: [Route] = []
     @State private var window = WindowMetrics()
     private let server: HassServer?
@@ -39,7 +39,7 @@ public struct VacuumSheet: View {
          services: Set<String>?, initialTab: VacuumTab = .controls, window: WindowMetrics? = nil) {
         _controller = State(initialValue: controller)
         _mapState = State(initialValue: VacuumMapState(vacuum: controller.vacuum, loader: loader))
-        _tab = State(initialValue: initialTab)
+        _content = State(initialValue: VacuumSheetContent(tab: initialTab, controller: controller))
         _window = State(initialValue: window ?? WindowMetrics())
         self.server = server
         self.catalog = catalog
@@ -50,9 +50,6 @@ public struct VacuumSheet: View {
         guard let server else { return nil }
         return ValetudoMapLoader.pictureURL(controller.store.entity(controller.vacuum.mapCameraEntityId).state, server: server)
     }
-
-    /// The selected tab, or Controls when the mode hides it.
-    private var shownTab: VacuumTab { controller.tabs.contains(tab) ? tab : .controls }
 
     public var body: some View {
         NavigationStack(path: $path) {
@@ -67,6 +64,7 @@ public struct VacuumSheet: View {
                             ScrollViewReader { reader in
                                 ScrollView { tabColumn(reader: reader).padding(HassTokens.Spacing.l) }
                             }
+                            .coordinateSpace(.named(VacuumSheetLayout.tabScrollSpace))
                             .frame(width: proxy.size.width / 2)
                         }
                     } else {
@@ -80,6 +78,7 @@ public struct VacuumSheet: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(HassTokens.Spacing.l)
                             }
+                            .coordinateSpace(.named(VacuumSheetLayout.tabScrollSpace))
                         }
                     }
                 }
@@ -117,31 +116,120 @@ public struct VacuumSheet: View {
     }
 
     private func tabColumn(reader: ScrollViewProxy) -> some View {
-        let tabs = controller.tabs
-        return VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
+        VacuumTabColumn(controller: controller, mapState: mapState, content: content, reader: reader) { path.append(.areaEditor) }
+    }
+}
+
+/// The sheet's tab and runtime-mode state. It lives outside the sheet's body, so switching tabs redraws only the
+/// tab column and never the map canvas (a full sheet redraw per tab change made switching stutter, owner report
+/// 2026-10-13).
+@MainActor
+@Observable
+final class VacuumSheetContent {
+    /// What the tab column draws: a tab in a runtime mode.
+    struct Key: Equatable {
+        var tab: VacuumTab
+        var mode: VacuumRuntimeMode
+    }
+
+    /// The tab the reader picked.
+    var requestedTab: VacuumTab
+    /// Fades the column between keys. A change of runtime mode (a clean starting or ending) also animates the layout,
+    /// so the setup collapses and the tab control drops or regains its tabs while the content is hidden.
+    let swap: SmoothContentSwap<Key>
+    /// Bumped when a tab swap should bring the tab control back to the top of the column.
+    private(set) var scrollResets = 0
+
+    init(tab: VacuumTab, controller: VacuumController, animator: SmoothContentSwap<Key>.Animator? = nil) {
+        requestedTab = tab
+        let initial = Self.key(requested: tab, controller: controller)
+        swap = animator.map { SmoothContentSwap(initial, animator: $0) } ?? SmoothContentSwap(initial)
+        swap.timing.fadeOut = 0.13
+        swap.timing.fadeIn = 0.17
+        swap.animatesLayout = { $0.mode != $1.mode }
+        swap.didSwap = { [weak self] key in
+            guard let self else { return }
+            if key.tab != self.lastTab { scrollResets += 1 }
+            lastTab = key.tab
+        }
+        lastTab = initial.tab
+    }
+
+    @ObservationIgnored private var lastTab: VacuumTab = .controls
+
+    /// The requested tab in the live mode, or Controls when that mode hides it (web `vacuumModalTabsForMode`).
+    static func key(requested: VacuumTab, controller: VacuumController) -> Key {
+        let mode = controller.runtimeMode
+        return Key(tab: controller.tabs(in: mode).contains(requested) ? requested : .controls, mode: mode)
+    }
+
+    /// The tab the control shows as selected: the reader's pick at once (the content follows after its fade).
+    func selection(in tabs: [VacuumTab]) -> VacuumTab {
+        tabs.contains(requestedTab) ? requestedTab : swap.displayed.tab
+    }
+}
+
+/// The tab control and the displayed tab's content (web `VacuumModalTabContent`'s right pane).
+struct VacuumTabColumn: View {
+    var controller: VacuumController
+    var mapState: VacuumMapState
+    var content: VacuumSheetContent
+    var reader: ScrollViewProxy
+    var onEditArea: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The tab control has scrolled up under the bar or off the top, so a new tab would open mid-content.
+    @State private var pickerAbove = false
+
+    var body: some View {
+        let shown = content.swap.displayed
+        let tabs = controller.tabs(in: shown.mode)
+        let target = VacuumSheetContent.key(requested: content.requestedTab, controller: controller)
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
             if tabs.count > 1 {
-                VacuumTabPicker(tabs: tabs, title: controller.vacuum.title, selection: Binding(get: { shownTab }, set: { tab = $0 }))
+                VacuumTabPicker(tabs: tabs, title: controller.vacuum.title,
+                                selection: Binding(get: { content.selection(in: tabs) }, set: { content.requestedTab = $0 }))
                     .id(VacuumSheetLayout.tabTopID)
+                    .onGeometryChange(for: Bool.self) { proxy in
+                        proxy.frame(in: .named(VacuumSheetLayout.tabScrollSpace)).minY < VacuumSheetLayout.topBand
+                    } action: { pickerAbove = $0 }
             }
-            switch shownTab {
-            case .controls:
-                VacuumControlsTab(controller: controller, mapState: mapState,
-                                  onOpenRooms: { if tabs.contains(.zones) { tab = .zones } },
-                                  onEditArea: { path.append(.areaEditor) })
-            case .zones: VacuumRoomsTab(controller: controller)
-            case .autoClean: VacuumAutoCleanTab(controller: controller)
-            case .more: VacuumActionsTab(controller: controller)
-            case .info: VacuumInfoTab(controller: controller)
-            }
+            panel(shown)
+                .opacity(content.swap.isHidden ? 0 : 1)
+                .allowsHitTesting(!content.swap.isHidden)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: tab) { _, _ in reader.scrollTo(VacuumSheetLayout.tabTopID, anchor: .top) }
+        .onChange(of: target) { _, next in
+            if next.tab != content.requestedTab { content.requestedTab = next.tab }
+            content.swap.show(next, reduceMotion: reduceMotion)
+        }
+        .onChange(of: content.scrollResets) { _, _ in
+            if pickerAbove { reader.scrollTo(VacuumSheetLayout.tabTopID, anchor: .top) }
+        }
+    }
+
+    @ViewBuilder private func panel(_ shown: VacuumSheetContent.Key) -> some View {
+        switch shown.tab {
+        case .controls:
+            VacuumControlsTab(controller: controller, mapState: mapState, mode: shown.mode,
+                              onOpenRooms: { if controller.tabs.contains(.zones) { content.requestedTab = .zones } },
+                              onEditArea: onEditArea)
+        case .zones: VacuumRoomsTab(controller: controller)
+        case .autoClean: VacuumAutoCleanTab(controller: controller)
+        case .more: VacuumActionsTab(controller: controller)
+        case .info: VacuumInfoTab(controller: controller)
+        }
     }
 }
 
 /// Layout constants.
 enum VacuumSheetLayout {
     static let tabTopID = "vacuum.tabTop"
+    /// The scroll view holding the tab column.
+    static let tabScrollSpace = "vacuum.tabScroll"
+    /// The band at the top of the scroll view that the navigation bar covers, with a margin. A tab change scrolls the
+    /// tab control back into view only when it sits in or above this band; otherwise the column stays put (scrolling
+    /// on every tab change jumped the sheet, owner report 2026-10-13).
+    static let topBand: CGFloat = 100
 }
 
 /// Wraps a report so it can ride the navigation path (equal by day and room statuses).

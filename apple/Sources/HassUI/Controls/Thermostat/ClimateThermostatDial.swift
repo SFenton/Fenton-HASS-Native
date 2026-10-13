@@ -64,6 +64,8 @@ public struct ClimateThermostatDial: View {
 
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection: HassConnection?
+    /// The last commit failed; cleared by the next one.
+    @State private var failed = false
 
     /// Creates a bound dial.
     public init(
@@ -81,15 +83,38 @@ public struct ClimateThermostatDial: View {
     public var body: some View {
         var configuration = ThermostatDialConfiguration(entity: store.entity(entityId).state, title: title)
         if let action { configuration.action = action }
-        return ThermostatDial(configuration, size: size) { commit($0) }
+        return VStack(spacing: HassTokens.Spacing.s) {
+            ThermostatDial(configuration, size: size) { commit($0) }
+            if failed {
+                Label(Self.failureMessage, systemImage: "exclamationmark.triangle.fill")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(HassTokens.Ink.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("thermostatDial.failure")
+            }
+        }
     }
 
-    /// Sends a commit to ``caller``, else the environment's connection.
+    /// Shown under the dial when Home Assistant rejects a commit. The handles follow the entity back to its
+    /// unchanged targets, so the message says why they moved.
+    static let failureMessage = "Home Assistant didn't change the temperature. Try again."
+
+    /// Sends a commit to ``caller``, else the environment's connection. A failure shows ``failureMessage`` under
+    /// the dial and is announced to VoiceOver.
     @discardableResult
     func commit(_ targets: ThermostatTargets) -> Task<Void, Never>? {
         let data = setTemperatureData(for: targets)
         guard let target: any HassServiceCalling = caller ?? connection else { return nil }
-        return Task { try? await target.callService("climate", "set_temperature", data: data) }
+        failed = false
+        let failed = $failed
+        return Task {
+            do {
+                try await target.callService("climate", "set_temperature", data: data)
+            } catch {
+                failed.wrappedValue = true
+                AccessibilityNotification.Announcement(Self.failureMessage).post()
+            }
+        }
     }
 
     /// The `climate.set_temperature` data a commit sends: this entity, or `commitEntityIds` when set.

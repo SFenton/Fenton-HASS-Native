@@ -202,6 +202,7 @@ final class VacuumJourneyTests: XCTestCase {
         XCTAssertTrue(office.waitForExistence(timeout: 10))
         reveal(office, in: app)
         assertTarget(office)
+        XCTAssertGreaterThanOrEqual(office.frame.height, 75, "Room cards are tile-sized")
         XCTAssertEqual(office.value as? String, "Off")
         office.tap()
         let on = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "On"), object: office)
@@ -215,6 +216,11 @@ final class VacuumJourneyTests: XCTestCase {
         clean.tap()
         expectCall("script.main_floor_vacuum_clean_selected_segments", in: app)
         XCTAssertTrue(app.buttons["vacuum.action.pause"].waitForExistence(timeout: 10), "Cleaning shows Pause")
+        // The start-clean transition: the setup fades out and the tab control drops Rooms (web minimal mode).
+        let rooms = element("vacuum.tabs", in: app).buttons["Rooms"]
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: rooms)
+        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 10), .completed, "Rooms tab stays while cleaning")
+        XCTAssertFalse(app.buttons["vacuum.action.clean"].exists, "The setup is gone")
         app.buttons["vacuum.action.pause"].tap()
         expectCall("vacuum.pause entity_id=vacuum.valetudo_exaltedsneakydeer", in: app)
     }
@@ -226,7 +232,13 @@ final class VacuumJourneyTests: XCTestCase {
         reveal(mode, in: app)
         XCTAssertTrue((mode.value as? String ?? mode.label).contains("Vacuum & Mop"))
         mode.tap()
-        app.buttons["Vacuum"].firstMatch.tap()
+        let vacuum = app.buttons["Vacuum"].firstMatch
+        XCTAssertTrue(vacuum.waitForExistence(timeout: 5), "The Mode menu did not open")
+        // Only the value is the menu's source, so the row stays on screen while the menu is open (owner report:
+        // the whole row used to vanish).
+        XCTAssertTrue(element("vacuum.setting.Mode", in: app).exists)
+        keepScreenshot(app, "vacuums-setting-menu")
+        vacuum.tap()
         expectCall("select.select_option entity_id=select.\(Self.musicRoom)_mode option=vacuum", in: app)
     }
 

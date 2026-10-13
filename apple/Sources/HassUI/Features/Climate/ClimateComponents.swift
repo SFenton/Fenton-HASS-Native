@@ -175,17 +175,11 @@ struct ClimateOpenerTile: View {
 
 // MARK: - Thermostat Hub
 
-/// The physical thermostat's pill: icon, title, state tinted by `hvac_action`, then HVAC mode and fan pickers
+/// The physical thermostat's pill: icon, title, state tinted by `hvac_action`, then HVAC mode and fan dropdowns
 /// (web `ThermostatHubPill`).
 struct ThermostatHubPill: View {
     var controller: ClimateController
-    @State private var picker: HubPicker?
     @Environment(\.dynamicTypeSize) private var typeSize
-
-    enum HubPicker: String, Identifiable {
-        case mode, fan
-        var id: String { rawValue }
-    }
 
     var body: some View {
         let entity = controller.entity(ClimateConfig.hubEntityId)
@@ -215,11 +209,14 @@ struct ThermostatHubPill: View {
             .accessibilityIdentifier("climate.hub")
             HStack(spacing: HassTokens.Spacing.s) {
                 let modes = ClimateLogic.hvacModeOptions(entity)
-                HubPickerButton(symbol: "power", label: "Thermostat Hub Mode", value: state, isDisabled: modes.isEmpty) { picker = .mode }
+                HubMenu(symbol: "power", label: "Thermostat Hub Mode", value: state, options: modes,
+                        selected: controller.shown(ClimateController.hubModeKey)) { controller.setHubMode($0) }
                     .accessibilityIdentifier("climate.hub.mode")
-                if !ClimateLogic.fanModeOptions(entity).isEmpty {
+                let fans = ClimateLogic.fanModeOptions(entity)
+                if !fans.isEmpty {
                     let fan = ClimateLogic.selectOption(controller.shown(ClimateController.hubFanKey) ?? "")
-                    HubPickerButton(symbol: ClimateStyle.symbol("mdi:fan"), label: "Thermostat Hub Fan", value: fan, isDisabled: false) { picker = .fan }
+                    HubMenu(symbol: ClimateStyle.symbol("mdi:fan"), label: "Thermostat Hub Fan", value: fan, options: fans,
+                            selected: controller.shown(ClimateController.hubFanKey)) { controller.setHubFan($0) }
                         .accessibilityIdentifier("climate.hub.fan")
                 }
             }
@@ -231,38 +228,29 @@ struct ThermostatHubPill: View {
                 .strokeBorder(tint?.opacity(0.6) ?? .clear, lineWidth: 1.5)
         }
         .accessibilityElement(children: .contain)
-        .sheet(item: $picker) { kind in
-            switch kind {
-            case .mode:
-                ClimateOptionPicker(
-                    title: "Thermostat Hub Mode",
-                    options: ClimateLogic.hvacModeOptions(controller.entity(ClimateConfig.hubEntityId)),
-                    selected: controller.shown(ClimateController.hubModeKey),
-                    keepsOpen: true,
-                    tint: { ClimateStyle.tint(action: $0) }
-                ) { controller.setHubMode($0) }
-            case .fan:
-                ClimateOptionPicker(
-                    title: "Thermostat Hub Fan",
-                    options: ClimateLogic.fanModeOptions(controller.entity(ClimateConfig.hubEntityId)),
-                    selected: controller.shown(ClimateController.hubFanKey),
-                    keepsOpen: false
-                ) { controller.setHubFan($0) }
-            }
-        }
     }
 }
 
-/// A 44 pt icon button with a disclosure chevron that opens a picker (web `ThermostatSelectButton`).
-struct HubPickerButton: View {
+/// A 44 pt icon button with a disclosure chevron that opens a native dropdown of choices, the current one checked
+/// (web `ThermostatSelectButton`). HIG: Pull-down buttons, Menus.
+struct HubMenu: View {
     var symbol: String
     var label: String
     var value: String
-    var isDisabled: Bool
-    var action: () -> Void
+    var options: [ClimateLogic.Option]
+    var selected: String?
+    var onSelect: (String) -> Void
 
     var body: some View {
-        Button(action: action) {
+        Menu {
+            Picker(label, selection: Binding(get: { selected ?? "" }, set: onSelect)) {
+                ForEach(options) { option in
+                    Label(option.label, systemImage: ClimateStyle.symbol(option.icon ?? "mdi:thermometer-check"))
+                        .tag(option.value)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
             HStack(spacing: 2) {
                 Image(systemName: symbol).font(.body.weight(.semibold))
                 Image(systemName: "chevron.down").font(.caption.weight(.bold))
@@ -273,62 +261,9 @@ struct HubPickerButton: View {
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .disabled(isDisabled)
+        .disabled(options.isEmpty)
         .accessibilityLabel(label)
         .accessibilityValue(value)
-        .accessibilityHint("Opens choices.")
-    }
-}
-
-// MARK: - Option picker
-
-/// A sheet of option tiles (web `OptionPickerDialog` with `presentation="sheet"`). With `keepsOpen` it stays
-/// up after a choice, so the hub's mode can be changed and checked in one go.
-struct ClimateOptionPicker: View {
-    var title: String
-    var options: [ClimateLogic.Option]
-    var selected: String?
-    var keepsOpen: Bool
-    var tint: (String) -> Color? = { _ in nil }
-    var onSelect: (String) -> Void
-    @Environment(\.dismiss) private var dismiss
-    /// Wide enough for "Heat/Cool" with its icon; one column on iPhone.
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 200
-    /// Follows the choice at once; the parent's value catches up through the controller.
-    @State private var choice: String?
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 2) {
-                    ForEach(options) { option in
-                        let isSelected = (choice ?? selected) == option.value
-                        RemoteGlassTile(
-                            title: option.label,
-                            subtitle: option.description,
-                            symbol: ClimateStyle.symbol(option.icon ?? "mdi:thermometer-check"),
-                            tint: tint(option.value) ?? ClimateStyle.control,
-                            isActive: isSelected,
-                            isDisabled: false,
-                            semantics: .selection(isSelected: isSelected)
-                        ) {
-                            choice = option.value
-                            onSelect(option.value)
-                            if !keepsOpen { dismiss() }
-                        }
-                        .accessibilityIdentifier("climate.picker.\(option.value)")
-                    }
-                }
-                .padding(HassTokens.Spacing.l)
-            }
-            .climateSheetTitle(title)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
-        }
-        // Full height like every control grid (modal-sheet pattern); at the medium detent the heading clipped.
-        .climateSheetSizing()
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .accessibilityHint("Shows choices.")
     }
 }

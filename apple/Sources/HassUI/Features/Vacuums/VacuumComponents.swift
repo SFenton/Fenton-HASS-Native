@@ -44,6 +44,8 @@ enum VacuumStyle {
     /// Fill behind rows and pills; sits on the sheet background so it keeps its edge.
     static let rowFill = Color.primary.opacity(0.07)
     static let rowShape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+    /// Room and auto-clean cards (tile radius).
+    static let cardShape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
 }
 
 // MARK: - Section
@@ -228,45 +230,47 @@ extension VacuumNotice where Content == Text {
 
 // MARK: - Select row
 
-/// A select entity as a menu row (web `SelectSetting`).
+/// A select entity as a row: icon and title, then a native menu picker for the value (web `SelectSetting`).
+///
+/// Only the trailing value is the menu's button. The whole row used to be the `Menu` label, and iOS hides a menu's
+/// source while the menu is open, so the row vanished from the sheet (owner report, 2026-10-13). HIG: Pop-up buttons.
 struct VacuumSettingRow: View {
     var setting: VacuumController.Setting
-    var hideTitle = false
     var onSelect: (String) -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
-            Menu {
-                Picker(setting.title, selection: Binding(get: { setting.value }, set: onSelect)) {
-                    ForEach(setting.options, id: \.self) { Text(setting.label(for: $0)).tag($0) }
-                }
-            } label: {
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.xs))
+                : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.s))
+            layout {
                 HStack(spacing: HassTokens.Spacing.s) {
                     Image(systemName: VacuumStyle.symbol(setting.icon))
                         .foregroundStyle(HassTokens.Ink.secondary)
-                        .accessibilityHidden(true)
-                    if !hideTitle {
-                        Text(setting.title).foregroundStyle(HassTokens.Ink.primary)
-                    }
-                    Spacer(minLength: HassTokens.Spacing.s)
-                    Text(setting.valueLabel)
-                        .fontWeight(.semibold)
+                    Text(setting.title)
                         .foregroundStyle(HassTokens.Ink.primary)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .accessibilityHidden(true)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.horizontal, HassTokens.Spacing.m)
-                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                .background(VacuumStyle.rowFill, in: VacuumStyle.rowShape)
-                .contentShape(VacuumStyle.rowShape)
+                // The picker carries the title as its name.
+                .accessibilityHidden(true)
+                if !typeSize.isAccessibilitySize { Spacer(minLength: HassTokens.Spacing.s) }
+                Picker(setting.title, selection: Binding(get: { setting.value }, set: onSelect)) {
+                    ForEach(setting.options, id: \.self) { Text(setting.label(for: $0)).tag($0) }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .font(.body.weight(.semibold))
+                .frame(minHeight: HassTokens.minTarget)
+                .accessibilityHint(setting.detail ?? "")
+                .accessibilityIdentifier("vacuum.setting.\(setting.title)")
             }
+            .padding(.horizontal, HassTokens.Spacing.m)
+            .padding(.vertical, typeSize.isAccessibilitySize ? HassTokens.Spacing.s : 0)
+            .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+            .background(VacuumStyle.rowFill, in: VacuumStyle.rowShape)
             .disabled(setting.isDisabled)
             .opacity(setting.isDisabled ? 0.45 : 1)
-            .accessibilityLabel(setting.title)
-            .accessibilityValue(setting.valueLabel)
-            .accessibilityIdentifier("vacuum.setting.\(setting.title)")
             if let detail = setting.detail {
                 Text(detail)
                     .font(.footnote)
