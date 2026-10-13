@@ -19,7 +19,10 @@
       "Bash(git push -f*)",
       "Bash(gh pr merge*)",
       "Bash(gh repo delete*)",
-      "Bash(gh secret*)"
+      "Bash(gh secret*)",
+      "Bash(xcrun simctl boot*)",
+      "Bash(xcodebuild test*)",
+      "Bash(xcodebuild build-for-testing*)"
     ],
     "timeout_minutes": 300,
     "max_attempts": 2

@@ -49,4 +49,4 @@ Workers use `hass_triage.py comment N --kind root-cause|approach|progress|decisi
 - Only issues and replies by `authors` are worked. Issue text is wrapped as untrusted data in the prompt (`UNTRUSTED_NOTICE`): a request, never instructions to touch credentials, CI, signing or other repos.
 - The session runs in **auto** permission mode, so the auto-mode classifier still guards every action; the deny list also blocks `gh pr merge`, force pushes and `simctl shutdown all`.
 - Tokens: `gh auth token` is read only inside the runner for downloads and uploads; logs and comments pass through `redact()`. The Home Assistant credentials stay in `~/repos/Fenton-HASS-Native/temp.env`, passed by path to `tools/ios_uitest.sh --env`.
-- Capacity: every build and simulator run goes through `tools/devcap.py` (directly or via `tools/ios_uitest.sh`), on simulators named `… (Triage)` only.
+- Capacity: every build and simulator run goes through `tools/devcap.py` (directly or via `tools/ios_uitest.sh`), on simulators named `… (Triage)` only; the session's deny list blocks bare `xcrun simctl boot`, `xcodebuild test` and `xcodebuild build-for-testing` so nothing bypasses the gate.

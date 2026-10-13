@@ -53,7 +53,8 @@ decided in the issue, and keep going.
 6. **Capacity and simulators.** Every simulator boot, device run and heavy compile goes through the machine-wide
    gate shared with every other lane on this Mac: `tools/ios_uitest.sh` and `tools/apple_coverage.sh` already wait
    for slots; anything else runs inside `python3 tools/devcap.py run --sim <UDID> --purpose "triage #{{ISSUE}}" -- <cmd>`
-   (or `--pool build` for a compile). Use only simulators whose names end in `(Triage)` (create them with
+   (or `--pool build` for a compile). Bare `xcrun simctl boot`, `xcodebuild test` and `xcodebuild build-for-testing`
+   are blocked in this session for that reason. Use only simulators whose names end in `(Triage)` (create them with
    `xcrun simctl create` if missing, matching the device types `tools/ios_uitest.sh` uses, and pass
    `FENTON_SIM_IPHONE`, `FENTON_SIM_DUO`, `FENTON_SIM_IPAD`). Never shut down, erase or delete anyone else's
    simulator; never `simctl shutdown all`. Shut down the simulators you booted before you finish.
