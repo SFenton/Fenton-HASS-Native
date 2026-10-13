@@ -22,7 +22,7 @@ public enum RecipeParsing {
     /// A card, or nil when it lacks a positive id or a title (web `normalizeRecipeCard`).
     public static func card(_ value: JSONValue) -> RecipeCard? {
         guard case .object = value else { return nil }
-        guard let rawId = value.first("id", "recipe_id")?.finiteNumber, rawId.isFinite else { return nil }
+        guard let rawId = value.first("id", "recipe_id")?.finiteNumber else { return nil }
         let id = Int(rawId.rounded())
         let title = value.first("title", "name")?.text ?? ""
         guard id > 0, !title.isEmpty else { return nil }
@@ -39,7 +39,7 @@ public enum RecipeParsing {
             coverage: coveragePercent(value.first("coverage")?.finiteNumber ?? 0),
             matchedRequired: requiredTotal > 0 ? min(requiredTotal, rawMatched) : rawMatched,
             requiredTotal: requiredTotal,
-            soonestExpiryDays: soonest.flatMap { $0.isFinite ? Int($0.rounded()) : nil },
+            soonestExpiryDays: soonest.map { Int($0.rounded()) },
             cookable: value.first("cookable")?.flag ?? false
         )
     }
@@ -474,7 +474,6 @@ extension JSONValue {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
-
 
     /// A boolean from a bool, number or yes/no style string (web `booleanValue`).
     var flag: Bool? {

@@ -13,25 +13,11 @@ extension HassConnection: HassServiceResponding {
     /// Sends `call_service` with `return_response: true` once (no retry across reconnects, so a command is never
     /// applied twice) and returns the `response` member of the result.
     public func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
-        let request = HARequest(
-            type: .webSocket("call_service"),
-            data: ["domain": domain, "service": service, "service_data": data, "return_response": true],
-            shouldRetry: false
-        )
-        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<JSONValue, Error>) in
-            connection.send(request) { result in
-                switch result {
-                case let .success(data): continuation.resume(returning: JSONValue(haData: data))
-                case let .failure(error): continuation.resume(throwing: error)
-                }
-            }
-        }
+        try await callServiceReturningResult(domain, service, data: data)
     }
 }
 
 extension JSONValue {
-    // `init(haData:)` lives in `HumidifierScheduleController.swift`.
-
     /// A command result's response object: `response` when the result wraps it, else the result itself.
     var commandResponse: JSONValue? {
         if case .object? = self["response"] { return self["response"] }

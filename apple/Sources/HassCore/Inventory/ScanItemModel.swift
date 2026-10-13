@@ -472,7 +472,7 @@ public final class ScanItemModel {
         if !category.isEmpty { extras["category"] = .string(category) }
         let image = Self.text(product?["image_url"] ?? product?["image"])
         if !image.isEmpty { extras["image_url"] = .string(image) }
-        if let quantity = product?["default_quantity"]?.finiteNumber, quantity.isFinite, quantity >= 0 { extras["default_quantity"] = .number(quantity) }
+        if let quantity = product?["default_quantity"]?.finiteNumber, quantity >= 0 { extras["default_quantity"] = .number(quantity) }
         for key in ["unit", "notes", "package_unit"] {
             let value = Self.text(product?[key])
             if !value.isEmpty { extras[key] = .string(value) }
