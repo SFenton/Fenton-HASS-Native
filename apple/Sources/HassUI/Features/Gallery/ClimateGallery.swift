@@ -1,3 +1,4 @@
+#if DEBUG
 import HassCore
 import HassDesign
 import SwiftUI
@@ -130,3 +131,4 @@ enum ClimateFixtures {
         return states
     }
 }
+#endif

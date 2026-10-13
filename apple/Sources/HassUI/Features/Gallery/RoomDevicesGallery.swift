@@ -1,3 +1,4 @@
+#if DEBUG
 import HassCore
 import HassDesign
 import Observation
@@ -288,3 +289,4 @@ final class GalleryScheduleStore: HassScheduleStoring {
 
     func userIsAdmin() async throws -> Bool { true }
 }
+#endif

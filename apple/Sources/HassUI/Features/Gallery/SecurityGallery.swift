@@ -1,3 +1,4 @@
+#if DEBUG
 import HassCore
 import HassDesign
 import Observation
@@ -110,3 +111,4 @@ enum SecurityFixtures {
         EntityState(entityId: "binary_sensor.back_door_contact", state: "on", attributes: ["friendly_name": .string("Back Door")]),
     ]
 }
+#endif

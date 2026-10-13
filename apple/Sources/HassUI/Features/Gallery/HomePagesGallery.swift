@@ -1,3 +1,4 @@
+#if DEBUG
 import HassCore
 import HassDesign
 import Observation
@@ -258,3 +259,4 @@ enum HomePageFixtures {
         ]
     }()
 }
+#endif
