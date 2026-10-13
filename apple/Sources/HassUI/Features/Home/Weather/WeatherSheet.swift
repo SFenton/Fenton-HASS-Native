@@ -33,11 +33,14 @@ struct WeatherSheet: View {
                 .padding(.bottom, HassTokens.Spacing.xl)
             }
             .scrollIndicators(.hidden)
+            // The fade sits inside the sheet's own backdrop, which stays whole behind the header.
+            .headerEdgeFade()
+            .environment(\.headerEdgeCap, nil)
             .background { WeatherBackdrop(scene: scene).ignoresSafeArea() }
             .navigationTitle("Weather")
             .inlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                SheetCloseItem { dismiss() }
             }
             #if os(iOS)
             .toolbarColorScheme(.dark, for: .navigationBar)

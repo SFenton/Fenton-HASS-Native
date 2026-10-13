@@ -23,13 +23,15 @@ struct RoomOverviewSheet: View {
                     .frame(maxWidth: 960)
                     .frame(maxWidth: .infinity)
             }
+            .modalChrome()
             .navigationTitle(RoomOverview.sheetTitle(kind, read: read))
             .inlineNavigationTitle()
             .navigationDestination(for: RoomGroup.self) { group in
                 RoomGroupDetailPage(kind: kind, group: group) { dismiss() }
+                    .modalChrome()
             }
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+                SheetCloseItem { dismiss() }
             }
         }
         .accessibilityIdentifier("overview.\(kind.rawValue)")

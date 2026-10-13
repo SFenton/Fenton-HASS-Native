@@ -42,8 +42,7 @@ struct WeatherCardContent: View {
         .accessibilityIdentifier("home.weather")
         .sheet(isPresented: $isPresented) {
             WeatherSheet(forecasts: forecasts)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .hassSheet()
         }
         .onAppear {
             if startsOpen, !didAutoOpen {

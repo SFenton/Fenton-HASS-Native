@@ -57,7 +57,7 @@ final class HomeJourneyTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["room.lightGroup.light.guest_room"].exists)
         goBack(in: app)
         XCTAssertTrue(app.buttons["overview.lights.room.Guest Room"].waitForExistence(timeout: 5))
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap()
     }
 
     /// Every room card in the Lights sheet has the height of the tallest one (a wrapping room name lifts them all).
@@ -71,7 +71,7 @@ final class HomeJourneyTests: XCTestCase {
         XCTAssertGreaterThan(heights.count, 1)
         let tallest = heights.max() ?? 0
         for height in heights { XCTAssertEqual(height, tallest, accuracy: 1, "Room cards differ in height: \(heights)") }
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap()
     }
 
     // Each chip opens its overview and a room pushes its detail; both pages pass the audit at default and AX5 size.
@@ -138,7 +138,7 @@ final class HomeJourneyTests: XCTestCase {
         XCTAssertTrue(button.waitForExistence(timeout: 10), chip)
         revealChip(button, in: app)
         button.tap()
-        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5), chip)
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5), chip)
         sleep(1) // Let the sheet finish presenting; mid-animation frames fail contrast and clipping.
     }
 
@@ -242,7 +242,7 @@ final class HomeJourneyTests: XCTestCase {
                 sleep(1)
                 keepScreenshot(app, "\(chip)-detail-\(suffix)")
             }
-            app.buttons["Done"].firstMatch.tap()
+            app.buttons["Close"].firstMatch.tap()
             sleep(1)
         }
     }

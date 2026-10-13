@@ -44,7 +44,6 @@ struct HomeViewTests {
 }
 
 @MainActor
-@MainActor
 struct LightGroupTileTests {
     /// Dimmable groups draw the brightness tile; on/off-only entities fall back to a power tile.
     @Test func rendersBothTileKinds() {
