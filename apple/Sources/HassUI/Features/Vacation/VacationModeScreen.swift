@@ -61,7 +61,7 @@ struct VacationModeScreen: View {
             ) { controller.tapCard() }
                 .disabled(controller.cardDisabled)
                 .accessibilityValue(controller.cardSubtitle)
-                .accessibilityHint(controller.cardOpensSheet ? "Asks for the vacation dates." : controller.cardEnabled ? "Asks before turning Vacation Mode off." : "")
+                .accessibilityHint(controller.cardAccessibilityHint)
                 .accessibilityIdentifier("vacation.modeCard")
         }
     }

@@ -154,13 +154,23 @@ struct VacationModeControllerTests {
         vacation.tapCard()
         #expect(vacation.isConfirmingDisable)
         #expect(vacation.modeOn)
+        #expect(vacation.cardAccessibilityHint == "Asks before turning Vacation Mode off.")
         vacation.cancelDisable()
         #expect(!vacation.isConfirmingDisable)
-        // A stale Yes after Cancel does nothing.
-        vacation.confirmDisable()
         await vacation.drain()
         #expect(vacation.modeOn)
         #expect(h.caller.calls.isEmpty)
+        // Yes works even when SwiftUI cleared the alert's binding first.
+        vacation.tapCard()
+        vacation.cancelDisable()
+        vacation.confirmDisable()
+        #expect(!vacation.modeOn)
+    }
+
+    @Test func cardHintSaysWhatATapDoes() {
+        #expect(make(checklist: allDone).controller.cardAccessibilityHint == "Asks for the vacation dates.")
+        #expect(make().controller.cardAccessibilityHint == "")
+        #expect(make(mode: "unavailable").controller.cardAccessibilityHint == "")
     }
 
     /// The helpers echo one at a time: after the new start lands but before the new end, the saved range is

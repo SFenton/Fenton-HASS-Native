@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One date or time picker in ``ScheduleDateFields``.
+/// One date, time, or date-and-time picker in ``ScheduleDateFields``.
 public struct ScheduleDateField: Identifiable {
     /// Which part of the moment the picker edits: the date, the time, or both in one row (the Calendar
     /// app's Starts/Ends idiom; HIG Pickers, "Date pickers").
@@ -10,7 +10,7 @@ public struct ScheduleDateField: Identifiable {
     public var part: Part
     public var value: Date
     public var identifier: String
-    /// Receives the picked moment (the other part unchanged by the picker).
+    /// Receives the picked moment; a date-only or time-only picker leaves the other part unchanged.
     public var onChange: (Date) -> Void
     public var id: String { identifier }
 
@@ -24,7 +24,7 @@ public struct ScheduleDateField: Identifiable {
     }
 }
 
-/// Paired date and time pickers for schedules (pattern: `.agents/patterns/schedule-date-fields.md`;
+/// Date and time pickers for schedules: one combined picker per moment, or a date and a time (pattern: `.agents/patterns/schedule-date-fields.md`;
 /// web `NativePickerField` pairs in `ScheduleConfirmationForm`).
 ///
 /// Each field is a labeled compact `DatePicker` on a material row, two per row when the width allows.

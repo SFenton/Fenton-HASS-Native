@@ -60,7 +60,8 @@ public final class HouseholdAwayController {
     public nonisolated static let defaultRetryDelay: Duration = .milliseconds(1500)
     /// Refusals that mean "the plan is moving; ask again" (`solo_trip.yaml` `household_away_command`).
     static let retryableCodes: Set<String> = ["expected_revision_mismatch", "request_in_progress", "invalid_journal_contract"]
-    /// Retries after a retryable refusal, within ``commandTimeout``.
+    /// Retries after a retryable refusal. Each attempt has its own ``commandTimeout``, but refusals come back
+    /// at once, so in practice the retries add at most ``defaultRetryDelay`` each.
     static let maxRetries = 3
 
     // MARK: - Init
@@ -130,7 +131,7 @@ public final class HouseholdAwayController {
             switch outcome {
             case let .accepted(revision):
                 if let revision { revisionFloor = max(revisionFloor, revision) }
-            case let .rejected(code) where Self.retryableCodes.contains(code) && attempt < Self.maxRetries:
+            case let .rejected(code) where Self.retryableCodes.contains(code) && attempt < Self.maxRetries && !Task.isCancelled:
                 attempt += 1
                 await waitForStatusChange(from: current)
                 // The script's journal is the authority: take the sensor's revision as is, even if lower.
@@ -150,7 +151,7 @@ public final class HouseholdAwayController {
         let clock = ContinuousClock()
         let deadline = clock.now.advanced(by: retryDelay)
         while clock.now < deadline, snapshot == previous {
-            try? await Task.sleep(for: .milliseconds(100))
+            do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
         }
     }
 

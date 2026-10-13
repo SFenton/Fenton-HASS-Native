@@ -35,6 +35,7 @@ public final class VacationModeController {
     public private(set) var confirmedRange: Vacation.DateRange?
     /// The turn-off alert is showing.
     public private(set) var isConfirmingDisable = false
+    @ObservationIgnored private var confirmedRangeTimer: Task<Void, Never>?
 
     /// How long confirmed dates wait for the helpers' echo before the live values win again.
     public static let confirmedRangeRevert: Duration = .seconds(10)
@@ -136,6 +137,12 @@ public final class VacationModeController {
         return cardEnabled ? Vacation.Copy.on : Vacation.Copy.off
     }
 
+    /// What tapping the card does, for VoiceOver.
+    public var cardAccessibilityHint: String {
+        if cardOpensSheet { return "Asks for the vacation dates." }
+        return cardEnabled && !cardDisabled ? "Asks before turning Vacation Mode off." : ""
+    }
+
     /// The card leads to the confirmation sheet.
     public var cardOpensSheet: Bool { !cardDisabled && !cardEnabled && !isConfirming && checklistComplete }
 
@@ -162,9 +169,9 @@ public final class VacationModeController {
         blockedEnableAttempted = false
     }
 
-    /// Turns the vacation off after the alert's Yes.
+    /// Turns the vacation off after the alert's Yes. Doesn't depend on ``isConfirmingDisable``: SwiftUI may
+    /// clear the alert's binding before or after it runs the button's action.
     public func confirmDisable() {
-        guard isConfirmingDisable else { return }
         isConfirmingDisable = false
         guard cardEnabled else { return }
         confirmedRange = nil
@@ -244,8 +251,6 @@ public final class VacationModeController {
         for key in overlay.trackedKeys { overlay.liveChanged(key, to: live(key)) }
         if let confirmedRange, savedRange == confirmedRange { self.confirmedRange = nil }
     }
-
-    @ObservationIgnored private var confirmedRangeTimer: Task<Void, Never>?
 
     private func scheduleConfirmedRangeRevert() {
         confirmedRangeTimer?.cancel()
