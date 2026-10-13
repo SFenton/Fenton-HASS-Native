@@ -45,6 +45,9 @@ struct TodoListSection: View {
                 }
             }
         }
+        // A container keeps each row's own identifiers: on a plain stack the section's identifier overwrote
+        // them once the rows lost their material card (2026-10-13).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("todo.section.\(list.entityId)")
     }
 
