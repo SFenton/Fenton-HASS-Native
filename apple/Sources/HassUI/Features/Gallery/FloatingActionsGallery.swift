@@ -27,7 +27,7 @@ struct FloatingActionsGallery: View {
             Section {
                 Text("Last action: \(lastAction)")
                     .font(.caption.monospaced())
-                    .foregroundStyle(HassTokens.Ink.secondary)
+                    .foregroundStyle(HassTokens.Ink.primary)
                     .accessibilityIdentifier("gallery.lastCall")
             }
             ForEach(items.filter { query.isEmpty || $0.localizedCaseInsensitiveContains(query) }, id: \.self) { Text($0) }
