@@ -230,7 +230,7 @@ extension VacuumNotice where Content == Text {
 
 // MARK: - Select row
 
-/// A select entity as a row: icon and title, then a native menu picker for the value (web `SelectSetting`).
+/// A select entity as a row: icon and title, then a native menu for the value (web `SelectSetting`).
 ///
 /// Only the trailing value is the menu's button. The whole row used to be the `Menu` label, and iOS hides a menu's
 /// source while the menu is open, so the row vanished from the sheet (owner report, 2026-10-13). HIG: Pop-up buttons.
@@ -252,20 +252,30 @@ struct VacuumSettingRow: View {
                         .foregroundStyle(HassTokens.Ink.primary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                // The picker carries the title as its name.
+                // The menu carries the title as its name.
                 .accessibilityHidden(true)
                 if !typeSize.isAccessibilitySize { Spacer(minLength: HassTokens.Spacing.s) }
-                Picker(setting.title, selection: Binding(get: { setting.value }, set: onSelect)) {
-                    ForEach(setting.options, id: \.self) { Text(setting.label(for: $0)).tag($0) }
+                Menu {
+                    Picker(setting.title, selection: Binding(get: { setting.value }, set: onSelect)) {
+                        ForEach(setting.options, id: \.self) { Text(setting.label(for: $0)).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    // A menu picker's own button is about 34 pt tall; this label keeps the 44 pt target.
+                    HStack(spacing: HassTokens.Spacing.xs) {
+                        Text(setting.valueLabel)
+                            .font(.body.weight(.semibold))
+                            .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: false)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    // Primary ink in both appearances; the system tint read faintly on the row fill.
+                    .foregroundStyle(HassTokens.Ink.primary)
+                    .frame(minHeight: HassTokens.minTarget)
+                    .contentShape(Rectangle())
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .font(.body.weight(.semibold))
-                // The value stays on one line (the title gives way first) in the 6:1 primary blue, not the lighter
-                // system tint, which read faintly on the row fill.
-                .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: false)
-                .tint(VacuumStyle.primaryFill)
-                .frame(minHeight: HassTokens.minTarget)
+                .accessibilityLabel(setting.title)
+                .accessibilityValue(setting.valueLabel)
                 .accessibilityIdentifier("vacuum.setting.\(setting.title)")
             }
             .padding(.horizontal, HassTokens.Spacing.m)
