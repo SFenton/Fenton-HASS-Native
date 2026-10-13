@@ -205,7 +205,9 @@ final class VacationJourneyTests: XCTestCase {
         XCTAssertTrue(cancel.waitForExistence(timeout: 5), "No turn-off alert")
         XCTAssertEqual(cancel.label, "Cancel")
         XCTAssertTrue(app.alerts["Are you sure you want to turn off Vacation Mode?"].exists)
-        cancel.tap()
+        // iOS 27 nests each alert button in a same-named button, so tap by coordinate.
+        cancel.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(cancel.waitForNonExistence(timeout: 5))
         XCTAssertEqual(card.value as? String, "On")
         XCTAssertEqual(lastCall(app), "Last call: None")
         // Yes turns it off.
@@ -213,7 +215,7 @@ final class VacationJourneyTests: XCTestCase {
         let yes = app.alerts.buttons["vacation.disable.confirm"].firstMatch
         XCTAssertTrue(yes.waitForExistence(timeout: 5))
         XCTAssertEqual(yes.label, "Yes")
-        yes.tap()
+        yes.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         waitForCall("vacation_checklist_trash_and_recycles_taken_out", in: app)
         XCTAssertTrue(element("vacation.checklist.0", in: app).waitForExistence(timeout: 5))
     }

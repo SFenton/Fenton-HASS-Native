@@ -18,6 +18,10 @@ struct ChoresContent: View {
     @Environment(EntityStore.self) private var store
 
     var body: some View {
+        // Read here, during body: the stack builds destinations later, outside this view's update, where
+        // reading the @Environment wrappers trapped (debug gallery, 2026-10-13).
+        let model = model
+        let store = store
         TodoPageView(page: ChoresConfig.chores) {
             ChoreQuickLinks()
         }
