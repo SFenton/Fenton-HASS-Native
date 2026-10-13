@@ -41,13 +41,11 @@ final class WeatherJourneyTests: XCTestCase {
 
     /// Scrolls the sheet until `element` is hittable.
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        let scroll = app.scrollViews.matching(NSPredicate(format: "identifier == 'weather.sheet' OR identifier == ''")).firstMatch
         for _ in 0..<14 where !(element.exists && element.isHittable) {
             let area = app.windows.firstMatch
             let start = area.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.7))
             start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -area.frame.height * 0.3)), withVelocity: .slow, thenHoldForDuration: 0.3)
         }
-        _ = scroll
         XCTAssertTrue(element.isHittable, "\(element) never came into view", file: file, line: line)
     }
 
