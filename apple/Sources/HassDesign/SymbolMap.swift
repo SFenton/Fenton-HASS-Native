@@ -52,6 +52,8 @@ public enum SymbolMap {
         "mdi:movie-open": "film",
         "mdi:lightbulb-multiple": "lightbulb.2",
         "mdi:gauge": "gauge.with.dots.needle.50percent",
+        "mdi:lock-open": "lock.open",
+        "mdi:garage-open": "door.garage.open",
         // Media, Custom Lights and Sprinklers pages
         "mdi:nintendo-switch": "gamecontroller.fill",
         "mdi:sprinkler-variant": "sprinkler.and.droplets",

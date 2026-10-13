@@ -2,15 +2,19 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// The Home status chips (pattern: `.agents/patterns/status-rail.md`).
+/// A page's status chips (pattern: `.agents/patterns/status-rail.md`): Home shows all of them, Security its two.
 struct StatusRail: View {
+    /// The chips, in order.
+    var chips: [HomeConfig.StatusChip] = HomeConfig.statusChips
+    /// Accessibility identifier prefix: `<prefix>.chip.<sheet>`.
+    var idPrefix = "home"
     var onOpen: (HomeConfig.ChipSheet) -> Void
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: HassTokens.Spacing.s) {
-                ForEach(HomeConfig.statusChips) { chip in
-                    StatusChipView(chip: chip) { onOpen(chip.sheet) }
+                ForEach(chips) { chip in
+                    StatusChipView(chip: chip, idPrefix: idPrefix) { onOpen(chip.sheet) }
                 }
             }
             .padding(.horizontal, HassTokens.Spacing.l)
@@ -24,6 +28,7 @@ struct StatusRail: View {
 /// One chip. Observes only the entities its summary depends on.
 struct StatusChipView: View {
     var chip: HomeConfig.StatusChip
+    var idPrefix = "home"
     var action: () -> Void
     @Environment(EntityStore.self) private var store
 
@@ -33,7 +38,7 @@ struct StatusChipView: View {
         let active = store.entity(chip.entityId).state?.isActive ?? false
         StatusChipButton(title: chip.title, summary: summary, symbol: SymbolMap.symbol(for: chip.icon), tint: tint,
                          isActive: active, action: action)
-        .accessibilityIdentifier("home.chip.\(chip.sheet.rawValue)")
+        .accessibilityIdentifier("\(idPrefix).chip.\(chip.sheet.rawValue)")
     }
 
     private var tint: Color {

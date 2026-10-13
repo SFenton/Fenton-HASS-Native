@@ -21,6 +21,10 @@ apple/Sources/HassCore/Config/MediaRemote*.swift,
 apple/Sources/HassCore/MediaRemote/,
 apple/Sources/HassUI/Features/MediaRemote/,
 apple/Sources/HassUI/Features/Gallery/MediaRemoteGallery.swift → media remote lane (claude/project-thread-go5jtz)
+apple/Sources/HassCore/Config/SecurityConfig.swift,
+apple/Sources/HassCore/Security/,
+apple/Sources/HassUI/Features/Security/,
+apple/Sources/HassUI/Features/Gallery/SecurityGallery.swift → security lane (claude/project-thread-f1gx1e)
 apple/Sources/HassUI/Features/{Media,CustomLights,Sprinklers}/,
 apple/Sources/HassCore/Sprinklers/, HassCore/Config/{MediaPage,CustomLights,Sprinklers}Config.swift,
 apple/Sources/HassUI/Features/Gallery/HomePagesGallery.swift → Home pages lane (claude/project-thread-mjn2gu)
@@ -58,8 +62,9 @@ apple/Tests/**                                             → tests for your ow
 | Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
 | Home | Status rail, weather, guest presence, camera snapshots, lights sheet |
 | Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
+| Security | Alarm modes (disarm confirms), front door lock, garage doors (command state machine), hidden Vehicle tile, cameras; gallery `FENTON_GALLERY=security` |
 | Climate | Page, Thermostat Hub pickers and the advanced-controls sheet (Rooms, Automation, Tracking and their detail pages); gallery `FENTON_GALLERY=climate` |
-| Security, Chores | Placeholders |
+| Chores | Placeholders |
 | Settings | Household topic list that splits on demand: Admin (presence overrides, auto-reset), Special Device Modes, Guest Controls, Mach-E; Home Assistant Settings opens the full-screen modal (server, account, signed-in Settings/Profile web pages, Sign Out); Vacation and To-Do not ported |
 | Orientation policy (iPhone portrait, Duo/iPad free) | Scaffolded with unit tests |
 | Split policy (landscape regular only) | `OnDemandSplitStack` built and verified on the Mac: divider at the exact midpoint on iPad landscape, on the hinge on the unfolded Duo landscape; rotation moves the open item between pane and push; Settings is the first adopter |
