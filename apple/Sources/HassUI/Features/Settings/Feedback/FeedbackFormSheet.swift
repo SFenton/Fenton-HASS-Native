@@ -22,6 +22,9 @@ struct FeedbackFormSheet: View {
     @State private var showingFiles = false
     @State private var showingAccess = false
     @State private var photoSelection: [PhotosPickerItem] = []
+    /// The focused box, so opening GitHub Access first ends editing (with the keyboard up, the row's tap
+    /// otherwise only dismissed it on iPhone).
+    @FocusState private var focusedField: String?
     @Environment(HassConnection.self) private var connection
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -102,6 +105,7 @@ struct FeedbackFormSheet: View {
                     .accessibilityLabel("Title")
                     .accessibilityHint(titleDetail)
                     .accessibilityIdentifier("feedback.field.title")
+                    .focused($focusedField, equals: "title")
                     .disabled(model.isSending)
                     #if os(iOS)
                     .textInputAutocapitalization(.sentences)
@@ -140,6 +144,7 @@ struct FeedbackFormSheet: View {
                 .accessibilityLabel(label)
                 .accessibilityHint(detail)
                 .accessibilityIdentifier(identifier)
+                .focused($focusedField, equals: identifier)
                 .disabled(model.isSending)
         } header: {
             FeedbackFieldHeader(label, detail: detail)
@@ -200,7 +205,10 @@ struct FeedbackFormSheet: View {
     /// as, at the bottom.
     private var accessSection: some View {
         Section {
-            Button { showingAccess = true } label: {
+            Button {
+                focusedField = nil
+                showingAccess = true
+            } label: {
                 SettingsLinkRow(
                     title: model.access == nil ? "Add GitHub Access" : "Sending as @\(model.access?.login ?? "")",
                     subtitle: model.access == nil

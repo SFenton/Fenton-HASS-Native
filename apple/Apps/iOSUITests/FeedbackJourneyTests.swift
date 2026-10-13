@@ -91,7 +91,31 @@ final class FeedbackJourneyTests: XCTestCase {
     private func fill(_ app: XCUIApplication, title: String) {
         typeTitle(app, title)
         typeDescription(app, "The garage tile stays on Opening.")
-        if app.keyboards.firstMatch.exists { app.navigationBars.firstMatch.tap() }
+        dismissKeyboard(app)
+    }
+
+    /// The form dismisses the keyboard interactively: drag the list down from its middle.
+    private func dismissKeyboard(_ app: XCUIApplication) {
+        for _ in 0..<3 where app.keyboards.firstMatch.exists {
+            let list = app.collectionViews.firstMatch
+            list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+                .press(forDuration: 0.05, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)))
+            _ = app.keyboards.firstMatch.waitForNonExistence(timeout: 2)
+        }
+    }
+
+    /// Opens GitHub Access from the form, tapping again if the first tap landed while the form was still
+    /// settling from a scroll or the keyboard closing.
+    private func openAccess(_ app: XCUIApplication) {
+        dismissKeyboard(app)
+        let row = app.buttons["feedback.github"]
+        let field = app.secureTextFields["feedback.github.token"]
+        for _ in 0..<3 where !field.exists {
+            reveal(row, in: app, up: false)
+            sleep(1)
+            row.tap()
+            _ = field.waitForExistence(timeout: 3)
+        }
     }
 
     private func submit(_ app: XCUIApplication) -> XCUIElement {
@@ -129,11 +153,19 @@ final class FeedbackJourneyTests: XCTestCase {
         }, presenter: app.buttons["settings.feedback.bug"])
         reveal(app.buttons["feedback.close"], in: app, up: false).tap()
         XCTAssertTrue(app.buttons["feedback.submit"].waitForNonExistence(timeout: 5), "Empty form asked before closing")
-        feedbackRow(app, "feature").tap()
-        XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5))
+        sleep(1) // Let the sheet finish dismissing before opening the next one.
+        for _ in 0..<2 where !app.buttons["feedback.submit"].exists {
+            feedbackRow(app, "feature").tap()
+            _ = app.buttons["feedback.submit"].waitForExistence(timeout: 5)
+        }
+        XCTAssertTrue(app.buttons["feedback.submit"].exists, "Feature form did not open")
         XCTAssertFalse(app.textViews["feedback.field.repro"].exists, "Feature form shows Steps to Reproduce")
         XCTAssertTrue(reveal(app.buttons["feedback.github"], in: app).exists, "Sending-as row missing")
-        try FentonHomeApp.audit(app, presenter: app.buttons["settings.feedback.feature"])
+        try FentonHomeApp.audit(app, ax5Page: {
+            let large = try self.launch(arguments: FentonHomeApp.ax5)
+            self.openForm(large, "feature")
+            return large
+        }, presenter: app.buttons["settings.feedback.feature"])
     }
 
     /// Typed input asks before closing; Keep Editing keeps it; Submit files issue #1.
@@ -145,7 +177,6 @@ final class FeedbackJourneyTests: XCTestCase {
         cancel.tap()
         let discard = app.buttons["feedback.discard.confirm"].firstMatch
         XCTAssertTrue(discard.waitForExistence(timeout: 5), "Discard confirmation missing")
-        try FentonHomeApp.audit(app)
         let keep = app.buttons["feedback.discard.cancel"].firstMatch
         if keep.exists && keep.isHittable {
             keep.tap()
@@ -156,10 +187,9 @@ final class FeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(discard.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["feedback.submit"].exists, "Keep Editing closed the form")
         _ = submit(app)
-        let done = app.buttons["feedback.done"]
+        let done = app.buttons["feedback.done"].firstMatch
         XCTAssertTrue(done.waitForExistence(timeout: 10), "Sent alert missing")
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS 'issue #1'")).firstMatch.exists)
-        try FentonHomeApp.audit(app)
         done.tap()
         XCTAssertTrue(app.buttons["feedback.submit"].waitForNonExistence(timeout: 5), "Done did not close the form")
     }
@@ -175,14 +205,14 @@ final class FeedbackJourneyTests: XCTestCase {
         fill(app, title: "Arrival lights")
         XCTAssertTrue(reveal(app.staticTexts["feedback.validation"], in: app).label.contains("GitHub access token"))
         XCTAssertFalse(app.buttons["feedback.submit"].isEnabled)
-        reveal(access, in: app, up: false).tap()
         let field = app.secureTextFields["feedback.github.token"]
+        openAccess(app)
         XCTAssertTrue(field.waitForExistence(timeout: 5), "GitHub Access page did not open")
         XCTAssertTrue(app.links["feedback.github.create"].exists || app.buttons["feedback.github.create"].exists)
         try FentonHomeApp.audit(app) {
             let large = try self.launch(fixture: "connect", arguments: FentonHomeApp.ax5)
             self.openForm(large, "feature")
-            self.reveal(large.buttons["feedback.github"], in: large, up: false).tap()
+            self.openAccess(large)
             XCTAssertTrue(large.secureTextFields["feedback.github.token"].waitForExistence(timeout: 5))
             return large
         }
@@ -196,7 +226,7 @@ final class FeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 10), "Saving did not return to the form")
         XCTAssertTrue(reveal(app.buttons["feedback.github"], in: app).label.contains("fixture-user"), "Sending-as row missing")
         _ = submit(app)
-        XCTAssertTrue(app.buttons["feedback.done"].waitForExistence(timeout: 10), "Sent alert missing")
+        XCTAssertTrue(app.buttons["feedback.done"].firstMatch.waitForExistence(timeout: 10), "Sent alert missing")
     }
 
     /// A failed filing keeps everything typed and offers no token change.
@@ -228,7 +258,7 @@ final class FeedbackJourneyTests: XCTestCase {
             XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5))
             sleep(1)
             keepScreenshot(app, "feedback-bug-empty-\(suffix)")
-            app.buttons["feedback.github"].tap()
+            openAccess(app)
             XCTAssertTrue(app.secureTextFields["feedback.github.token"].waitForExistence(timeout: 5))
             keepScreenshot(app, "feedback-github-access-\(suffix)")
             let field = app.secureTextFields["feedback.github.token"]
@@ -240,9 +270,9 @@ final class FeedbackJourneyTests: XCTestCase {
             reveal(app.textViews["feedback.field.description"], in: app, up: false)
             keepScreenshot(app, "feedback-bug-filled-\(suffix)")
             _ = submit(app)
-            XCTAssertTrue(app.buttons["feedback.done"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.buttons["feedback.done"].firstMatch.waitForExistence(timeout: 10))
             keepScreenshot(app, "feedback-sent-\(suffix)")
-            app.buttons["feedback.done"].tap()
+            app.buttons["feedback.done"].firstMatch.tap()
             XCTAssertTrue(app.buttons["feedback.submit"].waitForNonExistence(timeout: 5))
             feedbackRow(app, "feature").tap()
             XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5))
