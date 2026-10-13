@@ -14,7 +14,7 @@
 - The row opens `HomeAssistantSettingsView` with `fullScreenCover` (split-view.md: full-screen modal), so it is single-page on every device and pose. HIG: Modality (full-screen for an immersive, self-contained task with its own navigation), Settings.
 - Sections: **Server** (address, connection, Home Assistant version), **Account** (`auth/current_user` name and role via `HassConnection.currentUser()`), **Home Assistant** (Settings `/config` for administrators and owners, Profile `/profile` for everyone), **Sign Out** with a confirmation dialog (HIG: Action sheets; destructive and needs a password to undo).
 - Web pages push inside the modal's `NavigationStack` (Back returns to the form). `FrontendSession` writes the app's tokens into `localStorage.hassTokens` at document start, only on the server origin, in a non-persistent `WKWebsiteDataStore`, so the frontend opens signed in and nothing reaches disk. Off-server links open in the browser.
-- `FENTON_REDACT_PRIVATE=1` hides the server address and user name for committed screenshots.
+- `FENTON_REDACT_PRIVATE=1` hides the server address and user name for shared screenshots.
 
 ## Tests
 
@@ -23,4 +23,3 @@
 - iOS 27 shows the sign-out confirmation as a popover anchored to the row, with no Cancel button (an outside tap cancels) and a nested duplicate of the confirm button; the audit can dismiss it.
 - Folded iPhone Duo: tabs are a rail (Settings is the `gearshape` button), bar buttons move to the rail (Back is `BackButton`), the form is taller than the screen and the bar hides while it is scrolled, so journeys scroll rows and Done into view.
 - Web-page screenshots stay out of the repo: Home Assistant's Settings dashboard lists repairs, pending updates and installed integrations.
-- Screenshots: [docs/screenshots/ha-settings](../../../docs/screenshots/ha-settings/).
