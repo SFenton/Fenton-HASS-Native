@@ -231,23 +231,14 @@ struct DirectionalPad: View {
 
 // MARK: - Tab picker
 
-/// The segmented tab control; a menu at accessibility text sizes, where segments can't grow (HIG: Segmented controls).
+/// The remote's section tabs (``SheetTabPicker``).
 struct RemoteTabPicker: View {
     var tabs: [MediaRemoteTab]
     var title: String
     @Binding var selection: MediaRemoteTab
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let picker = Picker("\(title) sections", selection: $selection) {
-            ForEach(tabs) { Text($0.title).tag($0) }
-        }
-        .accessibilityIdentifier("remote.tabs")
-        if typeSize.isAccessibilitySize {
-            picker.pickerStyle(.menu).frame(minHeight: HassTokens.minTarget)
-        } else {
-            picker.pickerStyle(.segmented).labelsHidden()
-        }
+        SheetTabPicker(tabs: tabs, label: "\(title) sections", title: \.title, selection: $selection, identifier: "remote.tabs")
     }
 }
 

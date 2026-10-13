@@ -70,20 +70,11 @@ public enum RoomCardControl: String, Hashable, Sendable {
     case garageDoor = "garage-door"
 }
 
-/// A household member a card can be personalized for (web `HouseholdResident`, `householdResidents.ts`).
-public enum HouseholdResident: String, Hashable, Sendable, CaseIterable {
-    case stephen, steph
-
-    /// Display name.
-    public var name: String {
-        switch self {
-        case .stephen: "Stephen"
-        case .steph: "Steph"
-        }
-    }
-
+/// Personalized room cards (web `householdResidents.ts`); the type itself lives with the Bedroom lane
+/// (``HouseholdResident`` in `Bedroom/BedroomConfig.swift`).
+public extension HouseholdResident {
     /// The Home Assistant user id (web `HOUSEHOLD_RESIDENTS`).
-    public var haUserId: String {
+    var haUserId: String {
         switch self {
         case .stephen: "64089b5683944c39b4f944c8f76830b0"
         case .steph: "43cb71bbd1cb4860b2a7de4c829020f0"
@@ -91,7 +82,7 @@ public enum HouseholdResident: String, Hashable, Sendable, CaseIterable {
     }
 
     /// The resident signed in as `userId`, if any (web `householdResidentForHaUserId`).
-    public static func forUser(id userId: String?) -> HouseholdResident? {
+    static func forUser(id userId: String?) -> HouseholdResident? {
         guard let userId = userId?.trimmingCharacters(in: .whitespaces).lowercased(), !userId.isEmpty else { return nil }
         return allCases.first { $0.haUserId == userId }
     }

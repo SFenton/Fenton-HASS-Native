@@ -241,8 +241,26 @@ enum FentonHomeApp {
             // Text behind a modal sheet (iPad form sheets leave Home visible around them) is drawn but
             // hidden from assistive technologies by the modal. Accept it only while a sheet is up and
             // Home's own controls can't be reached (the sheet's dimming layer takes the touches).
-            if issue.auditType == .elementDetection, app.navigationBars.buttons["Done"].exists,
-               !app.buttons["home.chip.lights"].isHittable {
+            // The same page text under the dimming layer also comes back as element-less contrast or clipping
+            // (seen 2026-10-12 around the iPad sprinkler schedule sheet, one or the other from run to run).
+            // A page pushed inside the sheet shows Back, not Done; the page behind still has its own bar, so two
+            // navigation bars also mean a modal over a page (Bedroom editors on iPad, 2026-10-12).
+            let behindSheet: XCUIAccessibilityAuditType = [.elementDetection, .contrast, .textClipped]
+            let modalUp = app.navigationBars.buttons["Done"].exists || app.navigationBars.count > 1
+            if behindSheet.contains(issue.auditType), modalUp, !app.buttons["home.chip.lights"].isHittable {
+                return true
+            }
+            // The same for the navigation flyout: the page under its scrim is drawn but hidden from
+            // assistive technologies while it is open. Accept it only while the flyout is up and Home's
+            // controls are out of the accessibility tree.
+            if issue.auditType == .elementDetection, app.descendants(matching: .any)["nav.flyout"].exists,
+               !app.buttons["home.chip.lights"].exists {
+                return true
+            }
+            // A list row scrolled under the glass tab bar is sampled against the bar and sometimes
+            // loses its element (iPhone Settings, 2026-10-11: the "Home Assistant" header). Accept an
+            // element-less contrast issue only while some page text really sits under the tab bar.
+            if issue.auditType == .contrast, isPageTextUnderTabBar(in: app) {
                 return true
             }
             // When contrast runs with the Dynamic Type or text-clipping checks, the disabled Sign In
@@ -258,6 +276,9 @@ enum FentonHomeApp {
             // the popover's dismiss region; the popover's own buttons stay checked.
             if let popover, !popover.contains(element.frame) { return true }
             if isScrolledOutOfView(element, in: app) { return true }
+            // A row scrolled under the glass tab bar is sampled against the bar (iPhone Settings'
+            // last row, 2026-10-11: 1.2:1); the bar's own items stay checked.
+            if isUnderTabBar(element, in: app) { return true }
             if element.elementType == .button && app.navigationBars.buttons[element.label].exists { return true }
             return element.elementType == .staticText && systemSectionHeaders.contains(element.label)
         case .dynamicType:
@@ -289,6 +310,23 @@ enum FentonHomeApp {
                 .allElementsBoundByIndex.contains { $0.frame == frame } }
             .map(\.frame)
         return !scrollViews.isEmpty && !scrollViews.contains { $0.insetBy(dx: -1, dy: -1).contains(frame) }
+    }
+
+    /// Whether a page text (not the tab bar's own labels) overlaps the tab bar, i.e. is scrolled under it.
+    private static func isPageTextUnderTabBar(in app: XCUIApplication) -> Bool {
+        let bar = app.tabBars.firstMatch
+        guard bar.exists else { return false }
+        let barFrame = bar.frame
+        return app.staticTexts.allElementsBoundByIndex.contains { text in
+            !text.label.isEmpty && text.frame.intersects(barFrame) && !bar.staticTexts[text.label].exists
+        }
+    }
+
+    /// Whether a page element (not one of the tab bar's own items) overlaps the tab bar.
+    private static func isUnderTabBar(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        let bar = app.tabBars.firstMatch
+        guard bar.exists, element.frame.intersects(bar.frame) else { return false }
+        return !bar.descendants(matching: element.elementType)[element.label].exists
     }
 
     /// `Form` section headers, styled by the system.

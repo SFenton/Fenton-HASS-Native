@@ -127,8 +127,6 @@ public enum QuickLinks {
     public static let title = "Quick Links"
     /// The alarm panel the Security System tile reflects.
     public static let securityEntityId = "alarm_control_panel.aqara_hub_m3_0056_security_system_2"
-    /// `SHOW_OUTDOOR_FAUCETS_ENTITY_ID` (`sprinklers.ts`).
-    public static let sprinklersVisibilityEntityId = "input_boolean.show_outdoor_faucets"
 
     public static let items: [QuickLink] = [
         QuickLink(id: "rooms", title: "Rooms", icon: "mdi:floor-plan", tone: .climate, action: .detail(.rooms)),
@@ -140,7 +138,7 @@ public enum QuickLinks {
         QuickLink(id: "media", title: "Media", icon: "mdi:remote", tone: .media, action: .navigate("media")),
         QuickLink(id: "custom-lights", title: "Custom Lights", icon: "mdi:lightbulb-group", tone: .light, action: .navigate("custom-lights")),
         QuickLink(id: "sprinklers", title: "Sprinklers", icon: "mdi:sprinkler-variant", tone: .neutral, action: .navigate("sprinklers"),
-                  visibilityEntityId: sprinklersVisibilityEntityId),
+                  visibilityEntityId: SprinklersConfig.visibilityEntityId),
     ]
 
     /// `FOOD_CARD_BACKGROUND_COLOR` (`everShelfFood.ts:10`).

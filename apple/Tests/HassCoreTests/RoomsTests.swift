@@ -82,7 +82,7 @@ struct RoomsTests {
 
     @Test func sprinklersShowOnlyWhenEnabled() {
         #expect(!QuickLinks.visible { _ in "off" }.contains { $0.id == "sprinklers" })
-        #expect(QuickLinks.visible { $0 == QuickLinks.sprinklersVisibilityEntityId ? "on" : nil }.contains { $0.id == "sprinklers" })
+        #expect(QuickLinks.visible { $0 == SprinklersConfig.visibilityEntityId ? "on" : nil }.contains { $0.id == "sprinklers" })
         #expect(QuickLinks.visible { _ in nil }.count == 6)
     }
 

@@ -118,7 +118,7 @@ enum RoomsFixtures {
             add(item.accessCounterEntityId, "\([4, 1, 2, 9, 7, 0, 12, 5, 1, 3][index % 10])")
         }
         add(QuickLinks.securityEntityId, "armed_home")
-        add(QuickLinks.sprinklersVisibilityEntityId, "on")
+        add(SprinklersConfig.visibilityEntityId, "on")
         add(QuickLinks.totalItemsEntityId, "42")
         add(QuickLinks.expiringSoonEntityId, "3")
         add(RoomsConfig.Groceries.listEntityId, "5")

@@ -96,10 +96,16 @@ struct HomeRouteDestination: View {
         switch route {
         case let .room(id):
             if let page = RoomsConfig.page(id: id) { RoomScreen(page: page) } else { placeholder }
+        // These pages run on the app's connection; the debug gallery has none and keeps the placeholder.
         case .vacuums:
-            // The Vacuums page runs on the app's connection; the debug gallery has none and keeps the placeholder.
             if connection != nil { VacuumsScreen() } else { placeholder }
-        case .media, .customLights, .sprinklers, .food, .groceryList:
+        case .media:
+            if let connection { MediaScreen(store: connection.store, caller: connection, imageServer: connection.server) } else { placeholder }
+        case .customLights:
+            if let connection { CustomLightsScreen(store: connection.store, caller: connection) } else { placeholder }
+        case .sprinklers:
+            if let connection { SprinklersScreen(store: connection.store, caller: connection) } else { placeholder }
+        case .food, .groceryList:
             placeholder
         }
     }
