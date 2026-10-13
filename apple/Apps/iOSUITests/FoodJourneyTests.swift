@@ -306,11 +306,12 @@ final class FoodJourneyTests: XCTestCase {
 
     /// The Filter sheet alone, with the AX5 comparison page.
     func testFilterSheetPassesAccessibilityAudit() throws {
-        // Scrolled to the Ranking Strength header, then to Reset to Defaults.
-        for reveal in ["Ranking Strength", "Reset to Defaults"] {
+        // The Ranking Strength section (scrolled to its last row, so no row is cut by the sheet's edge; the AX5
+        // page shows the header it measures), then Reset to Defaults.
+        for (reveal, ax5Reveal) in [("Expiry Weight", "Ranking Strength"), ("Reset to Defaults", "Reset to Defaults")] {
             let app = openFilterSheet(launch("recipes"), reveal: reveal)
             keepScreenshot(app, "food-recipes-filter-\(device)")
-            try audit(app) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5), reveal: reveal) }
+            try audit(app) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5), reveal: ax5Reveal) }
         }
     }
 
