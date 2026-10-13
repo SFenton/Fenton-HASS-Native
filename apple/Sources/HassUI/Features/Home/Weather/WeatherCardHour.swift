@@ -13,8 +13,6 @@ struct WeatherCardHour: View {
             Text(WeatherFormat.hourLabel(forecast.datetime, index: index))
                 .font(.caption2.weight(.heavy))
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.75)
             WeatherGlyph(condition: forecast.condition, size: 22)
             Text(WeatherFormat.degree(forecast.temperature))
                 .font(.caption.weight(.bold))

@@ -73,7 +73,9 @@ struct WeatherPagedCarousel<Cell: View>: View {
                     .frame(width: index == current ? 18 : 7, height: 7)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 12)
+        // The dots stay small; the element is a full 44 pt target for Switch Control and the audit's hit-area check.
+        .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(label) pages")
         .accessibilityValue(paging.pageDescription(current))

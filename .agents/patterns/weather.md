@@ -13,7 +13,7 @@ Web source: `ha-sfenton-react-dash@f5a7bf9` `src/components/hass/WeatherSummary.
 | Presentation | `WeatherPresentation`, `WeatherFormat`, `WeatherCondition*`, `WeatherHighlights`, `WeatherRails` | Direct ports; thresholds and marker maths match the web tests. |
 | Today briefing | `WeatherDayBriefingGenerator`, `WeatherBriefingPlanner` | Structured copy references rendered by `WeatherBriefingRenderer`; frozen once per local day at or after 00:01 and stored in the disk snapshot. |
 | Card | `WeatherSummaryCard` (wiring) + `WeatherCardContent` | Wiring: appear/disappear, entity revision, websocket ready, scene phase, 30 s briefing check. The gallery injects `\.weatherForecastStore` and `\.weatherForecastCaller`. |
-| Carousel | `WeatherPagedCarousel`, `WeatherCarouselPaging` | Pages of whole hours (`scrollTargetBehavior(.paging)`). Hours per page come from the size class and text size, not from measuring (a measured width never reached state in the hosted test host). Regular layouts add 44 pt Previous/Next buttons (the web shows them for pointer devices); every layout has an adjustable page indicator element. |
+| Carousel | `WeatherPagedCarousel`, `WeatherCarouselPaging` | Pages of whole hours (`scrollTargetBehavior(.paging)`). Hours per page come from the size class and text size, not from measuring (a measured width never reached state in the hosted test host); hour labels scale freely (a `minimumScaleFactor` made the AX5 audit flag them). The page indicator keeps small dots inside a 44 pt tall element. Regular layouts add 44 pt Previous/Next buttons (the web shows them for pointer devices); every layout has an adjustable page indicator element. |
 | Sheet | `WeatherSheet` and the `Weather*Panel` views | Dark appearance, condition gradient as the sheet background, panels as a darkening wash (no blur, so Reduce Transparency changes nothing). |
 | Highlights | `WeatherHighlightsPanel` on `DynamicGridLayout` | Wide tiles `gridSpan(2)`; the grid minimum cell width scales with text size so it reflows to one column at AX5. |
 | Gallery | `Gallery/WeatherGallery` (`FENTON_GALLERY=weather`) | `FENTON_GALLERY_WEATHER_CONDITION`, `_NIGHT`, `_STATE=loading|error|empty`, `_OPEN`, `_NOAQI`. Debug only. |
@@ -31,7 +31,7 @@ Web source: `ha-sfenton-react-dash@f5a7bf9` `src/components/hass/WeatherSummary.
 - SF Symbols (multicolor) replace the custom SVG glyphs; night variants only for the current condition, from `sun.sun`.
 - No animated atmosphere beyond slow rain/snow streaks; clouds, stars and glow are still.
 - The Today briefing is stored in the disk snapshot instead of `localStorage`.
-- The subtitle line ("72° · Rain") is `navigationSubtitle` on iOS 26 and the hero on older systems.
+- No navigation subtitle: the bar subtitle measured 4.1:1 over the gradient (iPhone audit, 2026-10-13), and the hero already shows "72°" and the condition. The title stays the system "Weather".
 - Charts are plain bars (HIG: Charting data), not Swift Charts, so every axis label can scale with Dynamic Type.
 
 ## Tests
