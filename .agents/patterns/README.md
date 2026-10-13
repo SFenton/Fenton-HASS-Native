@@ -25,3 +25,4 @@
 | [content-gate.md](content-gate.md) | `HassDesign/Loading/ContentGate.swift` | `src/components/hass/recipes/useRecipeCollection.ts` (criteria phases) |
 | [image-cache.md](image-cache.md) | `HassDesign/Images/ImagePipeline.swift`, `CachedImage.swift` | browser HTTP cache (`decoding="async"` images) |
 | [telemetry.md](telemetry.md) | `HassTelemetry/`, `HassUI/Diagnostics/` | none (native only) |
+| [weather.md](weather.md) | `HassUI/Features/Home/Weather/WeatherSummaryCard.swift`, `WeatherSheet.swift`, `WeatherPagedCarousel.swift`; logic in `HassCore/Weather` | `src/components/hass/WeatherSummary.tsx`, `useWeatherForecasts.ts`, `weatherPresentation.ts`, `weatherDayBriefing.ts` |
