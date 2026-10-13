@@ -86,8 +86,13 @@ final class WeatherJourneyTests: XCTestCase {
         XCTAssertTrue(now.waitForExistence(timeout: 8))
         XCTAssertTrue(now.label.hasPrefix("Now "), now.label)
         XCTAssertTrue(now.label.hasSuffix("°F"), now.label)
-        XCTAssertTrue(element("home.weather.hour.5", in: app).exists, "Every hour stays in the accessibility tree")
-        XCTAssertTrue(element("home.weather.hour.23", in: app).exists)
+        if app.buttons["home.weather.next"].exists {
+            // Wide layouts page with Previous and Next; hours on other pages leave the tree until paged in.
+            XCTAssertFalse(element("home.weather.hour.23", in: app).exists, "Off-page hours hide behind the paging buttons")
+        } else {
+            XCTAssertTrue(element("home.weather.hour.5", in: app).exists, "Every hour stays in the accessibility tree")
+            XCTAssertTrue(element("home.weather.hour.23", in: app).exists)
+        }
 
         let pages = element("home.weather.pages", in: app)
         XCTAssertTrue(pages.exists)
