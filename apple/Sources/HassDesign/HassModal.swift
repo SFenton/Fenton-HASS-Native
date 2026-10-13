@@ -113,6 +113,9 @@ public extension View {
     /// sheet, header included, outside the fade, so the header never reads as a band of another color.
     func modalChrome() -> some View {
         headerEdgeFade()
+            // Modal titles are inline, and a pinned `modalTabBar` belongs to the header: never cap it at the
+            // window's bar height.
+            .environment(\.headerEdgeCap, nil)
             .scrollContentBackground(.hidden)
             .background { ModalBackground().ignoresSafeArea() }
     }

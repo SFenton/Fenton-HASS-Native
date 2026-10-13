@@ -73,7 +73,8 @@ struct MainTabView: View {
             if newStyle == .tabBar, !chrome.showsMenuButton { navigator.dismissFlyout() }
             if newStyle == .flyout { navigator.closeQuickLinks() }
         }
-        .task(id: connection?.server.baseURL) { await loadProfileName() }
+        // Again once connected: a lookup before the socket is up fails, and the cached name stays meanwhile.
+        .task(id: isConnected) { await loadProfileName() }
     }
 
     /// The root tab view: iOS 26 and later use the `Tab` API with the trailing Quick Links tab in compact width.
@@ -154,6 +155,11 @@ struct MainTabView: View {
     /// A compact navigation bar's height on this device.
     private static let barHeight: CGFloat = UINavigationBar().sizeThatFits(CGSize(width: 1000, height: 1000)).height
     #endif
+
+    private var isConnected: Bool {
+        if case .connected = connection?.status { return true }
+        return false
+    }
 
     /// Reads the signed-in user's name for the profile button; the cached name shows until it arrives.
     private func loadProfileName() async {

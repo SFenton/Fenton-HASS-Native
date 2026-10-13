@@ -144,6 +144,10 @@ struct HeaderEdgeFadeModifier: ViewModifier {
             .modifier(HeaderBackgroundHidden())
             .background {
                 Color.clear
+                    // A new size (rotation, fold, resize) starts over: the bar's height may have changed.
+                    .onGeometryChange(for: CGSize.self) { CGSize(width: $0.size.width.rounded(), height: $0.size.height.rounded()) } action: { _ in
+                        smallestInset = nil
+                    }
                     .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top.rounded() } action: { inset in
                         safeAreaInset = inset
                         if inset > 0, inset < (smallestInset ?? .infinity) { smallestInset = inset }

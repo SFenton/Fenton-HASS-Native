@@ -218,6 +218,9 @@ struct ProfileButton: View {
     var name: String?
     var action: () -> Void
 
+    /// The monogram's fill (the light-mode action blue, 5.6:1 under white).
+    static let fill = Color(red: 0.0, green: 0.40, blue: 0.80)
+
     /// Up to two initials from a display name ("Stephen Fenton" → "SF"); nil when it has no letters.
     static func initials(_ name: String?) -> String? {
         guard let name else { return nil }
@@ -231,11 +234,14 @@ struct ProfileButton: View {
             if let initials = Self.initials(name) {
                 Text(initials)
                     .font(.footnote.weight(.semibold))
+                    // A bar item keeps its size; the Large Content Viewer shows it bigger (HIG Toolbars,
+                    // Accessibility), so the initials stop growing past the 30 pt disc.
+                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
                     .foregroundStyle(.white)
-                    .minimumScaleFactor(0.6)
                     .lineLimit(1)
                     .frame(width: 30, height: 30)
-                    .background(HassTokens.Ink.action, in: Circle())
+                    // Fixed deep blue: white text stays above 5:1 in light and dark mode.
+                    .background(ProfileButton.fill, in: Circle())
             } else {
                 Image(systemName: "person.crop.circle")
             }
@@ -243,6 +249,9 @@ struct ProfileButton: View {
         // The whole 44 pt bar item is the target, not just the 30 pt monogram (HIG Buttons).
         .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
         .contentShape(Circle())
+        .accessibilityShowsLargeContentViewer {
+            Label("Profile", systemImage: "person.crop.circle")
+        }
         .accessibilityLabel("Profile")
         .accessibilityValue(name ?? "")
         .accessibilityHint("Opens Home Assistant settings and your account")

@@ -125,7 +125,6 @@ struct HouseBackdrop: View {
     @Environment(\.backdropCanvas) private var canvas
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @State private var origin: CGPoint = .zero
 
     var body: some View {
         GeometryReader { proxy in
@@ -138,14 +137,17 @@ struct HouseBackdrop: View {
                         .aspectRatio(contentMode: .fill)
                         .frame(width: size.width, height: size.height)
                         .scaleEffect(1.05)
-                        .offset(x: -origin.x, y: -origin.y)
+                        // Shift by this page's window position without re-running the body each transition frame.
+                        .visualEffect { content, proxy in
+                            let origin = proxy.frame(in: .global).origin
+                            return content.offset(x: -origin.x, y: -origin.y)
+                        }
                         .transition(.opacity)
                     HouseBackdropStyle.scrim(colorScheme)
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
             .clipped()
-            .onGeometryChange(for: CGPoint.self) { $0.frame(in: .global).origin } action: { origin = $0 }
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)

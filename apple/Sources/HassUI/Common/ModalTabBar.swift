@@ -17,14 +17,14 @@ import SwiftUI
 /// segments). HIG Segmented controls: "Prefer text or images, not a mix, in one control" and "Limit segments:
 /// ... about 5 on iPhone". Icon segments still carry their names for VoiceOver. At accessibility text sizes,
 /// where segments cannot grow, the control becomes a menu that names the selected section.
-struct ModalTabBar<Tab: Hashable & Identifiable>: View {
-    var tabs: [Tab]
+struct ModalTabBar<Item: Hashable & Identifiable>: View {
+    var tabs: [Item]
     /// Spoken name of the control, e.g. `Thermostat sections`.
     var label: String
-    var title: (Tab) -> String
+    var title: (Item) -> String
     /// SF Symbol per tab; nil shows text segments.
-    var symbol: ((Tab) -> String)?
-    @Binding var selection: Tab
+    var symbol: ((Item) -> String)?
+    @Binding var selection: Item
     var identifier: String
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -46,8 +46,9 @@ struct ModalTabBar<Tab: Hashable & Identifiable>: View {
             Picker(label, selection: $selection) {
                 ForEach(tabs) { tab in
                     if let symbol {
-                        Image(systemName: symbol(tab))
-                            .accessibilityLabel(title(tab))
+                        // A label, not a bare image: the segmented control reads its title to VoiceOver.
+                        Label(title(tab), systemImage: symbol(tab))
+                            .labelStyle(.iconOnly)
                             .tag(tab)
                     } else {
                         Text(title(tab)).tag(tab)
@@ -73,9 +74,9 @@ enum ModalTabBarPlacement: Sendable {
 extension View {
     /// Pins a ``ModalTabBar`` to this modal page, under the header by default. Apply it after ``modalChrome()`` so
     /// the content fades out under the tab bar as well as the title.
-    func modalTabBar<Tab: Hashable & Identifiable>(
-        _ tabs: [Tab], label: String, title: @escaping (Tab) -> String, symbol: ((Tab) -> String)? = nil,
-        selection: Binding<Tab>, identifier: String, placement: ModalTabBarPlacement = .top
+    func modalTabBar<Item: Hashable & Identifiable>(
+        _ tabs: [Item], label: String, title: @escaping (Item) -> String, symbol: ((Item) -> String)? = nil,
+        selection: Binding<Item>, identifier: String, placement: ModalTabBarPlacement = .top
     ) -> some View {
         safeAreaInset(edge: placement == .top ? .top : .bottom, spacing: 0) {
             ModalTabBar(tabs: tabs, label: label, title: title, symbol: symbol, selection: selection, identifier: identifier)
