@@ -80,10 +80,12 @@ enum RenderedContrast {
         }
         let sorted = luminances.sorted()
         let surface = sorted[sorted.count / 2]
-        // Glyph pixels differ clearly from the surface; their upper quartile of distance is the text core.
+        // Glyph pixels differ clearly from the surface and the text core is the far tail of that distance. (The upper
+        // quartile measured borders and state washes instead once a whole tile became the audited element: 1.4:1 for
+        // dark-on-light Hue Sync intensity tiles on iPad, 2026-10-12.)
         let glyphs = luminances.filter { abs($0 - surface) > 0.05 }.sorted { abs($0 - surface) < abs($1 - surface) }
         guard !glyphs.isEmpty else { return 1 }
-        let text = glyphs[(glyphs.count * 3) / 4]
+        let text = glyphs[min(glyphs.count - 1, (glyphs.count * 97) / 100)]
         return (max(text, surface) + 0.05) / (min(text, surface) + 0.05)
     }
 

@@ -15,3 +15,4 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Sprinklers | `/at-a-glance/sprinklers` | [sprinklers/spec.md](sprinklers/spec.md) | Ported ([ios.md](sprinklers/ios.md)) |
 | Settings | `/at-a-glance/settings` | `plans/settings-household-spec.md` | Home Assistant settings modal ([ios.md](settings/ios.md)); Admin, Special Device Modes, Guest Controls, Mach-E ([household.md](settings/household.md)) |
 | Vacuums | `/vacuums` | [vacuums/spec.md](vacuums/spec.md) | Page, sheet and map ([ios.md](vacuums/ios.md)) |
+| Rooms (16) | `/<room>` | [rooms/spec.md](rooms/spec.md) | Config-driven pages, Quick Links, room grid ([ios.md](rooms/ios.md)); room device sheets and the vacuum sheet wired in |
