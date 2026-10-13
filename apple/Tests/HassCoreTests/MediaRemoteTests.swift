@@ -84,20 +84,20 @@ func set(_ store: EntityStore, _ id: String, _ state: String, _ attributes: [Str
 
 struct MediaRemoteStateTests {
     @Test func unavailableAndOff() {
-        #expect(MediaRemoteState.isUnavailable(nil))
-        #expect(MediaRemoteState.isUnavailable("unknown"))
-        #expect(MediaRemoteState.isUnavailable("unavailable"))
-        #expect(!MediaRemoteState.isUnavailable("off"))
+        #expect(EntityState.isUnavailable(nil))
+        #expect(EntityState.isUnavailable("unknown"))
+        #expect(EntityState.isUnavailable("unavailable"))
+        #expect(!EntityState.isUnavailable("off"))
         #expect(MediaRemoteState.isOff("off"))
         #expect(MediaRemoteState.isOff(nil))
         #expect(!MediaRemoteState.isOff("standby"))
     }
 
     @Test func titleCaseAndFormat() {
-        #expect(MediaRemoteState.titleCase("armed_away") == "Armed Away")
-        #expect(MediaRemoteState.titleCase("linked") == "Linked")
-        #expect(MediaRemoteState.titleCase(nil) == "Unknown")
-        #expect(MediaRemoteState.titleCase("") == "Unknown")
+        #expect(StateText.titleCase("armed_away") == "Armed Away")
+        #expect(StateText.titleCase("linked") == "Linked")
+        #expect(StateText.titleCase(nil) == "Unknown")
+        #expect(StateText.titleCase("") == "Unknown")
         #expect(MediaRemoteState.format(nil) == "Unavailable")
         #expect(MediaRemoteState.format("unavailable") == "Unavailable")
         #expect(MediaRemoteState.format("unknown") == "Unknown")

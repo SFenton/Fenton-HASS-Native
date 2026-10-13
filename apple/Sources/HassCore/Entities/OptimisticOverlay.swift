@@ -39,6 +39,23 @@ public final class TaskRevertScheduler: RevertScheduler {
     }
 }
 
+// MARK: - Intents
+
+/// An optimistic value shown for an entity right after a command, until Home Assistant confirms it or
+/// ``revertAfter`` passes (web `OptimisticStateIntent`, `src/constants/actionIntents.ts`).
+public struct OptimisticIntent: Hashable, Sendable {
+    public var entityId: String
+    public var value: String
+    public var revertAfter: Duration
+
+    /// Creates an intent.
+    public init(_ entityId: String, _ value: String, revertAfter: Duration) {
+        self.entityId = entityId
+        self.value = value
+        self.revertAfter = revertAfter
+    }
+}
+
 // MARK: - Overlay
 
 /// Optimistic values layered over live Home Assistant state (web `OptimisticActionStateBoundary` and

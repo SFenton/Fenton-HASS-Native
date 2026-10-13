@@ -8,13 +8,6 @@ public typealias EntityLookup = (String) -> EntityState?
 public enum ClimateLogic {
     // MARK: - Formatting
 
-    /// `heat_cool` → `Heat Cool` (web `titleCaseState`); `nil` or empty → `Unknown`.
-    public static func titleCase(_ state: String?) -> String {
-        guard let state, !state.isEmpty else { return "Unknown" }
-        return state.split(separator: "_", omittingEmptySubsequences: false)
-            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-            .joined(separator: " ")
-    }
 
     /// Short state text (web `formatCompactEntityState`): sensors and text read as-is, everything else is title-cased.
     /// - Parameters:
@@ -28,13 +21,13 @@ public enum ClimateLogic {
         if entity.entityId.hasPrefix("binary_sensor.") { return state == "on" ? "Active" : "Clear" }
         if entity.entityId.hasPrefix("light.") { return state == "on" ? "On" : "Off" }
         if entity.domain == "sensor" || entity.domain == "input_text" { return state }
-        return titleCase(state)
+        return StateText.titleCase(state)
     }
 
     /// A select option as shown: multi-word options as-is, else title-cased (web `formatSelectOption`).
     public static func selectOption(_ value: String) -> String {
         if value.isEmpty { return "Unknown" }
-        return value.contains(" ") ? value : titleCase(value)
+        return value.contains(" ") ? value : StateText.titleCase(value)
     }
 
     /// `pre_cool` → `Pre-Cool`, else ``selectOption(_:)`` (web `formatPredictiveState`).
@@ -149,7 +142,7 @@ public enum ClimateLogic {
         case "unknown": return "Unknown"
         case "on", "open": return "Open"
         case "off", "closed": return "Closed"
-        default: return titleCase(entity.state)
+        default: return StateText.titleCase(entity.state)
         }
     }
 
@@ -161,7 +154,7 @@ public enum ClimateLogic {
     /// `70.9°F · Occupied` (web `ThermostatRoomRow`).
     public static func roomSubtitle(_ room: ClimateConfig.Room, _ lookup: EntityLookup) -> String {
         let temperature = lookup(room.temperatureEntityId)
-        return "\(self.temperature(number(temperature.map { .string($0.state) }), unit: unit(of: temperature))) · \(titleCase(lookup(room.occupancyEntityId)?.state))"
+        return "\(self.temperature(number(temperature.map { .string($0.state) }), unit: unit(of: temperature))) · \(StateText.titleCase(lookup(room.occupancyEntityId)?.state))"
     }
 
     /// A vent cover's state text (web `ClimateCard` → `formatCompactEntityState`).
@@ -385,7 +378,7 @@ public enum ClimateLogic {
     static func entityLabel(_ value: String?) -> String {
         guard let value, !value.trimmingCharacters(in: .whitespaces).isEmpty else { return "Unknown" }
         let name = value.contains(".") ? value.split(separator: ".", omittingEmptySubsequences: false).dropFirst().joined(separator: ".") : value
-        return titleCase(name.replacingOccurrences(of: ".", with: "_"))
+        return StateText.titleCase(name.replacingOccurrences(of: ".", with: "_"))
             .replacingOccurrences(of: "\\bPc\\b", with: "PC", options: .regularExpression)
     }
 }

@@ -100,7 +100,7 @@ public final class BathroomFanController {
 
     /// When the pending timer ends, from the deadline helper (`timestamp` attribute, else the local date-time state).
     public var deadline: Date? {
-        guard let entity = commands.entity(config.deadlineEntityId), !DeviceState.isUnavailable(entity.state) else { return nil }
+        guard let entity = commands.entity(config.deadlineEntityId), !EntityState.isUnavailable(entity.state) else { return nil }
         if let timestamp = entity.attributes["timestamp"]?.number { return Date(timeIntervalSince1970: timestamp) }
         return Self.parseLocalDateTime(entity.state)
     }

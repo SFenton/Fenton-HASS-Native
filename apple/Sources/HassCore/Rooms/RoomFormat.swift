@@ -17,7 +17,7 @@ public enum RoomFormat {
         if entity.domain == "binary_sensor" { return state == "on" ? "Active" : "Clear" }
         if entity.domain == "light" { return state == "on" ? "On" : "Off" }
         if entity.domain == "sensor" || entity.domain == "input_text" { return state }
-        return MediaRemoteState.titleCase(state)
+        return StateText.titleCase(state)
     }
 
     /// `formatOccupancyEntityState`: Detected / Clear.
@@ -28,7 +28,7 @@ public enum RoomFormat {
         case "unknown": return "Unknown"
         case _ where isOccupied(entity): return "Detected"
         case "off", "inactive", "clear", "not_occupied": return "Clear"
-        default: return MediaRemoteState.titleCase(entity.state)
+        default: return StateText.titleCase(entity.state)
         }
     }
 
@@ -40,7 +40,7 @@ public enum RoomFormat {
         case "unknown": return "Unknown"
         case _ where isOpen(entity): return "Open"
         case "off", "closed": return "Closed"
-        default: return MediaRemoteState.titleCase(entity.state)
+        default: return StateText.titleCase(entity.state)
         }
     }
 
@@ -64,7 +64,7 @@ public enum RoomFormat {
 
     /// Missing, `unavailable` or `unknown` (web `isUnavailable` on room cards).
     public static func isUnavailable(_ entity: EntityState?) -> Bool {
-        MediaRemoteState.isUnavailable(entity?.state)
+        EntityState.isUnavailable(entity?.state)
     }
 
     /// `formatRoomSourceSubtitleEntity`: the compact state plus its unit, e.g. `45%`.
@@ -89,7 +89,7 @@ public enum RoomFormat {
     public static func airMetric(_ entity: EntityState?) -> String {
         guard let entity else { return "Unavailable" }
         let raw = entity.state.trimmingCharacters(in: .whitespaces)
-        if raw.isEmpty || MediaRemoteState.isUnavailable(raw) { return compact(entity) }
+        if raw.isEmpty || EntityState.isUnavailable(raw) { return compact(entity) }
         let unit = entity.attributes["unit_of_measurement"]?.string ?? ""
         let value = unit.isEmpty && raw.hasSuffix(".0") ? String(raw.dropLast(2)) : raw
         return !unit.isEmpty && !value.contains(unit) ? "\(value) \(unit)" : value

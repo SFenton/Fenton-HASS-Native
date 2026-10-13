@@ -163,7 +163,7 @@ public final class MediaRemoteController {
         let facts = deviceFacts(device)
         let shown = holds.held(device.title, displayed: facts.displayed, activeStates: device.activeStates,
                                hasOverride: facts.hasOverride, hold: device.activeHold)
-        let unavailable = MediaRemoteState.isUnavailable(facts.live)
+        let unavailable = EntityState.isUnavailable(facts.live)
         let active = device.activeStates.isEmpty ? !MediaRemoteState.isOff(shown) : device.activeStates.contains(shown)
         return DeviceDisplay(
             state: shown,
@@ -181,7 +181,7 @@ public final class MediaRemoteController {
         let shown = app.stateEntityId.flatMap(displayedState)
         return AppDisplay(
             isActive: shown.map(app.activeStates.contains) ?? false,
-            isUnavailable: app.stateEntityId != nil && MediaRemoteState.isUnavailable(live),
+            isUnavailable: app.stateEntityId != nil && EntityState.isUnavailable(live),
             semantics: app.semantics?.semantics(for: shown) ?? .command
         )
     }
@@ -283,7 +283,7 @@ public final class MediaRemoteController {
     public func hueToggle(_ entityId: String) -> ToggleDisplay {
         let live = liveState(entityId)
         let shown = displayedState(entityId) ?? "unavailable"
-        return ToggleDisplay(isOn: shown == "on", isUnavailable: MediaRemoteState.isUnavailable(live), subtitle: MediaRemoteState.format(shown))
+        return ToggleDisplay(isOn: shown == "on", isUnavailable: EntityState.isUnavailable(live), subtitle: MediaRemoteState.format(shown))
     }
 
     /// Flips a Hue Sync switch; `projections` take the same new value optimistically (power off also shows
@@ -303,7 +303,7 @@ public final class MediaRemoteController {
         return SelectDisplay(
             selected: displayedState(entityId) ?? "",
             options: options,
-            isUnavailable: MediaRemoteState.isUnavailable(liveState(entityId)) || options.isEmpty
+            isUnavailable: EntityState.isUnavailable(liveState(entityId)) || options.isEmpty
         )
     }
 
@@ -342,7 +342,7 @@ public final class MediaRemoteController {
         func clamp(_ value: Double) -> Double { min(upper, max(lower, value)) }
         let live = clamp(entity.flatMap { Double($0.state) } ?? lower)
         let shown = clamp(displayedState(entityId).flatMap(Double.init) ?? live)
-        let unavailable = MediaRemoteState.isUnavailable(entity?.state)
+        let unavailable = EntityState.isUnavailable(entity?.state)
         return BrightnessDisplay(value: shown, range: lower...upper, step: step, isUnavailable: unavailable,
                                  unavailableText: unavailable ? MediaRemoteState.format(entity?.state) : nil)
     }
@@ -361,7 +361,7 @@ public final class MediaRemoteController {
         return options.enumerated().map { index, option in
             let statusId = index < hue.hdmiStatusEntityIds.count ? hue.hdmiStatusEntityIds[index] : hue.hdmiStatusEntityIds.last ?? ""
             let state = liveState(statusId)
-            let disconnected = MediaRemoteState.isUnavailable(state) || state == "unplugged"
+            let disconnected = EntityState.isUnavailable(state) || state == "unplugged"
             let selected = select.selected == option
             let status = MediaRemoteState.format(state)
             return HdmiInputDisplay(option: option, statusEntityId: statusId, isSelected: selected, isDisconnected: disconnected,

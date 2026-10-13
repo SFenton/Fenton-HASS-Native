@@ -137,10 +137,7 @@ public final class HouseholdSettingsController {
     // MARK: - Formatting
 
     /// A state as title-case words: `on` → `On`, `armed_away` → `Armed Away` (web `titleCaseState`).
-    public static func format(_ state: String?) -> String {
-        guard let state, !state.isEmpty else { return "Unknown" }
-        return state.split(separator: "_").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
-    }
+    public static func format(_ state: String?) -> String { StateText.titleCase(state) }
 
     /// Web `formatCompactEntityState`: sensors show their raw value, everything else title case.
     public static func compactState(_ entity: EntityState?) -> String {

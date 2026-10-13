@@ -32,7 +32,13 @@ public struct EntityState: Codable, Hashable, Sendable, Identifiable {
     }
 
     /// `unavailable` or `unknown`.
-    public var isUnavailable: Bool { state == "unavailable" || state == "unknown" }
+    public var isUnavailable: Bool { Self.isUnavailable(state) }
+
+    /// Missing, `unavailable` or `unknown`: the one availability rule every feature shares (web `isUnavailable`).
+    public static func isUnavailable(_ state: String?) -> Bool {
+        guard let state else { return true }
+        return state == "unavailable" || state == "unknown"
+    }
 
     /// Active in the web dashboard's sense (`entityState.ts` `isActiveState`).
     public var isActive: Bool {

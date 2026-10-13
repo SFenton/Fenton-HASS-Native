@@ -57,7 +57,7 @@ public struct SprinklerFormat: Sendable {
         case .unavailable: "Unavailable"
         case .watering: "Watering"
         case .fault: "Fault"
-        case .ready: MediaRemoteState.titleCase(snapshot.mode)
+        case .ready: StateText.titleCase(snapshot.mode)
         }
     }
 
