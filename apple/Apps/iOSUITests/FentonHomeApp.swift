@@ -105,7 +105,7 @@ enum FentonHomeApp {
     /// "Dynamic Type font sizes are (partially) unsupported" is a known false positive on iPad (Festival's
     /// `dynamic-type-grows` waiver). With `ax5Page` (relaunches the same page at AX5) such an issue is
     /// accepted only when the same text is at least 1.35x taller there; an issue with no element only
-    /// when every sampled text on the page grew that much. A flagged label that is unique on the audited page
+    /// when every sampled text on the page grew that much (the sample: unique on-screen texts and buttons). A flagged label that is unique on the audited page
     /// but absent from the AX5 page (e.g. scrolled out of a sheet) is inconclusive: logged, not failed.
     static func audit(
         _ app: XCUIApplication, ax5Page: (() throws -> XCUIApplication)? = nil,
@@ -168,9 +168,14 @@ enum FentonHomeApp {
                 return Dictionary(content.filter { counts[$0.0] == 1 }, uniquingKeysWith: { first, _ in first })
             }
             let before = uniqueTexts(in: app)
-            let sample = app.staticTexts.allElementsBoundByIndex.prefix(12)
-                .filter { before[$0.label] != nil && $0.isHittable }
-                .map { ($0.label, $0.frame.height) }
+            // The page check samples the same texts and buttons uniqueTexts collects, on screen (inside the
+            // window) but not necessarily hittable: under an iPad form sheet the page's own texts are rarely
+            // hittable, and requiring it left the sample empty.
+            let window = app.windows.firstMatch.frame
+            let sample = before.filter { window.contains($0.value) }
+                .sorted { ($0.value.minY, $0.value.minX) < ($1.value.minY, $1.value.minX) }
+                .prefix(12)
+                .map { ($0.key, $0.value.height) }
             // Decided before the relaunch: `large` is the same app, so `app` then shows the AX5 page.
             let uniqueBefore = Set(sample.map(\.0) + unconfirmedType.map(\.label).filter { before[$0] != nil })
             let large = try ax5Page()
