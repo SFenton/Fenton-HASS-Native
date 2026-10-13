@@ -53,7 +53,7 @@ final class ChoresModel {
                 return id
             },
             accessToken: {
-                guard let tokens = session?.tokens else { throw HassConnection.UnexpectedResponse(command: "access token") }
+                guard let tokens = session?.tokens else { throw URLError(.userAuthenticationRequired) }
                 return try await tokens.validAccessToken()
             }
         )

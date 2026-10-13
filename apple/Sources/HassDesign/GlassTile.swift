@@ -189,7 +189,8 @@ public struct GlassTileFace: View {
 
     /// Creates a tile face.
     public init(title: String, subtitle: String? = nil, symbol: String, tint: Color, isActive: Bool,
-                isUnavailable: Bool = false, showsChevron: Bool = false, level: Double? = nil, levelTint: Color? = nil) {
+                isUnavailable: Bool = false, showsChevron: Bool = false, level: Double? = nil, levelTint: Color? = nil,
+                wash: Color? = nil, trailingInset: CGFloat = 0) {
         self.title = title
         self.subtitle = subtitle
         self.symbol = symbol
@@ -199,6 +200,8 @@ public struct GlassTileFace: View {
         self.showsChevron = showsChevron
         self.level = level
         self.levelTint = levelTint
+        self.wash = wash
+        self.trailingInset = trailingInset
     }
 
     public var body: some View {

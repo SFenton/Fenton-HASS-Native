@@ -69,7 +69,7 @@ public final class TodoListController: Identifiable {
     /// Pending check-offs.
     public private(set) var optimistic = TodoOptimisticStatuses()
 
-    public var id: String { entityId }
+    public nonisolated var id: String { entityId }
 
     private let service: any TodoServicing
     private let onItemsChange: (String, [TodoItem]) -> Void
