@@ -273,7 +273,7 @@ public enum VacuumStatusResolver {
         if code.contains("vacuum_only") || code.contains("fallback") { return "Vacuuming Only" }
         if code.contains("dock") { return "Docking May Be Incomplete" }
         let last = condition.code.split(separator: ".").last.map(String.init) ?? condition.code
-        return VacuumFormat.titleCase(last.replacingOccurrences(of: "_", with: " "))
+        return StateText.titleCase(last.replacingOccurrences(of: "_", with: " "), empty: "")
     }
 }
 
@@ -385,25 +385,18 @@ public struct VacuumVisual: Equatable, Sendable {
 // MARK: - Formatting
 
 public enum VacuumFormat {
-    /// `snake_case` → `Snake Case` (`titleCaseState`).
-    public static func titleCase(_ state: String) -> String {
-        state.split(separator: "_", omittingEmptySubsequences: false)
-            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
-            .joined(separator: " ")
-    }
-
     /// A state for display (`formatStateValue`).
     public static func state(_ value: String?, fallback: String = "Unavailable") -> String {
         guard let value, !value.isEmpty else { return fallback }
         if value == "unknown" { return "Unknown" }
         if value == "unavailable" { return "Unavailable" }
-        return titleCase(value)
+        return StateText.titleCase(value)
     }
 
     /// The tile subtitle: `Docked • 87%` (`vacuumTilePresentation`).
     public static func tileSubtitle(state: String?, battery: String?) -> String {
         let normalized = state?.trimmed.lowercased() ?? ""
-        let label = titleCase(normalized.isEmpty ? "unavailable" : normalized)
+        let label = StateText.titleCase(normalized.isEmpty ? "unavailable" : normalized)
         guard !VacuumStatusResolver.isUnavailable(normalized), let battery = battery?.trimmed, let value = Double(battery) else { return label }
         return "\(label) • \(number(value))%"
     }
@@ -446,12 +439,7 @@ public enum VacuumFormat {
 
 /// ISO 8601 parsing that accepts fractional seconds.
 enum VacuumDates {
-    static func parse(_ text: String) -> Date? {
-        let fractional = ISO8601DateFormatter()
-        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = fractional.date(from: text) { return date }
-        return ISO8601DateFormatter().date(from: text)
-    }
+    static func parse(_ text: String) -> Date? { HassDates.iso8601(text) }
 }
 
 extension String {

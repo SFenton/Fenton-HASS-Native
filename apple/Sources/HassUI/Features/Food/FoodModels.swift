@@ -290,7 +290,8 @@ final class RecipeCollectionModel {
             var searchId: String?
             while !Task.isCancelled {
                 guard let self, self.generation == current else { return }
-                self.hydrating = true
+                // Observation republishes equal values; setting it each poll redrew the whole grid.
+                if !self.hydrating { self.hydrating = true }
                 let poll: RecipeHydration
                 do {
                     poll = try await service.hydrate(criteria, searchId: searchId)

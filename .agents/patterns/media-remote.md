@@ -9,7 +9,7 @@ Web source: `ha-sfenton-react-dash@9ac2a46:src/components/hass/MediaRemoteModalC
 | Config model | `HassCore/Config/MediaRemoteConfig.swift` |
 | The four remotes (Living Room SHIELD, Master Bedroom Apple TV, Theater Room SHIELD, Music Room) | `HassCore/Config/MediaRemotes.swift` |
 | Action resolution, state helpers | `HassCore/MediaRemote/MediaRemoteLogic.swift` |
-| Optimistic overlay, active hold, revert scheduler | `HassCore/MediaRemote/OptimisticOverlay.swift` |
+| Optimistic overlay, active hold, revert scheduler | `HassCore/Entities/OptimisticOverlay.swift` |
 | Controller (reads, actions, Hue Sync) | `HassCore/MediaRemote/MediaRemoteController.swift` |
 | Service seam (`HassServiceCalling`; `HassConnection` conforms) | `HassCore/MediaRemote/HassServiceCalling.swift` |
 | Sheet and layout policy | `HassUI/Features/MediaRemote/MediaRemoteSheet.swift` |

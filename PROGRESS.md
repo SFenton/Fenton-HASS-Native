@@ -86,6 +86,7 @@ apple/Tests/**                                             → tests for your ow
 | Vacuums (page, sheet, Valetudo map, area editor) | `VacuumsScreen` + `VacuumSheet`; reached from Home until side navigation lands; debug gallery `FENTON_GALLERY=vacuums` |
 | Room device sheets (fan, air quality, humidifier, grill) | Sheets + debug gallery `FENTON_GALLERY=room-devices`; Room pages wire them in |
 | Floating actions (shared) | `FloatingActionBar` (labeled/icon actions, expandable search) + `FilterSheet`; gallery `FENTON_GALLERY=floating-actions` |
+| Performance (shared) | `OptimisticActions` (rollback on failure), `ContentGate`, `ImagePipeline`/`CachedImage` (disk cache, revalidation, downsampling), `HassTelemetry` signposts + Settings → Performance + MetricKit, fast-scroll tests (`tools/ios_perf.sh`, physical device); gallery `FENTON_GALLERY=performance` |
 | Thermostat dial (shared control) | `ThermostatDial` + `ClimateThermostatDial`; debug gallery `FENTON_GALLERY=thermostat-dial` |
 
 ## 4. Log
@@ -118,4 +119,13 @@ apple/Tests/**                                             → tests for your ow
 - 2026-10-11: shared floating action bar and filter sheet (`.agents/patterns/floating-actions.md`) for Chores, Groceries, To-Do, Recipes and Inventory.
 - 2026-10-11: Vacation and Solo Trip pages (`claude/project-thread-d1pa5r`): `HouseholdAwayController` (return-response script calls, revision floor, timeout), `VacationModeController`, `SoloTripController`, shared `ScheduleDateFields` and `InfoBox`, Settings → Vacation, fixture gallery and journeys.
 - 2026-10-13: merged main into the Vacation branch: Vacation stays a pushing row above the household topics (follow-up: make it a split topic). Mac runs before the merge: iPhone journeys, audits and screenshots passed in full; iPad (portrait and landscape) and folded Duo fixes were pushed from those runs; unfolded Duo runs skipped (Stephen, 2026-10-13: merge without them; run once a Duo can unfold). Swift was not rebuilt after the merge.
+- 2026-10-13: performance pass (`claude/project-thread-67xtvv`).
+  - Live updates convert only changed entities. Previously every websocket event converted and compared every entity on the main thread.
+  - The snapshot is encoded off the main thread, debounced to 10 s.
+  - `DynamicGridLayout` caches its row measurements.
+  - The app runs at 120 Hz on ProMotion.
+  - Chores rows reuse their formatters and regex and use a lazy stack.
+  - Camera snapshots, recipe images and app tiles decode downsampled off the main thread through `ImagePipeline`.
+  - New shared patterns: optimistic-actions, content-gate, image-cache, telemetry.
+  - The tile `.regularMaterial` blur (one per tile) is the next suspect; measure it on device first, because the App chrome lane's background image depends on the glass.
 - 2026-10-13: Report an Issue and Request a Feature in Settings (`claude/project-thread-g7zt61`): port of FestivalNativeApps' feedback form that files straight into the private request repo `SFenton/fenton-hass-requests` (fine-grained token in iCloud Keychain, media stripped of location and fitted to 10 MB, diagnostics), and the MacBook triage agent (`tools/triage/hass_triage.py`, hourly launchd job) that works each request into a verified PR labelled `Ready to Merge`. Nothing on the Mac merges (owner: coordinator merges).

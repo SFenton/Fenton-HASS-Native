@@ -207,7 +207,7 @@ public final class BedSideController {
     public var subtitle: String {
         if hotFlashActive { return "Hot Flash Mode" }
         guard isOn else { return "Off" }
-        return "\(Self.titleCase(action)) • \(BedLevel.format(displayedTarget))"
+        return "\(StateText.titleCase(action, empty: "")) • \(BedLevel.format(displayedTarget))"
     }
 
     /// The room tile subtitle at `now` (web `tileSubtitle` with Solo Trip wording).
@@ -239,10 +239,7 @@ public final class BedSideController {
         if let timestamp = restore.attributes["timestamp"].flatMap(BedAlarm.number) {
             return BedFormat.countdown(timestamp - now.timeIntervalSince1970)
         }
-        let local = DateFormatter()
-        local.locale = Locale(identifier: "en_US_POSIX")
-        local.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return local.date(from: restore.state).map { BedFormat.countdown($0.timeIntervalSince(now)) }
+        return HassDates.localDateTime(restore.state).map { BedFormat.countdown($0.timeIntervalSince(now)) }
     }
 
     /// The target can change from the dial.
@@ -746,8 +743,4 @@ public final class BedSideController {
     /// The overlay key for a number (`3.0`), shared by commits and live values so they compare equal.
     static func key(_ value: Double) -> String { String(value) }
 
-    /// `heat_cool` → `Heat Cool`.
-    public static func titleCase(_ value: String) -> String {
-        value.split(separator: "_").map { $0.prefix(1).uppercased() + $0.dropFirst() }.joined(separator: " ")
-    }
 }

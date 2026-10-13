@@ -70,7 +70,7 @@ public final class HumidifierController {
     private func int(_ id: String, _ fallback: Int) -> Int { commands.displayed(id).flatMap { Int($0) } ?? fallback }
 
     /// The power switch is missing, `unavailable` or `unknown`.
-    public var isUnavailable: Bool { DeviceState.isUnavailable(commands.entity(config.powerEntityId)?.state) }
+    public var isUnavailable: Bool { EntityState.isUnavailable(commands.entity(config.powerEntityId)?.state) }
     public var powerOn: Bool { commands.displayed(config.powerEntityId) == "on" }
     public var mode: HumidifierMode { commands.displayed(config.modeEntityId).flatMap(HumidifierMode.init(rawValue:)) ?? .manual }
     /// The saved mist level 1–9 (shown even while off).
@@ -115,8 +115,8 @@ public final class HumidifierController {
     /// `72°F`, or Unavailable.
     public var temperatureText: String {
         let entity = commands.entity(config.currentTemperatureEntityId)
-        guard let entity, !DeviceState.isUnavailable(entity.state) else { return "Unavailable" }
-        guard let value = DeviceState.number(entity) else { return DeviceState.titleCase(entity.state) }
+        guard let entity, !EntityState.isUnavailable(entity.state) else { return "Unavailable" }
+        guard let value = DeviceState.number(entity) else { return StateText.titleCase(entity.state) }
         return "\(Int(value.rounded()))\(entity.attributes["unit_of_measurement"]?.string ?? "°")"
     }
 

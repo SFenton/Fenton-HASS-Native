@@ -137,7 +137,7 @@ struct GrillControllerTests {
     }
 
     @Test func sharedStateHelpers() {
-        #expect(DeviceState.titleCase("heat_cool") == "Heat Cool")
+        #expect(StateText.titleCase("heat_cool") == "Heat Cool")
         #expect(DeviceState.binaryFlag(nil) == "unavailable")
         #expect(DeviceState.binaryFlag("unknown") == "unavailable")
         #expect(DeviceState.binaryFlag("idle") == "off")

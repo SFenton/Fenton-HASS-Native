@@ -56,6 +56,7 @@ struct VacuumsPage<Sheet: View>: View {
                     }
                 }
             }
+            .scrollTelemetry("Vacuums")
             .accessibilityIdentifier(split ? "vacuums.layout.split" : "vacuums.layout.single")
         }
         .navigationTitle("Vacuums")

@@ -14,6 +14,7 @@ struct SuggestedRecipesCarousel: View {
     @State private var width: CGFloat = 0
     @State private var page: Int? = 0
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Web `RECOMMENDATION_PAGE_COUNT`.
     static let pageCount = 5
@@ -124,7 +125,8 @@ struct SuggestedRecipesCarousel: View {
         .accessibilityLabel("Suggestion page")
         .accessibilityValue("\((page ?? 0) + 1) of \(pageCount)")
         .accessibilityAdjustableAction { direction in
-            withAnimation { page = Self.adjusted(page, direction, pageCount: pageCount) }
+            // Reduce Motion: jump to the page rather than scrolling the carousel across.
+            withAnimation(reduceMotion ? nil : .default) { page = Self.adjusted(page, direction, pageCount: pageCount) }
         }
         .accessibilityIdentifier("food.suggestions.pages")
     }

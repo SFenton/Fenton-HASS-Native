@@ -255,6 +255,22 @@ final class HomePagesJourneyTests: XCTestCase {
         XCTAssertTrue(element("sprinkler.overview", in: app).waitForExistence(timeout: 10), "Apply returns to the overview")
     }
 
+    /// Start times are identified by their own id (audit 2026-10-13): removing the first keeps the added one intact.
+    func testScheduleEditorRemovesAStartTime() {
+        let app = launch("sprinklers", ["FENTON_GALLERY_SPRINKLER": "frontYard", "FENTON_GALLERY_DETAIL": "schedule-0"],
+                         waitFor: "sprinkler.schedule.apply")
+        tap("sprinkler.schedule.addTime", in: app)
+        XCTAssertTrue(element("sprinkler.schedule.time.1", in: app).waitForExistence(timeout: 10), "A second start time appears")
+        let removeFirst = app.buttons["Remove Start Time 1"].firstMatch
+        XCTAssertTrue(removeFirst.waitForExistence(timeout: 10))
+        removeFirst.tap()
+        XCTAssertTrue(element("sprinkler.schedule.time.1", in: app).waitForNonExistence(timeout: 10), "One start time is left")
+        tap("sprinkler.schedule.apply", in: app)
+        let label = app.staticTexts["gallery.lastCall"].firstMatch
+        let saved = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label CONTAINS %@", "start_times=[07:00]"), object: label)
+        XCTAssertEqual(XCTWaiter().wait(for: [saved], timeout: 10), .completed, "Last call was '\(label.label)'")
+    }
+
     // One test per page: each audit relaunches the app several times, and under host load a crash should
     // cost one page, not four.
     func testSprinklersAuditsAndScreenshots() throws {

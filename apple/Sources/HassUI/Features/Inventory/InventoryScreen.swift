@@ -15,6 +15,7 @@ struct InventoryScreen: View {
     var launch: InventoryLaunch?
 
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var presentation: InventoryPresentation
     @State private var searchExpanded = false
 
@@ -36,6 +37,7 @@ struct InventoryScreen: View {
             // identifier replaced the editor pane's identifiers, and the bar covered the pane.
             list
                 .frame(maxWidth: .infinity)
+                .scrollTelemetry("Inventory · \(space.rawValue)")
                 .accessibilityIdentifier("inventory.\(space.rawValue)")
                 .floatingActionBar(showsFloatingActions ? floatingActions : [], search: showsFloatingActions ? floatingSearch : nil)
             if canSplit, let editing {
@@ -43,7 +45,8 @@ struct InventoryScreen: View {
                     .frame(maxWidth: .infinity)
                     .background(.background)
                     .id(editing.itemId)
-                    .transition(.move(edge: .trailing))
+                    // Reduce Motion: the pane fades in instead of sliding (HIG Motion).
+                    .transition(reduceMotion ? .opacity : .move(edge: .trailing))
             }
         }
         .background {

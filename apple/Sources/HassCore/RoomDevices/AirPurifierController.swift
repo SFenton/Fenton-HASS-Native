@@ -69,9 +69,9 @@ public final class AirPurifierController {
     /// The speed shown, as a percentage string.
     public var percentage: String? { commands.displayed(config.fanEntityId) }
 
-    public var modeUnavailable: Bool { DeviceState.isUnavailable(commands.entity(config.modeEntityId)?.state) }
-    public var autoModeUnavailable: Bool { DeviceState.isUnavailable(commands.entity(config.autoModeEntityId)?.state) }
-    public var fanUnavailable: Bool { DeviceState.isUnavailable(commands.entity(config.fanEntityId)?.state) }
+    public var modeUnavailable: Bool { EntityState.isUnavailable(commands.entity(config.modeEntityId)?.state) }
+    public var autoModeUnavailable: Bool { EntityState.isUnavailable(commands.entity(config.autoModeEntityId)?.state) }
+    public var fanUnavailable: Bool { EntityState.isUnavailable(commands.entity(config.fanEntityId)?.state) }
 
     /// Auto modes show only in Auto.
     public var showsAutoModes: Bool { mode == "Auto" }
@@ -87,7 +87,7 @@ public final class AirPurifierController {
     public static func metric(_ entity: EntityState?) -> String {
         guard let entity else { return "Unavailable" }
         let raw = entity.state.trimmingCharacters(in: .whitespaces)
-        if raw.isEmpty || DeviceState.isUnavailable(raw) { return DeviceState.compact(entity) }
+        if raw.isEmpty || EntityState.isUnavailable(raw) { return DeviceState.compact(entity) }
         let unit = entity.attributes["unit_of_measurement"]?.string ?? ""
         let value = unit.isEmpty && raw.hasSuffix(".0") ? String(raw.dropLast(2)) : raw
         return unit.isEmpty || value.contains(unit) ? value : "\(value) \(unit)"
@@ -151,18 +151,18 @@ public final class GrillController {
     /// The grill's state line, e.g. `Idle` or `Unavailable`.
     public var stateText: String {
         guard let entity = commands.entity(config.stateEntityId) else { return "Unavailable" }
-        return DeviceState.isUnavailable(entity.state) ? "Unavailable" : DeviceState.titleCase(entity.state)
+        return EntityState.isUnavailable(entity.state) ? "Unavailable" : StateText.titleCase(entity.state)
     }
 
     /// The grill is off or unreachable (the room card greys out; web `disabledStates`).
     public var isOff: Bool {
         let state = commands.entity(config.stateEntityId)?.state
-        return DeviceState.isUnavailable(state) || state == "off"
+        return EntityState.isUnavailable(state) || state == "off"
     }
 
     /// How a card shows.
     public func display(_ detail: GrillConfig.Detail) -> DetailDisplay {
-        let unavailable = DeviceState.isUnavailable(commands.entity(detail.entityId)?.state)
+        let unavailable = EntityState.isUnavailable(commands.entity(detail.entityId)?.state)
         let shown = commands.displayed(detail.entityId)
         var entity = commands.entity(detail.entityId)
         if let shown { entity?.state = shown }

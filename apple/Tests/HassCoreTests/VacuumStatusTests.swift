@@ -241,7 +241,7 @@ struct VacuumRuntimeTests {
     }
 
     @Test func formatting() {
-        #expect(VacuumFormat.titleCase("vacuum_and_mop") == "Vacuum And Mop")
+        #expect(StateText.titleCase("vacuum_and_mop") == "Vacuum And Mop")
         #expect(VacuumFormat.state(nil) == "Unavailable")
         #expect(VacuumFormat.state("", fallback: "Vacuum") == "Vacuum")
         #expect(VacuumFormat.state("unknown") == "Unknown")

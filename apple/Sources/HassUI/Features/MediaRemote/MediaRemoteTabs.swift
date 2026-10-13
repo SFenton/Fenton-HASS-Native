@@ -43,13 +43,7 @@ struct AppTile: View {
             ZStack {
                 shape.fill(app.whiteBackground ? Color.white : RemoteStyle.buttonFill)
                 if let imageURL {
-                    AsyncImage(url: imageURL) { phase in
-                        if case let .success(image) = phase {
-                            image.resizable().scaledToFill()
-                        } else {
-                            fallback
-                        }
-                    }
+                    CachedImage(url: imageURL) { fallback }
                 } else {
                     fallback
                 }
@@ -185,7 +179,7 @@ struct HueSyncTab: View {
                 let intensity = controller.hueSelect(hue.intensityEntityId)
                 grid {
                     ForEach(intensity.options, id: \.self) { option in
-                        RemoteGlassTile(title: MediaRemoteState.titleCase(option), symbol: "gauge.with.dots.needle.50percent",
+                        RemoteGlassTile(title: StateText.titleCase(option), symbol: "gauge.with.dots.needle.50percent",
                                         tint: HassTokens.Tint.light, isActive: intensity.selected == option,
                                         isDisabled: intensity.isUnavailable, semantics: .selection(isSelected: intensity.selected == option)) {
                             controller.selectHue(hue.intensityEntityId, option: option)
@@ -247,7 +241,7 @@ struct HueSyncTab: View {
                             .foregroundStyle(selected ? Color.black : HassTokens.Ink.primary)
                             .frame(width: diameter, height: diameter)
                             .background(selected ? HassTokens.Tint.light : RemoteStyle.buttonFill, in: Circle())
-                        Text(MediaRemoteState.titleCase(option))
+                        Text(StateText.titleCase(option))
                             .font(.footnote.weight(.semibold))
                             .foregroundStyle(HassTokens.Ink.primary)
                             .multilineTextAlignment(.center)
@@ -258,7 +252,7 @@ struct HueSyncTab: View {
                 .disabled(mode.isUnavailable)
                 .opacity(mode.isUnavailable ? 0.4 : 1)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(MediaRemoteState.titleCase(option))
+                .accessibilityLabel(StateText.titleCase(option))
                 .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
                 .accessibilityIdentifier("remote.hue.mode.\(option)")
                 .frame(maxWidth: .infinity)

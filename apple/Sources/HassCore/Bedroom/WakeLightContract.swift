@@ -421,13 +421,7 @@ public enum WakeLight {
 
     // MARK: - Helpers
 
-    static func timestamp(_ value: String) -> Date? {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: value) { return date }
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: value)
-    }
+    static func timestamp(_ value: String) -> Date? { HassDates.iso8601(value) }
 
     /// `YYYY-MM-DD` in `calendar`.
     public static func dateString(_ date: Date, calendar: Calendar = .current) -> String {

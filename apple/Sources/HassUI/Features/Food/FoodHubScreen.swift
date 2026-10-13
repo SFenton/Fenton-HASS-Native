@@ -51,6 +51,7 @@ struct FoodHubScreen: View {
             .padding(.vertical, HassTokens.Spacing.m)
         }
         .background { WindowMetricsReader(metrics: $window) }
+        .scrollTelemetry("Food")
         .accessibilityIdentifier("food.scroll")
         .navigationTitle("Food & Recipes")
         .onAppear { models.suggestions.appear() }

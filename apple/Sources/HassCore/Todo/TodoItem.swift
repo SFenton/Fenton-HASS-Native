@@ -65,16 +65,14 @@ public struct TodoItem: Codable, Hashable, Sendable, Identifiable {
             guard parts.count == 3 else { return nil }
             return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2]))
         }
-        let withFraction = ISO8601DateFormatter()
-        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = withFraction.date(from: value) { return date }
-        let plain = ISO8601DateFormatter()
-        if let date = plain.date(from: value) { return date }
+        if let date = HassDates.iso8601(value) { return date }
         // A date-time without a zone is local time.
-        let local = DateFormatter()
-        local.locale = Locale(identifier: "en_US_POSIX")
-        local.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return local.date(from: value)
+        return HassDates.localDateTime(value)
+    }
+
+    /// Built once: compiling a regex per row per render was a share of a Chores scroll frame.
+    private enum Parsers {
+        static let batteryWords = try? NSRegularExpression(pattern: #"\bbatter(?:y|ies)\b"#, options: .caseInsensitive)
     }
 
     /// How urgent the due label reads.
@@ -124,7 +122,7 @@ public struct TodoItem: Codable, Hashable, Sendable, Identifiable {
     }
 
     private static func capitalizingBatteryWords(_ title: String) -> String {
-        guard let regex = try? NSRegularExpression(pattern: #"\bbatter(?:y|ies)\b"#, options: .caseInsensitive) else { return title }
+        guard let regex = Parsers.batteryWords else { return title }
         var result = title
         for match in regex.matches(in: title, range: NSRange(title.startIndex..., in: title)).reversed() {
             guard let range = Range(match.range, in: result) else { continue }

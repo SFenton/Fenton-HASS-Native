@@ -185,13 +185,13 @@ enum BedDial {
             isUnavailable: !controller.sideAvailable,
             isOff: !controller.isOn,
             isInteractive: controller.canSetTarget,
-            actionTextOverride: controller.sideAvailable ? (controller.hotFlashActive ? "Hot Flash" : (controller.isOn ? BedSideController.titleCase(controller.action) : "Off")) : nil,
+            actionTextOverride: controller.sideAvailable ? (controller.hotFlashActive ? "Hot Flash" : (controller.isOn ? StateText.titleCase(controller.action, empty: "") : "Off")) : nil,
             primaryValueOverride: controller.sideAvailable ? (controller.isOn ? BedLevel.format(target) : "OFF") : nil,
             primaryUnitOverride: .some(nil),
             targetCaption: controller.currentTemperature.map { .custom("Currently \(BedFormat.temperature($0))") } ?? .hidden
         )
         configuration.scale = .signedLevel
-        let state = controller.sideAvailable ? (controller.isOn ? "\(BedSideController.titleCase(controller.action)), target \(BedLevel.format(target))" : "Off") : "Unavailable"
+        let state = controller.sideAvailable ? (controller.isOn ? "\(StateText.titleCase(controller.action, empty: "")), target \(BedLevel.format(target))" : "Off") : "Unavailable"
         let current = controller.currentTemperature.map { ", currently \(BedFormat.temperature($0))" } ?? ""
         configuration.readoutAccessibilityLabelOverride = "\(controller.config.title), \(state)\(current)"
         return configuration

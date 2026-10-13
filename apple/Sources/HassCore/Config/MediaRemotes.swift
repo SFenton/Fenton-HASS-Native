@@ -266,12 +266,12 @@ public enum MediaRemotes {
             let power = states[hueSyncPowerEntityId]
             let input = states[hueSyncHdmiInputEntityId]
             let cloudActive = cloud.map(xboxActiveStates.contains) ?? false
-            let linkedOnActivePath = tv.map { $0 != "off" && !MediaRemoteState.isUnavailable($0) } == true
+            let linkedOnActivePath = tv.map { $0 != "off" && !EntityState.isUnavailable($0) } == true
                 && power == "on"
                 && input?.hasSuffix(" 1") == true
                 && hdmi == xboxLinkedState
             if cloudActive || linkedOnActivePath { return "on" }
-            let known = [cloud, hdmi, tv, power, input].contains { $0.map { !MediaRemoteState.isUnavailable($0) } ?? false }
+            let known = [cloud, hdmi, tv, power, input].contains { $0.map { !EntityState.isUnavailable($0) } ?? false }
             return known ? "off" : "unavailable"
         }
 

@@ -22,6 +22,7 @@ struct HomeScreen: View {
             }
             .padding(.vertical, HassTokens.Spacing.m)
         }
+        .scrollTelemetry("Home")
         .accessibilityIdentifier("home.scroll")
         .navigationTitle("Home")
         .foodNavigation()

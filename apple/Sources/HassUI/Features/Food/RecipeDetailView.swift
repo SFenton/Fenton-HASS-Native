@@ -106,6 +106,7 @@ struct RecipeDetailContent: View {
             }
             .padding(HassTokens.Spacing.l)
         }
+        .scrollTelemetry("Recipe Detail")
         .accessibilityIdentifier("recipe.scroll")
     }
 }

@@ -65,9 +65,9 @@ struct ClimateLogicTests {
     // MARK: Formatting
 
     @Test func formatting() {
-        #expect(ClimateLogic.titleCase("heat_cool") == "Heat Cool")
-        #expect(ClimateLogic.titleCase(nil) == "Unknown")
-        #expect(ClimateLogic.titleCase("") == "Unknown")
+        #expect(StateText.titleCase("heat_cool") == "Heat Cool")
+        #expect(StateText.titleCase(nil) == "Unknown")
+        #expect(StateText.titleCase("") == "Unknown")
         #expect(ClimateLogic.compactState(nil) == "Unavailable")
         #expect(ClimateLogic.compactState(EntityState(entityId: "switch.x", state: "unavailable")) == "Unavailable")
         #expect(ClimateLogic.compactState(EntityState(entityId: "switch.x", state: "on"), state: "off") == "Off")

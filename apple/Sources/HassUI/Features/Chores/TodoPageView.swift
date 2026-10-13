@@ -51,6 +51,7 @@ struct TodoPageView<Header: View>: View {
                 .accessibilityHidden(true)
             }
         }
+        .scrollTelemetry("Chores · \(page.id)")
         .accessibilityIdentifier("todo.page.\(page.id)")
         .floatingActionBar([
             FloatingAction(id: "add", title: TodoPageLayout.addTitle(page.addAction), symbol: "plus") { sheet = .create },
