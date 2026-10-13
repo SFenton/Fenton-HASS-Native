@@ -7,11 +7,11 @@ import Testing
 @MainActor
 struct HomeViewTests {
     @Test func weatherConditionsMapToNamesAndSymbols() {
-        #expect(WeatherSummaryCard.conditionName("partlycloudy") == "Partly Cloudy")
-        #expect(WeatherSummaryCard.conditionName(nil) == "Unavailable")
-        #expect(WeatherSummaryCard.conditionName("rainy") == "Rainy")
-        #expect(WeatherSummaryCard.symbol(for: "sunny") == "sun.max.fill")
-        #expect(WeatherSummaryCard.symbol(for: nil) == "cloud.fill")
+        #expect(WeatherConditionInfo("partlycloudy").label == "Partly Cloudy")
+        #expect(WeatherConditionInfo(nil).label == "Weather Unavailable")
+        #expect(WeatherConditionInfo("rainy").label == "Rain")
+        #expect(WeatherSymbols.condition("sunny") == "sun.max.fill")
+        #expect(WeatherSymbols.condition(nil) == "cloud.fill")
     }
 
     @Test func homeSheetIdsAreUnique() {

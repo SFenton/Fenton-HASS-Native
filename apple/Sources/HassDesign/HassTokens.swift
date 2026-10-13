@@ -51,6 +51,12 @@ public enum HassTokens {
         /// Supporting text (summaries, states): still at least 4.5:1 on the light and dark materials.
         public static let secondary = label.opacity(0.72)
 
+        /// Text on an always-dark backdrop (the weather card and sheet gradients): white, at least 5.6:1 on the
+        /// lightest backdrop color, in light and dark mode alike.
+        public static let onDark = Color.white
+        /// Supporting text on an always-dark backdrop: white at 85%, at least 4.5:1 on the lightest backdrop color.
+        public static let onDarkSecondary = Color.white.opacity(0.85)
+
         /// Destructive actions ("Stop watering"): system red is 3.6:1 on a light grouped row, this is at least
         /// 6:1 on light and dark rows (HIG: Color; WCAG 1.4.3).
         public static let danger: Color = dynamic(light: (0.76, 0.09, 0.09), dark: (1.0, 0.45, 0.43))
