@@ -78,7 +78,7 @@ struct SprinklerControllerSheet: View {
             } header: { SprinklerHeader("Status") }
 
             Section {
-                ForEach(Array(snapshot.zones.enumerated()), id: \.offset) { index, zone in
+                ForEach(Array(snapshot.zones.enumerated()), id: \.element.config.valveEntityId) { index, zone in
                     let active = controller.activeValve == zone.config.valveEntityId
                     NavigationLink(value: SprinklerDetail.water(zone: index)) {
                         SprinklerRow(symbol: SprinklerStyle.symbol, isActive: active, title: zone.name,
@@ -116,14 +116,20 @@ struct SprinklerControllerSheet: View {
             .disabled(!snapshot.available)
 
             Section {
-                ForEach(Array(snapshot.zones.enumerated()), id: \.offset) { index, zone in
-                    if let program = controller.program(index) {
-                        ProgramRow(controller: controller, index: index, zoneName: zone.name, program: program, format: format)
-                    }
+                // Zones without a program are left out before the ForEach, so every row is one ProgramRow.
+                ForEach(programRows(snapshot), id: \.zone.config.valveEntityId) { row in
+                    ProgramRow(controller: controller, index: row.index, zoneName: row.zone.name, program: row.program, format: format)
                 }
             } header: { SprinklerHeader("Schedule") }
         }
         .accessibilityIdentifier("sprinkler.overview")
+    }
+
+    /// The Schedule section's rows: zones that have a program, keeping each zone's index.
+    private func programRows(_ snapshot: SprinklerSnapshot) -> [(index: Int, zone: SprinklerSnapshot.Zone, program: SprinklerSnapshot.Program)] {
+        snapshot.zones.indices.compactMap { index in
+            controller.program(index).map { (index: index, zone: snapshot.zones[index], program: $0) }
+        }
     }
 
     static func tone(_ snapshot: SprinklerSnapshot) -> StatusPill.Tone {
@@ -266,7 +272,7 @@ struct SprinklerSchedulePage: View {
     var zone: Int
     var done: () -> Void
     @State private var days: Set<Int>
-    @State private var times: [Date]
+    @State private var times: [StartTime]
     @State private var budget: Int
     @State private var sending = false
     private let format = SprinklerFormat()
@@ -278,7 +284,7 @@ struct SprinklerSchedulePage: View {
         let program = controller.program(zone)
         _days = State(initialValue: Set(program?.days ?? []))
         let starts = (program?.startTimes.isEmpty ?? true) ? [SprinklersConfig.defaultStartTime] : program?.startTimes ?? []
-        _times = State(initialValue: starts.compactMap { SprinklerFormat.date(clock: $0) })
+        _times = State(initialValue: starts.compactMap { SprinklerFormat.date(clock: $0) }.map(StartTime.init))
         _budget = State(initialValue: program?.budget ?? 100)
     }
 
@@ -311,11 +317,12 @@ struct SprinklerSchedulePage: View {
                 DayPicker(days: $days).disabled(!available)
             } header: { SprinklerHeader("Days") }
             Section {
-                ForEach(times.indices, id: \.self) { index in
+                // Rows are identified by their own id, not their position, so removing one keeps the others' pickers.
+                ForEach(Array(times.enumerated()), id: \.element.id) { index, time in
                     HStack {
-                        DatePicker("Start \(index + 1)", selection: $times[index], displayedComponents: .hourAndMinute)
+                        DatePicker("Start \(index + 1)", selection: binding(for: time.id), displayedComponents: .hourAndMinute)
                             .accessibilityIdentifier("sprinkler.schedule.time.\(index)")
-                        Button(role: .destructive) { times.remove(at: index) } label: {
+                        Button(role: .destructive) { remove(time.id) } label: {
                             Image(systemName: "minus.circle.fill")
                                 .font(.title3)
                                 .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
@@ -326,7 +333,7 @@ struct SprinklerSchedulePage: View {
                     }
                 }
                 Button {
-                    times.append(SprinklerFormat.date(clock: SprinklersConfig.defaultStartTime) ?? .now)
+                    times.append(StartTime(SprinklerFormat.date(clock: SprinklersConfig.defaultStartTime) ?? .now))
                 } label: {
                     WrappingRowLabel(title: "Add Another Start Time", symbol: "plus")
                 }
@@ -353,7 +360,7 @@ struct SprinklerSchedulePage: View {
                 sending = true
                 Task {
                     let ok = await controller.saveSchedule(
-                        zone: zone, days: Array(days), startTimes: times.map { SprinklerFormat.clock(from: $0) }, budget: budget)
+                        zone: zone, days: Array(days), startTimes: times.map { SprinklerFormat.clock(from: $0.date) }, budget: budget)
                     sending = false
                     if ok { done() }
                 }
@@ -371,6 +378,29 @@ struct SprinklerSchedulePage: View {
         .navigationTitle(format.programName(zone: zoneName))
         .inlineNavigationTitle()
         .onDisappear { controller.clearError() }
+    }
+
+    // MARK: - Start times
+
+    /// One editable start time. Its id is allocated once, so a row keeps its identity when another is removed.
+    struct StartTime: Identifiable, Equatable {
+        let id = UUID()
+        var date: Date
+
+        init(_ date: Date) { self.date = date }
+    }
+
+    private func binding(for id: StartTime.ID) -> Binding<Date> {
+        Binding {
+            times.first { $0.id == id }?.date ?? .now
+        } set: { date in
+            guard let index = times.firstIndex(where: { $0.id == id }) else { return }
+            times[index].date = date
+        }
+    }
+
+    private func remove(_ id: StartTime.ID) {
+        times.removeAll { $0.id == id }
     }
 }
 
