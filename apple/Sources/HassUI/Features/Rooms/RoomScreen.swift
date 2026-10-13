@@ -13,15 +13,18 @@ struct RoomScreen: View {
     @Environment(\.roomServiceCaller) private var callerOverride
     @Environment(\.householdViewer) private var injectedViewer
     @State private var viewer: HouseholdResident?
+    @State private var viewerIsAdminFlag = false
 
     var body: some View {
         if let caller = callerOverride ?? connection {
             RoomPageContent(page: page, store: store, caller: caller, imageServer: connection?.server, connection: connection)
                 .environment(\.householdViewer, injectedViewer ?? viewer)
+                .environment(\.householdViewerIsAdmin, viewerIsAdminFlag)
                 .task {
                     // Personalized titles ("Your Side") need the signed-in user; the page shows plain titles until then.
                     guard injectedViewer == nil, let connection, let user = try? await connection.currentUser() else { return }
                     viewer = HouseholdResident.forUser(id: user.id)
+                    viewerIsAdminFlag = user.isAdmin
                 }
         } else {
             PlaceholderScreen(title: page.title, symbol: "house")
@@ -38,6 +41,11 @@ struct RoomPageContent: View {
     @State private var pendingRoute: HomeRoute?
     @State private var route: HomeRoute?
     @State private var deviceModal: RoomDeviceModal?
+    /// A device sheet to open once the current one has closed (wake light → a bed's alarms).
+    @State private var queuedModal: RoomDeviceModal?
+    /// The Master Bedroom's wake light and beds, shared by its sheets (`.agents/patterns/bedroom-devices.md`).
+    @State private var bedroom: BedroomDevices?
+    @Environment(\.householdViewerIsAdmin) private var viewerIsAdmin
     /// One controller per bathroom fan, shared by its tile and sheet.
     @State private var fans: [String: BathroomFanController]
     private let imageServer: HassServer?
@@ -45,7 +53,8 @@ struct RoomPageContent: View {
 
     init(page: RoomPage, store: EntityStore, caller: any HassServiceCalling, imageServer: HassServer?,
          connection: HassConnection? = nil) {
-        _controller = State(initialValue: RoomController(page: page, store: store, caller: caller))
+        let controller = RoomController(page: page, store: store, caller: caller)
+        _controller = State(initialValue: controller)
         var fans: [String: BathroomFanController] = [:]
         for card in page.allCards where card.control == .bathroomFan {
             if let config = BathroomFanConfig.forPowerEntity(card.entityId) {
@@ -53,6 +62,17 @@ struct RoomPageContent: View {
             }
         }
         _fans = State(initialValue: fans)
+        // Bedroom sheets read service responses; callers that cannot (the gallery's recorder) keep the generic tiles.
+        let hasBedroom = page.allCards.contains { card in
+            switch controller.sheet(for: card) {
+            case .device(.wakeLight), .device(.bed): true
+            default: false
+            }
+        }
+        // Editing alarms waits until the signed-in user is known to be an administrator.
+        _bedroom = State(initialValue: hasBedroom ? (caller as? any HassServiceResponding).map {
+            BedroomDevices(store: store, caller: $0, canEdit: false)
+        } : nil)
         self.imageServer = imageServer
         self.connection = connection
     }
@@ -81,7 +101,8 @@ struct RoomPageContent: View {
         .sheet(item: Binding(get: { remote.map { RemoteSelection(controller: $0) } }, set: { remote = $0?.controller }),
                content: remoteSheet)
         .sheet(isPresented: $showsQuickLinks, onDismiss: quickLinksDismissed, content: quickLinksSheet)
-        .sheet(item: $deviceModal, content: deviceSheet)
+        .sheet(item: $deviceModal, onDismiss: deviceSheetDismissed, content: deviceSheet)
+        .onChange(of: viewerIsAdmin, initial: true) { _, isAdmin in bedroom?.wakeLight.canEdit = isAdmin }
         .homeRouteDestination($route)
     }
 
@@ -122,7 +143,15 @@ struct RoomPageContent: View {
     }
 
     func deviceSheet(_ modal: RoomDeviceModal) -> some View {
-        RoomDeviceModalSheet(modal: modal, store: controller.store, caller: controller.caller, connection: connection)
+        RoomDeviceModalSheet(modal: modal, store: controller.store, caller: controller.caller, connection: connection) { side in
+            if let bedroom { queuedModal = .bed(bedroom, side: side, tab: .alarms) }
+        }
+    }
+
+    /// Opens a sheet queued while the last one was closing.
+    func deviceSheetDismissed() {
+        deviceModal = queuedModal
+        queuedModal = nil
     }
 
     func quickLinksSheet() -> some View {
@@ -137,7 +166,7 @@ struct RoomPageContent: View {
 
     /// Opens a card: its remote sheet, its device lane's sheet, else its room sheet.
     func open(_ card: RoomCard) {
-        switch Self.opening(card, controller: controller, hasConnection: connection != nil, fans: fans) {
+        switch Self.opening(card, controller: controller, hasConnection: connection != nil, fans: fans, bedroom: bedroom) {
         case let .remote(shared): remote = shared
         case let .device(modal): deviceModal = modal
         case .sheet: sheetCard = card
@@ -147,12 +176,14 @@ struct RoomPageContent: View {
     /// Where opening a card goes: the shared remote sheet for remote cards, a device lane's sheet when one is wired
     /// (``RoomDeviceModal``), else the room sheet.
     static func opening(_ card: RoomCard, controller: RoomController, hasConnection: Bool = false,
-                        fans: [String: BathroomFanController] = [:]) -> RoomCardOpening {
+                        fans: [String: BathroomFanController] = [:], bedroom: BedroomDevices? = nil) -> RoomCardOpening {
         switch controller.sheet(for: card) {
         case let .mediaRemote(id):
             if let shared = controller.remote(id) { return .remote(shared) }
         case let .device(device):
-            if let modal = RoomDeviceModal.resolve(device, hasConnection: hasConnection, fan: { fans[$0] }) { return .device(modal) }
+            if let modal = RoomDeviceModal.resolve(device, hasConnection: hasConnection, fan: { fans[$0] }, bedroom: bedroom) {
+                return .device(modal)
+            }
         default:
             break
         }
@@ -160,7 +191,7 @@ struct RoomPageContent: View {
     }
 }
 
-/// Where a room card opens (``RoomPageContent/opening(_:controller:hasConnection:fans:)``).
+/// Where a room card opens (``RoomPageContent/opening(_:controller:hasConnection:fans:bedroom:)``).
 enum RoomCardOpening {
     case remote(MediaRemoteController)
     case device(RoomDeviceModal)

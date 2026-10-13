@@ -142,6 +142,22 @@ final class RoomsJourneyTests: XCTestCase {
         XCTAssertTrue(element("device.sheet.purifier", in: living).waitForExistence(timeout: 10), "Air Purifier opens the air quality sheet")
     }
 
+    /// Master Bedroom: the wake light and each bed open the Bedroom lane's sheets (fixture state, gallery caller).
+    func testMasterBedroomOpensWakeLightAndBedSheets() {
+        let app = launch(room: "master-bedroom")
+        let wake = element("room.card.Wake-Light Alarms", in: app)
+        reveal(wake, in: app)
+        wake.tap()
+        XCTAssertTrue(element("wake.subtitle", in: app).waitForExistence(timeout: 10), "The wake light opens its sheet")
+        app.buttons["Done"].firstMatch.tap()
+
+        let bed = element("room.card.Stephen's Bed", in: app)
+        reveal(bed, in: app)
+        bed.tap()
+        XCTAssertTrue(element("bed.dial", in: app).waitForExistence(timeout: 10), "The bed opens its sheet")
+        XCTAssertTrue(element("bed.power", in: app).exists)
+    }
+
     /// Rooms without sections say so.
     func testEmptyRoom() {
         let app = launch(room: "hallway")

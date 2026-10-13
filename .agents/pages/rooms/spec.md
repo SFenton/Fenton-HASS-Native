@@ -21,7 +21,7 @@ Source: `ha-sfenton-react-dash@9ac2a46` `src/constants/roomPages.ts` (`ROOM_PAGE
 
 ## Sheets
 
-Resolution order follows `RoomSourceModal`: beds, media remotes, bathroom fan, humidifier, vacuum, wake light, dishwasher, fixed items (vents), the room's light / climate / occupancy / contact groups (rooms without a contact group list every room's doors and windows), air quality, grill, else a fallback. Titles read "Kitchen Lights" for group sheets and "Living Room: Robot Vacuum" for devices. Device sheets come from their lanes (room device sheets, Vacuums); dishwasher, wake light and beds still list the card's entities read-only until theirs land.
+Resolution order follows `RoomSourceModal`: beds, media remotes, bathroom fan, humidifier, vacuum, wake light, dishwasher, fixed items (vents), the room's light / climate / occupancy / contact groups (rooms without a contact group list every room's doors and windows), air quality, grill, else a fallback. Titles read "Kitchen Lights" for group sheets and "Living Room: Robot Vacuum" for devices. Device sheets come from their lanes (room device sheets, Vacuums); the dishwasher still lists the card's entities read-only until its lane lands.
 
 ## Quick Links
 

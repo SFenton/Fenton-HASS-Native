@@ -7,6 +7,7 @@ import SwiftUI
 struct RoomsGallery: View {
     @State private var store: EntityStore
     @State private var recorder: GalleryServiceRecorder
+    @State private var caller: RoomsGalleryCaller
     @State private var route: HomeRoute?
     @State private var showsQuickLinks: Bool
     @State private var pending: HomeRoute?
@@ -15,7 +16,9 @@ struct RoomsGallery: View {
         let environment = ProcessInfo.processInfo.environment
         let store = RoomsFixtures.store()
         _store = State(initialValue: store)
-        _recorder = State(initialValue: GalleryServiceRecorder(store: store))
+        let recorder = GalleryServiceRecorder(store: store)
+        _recorder = State(initialValue: recorder)
+        _caller = State(initialValue: RoomsGalleryCaller(recorder: recorder, bedroom: BedroomGalleryRecorder(store: store)))
         _route = State(initialValue: environment["FENTON_GALLERY_ROOM"].flatMap { RoomsConfig.page(id: $0) == nil ? nil : .room($0) })
         _showsQuickLinks = State(initialValue: environment["FENTON_GALLERY_QUICK_LINKS"] == "1")
     }
@@ -36,7 +39,7 @@ struct RoomsGallery: View {
                 }
             }
             .environment(store)
-            .environment(\.roomServiceCaller, recorder)
+            .environment(\.roomServiceCaller, caller)
             .environment(\.householdViewer, .stephen)
     }
 
@@ -65,9 +68,32 @@ struct RoomsGallery: View {
             route = pending
             pending = nil
         }) {
-            QuickLinksSheet(caller: recorder) { pending = $0 }
+            QuickLinksSheet(caller: caller) { pending = $0 }
         }
         .homeRouteDestination($route)
+    }
+}
+
+/// The gallery's service caller: records every call for the "Last call" line, and answers calls that return a
+/// response (wake light, Solo Trip) like Home Assistant through the bedroom gallery's recorder, so the Master
+/// Bedroom's wake-light and bed sheets open here too.
+@MainActor
+final class RoomsGalleryCaller: HassServiceResponding {
+    let recorder: GalleryServiceRecorder
+    let bedroom: BedroomGalleryRecorder
+
+    init(recorder: GalleryServiceRecorder, bedroom: BedroomGalleryRecorder) {
+        self.recorder = recorder
+        self.bedroom = bedroom
+    }
+
+    func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
+        try await recorder.callService(domain, service, data: data)
+    }
+
+    func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
+        try? await recorder.callService(domain, service, data: data)
+        return try await bedroom.callServiceWithResponse(domain, service, data: data)
     }
 }
 
@@ -90,6 +116,8 @@ enum RoomsFixtures {
             + AirPurifierConfig.all.flatMap { RoomDeviceFixture.purifierStates($0, mode: "Auto", percentage: 33) }
             + RoomDeviceFixture.grillStates
         for state in devices { byId[state.entityId] = state }
+        // Wake light and both bed sides with schedules (the bedroom lane's fixtures).
+        for state in BedroomFixtures.states(.default) { byId[state.entityId] = state }
 
         // A lived-in evening: some lights on, one room occupied, one window open.
         add("light.living_room", "on", ["brightness": .number(180), "supported_color_modes": .array([.string("brightness")])])

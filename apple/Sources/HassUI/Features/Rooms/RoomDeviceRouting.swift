@@ -15,6 +15,10 @@ enum RoomDeviceModal: Identifiable {
     case airPurifier(AirPurifierConfig)
     case humidifier(HumidifierConfig)
     case grill
+    /// The Master Bedroom's wake light (Bedroom lane), on the page's shared ``BedroomDevices``.
+    case wakeLight(BedroomDevices, tab: WakeLightSheet.Tab)
+    /// One Eight Sleep side, on the page's shared ``BedroomDevices``.
+    case bed(BedroomDevices, side: BedSide, tab: BedSideSheet.Tab)
 
     var id: String {
         switch self {
@@ -23,6 +27,8 @@ enum RoomDeviceModal: Identifiable {
         case let .airPurifier(purifier): "purifier.\(purifier.pm25EntityId)"
         case let .humidifier(humidifier): "humidifier.\(humidifier.powerEntityId)"
         case .grill: "grill"
+        case .wakeLight: "wake-light"
+        case let .bed(_, side, _): "bed.\(side.rawValue)"
         }
     }
 
@@ -31,8 +37,10 @@ enum RoomDeviceModal: Identifiable {
     ///   - device: What the card opens.
     ///   - hasConnection: Whether the app's connection is available (the vacuum and humidifier sheets need it).
     ///   - fan: The page's shared fan controller for a power switch.
+    ///   - bedroom: The page's wake light and beds, when its caller can read service responses.
     @MainActor
-    static func resolve(_ device: RoomDeviceSheet, hasConnection: Bool, fan: (String) -> BathroomFanController?) -> RoomDeviceModal? {
+    static func resolve(_ device: RoomDeviceSheet, hasConnection: Bool, fan: (String) -> BathroomFanController?,
+                        bedroom: BedroomDevices? = nil) -> RoomDeviceModal? {
         switch device {
         case let .vacuum(entityId):
             guard hasConnection, let vacuum = Vacuums.all.first(where: { $0.entityId == entityId }) else { return nil }
@@ -46,8 +54,13 @@ enum RoomDeviceModal: Identifiable {
             return HumidifierConfig.forPowerEntity(powerEntityId).map { .humidifier($0) }
         case .grill:
             return .grill
-        case .dishwasher, .wakeLight, .bed:
-            // Dishwasher and Bedroom alarms lanes: generic tiles until they land.
+        case .wakeLight:
+            return bedroom.map { .wakeLight($0, tab: .alarms) }
+        case let .bed(sheet, _):
+            guard let bedroom, let side = MasterBedroom.bed(id: sheet)?.side else { return nil }
+            return .bed(bedroom, side: side, tab: .temperature)
+        case .dishwasher:
+            // Dishwasher lane: generic tiles until it lands.
             return nil
         }
     }
@@ -59,6 +72,8 @@ struct RoomDeviceModalSheet: View {
     var store: EntityStore
     var caller: any HassServiceCalling
     var connection: HassConnection?
+    /// The wake-light sheet's "open this bed's alarms": the host queues it until this sheet has closed.
+    var onOpenBed: (BedSide) -> Void = { _ in }
 
     var body: some View {
         switch modal {
@@ -72,6 +87,10 @@ struct RoomDeviceModalSheet: View {
             if let connection { HumidifierSheet(config: humidifier, connection: connection).roomDevicePresentation(.page) }
         case .grill:
             GrillSheet(config: .bearGrills, store: store, caller: caller).roomDevicePresentation(.form)
+        case let .wakeLight(devices, tab):
+            WakeLightSheet(devices: devices, initialTab: tab, onOpenBed: onOpenBed).bedroomSheetPresentation()
+        case let .bed(devices, side, tab):
+            BedSideSheet(devices: devices, side: side, initialTab: tab).bedroomSheetPresentation()
         }
     }
 }

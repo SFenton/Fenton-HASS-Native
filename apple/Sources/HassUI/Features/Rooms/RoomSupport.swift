@@ -10,6 +10,11 @@ private struct RoomServiceCallerKey: EnvironmentKey {
     nonisolated(unsafe) static let defaultValue: (any HassServiceCalling)? = nil
 }
 
+/// Whether the signed-in user is a Home Assistant administrator (bedroom alarm editing).
+private struct HouseholdViewerIsAdminKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 /// The signed-in household member, for personalized card titles ("Your Side").
 private struct HouseholdViewerKey: EnvironmentKey {
     static let defaultValue: HouseholdResident? = nil
@@ -20,6 +25,12 @@ extension EnvironmentValues {
     var roomServiceCaller: (any HassServiceCalling)? {
         get { self[RoomServiceCallerKey.self] }
         set { self[RoomServiceCallerKey.self] = newValue }
+    }
+
+    /// Whether the user may edit admin-only settings such as bedroom alarms; false until known.
+    var householdViewerIsAdmin: Bool {
+        get { self[HouseholdViewerIsAdminKey.self] }
+        set { self[HouseholdViewerIsAdminKey.self] = newValue }
     }
 
     /// The household member using the app, when known.

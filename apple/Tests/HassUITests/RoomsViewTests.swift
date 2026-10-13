@@ -265,6 +265,44 @@ struct RoomsViewTests {
         #expect(render(page(bath), size: Self.phone) != nil)
     }
 
+    @Test func masterBedroomCardsOpenTheBedroomSheets() {
+        let store = EntityStore()
+        store.replaceAll(RoomsFixtures.states + BedroomFixtures.states(BedroomFixtures.Scenario.allCases[0]))
+        let recorder = BedroomGalleryRecorder(store: store)
+        let devices = BedroomDevices(store: store, caller: recorder, canEdit: false)
+        func resolve(_ device: RoomDeviceSheet, bedroom: BedroomDevices?) -> String? {
+            RoomDeviceModal.resolve(device, hasConnection: false, fan: { _ in nil }, bedroom: bedroom)?.id
+        }
+        #expect(resolve(.wakeLight(statusEntityId: RoomsConfig.WakeLight.statusEntityId), bedroom: devices) == "wake-light")
+        #expect(resolve(.wakeLight(statusEntityId: RoomsConfig.WakeLight.statusEntityId), bedroom: nil) == nil, "No responding caller: fallback")
+        #expect(resolve(.bed(sheet: "stephens-bed", climateEntityId: "climate.sleepypod_eight_pod_left_side"), bedroom: devices) == "bed.left")
+        #expect(resolve(.bed(sheet: "stephs-bed", climateEntityId: "climate.sleepypod_eight_pod_right_side"), bedroom: devices) == "bed.right")
+        #expect(resolve(.bed(sheet: "nobodys-bed", climateEntityId: "climate.x"), bedroom: devices) == nil)
+
+        // The page builds one BedroomDevices when its caller can read responses, and the cards route to it.
+        let page = RoomsConfig.page(id: "master-bedroom")!
+        let content = RoomPageContent(page: page, store: store, caller: recorder, imageServer: nil)
+        let controller = RoomController(page: page, store: store, caller: recorder)
+        let wake = page.allCards.first { $0.title == RoomsConfig.WakeLight.title }!
+        let bed = page.allCards.first { $0.title == "Stephen's Bed" }!
+        if case let .device(modal) = RoomPageContent.opening(wake, controller: controller, bedroom: devices) {
+            #expect(render(RoomDeviceModalSheet(modal: modal, store: store, caller: recorder, connection: nil), size: Self.phone) != nil)
+        } else {
+            Issue.record("The wake light opens its sheet")
+        }
+        if case let .device(modal) = RoomPageContent.opening(bed, controller: controller, bedroom: devices) {
+            #expect(modal.id == "bed.left")
+            #expect(render(RoomDeviceModalSheet(modal: modal, store: store, caller: recorder, connection: nil), size: Self.phone) != nil)
+        } else {
+            Issue.record("The bed opens its sheet")
+        }
+        if case .device = RoomPageContent.opening(bed, controller: controller) { Issue.record("Without devices: room sheet") }
+        content.open(wake)
+        content.deviceSheetDismissed()
+        #expect(render(content, size: Self.phone) != nil)
+        #expect(render(content.deviceSheet(.bed(devices, side: .right, tab: .alarms)), size: Self.phone) != nil)
+    }
+
     // MARK: Symbols
 
     @Test func everyRoomIconMapsToARealSymbol() {
