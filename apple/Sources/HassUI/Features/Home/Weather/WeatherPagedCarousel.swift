@@ -49,11 +49,15 @@ struct WeatherPagedCarousel<Cell: View>: View {
     }
 
     private func strip(paging: WeatherCarouselPaging) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        let current = paging.page(containing: firstVisible)
+        return ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 0) {
                 ForEach(0..<count, id: \.self) { index in
                     cell(index)
                         .containerRelativeFrame(.horizontal, count: paging.perPage, spacing: 0)
+                        // With previous and next buttons, VoiceOver reads the page on screen and pages with them;
+                        // hours on other pages sit clipped under those buttons, where they read as unseen text.
+                        .accessibilityHidden(showsControls && paging.page(containing: index) != current)
                         .id(index)
                 }
             }

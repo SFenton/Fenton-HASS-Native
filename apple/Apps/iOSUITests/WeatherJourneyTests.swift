@@ -52,7 +52,8 @@ final class WeatherJourneyTests: XCTestCase {
             }
             // Below or not laid out yet: drag up (scroll down); above: drag down.
             let above = element.exists && element.frame.maxY < top
-            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: above ? 0.35 : 0.7))
+            // Mid-window: on iPad the sheet is a centered form sheet, so the window's edge is the dimmed page.
+            let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: above ? 0.35 : 0.7))
             start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: (above ? 1 : -1) * window.frame.height * 0.25)),
                         withVelocity: .slow, thenHoldForDuration: 0.3)
         }
@@ -261,7 +262,8 @@ final class WeatherJourneyTests: XCTestCase {
         XCTAssertTrue(element("home.weather.hour.0", in: app).waitForExistence(timeout: 8))
         let pages = element("home.weather.pages", in: app)
         XCTAssertTrue((pages.value as? String ?? "").hasPrefix("Page 1 of"), "AX5 holds fewer hours per page, so there are more pages")
-        try audit(app)
+        // The AX5 audit runs as `testCardAudit`'s AX5 page, where partial Dynamic Type issues are checked against the
+        // default size (Festival's dynamic-type-grows waiver); alone it reports them as false positives.
     }
 
     /// The sheet at the default size and at AX5, scrolled to its top.
