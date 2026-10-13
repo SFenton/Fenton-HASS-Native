@@ -74,31 +74,21 @@ struct CameraViewer: View {
     }
 }
 
-/// Loads a camera's `entity_picture` snapshot (a tokenized `/api/camera_proxy` URL) and keeps the last
-/// image on screen while the next one loads, so refreshes never flash.
+/// A camera's `entity_picture` snapshot (a tokenized `/api/camera_proxy` URL) through ``CachedImage``: downsampled
+/// to the tile off the main thread, the last snapshot kept on screen (and on disk for cold launches) while the
+/// next one loads, including when Home Assistant rotates the URL's token (`.agents/patterns/image-cache.md`).
 struct CameraSnapshotView: View {
     var entityId: String
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection
-    @State private var image: CGImage?
 
     var body: some View {
         ZStack {
             Rectangle().fill(.quaternary)
-            if let image {
-                Image(decorative: image, scale: 1).resizable().scaledToFill()
-                    .blur(radius: ScreenshotPrivacy.isRedacting ? 40 : 0)
-            } else {
+            CachedImage(url: snapshotURL) {
                 Image(systemName: "video").font(.title).foregroundStyle(.secondary)
             }
-        }
-        .task(id: snapshotURL) {
-            guard let url = snapshotURL,
-                  let (data, response) = try? await URLSession.shared.data(from: url),
-                  (response as? HTTPURLResponse)?.statusCode == 200,
-                  let source = CGImageSourceCreateWithData(data as CFData, nil),
-                  let loaded = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return }
-            image = loaded
+            .blur(radius: ScreenshotPrivacy.isRedacting ? 40 : 0)
         }
     }
 

@@ -41,6 +41,7 @@ public struct SprinklersScreen: View {
             .padding(.horizontal, HassTokens.Spacing.l)
             .padding(.vertical, HassTokens.Spacing.m)
         }
+        .scrollTelemetry("Sprinklers")
         .accessibilityIdentifier("sprinklers.scroll")
         .navigationTitle("Sprinklers")
         .sheet(item: $open) { controller in

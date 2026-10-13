@@ -78,6 +78,7 @@ struct SecurityPage: View {
             }
             .padding(.vertical, HassTokens.Spacing.m)
         }
+        .scrollTelemetry("Security")
         .accessibilityIdentifier("security.scroll")
         .navigationTitle("Security")
         .toolbar {

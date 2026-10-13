@@ -43,7 +43,7 @@ public final class HassConnection {
     @ObservationIgnored private var lastDelivered: [String: HAEntity] = [:]
 
     /// How long live updates are batched before the disk snapshot is rewritten.
-    static let snapshotDebounce: Duration = .seconds(2)
+    static let snapshotDebounce: Duration = .seconds(10)
 
     // MARK: - Init
 
@@ -253,7 +253,14 @@ public final class HassConnection {
             try? await Task.sleep(for: Self.snapshotDebounce)
             guard !Task.isCancelled, let self else { return }
             self.saveTask = nil
-            try? self.snapshotCache.save(Array(self.store.allValues.values), server: self.server)
+            // Encoding thousands of entities took tens of milliseconds on the main thread mid-scroll; only the
+            // copy of the values happens here. Entering background still saves synchronously.
+            let entities = Array(self.store.allValues.values)
+            let cache = self.snapshotCache
+            let server = self.server
+            Task.detached(priority: .utility) {
+                Telemetry.measure("SnapshotSave") { try? cache.save(entities, server: server) }
+            }
         }
     }
 

@@ -74,6 +74,7 @@ public struct CustomLightsScreen: View {
             .padding(.vertical, HassTokens.Spacing.m)
         }
         .tint(HassTokens.Ink.action)
+        .scrollTelemetry("Custom Lights")
         .accessibilityIdentifier("customLights.scroll")
         .navigationTitle("Custom Lights")
         .sheet(isPresented: $picker) {

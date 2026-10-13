@@ -37,6 +37,7 @@ struct InventoryScreen: View {
             // identifier replaced the editor pane's identifiers, and the bar covered the pane.
             list
                 .frame(maxWidth: .infinity)
+                .scrollTelemetry("Inventory · \(space.rawValue)")
                 .accessibilityIdentifier("inventory.\(space.rawValue)")
                 .floatingActionBar(showsFloatingActions ? floatingActions : [], search: showsFloatingActions ? floatingSearch : nil)
             if canSplit, let editing {

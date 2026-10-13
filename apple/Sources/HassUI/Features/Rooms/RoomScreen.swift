@@ -90,6 +90,7 @@ struct RoomPageContent: View {
             }
             .padding(.vertical, HassTokens.Spacing.m)
         }
+        .scrollTelemetry("Room · \(page.id)")
         .accessibilityIdentifier("room.scroll.\(page.id)")
         .navigationTitle(page.title)
         .toolbar {

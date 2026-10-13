@@ -37,6 +37,9 @@ targets:
         NSCameraUsageDescription: Scan item barcodes and printed expiration dates to add groceries to your inventory.
         UILaunchScreen:
           UIColorName: LaunchBackground
+        # Lets ProMotion iPhones scroll and animate at 120 Hz; without it the app is capped at 60 Hz.
+        CADisableMinimumFrameDurationOnPhone: true
+
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
         # iPhone is portrait-only; iPad allows all four. iPhone Duo gets every orientation at runtime

@@ -71,6 +71,7 @@ struct ClimatePage: View {
             .padding(.horizontal, HassTokens.Spacing.l)
             .padding(.vertical, HassTokens.Spacing.m)
         }
+        .scrollTelemetry("Climate")
         .accessibilityIdentifier("climate.scroll")
         .navigationTitle("Climate")
         .toolbar {

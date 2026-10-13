@@ -173,6 +173,35 @@ struct RoomsTests {
         #expect(caller.calls.isEmpty)
     }
 
+    @Test func flipShowsTheNewStateAtOnceAndRollsBackOnFailure() async {
+        let id = "switch.guest_bathroom_towel_rack_switch_top"
+        let (room, _, caller, scheduler) = controller("guest-bathroom", [id: "off"])
+        let towel = card("guest-bathroom", "Towel Rack")
+        #expect(room.tap(towel) == .ran)
+        #expect(room.display(towel).semantics == .toggle(isOn: true), "Optimistic on before Home Assistant answers")
+        #expect(room.displayedState(id) == "on")
+        await room.waitForCalls()
+        scheduler.fireAll()
+        #expect(room.displayedState(id) == "off", "Gives way to live state when never confirmed")
+
+        caller.failNext = true
+        #expect(room.tap(towel) == .ran)
+        #expect(room.displayedState(id) == "on")
+        await room.waitForCalls()
+        #expect(room.displayedState(id) == "off", "A failed call rolls back without waiting for the timer")
+    }
+
+    @Test func flipFollowsALiveRevert() async {
+        let id = "switch.guest_bathroom_towel_rack_switch_top"
+        let (room, store, _, _) = controller("guest-bathroom", [id: "off"])
+        room.tap(card("guest-bathroom", "Towel Rack"))
+        await room.waitForCalls()
+        // Something else turned it back off: any live change clears the optimistic value.
+        set(store, id, "unavailable")
+        for _ in 0..<5 { await Task.yield() }
+        #expect(room.displayedState(id) == "unavailable")
+    }
+
     @Test func towelRackUsesExplicitTurnOnAndOff() async {
         let id = "switch.guest_bathroom_towel_rack_switch_top"
         let (room, store, caller, _) = controller("guest-bathroom", [id: "off"])

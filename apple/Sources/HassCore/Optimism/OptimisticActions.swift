@@ -2,21 +2,13 @@ import Foundation
 import HassTelemetry
 import Observation
 
-/// A value to show at once for an entity (or overlay key) while a command runs (web `OptimisticStateIntent`,
-/// `ha-sfenton-react-dash@f5a7bf9:src/constants/actionIntents.ts`).
-public struct OptimisticIntent: Equatable, Sendable {
-    /// The overlay key, usually an entity id.
-    public var key: String
-    /// The value to show until Home Assistant confirms it.
-    public var value: String
-    /// How long to wait for confirmation before giving way to the live value.
-    public var revertAfter: Duration
-
-    /// Creates an intent.
-    public init(_ key: String, value: String, revertAfter: Duration = OptimisticActions.defaultRevert) {
-        self.key = key
-        self.value = value
-        self.revertAfter = revertAfter
+public extension OptimisticIntent {
+    /// An intent with the shared default revert time (``OptimisticActions/defaultRevert``).
+    /// - Parameters:
+    ///   - key: The overlay key, usually an entity id.
+    ///   - value: The value to show until Home Assistant confirms it.
+    init(_ key: String, value: String) {
+        self.init(key, value, revertAfter: OptimisticActions.defaultRevert)
     }
 }
 
@@ -51,7 +43,7 @@ public struct OptimisticReset: Equatable, Sendable {
 @Observable
 public final class OptimisticActions {
     /// How long an optimistic value waits for Home Assistant (web `DEFAULT_OPTIMISTIC_REVERT_MS`).
-    public static let defaultRevert: Duration = .seconds(2)
+    public nonisolated static let defaultRevert: Duration = .seconds(2)
 
     /// The pending values.
     public let overlay: OptimisticOverlay
@@ -123,16 +115,16 @@ public final class OptimisticActions {
 
     private func perform(intents: [OptimisticIntent], resets: [OptimisticReset],
                          send: @escaping @MainActor (any HassServiceCalling) async throws -> Void) -> Task<Void, Never> {
-        for reset in resets where reset.values.contains(overlay.pending[reset.key] ?? "\u{0}") {
+        for reset in resets where reset.values.contains(overlay.pending[reset.key] ?? "") && overlay.pending[reset.key] != nil {
             overlay.reset(reset.key)
         }
         var committed: [(key: String, generation: Int)] = []
         for intent in intents {
-            guard let generation = overlay.commit(intent.key, value: intent.value, live: live(intent.key), revertAfter: intent.revertAfter)
+            guard let generation = overlay.commit(intent.entityId, value: intent.value, live: live(intent.entityId), revertAfter: intent.revertAfter)
             else { continue }
-            committed.append((intent.key, generation))
-            if overlay.pending[intent.key] != nil {
-                confirmations[intent.key] = Telemetry.begin(Telemetry.Name.optimisticConfirm, intent.key)
+            committed.append((intent.entityId, generation))
+            if overlay.pending[intent.entityId] != nil {
+                confirmations[intent.entityId] = Telemetry.begin(Telemetry.Name.optimisticConfirm, intent.entityId)
             }
         }
         let caller = caller

@@ -1,4 +1,5 @@
 import HassCore
+import HassDesign
 import SwiftUI
 
 /// The app's root: sign-in or the main tabs, plus scene-phase handling.
@@ -30,6 +31,12 @@ public struct RootView: View {
             }
         }
         .observesDeviceSignals()
+        .task {
+            // Telemetry (`.agents/patterns/telemetry.md`): MetricKit's daily reports, and the image cache kept
+            // under its disk budget.
+            MetricKitCollector.shared.start()
+            await Task.detached(priority: .background) { ImagePipeline.shared.trimDisk() }.value
+        }
         .onChange(of: scenePhase) { _, phase in
             guard case let .signedIn(_, lifecycle) = session.phase else { return }
             switch phase {

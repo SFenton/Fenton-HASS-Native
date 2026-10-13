@@ -99,6 +99,7 @@ struct HouseholdSettingsPageView: View {
             .frame(maxWidth: .infinity)
         }
         .navigationTitle(page.pageTitle)
+        .scrollTelemetry("Settings · \(page.rawValue)")
         .accessibilityIdentifier("household.\(page.rawValue)")
     }
 }

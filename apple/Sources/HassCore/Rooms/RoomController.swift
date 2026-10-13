@@ -104,6 +104,9 @@ public final class RoomController {
     public let caller: any HassServiceCalling
     private var remotes: [String: MediaRemoteController] = [:]
     private var inFlight: [Task<Void, Never>] = []
+    /// Optimistic power for flip cards (`.agents/patterns/optimistic-actions.md`). Cleared by any live change, so a
+    /// light that Presence Based Lighting turns back off shows the truth rather than the tap.
+    private let flips: OptimisticActions
 
     /// Creates a controller.
     /// - Parameters:
@@ -115,6 +118,9 @@ public final class RoomController {
         self.page = page
         self.store = store
         self.caller = caller
+        var flipRules: [String: OptimisticOverlay.ClearRule] = [:]
+        for card in page.allCards where card.action == .flip { flipRules[card.entityId] = .liveChange }
+        flips = OptimisticActions(store: store, rules: flipRules, caller: caller, scheduler: scheduler ?? TaskRevertScheduler())
         for id in page.remoteIds {
             guard let config = MediaRemotes.config(id: id) else { continue }
             remotes[id] = scheduler.map { MediaRemoteController(config: config, store: store, caller: caller, scheduler: $0) }
@@ -130,7 +136,7 @@ public final class RoomController {
     /// The optimistic value while one shows, else the live state.
     public func displayedState(_ entityId: String) -> String? {
         if let id = page.optimisticRemoteId, let remote = remotes[id] { return remote.displayedState(entityId) }
-        return store.entity(entityId).state?.state
+        return flips.shown(entityId)
     }
 
     /// The entity with its displayed state.
@@ -294,8 +300,10 @@ public final class RoomController {
     private func run(_ action: RoomCardAction, on card: RoomCard) {
         switch action {
         case .flip:
-            let command = LightControl.flip(card.entityId, shownOn: RoomFormat.isActive(entity(card.entityId)))
-            send(command.domain, command.service, command.serviceData)
+            let shownOn = RoomFormat.isActive(entity(card.entityId))
+            let command = LightControl.flip(card.entityId, shownOn: shownOn)
+            inFlight.append(flips.perform(command.domain, command.service, data: command.serviceData,
+                                          showing: [.init(card.entityId, value: shownOn ? "off" : "on")]))
         case let .remote(remoteAction):
             if let id = page.optimisticRemoteId, let remote = remotes[id] {
                 remote.run(remoteAction, entityId: card.entityId)

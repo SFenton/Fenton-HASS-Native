@@ -70,17 +70,29 @@ public struct DynamicGridLayout: Layout {
         self.spacing = spacing
     }
 
-    public func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    /// Row heights measured per width during one layout pass. Scroll views and stacks propose the same width
+    /// several times per pass, and nested grids multiply that; measuring every tile once per width instead of
+    /// once per call cut layout work on room pages (`.agents/patterns/dynamic-grid.md`).
+    public struct Cache {
+        var rows: [CGFloat: [CGFloat]] = [:]
+    }
+
+    public func makeCache(subviews: Subviews) -> Cache { Cache() }
+
+    /// Any change to the subviews (or their content) invalidates every measurement.
+    public func updateCache(_ cache: inout Cache, subviews: Subviews) { cache.rows.removeAll(keepingCapacity: true) }
+
+    public func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) -> CGSize {
         // Unspecified or unbounded (`.infinity`, e.g. a hosting view's maximum-size probe): the ideal width.
         let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? minCellWidth * CGFloat(maxColumns)
-        let rows = rowHeights(width: width, subviews: subviews)
+        let rows = rowHeights(width: width, subviews: subviews, cache: &cache)
         let height = rows.reduce(0, +) + spacing * CGFloat(max(rows.count - 1, 0))
         return CGSize(width: width, height: height)
     }
 
-    public func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+    public func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) {
         let metrics = DynamicGridMetrics(width: bounds.width, minCellWidth: minCellWidth, maxColumns: maxColumns, spacing: spacing)
-        let rows = rowHeights(width: bounds.width, subviews: subviews)
+        let rows = rowHeights(width: bounds.width, subviews: subviews, cache: &cache)
         let placements = metrics.placements(spans: subviews.map { $0[GridSpanKey.self] })
         var rowTops: [CGFloat] = []
         var y = bounds.minY
@@ -99,7 +111,14 @@ public struct DynamicGridLayout: Layout {
         }
     }
 
-    private func rowHeights(width: CGFloat, subviews: Subviews) -> [CGFloat] {
+    private func rowHeights(width: CGFloat, subviews: Subviews, cache: inout Cache) -> [CGFloat] {
+        if let rows = cache.rows[width] { return rows }
+        let rows = measureRows(width: width, subviews: subviews)
+        cache.rows[width] = rows
+        return rows
+    }
+
+    private func measureRows(width: CGFloat, subviews: Subviews) -> [CGFloat] {
         let metrics = DynamicGridMetrics(width: width, minCellWidth: minCellWidth, maxColumns: maxColumns, spacing: spacing)
         let placements = metrics.placements(spans: subviews.map { $0[GridSpanKey.self] })
         var heights: [CGFloat] = []

@@ -23,6 +23,7 @@ public struct ComponentGallery: View {
         case floatingActions = "floating-actions"
         case inventory
         case chores
+        case performance
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -75,6 +76,7 @@ public struct ComponentGallery: View {
                     EmptyView()
                     #endif
                 case .chores: ChoresGallery()
+                case .performance: PerformanceGallery()
                 case .rooms: EmptyView()
                 case .vacation: EmptyView()
                 case .food: EmptyView()
