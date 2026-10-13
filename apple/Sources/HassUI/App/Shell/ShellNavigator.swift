@@ -12,8 +12,17 @@ final class ShellNavigator {
     var selection: AppSection
     /// Each section's push path; a section at its root has an empty path.
     var paths: [AppSection: NavigationPath] = [:]
+    /// The trailing Quick Links tab is showing (``RootTab/quickLinks``); ``selection`` keeps the section under it.
+    private(set) var isQuickLinksActive = false
     /// The flyout is showing.
     private(set) var isFlyoutOpen = false
+    /// The signed-in user's display name for the profile button, kept between launches so the button never
+    /// changes after the first frame (``ProfileButton``).
+    var profileName: String? = UserDefaults.standard.string(forKey: ShellNavigator.profileNameKey) {
+        didSet { UserDefaults.standard.set(profileName, forKey: Self.profileNameKey) }
+    }
+    /// Defaults key for ``profileName``.
+    nonisolated static let profileNameKey = "shell.profileName"
     /// Overdue chore count for the Chores badge (web `useDailyReportContext().overdueCount`);
     /// nil until the Chores feature provides it.
     var overdueChores: Int?
@@ -32,6 +41,23 @@ final class ShellNavigator {
             set: { self.paths[section] = $0 }
         )
     }
+
+    /// The root tab view's selection: Quick Links while it shows, otherwise the selected section.
+    var rootTab: RootTab {
+        get { isQuickLinksActive ? .quickLinks : .section(selection) }
+        set {
+            switch newValue {
+            case .quickLinks:
+                isQuickLinksActive = true
+            case let .section(section):
+                isQuickLinksActive = false
+                selection = section
+            }
+        }
+    }
+
+    /// Leaves the Quick Links tab for the section under it (the window grew into flyout style).
+    func closeQuickLinks() { isQuickLinksActive = false }
 
     /// Whether a section is showing its root page.
     func isAtRoot(_ section: AppSection) -> Bool {
@@ -65,10 +91,11 @@ final class ShellNavigator {
     /// Chooses a section from the flyout or tab bar. Choosing the current section pops it to its root
     /// (the web's nav links always land on the section root).
     func select(_ section: AppSection) {
-        if section == selection {
+        if section == selection && !isQuickLinksActive {
             paths[section] = NavigationPath()
         }
         selection = section
+        isQuickLinksActive = false
         isFlyoutOpen = false
     }
 }

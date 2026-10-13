@@ -15,6 +15,9 @@ public final class AppSession {
     /// Current phase.
     public private(set) var phase: Phase = .signedOut
 
+    /// The blurred house photo behind every page, for the signed-in server (``HouseBackdrop``).
+    @ObservationIgnored private(set) var backdrop: HouseBackdropStore?
+
     /// Token source for the signed-in server, used by the Home Assistant settings web view.
     @ObservationIgnored public private(set) var tokens: TokenManager?
 
@@ -66,6 +69,7 @@ public final class AppSession {
         WeatherForecastDiskCache().clear()
         UserDefaults.standard.removeObject(forKey: ChoresModel.viewerDefaultsKey)
         tokens = nil
+        backdrop = nil
         phase = .signedOut
         if let stored {
             Task.detached { await HassLoginFlow.revoke(server: stored.server, refreshToken: stored.refreshToken) }
@@ -76,6 +80,8 @@ public final class AppSession {
         let connection = HassConnection(server: server, tokens: tokens, store: EntityStore(), snapshotCache: snapshotCache)
         let lifecycle = ConnectionLifecycle(connection: connection)
         self.tokens = tokens
+        // Created before the phase changes so the first signed-in frame already has the cached photo.
+        backdrop = HouseBackdropStore(server: server)
         phase = .signedIn(connection, lifecycle)
         lifecycle.didBecomeActive()
     }

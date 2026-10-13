@@ -74,14 +74,14 @@ final class RoomsJourneyTests: XCTestCase {
         lights.tap()
         XCTAssertTrue(element("room.sheet.lights-living-room", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars["Living Room Lights"].exists)
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap()
 
         let vents = element("room.card.Vents", in: app)
         reveal(vents, in: app)
         vents.tap()
         XCTAssertTrue(element("room.entity.cover.living_room_vent_1_vent", in: app).waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["room.entity.cover.living_room_vent_1_vent"].exists, "Read-only tiles are not buttons")
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap()
 
         let remote = element("room.card.Living Room Remote", in: app)
         reveal(remote, in: app)
@@ -149,7 +149,7 @@ final class RoomsJourneyTests: XCTestCase {
         reveal(wake, in: app)
         wake.tap()
         XCTAssertTrue(element("wake.subtitle", in: app).waitForExistence(timeout: 10), "The wake light opens its sheet")
-        app.buttons["Done"].firstMatch.tap()
+        app.buttons["Close"].firstMatch.tap()
 
         let bed = element("room.card.Stephen's Bed", in: app)
         reveal(bed, in: app)

@@ -6,3 +6,4 @@
 - The rail scrolls horizontally; chips keep fixed widths so live values never shift neighbors.
 - Home has six chips in web order: Lights, Security, Climate, Occupancy, Contact Sensors, Air Quality. Summaries follow the web (`HomeConfig.summary`): Lights and Contact Sensors count their rooms' entities, Occupancy reads Detected/Clear, Air Quality joins the AQI and PM2.5 range helpers. Every chip but Security opens a [room overview sheet](room-overview-sheet.md); Security opens `SecuritySystemSheet`.
 - Each chip is a button with the label "<title>, <summary>" for VoiceOver and opens a sheet.
+- Chips are pills (`StatusChipButton`, `StatusChipStyle`): a capsule at least 48 pt tall (web `.headerPill`), frosted material washed with the chip's tone (32% while its entity is active, 14% otherwise) and a light hairline edge. Owner, 2026-10-13: "Page-level chips are not pills like they are in web or the Apple Home app, and need background colors."

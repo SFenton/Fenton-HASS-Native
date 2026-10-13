@@ -156,7 +156,7 @@ final class NavigationJourneyTests: XCTestCase {
         let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 2, dy: y))
         start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 200, dy: 0)))
         XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "Edge swipe did not open the flyout")
-        XCTAssertFalse(app.navigationBars.buttons["Done"].exists, "The edge swipe also activated the control under it")
+        XCTAssertFalse(app.navigationBars.buttons["Close"].exists, "The edge swipe also activated the control under it")
         app.buttons["nav.flyout.scrim"].tap()
         XCTAssertTrue(flyout(app).waitForNonExistence(timeout: 3))
 
@@ -174,7 +174,7 @@ final class NavigationJourneyTests: XCTestCase {
         }
         if camera.exists, camera.frame.minX < 18 {
             camera.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 18 - camera.frame.minX - 1, dy: camera.frame.height / 2)).tap()
-            let done = app.navigationBars.buttons["Done"]
+            let done = app.navigationBars.buttons["Close"]
             XCTAssertTrue(done.waitForExistence(timeout: 5), "A tap on a camera tile inside the leading edge was swallowed")
             done.tap()
             tappedAtEdge += 1

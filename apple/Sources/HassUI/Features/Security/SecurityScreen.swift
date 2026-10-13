@@ -88,12 +88,10 @@ struct SecurityPage: View {
             switch sheet {
             case .system:
                 SecuritySystemSheet(caller: caller)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
+                    .hassSheet()
             case .contacts:
                 RoomOverviewSheet(kind: .contacts)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
+                    .hassSheet()
             case let .camera(camera):
                 CameraViewer(camera: camera)
             }

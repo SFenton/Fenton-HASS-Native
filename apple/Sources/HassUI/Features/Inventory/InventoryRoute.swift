@@ -55,10 +55,10 @@ struct InventoryDestinations: ViewModifier {
     func body(content: Content) -> some View {
         content
             .navigationDestination(for: InventoryRoute.self) { route in
-                screen(route)
+                screen(route).pageChrome()
             }
             .navigationDestination(item: $launchSpace) { space in
-                screen(.space(space))
+                screen(.space(space)).pageChrome()
             }
     }
 

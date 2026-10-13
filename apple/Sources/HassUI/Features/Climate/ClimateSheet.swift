@@ -63,8 +63,8 @@ struct ClimateSheet: View {
     var body: some View {
         NavigationStack(path: $path) {
             ClimateSheetScroll {
-                SheetTabPicker(tabs: ClimateConfig.Tab.allCases, label: "Thermostat sections", title: \.title,
-                               selection: $tab, identifier: "climate.sheet.tabs")
+                ModalTabBar(tabs: ClimateConfig.Tab.allCases, label: "Thermostat sections", title: \.title,
+                            selection: $tab, identifier: "climate.sheet.tabs")
                 switch tab {
                 case .rooms: ClimateRoomsTab(controller: controller) { path.append($0) }
                 case .automation: ClimateAutomationTab(controller: controller) { path.append($0) }
@@ -72,20 +72,22 @@ struct ClimateSheet: View {
                 }
             }
             .accessibilityIdentifier("climate.sheet.\(tab.rawValue)")
+            .modalChrome()
             .climateSheetTitle(ClimateConfig.sheetTitle)
-            .toolbar { doneButton }
+            .toolbar { closeButton }
             .navigationDestination(for: ClimateRoute.self) { route in
                 ClimateSheetScroll { detail(route) }
                     .accessibilityIdentifier("climate.detail")
+                    .modalChrome()
                     .climateSheetTitle(route.title)
-                    .toolbar { doneButton }
+                    .toolbar { closeButton }
             }
         }
         .environment(controller.store)
     }
 
-    private var doneButton: some ToolbarContent {
-        ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+    private var closeButton: some ToolbarContent {
+        SheetCloseItem { dismiss() }
     }
 
     @ViewBuilder
@@ -148,7 +150,6 @@ struct ClimateSheetHeading: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, HassTokens.Spacing.l)
             .padding(.vertical, HassTokens.Spacing.s)
-            .background(.bar)
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("climate.sheetHeading")
     }

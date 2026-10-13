@@ -28,11 +28,10 @@ struct SprinklerControllerSheet: View {
     var body: some View {
         NavigationStack(path: $path) {
             overview
+                .modalChrome()
                 .navigationTitle(controller.config.title)
                 .inlineNavigationTitle()
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-                }
+                .toolbar { SheetCloseItem { dismiss() } }
                 .navigationDestination(for: SprinklerDetail.self) { detail in
                     Group {
                         switch detail {
@@ -40,10 +39,9 @@ struct SprinklerControllerSheet: View {
                         case let .schedule(zone): SprinklerSchedulePage(controller: controller, zone: zone) { pop() }
                         }
                     }
-                    // Done on every level, so the sheet closes from a pushed page too (HIG: Sheets).
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-                    }
+                    .modalChrome()
+                    // Close on every level, so the sheet closes from a pushed page too (HIG: Sheets).
+                    .toolbar { SheetCloseItem { dismiss() } }
                 }
         }
         .tint(HassTokens.Ink.action)

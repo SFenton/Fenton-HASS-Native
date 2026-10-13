@@ -231,14 +231,14 @@ struct DirectionalPad: View {
 
 // MARK: - Tab picker
 
-/// The remote's section tabs (``SheetTabPicker``).
+/// The remote's section tabs (``ModalTabBar``).
 struct RemoteTabPicker: View {
     var tabs: [MediaRemoteTab]
     var title: String
     @Binding var selection: MediaRemoteTab
 
     var body: some View {
-        SheetTabPicker(tabs: tabs, label: "\(title) sections", title: \.title, selection: $selection, identifier: "remote.tabs")
+        ModalTabBar(tabs: tabs, label: "\(title) sections", title: \.title, selection: $selection, identifier: "remote.tabs")
     }
 }
 

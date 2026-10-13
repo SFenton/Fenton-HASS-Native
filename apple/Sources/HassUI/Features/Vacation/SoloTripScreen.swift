@@ -178,17 +178,17 @@ struct SoloTripEditorSheet: View {
                 }
                 .padding(HassTokens.Spacing.l)
             }
+            .modalChrome()
             .navigationTitle(SoloTripCopy.editorTitle)
             .inlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { controller.closeEditor() }
+                ToolbarItem(placement: .confirmationAction) {
+                    SheetCloseButton(identifier: "soloTrip.editor.cancel") { controller.closeEditor() }
                         .disabled(controller.isScheduling || controller.household.pending)
-                        .accessibilityIdentifier("soloTrip.editor.cancel")
                 }
             }
         }
         .interactiveDismissDisabled(controller.isScheduling)
-        .presentationDetents([.large])
+        .hassSheet()
     }
 }

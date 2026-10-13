@@ -87,3 +87,66 @@ enum ShellNavigationStyle: Equatable, Sendable {
         isRegularWidth ? .flyout : .tabBar
     }
 }
+
+// MARK: - Compact tab bar
+
+/// A tab in the root tab view: a section, or the trailing Quick Links tab.
+enum RootTab: Hashable, Sendable {
+    case section(AppSection)
+    /// Quick Links (web `GlobalQuickLinksAction`), the tab bar's trailing accessory tab on iOS 26 and later.
+    case quickLinks
+}
+
+/// Which tabs the compact (iPhone, folded Duo) tab bar shows (owner, 2026-10-13: "Quick Links should be an
+/// accessory like search button is in FestivalNativeApps and profile goes in top right ... show
+/// Home/Security/Climate/Chores as the primary four and Settings can be accessed via flyout").
+///
+/// iOS 26 and later separate a trailing tab (`Tab(role: .search)`) from the bar, as FestivalNativeApps does for
+/// Search. A phone shows five tabs before "More", and the trailing tab counts toward them (FestivalNativeApps
+/// measured on iOS 26.5: five sections plus Search moved Search into More), so Settings leaves the bar and opens
+/// from the menu button (``NavigationFlyout``). HIG Tab bars: "Avoid overflow" and "A dedicated Search tab may be
+/// trailing."
+enum CompactTabLayout: Equatable, Sendable {
+    /// All five sections as tabs; Quick Links is a toolbar button (before iOS 26).
+    case allSections
+    /// The four primary sections and the trailing Quick Links tab; Settings is in the menu.
+    case primaryWithQuickLinks
+
+    /// The layout for the running system.
+    /// - Parameter supportsTrailingTab: The system draws a role tab apart from the bar (iOS 26 and later).
+    static func resolve(supportsTrailingTab: Bool) -> CompactTabLayout {
+        supportsTrailingTab ? .primaryWithQuickLinks : .allSections
+    }
+
+    /// Sections shown as tabs, in order.
+    var visibleSections: [AppSection] {
+        switch self {
+        case .allSections: AppSection.allCases
+        case .primaryWithQuickLinks: NavigationMenu.primary
+        }
+    }
+
+    /// Whether Quick Links is a tab rather than a toolbar button.
+    var hasQuickLinksTab: Bool { self == .primaryWithQuickLinks }
+}
+
+/// Where the shell puts navigation chrome for a window (pure, so it can be unit tested).
+struct ShellChrome: Equatable, Sendable {
+    /// Show the leading menu button that opens ``NavigationFlyout``.
+    var showsMenuButton: Bool
+    /// Quick Links is a toolbar button on section roots (otherwise it is the trailing tab).
+    var showsQuickLinksButton: Bool
+
+    /// Resolves the chrome.
+    /// - Parameters:
+    ///   - style: The root navigation style.
+    ///   - layout: The compact tab layout.
+    static func resolve(style: ShellNavigationStyle, layout: CompactTabLayout) -> ShellChrome {
+        switch style {
+        case .flyout:
+            ShellChrome(showsMenuButton: true, showsQuickLinksButton: true)
+        case .tabBar:
+            ShellChrome(showsMenuButton: layout == .primaryWithQuickLinks, showsQuickLinksButton: !layout.hasQuickLinksTab)
+        }
+    }
+}

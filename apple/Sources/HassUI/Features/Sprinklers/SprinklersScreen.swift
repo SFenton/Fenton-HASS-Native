@@ -47,8 +47,7 @@ public struct SprinklersScreen: View {
         .sheet(item: $open) { controller in
             SprinklerControllerSheet(controller: controller, initialDetail: initialDetail)
                 .galleryLastCallBanner()
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .hassSheet()
         }
     }
 }

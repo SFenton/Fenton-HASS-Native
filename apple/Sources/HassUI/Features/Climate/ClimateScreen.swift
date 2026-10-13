@@ -82,8 +82,7 @@ struct ClimatePage: View {
                 // Bottom edge: at the top a wrapped debug line covered the sheet's Back and Done on iPad.
                 .safeAreaInset(edge: .bottom) { sheetAccessory }
                 .climateSheetSizing()
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .hassSheet()
         }
     }
 

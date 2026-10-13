@@ -50,14 +50,10 @@ struct HomeAssistantSettingsView: View {
                 webSection
                 signOutSection
             }
+            .modalChrome()
             .navigationTitle("Home Assistant")
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .accessibilityIdentifier("haSettings.done")
-                }
-            }
+            .toolbar { SheetCloseItem(identifier: "haSettings.done") { dismiss() } }
             .navigationDestination(for: WebPage.self) { page in
                 HomeAssistantWebPage(page: page)
             }

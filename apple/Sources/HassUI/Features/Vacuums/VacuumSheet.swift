@@ -89,15 +89,14 @@ public struct VacuumSheet: View {
                 .accessibilityIdentifier(twoColumns ? "vacuum.layout.twoColumn" : "vacuum.layout.singleColumn")
             }
             .background { WindowMetricsReader(metrics: $window) }
+            .modalChrome()
             .navigationTitle("\(controller.vacuum.title) Robot Vacuum")
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
+            .toolbar { SheetCloseItem { dismiss() } }
             .navigationDestination(for: Route.self) { route in
                 switch route {
-                case .areaEditor: VacuumAreaEditor(controller: controller, mapState: mapState)
-                case let .report(box): VacuumOutcomeDetailView(vacuum: controller.vacuum, contract: box.contract)
+                case .areaEditor: VacuumAreaEditor(controller: controller, mapState: mapState).modalChrome()
+                case let .report(box): VacuumOutcomeDetailView(vacuum: controller.vacuum, contract: box.contract).modalChrome()
                 }
             }
         }

@@ -32,6 +32,7 @@ struct AddGroceryItemSheet: View {
                 }
             }
             .disabled(submitting)
+            .modalChrome()
             .navigationTitle("Add Grocery Item")
             .inlineNavigationTitle()
             .toolbar {
@@ -45,7 +46,7 @@ struct AddGroceryItemSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .hassSheet()
         .interactiveDismissDisabled(submitting)
         .onAppear { focused = true }
     }
@@ -117,6 +118,7 @@ struct AddAdminTodoSheet: View {
                 }
             }
             .disabled(submitting)
+            .modalChrome()
             .navigationTitle("Add Task")
             .inlineNavigationTitle()
             .toolbar {
@@ -259,6 +261,7 @@ struct RenameTodoItemSheet: View {
                 }
             }
             .disabled(submitting)
+            .modalChrome()
             .navigationTitle("Edit Task")
             .inlineNavigationTitle()
             .toolbar {
@@ -272,7 +275,7 @@ struct RenameTodoItemSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .hassSheet()
         .interactiveDismissDisabled(submitting)
     }
 

@@ -134,8 +134,7 @@ struct RoomPageContent: View {
 
     func cardSheet(_ card: RoomCard) -> some View {
         RoomCardSheet(controller: controller, card: card)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+            .hassSheet()
     }
 
     func remoteSheet(_ selection: RemoteSelection) -> some View {

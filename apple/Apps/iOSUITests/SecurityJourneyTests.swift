@@ -164,7 +164,7 @@ final class SecurityJourneyTests: XCTestCase {
         expectCall("alarm_control_panel.alarm_disarm entity_id=alarm_control_panel.aqara_hub_m3_0056_security_system_2", in: app)
         XCTAssertTrue(disarm.wait(for: \.isSelected, toEqual: true, timeout: 5))
 
-        app.buttons["Done"].firstMatch.tap()
+        app.buttons["Close"].firstMatch.tap()
         expectValue(tile(Tile.alarm, in: app), "Disarmed")
     }
 
@@ -177,7 +177,7 @@ final class SecurityJourneyTests: XCTestCase {
         entryway.tap()
         XCTAssertTrue(app.navigationBars["Entryway Contact Sensors"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.descendants(matching: .any)["room.entity.binary_sensor.front_door_contact_sensor_contact"].exists)
-        app.buttons["Done"].firstMatch.tap()
+        app.buttons["Close"].firstMatch.tap()
     }
 
     // MARK: - Audits

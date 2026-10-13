@@ -11,15 +11,72 @@ import SwiftUI
 struct MainTabView: View {
     @SceneStorage("selectedTab") private var storedSelection: AppSection = .home
     @State private var navigator = ShellNavigator()
+    @State private var canvas: CGSize = .zero
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(HassConnection.self) private var connection: HassConnection?
 
     private var style: ShellNavigationStyle {
         ShellNavigationStyle.resolve(isRegularWidth: horizontalSizeClass == .regular)
     }
 
+    private var layout: CompactTabLayout {
+        if #available(iOS 26.0, macOS 26.0, *) { return .resolve(supportsTrailingTab: true) }
+        return .resolve(supportsTrailingTab: false)
+    }
+
+    private var chrome: ShellChrome { .resolve(style: style, layout: layout) }
+
     var body: some View {
-        @Bindable var navigator = navigator
         ZStack(alignment: .leading) {
+            tabs
+                // While the flyout is open its scrim covers the content; hide the content from VoiceOver too.
+                .accessibilityHidden(while: navigator.isFlyoutOpen)
+                .flyoutEdgeSwipe(navigator, isEnabled: chrome.showsMenuButton)
+            if chrome.showsMenuButton {
+                NavigationFlyout()
+            }
+        }
+        // The window's full size, which the page backdrop photo fills on every page (``HouseBackdrop``).
+        .background {
+            Color.clear
+                .ignoresSafeArea()
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { canvas = $0 }
+        }
+        .environment(navigator)
+        .environment(\.shellNavigationStyle, style)
+        .environment(\.shellChrome, chrome)
+        .environment(\.backdropCanvas, canvas)
+        .onAppear { navigator.selection = storedSelection }
+        .onChange(of: navigator.selection) { _, section in storedSelection = section }
+        .onChange(of: style) { _, newStyle in
+            if newStyle == .tabBar, !chrome.showsMenuButton { navigator.dismissFlyout() }
+            if newStyle == .flyout { navigator.closeQuickLinks() }
+        }
+        .task(id: connection?.server.baseURL) { await loadProfileName() }
+    }
+
+    /// The root tab view: iOS 26 and later use the `Tab` API with the trailing Quick Links tab in compact width.
+    @ViewBuilder
+    private var tabs: some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            @Bindable var navigator = navigator
+            TabView(selection: $navigator.rootTab) {
+                ForEach(AppSection.allCases) { section in
+                    Tab(section.title, systemImage: section.symbol, value: RootTab.section(section)) {
+                        sectionStack(for: section)
+                    }
+                    .badge(NavigationMenu.badge(for: section, overdue: navigator.overdueChores) ?? 0)
+                    // Settings leaves the compact bar for the menu; it stays a tab so the menu can select it.
+                    .hidden(style == .tabBar && !layout.visibleSections.contains(section))
+                }
+                if style == .tabBar && layout.hasQuickLinksTab {
+                    Tab(QuickLinks.title, systemImage: QuickLinksButton.symbol, value: RootTab.quickLinks, role: .search) {
+                        QuickLinksTab(caller: connection)
+                    }
+                }
+            }
+        } else {
+            @Bindable var navigator = navigator
             TabView(selection: $navigator.selection) {
                 ForEach(AppSection.allCases) { section in
                     sectionStack(for: section)
@@ -28,19 +85,6 @@ struct MainTabView: View {
                         .tag(section)
                 }
             }
-            // While the flyout is open its scrim covers the content; hide the content from VoiceOver too.
-            .accessibilityHidden(while: navigator.isFlyoutOpen)
-            .flyoutEdgeSwipe(navigator, isEnabled: style == .flyout)
-            if style == .flyout {
-                NavigationFlyout()
-            }
-        }
-        .environment(navigator)
-        .environment(\.shellNavigationStyle, style)
-        .onAppear { navigator.selection = storedSelection }
-        .onChange(of: navigator.selection) { _, section in storedSelection = section }
-        .onChange(of: style) { _, newStyle in
-            if newStyle == .tabBar { navigator.dismissFlyout() }
         }
     }
 
@@ -67,12 +111,19 @@ struct MainTabView: View {
             }
         }
     }
+
+    /// Reads the signed-in user's name for the profile button; the cached name shows until it arrives.
+    private func loadProfileName() async {
+        guard let connection, let user = try? await connection.currentUser() else { return }
+        if navigator.profileName != user.name { navigator.profileName = user.name }
+    }
 }
 
 extension View {
-    /// Shell chrome every page in a section stack applies, pushed pages included: hides the root tab bar
-    /// in flyout style (on iPadOS 18+ the floating top tab bar too). A pushed page without it brings the
-    /// tab bar back.
+    /// Shell chrome every page in a section stack applies, pushed pages included: the header fade (no
+    /// translucent band behind the navigation bar; ``HeaderEdgeFade``), the blurred house backdrop
+    /// (``HouseBackdrop``), and the root tab bar hidden in flyout style (on iPadOS 18+ the floating top tab bar
+    /// too). A pushed page without it brings the tab bar back and draws no backdrop.
     func pageChrome() -> some View { modifier(PageChrome()) }
 }
 
@@ -87,11 +138,35 @@ private struct PageChrome: ViewModifier {
         // Both layers: SwiftUI vends a page's own elements past UIKit, and the UIKit navigation bar is
         // out of SwiftUI's reach.
         content
+            .headerEdgeFade()
+            .scrollContentBackground(.hidden)
+            .pageBackdrop()
             .accessibilityHidden(while: isFlyoutOpen)
             .toolbar(style == .flyout ? .hidden : .automatic, for: .tabBar)
             .background(TabControllerAccessibilityHider(hidden: isFlyoutOpen))
         #else
-        content.accessibilityHidden(while: isFlyoutOpen)
+        content
+            .headerEdgeFade()
+            .scrollContentBackground(.hidden)
+            .pageBackdrop()
+            .accessibilityHidden(while: isFlyoutOpen)
+        #endif
+    }
+}
+
+extension View {
+    /// Draws ``HouseBackdrop`` behind this page: as the navigation container's background on iOS 18 and later
+    /// (it fills the page, under the bars, and is never masked by the header fade), else as a background.
+    @ViewBuilder
+    func pageBackdrop() -> some View {
+        #if os(iOS)
+        if #available(iOS 18.0, *) {
+            containerBackground(for: .navigation) { HouseBackdrop() }
+        } else {
+            background { HouseBackdrop() }
+        }
+        #else
+        background { HouseBackdrop() }
         #endif
     }
 }

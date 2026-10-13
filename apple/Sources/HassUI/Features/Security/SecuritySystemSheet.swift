@@ -12,9 +12,8 @@ struct SecuritySystemSheet: View {
     var body: some View {
         NavigationStack {
             SecurityControls(caller: caller)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-                }
+                .modalChrome()
+                .toolbar { SheetCloseItem { dismiss() } }
         }
     }
 }

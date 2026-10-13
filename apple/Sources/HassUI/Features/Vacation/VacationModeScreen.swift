@@ -198,15 +198,11 @@ struct VacationConfirmationSheet: View {
                 }
                 .padding(HassTokens.Spacing.l)
             }
+            .modalChrome()
             .navigationTitle(Vacation.Copy.confirmTitle)
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { controller.cancelConfirmation() }
-                        .accessibilityIdentifier("vacation.confirm.cancel")
-                }
-            }
+            .toolbar { SheetCloseItem(identifier: "vacation.confirm.cancel") { controller.cancelConfirmation() } }
         }
-        .presentationDetents([.large])
+        .hassSheet()
     }
 }

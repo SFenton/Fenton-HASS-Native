@@ -38,6 +38,7 @@ struct RoomDeviceSheetChrome<Content: View>: View {
     var body: some View {
         NavigationStack {
             content()
+                .modalChrome()
                 .navigationTitle(title)
                 .inlineNavigationTitle()
                 .toolbar {
@@ -54,9 +55,7 @@ struct RoomDeviceSheetChrome<Content: View>: View {
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("device.sheet.title")
                     }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }.accessibilityIdentifier("device.sheet.done")
-                    }
+                    SheetCloseItem(identifier: "device.sheet.done") { dismiss() }
                 }
         }
         .accessibilityIdentifier(identifier)
@@ -139,8 +138,7 @@ private struct RoomDevicePresentation: ViewModifier {
 
     func body(content: Content) -> some View {
         let sheet = content
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
+            .hassSheet()
         if #available(iOS 18.0, macOS 15.0, *) {
             switch size {
             case .form: sheet.presentationSizing(.form)

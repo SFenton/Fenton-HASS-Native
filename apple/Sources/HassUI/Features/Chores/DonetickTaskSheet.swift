@@ -50,6 +50,7 @@ struct DonetickTaskSheet: View {
                     ProgressView("Loading task").frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
+            .modalChrome()
             .navigationTitle(mode.editTarget == nil ? "Create Task" : "Edit Task")
             .inlineNavigationTitle()
             .toolbar {

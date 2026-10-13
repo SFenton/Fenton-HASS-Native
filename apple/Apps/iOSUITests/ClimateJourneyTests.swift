@@ -21,7 +21,7 @@ final class ClimateJourneyTests: XCTestCase {
         if clean { app.launchEnvironment["FENTON_GALLERY_CLEAN"] = "1" }
         app.launchArguments += arguments
         app.launch()
-        let ready = open == nil ? element("climate.wholeHome", in: app) : app.buttons["Done"]
+        let ready = open == nil ? element("climate.wholeHome", in: app) : app.buttons["Close"]
         XCTAssertTrue(ready.waitForExistence(timeout: 15), "Climate did not appear")
         return app
     }
@@ -81,11 +81,11 @@ final class ClimateJourneyTests: XCTestCase {
     }
 
     /// Back to the parent page, confirmed by its heading (`parent`, default the sheet's root title). Tries the
-    /// `BackButton` (folded Duo rail, iPad), then the bar button that isn't Done.
+    /// `BackButton` (folded Duo rail, iPad), then the bar button that isn't Close.
     private func back(_ app: XCUIApplication, to parent: String = "Advanced Controls",
                       file: StaticString = #filePath, line: UInt = #line) {
         var candidates: [XCUIElement] = [app.buttons["BackButton"]]
-        candidates += app.navigationBars.buttons.allElementsBoundByIndex.filter { $0.label != "Done" }
+        candidates += app.navigationBars.buttons.allElementsBoundByIndex.filter { $0.label != "Close" }
         for button in candidates where button.exists && button.isHittable {
             button.tap()
             // Hittable, not just present: the root page stays in the tree under a pushed detail.
@@ -160,7 +160,7 @@ final class ClimateJourneyTests: XCTestCase {
 
     // MARK: - Sheet
 
-    /// An entry opens the sheet on its tab; the tab control switches tabs; Done closes it.
+    /// An entry opens the sheet on its tab; the tab control switches tabs; Close closes it.
     func testEntriesOpenTheSheetOnTheirTab() {
         let app = launch()
         reveal(element("climate.entry.tracking", in: app), in: app).tap()
@@ -176,7 +176,7 @@ final class ClimateJourneyTests: XCTestCase {
         }
         XCTAssertTrue(element("climate.sheet.rooms", in: app).waitForExistence(timeout: 5))
         XCTAssertEqual(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'climate.room.'")).count, 11)
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap()
         XCTAssertTrue(element("climate.wholeHome", in: app).waitForExistence(timeout: 5))
     }
 

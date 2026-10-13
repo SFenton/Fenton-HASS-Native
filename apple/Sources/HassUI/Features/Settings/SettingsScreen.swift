@@ -44,7 +44,7 @@ struct SettingsScreen: View {
         List {
             Section {
                 NavigationLink {
-                    VacationRoute()
+                    VacationRoute().pageChrome()
                 } label: {
                     SettingsLinkRow(
                         title: Vacation.Copy.settingsLinkTitle,
@@ -56,7 +56,7 @@ struct SettingsScreen: View {
                 .accessibilityIdentifier("settings.vacation")
                 if ChoresConfig.showsAdminTodo(to: ChoresConfig.Resident.forUserId(viewerUserId)) {
                     NavigationLink {
-                        AdminTodoScreen()
+                        AdminTodoScreen().pageChrome()
                     } label: {
                         SettingsLinkRow(title: "To-Do", subtitle: "An admin panel for to-do tasks.",
                                         symbol: SymbolMap.symbol(for: "mdi:clipboard-list"), showsChevron: false)

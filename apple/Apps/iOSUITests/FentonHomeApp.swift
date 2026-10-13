@@ -104,7 +104,7 @@ enum FentonHomeApp {
     static let ax5 = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
 
     /// Runs the full audit, accepting only issues on system-drawn elements the app does not style:
-    /// the grouped `Form` section header's secondary text, toolbar bar buttons (e.g. a sheet's glass Done), and
+    /// the grouped `Form` section header's secondary text, toolbar bar buttons (e.g. a sheet's glass Close), and
     /// the system's dimmed style on disabled controls (exempt from WCAG 1.4.3).
     /// Collects every remaining issue so one run lists them all, then fails once with the list.
     ///
@@ -341,10 +341,11 @@ enum FentonHomeApp {
             // Home's own controls can't be reached (the sheet's dimming layer takes the touches).
             // The same page text under the dimming layer also comes back as element-less contrast or clipping
             // (seen 2026-10-12 around the iPad sprinkler schedule sheet, one or the other from run to run).
-            // A page pushed inside the sheet shows Back, not Done; the page behind still has its own bar, so two
+            // A page pushed inside the sheet shows Back, not Close; the page behind still has its own bar, so two
             // navigation bars also mean a modal over a page (Bedroom editors on iPad, 2026-10-12).
             let behindSheet: XCUIAccessibilityAuditType = [.elementDetection, .contrast, .textClipped]
-            let modalUp = app.navigationBars.buttons["Done"].exists || app.navigationBars.count > 1
+            let modalUp = app.navigationBars.buttons["Done"].exists || app.navigationBars.buttons["Close"].exists
+                || app.navigationBars.count > 1
             if behindSheet.contains(issue.auditType), modalUp, !app.buttons["home.chip.lights"].isHittable {
                 return true
             }
@@ -352,7 +353,8 @@ enum FentonHomeApp {
             // Add Item's later steps show Back instead of Cancel): its dimmed text is sampled through the scrim, and
             // contrast issues there come back without an element (iPad, 2026-10-12).
             if issue.auditType == .elementDetection || issue.auditType == .contrast,
-               app.navigationBars.buttons["Done"].exists || app.navigationBars.buttons["Cancel"].exists
+               app.navigationBars.buttons["Done"].exists || app.navigationBars.buttons["Close"].exists
+                || app.navigationBars.buttons["Cancel"].exists
                 || app.buttons["scan.back"].exists,
                app.buttons["inventory.row.cart"].firstMatch.exists, !app.buttons["inventory.row.cart"].firstMatch.isHittable {
                 return true

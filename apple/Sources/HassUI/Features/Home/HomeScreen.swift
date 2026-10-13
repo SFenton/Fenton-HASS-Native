@@ -29,13 +29,11 @@ struct HomeScreen: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) { FreshnessIndicator() }
         }
-        .quickLinks(caller: callerOverride ?? connection)
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case let .chip(kind):
                 chipSheet(kind)
-                    .presentationDetents(Self.detents(for: kind))
-                    .presentationDragIndicator(.visible)
+                    .hassSheet()
             case let .camera(camera):
                 CameraViewer(camera: camera)
             }
@@ -44,13 +42,6 @@ struct HomeScreen: View {
 }
 
 extension HomeScreen {
-    /// The room overviews hold a grid of every room, so they open full height (at the medium detent the lower tiles
-    /// sat below the screen edge and failed the clipping and contrast audits). Security's controls keep the
-    /// medium detent, as on the Security page.
-    static func detents(for kind: HomeConfig.ChipSheet) -> Set<PresentationDetent> {
-        kind == .security ? [.medium, .large] : [.large]
-    }
-
     /// The sheet a chip opens: the Security page's alarm controls (web `SecurityControls`), else a room overview.
     @ViewBuilder
     private func chipSheet(_ kind: HomeConfig.ChipSheet) -> some View {

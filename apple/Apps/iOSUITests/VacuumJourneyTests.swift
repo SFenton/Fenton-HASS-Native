@@ -30,8 +30,8 @@ final class VacuumJourneyTests: XCTestCase {
         app.launch()
         let anchor = vacuum == nil ? element("vacuums.tile.\(Self.mainFloor)", in: app) : element("vacuum.tabs", in: app)
         XCTAssertTrue(anchor.waitForExistence(timeout: 30), "Vacuums did not open")
-        // On phones the tab picker sits below the map and status, so the sheet's Done button proves it has presented.
-        let settled = vacuum == nil ? anchor : app.navigationBars.buttons["Done"].firstMatch
+        // On phones the tab picker sits below the map and status, so the sheet's Close button proves it has presented.
+        let settled = vacuum == nil ? anchor : app.navigationBars.buttons["Close"].firstMatch
         XCTAssertTrue(settled.wait(for: \.isHittable, toEqual: true, timeout: 10), "Still presenting")
         sleep(1) // Mid-animation frames fail contrast and clipping.
         return app

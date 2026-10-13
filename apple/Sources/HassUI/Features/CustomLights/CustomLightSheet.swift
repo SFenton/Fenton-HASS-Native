@@ -46,11 +46,10 @@ struct CustomLightSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(HassTokens.Spacing.l)
             }
+            .modalChrome()
             .navigationTitle(light.title)
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
+            .toolbar { SheetCloseItem { dismiss() } }
         }
         .tint(HassTokens.Ink.action)
     }

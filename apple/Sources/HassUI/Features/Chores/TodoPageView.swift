@@ -58,7 +58,7 @@ struct TodoPageView<Header: View>: View {
         ])
         .sheet(item: $sheet) { sheet in
             sheetContent(sheet)
-                .presentationDragIndicator(.visible)
+                .hassSheet()
         }
     }
 

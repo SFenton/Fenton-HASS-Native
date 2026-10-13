@@ -120,6 +120,6 @@ struct HomeRouteDestination: View {
 extension View {
     /// Pushes ``HomeRouteDestination`` while `route` is set.
     func homeRouteDestination(_ route: Binding<HomeRoute?>) -> some View {
-        navigationDestination(item: route) { HomeRouteDestination(route: $0) }
+        navigationDestination(item: route) { HomeRouteDestination(route: $0).pageChrome() }
     }
 }

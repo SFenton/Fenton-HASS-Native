@@ -78,11 +78,10 @@ public struct MediaRemoteSheet: View {
                 .accessibilityIdentifier(twoColumns ? "remote.layout.twoColumn" : "remote.layout.singleColumn")
             }
             .background { WindowMetricsReader(metrics: $window) }
+            .modalChrome()
             .navigationTitle(controller.config.title)
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
+            .toolbar { SheetCloseItem { dismiss() } }
         }
     }
 

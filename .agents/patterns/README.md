@@ -8,7 +8,9 @@
 | [entity-tile.md](entity-tile.md) | `HassDesign/GlassTile.swift` | `src/components/core/GlassTile.tsx` |
 | [status-rail.md](status-rail.md) | `HassUI/Features/Home/StatusRail.swift` | `src/components/hass/StatusRail.tsx` |
 | [room-overview-sheet.md](room-overview-sheet.md) | `HassUI/Common/RoomOverview/RoomOverviewSheet.swift` | `src/pages/AtAGlancePage.tsx` (`LightsSheet`, `OccupancySheet`, `ContactSheet`, …) |
-| [modal-sheet.md](modal-sheet.md) | SwiftUI `.sheet` with `HassSheet` chrome | `src/components/core/ModalSheet.tsx` |
+| [modal-sheet.md](modal-sheet.md) | `HassDesign/HassModal.swift` (`HassModal`, `SheetCloseItem`, `hassSheet()`), `HassUI/Common/ModalTabBar.swift` | `src/components/core/ModalSheet.tsx`, `ModalTabNav.tsx` |
+| [header-edge-fade.md](header-edge-fade.md) | `HassDesign/HeaderEdgeFade.swift` | `src/hooks/ui/useScrollMask.ts` (FestivalNativeApps `ModalTopEdgeFade`) |
+| [page-backdrop.md](page-backdrop.md) | `HassUI/Common/HouseBackdrop.swift` | `src/components/shell/AppShell.module.css` `.backdrop` |
 | [media-remote.md](media-remote.md) | `HassUI/Features/MediaRemote/MediaRemoteSheet.swift` | `src/components/hass/MediaRemoteModalContent.tsx` |
 | [floating-actions.md](floating-actions.md) | `HassDesign/FloatingActionBar.swift`, `HassDesign/FilterSheet.swift` | `src/components/core/FloatingActionButton.tsx`, `src/components/shell/DashboardFloatingAction.tsx` |
 | [image-card.md](image-card.md) | `HassDesign/ImageCard.swift` | `src/components/hass/recipes/RecipeCard.tsx` |

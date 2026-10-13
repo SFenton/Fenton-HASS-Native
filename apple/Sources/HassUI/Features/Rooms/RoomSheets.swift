@@ -5,7 +5,7 @@ import SwiftUI
 // MARK: - Sheet
 
 /// The sheet a room card opens (web `RoomSourceModal`). Media remotes present ``MediaRemoteSheet`` instead (see
-/// ``RoomScreen``); everything else draws here inside its own navigation stack with Done.
+/// ``RoomScreen``); everything else draws here inside its own navigation stack with Close.
 struct RoomCardSheet: View {
     var controller: RoomController
     var card: RoomCard
@@ -27,11 +27,10 @@ struct RoomCardSheet: View {
                 .frame(maxWidth: 720)
                 .frame(maxWidth: .infinity)
             }
+            .modalChrome()
             .navigationTitle(controller.sheetTitle(for: card))
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
+            .toolbar { SheetCloseItem { dismiss() } }
         }
         .accessibilityIdentifier("room.sheet.\(card.sheet ?? card.title)")
     }

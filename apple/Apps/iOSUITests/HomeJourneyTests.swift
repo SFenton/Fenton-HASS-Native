@@ -27,12 +27,12 @@ final class HomeJourneyTests: XCTestCase {
     func testLightsSheetOpensAndAudits() throws {
         let app = try FentonHomeApp.launchSignedIn()
         app.buttons["home.chip.lights"].tap()
-        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5))
         sleep(1) // Let the sheet finish presenting; mid-animation frames fail contrast and clipping.
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
             large.buttons["home.chip.lights"].tap()
-            XCTAssertTrue(large.buttons["Done"].waitForExistence(timeout: 5))
+            XCTAssertTrue(large.buttons["Close"].waitForExistence(timeout: 5))
             sleep(1)
             return large
         }
@@ -166,7 +166,7 @@ final class HomeJourneyTests: XCTestCase {
         tile.tap()
         let restored = NSPredicate(format: "value == %@", before)
         wait(for: [XCTNSPredicateExpectation(predicate: restored, object: tile)], timeout: 10)
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap()
     }
 
     /// Dragging across a dimmable group sets its brightness live, then the test restores the old state.
@@ -194,7 +194,7 @@ final class HomeJourneyTests: XCTestCase {
             // brightness_pct round-trips through 0...255, so allow a few percent.
             XCTAssertEqual(Double(after.dropLast()) ?? -1, Double(before.dropLast()) ?? 0, accuracy: 3)
         }
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap()
     }
 
     /// Drags horizontally from the leading edge to `fraction` of the tile's width.
@@ -218,10 +218,10 @@ final class HomeJourneyTests: XCTestCase {
             sleep(2)
             keepScreenshot(app, "home-\(suffix)")
             app.buttons["home.chip.lights"].tap()
-            XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 5))
             sleep(1)
             keepScreenshot(app, "lights-\(suffix)")
-            app.buttons["Done"].tap()
+            app.buttons["Close"].tap()
             captureChipSheets(app, suffix: suffix)
         }
         // Only iPad rotates here; setting the orientation on an unfolded Duo hangs the runner (devices.md).

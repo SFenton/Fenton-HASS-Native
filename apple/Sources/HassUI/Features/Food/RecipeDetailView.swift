@@ -4,7 +4,7 @@ import SwiftUI
 
 // MARK: - Presentations
 
-/// The recipe detail as a sheet (web `RecipeDetailModal`): large detent, its own navigation bar with Done.
+/// The recipe detail as a sheet (web `RecipeDetailModal`): large detent, its own navigation bar with Close.
 struct RecipeDetailSheet: View {
     let model: RecipeDetailModel
     @Environment(\.dismiss) private var dismiss
@@ -12,15 +12,10 @@ struct RecipeDetailSheet: View {
     var body: some View {
         NavigationStack {
             RecipeDetailContent(model: model)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }
-                            .accessibilityIdentifier("recipe.done")
-                    }
-                }
+                .modalChrome()
+                .toolbar { SheetCloseItem(identifier: "recipe.done") { dismiss() } }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .hassSheet()
     }
 }
 
@@ -40,10 +35,8 @@ struct RecipeDetailPane: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
-                Button("Close", action: onClose)
+                SheetCloseButton(identifier: "recipe.close", action: onClose)
                     .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
-                    .tint(FoodStyle.action) // The app accent on white is 2.5:1.
-                    .accessibilityIdentifier("recipe.close")
             }
             .padding(.horizontal, HassTokens.Spacing.l)
             .padding(.vertical, HassTokens.Spacing.s)

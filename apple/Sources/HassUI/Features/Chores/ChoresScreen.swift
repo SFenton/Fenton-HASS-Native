@@ -20,7 +20,7 @@ struct ChoresContent: View {
         }
         .navigationTitle("Chores")
         .navigationDestination(for: ChoresConfig.Page.self) { page in
-            TodoPageScreen(page: page)
+            TodoPageScreen(page: page).pageChrome()
         }
     }
 }
