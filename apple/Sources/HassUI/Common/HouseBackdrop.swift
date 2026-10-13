@@ -13,9 +13,10 @@ import UIKit
 /// The blurred photo of the house behind every page (web `AppShell.module.css` `.backdrop`: the image served by
 /// Home Assistant at `/local/images/house.webp`; pattern: `.agents/patterns/page-backdrop.md`).
 ///
-/// No reload on reopen: the blurred render is cached on disk and read synchronously at launch, so the first
-/// frame already shows it. ``refresh()`` downloads the original once per launch and replaces the render only
-/// when the bytes changed.
+/// The photo itself loads through ``ImagePipeline`` (disk cache, conditional revalidation, updates when the server's
+/// file changes; `.agents/patterns/image-cache.md`). No reload on reopen: the blurred render is also kept on disk and
+/// read synchronously at launch, so the first frame already shows it; ``refresh()`` re-renders whatever the
+/// pipeline yields (the cached photo, then a changed one).
 @MainActor
 @Observable
 final class HouseBackdropStore {
@@ -24,45 +25,41 @@ final class HouseBackdropStore {
 
     @ObservationIgnored private let source: URL
     @ObservationIgnored private let directory: URL
-    @ObservationIgnored private let fetch: @Sendable (URL) async throws -> Data
+    @ObservationIgnored private let photos: @Sendable (URL) -> AsyncStream<CGImage>
     @ObservationIgnored private var refreshed = false
 
     /// Creates the store and loads the cached render.
     /// - Parameters:
     ///   - server: The signed-in server, which serves the photo.
-    ///   - directory: Where the original and its render are cached.
-    ///   - fetch: Downloads the photo (tests pass a stub).
+    ///   - directory: Where the blurred render is cached.
+    ///   - photos: The photo's images, cached first then fresh (tests pass a stub).
     init(server: HassServer, directory: URL = HouseBackdropStore.defaultDirectory,
-         fetch: @escaping @Sendable (URL) async throws -> Data = HouseBackdropStore.download) {
+         photos: @escaping @Sendable (URL) -> AsyncStream<CGImage> = HouseBackdropStore.pipelinePhotos) {
         source = Self.imageURL(for: server)
         self.directory = directory
-        self.fetch = fetch
+        self.photos = photos
         image = Self.loadImage(at: directory.appending(path: Self.renderName))
     }
 
-    /// Downloads the photo once per store and swaps in a new render when it changed. Failures keep the cache.
+    /// Renders each photo the pipeline yields, once per store. Failures keep the cached render.
     func refresh() async {
         guard !refreshed else { return }
         refreshed = true
-        guard let data = try? await fetch(source), !data.isEmpty else { return }
-        let originalURL = directory.appending(path: Self.originalName)
-        if image != nil, (try? Data(contentsOf: originalURL)) == data { return }
         let renderURL = directory.appending(path: Self.renderName)
         let directory = directory
-        let rendered: CGImage? = await Task.detached(priority: .utility) {
-            guard let render = Self.render(data) else { return nil }
-            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try? data.write(to: originalURL, options: .atomic)
-            Self.write(render, to: renderURL)
-            return render
-        }.value
-        if let rendered { image = rendered }
+        for await photo in photos(source) {
+            let rendered: CGImage? = await Task.detached(priority: .utility) {
+                guard let render = Self.render(photo) else { return nil }
+                try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                Self.write(render, to: renderURL)
+                return render
+            }.value
+            if let rendered { image = rendered }
+        }
     }
 
     // MARK: Pure helpers
 
-    /// The original's file name in the cache.
-    nonisolated static let originalName = "house.webp"
     /// The blurred render's file name in the cache.
     nonisolated static let renderName = "house-blurred.png"
     /// Width the photo is reduced to before blurring; the blur hides the lost detail.
@@ -75,28 +72,22 @@ final class HouseBackdropStore {
         server.baseURL.appending(path: "local/images/house.webp")
     }
 
+    /// The photo from the shared ``ImagePipeline``, decoded at the render width.
+    nonisolated static func pipelinePhotos(_ url: URL) -> AsyncStream<CGImage> {
+        ImagePipeline.shared.images(for: url, maxPixel: Int(renderWidth))
+    }
+
     /// The cache folder: Caches/HouseBackdrop.
     nonisolated static var defaultDirectory: URL {
         URL.cachesDirectory.appending(path: "HouseBackdrop", directoryHint: .isDirectory)
     }
 
-    /// Downloads `url`, failing on any non-2xx status.
-    nonisolated static func download(_ url: URL) async throws -> Data {
-        let (data, response) = try await URLSession.shared.data(from: url)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
-        return data
-    }
-
-    /// Decodes, downsizes, saturates (web `saturate(1.04)`) and blurs the photo. Brightness is left to the
-    /// view, which darkens it in dark mode and washes it in light mode.
-    /// - Parameter data: Encoded image (WebP, JPEG or PNG).
-    /// - Returns: The render, or nil when the data is not an image.
-    nonisolated static func render(_ data: Data) -> CGImage? {
-        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
-              let original = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
-        var image = CIImage(cgImage: original)
+    /// Downsizes, saturates (web `saturate(1.04)`) and blurs the photo. Brightness is left to the view, which
+    /// darkens it in dark mode and washes it in light mode.
+    /// - Parameter photo: The decoded photo.
+    /// - Returns: The render, or nil when Core Image can't draw it.
+    nonisolated static func render(_ photo: CGImage) -> CGImage? {
+        var image = CIImage(cgImage: photo)
         let scale = min(1, renderWidth / max(1, image.extent.width))
         image = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         let extent = image.extent
