@@ -48,11 +48,11 @@ public struct MediaRemoteSheet: View {
     }
 
     /// The longest side app artwork is decoded at: the largest tile (168 pt) at 3x, bucketed.
-    static let artworkPixels = ImagePipeline.bucket(504)
+    nonisolated static let artworkPixels = ImagePipeline.bucket(504)
 
     /// Loads every URL into the image pipeline's memory cache, returning when all have loaded or failed, or after
     /// `timeout`; loads still running then keep going and fill their tiles when they land.
-    static func prefetch(_ urls: [URL], pipeline: ImagePipeline, timeout: Duration = .seconds(4)) async {
+    nonisolated static func prefetch(_ urls: [URL], pipeline: ImagePipeline, timeout: Duration = .seconds(4)) async {
         guard !urls.isEmpty else { return }
         let pixels = artworkPixels
         let loads = Task.detached(priority: .userInitiated) {

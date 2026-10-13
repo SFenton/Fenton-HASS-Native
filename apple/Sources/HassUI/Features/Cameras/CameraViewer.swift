@@ -40,6 +40,8 @@ struct CameraViewer: View {
                             ScrollView { controls(axis: .vertical) }
                                 .frame(maxWidth: .infinity)
                         }
+                        // One container, so the layout identifier below doesn't replace the video's own.
+                        .accessibilityElement(children: .contain)
                     } else {
                         ScrollView {
                             VStack(spacing: HassTokens.Spacing.xl) {
