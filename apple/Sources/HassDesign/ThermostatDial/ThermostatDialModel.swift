@@ -442,6 +442,13 @@ public struct ThermostatDialEditor: Sendable {
         return commit(configuration, now: now)
     }
 
+    /// Home Assistant rejected the last commit: drop the edit so the handles return to the entity's setpoints, and
+    /// let the same value be sent again (pattern optimistic-actions: roll back, no error state).
+    public mutating func rollBack() {
+        pending = nil
+        gate = ThermostatCommitGate()
+    }
+
     // MARK: Private
 
     private mutating func move(_ handle: ThermostatTargets.Handle, to value: Double, in configuration: ThermostatDialConfiguration) {

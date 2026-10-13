@@ -117,7 +117,7 @@ struct ClimateViewTests {
         #expect(render(dial, controller: climate) != nil)
     }
 
-    /// A rejected commit is not swallowed: the dial's task completes after the failure path runs.
+    /// A rejected commit is not swallowed: the dial's task runs the rollback path.
     @Test func boundDialSurvivesARejectedCommit() async {
         final class Rejecting: HassServiceCalling {
             var attempts = 0
@@ -130,7 +130,6 @@ struct ClimateViewTests {
         let dial = ClimateThermostatDial(entityId: "climate.office", title: "Office", caller: caller)
         await dial.commit(.single(71))?.value
         #expect(caller.attempts == 1)
-        #expect(ClimateThermostatDial.failureMessage.contains("Try again"))
     }
 
     @Test func routeTokensAndTitles() {

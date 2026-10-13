@@ -183,8 +183,8 @@ struct VacuumRoomsTab: View {
     var controller: VacuumController
     @State private var pendingZone: VacuumConfig.Zone?
     @ScaledMetric(relativeTo: .subheadline) private var minCellWidth: CGFloat = 150
-    /// Room cards are tile-sized (76 pt minimum), larger than the web's 58 px buttons, so the
-    /// two-column iPhone grid reads as tappable cards (owner, 2026-10-13). A floor, not scaled: larger text grows the
+    /// Room cards are tile-sized (76 pt minimum, icon above the title), larger than the web's 58 px buttons, so
+    /// the two-column iPhone grid reads as tappable cards (owner, 2026-10-13). A floor, not scaled: larger text grows the
     /// card through its content. HIG: Layout, Buttons.
     private let cardHeight: CGFloat = 76
 
@@ -212,28 +212,31 @@ struct VacuumRoomsTab: View {
         return Button {
             if controller.roomToggleNeedsConfirmation(zone) { pendingZone = zone } else { controller.toggleRoom(zone) }
         } label: {
-            HStack(spacing: HassTokens.Spacing.m) {
-                Image(systemName: VacuumStyle.symbol(zone.icon))
-                    .font(.title2)
-                    .foregroundStyle(selected ? VacuumStyle.primaryFill : HassTokens.Ink.secondary)
-                    .frame(minWidth: 32)
+            // Tile layout (icon and order badge on top, title below) so the title gets the card's full width:
+            // beside the icon and badge, "Kitchen" broke mid-word on iPhone.
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                HStack(alignment: .top) {
+                    Image(systemName: VacuumStyle.symbol(zone.icon))
+                        .font(.title2)
+                        .foregroundStyle(selected ? VacuumStyle.primaryFill : HassTokens.Ink.secondary)
+                    Spacer(minLength: HassTokens.Spacing.xs)
+                    if let order {
+                        Text("\(order)")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(.white)
+                            .frame(minWidth: 28, minHeight: 28)
+                            .background(VacuumStyle.primaryFill, in: Circle())
+                    }
+                }
                 Text(zone.title)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(HassTokens.Ink.primary)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: HassTokens.Spacing.xs)
-                if let order {
-                    Text("\(order)")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.white)
-                        .frame(minWidth: 28, minHeight: 28)
-                        .background(VacuumStyle.primaryFill, in: Circle())
-                }
             }
-            .padding(.horizontal, HassTokens.Spacing.m)
-            .padding(.vertical, HassTokens.Spacing.s)
-            .frame(maxWidth: .infinity, minHeight: cardHeight, alignment: .leading)
+            .padding(HassTokens.Spacing.m)
+            // Fills the row the grid proposes, so cards in a row match the tallest title.
+            .frame(maxWidth: .infinity, minHeight: cardHeight, maxHeight: .infinity, alignment: .topLeading)
             .background(VacuumStyle.rowFill, in: VacuumStyle.cardShape)
             .overlay { VacuumStyle.cardShape.strokeBorder(selected ? VacuumStyle.primaryFill : .clear, lineWidth: 2) }
             .contentShape(VacuumStyle.cardShape)
@@ -278,7 +281,7 @@ struct VacuumAutoCleanTab: View {
                         }
                         .padding(.horizontal, HassTokens.Spacing.m)
                         .padding(.vertical, HassTokens.Spacing.s)
-                        .frame(maxWidth: .infinity, minHeight: cardHeight, alignment: .leading)
+                        .frame(maxWidth: .infinity, minHeight: cardHeight, maxHeight: .infinity, alignment: .leading)
                         .background(VacuumStyle.rowFill, in: VacuumStyle.cardShape)
                         .contentShape(VacuumStyle.cardShape)
                     }

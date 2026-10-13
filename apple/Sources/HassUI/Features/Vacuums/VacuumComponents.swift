@@ -261,6 +261,10 @@ struct VacuumSettingRow: View {
                 .pickerStyle(.menu)
                 .labelsHidden()
                 .font(.body.weight(.semibold))
+                // The value stays on one line (the title gives way first) in the 6:1 primary blue, not the lighter
+                // system tint, which read faintly on the row fill.
+                .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: false)
+                .tint(VacuumStyle.primaryFill)
                 .frame(minHeight: HassTokens.minTarget)
                 .accessibilityHint(setting.detail ?? "")
                 .accessibilityIdentifier("vacuum.setting.\(setting.title)")

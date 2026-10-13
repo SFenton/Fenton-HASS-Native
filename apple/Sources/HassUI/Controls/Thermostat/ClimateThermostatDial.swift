@@ -64,8 +64,8 @@ public struct ClimateThermostatDial: View {
 
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection: HassConnection?
-    /// The last commit failed; cleared by the next one.
-    @State private var failed = false
+    /// Rejected commits so far; each one rolls the dial's handles back to the entity's setpoints.
+    @State private var rejections = 0
 
     /// Creates a bound dial.
     public init(
@@ -83,36 +83,21 @@ public struct ClimateThermostatDial: View {
     public var body: some View {
         var configuration = ThermostatDialConfiguration(entity: store.entity(entityId).state, title: title)
         if let action { configuration.action = action }
-        return VStack(spacing: HassTokens.Spacing.s) {
-            ThermostatDial(configuration, size: size) { commit($0) }
-            if failed {
-                Label(Self.failureMessage, systemImage: "exclamationmark.triangle.fill")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("thermostatDial.failure")
-            }
-        }
+        return ThermostatDial(configuration, size: size, rejections: rejections) { commit($0) }
     }
 
-    /// Shown under the dial when Home Assistant rejects a commit. The handles follow the entity back to its
-    /// unchanged targets, so the message says why they moved.
-    static let failureMessage = "Home Assistant didn't change the temperature. Try again."
-
-    /// Sends a commit to ``caller``, else the environment's connection. A failure shows ``failureMessage`` under
-    /// the dial and is announced to VoiceOver.
+    /// Sends a commit to ``caller``, else the environment's connection. A rejected call rolls the handles back to
+    /// Home Assistant's setpoints (pattern optimistic-actions: no error state between the pending and live value).
     @discardableResult
     func commit(_ targets: ThermostatTargets) -> Task<Void, Never>? {
         let data = setTemperatureData(for: targets)
         guard let target: any HassServiceCalling = caller ?? connection else { return nil }
-        failed = false
-        let failed = $failed
+        let rejections = $rejections
         return Task {
             do {
                 try await target.callService("climate", "set_temperature", data: data)
             } catch {
-                failed.wrappedValue = true
-                AccessibilityNotification.Announcement(Self.failureMessage).post()
+                rejections.wrappedValue += 1
             }
         }
     }

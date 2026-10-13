@@ -157,6 +157,16 @@ struct ThermostatDialEditorTests {
         #expect(editor.displayed(echoed) == .single(73))
     }
 
+    @Test func aRejectedCommitRollsBackAndCanBeSentAgain() {
+        var editor = ThermostatDialEditor()
+        #expect(editor.endDrag(.target, at: point(74, single), side: 300, in: single, now: start) == .single(74))
+        editor.rollBack()
+        #expect(editor.pending == nil)
+        #expect(editor.displayed(single) == .single(72), "Back to Home Assistant's setpoint")
+        #expect(editor.endDrag(.target, at: point(74, single), side: 300, in: single, now: start.addingTimeInterval(0.1)) == .single(74),
+                "The same value is not dropped as a duplicate after a rollback")
+    }
+
     @Test func releasingWhereItStartedSendsNothing() {
         var editor = ThermostatDialEditor()
         #expect(editor.endDrag(.target, at: point(72, single), side: 300, in: single, now: start) == nil)
