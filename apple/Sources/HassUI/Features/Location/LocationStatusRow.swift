@@ -24,7 +24,7 @@ struct LocationStatusRow: View {
         .padding(.horizontal, HassTokens.Spacing.l)
         .padding(.vertical, HassTokens.Spacing.m)
         .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-        .background(LocationPermissionView.cellColor, in: .rect(cornerRadius: HassTokens.Radius.tile))
+        .background(LocationPermissionColors.cell, in: .rect(cornerRadius: HassTokens.Radius.tile))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Location Access")
         .accessibilityValue(value)

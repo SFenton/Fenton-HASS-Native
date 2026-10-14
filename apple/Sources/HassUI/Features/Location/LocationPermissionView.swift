@@ -12,11 +12,12 @@ import UIKit
 /// button titled "Continue", no other way out) and [Sheets](https://developer.apple.com/design/human-interface-guidelines/sheets).
 /// The asking stages drop Direction G's Close and can't be swiped away, because HIG's pre-alert rule wins over the
 /// modal pattern; the status stages (Always, Off, Approximate) keep Close.
-public struct LocationPermissionView: View {
+public struct LocationPermissionView<Footer: View>: View {
     private let permission: LocationPermission
     private let onRequestPermission: () -> Void
     private let onOpenSettings: (() -> Void)?
     private let onClose: () -> Void
+    private let footer: Footer
 
     @Environment(\.openURL) private var openURL
     @ScaledMetric(relativeTo: .largeTitle) private var symbolSize: CGFloat = 56
@@ -27,12 +28,16 @@ public struct LocationPermissionView: View {
     ///   - onRequestPermission: Shows the next system alert (``LocationReporter/requestPermission()``).
     ///   - onOpenSettings: Opens Settings; nil opens the app's Settings page.
     ///   - onClose: Dismisses the screen.
+    ///   - footer: Content pinned under the action (the debug gallery's last-action line). It lives inside the
+    ///     screen's own bottom inset because an inset added outside the navigation stack doesn't move that one.
     public init(permission: LocationPermission, onRequestPermission: @escaping () -> Void,
-                onOpenSettings: (() -> Void)? = nil, onClose: @escaping () -> Void) {
+                onOpenSettings: (() -> Void)? = nil, onClose: @escaping () -> Void,
+                @ViewBuilder footer: () -> Footer) {
         self.permission = permission
         self.onRequestPermission = onRequestPermission
         self.onOpenSettings = onOpenSettings
         self.onClose = onClose
+        self.footer = footer()
     }
 
     private var copy: LocationPermissionCopy { LocationPermissionCopy(stage: permission.stage) }
@@ -104,13 +109,19 @@ public struct LocationPermissionView: View {
 
     @ViewBuilder
     private var actionBar: some View {
-        if let title = copy.actionTitle {
-            PrimaryButton(title) { perform(copy.action) }
-                .accessibilityIdentifier("location.primary")
-                .padding(.horizontal, HassTokens.Spacing.xl)
-                .padding(.vertical, HassTokens.Spacing.m)
-                .frame(maxWidth: 560)
+        VStack(spacing: 0) {
+            if let title = copy.actionTitle {
+                PrimaryButton(title) { perform(copy.action) }
+                    .accessibilityIdentifier("location.primary")
+                    .padding(.horizontal, HassTokens.Spacing.xl)
+                    .padding(.vertical, HassTokens.Spacing.m)
+                    .frame(maxWidth: 560)
+            }
+            footer
         }
+        // Opaque, so text scrolled under the pinned action never shows through it (the iOS 17 stand-in for
+        // iOS 26's scroll edge effect).
+        .background(LocationPermissionColors.ground)
     }
 
     func perform(_ action: LocationPermissionCopy.Action?) {
@@ -146,14 +157,14 @@ public struct LocationPermissionView: View {
         case .notDetermined, .whenInUse, .always: HassTokens.Ink.action
         }
     }
+}
 
-    /// The inset cell colour on the grouped sheet background.
-    static var cellColor: Color {
-        #if canImport(UIKit)
-        Color(uiColor: .secondarySystemGroupedBackground)
-        #else
-        Color(nsColor: .controlBackgroundColor)
-        #endif
+public extension LocationPermissionView where Footer == EmptyView {
+    /// Creates the screen with nothing under the action.
+    init(permission: LocationPermission, onRequestPermission: @escaping () -> Void,
+         onOpenSettings: (() -> Void)? = nil, onClose: @escaping () -> Void) {
+        self.init(permission: permission, onRequestPermission: onRequestPermission, onOpenSettings: onOpenSettings,
+                  onClose: onClose) { EmptyView() }
     }
 }
 

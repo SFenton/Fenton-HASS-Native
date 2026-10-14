@@ -30,14 +30,11 @@ struct LocationGallery: View {
                     onRequestPermission: { answer() },
                     onOpenSettings: { lastAction = "open settings" },
                     onClose: { lastAction = "close" }
-                )
-                .safeAreaInset(edge: .bottom, spacing: 0) {
+                ) {
                     if !GalleryEnvironment.isClean {
                         GalleryLastCall(text: lastAction, title: "Last action")
                             .padding(.horizontal, HassTokens.Spacing.xl)
-                            .padding(.vertical, HassTokens.Spacing.s)
-                            // Opaque: over the sheet's bottom edge the bare line measured 4.2:1 (iPhone, 2026-10-14).
-                            .background(.background)
+                            .padding(.bottom, HassTokens.Spacing.s)
                     }
                 }
                 .hassSheet(.form)
