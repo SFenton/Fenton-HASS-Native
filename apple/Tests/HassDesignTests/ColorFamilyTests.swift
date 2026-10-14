@@ -49,6 +49,14 @@ struct ColorFamilyTests {
         #expect(contrast(family.spec.glyph, 0x2C2C2E) >= 3, "\(family)")
     }
 
+    @Test(arguments: [0x0000FF, 0xFF0000, 0x00FF00, 0x8000FF, 0xFF00FF] as [UInt32])
+    func litTileStatusReadsUnderAnyBulbColour(_ bulb: UInt32) {
+        // The band's darker end, tinted by a saturated bulb, under the status text ("41%").
+        let band = ColorFamily.mix(bulb, 0xFFE2B2, LitTile.bulbTint)
+        let status = ColorFamily.mix(0x1C1C1E, band, LitTile.secondaryInkOpacity)
+        #expect(contrast(status, band) >= 4.5, "bulb \(String(bulb, radix: 16))")
+    }
+
     @Test func onlyLightsAndNeutralAreNeverFilled() {
         let unfilled = ColorFamily.allCases.filter { $0.spec.fill == nil }
         #expect(Set(unfilled) == [.lights, .neutral])
