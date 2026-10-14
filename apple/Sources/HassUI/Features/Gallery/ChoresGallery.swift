@@ -27,7 +27,9 @@ struct ChoresGallery: View {
     }
 
     var body: some View {
-        Group {
+        // Owns its stack with the fixtures injected above it, as the app injects the store above its section
+        // stacks, so pushed pages inherit them.
+        NavigationStack {
             if page == ChoresConfig.chores {
                 ChoresContent()
             } else {
