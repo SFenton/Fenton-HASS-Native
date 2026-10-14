@@ -370,7 +370,10 @@ class InstallTests(Base):
         self.assertIn(f"{self.paths.clone}/tools/triage/hass_triage.py", plist)
         self.assertIn("<string>tick</string>", plist)
         calls = []
-        ht.install(self.paths, 1800, False, run=lambda args, **k: calls.append(args) or subprocess.CompletedProcess(args, 0, "", ""))
+        with mock.patch("sys.stdout", new=io.StringIO()) as out:
+            ht.install(self.paths, 1800, False, run=lambda args, **k: calls.append(args) or subprocess.CompletedProcess(args, 0, "", ""))
+        self.assertIn("every 30 minutes", out.getvalue())
+        self.assertEqual(ht.load_config(self.home)["interval_seconds"], 60)
         self.assertTrue(self.paths.plist.exists())
         self.assertEqual(calls[0][:2], ["launchctl", "bootout"])
         self.assertEqual(calls[1][:2], ["launchctl", "bootstrap"])
