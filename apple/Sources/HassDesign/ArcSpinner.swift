@@ -66,6 +66,8 @@ public struct ArcSpinner: View {
         .accessibilityElement()
         .accessibilityLabel(label)
         .accessibilityAddTraits(.updatesFrequently)
+        // A status, not a control: the 16 pt inline arc would otherwise fail the audit's hit-area check.
+        .accessibilityRespondsToUserInteraction(false)
     }
 
     /// One quarter of the ring, centred on `degrees` (0 is the trailing edge, -90 the top), like a CSS border side.

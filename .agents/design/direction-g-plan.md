@@ -19,6 +19,22 @@
   - `Features/Cameras/CameraLiveView.swift` (#39)
   - Nothing to sweep today in `Features/MediaRemote`, `Features/Security`, `Features/Vacation`, `Features/Home/CameraGrid.swift` or `HassDesign/ScheduleDateFields.swift`; check them again after the merges.
 
+## Phase 1 status (2026-10-14)
+
+Built on `claude/project-thread-06krou`, one commit per step, in the order the coordinator set:
+
+| Step | Where | Notes |
+|---|---|---|
+| Arc spinner | `ArcSpinner`, `ArcProgressViewStyle` (`.progressViewStyle(.arc)`) | Every `ProgressView()` spinner outside the open PRs; skips listed above. `ContentGate` builds the arc only while it shows. |
+| Palette | `HassTokens.Palette`, `Ink.warning/actionFill/badge`, `Surface`, radii 22/26 | Raw values with contrast tests (`HassTokensTests`); light-appearance values kept. Accent colour follows the G tint in dark. |
+| Wallpaper | `HouseBackdrop`, `HouseBackdropStyle` | Blur 20, saturation 1.1, scale 1.06, G's scrim; `preferredColorScheme(.dark)` on the signed-in shell. |
+| Module | `.module(.thin/.dense)` (`HassDesign/Module.swift`) | Content layer only; Reduce Transparency makes it opaque. `navigationGlass(in:)` is the navigation-layer counterpart. |
+| Tiles | `TileFaceStyle`, `GlassTile(family:isError:)`, `BrightnessTile` | Off, lit, filled, tinted (no family yet) and error faces; dragger bubble, lift, 10% haptic. Filled progress shades the part still to go (a white band failed contrast). |
+| Chips | `StatusChipButton(family:)`, `ColorFamily.chipFill/chipGlyph`, `ColorFamily.climate` | Web colours; AQI-coloured glyph is a follow-up. |
+| Section bar | `ModalTabBar` on glass, `modalTabBar(placement: .bottom)` by default | Climate and Media Remote still place it inline at the top; their lanes move them. |
+| Primary button | `PrimaryButton`, `PrimaryButtonStyle` | |
+| Gallery | `ComponentGallery` page `direction-g` (`DirectionGGallery`), `DirectionGJourneyTests` | Names, targets, taps, drag, audits (top and lower sections, AX5), sheet bar at the bottom; iPhone, Duo and iPad. |
+
 ## Starting point on main (surveyed 2026-10-13, before the merges above)
 
 | Area | Today | G needs |
