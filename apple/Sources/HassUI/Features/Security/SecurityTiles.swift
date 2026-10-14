@@ -33,18 +33,32 @@ struct SecurityTile: View {
     var canSend: Bool
     var openSystem: () -> Void
     @Environment(EntityStore.self) private var store
+    /// The lock's tapped state, shown until Home Assistant reports a change (rolled back if the call fails).
+    @State private var actions: OptimisticActions?
 
     var body: some View {
-        switch tile.kind {
-        case .alarm:
-            AlarmTile(tile: tile, state: store.entity(tile.entityId).state, action: openSystem)
-        case .lock, .vehicle:
-            LockTile(tile: tile, state: store.entity(tile.entityId).state) { call in
-                Task { try? await caller.call(call) }
+        Group {
+            switch tile.kind {
+            case .alarm:
+                AlarmTile(tile: tile, state: store.entity(tile.entityId).state, action: openSystem)
+            case .lock, .vehicle:
+                LockTile(tile: tile, state: shownState) { call in
+                    let actions = actions ?? OptimisticActions(store: store, rules: [tile.entityId: .liveChange], caller: caller)
+                    self.actions = actions
+                    // Live change clears it: locks report "locking" and "unlocking" on the way.
+                    actions.perform(call, showing: [OptimisticIntent(tile.entityId, value: call.service == "lock" ? "locked" : "unlocked")])
+                }
+            case .garageDoor:
+                GarageDoorTile(tile: tile, liveState: store.entity(tile.entityId).state?.state, caller: caller, canSend: canSend)
             }
-        case .garageDoor:
-            GarageDoorTile(tile: tile, liveState: store.entity(tile.entityId).state?.state, caller: caller, canSend: canSend)
         }
+    }
+
+    /// The live state with any pending tapped value over it.
+    private var shownState: EntityState? {
+        let live = store.entity(tile.entityId).state
+        guard let live, let pending = actions?.shown(tile.entityId), pending != live.state else { return live }
+        return EntityState(entityId: live.entityId, state: pending, attributes: live.attributes)
     }
 }
 

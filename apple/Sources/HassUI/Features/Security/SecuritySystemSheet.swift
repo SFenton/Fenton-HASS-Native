@@ -24,22 +24,26 @@ struct SecurityControls: View {
     var caller: any HassServiceCalling
     @Environment(EntityStore.self) private var store
     @State private var confirmingDisarm = false
+    /// The tapped mode, shown until Home Assistant reports a change (rolled back if the call fails); created on the
+    /// first tap (`.agents/patterns/optimistic-actions.md`).
+    @State private var actions: OptimisticActions?
     @ScaledMetric(relativeTo: .subheadline) private var minModeWidth: CGFloat = 130
 
     var body: some View {
-        let state = store.entity(SecurityConfig.alarmEntityId).state
-        let unavailable = state?.isUnavailable ?? true
+        let live = store.entity(SecurityConfig.alarmEntityId).state
+        let shown = actions?.shown(SecurityConfig.alarmEntityId) ?? live?.state
+        let unavailable = live?.isUnavailable ?? true
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
                 // Label and value instead of a longer replacement label: the clipping audit measures the
                 // label against the drawn text's frame.
-                Text(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(state?.state)))
+                Text(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(shown)))
                     .font(.headline)
                     .foregroundStyle(HassTokens.Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityLabel("Current mode")
-                    .accessibilityValue(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(state?.state)))
+                    .accessibilityValue(ScreenshotPrivacy.isRedacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(shown)))
                     .accessibilityIdentifier("security.system.state")
                 Text("Mode")
                     .font(.title3.weight(.semibold))
@@ -48,10 +52,10 @@ struct SecurityControls: View {
                     ForEach(SecurityConfig.alarmModes) { mode in
                         AlarmModeButton(
                             mode: mode,
-                            isSelected: !ScreenshotPrivacy.isRedacting && state?.state == mode.state,
+                            isSelected: !ScreenshotPrivacy.isRedacting && shown == mode.state,
                             isUnavailable: unavailable
                         ) {
-                            select(mode, current: state?.state)
+                            select(mode, current: shown)
                         }
                     }
                 }
@@ -80,7 +84,11 @@ struct SecurityControls: View {
     }
 
     private func send(_ mode: SecurityConfig.AlarmMode) {
-        Task { try? await caller.call(mode.call) }
+        let actions = actions ?? OptimisticActions(
+            store: store, rules: [SecurityConfig.alarmEntityId: .liveChange], caller: caller)
+        self.actions = actions
+        // Live change clears it: the panel reports "arming" on the way, and the page should follow the truth.
+        actions.perform(mode.call, showing: [OptimisticIntent(SecurityConfig.alarmEntityId, value: mode.state)])
     }
 }
 

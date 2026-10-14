@@ -129,30 +129,24 @@ struct SemanticsTraits: ViewModifier {
 
 // MARK: - Power
 
-/// The always-visible power pill: icon red while on, green while off, and "Power On" / "Power Off" text
-/// (web `PowerButton`).
-struct PowerPill: View {
+/// The always-visible power button: a round d-pad button in the cell right of Up, icon red while on and green
+/// while off (web `PowerButton`). It sat in a pill above the pad; the corner cell gives that row back to the
+/// content (owner, 2026-10-13) and matches the Apple TV Remote, which keeps power in the top corner.
+struct PowerButton: View {
     var controller: MediaRemoteController
-    @ScaledMetric(relativeTo: .headline) private var height: CGFloat = 52
+    var diameter: CGFloat
+    var onPress: () -> Void = {}
 
     var body: some View {
         let button = controller.config.power
         Button {
+            onPress()
             controller.press(button)
         } label: {
-            HStack(spacing: HassTokens.Spacing.s) {
-                RemoteButtonIcon(button: button, tone: controller.iconTone(for: button), font: .title3)
-                Text(controller.powerTitle)
-                    .font(.headline)
-                    .foregroundStyle(HassTokens.Ink.primary)
-            }
-            .padding(.horizontal, HassTokens.Spacing.xl)
-            .frame(minHeight: max(height, HassTokens.minTarget))
-            .background(RemoteStyle.buttonFill, in: Capsule())
-            .contentShape(Capsule())
+            RemoteButtonIcon(button: button, tone: controller.iconTone(for: button), font: .title)
         }
-        .buttonStyle(.plain)
-        // Label from the config ("Power"); the state is the value, and Voice Control also takes the visible text.
+        .buttonStyle(RoundButtonStyle(diameter: diameter))
+        // Label from the config ("Power"); the state is the value, and Voice Control also takes "Power On/Off".
         .accessibilityLabel(button.label)
         .accessibilityInputLabels([button.label, controller.powerTitle])
         .modifier(PowerSemantics(semantics: controller.semantics(for: button), isOff: controller.isControlOff))
@@ -200,7 +194,9 @@ struct DirectionalPad: View {
             GridRow {
                 gap
                 button(config.up)
-                gap
+                // Power stays enabled while the directions are disabled: it is how the device turns on.
+                PowerButton(controller: controller, diameter: diameter) { presses += 1 }
+                    .accessibilitySortPriority(1) // Read first, as it was above the pad.
             }
             GridRow {
                 button(config.left)
@@ -213,7 +209,6 @@ struct DirectionalPad: View {
                 gap
             }
         }
-        .disabled(controller.controlsDisabled)
         .sensoryFeedback(.impact(weight: .light), trigger: presses)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(config.title) remote controls")
@@ -226,6 +221,7 @@ struct DirectionalPad: View {
 
     private func button(_ button: MediaRemoteButton) -> some View {
         RemoteIconButton(controller: controller, button: button, diameter: diameter, iconFont: .title, onPress: { presses += 1 })
+            .disabled(controller.controlsDisabled)
     }
 }
 
@@ -299,6 +295,7 @@ struct KeyboardPrompt: Equatable {
 /// Volume, navigation (with the inline keyboard) and playback (web `MediaRemoteModalTabContent`, controls tab).
 struct RemoteControlsTab: View {
     var controller: MediaRemoteController
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var keyboard: KeyboardPrompt
     @State private var volume = SliderDraft()
     @FocusState private var fieldFocused: Bool
@@ -424,7 +421,7 @@ struct RemoteControlsTab: View {
                 keyboardButtons
             }
         }
-        .transition(.opacity.combined(with: .move(edge: .top)))
+        .transition(reduceMotion ? .opacity : .opacity.combined(with: .move(edge: .top)))
     }
 }
 

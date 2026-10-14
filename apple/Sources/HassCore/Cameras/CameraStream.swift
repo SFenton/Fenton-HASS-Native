@@ -158,3 +158,85 @@ public enum WebRTCSignal: Equatable, Sendable {
         }
     }
 }
+
+// MARK: - Sharing
+
+/// Which camera streams run, for the app-wide stream pool (web `rtcStreamRetention.ts` and the shared
+/// `stream-manager.js`).
+///
+/// One stream per camera serves every tile and viewer, so opening a camera from its tile shows the frames
+/// the tile is already playing. Once a camera has been shown its stream is retained for the rest of the
+/// session, so later pages and viewers attach to it at once; a failed stream drops its retention so the next
+/// viewer starts fresh. Every stream stops in the background and the retained ones restart on return.
+public struct CameraStreamRetention: Equatable, Sendable {
+    /// What the pool should do to a stream after an event.
+    public enum Action: Equatable, Sendable {
+        /// Start (or restart) the stream.
+        case start
+        /// Stop the stream.
+        case stop
+        /// Leave it as it is.
+        case none
+    }
+
+    /// Visible views per camera id.
+    public private(set) var viewers: [String: Int] = [:]
+    /// Cameras kept running while no view shows them.
+    public private(set) var retained: Set<String> = []
+    /// Whether the app is in the background.
+    public private(set) var isBackground = false
+    /// Whether shown cameras stay retained (the web's session retention); off, a stream stops with its last view.
+    public let retainsShownStreams: Bool
+
+    /// - Parameter retainsShownStreams: Keep shown streams running for the session (web parity).
+    public init(retainsShownStreams: Bool = true) {
+        self.retainsShownStreams = retainsShownStreams
+    }
+
+    /// Whether a camera's stream should be running now.
+    public func shouldRun(_ id: String) -> Bool {
+        !isBackground && (viewers[id, default: 0] > 0 || retained.contains(id))
+    }
+
+    /// A view showing `id` appeared.
+    /// - Parameters:
+    ///   - id: The camera.
+    ///   - isRunning: Whether its stream is already connecting or live (not stopped or failed).
+    public mutating func appear(_ id: String, isRunning: Bool) -> Action {
+        viewers[id, default: 0] += 1
+        if retainsShownStreams { retained.insert(id) }
+        return !isBackground && !isRunning ? .start : .none
+    }
+
+    /// A view showing `id` disappeared.
+    public mutating func disappear(_ id: String) -> Action {
+        let remaining = max(viewers[id, default: 0] - 1, 0)
+        viewers[id] = remaining == 0 ? nil : remaining
+        return shouldRun(id) ? .none : .stop
+    }
+
+    /// The stream for `id` failed every mode: forget it so the next view starts fresh.
+    public mutating func failed(_ id: String) {
+        retained.remove(id)
+    }
+
+    /// The viewer retried a failed stream: retain it again, as a newly shown stream would be.
+    public mutating func retry(_ id: String) {
+        if retainsShownStreams { retained.insert(id) }
+    }
+
+    /// The app went to the background: every running stream stops.
+    /// - Returns: The cameras to stop.
+    public mutating func enterBackground() -> Set<String> {
+        let running = Set(viewers.keys).union(retained)
+        isBackground = true
+        return running
+    }
+
+    /// The app returned: shown and retained streams restart.
+    /// - Returns: The cameras to start.
+    public mutating func enterForeground() -> Set<String> {
+        isBackground = false
+        return Set(viewers.keys).union(retained)
+    }
+}

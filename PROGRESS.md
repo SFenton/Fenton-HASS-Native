@@ -64,8 +64,8 @@ apple/Tests/**                                             → tests for your ow
 |---|---|
 | Sign-in (login flow, MFA step, Keychain) | Verified on the live server (password sign-in, relaunch skips sign-in) on iPhone, Duo and iPad |
 | Connection lifecycle and entity snapshot cache | Scaffolded; unit tests for the cache and store |
-| Home | Status rail (six web chips), weather card with 24-hour carousel and Weather sheet, guest presence, camera snapshots; chip sheets are the shared room overview (rooms → room detail) |
-| Live cameras | Viewer plays WebRTC (go2rtc), falls back to HLS, then the snapshot; tiles stay snapshots |
+| Home | Status rail (six web chips), weather card with 24-hour carousel and Weather sheet, guest presence, live camera tiles; chip sheets are the shared room overview (rooms → room detail) |
+| Live cameras | One shared stream per camera (`CameraStreamPool`) for tiles and the viewer, retained for the session; WebRTC (go2rtc, video and audio), then HLS, then the snapshot; viewer has Snapshot (to Photos), Sound and Record |
 | Security | Alarm modes (disarm confirms), front door lock, garage doors (command state machine), hidden Vehicle tile, cameras; gallery `FENTON_GALLERY=security` |
 | Climate | Page, Thermostat Hub pickers and the advanced-controls sheet (Rooms, Automation, Tracking and their detail pages); gallery `FENTON_GALLERY=climate` |
 | Chores | Placeholders |

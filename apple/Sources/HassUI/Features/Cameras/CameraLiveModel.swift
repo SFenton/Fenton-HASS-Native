@@ -1,16 +1,19 @@
 import AVFoundation
+import CoreImage
 import Foundation
+import QuartzCore
 import HassCore
 import Observation
 #if canImport(WebRTC) && canImport(UIKit)
 import WebRTC
 #endif
 
-/// Drives live video for one camera view: WebRTC first, HLS if that fails, the snapshot if both do.
+/// Drives live video for one camera: WebRTC first, HLS if that fails, the snapshot if both do.
 ///
-/// Each attempt gets its mode's ``CameraStreamMode/firstFrameTimeout`` to show a frame before the next mode
-/// is tried. The view keeps the snapshot up until ``state`` is live, so nothing blanks while streams connect
-/// or fall back.
+/// One model per camera is shared by every tile and viewer through ``CameraStreamPool``, so a viewer opened
+/// from a tile shows the frames the tile is already playing. Each attempt gets its mode's
+/// ``CameraStreamMode/firstFrameTimeout`` to show a frame before the next mode is tried. Views keep the
+/// snapshot up until ``state`` is live, so nothing blanks while streams connect or fall back.
 @MainActor
 @Observable
 final class CameraLiveModel {
@@ -25,7 +28,17 @@ final class CameraLiveModel {
     private(set) var webRTCPeer: WebRTCCameraPeer?
     #endif
 
+    /// Whether the camera's sound is off (the default; web cameras open muted).
+    private(set) var isMuted = true
+    /// Whether a stream is connecting or playing (``start(connection:)`` ran and ``stop()`` has not).
+    private(set) var isRunning = false
+
     let camera: HomeConfig.Camera
+    /// Called when every mode failed, so the pool can drop the stream's retention.
+    @ObservationIgnored var onExhausted: (() -> Void)?
+    /// Called when ``isMuted`` changes, so the pool can update the app's audio session.
+    @ObservationIgnored var onMuteChange: (() -> Void)?
+    @ObservationIgnored private var hlsVideoOutput: AVPlayerItemVideoOutput?
 
     @ObservationIgnored private weak var connection: HassConnection?
     @ObservationIgnored private var generation = 0
@@ -71,6 +84,8 @@ final class CameraLiveModel {
         self.connection = connection
         stop()
         state.restart()
+        isRunning = state.phase != .failed
+        if !isRunning { onExhausted?() } // No live modes: the snapshot is all there is.
         connectCurrentMode()
     }
 
@@ -79,7 +94,37 @@ final class CameraLiveModel {
         generation += 1
         attempt?.cancel()
         attempt = nil
+        isRunning = false
         tearDownPlayers()
+    }
+
+    // MARK: - Controls
+
+    /// Turns the camera's sound on or off (web `toggleCameraStreamMuted`).
+    func setMuted(_ muted: Bool) {
+        guard muted != isMuted else { return }
+        isMuted = muted
+        applyMute()
+        onMuteChange?()
+    }
+
+    /// The current live frame (web `webrtc-screenshot`), or `nil` while nothing is playing. Grabbing it is cheap;
+    /// ``CameraFrame/image()`` converts it off the main actor.
+    func liveFrameSource() -> CameraFrame? {
+        #if canImport(WebRTC) && canImport(UIKit)
+        if let frame = webRTCPeer?.frames.latestFrame() { return .webRTC(frame) }
+        #endif
+        guard let player = hlsPlayer, let output = hlsVideoOutput else { return nil }
+        let time = output.itemTime(forHostTime: CACurrentMediaTime())
+        let current = output.hasNewPixelBuffer(forItemTime: time) ? time : player.currentTime()
+        return output.copyPixelBuffer(forItemTime: current, itemTimeForDisplay: nil).map(CameraFrame.pixels)
+    }
+
+    private func applyMute() {
+        hlsPlayer?.isMuted = isMuted
+        #if canImport(WebRTC) && canImport(UIKit)
+        webRTCPeer?.isMuted = isMuted
+        #endif
     }
 
     /// A player showed its first frame.
@@ -118,6 +163,10 @@ final class CameraLiveModel {
         attempt = nil
         state.failed(mode)
         tearDownPlayers()
+        if state.phase == .failed {
+            isRunning = false
+            onExhausted?()
+        }
         connectCurrentMode()
     }
 
@@ -128,8 +177,13 @@ final class CameraLiveModel {
             throw URLError(.badURL)
         }
         let item = AVPlayerItem(url: url)
+        let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+        ])
+        item.add(output)
+        hlsVideoOutput = output
         let player = AVPlayer(playerItem: item)
-        player.isMuted = true
+        player.isMuted = isMuted
         player.preventsDisplaySleepDuringVideoPlayback = false
         hlsPlayer = player
         hlsObservations = [
@@ -155,9 +209,15 @@ final class CameraLiveModel {
             baseURL: connection.server.baseURL
         ) else { throw URLError(.badURL) }
         let peer = WebRTCCameraPeer(socketURL: url) { [weak self] in
+            Task { @MainActor in
+                guard current == self?.generation else { return }
+                self?.firstFrame(.webRTC)
+            }
+        } onFailure: { [weak self] in
             Task { @MainActor in self?.modeFailed(.webRTC, generation: current) }
         }
         guard let peer else { throw URLError(.cannotConnectToHost) }
+        peer.isMuted = isMuted
         webRTCPeer = peer
         peer.start()
         #else
@@ -170,9 +230,38 @@ final class CameraLiveModel {
         hlsObservations = []
         hlsPlayer?.pause()
         hlsPlayer = nil
+        hlsVideoOutput = nil
         #if canImport(WebRTC) && canImport(UIKit)
         webRTCPeer?.stop()
         webRTCPeer = nil
         #endif
     }
+}
+
+/// A grabbed live frame, converted to an image off the main actor.
+enum CameraFrame: @unchecked Sendable {
+    /// An HLS frame from `AVPlayerItemVideoOutput`.
+    case pixels(CVPixelBuffer)
+    #if canImport(WebRTC) && canImport(UIKit)
+    /// A decoded WebRTC frame.
+    case webRTC(RTCVideoFrame)
+    #endif
+
+    /// The frame as an upright image.
+    nonisolated func image() async -> CGImage? {
+        switch self {
+        case let .pixels(buffer):
+            let image = CIImage(cvPixelBuffer: buffer)
+            return CameraFrameContext.shared.createCGImage(image, from: image.extent)
+        #if canImport(WebRTC) && canImport(UIKit)
+        case let .webRTC(frame):
+            return CameraFrameImage.image(from: frame)
+        #endif
+        }
+    }
+}
+
+/// One Core Image context for every frame conversion (contexts are expensive and thread-safe).
+enum CameraFrameContext {
+    nonisolated(unsafe) static let shared = CIContext(options: [.cacheIntermediates: false])
 }
