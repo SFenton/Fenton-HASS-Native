@@ -95,23 +95,3 @@ struct DeviceTileGrid<Content: View>: View {
     }
 }
 
-/// A warning or error line (web `InlineAlert`).
-struct DeviceAlert: View {
-    var text: String
-    var symbol = "exclamationmark.triangle.fill"
-
-    var body: some View {
-        Label {
-            Text(text).fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: symbol).foregroundStyle(.orange)
-        }
-        .font(.subheadline)
-        .foregroundStyle(HassTokens.Ink.primary)
-        .padding(HassTokens.Spacing.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
-        .accessibilityElement(children: .combine)
-    }
-}
-

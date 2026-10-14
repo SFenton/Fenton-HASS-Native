@@ -32,7 +32,7 @@ struct HumidifierSchedulesTab: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if let error = schedules.error { DeviceAlert(text: error) }
+            if let error = schedules.error { InlineAlert(error) }
 
             DeviceSection(title: "Activities") {
                 if schedules.loading && !schedules.ready {
@@ -160,11 +160,11 @@ struct HumidifierActivityEditor: View {
                     .accessibilityIdentifier("activity.mode")
                 }
                 if draft.mode != .sleep { profileFields }
-                if draft.days.isEmpty { DeviceAlert(text: "Select at least one day.") }
+                if draft.days.isEmpty { InlineAlert("Select at least one day.") }
                 if !HumidifierSchedule.isValidTime(draft.start) || !HumidifierSchedule.isValidTime(draft.end) {
-                    DeviceAlert(text: "Choose valid start and end times.")
+                    InlineAlert("Choose valid start and end times.")
                 }
-                if let message = conflict?.message ?? schedules.error { DeviceAlert(text: message) }
+                if let message = conflict?.message ?? schedules.error { InlineAlert(message) }
                 if !isNew {
                     Button(role: .destructive) { confirmingDelete = true } label: {
                         Label("Delete Activity", systemImage: "trash").frame(maxWidth: .infinity)

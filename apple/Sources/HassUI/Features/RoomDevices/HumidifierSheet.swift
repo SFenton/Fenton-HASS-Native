@@ -149,7 +149,7 @@ struct HumidifierHero: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let message = controller.faultMessage { DeviceAlert(text: message) }
+            if let message = controller.faultMessage { InlineAlert(message) }
             DynamicGridLayout(minCellWidth: 150, maxColumns: 2) {
                 DeviceStatusPill(item: .init(title: "Current Humidity", icon: "mdi:water-percent", value: controller.humidityText, tone: .neutral))
                 DeviceStatusPill(item: .init(title: "Temperature", icon: "mdi:thermometer", value: controller.temperatureText, tone: .neutral))
@@ -190,7 +190,7 @@ struct HumidifierControlsTab: View {
             if controller.mode == .targetHumidity {
                 DeviceSection(title: "Target Humidity") {
                     if !controller.targetHumidityValid {
-                        DeviceAlert(text: "Choose a target before relying on Auto Humidity.", symbol: "humidity")
+                        InlineAlert("Choose a target before relying on Auto Humidity.", symbol: "humidity")
                     }
                     ThermostatDial(HumidifierDials.target(controller), size: .compact) { targets in
                         if case let .single(value) = targets { controller.setTargetHumidity(value) }
@@ -198,7 +198,7 @@ struct HumidifierControlsTab: View {
                     .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("humidifier.targetDial")
                     if controller.targetHumidity > 60 {
-                        DeviceAlert(text: "Targets above 60% can encourage condensation and mold.")
+                        InlineAlert("Targets above 60% can encourage condensation and mold.")
                     } else {
                         Text("40–50% is the recommended comfort range for most homes.")
                             .font(.footnote)

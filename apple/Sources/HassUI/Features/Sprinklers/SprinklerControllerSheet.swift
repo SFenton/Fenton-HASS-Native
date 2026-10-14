@@ -58,7 +58,7 @@ struct SprinklerControllerSheet: View {
         let snapshot = controller.snapshot
         return List {
             if let error = controller.errorMessage {
-                SprinklerAlert(text: error).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+                InlineAlert(error).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             }
             Section {
                 DynamicGridLayout(minCellWidth: minPillWidth, maxColumns: 4, spacing: HassTokens.Spacing.s) {
@@ -220,7 +220,7 @@ struct SprinklerWaterPage: View {
         let range = SprinklersConfig.manualRunTime.min...SprinklersConfig.manualRunTime.max
         List {
             if let error = controller.errorMessage {
-                SprinklerAlert(text: error).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+                InlineAlert(error).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             }
             Section {
                 Stepper(value: $minutes, in: range) {
@@ -294,7 +294,7 @@ struct SprinklerSchedulePage: View {
         let enabled = program?.enabled ?? false
         List {
             if let error = controller.errorMessage {
-                SprinklerAlert(text: error).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
+                InlineAlert(error).listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             }
             Section {
                 Toggle(isOn: Binding(get: { enabled }, set: { controller.setProgramEnabled(zone: zone, $0) })) {

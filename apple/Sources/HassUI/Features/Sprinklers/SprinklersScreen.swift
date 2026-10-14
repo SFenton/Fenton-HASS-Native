@@ -63,7 +63,7 @@ struct SprinklerControllerCard: View {
         let snapshot = controller.snapshot
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
             if snapshot.batteryLow, let percent = snapshot.batteryPercent {
-                SprinklerAlert(text: "Battery \(SprinklerFormat.number(percent))%", symbol: "battery.25percent")
+                InlineAlert("Battery \(SprinklerFormat.number(percent))%", symbol: "battery.25percent")
             }
             // The tile opens the sheet even while the controller is offline: its status lives there.
             GlassTile(title: controller.config.title, subtitle: format.subtitle(snapshot), symbol: SprinklerStyle.symbol,
@@ -90,21 +90,3 @@ enum SprinklerStyle {
     static let water = HassTokens.Tint.water
 }
 
-/// An inline warning or error line (web `InlineAlert`).
-struct SprinklerAlert: View {
-    var text: String
-    var symbol = "exclamationmark.triangle.fill"
-
-    var body: some View {
-        Label {
-            Text(text).foregroundStyle(HassTokens.Ink.primary)
-        } icon: {
-            Image(systemName: symbol).foregroundStyle(.orange)
-        }
-        .font(.subheadline)
-        .padding(HassTokens.Spacing.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
-        .accessibilityElement(children: .combine)
-    }
-}
