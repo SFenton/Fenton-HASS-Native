@@ -115,7 +115,7 @@ public enum ChoresConfig {
     // MARK: - Entities
 
     /// `input_boolean.vacation_mode`.
-    public static let vacationModeEntityId = "input_boolean.vacation_mode"
+    public static let vacationModeEntityId = Vacation.modeEntityId
     /// Web `pageVacation.empty.description`.
     public static let vacationEmptyDescription = "Enjoy vacation!"
     /// The admin To-Do list (web `ADMIN_TODO_ENTITY_ID`).

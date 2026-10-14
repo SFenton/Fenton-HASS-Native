@@ -7,7 +7,7 @@ import Foundation
 @MainActor
 public final class EverShelfClient {
     /// The grocery to-do list a shopping add also lands on (`HASS_GROCERY_LIST_ENTITY_ID`).
-    public static let groceryListEntityId = "todo.shopping_list"
+    public static let groceryListEntityId = ChoresConfig.groceryEntityId
 
     /// A `list_inventory` answer.
     public struct ListResponse: Sendable, Equatable {

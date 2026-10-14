@@ -178,7 +178,7 @@ public enum HouseholdSettingsConfig {
         public static let sectionTitle = "Charge Status"
         public static let tiles: [Tile] = [
             .init(title: "Charge Status", entityId: "sensor.fordpass_3fmtk3su5mma09266_elvehcharging", icon: "mdi:ev-station"),
-            .init(title: "Doors", entityId: "lock.fordpass_3fmtk3su5mma09266_doorlock", icon: "mdi:car-door-lock"),
+            .init(title: "Doors", entityId: SecurityConfig.vehicleLockEntityId, icon: "mdi:car-door-lock"),
             .init(title: "Driver's Seat", entityId: "select.fordpass_3fmtk3su5mma09266_rccseatfrontleft", icon: "mdi:car-seat"),
             .init(title: "Passenger Seat", entityId: "select.fordpass_3fmtk3su5mma09266_rccseatfrontright", icon: "mdi:car-seat"),
             .init(title: "Climate", entityId: "number.fordpass_3fmtk3su5mma09266_rcctemperature", icon: "mdi:car-defrost-front"),

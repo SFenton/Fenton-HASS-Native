@@ -467,7 +467,7 @@ public extension RoomsConfig {
     /// The Kitchen page's Groceries section (web `KitchenGroceriesSection`, `DashboardViewPage.tsx:1823`).
     enum Groceries {
         /// The grocery to-do list (`TODO_PAGES.groceries.lists[0]`, `portedDashboard.ts:458`).
-        public static let listEntityId = "todo.shopping_list"
+        public static let listEntityId = ChoresConfig.groceryEntityId
         public static let listTitle = "Grocery List"
         /// The grocery tile's wash.
         public static let listBackground = RoomColor(155, 67, 72, opacity: 0.72)
