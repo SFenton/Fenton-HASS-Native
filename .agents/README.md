@@ -9,6 +9,7 @@
 | Port or change a page | [pages/README.md](pages/README.md) → `pages/<id>/spec.md` + your platform file; procedure: [skills/port-page](skills/port-page/SKILL.md) |
 | Add or change a control | [skills/add-control](skills/add-control/SKILL.md) |
 | Touch shared behavior (grids, tiles, chips, sheets) | [patterns/README.md](patterns/README.md), then [audit/README.md](audit/README.md) for known duplicates |
+| Restyle a screen, tile, chip, sheet or spinner | [design/direction-g.md](design/direction-g.md), build order in [design/direction-g-plan.md](design/direction-g-plan.md) |
 | A design choice the owner hasn't made | [skills/design-decision](skills/design-decision/SKILL.md) |
 | Write or review SwiftUI | [.claude/skills/swiftui-pro](../.claude/skills/swiftui-pro/SKILL.md), applied per [workflow/swiftui-pro.md](workflow/swiftui-pro.md) |
 | Fix a reported issue | [skills/fix-reported-issue](skills/fix-reported-issue/SKILL.md) |
