@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import HassCore
+import HassTestSupport
 @testable import HassUI
 import SwiftUI
 import Testing
@@ -106,10 +107,10 @@ struct CameraControlsTests {
     }
 
     @Test func recordCallsTheCamerasScript() async throws {
-        let caller = NullCaller()
+        let caller = RecordingCaller()
         let call = try #require(HomeConfig.cameras[0].recordCall)
         try await caller.call(call)
-        #expect(caller.calls == ["script.turn_on"])
+        #expect(caller.names == ["script.turn_on"])
     }
 
     // MARK: Layout
@@ -149,7 +150,7 @@ struct CameraControlsTests {
 
     @Test(arguments: HomeConfig.cameras)
     func viewerRendersStackedSplitAndLarge(camera: HomeConfig.Camera) {
-        #expect(render(CameraViewer(camera: camera, caller: NullCaller()), size: Self.phone) != nil)
+        #expect(render(CameraViewer(camera: camera, caller: RecordingCaller()), size: Self.phone) != nil)
         #expect(render(CameraViewer(camera: camera), size: Self.phone, typeSize: .accessibility5) != nil)
         #expect(render(CameraViewer(camera: camera), size: Self.tabletLandscape) != nil)
     }
@@ -158,13 +159,13 @@ struct CameraControlsTests {
         let model = CameraLiveModel(camera: HomeConfig.cameras[0], modes: [])
         for axis in [Axis.horizontal, .vertical] {
             for recording in [false, true] {
-                let controls = CameraControls(camera: HomeConfig.cameras[0], model: model, caller: NullCaller(),
+                let controls = CameraControls(camera: HomeConfig.cameras[0], model: model, caller: RecordingCaller(),
                                               isRecording: recording, axis: axis)
                 #expect(render(controls, size: CGSize(width: 402, height: 400)) != nil)
             }
         }
         model.setMuted(false)
-        let unmuted = CameraControls(camera: HomeConfig.cameras[1], model: model, caller: NullCaller(), isRecording: false, axis: .horizontal)
+        let unmuted = CameraControls(camera: HomeConfig.cameras[1], model: model, caller: RecordingCaller(), isRecording: false, axis: .horizontal)
         #expect(render(unmuted, size: CGSize(width: 402, height: 400), typeSize: .accessibility5) != nil)
     }
 

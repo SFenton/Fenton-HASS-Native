@@ -1,5 +1,6 @@
 import Foundation
 import HassCore
+import HassTestSupport
 import HassDesign
 @testable import HassUI
 import SwiftUI
@@ -38,7 +39,7 @@ struct RemoteArtworkTests {
     @MainActor @Test func sheetRendersBehindItsGateWhileArtworkLoads() {
         let store = EntityStore()
         store.replaceAll(MediaRemoteFixtures.states)
-        let controller = MediaRemoteController(config: MediaRemotes.livingRoomShield, store: store, caller: NullCaller())
+        let controller = MediaRemoteController(config: MediaRemotes.livingRoomShield, store: store, caller: RecordingCaller())
         let sheet = MediaRemoteSheet(controller: controller, imageServer: .fentonHome, initialTab: .apps, pipeline: pipeline())
             .frame(width: 402, height: 874)
         #expect(ImageRenderer(content: sheet).cgImage != nil)

@@ -2,9 +2,7 @@ import XCTest
 
 /// The camera viewer against the live server: WebRTC, the HLS fallback, the audit and screenshots.
 @MainActor
-final class CameraJourneyTests: XCTestCase {
-    override func setUp() { continueAfterFailure = false }
-
+final class CameraJourneyTests: JourneyTestCase {
     static let cameras = [("front_door", "Front Door"), ("garage_camera", "Driveway"),
                           ("upper_deck", "Upper Deck"), ("lower_deck", "Lower Deck")]
 
