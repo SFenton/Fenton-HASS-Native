@@ -188,27 +188,19 @@ struct FeedbackFormSheet: View {
         }
     }
 
-    /// Shown while Home Assistant can't file reports: what's missing and who can add it.
+    /// Shown while Home Assistant can't file reports: what's missing and who can add it (the shared
+    /// ``InfoBox``, `.agents/patterns/info-box.md`).
     private var setupSection: some View {
         Section {
-            Label {
-                VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
-                    Text("Reporting isn't set up yet")
-                        .font(.headline)
-                        .foregroundStyle(HassTokens.Ink.primary)
-                    Text("Reports are filed through Home Assistant. Whoever manages it can add the Fenton Home Feedback integration in Settings → Devices & services.")
-                        .font(.subheadline)
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            } icon: {
-                Image(systemName: "exclamationmark.bubble")
-                    .foregroundStyle(.tint)
-                    .accessibilityHidden(true)
-            }
-            .accessibilityElement(children: .combine)
+            InfoBox(
+                title: "Reporting isn't set up yet",
+                message: "Reports are filed through Home Assistant. Whoever manages it can add the Fenton Home Feedback integration in Settings → Devices & services.",
+                tone: .neutral
+            )
             .accessibilityIdentifier("feedback.setup")
         }
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
     }
 
     @ToolbarContentBuilder

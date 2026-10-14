@@ -33,7 +33,7 @@ Ported from FestivalNativeApps' in-app feedback form (`.agents/controls/feedback
 
 - **Cancel leading, Submit trailing**, discard confirmation on Cancel and swipe (HIG Sheets; HIG Modality: "If either a dismiss gesture or button could lose user-generated content, get confirmation before closing").
 - **Visible explanations, not placeholders** (HIG Text fields), **Submit disabled with the reason shown** (HIG Entering data), including "Reporting isn't set up in Home Assistant yet."
-- **Setup notice leads the form** when the integration is missing, saying who can add it, so nobody types a report that can't be sent.
+- **Setup notice leads the form** when the integration is missing (the shared `InfoBox`, neutral tone), saying who can add it, so nobody types a report that can't be sent.
 - **Quick Look** for tapped media; no photo-library permission (`PhotosPicker` runs out of process; HIG Privacy).
 
 ## Test IDs

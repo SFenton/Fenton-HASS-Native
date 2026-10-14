@@ -388,8 +388,7 @@ enum FentonHomeApp {
             // A row scrolled under the glass tab bar is sampled against the bar (iPhone Settings'
             // last row, 2026-10-11: 1.2:1); the bar's own items stay checked.
             if isUnderTabBar(element, in: app) { return true }
-            if element.elementType == .button && app.navigationBars.buttons[element.label].exists { return true }
-            return element.elementType == .staticText && systemSectionHeaders.contains(element.label)
+            return element.elementType == .button && app.navigationBars.buttons[element.label].exists
         case .dynamicType, .textClipped:
             // Toolbar buttons are system-drawn and offer the Large Content Viewer instead of scaling.
             return element.elementType == .button && app.navigationBars.buttons[element.label].exists
@@ -439,13 +438,6 @@ enum FentonHomeApp {
         return !bar.descendants(matching: element.elementType)[element.label].exists
     }
 
-    /// `Form` section headers, styled by the system.
-    private static let systemSectionHeaders: Set<String> = [
-        "Home Assistant", "Two-factor code",
-        // Inventory sort sheet and Add Item (measured 3.3:1 on iPhone, 2026-10-11).
-        "Sort By", "Sort Direction", "What item are you adding?", "How many are you adding?", "Where should it be stored?",
-        "When does it expire?", "Quick Expiration Dates", "Prepared Food",
-    ]
 }
 
 // MARK: - Screenshots
