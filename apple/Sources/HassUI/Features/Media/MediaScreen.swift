@@ -57,7 +57,7 @@ public struct MediaScreen: View {
                 }
             }
             .galleryLastCallBanner()
-            .mediaRemotePresentation()
+            .hassSheet(.page)
         }
     }
 }

@@ -148,3 +148,92 @@ struct SplitGeometryTests {
         #expect(geometry.trailingWidth == 499.5)
     }
 }
+
+/// The compact tab bar layout, shell chrome placement, Quick Links tab selection and the profile button.
+@MainActor
+struct ShellChromeTests {
+    @Test func iOS26CompactBarShowsThePrimaryFourAndQuickLinks() {
+        let modern = CompactTabLayout.resolve(supportsTrailingTab: true)
+        #expect(modern == .primaryWithQuickLinks)
+        #expect(modern.visibleSections == [.home, .security, .climate, .chores])
+        #expect(modern.hasQuickLinksTab)
+        let legacy = CompactTabLayout.resolve(supportsTrailingTab: false)
+        #expect(legacy.visibleSections == AppSection.allCases)
+        #expect(!legacy.hasQuickLinksTab)
+    }
+
+    @Test func menuButtonShowsWhereverSettingsIsNotATab() {
+        #expect(ShellChrome.resolve(style: .tabBar, layout: .primaryWithQuickLinks)
+            == ShellChrome(showsMenuButton: true, showsQuickLinksButton: false))
+        #expect(ShellChrome.resolve(style: .tabBar, layout: .allSections)
+            == ShellChrome(showsMenuButton: false, showsQuickLinksButton: true))
+        #expect(ShellChrome.resolve(style: .flyout, layout: .primaryWithQuickLinks)
+            == ShellChrome(showsMenuButton: true, showsQuickLinksButton: true))
+    }
+
+    @Test func quickLinksTabSitsOverTheSelectedSection() {
+        let navigator = ShellNavigator(selection: .climate)
+        navigator.paths[.climate] = NavigationPath(["room"])
+        navigator.rootTab = .quickLinks
+        #expect(navigator.isQuickLinksActive)
+        #expect(navigator.selection == .climate)
+        #expect(navigator.rootTab == .quickLinks)
+        // Returning to the section under Quick Links keeps its stack.
+        navigator.select(.climate)
+        #expect(!navigator.isQuickLinksActive)
+        #expect(navigator.paths[.climate]?.count == 1)
+        navigator.rootTab = .quickLinks
+        navigator.rootTab = .section(.home)
+        #expect(navigator.selection == .home)
+        #expect(navigator.rootTab == .section(.home))
+        navigator.rootTab = .quickLinks
+        navigator.closeQuickLinks()
+        #expect(navigator.rootTab == .section(.home))
+    }
+
+    @Test func settingsPushesWhereItIsNotATab() {
+        let navigator = ShellNavigator(selection: .climate)
+        navigator.settingsIsTab = false
+        navigator.rootTab = .quickLinks
+        navigator.openFlyout()
+        navigator.select(.settings)
+        #expect(navigator.selection == .climate)
+        #expect(navigator.paths[.climate]?.count == 1)
+        #expect(!navigator.isQuickLinksActive && !navigator.isFlyoutOpen)
+        // The window turned compact while Settings was the selected tab.
+        let resized = ShellNavigator(selection: .settings)
+        resized.settingsIsTab = false
+        resized.settingsLeftTabBar()
+        #expect(resized.selection == .home)
+        #expect(resized.paths[.home]?.count == 1)
+        // Where Settings is a tab it is simply selected.
+        let regular = ShellNavigator()
+        regular.select(.settings)
+        #expect(regular.selection == .settings && regular.paths[.home] == nil)
+    }
+
+    @Test func profileNamePersistsBetweenLaunches() {
+        let saved = UserDefaults.standard.string(forKey: ShellNavigator.profileNameKey)
+        defer { UserDefaults.standard.set(saved, forKey: ShellNavigator.profileNameKey) }
+        ShellNavigator().profileName = "Stephen Fenton"
+        #expect(ShellNavigator().profileName == "Stephen Fenton")
+    }
+
+    @Test func profileInitialsTakeTheFirstTwoWords() {
+        #expect(ProfileButton.initials("Stephen Fenton") == "SF")
+        #expect(ProfileButton.initials("steph") == "S")
+        #expect(ProfileButton.initials("Anna Maria Lopez") == "AM")
+        #expect(ProfileButton.initials("  ") == nil)
+        #expect(ProfileButton.initials(nil) == nil)
+    }
+
+    @Test func profileButtonRendersWithAndWithoutAName() {
+        #expect(ImageRenderer(content: ProfileButton(name: "Stephen Fenton") {}).cgImage != nil)
+        #expect(ImageRenderer(content: ProfileButton(name: nil) {}).cgImage != nil)
+    }
+
+    @Test func activeChipsWashTheirToneStronger() {
+        #expect(StatusChipStyle.tintOpacity(isActive: true) > StatusChipStyle.tintOpacity(isActive: false))
+        #expect(StatusChipStyle.minHeight >= 44)
+    }
+}

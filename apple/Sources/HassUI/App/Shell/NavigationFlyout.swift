@@ -1,3 +1,4 @@
+import HassCore
 import HassDesign
 import SwiftUI
 
@@ -163,23 +164,30 @@ enum NavigationFlyoutMetrics {
 // MARK: - Toolbar button and edge swipe
 
 extension View {
-    /// Adds the regular-width Open Navigation toolbar button to a section's root page.
+    /// Adds a section root's shell toolbar items: the Open Navigation menu button (leading, when the window
+    /// shows the flyout), Quick Links (when it is not the trailing tab) and the profile button (trailing-most).
     func sectionRootChrome() -> some View { modifier(SectionRootChrome()) }
 }
 
-/// The Open Navigation button (and nothing in tab-bar style).
+/// The section root's shell items (``ShellChrome``).
+///
+/// HIG Toolbars: "Trailing: important always-available items"; Profile is the trailing-most item, as in
+/// FestivalNativeApps (`page-tools-and-nav-chrome` R2).
 private struct SectionRootChrome: ViewModifier {
-    @Environment(ShellNavigator.self) private var navigator
-    @Environment(\.shellNavigationStyle) private var style
+    @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
+    @Environment(\.shellChrome) private var chrome
+    @Environment(HassConnection.self) private var connection: HassConnection?
+    @Environment(\.roomServiceCaller) private var callerOverride
     @AccessibilityFocusState private var buttonFocused: Bool
+    @State private var showsProfile = false
 
     func body(content: Content) -> some View {
-        if style == .flyout {
-            content
-                .toolbar {
+        content
+            .toolbar {
+                if chrome.showsMenuButton {
                     ToolbarItem(placement: .navigation) {
                         Button {
-                            navigator.openFlyout()
+                            navigator?.openFlyout()
                         } label: {
                             Label("Open Navigation", systemImage: "line.3.horizontal")
                         }
@@ -187,10 +195,68 @@ private struct SectionRootChrome: ViewModifier {
                         .accessibilityFocused($buttonFocused)
                     }
                 }
-                .onChange(of: navigator.focusReturnToken) { _, _ in buttonFocused = true }
-        } else {
-            content
+            }
+            // Declared before Quick Links: the bar lays out later toolbars first, so Profile ends up trailing-most.
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    ProfileButton(name: navigator?.profileName) { showsProfile = true }
+                }
+            }
+            .quickLinks(caller: callerOverride ?? connection, showsButton: chrome.showsQuickLinksButton)
+            .homeAssistantSettingsCover(isPresented: $showsProfile)
+            .onChange(of: navigator?.focusReturnToken) { _, _ in buttonFocused = true }
+    }
+}
+
+// MARK: - Profile
+
+/// The profile button at the top trailing edge of every section root (owner, 2026-10-13: "profile goes in top
+/// right"). It shows the signed-in user's initials, or a person symbol until the name is known, and opens Home
+/// Assistant settings (server, account, Home Assistant's own Profile page, Sign Out). The web's header Profile
+/// button opens the Daily Report, which the app has not ported yet.
+struct ProfileButton: View {
+    /// The signed-in user's display name, when known.
+    var name: String?
+    var action: () -> Void
+
+    /// The monogram's fill (the light-mode action blue, 5.6:1 under white).
+    static let fill = Color(red: 0.0, green: 0.40, blue: 0.80)
+
+    /// Up to two initials from a display name ("Stephen Fenton" → "SF"); nil when it has no letters.
+    static func initials(_ name: String?) -> String? {
+        guard let name else { return nil }
+        let letters = name.split(whereSeparator: \.isWhitespace).prefix(2).compactMap(\.first).map(String.init)
+        let value = letters.joined().uppercased()
+        return value.isEmpty ? nil : value
+    }
+
+    var body: some View {
+        Button(action: action) {
+            if let initials = Self.initials(name) {
+                Text(initials)
+                    .font(.footnote.weight(.semibold))
+                    // A bar item keeps its size; the Large Content Viewer shows it bigger (HIG Toolbars,
+                    // Accessibility), so the initials stop growing past the 30 pt disc.
+                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .frame(width: 30, height: 30)
+                    // Fixed deep blue: white text stays above 5:1 in light and dark mode.
+                    .background(ProfileButton.fill, in: Circle())
+            } else {
+                Image(systemName: "person.crop.circle")
+            }
         }
+        // The whole 44 pt bar item is the target, not just the 30 pt monogram (HIG Buttons).
+        .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
+        .contentShape(Circle())
+        .accessibilityShowsLargeContentViewer {
+            Label("Profile", systemImage: "person.crop.circle")
+        }
+        .accessibilityLabel("Profile")
+        .accessibilityValue(name ?? "")
+        .accessibilityHint("Opens Home Assistant settings and your account")
+        .accessibilityIdentifier("nav.profile")
     }
 }
 
@@ -275,4 +341,6 @@ private struct ScreenEdgePan: UIGestureRecognizerRepresentable {
 extension EnvironmentValues {
     /// The root navigation style in effect.
     @Entry var shellNavigationStyle: ShellNavigationStyle = .tabBar
+    /// Where the shell puts its menu and Quick Links buttons (``ShellChrome``).
+    @Entry var shellChrome = ShellChrome(showsMenuButton: false, showsQuickLinksButton: true)
 }

@@ -38,7 +38,7 @@ struct RoomDevicesGallery: View {
                 .safeAreaInset(edge: .top) {
                     if !MediaRemoteGallery.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
                 }
-                .roomDevicePresentation(fixture.kind == .humidifier ? .page : .form)
+                .hassSheet(fixture.kind == .humidifier ? .page : .form)
         }
     }
 

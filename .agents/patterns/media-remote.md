@@ -22,7 +22,7 @@ Web source: `ha-sfenton-react-dash@9ac2a46:src/components/hass/MediaRemoteModalC
 ```swift
 .sheet(item: $remote) { config in
     MediaRemoteSheet(config: config, connection: connection)
-        .mediaRemotePresentation()   // .large, drag indicator, page sizing on iPad
+        .hassSheet(.page)   // .large, drag indicator, page sizing on iPad
 }
 ```
 

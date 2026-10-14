@@ -89,15 +89,14 @@ public struct VacuumSheet: View {
                 .accessibilityIdentifier(twoColumns ? "vacuum.layout.twoColumn" : "vacuum.layout.singleColumn")
             }
             .background { WindowMetricsReader(metrics: $window) }
+            .modalChrome()
             .navigationTitle("\(controller.vacuum.title) Robot Vacuum")
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
+            .toolbar { SheetCloseItem { dismiss() } }
             .navigationDestination(for: Route.self) { route in
                 switch route {
-                case .areaEditor: VacuumAreaEditor(controller: controller, mapState: mapState)
-                case let .report(box): VacuumOutcomeDetailView(vacuum: controller.vacuum, contract: box.contract)
+                case .areaEditor: VacuumAreaEditor(controller: controller, mapState: mapState).modalChrome()
+                case let .report(box): VacuumOutcomeDetailView(vacuum: controller.vacuum, contract: box.contract).modalChrome()
                 }
             }
         }
@@ -247,9 +246,4 @@ struct VacuumOutcomeContractBox: Hashable {
         hasher.combine(contract.day)
         for room in contract.rooms { hasher.combine(room.roomId); hasher.combine(room.status.rawValue) }
     }
-}
-
-public extension View {
-    /// Presents the vacuum sheet like the remote: full height, drag indicator, page-size on iPad.
-    func vacuumPresentation() -> some View { mediaRemotePresentation() }
 }

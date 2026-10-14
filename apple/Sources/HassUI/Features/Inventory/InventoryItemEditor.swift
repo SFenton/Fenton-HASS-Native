@@ -6,7 +6,7 @@ import SwiftUI
 /// prepared food and delete, each saved on its own.
 ///
 /// `.sheet` presents it modally (iPhone, folded and portrait layouts); `.pane` draws it in the trailing half of
-/// a split window with a Close button instead of Done. Saves and deletes block closing until they finish.
+/// a split window with its own header and Close button. Saves and deletes block closing until they finish.
 struct InventoryItemEditor: View {
     enum Style { case sheet, pane }
 
@@ -23,6 +23,7 @@ struct InventoryItemEditor: View {
             case .sheet:
                 NavigationStack {
                     form
+                        .modalChrome()
                         .navigationTitle(model.title)
                         .inlineNavigationTitle()
                         .toolbar {
@@ -42,8 +43,7 @@ struct InventoryItemEditor: View {
                             .foregroundStyle(HassTokens.Ink.primary)
                             .accessibilityAddTraits(.isHeader)
                         Spacer(minLength: 0)
-                        // Ink tint: the teal label on its teal fill read 3.1:1 (iPad landscape).
-                        closeButton.buttonStyle(.bordered).tint(HassTokens.Ink.primary)
+                        closeButton
                     }
                     .padding(.horizontal, HassTokens.Spacing.l)
                     .frame(minHeight: 56)
@@ -84,9 +84,8 @@ struct InventoryItemEditor: View {
     }
 
     private var closeButton: some View {
-        Button(style == .pane ? "Close" : "Done", action: onClose)
+        SheetCloseButton(identifier: "inventory.editor.close", action: onClose)
             .disabled(model.dismissalBlocked)
-            .accessibilityIdentifier("inventory.editor.close")
     }
 
     // MARK: - Prompts

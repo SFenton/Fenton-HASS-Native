@@ -55,7 +55,7 @@ struct FoodHubScreen: View {
         .accessibilityIdentifier("food.scroll")
         .navigationTitle("Food & Recipes")
         .onAppear { models.suggestions.appear() }
-        .navigationDestination(item: $pushed) { FoodNavigation.destination($0, models: models) }
+        .navigationDestination(item: $pushed) { FoodNavigation.destination($0, models: models).pageChrome() }
         .sheet(item: $openDetail) { RecipeDetailSheet(model: $0) }
     }
 

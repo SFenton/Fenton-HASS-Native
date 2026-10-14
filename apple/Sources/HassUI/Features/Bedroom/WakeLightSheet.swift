@@ -59,13 +59,14 @@ public struct WakeLightSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(HassTokens.Spacing.l)
             }
+            .modalChrome()
             .navigationTitle(controller.config.title) // With the room name the bar title clips at AX5.
             .inlineNavigationTitle()
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { SheetCloseItem { dismiss() } }
             .navigationDestination(for: Route.self) { route in
                 switch route {
-                case .add: WakeLightEditor(devices: devices, alarmId: nil) { path.removeAll() }
-                case let .edit(id): WakeLightEditor(devices: devices, alarmId: id) { path.removeAll() }
+                case .add: WakeLightEditor(devices: devices, alarmId: nil) { path.removeAll() }.modalChrome()
+                case let .edit(id): WakeLightEditor(devices: devices, alarmId: id) { path.removeAll() }.modalChrome()
                 }
             }
         }

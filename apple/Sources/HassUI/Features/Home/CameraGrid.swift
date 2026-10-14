@@ -64,13 +64,12 @@ struct CameraViewer: View {
                 .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))
                 .padding()
                 .frame(maxHeight: .infinity)
+                .modalChrome()
                 .navigationTitle(camera.title)
                 .inlineNavigationTitle()
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-                }
+                .toolbar { SheetCloseItem { dismiss() } }
         }
-        .presentationDetents([.large])
+        .hassSheet()
     }
 }
 

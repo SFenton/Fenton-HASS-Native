@@ -126,9 +126,8 @@ struct OnDemandSplitStack<Item: Hashable, Root: View, Detail: View, Placeholder:
                     detail(openItem)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
-                                Button("Close") { self.openItem = nil }
+                                SheetCloseButton(identifier: "split.close") { self.openItem = nil }
                                     .keyboardShortcut(.cancelAction)
-                                    .accessibilityIdentifier("split.close")
                             }
                         }
                         .id(openItem)

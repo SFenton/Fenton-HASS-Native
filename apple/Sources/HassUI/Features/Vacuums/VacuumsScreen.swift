@@ -61,7 +61,7 @@ struct VacuumsPage<Sheet: View>: View {
         }
         .navigationTitle("Vacuums")
         .sheet(item: $open) { vacuum in
-            sheet(vacuum).vacuumPresentation()
+            sheet(vacuum).hassSheet(.page)
         }
     }
 

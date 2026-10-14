@@ -84,14 +84,14 @@ struct VacationChooser: View {
         List {
             Section {
                 NavigationLink {
-                    VacationModeScreen(store: store, household: household, caller: caller)
+                    VacationModeScreen(store: store, household: household, caller: caller).pageChrome()
                 } label: {
                     SettingsLinkRow(title: Vacation.Copy.vacationLinkTitle, subtitle: Vacation.Copy.vacationLinkSubtitle,
                                     symbol: SymbolMap.symbol(for: "mdi:airplane"), showsChevron: false)
                 }
                 .accessibilityIdentifier("vacation.chooser.vacationMode")
                 NavigationLink {
-                    SoloTripScreen(household: household, viewer: viewer)
+                    SoloTripScreen(household: household, viewer: viewer).pageChrome()
                 } label: {
                     SettingsLinkRow(title: SoloTripCopy.title, subtitle: soloTripSubtitle,
                                     symbol: SymbolMap.symbol(for: "mdi:bag-suitcase"), showsChevron: false)

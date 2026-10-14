@@ -34,7 +34,7 @@ struct RoomGroupDetailPage: View {
         .accessibilityIdentifier("overview.detail.\(group.room)")
         .toolbar {
             if let onDone {
-                ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) }
+                SheetCloseItem(action: onDone)
             }
         }
         .onAppear {

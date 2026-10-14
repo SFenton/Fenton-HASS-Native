@@ -84,14 +84,17 @@ public struct BedSideSheet: View {
                 .accessibilityIdentifier(twoColumns ? "bed.layout.twoColumn" : "bed.layout.singleColumn")
             }
             .background { WindowMetricsReader(metrics: $window) }
+            .modalChrome()
             .navigationTitle(controller.title)
             .inlineNavigationTitle()
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { SheetCloseItem { dismiss() } }
             .navigationDestination(for: Route.self) { route in
                 switch route {
-                case let .day(day): BedAlarmDayPage(devices: devices, side: side, day: day, path: $path)
-                case let .add(day): BedAlarmEditor(devices: devices, side: side, alarmId: nil, lockedDay: day) { path.removeAll() }
-                case let .edit(id): BedAlarmEditor(devices: devices, side: side, alarmId: id, lockedDay: nil) { path.removeAll() }
+                case let .day(day): BedAlarmDayPage(devices: devices, side: side, day: day, path: $path).modalChrome()
+                case let .add(day):
+                    BedAlarmEditor(devices: devices, side: side, alarmId: nil, lockedDay: day) { path.removeAll() }.modalChrome()
+                case let .edit(id):
+                    BedAlarmEditor(devices: devices, side: side, alarmId: id, lockedDay: nil) { path.removeAll() }.modalChrome()
                 }
             }
         }
@@ -227,16 +230,12 @@ struct BedTemperatureScopeSheet: View {
                 }
                 .padding(HassTokens.Spacing.l)
             }
+            .modalChrome()
             .navigationTitle("Set Bed Temperature")
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { controller.dismissScope() }.accessibilityIdentifier("bed.scope.cancel")
-                }
-            }
+            .toolbar { SheetCloseItem(identifier: "bed.scope.cancel") { controller.dismissScope() } }
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
+        .hassSheet()
     }
 
     private func choice(_ title: String, detail: String, symbol: String, id: String, action: @escaping () -> Void) -> some View {

@@ -91,7 +91,7 @@ struct AdminSettingsContent: View {
 
 // MARK: - Sheet chrome
 
-/// A household sheet: its own navigation stack with a title and Done (`.agents/patterns/modal-sheet.md`).
+/// A household sheet: its own navigation stack with a title and the circle-X Close (`.agents/patterns/modal-sheet.md`).
 struct HouseholdSheet<Content: View>: View {
     var title: String
     @ViewBuilder var content: Content
@@ -99,6 +99,7 @@ struct HouseholdSheet<Content: View>: View {
 
     var body: some View {
         content
+            .modalChrome()
             .navigationTitle(title)
             .inlineNavigationTitle()
             .householdSheetDone { dismiss() }
@@ -106,15 +107,10 @@ struct HouseholdSheet<Content: View>: View {
 }
 
 extension View {
-    /// The sheet's Done. Pages pushed inside the sheet carry it too, so the sheet closes from any depth
+    /// The sheet's Close. Pages pushed inside the sheet carry it too, so the sheet closes from any depth
     /// (HIG: Sheets); they pass the sheet's own dismiss, since `dismiss` read on a pushed page only pops it.
     func householdSheetDone(_ done: @escaping () -> Void) -> some View {
-        toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Done", action: done)
-                    .accessibilityIdentifier("household.sheet.done")
-            }
-        }
+        toolbar { SheetCloseItem(identifier: "household.sheet.done", action: done) }
     }
 }
 
@@ -162,8 +158,7 @@ struct PresenceOverridesSheet: View {
                 PresenceOverrideDetail(room: room, controller: controller, done: { dismiss() })
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .hassSheet()
     }
 }
 
@@ -202,6 +197,7 @@ struct PresenceOverrideDetail: View {
         }
         // Just the room: the bar also holds Back and Done, and "<Room> Presence Lighting" clipped at large text
         // sizes (HIG: Navigation bars, keep titles short). The sheet's title already says what the rooms are for.
+        .modalChrome()
         .navigationTitle(room.title)
         .inlineNavigationTitle()
         .modifier(OptionalSheetDone(done: done))
@@ -235,7 +231,6 @@ struct AutoResetSheet: View {
                 }
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .hassSheet()
     }
 }

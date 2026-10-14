@@ -33,7 +33,7 @@ ForEach(bedroom.beds, id: \.config.id) { bed in BedSideTile(controller: bed) { s
     case let .bed(side, tab): BedSideSheet(devices: bedroom, side: side, initialTab: tab)
     }
 }
-.bedroomSheetPresentation()
+.hassSheet(.page)
 ```
 
 "Open Linked-Device Alarm Editor" closes the wake-light sheet and asks the host to open that bed on Alarms; queue it until the first sheet is dismissed (see `BedroomGallery`). Create one `BedroomDevices` per page, not per tile, so both sheets share pending edits.

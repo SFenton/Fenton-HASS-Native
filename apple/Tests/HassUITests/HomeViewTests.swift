@@ -44,16 +44,6 @@ struct HomeViewTests {
 }
 
 @MainActor
-struct HomeSheetDetentTests {
-    @Test func overviewsOpenFullHeightAndSecurityKeepsMedium() {
-        for kind in HomeConfig.ChipSheet.allCases where kind != .security {
-            #expect(HomeScreen.detents(for: kind) == [.large])
-        }
-        #expect(HomeScreen.detents(for: .security) == [.medium, .large])
-    }
-}
-
-@MainActor
 struct LightGroupTileTests {
     /// Dimmable groups draw the brightness tile; on/off-only entities fall back to a power tile.
     @Test func rendersBothTileKinds() {

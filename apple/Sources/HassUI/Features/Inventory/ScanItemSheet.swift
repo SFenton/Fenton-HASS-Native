@@ -49,13 +49,14 @@ struct ScanItemSheet: View {
                 .accessibilityIdentifier("scan.\(model.step.rawValue)")
                 if !typeSize.isAccessibilitySize { footer }
             }
+            .modalChrome()
             .navigationTitle("Add Item")
             .inlineNavigationTitle()
             .toolbar { toolbar }
         }
         // The app accent reads 2.5:1 as button text on the sheet; the floating actions' teal reads 5.8:1.
         .tint(FloatingActionBar.tint)
-        .presentationDetents([.large])
+        .hassSheet()
         .presentationBackground(Self.surface)
         .interactiveDismissDisabled(model.addStatus == .adding)
         .task(id: CameraKey(step: model.step, wanted: model.wantedCamera)) { await camera.sync(with: model) }
@@ -96,11 +97,11 @@ struct ScanItemSheet: View {
                 }
                 .accessibilityLabel(model.step == .expiry ? "Back to barcode scan" : "Back to expiration date")
                 .accessibilityIdentifier("scan.back")
-            } else {
-                Button("Cancel") { dismiss() }
-                    .disabled(model.addStatus == .adding)
-                    .accessibilityIdentifier("scan.cancel")
             }
+        }
+        ToolbarItem(placement: .confirmationAction) {
+            SheetCloseButton(identifier: "scan.cancel") { dismiss() }
+                .disabled(model.addStatus == .adding)
         }
     }
 

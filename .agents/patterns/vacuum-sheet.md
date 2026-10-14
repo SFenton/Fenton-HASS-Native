@@ -22,7 +22,7 @@ Web source: `ha-sfenton-react-dash@9ac2a46:src/components/hass/VacuumCard.tsx`, 
 ```swift
 .sheet(item: $vacuum) { vacuum in
     VacuumSheet(vacuum: vacuum, connection: connection)
-        .vacuumPresentation()
+        .hassSheet(.page)
 }
 ```
 

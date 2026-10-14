@@ -62,7 +62,7 @@ final class WeatherJourneyTests: XCTestCase {
 
     private func openSheet(_ app: XCUIApplication) {
         app.buttons["home.weather.card"].tap()
-        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 8), "The Weather sheet did not open")
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 8), "The Weather sheet did not open")
     }
 
     // MARK: - Card
@@ -108,7 +108,7 @@ final class WeatherJourneyTests: XCTestCase {
         let pages = element("home.weather.pages", in: app)
         carousel.swipeLeft()
         XCTAssertTrue(waitFor(pages, "value BEGINSWITH %@", "Page 2"), "The indicator stayed on \(String(describing: pages.value))")
-        XCTAssertFalse(app.buttons["Done"].exists, "Scrolling opened the sheet")
+        XCTAssertFalse(app.buttons["Close"].exists, "Scrolling opened the sheet")
         XCTAssertFalse(element("weather.sheet", in: app).exists)
         carousel.swipeRight()
         XCTAssertTrue(waitFor(pages, "value BEGINSWITH %@", "Page 1"))
@@ -137,12 +137,12 @@ final class WeatherJourneyTests: XCTestCase {
         let app = launch()
         openSheet(app)
         XCTAssertTrue(element("weather.hero.temperature", in: app).exists)
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap()
         XCTAssertTrue(app.buttons["home.weather.card"].waitForExistence(timeout: 5))
         let hour = element("home.weather.hour.1", in: app)
         XCTAssertTrue(hour.waitForExistence(timeout: 5))
         hour.tap()
-        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 8), "Tapping an hour should open the sheet")
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 8), "Tapping an hour should open the sheet")
     }
 
     /// While the service has not answered, the card keeps its height and shows no hours.
@@ -169,7 +169,7 @@ final class WeatherJourneyTests: XCTestCase {
     /// The sheet shows its sections in reading order, with the web's labels.
     func testSheetSections() throws {
         let app = launch(open: true)
-        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 15))
         XCTAssertTrue(element("weather.hero.temperature", in: app).waitForExistence(timeout: 8))
         XCTAssertEqual(element("weather.hero.temperature", in: app).label, "72°")
         XCTAssertEqual(element("weather.hero.condition", in: app).label, "Rain")
@@ -188,14 +188,14 @@ final class WeatherJourneyTests: XCTestCase {
         }
         XCTAssertEqual(element("weather.highlight.pressure", in: app).label, "Pressure 29.92 inHg")
         XCTAssertTrue(element("weather.highlight.wind", in: app).label.hasPrefix("Wind 9 mph; Gusts 14 mph; From "))
-        app.buttons["Done"].tap()
+        app.buttons["Close"].tap()
         XCTAssertTrue(app.buttons["home.weather.card"].waitForExistence(timeout: 5))
     }
 
     /// The three modes change both the hourly carousel and the seven-day rows, and name their state.
     func testModesSwitchHoursAndDays() throws {
         let app = launch(open: true)
-        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 15))
         let condition = app.buttons["weather.mode.condition"]
         let precipitation = app.buttons["weather.mode.precipitation"]
         let wind = app.buttons["weather.mode.wind"]
@@ -234,18 +234,18 @@ final class WeatherJourneyTests: XCTestCase {
         let pages = element("weather.hour.pages", in: app)
         carousel.swipeLeft()
         XCTAssertTrue(waitFor(pages, "value BEGINSWITH %@", "Page 2"), "\(String(describing: pages.value))")
-        XCTAssertTrue(app.buttons["Done"].exists)
+        XCTAssertTrue(app.buttons["Close"].exists)
     }
 
     /// Without forecasts the sheet explains instead of showing blanks.
     func testSheetStatesWithoutForecasts() throws {
         let failing = launch(open: true, state: "error")
-        XCTAssertTrue(failing.buttons["Done"].waitForExistence(timeout: 15))
+        XCTAssertTrue(failing.buttons["Close"].waitForExistence(timeout: 15))
         XCTAssertTrue(element("weather.hourly.message", in: failing).waitForExistence(timeout: 8))
         XCTAssertTrue(element("weather.daily.message", in: failing).exists)
         failing.terminate()
         let empty = launch(open: true, state: "empty")
-        XCTAssertTrue(empty.buttons["Done"].waitForExistence(timeout: 15))
+        XCTAssertTrue(empty.buttons["Close"].waitForExistence(timeout: 15))
         XCTAssertEqual(element("weather.hourly.message", in: empty).label, "No hourly forecast data returned by Pirate Weather.")
     }
 
@@ -280,7 +280,7 @@ final class WeatherJourneyTests: XCTestCase {
 
     func testSheetAtAX5() throws {
         let app = launch(open: true, arguments: FentonHomeApp.ax5)
-        XCTAssertTrue(app.buttons["Done"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Close"].waitForExistence(timeout: 15))
         XCTAssertTrue(element("weather.hero.temperature", in: app).waitForExistence(timeout: 8))
         // At AX5 the tiles drop to one column instead of clipping.
         let feels = element("weather.highlight.feels", in: app)

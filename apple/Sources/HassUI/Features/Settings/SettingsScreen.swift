@@ -24,6 +24,20 @@ struct SettingsStack: View {
     }
 }
 
+/// Settings pushed on another section's stack where it is not a tab (the iOS 26 compact bar; ``ShellRoute``): the
+/// list, with each topic pushed after it. Compact windows never split, so it needs no ``OnDemandSplitStack``.
+struct SettingsPage: View {
+    @State private var openTopic: HouseholdSettingsPage?
+
+    var body: some View {
+        SettingsScreen(openTopic: $openTopic)
+            .pageChrome()
+            .navigationDestination(item: $openTopic) { page in
+                HouseholdSettingsDestination(page: page).pageChrome()
+            }
+    }
+}
+
 // MARK: - List
 
 /// The Settings list: the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`: Vacation, which
@@ -44,7 +58,7 @@ struct SettingsScreen: View {
         List {
             Section {
                 NavigationLink {
-                    VacationRoute()
+                    VacationRoute().pageChrome()
                 } label: {
                     SettingsLinkRow(
                         title: Vacation.Copy.settingsLinkTitle,
@@ -56,7 +70,7 @@ struct SettingsScreen: View {
                 .accessibilityIdentifier("settings.vacation")
                 if ChoresConfig.showsAdminTodo(to: ChoresConfig.Resident.forUserId(viewerUserId)) {
                     NavigationLink {
-                        AdminTodoScreen()
+                        AdminTodoScreen().pageChrome()
                     } label: {
                         SettingsLinkRow(title: "To-Do", subtitle: "An admin panel for to-do tasks.",
                                         symbol: SymbolMap.symbol(for: "mdi:clipboard-list"), showsChevron: false)

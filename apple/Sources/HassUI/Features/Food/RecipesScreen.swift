@@ -329,7 +329,7 @@ struct RecipeFilterSheet: View {
                     .foregroundStyle(HassTokens.Ink.secondary)
             }
         }
-        .presentationDetents([.large])
+        .hassSheet()
     }
 }
 

@@ -78,11 +78,10 @@ public struct MediaRemoteSheet: View {
                 .accessibilityIdentifier(twoColumns ? "remote.layout.twoColumn" : "remote.layout.singleColumn")
             }
             .background { WindowMetricsReader(metrics: $window) }
+            .modalChrome()
             .navigationTitle(controller.config.title)
             .inlineNavigationTitle()
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
+            .toolbar { SheetCloseItem { dismiss() } }
         }
     }
 
@@ -112,29 +111,6 @@ public struct MediaRemoteSheet: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .onChange(of: tab) { _, _ in reader.scrollTo(MediaRemoteLayout.tabTopID, anchor: .top) }
-    }
-}
-
-// MARK: - Presentation
-
-public extension View {
-    /// Presents a remote sheet the way the pattern requires: full height, drag indicator visible, and a page-size
-    /// sheet on iPad so the landscape layout has room for two columns.
-    func mediaRemotePresentation() -> some View {
-        modifier(MediaRemotePresentation())
-    }
-}
-
-private struct MediaRemotePresentation: ViewModifier {
-    func body(content: Content) -> some View {
-        let sheet = content
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-        if #available(iOS 18.0, macOS 15.0, *) {
-            sheet.presentationSizing(.page)
-        } else {
-            sheet
-        }
     }
 }
 

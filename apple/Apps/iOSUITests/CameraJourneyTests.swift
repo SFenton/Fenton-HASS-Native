@@ -48,7 +48,7 @@ final class CameraJourneyTests: XCTestCase {
             let video = openCamera(app, stream)
             let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: live, object: video)], timeout: 30)
             XCTAssertEqual(result, .completed, "\(stream) stayed '\(video.value as? String ?? "")'")
-            app.buttons["Done"].tap()
+            app.buttons["Close"].tap()
         }
     }
 

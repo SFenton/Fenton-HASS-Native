@@ -86,14 +86,12 @@ public struct CustomLightsScreen: View {
                 send(CustomLightsConfig.selectMode(option))
             }
             .galleryLastCallBanner()
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            .hassSheet()
         }
         .sheet(item: $detail) { light in
             CustomLightSheet(light: light, store: store, caller: caller)
                 .galleryLastCallBanner()
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .hassSheet()
         }
     }
 

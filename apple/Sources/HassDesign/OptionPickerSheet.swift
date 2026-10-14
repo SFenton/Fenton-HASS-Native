@@ -73,13 +73,12 @@ public struct OptionPickerSheet: View {
                 .accessibilityAddTraits(option.value == selected ? .isSelected : [])
                 .accessibilityIdentifier("\(identifierPrefix).\(option.value)")
             }
+            .modalChrome()
             .navigationTitle(title)
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
+            .toolbar { SheetCloseItem { dismiss() } }
         }
         .tint(HassTokens.Ink.action)
         #if os(iOS)

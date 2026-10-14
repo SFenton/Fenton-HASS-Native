@@ -90,6 +90,7 @@ public struct HumidifierSheet: View {
                 HumidifierActivityEditor(schedules: schedules, rule: rule, isNew: !schedules.rules.contains { $0.id == rule.id }) {
                     editing = nil
                 }
+                .modalChrome()
             }
             .task { await schedules.load() }
         }

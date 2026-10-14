@@ -4,14 +4,18 @@ import SwiftUI
 
 // MARK: - Button
 
-/// The toolbar button that opens Quick Links. The web shows a floating action button on every page; iOS puts the
-/// same action in the navigation bar (HIG: Toolbars), labeled "Quick Links" for VoiceOver.
+/// The toolbar button that opens Quick Links where it is not the trailing tab (``CompactTabLayout``): iPad, the
+/// unfolded Duo, and iOS before 26. The web shows a floating action button on every page; iOS puts the same action
+/// in the navigation bar (HIG: Toolbars), labeled "Quick Links" for VoiceOver.
 struct QuickLinksButton: View {
+    /// The Quick Links symbol, shared by this button and the trailing tab.
+    static let symbol = "square.grid.2x2"
+
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label(QuickLinks.title, systemImage: "square.grid.2x2")
+            Label(QuickLinks.title, systemImage: Self.symbol)
         }
         .accessibilityIdentifier("quickLinks.open")
     }
@@ -20,13 +24,17 @@ struct QuickLinksButton: View {
 extension View {
     /// Adds the Quick Links toolbar button and sheet; a chosen page pushes through ``HomeRouteDestination`` once the
     /// sheet has gone, so the push never races the dismissal.
-    func quickLinks(caller: (any HassServiceCalling)?) -> some View {
-        modifier(QuickLinksPresenter(caller: caller))
+    /// - Parameters:
+    ///   - caller: Service caller for the Security System and room-visit actions.
+    ///   - showsButton: Show the toolbar button (false where Quick Links is the trailing tab).
+    func quickLinks(caller: (any HassServiceCalling)?, showsButton: Bool = true) -> some View {
+        modifier(QuickLinksPresenter(caller: caller, showsButton: showsButton))
     }
 }
 
 private struct QuickLinksPresenter: ViewModifier {
     var caller: (any HassServiceCalling)?
+    var showsButton: Bool
     @State private var isPresented = false
     @State private var pending: HomeRoute?
     @State private var route: HomeRoute?
@@ -34,7 +42,9 @@ private struct QuickLinksPresenter: ViewModifier {
     func body(content: Content) -> some View {
         content
             .toolbar {
-                ToolbarItem(placement: .primaryAction) { QuickLinksButton { isPresented = true } }
+                if showsButton {
+                    ToolbarItem(placement: .primaryAction) { QuickLinksButton { isPresented = true } }
+                }
             }
             .sheet(isPresented: $isPresented, onDismiss: {
                 route = pending
@@ -58,38 +68,17 @@ struct QuickLinksSheet: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ScrollView {
-                QuickLinksGrid(onNavigate: open)
-                .padding(HassTokens.Spacing.l)
-                .frame(maxWidth: 560)
-                .frame(maxWidth: .infinity)
-            }
-            .navigationTitle(QuickLinks.title)
-            .inlineNavigationTitle()
-            .navigationDestination(for: QuickLink.Detail.self, destination: detailView)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
-            }
+            QuickLinksRoot(onNavigate: open)
+                .modalChrome()
+                .inlineNavigationTitle()
+                .navigationDestination(for: QuickLink.Detail.self) { detail in
+                    QuickLinksDetailView(detail: detail, caller: caller) { go(.room($0)) }
+                        .modalChrome()
+                }
+                .toolbar { SheetCloseItem(identifier: "quickLinks.close") { dismiss() } }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
+        .hassSheet()
         .accessibilityIdentifier("quickLinks.sheet")
-    }
-
-    /// Rooms and Security System push inside the sheet.
-    @ViewBuilder
-    func detailView(_ detail: QuickLink.Detail) -> some View {
-        switch detail {
-        case .rooms:
-            ScrollView {
-                RoomNavigationGrid(caller: caller) { go(.room($0)) }
-                    .padding(HassTokens.Spacing.l)
-            }
-            .navigationTitle("Rooms")
-            .inlineNavigationTitle()
-        case .securitySystem:
-            QuickLinksSecurityDetail(caller: caller)
-        }
     }
 
     /// Rooms and Security System push inside the sheet; page links close it and open their page.
@@ -103,6 +92,74 @@ struct QuickLinksSheet: View {
     func go(_ route: HomeRoute) {
         onNavigate(route)
         dismiss()
+    }
+}
+
+// MARK: - Tab
+
+/// Quick Links as the tab bar's trailing tab (iOS 26 and later in compact width; ``CompactTabLayout``). Like a
+/// Search tab, it is its own page: Rooms and Security System open inside it, and the pages it links push on its
+/// own stack, so leaving the tab returns to the section underneath unchanged.
+struct QuickLinksTab: View {
+    var caller: (any HassServiceCalling)?
+    @State private var path = NavigationPath()
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            QuickLinksRoot { link in
+                switch link.action {
+                case let .detail(detail): path.append(detail)
+                case let .navigate(route): if let route = HomeRoute(path: route) { path.append(route) }
+                }
+            }
+            .navigationDestination(for: QuickLink.Detail.self) { detail in
+                QuickLinksDetailView(detail: detail, caller: caller) { path.append(HomeRoute.room($0)) }
+                    .pageChrome()
+            }
+            .navigationDestination(for: HomeRoute.self) { HomeRouteDestination(route: $0).pageChrome() }
+            .sectionRootChrome()
+            .pageChrome()
+        }
+        .accessibilityIdentifier("quickLinks.tab")
+    }
+}
+
+// MARK: - Shared content
+
+/// The Quick Links page body: its tiles, titled for the stack it sits in.
+struct QuickLinksRoot: View {
+    var onNavigate: (QuickLink) -> Void
+
+    var body: some View {
+        ScrollView {
+            QuickLinksGrid(onNavigate: onNavigate)
+                .padding(HassTokens.Spacing.l)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
+        }
+        .navigationTitle(QuickLinks.title)
+    }
+}
+
+/// Rooms or Security System, opened from a Quick Links tile.
+struct QuickLinksDetailView: View {
+    var detail: QuickLink.Detail
+    var caller: (any HassServiceCalling)?
+    /// Opens a room page by web path.
+    var onRoom: (String) -> Void
+
+    var body: some View {
+        switch detail {
+        case .rooms:
+            ScrollView {
+                RoomNavigationGrid(caller: caller, onOpen: onRoom)
+                    .padding(HassTokens.Spacing.l)
+            }
+            .navigationTitle("Rooms")
+            .inlineNavigationTitle()
+        case .securitySystem:
+            QuickLinksSecurityDetail(caller: caller)
+        }
     }
 }
 

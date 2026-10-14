@@ -55,7 +55,7 @@ struct FoodNavigation: ViewModifier {
         }
     }
 
-    private func destination(_ route: FoodRoute) -> some View { Self.destination(route, models: models) }
+    private func destination(_ route: FoodRoute) -> some View { Self.destination(route, models: models).pageChrome() }
 
     /// The page for a route.
     @ViewBuilder

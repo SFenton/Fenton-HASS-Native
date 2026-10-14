@@ -15,9 +15,12 @@ final class NavigationJourneyTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// The window uses the flyout (regular width) rather than the tab bar.
+    /// The window uses the flyout (regular width) rather than the tab bar. Compact windows on iOS 26 also have
+    /// the menu button (Settings left the bar for it), so the test is the tab bar itself.
     private func usesFlyout(_ app: XCUIApplication) -> Bool {
-        app.buttons["nav.open"].waitForExistence(timeout: 3)
+        _ = app.buttons["nav.open"].waitForExistence(timeout: 3)
+        let home = tab("Home", in: app)
+        return !(home.exists && home.isHittable)
     }
 
     /// A tab item: in the tab bar, or on the folded iPhone Duo in the vertical bar, which XCUITest
@@ -52,7 +55,8 @@ final class NavigationJourneyTests: XCTestCase {
 
     /// Goes to a section through whichever navigation the window shows.
     private func open(_ section: String, title: String, in app: XCUIApplication) {
-        if usesFlyout(app) {
+        let item = tab(title, in: app)
+        if !(item.exists && item.isHittable) {
             app.buttons["nav.open"].tap()
             XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "Flyout did not open")
             app.buttons["nav.\(section)"].tap()
@@ -65,13 +69,23 @@ final class NavigationJourneyTests: XCTestCase {
 
     // MARK: - Compact width
 
-    /// iPhone (and folded Duo) navigate with the tab bar; a Settings topic pushes full screen with Back.
+    /// iPhone (and folded Duo) navigate with the tab bar: the primary four and the trailing Quick Links tab, with
+    /// Settings in the menu (iOS 26); a Settings topic pushes full screen with Back.
     func testCompactWidthUsesTabBarAndPushes() throws {
         let app = try FentonHomeApp.launchSignedIn()
         guard !usesFlyout(app) else { throw XCTSkip("Regular-width window") }
-        for title in ["Security", "Climate", "Chores", "Settings", "Home"] {
+        for title in ["Security", "Climate", "Chores", "Home", "Quick Links"] {
             XCTAssertTrue(tab(title, in: app).exists, "\(title) tab missing")
         }
+        XCTAssertFalse(tab("Settings", in: app).isHittable, "Settings is in the menu, not the bar")
+        XCTAssertTrue(app.buttons["nav.open"].isHittable, "No menu button on the section root")
+        XCTAssertTrue(app.buttons["nav.profile"].isHittable, "No profile button on the section root")
+        // Quick Links is its own page and returns to Home unchanged.
+        tab("Quick Links", in: app).tap()
+        XCTAssertTrue(app.descendants(matching: .any)["quickLinks.rooms"].waitForExistence(timeout: 5), "Quick Links did not open")
+        keepScreenshot(app, "quick-links-tab")
+        tab("Home", in: app).tap()
+        XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 5))
         open("settings", title: "Settings", in: app)
         app.buttons["settings.topic.specialDeviceModes"].tap()
         XCTAssertTrue(app.navigationBars["Special Device Modes"].waitForExistence(timeout: 5))
@@ -156,7 +170,7 @@ final class NavigationJourneyTests: XCTestCase {
         let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 2, dy: y))
         start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 200, dy: 0)))
         XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "Edge swipe did not open the flyout")
-        XCTAssertFalse(app.navigationBars.buttons["Done"].exists, "The edge swipe also activated the control under it")
+        XCTAssertFalse(app.navigationBars.buttons["Close"].exists, "The edge swipe also activated the control under it")
         app.buttons["nav.flyout.scrim"].tap()
         XCTAssertTrue(flyout(app).waitForNonExistence(timeout: 3))
 
@@ -174,7 +188,7 @@ final class NavigationJourneyTests: XCTestCase {
         }
         if camera.exists, camera.frame.minX < 18 {
             camera.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 18 - camera.frame.minX - 1, dy: camera.frame.height / 2)).tap()
-            let done = app.navigationBars.buttons["Done"]
+            let done = app.navigationBars.buttons["Close"]
             XCTAssertTrue(done.waitForExistence(timeout: 5), "A tap on a camera tile inside the leading edge was swallowed")
             done.tap()
             tappedAtEdge += 1
@@ -304,7 +318,7 @@ final class NavigationJourneyTests: XCTestCase {
                 app.buttons["nav.settings"].tap()
             } else {
                 keep(app, "nav-tabbar-\(suffix)")
-                tab("Settings", in: app).tap()
+                open("settings", title: "Settings", in: app)
             }
             XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
             // Show the end of the list: it closes with the Home Assistant row (below the fold on

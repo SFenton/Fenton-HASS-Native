@@ -78,19 +78,19 @@ struct RoomDeviceModalSheet: View {
     var body: some View {
         switch modal {
         case let .vacuum(vacuum):
-            if let connection { VacuumSheet(vacuum: vacuum, connection: connection).vacuumPresentation() }
+            if let connection { VacuumSheet(vacuum: vacuum, connection: connection).hassSheet(.page) }
         case let .bathroomFan(fan, _):
-            BathroomFanSheet(controller: fan).roomDevicePresentation(.form)
+            BathroomFanSheet(controller: fan).hassSheet(.form)
         case let .airPurifier(purifier):
-            AirPurifierSheet(config: purifier, store: store, caller: caller).roomDevicePresentation(.form)
+            AirPurifierSheet(config: purifier, store: store, caller: caller).hassSheet(.form)
         case let .humidifier(humidifier):
-            if let connection { HumidifierSheet(config: humidifier, connection: connection).roomDevicePresentation(.page) }
+            if let connection { HumidifierSheet(config: humidifier, connection: connection).hassSheet(.page) }
         case .grill:
-            GrillSheet(config: .bearGrills, store: store, caller: caller).roomDevicePresentation(.form)
+            GrillSheet(config: .bearGrills, store: store, caller: caller).hassSheet(.form)
         case let .wakeLight(devices, tab):
-            WakeLightSheet(devices: devices, initialTab: tab, onOpenBed: onOpenBed).bedroomSheetPresentation()
+            WakeLightSheet(devices: devices, initialTab: tab, onOpenBed: onOpenBed).hassSheet(.page)
         case let .bed(devices, side, tab):
-            BedSideSheet(devices: devices, side: side, initialTab: tab).bedroomSheetPresentation()
+            BedSideSheet(devices: devices, side: side, initialTab: tab).hassSheet(.page)
         }
     }
 }
