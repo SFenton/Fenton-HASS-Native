@@ -2,48 +2,7 @@ import Foundation
 @testable import HassCore
 import Testing
 
-// MARK: - Test double
-
-/// Records calls and answers response-checked commands from a queue (default `accepted`).
-@MainActor
-final class ResponseCaller: HassServiceResponding {
-    struct Call {
-        var domain: String
-        var service: String
-        var data: [String: any Sendable]
-        var name: String { "\(domain).\(service)" }
-    }
-
-    var calls: [Call] = []
-    var responses: [JSONValue] = []
-    var fail = false
-    /// Suspends response-checked calls until ``release()``.
-    var hold = false
-    private var waiting: [CheckedContinuation<Void, Never>] = []
-
-    struct Failure: Error {}
-
-    func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
-        calls.append(Call(domain: domain, service: service, data: data))
-        if fail { throw Failure() }
-    }
-
-    func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
-        calls.append(Call(domain: domain, service: service, data: data))
-        if hold { await withCheckedContinuation { waiting.append($0) } }
-        if fail { throw Failure() }
-        return responses.isEmpty ? .object(["outcome": "accepted"]) : responses.removeFirst()
-    }
-
-    func release() {
-        hold = false
-        let continuations = waiting
-        waiting.removeAll()
-        continuations.forEach { $0.resume() }
-    }
-
-    var names: [String] { calls.map(\.name) }
-}
+// MARK: - Fixtures
 
 @MainActor
 func bedroomStore(_ entities: [EntityState]) -> EntityStore {

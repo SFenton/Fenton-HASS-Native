@@ -24,7 +24,7 @@ struct VacuumViewTests {
 
     func sheet(_ vacuum: VacuumConfig, _ scenario: VacuumFixtures.Scenario, tab: VacuumTab, window: WindowMetrics? = nil) -> some View {
         let store = VacuumFixtures.store(scenario)
-        let controller = VacuumController(vacuum: vacuum, store: store, caller: NullCaller(), scheduler: ManualRevertScheduler())
+        let controller = VacuumController(vacuum: vacuum, store: store, caller: RecordingCaller(), scheduler: ManualRevertScheduler())
         return VacuumSheet(controller: controller, loader: VacuumFixtures.loader(vacuum, scenario: scenario), server: nil, catalog: nil,
                            services: VacuumFixtures.services, initialTab: tab, window: window)
     }
@@ -50,17 +50,17 @@ struct VacuumViewTests {
     @Test func pageRendersSingleAndSplit() {
         for scenario in Self.scenarios {
             let store = VacuumFixtures.store(scenario)
-            let page = VacuumsPage(store: store, caller: NullCaller(), scheduler: ManualRevertScheduler()) { _ in EmptyView() }
+            let page = VacuumsPage(store: store, caller: RecordingCaller(), scheduler: ManualRevertScheduler()) { _ in EmptyView() }
             #expect(image(page, size: Self.phone) != nil)
             #expect(image(page.environment(\.horizontalSizeClass, .regular), size: Self.tabletLandscape) != nil)
         }
-        let empty = VacuumsPage(store: EntityStore(), caller: NullCaller()) { _ in EmptyView() }
+        let empty = VacuumsPage(store: EntityStore(), caller: RecordingCaller()) { _ in EmptyView() }
         #expect(image(empty, size: Self.phone, typeSize: .accessibility5) != nil)
     }
 
     @Test func areaEditorReportAndOutcomesRender() throws {
         let store = VacuumFixtures.store()
-        let controller = VacuumController(vacuum: Vacuums.mainFloor, store: store, caller: NullCaller(), scheduler: ManualRevertScheduler())
+        let controller = VacuumController(vacuum: Vacuums.mainFloor, store: store, caller: RecordingCaller(), scheduler: ManualRevertScheduler())
         let mapState = VacuumMapState(vacuum: Vacuums.mainFloor, loader: VacuumFixtures.loader(Vacuums.mainFloor, scenario: .docked))
         #expect(image(NavigationStack { VacuumAreaEditor(controller: controller, mapState: mapState) }, size: Self.phone) != nil)
         controller.areaSelection = .init(x0: 300, x1: 400, y0: 300, y1: 400)
@@ -112,7 +112,7 @@ struct VacuumViewTests {
         for scenario in Self.scenarios {
             let store = VacuumFixtures.store(scenario)
             for vacuum in Vacuums.all {
-                let controller = VacuumController(vacuum: vacuum, store: store, caller: NullCaller(), scheduler: ManualRevertScheduler())
+                let controller = VacuumController(vacuum: vacuum, store: store, caller: RecordingCaller(), scheduler: ManualRevertScheduler())
                 controller.services = VacuumFixtures.services
                 icons.formUnion((controller.runtimeActions + controller.dockActions + [controller.cleanAction,
                                  controller.areaCleanAction(mapReady: true, selectionAllowed: true)]).map(\.icon))

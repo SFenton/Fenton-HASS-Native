@@ -32,15 +32,17 @@ let package = Package(
                 .product(name: "WebRTC", package: "WebRTC", condition: .when(platforms: [.iOS])),
             ]
         ),
+        // Test doubles every test target shares (callers, schedulers); never linked into the app.
+        .target(name: "HassTestSupport", dependencies: ["HassCore"], path: "Tests/HassTestSupport"),
         .testTarget(
             name: "HassCoreTests",
-            dependencies: ["HassCore", .product(name: "HAKit+Mocks", package: "HAKit")]
+            dependencies: ["HassCore", "HassTestSupport", .product(name: "HAKit+Mocks", package: "HAKit")]
         ),
         .testTarget(name: "HassDesignTests", dependencies: ["HassDesign"]),
         .testTarget(name: "HassTelemetryTests", dependencies: ["HassTelemetry"]),
         .testTarget(
             name: "HassUITests",
-            dependencies: ["HassUI", "HassCore", .product(name: "HAKit+Mocks", package: "HAKit")]
+            dependencies: ["HassUI", "HassCore", "HassTestSupport", .product(name: "HAKit+Mocks", package: "HAKit")]
         ),
     ],
     swiftLanguageModes: [.v6]

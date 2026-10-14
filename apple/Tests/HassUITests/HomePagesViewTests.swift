@@ -32,23 +32,23 @@ struct HomePagesViewTests {
         for size in [Self.phone, Self.tablet] {
             for typeSize in [DynamicTypeSize.large, .accessibility5] {
                 let store = store()
-                #expect(render(MediaScreen(store: store, caller: NullCaller()), size: size, typeSize: typeSize) != nil)
-                #expect(render(CustomLightsScreen(store: store, caller: NullCaller()), size: size, typeSize: typeSize) != nil)
-                #expect(render(SprinklersScreen(store: store, caller: NullCaller()), size: size, typeSize: typeSize) != nil)
+                #expect(render(MediaScreen(store: store, caller: RecordingCaller()), size: size, typeSize: typeSize) != nil)
+                #expect(render(CustomLightsScreen(store: store, caller: RecordingCaller()), size: size, typeSize: typeSize) != nil)
+                #expect(render(SprinklersScreen(store: store, caller: RecordingCaller()), size: size, typeSize: typeSize) != nil)
             }
         }
     }
 
     @Test func pagesRenderWithNothingLoaded() {
         let empty = store([])
-        #expect(render(MediaScreen(store: empty, caller: NullCaller())) != nil)
-        #expect(render(CustomLightsScreen(store: empty, caller: NullCaller())) != nil)
-        #expect(render(SprinklersScreen(store: empty, caller: NullCaller())) != nil)
+        #expect(render(MediaScreen(store: empty, caller: RecordingCaller())) != nil)
+        #expect(render(CustomLightsScreen(store: empty, caller: RecordingCaller())) != nil)
+        #expect(render(SprinklersScreen(store: empty, caller: RecordingCaller())) != nil)
     }
 
     @Test func sheetsRender() {
         let store = store()
-        let controllers = SprinklersConfig.controllers.map { SprinklerController(config: $0, store: store, caller: NullCaller()) }
+        let controllers = SprinklersConfig.controllers.map { SprinklerController(config: $0, store: store, caller: RecordingCaller()) }
         for controller in controllers {
             #expect(render(SprinklerControllerSheet(controller: controller)) != nil)
             for zone in controller.config.zones.indices {
@@ -57,9 +57,9 @@ struct HomePagesViewTests {
             }
         }
         for light in CustomLightsConfig.lights {
-            #expect(render(CustomLightSheet(light: light, store: store, caller: NullCaller())) != nil)
+            #expect(render(CustomLightSheet(light: light, store: store, caller: RecordingCaller())) != nil)
         }
-        #expect(render(CustomLightSheet(light: CustomLightsConfig.lights[0], store: self.store([]), caller: NullCaller())) != nil)
+        #expect(render(CustomLightSheet(light: CustomLightsConfig.lights[0], store: self.store([]), caller: RecordingCaller())) != nil)
         let options = CustomLightsConfig.fallbackModes.map { OptionPickerSheet.Option(value: $0, swatch: [.red, .blue]) }
         #expect(render(OptionPickerSheet(title: "Lighting Mode", options: options, selected: "Custom") { _ in }) != nil)
         #expect(render(GradientSwatch(colors: [])) != nil)

@@ -37,4 +37,6 @@ Mechanisms: hosted tests in `HassUITests` for labels, traits and order; an XCUIT
 
 Hosted SwiftUI tests that need `onAppear`, `onChange` or geometry use a real `NSWindow` (`HostedWindow` in `NavigationHostedTests.swift`, `sizingOptions = []` so the window size is the input) and report through `ViewProbe`, not the accessibility tree (macOS SwiftUI builds none without an assistive client). Poll for appearance (`settle(until:)`); `onDisappear` is unreliable on the host, so assert frames instead.
 
+Service-call doubles live once in `Tests/HassTestSupport` (`RecordingCaller` with `names` and `failNext`, `ResponseCaller` with scripted `responses`, `hold`/`release()` and `fail`, `ManualScheduler`), re-exported to `HassCoreTests` and `HassUITests` by each target's `TestSupport.swift`. Use them instead of declaring another caller in a test file; add to them when a test needs more (audit 2026-10-13).
+
 Gates certify releases; they are not run on every slice. Workers run the device and accessibility tests they add or touch before merging and list them in the PR.

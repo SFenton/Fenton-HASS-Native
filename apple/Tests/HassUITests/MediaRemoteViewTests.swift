@@ -8,15 +8,6 @@ import Testing
 import AppKit
 #endif
 
-/// Records calls for hosted renders; nothing reaches a server.
-@MainActor
-final class NullCaller: HassServiceCalling {
-    var calls: [String] = []
-    func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
-        calls.append("\(domain).\(service)")
-    }
-}
-
 /// Hosted renders of the media remote on every remote, tab, layout and text size, plus its pure UI policies.
 @MainActor
 struct MediaRemoteViewTests {
@@ -27,7 +18,7 @@ struct MediaRemoteViewTests {
                 typeSize: DynamicTypeSize = .large, states: [EntityState] = MediaRemoteFixtures.states) -> CGImage? {
         let store = EntityStore()
         store.replaceAll(states)
-        let controller = MediaRemoteController(config: config, store: store, caller: NullCaller())
+        let controller = MediaRemoteController(config: config, store: store, caller: RecordingCaller())
         let view = MediaRemoteSheet(controller: controller, imageServer: nil, initialTab: tab, window: window)
             .dynamicTypeSize(typeSize)
             .frame(width: size.width, height: size.height)
@@ -157,7 +148,7 @@ struct MediaRemoteViewTests {
     // MARK: Keyboard and sliders
 
     @Test func keyboardPromptOpensSendsAndCloses() async {
-        let caller = NullCaller()
+        let caller = RecordingCaller()
         let store = MediaRemoteFixtures.store()
         let controller = MediaRemoteController(config: MediaRemotes.livingRoomShield, store: store, caller: caller)
         var prompt = KeyboardPrompt()
@@ -170,7 +161,7 @@ struct MediaRemoteViewTests {
         prompt.submit(with: controller)
         #expect(prompt == KeyboardPrompt())
         await controller.waitForCalls()
-        #expect(caller.calls == ["androidtv.adb_command"])
+        #expect(caller.names == ["androidtv.adb_command"])
         prompt.toggle("a")
         prompt.toggle("b")
         #expect(prompt.target == "b", "Another target re-targets")
@@ -178,7 +169,7 @@ struct MediaRemoteViewTests {
         #expect(!prompt.isOpen)
         prompt.submit(with: controller)
         await controller.waitForCalls()
-        #expect(caller.calls.count == 1, "Closed prompt sends nothing")
+        #expect(caller.names.count == 1, "Closed prompt sends nothing")
     }
 
     @Test func sliderCommitsOnReleaseOrImmediateSteps() {
@@ -200,14 +191,14 @@ struct MediaRemoteViewTests {
 
     @Test func openKeyboardAndPresentationRender() throws {
         let store = MediaRemoteFixtures.store()
-        let controller = MediaRemoteController(config: MediaRemotes.theaterRoomShield, store: store, caller: NullCaller())
+        let controller = MediaRemoteController(config: MediaRemotes.theaterRoomShield, store: store, caller: RecordingCaller())
         let open = KeyboardPrompt(target: "media_player.theater_room_shield", text: "it's")
         #expect(ImageRenderer(content: RemoteControlsTab(controller: controller, keyboard: open).frame(width: 402)).cgImage != nil)
         #expect(ImageRenderer(content: Color.clear.hassSheet(.page).frame(width: 10, height: 10)).cgImage != nil)
         let apps = RemoteAppsTab(controller: controller, imageServer: .fentonHome).frame(width: 402)
         #expect(ImageRenderer(content: apps).cgImage != nil)
         // Public initializers: a caller of your own, or the app's connection.
-        let sheet = MediaRemoteSheet(config: MediaRemotes.musicRoom, store: store, caller: NullCaller()).frame(width: 402, height: 874)
+        let sheet = MediaRemoteSheet(config: MediaRemotes.musicRoom, store: store, caller: RecordingCaller()).frame(width: 402, height: 874)
         #expect(ImageRenderer(content: sheet).cgImage != nil)
         let cache = EntitySnapshotCache(fileURL: FileManager.default.temporaryDirectory.appending(path: "remote-\(UUID()).json"))
         let connection = HassConnection(server: .fentonHome, tokens: TokenManager(store: InMemoryTokenStore()), store: store, snapshotCache: cache)

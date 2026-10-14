@@ -4,65 +4,7 @@ import Testing
 
 // MARK: - Test doubles
 
-/// Records service calls instead of sending them; can be told to fail.
-@MainActor
-final class RecordingCaller: HassServiceCalling {
-    struct Call: Equatable {
-        var domain: String
-        var service: String
-        var data: [String: String]
-    }
-
-    var calls: [Call] = []
-    var raw: [[String: any Sendable]] = []
-    var failNext = false
-
-    struct Failure: Error {}
-
-    func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
-        calls.append(Call(domain: domain, service: service, data: data.mapValues { "\($0)" }))
-        raw.append(data)
-        if failNext {
-            failNext = false
-            throw Failure()
-        }
-    }
-}
-
-/// Runs scheduled work only when told to.
-@MainActor
-final class ManualScheduler: RevertScheduler {
-    final class Item: ScheduledWork {
-        let delay: Duration
-        let work: @MainActor () -> Void
-        var cancelled = false
-        init(delay: Duration, work: @escaping @MainActor () -> Void) {
-            self.delay = delay
-            self.work = work
-        }
-        func cancel() { cancelled = true }
-    }
-
-    var items: [Item] = []
-
-    func schedule(after delay: Duration, _ work: @escaping @MainActor () -> Void) -> any ScheduledWork {
-        let item = Item(delay: delay, work: work)
-        items.append(item)
-        return item
-    }
-
-    /// Live (not cancelled, not yet run) items.
-    var pending: [Item] { items.filter { !$0.cancelled } }
-
-    /// Runs every live item.
-    func fireAll() {
-        let live = pending
-        for item in live {
-            item.cancelled = true
-            item.work()
-        }
-    }
-}
+// `RecordingCaller` and `ManualScheduler` live in `Tests/HassTestSupport`.
 
 @MainActor
 func makeStore(_ states: [String: String], attributes: [String: [String: JSONValue]] = [:]) -> EntityStore {

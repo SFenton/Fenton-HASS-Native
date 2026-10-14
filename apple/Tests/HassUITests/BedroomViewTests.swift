@@ -161,27 +161,6 @@ struct BedroomViewTests {
 
 // MARK: - Hosted in a real window
 
-/// A caller that answers from a script, so a view test can drive failures and refusals without Home Assistant.
-@MainActor
-final class ScriptedCaller: HassServiceResponding {
-    var fail = false
-    var responses: [JSONValue] = []
-    private(set) var calls: [String] = []
-
-    struct Failure: Error {}
-
-    func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
-        calls.append("\(domain).\(service)")
-        if fail { throw Failure() }
-    }
-
-    func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
-        calls.append("\(domain).\(service)")
-        if fail { throw Failure() }
-        return responses.isEmpty ? .object(["outcome": "accepted"]) : responses.removeFirst()
-    }
-}
-
 /// A SwiftUI view in an off-screen `NSWindow`. Unlike `ImageRenderer` this evaluates scroll views, navigation
 /// stacks, sheets and timelines, so every branch of a sheet's body runs.
 @MainActor
@@ -313,7 +292,7 @@ struct HostedBedroomTests {
     }
 
     @Test func heroShowsARefusedSoloTripCommand() async {
-        let caller = ScriptedCaller()
+        let caller = ResponseCaller()
         caller.responses = [.object(["outcome": "rejected", "error_code": "revision_conflict"])]
         let devices = devices(.soloTrip, caller: caller)
         let bed = devices.bed(.left)
@@ -329,7 +308,7 @@ struct HostedBedroomTests {
     }
 
     @Test func aFailedPowerOffRevertsWithoutAnError() async {
-        let caller = ScriptedCaller()
+        let caller = ResponseCaller()
         caller.fail = true
         let devices = devices(.default, caller: caller)
         let bed = devices.bed(.left)
@@ -337,7 +316,7 @@ struct HostedBedroomTests {
         bed.setPower(on: false)
         await bed.waitForCalls()
         #expect(bed.isOn)
-        #expect(caller.calls == ["script.sleepypod_hot_flash_broker"])
+        #expect(caller.names == ["script.sleepypod_hot_flash_broker"])
         hosted.close()
     }
 
@@ -425,7 +404,7 @@ struct HostedBedroomTests {
     }
 
     @Test func editorShowsProblemsAndTheWakeLightError() async {
-        let caller = ScriptedCaller()
+        let caller = ResponseCaller()
         caller.responses = [.object(["outcome": "rejected", "error_code": "transport"])]
         let devices = devices(.default, caller: caller)
         var alarm = devices.wakeLight.snapshot.alarms[0]
@@ -489,7 +468,7 @@ struct HostedBedroomTests {
         let none = await show(WakeLightSheet(devices: empty, initialTab: .alarms))
         none.close()
 
-        let caller = ScriptedCaller()
+        let caller = ResponseCaller()
         caller.fail = true
         let failing = devices(.waking, caller: caller)
         let hosted = await show(WakeLightSheet(devices: failing, initialTab: .alarms))
@@ -525,7 +504,7 @@ struct HostedBedroomTests {
     }
 
     @Test func editorOffersTheLatestAlarmAfterARevisionConflict() async {
-        let caller = ScriptedCaller()
+        let caller = ResponseCaller()
         caller.responses = [.object(["outcome": "rejected", "error_code": "revision_conflict", "conflict": "alarm_revision", "revision": .number(13)])]
         let devices = devices(.default, caller: caller)
         let editor = await show(NavigationStack { WakeLightEditor(devices: devices, alarmId: "weekday") {} })
