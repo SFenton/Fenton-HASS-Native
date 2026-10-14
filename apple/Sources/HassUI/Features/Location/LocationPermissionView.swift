@@ -62,6 +62,9 @@ public struct LocationPermissionView<Footer: View>: View {
             .safeAreaInset(edge: .bottom) { actionBar }
         }
         .interactiveDismissDisabled(copy.isPreAlert)
+        // Sheets are dark in Direction G v1 (`.agents/design/direction-g-plan.md`, Decisions 3), as the signed-in
+        // shell's are; set here too so the screen stays dark wherever it is presented from.
+        .preferredColorScheme(.dark)
     }
 
     // MARK: - Content

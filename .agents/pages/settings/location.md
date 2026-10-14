@@ -24,6 +24,7 @@ The asking stages also show three points (arrivals and departures, only to your 
 - One `PrimaryButton` per screen, pinned in the bottom inset so it stays reachable at AX5.
 - The status row is one element: label "Location Access", value the status.
 - Each point is one element (title and detail). The large symbol is decorative and hidden.
+- Dark, like every sheet in Direction G v1 (`preferredColorScheme(.dark)`, as `WeatherSheet`); light text on the grouped ground keeps the secondary copy well above 4.5:1 (the light ground measured 4.4:1 on the Duo, 2026-10-14).
 - Sheet: `.hassSheet(.form)`, full height on iPhone, a form sheet on iPad; content capped at 560 pt.
 - Settings: `UIApplication.openSettingsURLString`. The asking stages never send people to Settings.
 

@@ -24,6 +24,7 @@ struct LocationGallery: View {
             .font(.largeTitle.bold())
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .padding(HassTokens.Spacing.xl)
+            .preferredColorScheme(.dark)
             .sheet(isPresented: .constant(true)) {
                 LocationPermissionView(
                     permission: permission,
