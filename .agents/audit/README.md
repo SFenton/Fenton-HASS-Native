@@ -38,12 +38,13 @@ The audit thread lands the dedup in small PRs, one concern each, rebased on `mai
 | 3 | One websocket command bridge (`HassConnection.sendCommand`); `TodoServicing` refines `EverShelfCalling` | Audit | In review |
 | 4 | Controller shell: superseded by `OptimisticActions` (#36, [optimistic-actions](../patterns/optimistic-actions.md)); controllers move over when their owner next touches them | Feature threads | Reported |
 | 5 | Entity ids defined once in `Config/` | Audit | Planned |
-| 6 | Notices into `InfoBox`; section headers into `SettingsSection`; `BedroomTabPicker` into `SheetTabPicker`; color tokens into `HassTokens` | Audit | Planned |
+| 6 | Notices into `InfoBox` (`DeviceAlert`/`SprinklerAlert` into `InlineAlert` in review); section headers into `SettingsSection`; `BedroomTabPicker` into `SheetTabPicker`; color tokens into `HassTokens` | Audit | In progress |
 | 7 | Gallery: `#if DEBUG` on every gallery file (done, #41); one recorder base and one Last-call view | Audit | In progress |
 | 8 | Journey base class `JourneyTestCase` (#51; other journeys move over when touched); dead `coverage_gate.py` XML branch removed; a `HassTestSupport` target for fakes | Audit | In progress |
 | 9 | Sheet chrome, presentation modifiers, `SheetTabPicker` API | App chrome thread | Reported |
 | 10 | `try?` on user actions, index identity, Reduce Motion in feature screens | Each feature's thread; Sprinklers, Recipes and Inventory done by Audit (#33) | Reported |
 | 11 | Hosted tests that fail only in a full `swift test` on a loaded Mac: `SecurityViewTests.galleryRecorderEchoes`, `OnDemandSplitHostedTests` (frame and placeholder checks). They pass when run alone | Audit | Planned |
+| 12 | `FoodJourneyTests.testHubShowsSuggestionsRecipesAndSpaces` fails its iPhone audit (since the Food lane): the audit flags all 9 suggestion `ImageCard`s, each one `StaticText` with the whole-card frame (175×193) on `.regularMaterial`, and the helper loses their elements after the second, scrolling pass. Needs text-region sampling in `RenderedContrast` or `ImageCard` exposing its title as its own framed element; not a whole-frame waiver (#55 closed) | Open | Reported |
 
 ## Rules this audit adds
 

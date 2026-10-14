@@ -37,16 +37,22 @@ public struct SettingsSection<Content: View>: View {
     }
 }
 
-/// A warning shown inline under the control it concerns (web `InlineAlert`).
+/// A warning shown inline under the control it concerns (web `InlineAlert`). The one warning box: settings, room
+/// device sheets and sprinklers all use it (pattern: `.agents/patterns/info-box.md`).
 public struct InlineAlert: View {
     public var message: String
+    /// The leading symbol; a warning triangle unless the warning has its own (a low battery).
+    public var symbol: String
 
     /// Creates an alert.
-    public init(_ message: String) { self.message = message }
+    public init(_ message: String, symbol: String = "exclamationmark.triangle.fill") {
+        self.message = message
+        self.symbol = symbol
+    }
 
     public var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            Image(systemName: symbol)
                 .foregroundStyle(.orange)
                 .accessibilityHidden(true)
             Text(message)
