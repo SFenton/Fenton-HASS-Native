@@ -257,6 +257,10 @@ public struct GlassTileFace: View {
                     .font(.title3)
                     .symbolVariant(isActive ? .fill : .none)
                     .foregroundStyle(glyphColor(style))
+                    // Unavailable dims the glyph and the tinted stroke only. The title and "Unavailable" keep 4.5:1
+                    // and the ground stays full strength, so wallpaper never shows through behind white text: a
+                    // whole-face fade left the text at 2.4:1 (signed-in Security tab before states arrived, 2026-10-14).
+                    .opacity(isUnavailable ? 0.5 : 1)
                     .accessibilityHidden(true)
                 Spacer(minLength: 0)
                 if showsChevron {
@@ -289,9 +293,9 @@ public struct GlassTileFace: View {
         .overlay {
             if style == .tinted {
                 shape.strokeBorder(tint.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
+                    .opacity(isUnavailable ? 0.5 : 1)
             }
         }
-        .opacity(isUnavailable ? 0.5 : 1)
         .contentShape(shape)
     }
 

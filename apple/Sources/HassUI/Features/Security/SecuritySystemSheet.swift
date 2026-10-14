@@ -110,6 +110,8 @@ struct AlarmModeButton: View {
                     .symbolVariant(isSelected ? .fill : .none)
                     .foregroundStyle(isSelected ? tint : .secondary)
                     .frame(height: iconHeight)
+                    // Unavailable dims the glyph and stroke only; the title and ground keep full strength (``GlassTileFace``).
+                    .opacity(isUnavailable ? 0.5 : 1)
                 Text(mode.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(HassTokens.Ink.primary)
@@ -130,8 +132,8 @@ struct AlarmModeButton: View {
             .overlay {
                 RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
                     .strokeBorder(isSelected ? tint : .clear, lineWidth: 2)
+                    .opacity(isUnavailable ? 0.5 : 1)
             }
-            .opacity(isUnavailable ? 0.5 : 1)
             .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
         }
         .buttonStyle(.plain)

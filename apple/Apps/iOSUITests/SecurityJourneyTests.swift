@@ -168,6 +168,21 @@ final class SecurityJourneyTests: JourneyTestCase {
         try FentonHomeApp.audit(app) { self.launch(arguments: FentonHomeApp.ax5) }
     }
 
+    /// Unavailable tiles are disabled and say so, and their text keeps 4.5:1: only the glyph, material and border dim
+    /// (the signed-in tab shows this before states arrive).
+    func testUnavailablePagePassesAccessibilityAudit() throws {
+        let unavailable = ["FENTON_GALLERY_SCENARIO": "unavailable"]
+        let app = launch(environment: unavailable)
+        for id in [Tile.alarm, Tile.frontDoor, Tile.left, Tile.right] {
+            let element = tile(id, in: app)
+            reveal(element, in: app)
+            XCTAssertEqual(element.value as? String, "Unavailable", id)
+            XCTAssertFalse(element.isEnabled, "\(id) is disabled")
+        }
+        try FentonHomeApp.audit(app) { self.launch(arguments: FentonHomeApp.ax5, environment: unavailable) }
+        keepScreenshot(app, "security-unavailable-\(layout)")
+    }
+
     func testSystemSheetPassesAccessibilityAudit() throws {
         let app = launch()
         openSystemSheet(app)
