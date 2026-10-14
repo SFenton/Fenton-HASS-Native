@@ -96,6 +96,9 @@ struct CameraSnapshotView: View {
                     Image(systemName: "video").font(.title).foregroundStyle(.secondary)
                 }
                 .blur(radius: ScreenshotPrivacy.isRedacting ? 40 : 0)
+                // Decorative (the camera's element reads its state), and hidden so the fill-scaled image's
+                // overflow doesn't widen that element's VoiceOver frame past the video.
+                .accessibilityHidden(true)
             }
             // The fill-scaled image stays inside the frame for both drawing and hit-testing.
             .clipped()
