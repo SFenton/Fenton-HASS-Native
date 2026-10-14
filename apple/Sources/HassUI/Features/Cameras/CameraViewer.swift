@@ -35,10 +35,12 @@ struct CameraViewer: View {
                     window: window.size ?? proxy.size, isRegularWidth: window.isRegularWidth, container: proxy.size)
                 Group {
                     if split {
+                        // Fixed halves (inside the outer padding), so the video can never push into the controls.
+                        let half = max((proxy.size.width - 3 * HassTokens.Spacing.l) / 2, 0)
                         HStack(alignment: .top, spacing: HassTokens.Spacing.l) {
-                            video.frame(maxWidth: .infinity)
+                            video.frame(width: half)
                             ScrollView { controls(axis: .vertical) }
-                                .frame(maxWidth: .infinity)
+                                .frame(width: half)
                         }
                         // One container, so the layout identifier below doesn't replace the video's own.
                         .accessibilityElement(children: .contain)
