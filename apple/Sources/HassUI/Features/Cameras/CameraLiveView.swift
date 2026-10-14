@@ -143,11 +143,18 @@ private struct VideoAccessibility: ViewModifier {
     func body(content: Content) -> some View {
         switch style {
         case .viewer:
+            // The element is a clear overlay rather than the content itself: an element's frame is the union of
+            // its children's, and the fill-scaled snapshot is wider than the video, so VoiceOver's outline spilled
+            // over the controls beside it.
             content
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(camera.title) camera")
-                .accessibilityValue(CameraLiveView.statusText(state))
-                .accessibilityIdentifier("camera.viewer.video")
+                .accessibilityHidden(true)
+                .overlay {
+                    Rectangle().fill(.clear)
+                        .accessibilityElement()
+                        .accessibilityLabel("\(camera.title) camera")
+                        .accessibilityValue(CameraLiveView.statusText(state))
+                        .accessibilityIdentifier("camera.viewer.video")
+                }
         case .tile:
             content.accessibilityHidden(true)
         }
