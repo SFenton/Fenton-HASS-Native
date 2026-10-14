@@ -333,10 +333,13 @@ enum FentonHomeApp {
 
     private static func isSystemDrawn(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication, popover: CGRect?) -> Bool {
         // The system compact date picker's own time label, unstyled by the app: the combined date-and-time
-        // picker reports it with an element that no longer resolves (no type, label or frame) although it renders
-        // label ink on the system fill (black on light gray in the audited screenshot, iPhone Vacation Dates,
-        // 2026-10-13).
-        if issue.auditType == .contrast, issue.detailedDescription.contains("_UIDatePickerCompact") { return true }
+        // picker reports it with no element, or one that no longer resolves (no type, label or frame), although it
+        // renders label ink on the system fill (black on light gray in the audited screenshot, iPhone Vacation
+        // Dates, 2026-10-13). A resolvable element is still checked like any other.
+        if issue.auditType == .contrast, issue.detailedDescription.contains("_UIDatePickerCompact"),
+           issue.element.map({ !$0.exists }) ?? true {
+            return true
+        }
         guard let element = issue.element else {
             // Same for the content behind an action-sheet popover noted as the audit started (the
             // audit can dismiss it): the popover's dismiss region hides it from assistive technologies.
