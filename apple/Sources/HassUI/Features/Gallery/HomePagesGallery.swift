@@ -147,16 +147,11 @@ private struct GalleryLastCallBanner: ViewModifier {
 
     func body(content: Content) -> some View {
         content.safeAreaInset(edge: .top) {
-            if let recorder, !MediaRemoteGallery.isClean {
-                Text("Last call: \(recorder.lastCall)")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(HassTokens.Ink.secondary)
-                    .lineLimit(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if let recorder, !GalleryEnvironment.isClean {
+                GalleryLastCall(text: recorder.lastCall)
                     .padding(.horizontal)
                     .padding(.vertical, 4)
                     .background(.bar)
-                    .accessibilityIdentifier("gallery.lastCall")
             }
         }
     }

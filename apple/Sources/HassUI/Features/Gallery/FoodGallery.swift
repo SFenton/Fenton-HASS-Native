@@ -63,7 +63,7 @@ struct FoodGallery: View {
         .safeAreaInset(edge: .bottom) {
             // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out, as do accessibility text sizes,
             // where it would be clipped and cover the page (the AX5 journeys never read it).
-            if ProcessInfo.processInfo.environment["FENTON_GALLERY_CLEAN"] != "1", !dynamicTypeSize.isAccessibilitySize, path.count > 0 {
+            if !GalleryEnvironment.isClean, !dynamicTypeSize.isAccessibilitySize, path.count > 0 {
                 // Leading and narrow: the Recipes page's floating actions sit at the trailing edge (a full-width
                 // bar covered them, and a top bar covered the back button).
                 lastCall.padding(.horizontal, HassTokens.Spacing.s).padding(.vertical, 4)
@@ -77,12 +77,8 @@ struct FoodGallery: View {
 
     /// The last service call, which journeys read to check what a control sent.
     private var lastCall: some View {
-        Text("Last call: \(service.lastCall)")
-            .font(.caption.monospaced())
-            .foregroundStyle(HassTokens.Ink.primary) // Secondary ink measured 2.2:1 on an iPad sheet's bar.
+        GalleryLastCall(text: service.lastCall, lineLimit: nil)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityIdentifier("gallery.lastCall")
     }
 }
 

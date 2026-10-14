@@ -25,7 +25,7 @@ struct ClimateGallery: View {
 
     var body: some View {
         // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
-        let clean = MediaRemoteGallery.isClean
+        let clean = GalleryEnvironment.isClean
         ClimatePage(controller: controller, initialSheet: initialSheet,
                     sheetAccessory: clean ? nil : AnyView(lastCall.background(.bar)))
             .environment(store)
@@ -36,14 +36,9 @@ struct ClimateGallery: View {
 
     /// The last service call, which journeys read to check what a control sent.
     private var lastCall: some View {
-        Text("Last call: \(recorder.lastCall)")
-            .font(.caption.monospaced())
-            .foregroundStyle(HassTokens.Ink.secondary)
-            .lineLimit(3)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        GalleryLastCall(text: recorder.lastCall)
             .padding(.horizontal)
             .padding(.vertical, 4)
-            .accessibilityIdentifier("gallery.lastCall")
     }
 
     /// A tab name or a route token.

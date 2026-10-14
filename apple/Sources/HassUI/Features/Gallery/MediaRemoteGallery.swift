@@ -39,23 +39,14 @@ struct MediaRemoteGallery: View {
             MediaRemoteSheet(config: config, store: store, caller: recorder, imageServer: MediaRemoteFixtures.imageServer, initialTab: initialTab)
                 .safeAreaInset(edge: .top) {
                     // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
-                    if !Self.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
+                    if !GalleryEnvironment.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
                 }
                 .hassSheet(.page)
         }
     }
 
-    static var isClean: Bool { ProcessInfo.processInfo.environment["FENTON_GALLERY_CLEAN"] == "1" }
-
     /// The last service call, which journeys read to check what a control sent.
-    private var lastCall: some View {
-        Text("Last call: \(recorder.lastCall)")
-            .font(.caption.monospaced())
-            .foregroundStyle(HassTokens.Ink.secondary)
-            .lineLimit(3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityIdentifier("gallery.lastCall")
-    }
+    private var lastCall: some View { GalleryLastCall(text: recorder.lastCall) }
 }
 
 /// Records service calls and echoes the few that change fixture state, after a short delay like Home Assistant.

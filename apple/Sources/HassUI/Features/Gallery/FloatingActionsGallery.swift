@@ -26,10 +26,7 @@ struct FloatingActionsGallery: View {
     var body: some View {
         List {
             Section {
-                Text("Last action: \(lastAction)")
-                    .font(.caption.monospaced())
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .accessibilityIdentifier("gallery.lastCall")
+                GalleryLastCall(text: lastAction, title: "Last action")
             }
             ForEach(items.filter { query.isEmpty || $0.localizedCaseInsensitiveContains(query) }, id: \.self) { Text($0) }
         }
