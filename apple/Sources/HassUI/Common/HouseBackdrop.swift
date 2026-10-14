@@ -47,6 +47,12 @@ final class HouseBackdropStore {
         refreshed = true
         let renderURL = directory.appending(path: Self.renderName)
         let directory = directory
+        // Renders from an older recipe are never read again; drop them off the main thread.
+        Task.detached(priority: .background) {
+            for name in Self.retiredRenderNames {
+                try? FileManager.default.removeItem(at: directory.appending(path: name))
+            }
+        }
         for await photo in photos(source) {
             let rendered: CGImage? = await Task.detached(priority: .utility) {
                 guard let render = Self.render(photo) else { return nil }
@@ -63,6 +69,8 @@ final class HouseBackdropStore {
     /// The blurred render's file name in the cache. Renamed when the render recipe changes, so an old render
     /// is never shown under the new scrim.
     nonisolated static let renderName = "house-blurred-g.png"
+    /// Render files from earlier recipes, removed on the first refresh.
+    nonisolated static let retiredRenderNames = ["house-blurred.png"]
     /// Width the photo is reduced to before blurring; the blur hides the lost detail.
     nonisolated static let renderWidth: CGFloat = 480
     /// Blur radius at ``renderWidth`` (direction G: `blur(20px)` over a phone-width viewport, about 400 px).

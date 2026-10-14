@@ -353,8 +353,20 @@ public struct GlassTileFace: View {
                     // The slight top highlight from the mockups.
                     LinearGradient(colors: [.white.opacity(0.10), .clear], startPoint: .top, endPoint: .center)
                 }
-                // Progress is a lighter band from the leading edge (a vacuum's or dishwasher's cycle).
-                levelBand { Color.white.opacity(0.16) }
+                // Progress is a lighter band from the leading edge (a vacuum's or dishwasher's cycle). With white
+                // ink the part still to go is shaded instead, so text over either part keeps its contrast (a white
+                // band measured 4.2:1 under the state on cleaning purple); with dark ink the band is lightened.
+                if let level, level > 0 {
+                    if family.spec.darkInk {
+                        levelBand { Color.white.opacity(TileFaceStyle.progressLighten) }
+                    } else {
+                        GeometryReader { proxy in
+                            Color.black.opacity(TileFaceStyle.progressShade)
+                                .frame(width: proxy.size.width * (1 - min(1, level)))
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                    }
+                }
             }
         }
     }

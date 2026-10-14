@@ -30,6 +30,12 @@ public enum TileFaceStyle: Equatable, Sendable {
         return family.spec.fill == nil ? .tinted : .filled(family)
     }
 
+    /// Black over the part of a white-ink filled face that progress has not reached, so the done part reads as
+    /// the lighter band.
+    public static let progressShade = 0.18
+    /// White over the done part of a dark-ink filled face (power).
+    public static let progressLighten = 0.25
+
     /// Whether text on this face is dark (the lit tile and power's yellow).
     public var hasDarkInk: Bool {
         switch self {
@@ -38,35 +44,4 @@ public enum TileFaceStyle: Equatable, Sendable {
         default: false
         }
     }
-}
-
-/// Where a tile sits, which sets the ground of its dark faces.
-public enum TileSurface: Sendable {
-    /// On the wallpaper: the thin module material.
-    case page
-    /// Inside a sheet: the sheet's cell colour, `#2C2C2E`.
-    case sheet
-}
-
-public extension EnvironmentValues {
-    /// Where tiles inside are drawn (``TileSurface``). `modalChrome()` sets `.sheet`.
-    @Entry var tileSurface: TileSurface = .page
-}
-
-/// Direction G's lit tile for lights that are on (direction-g.md, Colour families: Lights).
-enum LitTile {
-    /// The bright band, top to bottom.
-    static let bandTop = Color(rgb: 0xFFF3DE)
-    static let bandBottom = Color(rgb: 0xFFE2B2)
-    /// The tile under the band, past the brightness level.
-    static let base = Color(rgb: 0xEADBC4)
-    /// The bulb glyph.
-    static let glyph = Color(rgb: 0xD97A00)
-    /// Titles on the lit tile.
-    static let ink = Color(rgb: 0x1C1C1E)
-    /// Status text on the lit tile (`#1C1C1E` at 72%: 7:1 or better on the base).
-    static let secondaryInk = Color(rgb: 0x1C1C1E).opacity(0.72)
-
-    /// Power's fill runs from a lighter yellow at the top.
-    static let powerTop = Color(rgb: 0xFFE45C)
 }

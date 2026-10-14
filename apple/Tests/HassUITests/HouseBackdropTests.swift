@@ -90,6 +90,20 @@ struct HouseBackdropTests {
         }
     }
 
+    @Test func refreshRemovesRendersFromOlderRecipes() async throws {
+        let folder = directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let old = folder.appending(path: "house-blurred.png")
+        FileManager.default.createFile(atPath: old.path, contents: Data([1]))
+        let store = HouseBackdropStore(server: server, directory: folder, photos: stream([]))
+        await store.refresh()
+        for _ in 0..<40 where FileManager.default.fileExists(atPath: old.path) {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(!FileManager.default.fileExists(atPath: old.path))
+    }
+
     @Test func scrimFollowsDirectionG() {
         // 0.36 → 0.18 (28%) → 0.36 (50%) → 0.50 → 0.64, darkest at the bottom behind the tab bar.
         let stops = HouseBackdropStyle.scrimStops

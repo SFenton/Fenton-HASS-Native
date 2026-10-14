@@ -102,11 +102,17 @@ public struct BrightnessTile: View {
         }
         .overlay(alignment: .topLeading) {
             if isDragging {
-                GeometryReader { proxy in
-                    BrightnessBubble(percent: shown)
-                        .position(x: Self.bubbleCenter(percent: shown, width: proxy.size.width), y: -BrightnessBubble.lift)
-                }
-                .transition(.opacity)
+                // Positioned from the tile's size without a GeometryReader, and never in the way of the drag.
+                Color.clear
+                    .overlay(alignment: .topLeading) {
+                        BrightnessBubble(percent: shown)
+                            .offset(y: -BrightnessBubble.lift - BrightnessBubble.height / 2)
+                    }
+                    .visualEffect { content, proxy in
+                        content.offset(x: Self.bubbleCenter(percent: shown, width: proxy.size.width) - BrightnessBubble.width / 2)
+                    }
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
             }
         }
         // The tile lifts while dragging (only its shadow with Reduce Motion).
@@ -218,6 +224,8 @@ struct BrightnessBubble: View {
 
     /// The bubble's width, wide enough for "100%".
     nonisolated static let width: CGFloat = 60
+    /// The bubble's height.
+    nonisolated static let height: CGFloat = 32
     /// How far above the tile's top edge the bubble's centre sits.
     nonisolated static let lift: CGFloat = 24
 
@@ -226,7 +234,7 @@ struct BrightnessBubble: View {
             .font(.subheadline.weight(.semibold))
             .monospacedDigit()
             .foregroundStyle(.white)
-            .frame(width: Self.width, height: 32)
+            .frame(width: Self.width, height: Self.height)
             .background(Color(rgb: HassTokens.Palette.sheetCell), in: Capsule())
             .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
             .dynamicTypeSize(...DynamicTypeSize.xxLarge)

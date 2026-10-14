@@ -42,6 +42,9 @@ struct ModalTabBar<Item: Hashable & Identifiable>: View {
             .pickerStyle(.menu)
             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
             .accessibilityIdentifier(identifier)
+            // The same glass as the segmented bar, so content scrolling under the bottom bar stays behind it.
+            .padding(.horizontal, HassTokens.Spacing.m)
+            .navigationGlass(in: Capsule())
         } else {
             Picker(label, selection: $selection) {
                 ForEach(tabs) { tab in

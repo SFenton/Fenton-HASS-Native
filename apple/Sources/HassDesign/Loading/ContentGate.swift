@@ -45,10 +45,11 @@ public struct ContentGate<Content: View>: View {
                 .modifier(RiseIn(active: phase != .idle && phase != .entering && !reduceMotion))
                 .allowsHitTesting(phase.showsContent)
                 .accessibilityHidden(!phase.showsContent)
-            if !phase.showsContent {
+            // Built only while it shows, so a fast load never runs the arc's timeline at all.
+            if !phase.showsContent, model.spinnerShown, phase == .loading {
                 ArcSpinner(.page)
-                    .opacity(model.spinnerShown && phase == .loading ? 1 : 0)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .transition(.opacity)
                     .accessibilityIdentifier("contentGate.spinner")
             }
         }

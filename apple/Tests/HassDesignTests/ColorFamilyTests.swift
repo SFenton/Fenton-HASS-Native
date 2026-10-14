@@ -31,6 +31,19 @@ struct ColorFamilyTests {
     }
 
     @Test(arguments: ColorFamily.allCases)
+    func inkStillPassesOnTheProgressBand(_ family: ColorFamily) {
+        guard let fill = family.spec.fill else { return }
+        if family.spec.darkInk {
+            let band = ColorFamily.mix(0xFFFFFF, fill, TileFaceStyle.progressLighten)
+            #expect(contrast(0x1C1C1E, band) >= 4.5, "\(family) title on the band")
+        } else {
+            let shaded = ColorFamily.mix(0x000000, fill, TileFaceStyle.progressShade)
+            #expect(contrast(ColorFamily.mix(0xFFFFFF, shaded, 0.92), shaded) >= 4.5, "\(family) state past the band")
+            // The band itself is the plain fill, which inkOnFillPassesBodyContrast covers.
+        }
+    }
+
+    @Test(arguments: ColorFamily.allCases)
     func glyphIsVisibleOnASheetTile(_ family: ColorFamily) {
         // Non-text contrast (WCAG 1.4.11) against the sheet's tile colour, #2C2C2E.
         #expect(contrast(family.spec.glyph, 0x2C2C2E) >= 3, "\(family)")
