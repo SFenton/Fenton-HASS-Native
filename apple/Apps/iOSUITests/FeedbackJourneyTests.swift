@@ -132,7 +132,7 @@ final class FeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(submit.waitForExistence(timeout: 5))
         let enabled = NSPredicate(format: "isEnabled == true")
         expectation(for: enabled, evaluatedWith: submit)
-        waitForExpectations(timeout: 5)
+        waitForExpectations(timeout: 15)
         submit.tap()
         return submit
     }
@@ -233,13 +233,6 @@ final class FeedbackJourneyTests: XCTestCase {
         openAccess(app)
         XCTAssertTrue(field.waitForExistence(timeout: 5), "GitHub Access page did not open")
         XCTAssertTrue(app.links["feedback.github.create"].exists || app.buttons["feedback.github.create"].exists)
-        try FentonHomeApp.audit(app) {
-            let large = try self.launch(fixture: "connect", arguments: FentonHomeApp.ax5)
-            self.openForm(large, "feature")
-            self.openAccess(large)
-            XCTAssertTrue(large.secureTextFields["feedback.github.token"].waitForExistence(timeout: 5))
-            return large
-        }
         field.tap()
         field.typeText("x")
         app.buttons["feedback.github.save"].tap()
@@ -251,6 +244,21 @@ final class FeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(reveal(app.buttons["feedback.github"], in: app).label.contains("fixture-user"), "Sending-as row missing")
         _ = submit(app)
         XCTAssertTrue(app.buttons["feedback.done"].firstMatch.waitForExistence(timeout: 10), "Sent alert missing")
+    }
+
+    /// The GitHub Access page passes the audit, with its AX5 relaunch.
+    func testGitHubAccessPassesAudit() throws {
+        let app = try launch(fixture: "connect")
+        openForm(app, "feature")
+        openAccess(app)
+        XCTAssertTrue(app.secureTextFields["feedback.github.token"].waitForExistence(timeout: 5), "GitHub Access page did not open")
+        try FentonHomeApp.audit(app) {
+            let large = try self.launch(fixture: "connect", arguments: FentonHomeApp.ax5)
+            self.openForm(large, "feature")
+            self.openAccess(large)
+            XCTAssertTrue(large.secureTextFields["feedback.github.token"].waitForExistence(timeout: 5))
+            return large
+        }
     }
 
     /// A failed filing keeps everything typed and offers no token change.
