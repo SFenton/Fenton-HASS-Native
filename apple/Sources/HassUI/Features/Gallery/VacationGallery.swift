@@ -21,7 +21,12 @@ struct VacationGallery: View {
         // The inset sits outside the stack: on the root view it would vanish once the chooser pushes a page.
         NavigationStack {
             VacationScreen(store: house.store, responder: house, caller: house) { HouseholdResident.stephen.haUserId }
+                // The house backdrop and dark scheme, as `ComponentGallery` gives the pages in its shared stack: on the
+                // system's white ground G's translucent rows measured 3.1:1 and the white titles 1.0:1 (2026-10-14).
+                .scrollContentBackground(.hidden)
+                .pageBackdrop()
         }
+        .preferredColorScheme(.dark)
             .safeAreaInset(edge: .bottom) {
                 // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
                 if !GalleryEnvironment.isClean {
