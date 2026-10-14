@@ -239,8 +239,8 @@ final class FeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["feedback.github.error"].waitForExistence(timeout: 10), "Wrong token accepted")
         field.tap()
         // A secure field may or may not clear itself when editing starts again (iPad keeps "x"); delete enough.
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "fixture-token")
-        app.buttons["feedback.github.save"].tap()
+        // Return submits the field (`onSubmit`): a Save tap while the iPad keyboard is up can be lost.
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "fixture-token\n")
         XCTAssertTrue(app.secureTextFields["feedback.github.token"].waitForNonExistence(timeout: 10), "Saving did not return to the form")
         XCTAssertTrue(reveal(app.buttons["feedback.github"], in: app).label.contains("fixture-user"), "Sending-as row missing")
         _ = submit(app)
