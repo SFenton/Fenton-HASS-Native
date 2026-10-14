@@ -23,7 +23,7 @@ public struct LocationFix: Equatable, Sendable {
 
     /// Creates a fix. Unknown values default to Core Location's invalid marker, -1.
     public init(latitude: Double, longitude: Double, horizontalAccuracy: Double, altitude: Double = 0,
-                verticalAccuracy: Double = -1, speed: Double = -1, course: Double = -1, timestamp: Date = Date()) {
+                verticalAccuracy: Double = -1, speed: Double = -1, course: Double = -1, timestamp: Date = .now) {
         self.latitude = latitude
         self.longitude = longitude
         self.horizontalAccuracy = horizontalAccuracy

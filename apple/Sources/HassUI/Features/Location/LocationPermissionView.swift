@@ -80,12 +80,12 @@ public struct LocationPermissionView: View {
             }
             .fixedSize(horizontal: false, vertical: true)
 
-            statusRow
+            LocationStatusRow(permission: permission)
 
             if copy.showsPoints {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
                     ForEach(LocationPermissionCopy.points) { point in
-                        PointRow(point: point)
+                        LocationPointRow(point: point)
                     }
                 }
             }
@@ -100,34 +100,6 @@ public struct LocationPermissionView: View {
         }
         .padding(.horizontal, HassTokens.Spacing.xl)
         .padding(.vertical, HassTokens.Spacing.l)
-    }
-
-    /// "Location Access" and its value, read as one element.
-    private var statusRow: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: HassTokens.Spacing.m) { statusLabel; Spacer(minLength: 0); statusValue }
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) { statusLabel; statusValue }
-        }
-        .padding(.horizontal, HassTokens.Spacing.l)
-        .padding(.vertical, HassTokens.Spacing.m)
-        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-        .background(Self.cellColor, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Location Access")
-        .accessibilityValue(LocationPermissionCopy.status(permission))
-        .accessibilityIdentifier("location.status")
-    }
-
-    private var statusLabel: some View {
-        Text("Location Access")
-            .font(.body)
-            .foregroundStyle(HassTokens.Ink.primary)
-    }
-
-    private var statusValue: some View {
-        Text(LocationPermissionCopy.status(permission))
-            .font(.body)
-            .foregroundStyle(statusColor)
     }
 
     @ViewBuilder
@@ -175,14 +147,6 @@ public struct LocationPermissionView: View {
         }
     }
 
-    private var statusColor: Color {
-        switch permission.stage {
-        case .denied: HassTokens.Ink.danger
-        case .reducedAccuracy: HassTokens.Ink.warning
-        case .notDetermined, .whenInUse, .always: HassTokens.Ink.secondary
-        }
-    }
-
     /// The inset cell colour on the grouped sheet background.
     static var cellColor: Color {
         #if canImport(UIKit)
@@ -190,32 +154,6 @@ public struct LocationPermissionView: View {
         #else
         Color(nsColor: .controlBackgroundColor)
         #endif
-    }
-}
-
-/// One "how it works" point: a symbol, a title and a line of detail, read as one element.
-private struct PointRow: View {
-    var point: LocationPermissionCopy.Point
-    @ScaledMetric(relativeTo: .title2) private var symbolWidth: CGFloat = 32
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
-            Image(systemName: point.symbol)
-                .font(.title2)
-                .foregroundStyle(HassTokens.Ink.action)
-                .frame(width: symbolWidth)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(point.title)
-                    .font(.headline)
-                    .foregroundStyle(HassTokens.Ink.primary)
-                Text(point.detail)
-                    .font(.subheadline)
-                    .foregroundStyle(HassTokens.Ink.secondary)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("location.point.\(point.symbol)")
     }
 }
 

@@ -50,7 +50,7 @@ public final class LocationReporter {
     ///   - now: The clock, for ``lastReportDate``.
     public init(platform: any LocationPlatform, client: MobileAppWebhookClient,
                 isPresenceDevice: Bool = LocationReporter.deviceIsPresenceDevice,
-                batteryLevel: @escaping @MainActor () -> Int? = { nil }, now: @escaping @MainActor () -> Date = Date.init) {
+                batteryLevel: @escaping @MainActor () -> Int? = { nil }, now: @escaping @MainActor () -> Date = { .now }) {
         self.platform = platform
         self.client = client
         self.isPresenceDevice = isPresenceDevice
