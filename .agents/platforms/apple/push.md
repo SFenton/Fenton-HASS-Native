@@ -48,7 +48,8 @@ automation ─ notify.mobile_app_<device>_fenton ─▶ mobile_app ─ POST push
 - Logic: `HassCoreTests/PushTests.swift`, `HassUITests/PushCoordinatorTests.swift` (REST double: `HassTestSupport/StubHTTPTransport`).
 - Device journeys: `PushJourneyTests` with `tools/push_sim.sh <udid> <folder>` running beside `tools/ios_uitest.sh` (same folder in `TEST_RUNNER_FENTON_CAPTURE_DIR`; `send-<fixture>.ready` asks for a push, other `.ready` files for a host screenshot); fixtures in `tools/push_fixtures/`. Simulator push is the bar until the APNs key exists; device delivery is deferred.
 - `xcrun simctl push` never runs service extensions, and the simulator refuses content-available-only pushes ("no user visible content"; seen 2026-10-14, iOS 27). Debug builds therefore have two hooks that run the same code paths: `FENTON_PUSH_PREVIEW` (a base64 `.apns` shown as a local notification after `PushEnrichment` and `PushAttachmentLoader`, after `FENTON_PUSH_PREVIEW_DELAY` seconds) and `FENTON_PUSH_COMMAND` (a base64 background payload run through `handleBackground` at launch). The extension itself is verified only with real APNs.
-- The first permission alert on a freshly booted simulator can take a minute or more to appear (seen 2026-10-14 on iOS 27.0).
+- After each boot the iOS 27.0 simulator can take minutes to answer `requestAuthorization` (the alert, or a stored answer, arrives late; seen 2026-10-14), and it refuses timed local requests ("Source is not authorized"), so the preview waits in the app and posts at once. Journeys allow 240 s for a preview banner; keep the simulator warm between runs.
+- An attached camera snapshot did not show a thumbnail on the iOS 27.0 simulator preview even when no error was logged (2026-10-14); confirm attachments on a device with real APNs.
 - In the extension, camera snapshots need a password sign-in (the token launch keeps its token in memory, out of its reach); the preview hook uses the launch token directly.
 
 ## Open

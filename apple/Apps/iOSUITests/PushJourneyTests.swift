@@ -21,7 +21,7 @@ final class PushJourneyTests: JourneyTestCase {
         try push("banner")
         let banner = notification("Front Door")
         XCTAssertTrue(banner.waitForExistence(timeout: 20), "The banner did not appear")
-        keepScreenshot(springboard, "push-banner-\(layout)")
+        attach("push-banner-\(layout)")
         banner.tap()
         XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10), "The app did not open")
         XCTAssertTrue(element("security.scroll", in: app).waitForExistence(timeout: 20), "The tap did not open Security")
@@ -30,9 +30,8 @@ final class PushJourneyTests: JourneyTestCase {
 
     func testButtonsComeFromThePayloadAndALinkButtonOpensItsPage() throws {
         let app = try launch(preview: "actions")
-        XCUIDevice.shared.press(.home)
         let banner = notification("Garage Door")
-        XCTAssertTrue(banner.waitForExistence(timeout: 30), "The banner did not appear")
+        XCTAssertTrue(banner.waitForExistence(timeout: 240), "The banner did not appear")
         banner.press(forDuration: 1.2)
         // Built from `fenton.actions`, in payload order.
         for title in ["Close", "Show Garage", "Reply", "Ignore"] {
@@ -47,10 +46,9 @@ final class PushJourneyTests: JourneyTestCase {
 
     func testTheCameraSnapshotIsAttached() throws {
         let app = try launch(preview: "camera")
-        XCUIDevice.shared.press(.home)
         let banner = notification("Doorbell")
-        XCTAssertTrue(banner.waitForExistence(timeout: 30), "The banner did not appear")
-        keepScreenshot(springboard, "push-camera-\(layout)")
+        XCTAssertTrue(banner.waitForExistence(timeout: 240), "The banner did not appear")
+        attach("push-camera-\(layout)")
         banner.press(forDuration: 1.2)
         XCTAssertTrue(springboard.buttons["View Camera"].waitForExistence(timeout: 10), "View Camera is missing")
         keepScreenshot(springboard, "push-camera-expanded-\(layout)")
@@ -61,8 +59,7 @@ final class PushJourneyTests: JourneyTestCase {
 
     func testClearNotificationRemovesTheTaggedNotification() throws {
         let app = try launch(preview: "banner")
-        XCUIDevice.shared.press(.home)
-        XCTAssertTrue(notification("Front Door").waitForExistence(timeout: 30), "The banner did not appear")
+        XCTAssertTrue(notification("Front Door").waitForExistence(timeout: 240), "The banner did not appear")
         // Let it move to Notification Center, then run the house's clear_notification for its tag.
         XCTAssertTrue(notification("Front Door").waitForNonExistence(timeout: 15))
         app.terminate()
@@ -84,12 +81,20 @@ final class PushJourneyTests: JourneyTestCase {
         var environment = ["FENTON_PUSH": "1"]
         if let preview {
             environment["FENTON_PUSH_PREVIEW"] = try fixture(preview)
-            environment["FENTON_PUSH_PREVIEW_DELAY"] = "20"
+            environment["FENTON_PUSH_PREVIEW_DELAY"] = "8"
         }
         let app = try FentonHomeApp.launchSignedIn(environment: environment)
         let allow = springboard.alerts.buttons["Allow"]
         if allow.waitForExistence(timeout: 15) { allow.tap() }
         return app
+    }
+
+    /// Keeps a screenshot in the result bundle at once (a host capture takes long enough for a banner to leave).
+    private func attach(_ name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     /// A fixture from `tools/push_fixtures`, base64 (the simulator reads the host's files).

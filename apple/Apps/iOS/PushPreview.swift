@@ -1,6 +1,7 @@
 #if DEBUG
 import Foundation
 import HassCore
+import OSLog
 import UserNotifications
 
 /// Debug builds only: shows a Fenton Push payload as a local notification, finished by the same
@@ -8,7 +9,7 @@ import UserNotifications
 /// journeys check buttons and attachments on the simulator).
 ///
 /// `FENTON_PUSH_PREVIEW` holds a base64 `.apns` file (`tools/push_fixtures/`); `FENTON_PUSH_PREVIEW_DELAY` is
-/// the seconds before it shows (default 5), so a journey can leave the app first.
+/// the seconds before it shows (default 5), while the app stays open.
 ///
 /// `FENTON_PUSH_COMMAND` holds a base64 background payload (`clear.apns`), run through
 /// ``PushCoordinator/handleBackground(userInfo:)`` at launch: the simulator refuses content-available-only pushes
@@ -45,18 +46,30 @@ enum PushPreview {
         Task {
             let center = UNUserNotificationCenter.current()
             _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+            // Waits in the app, then posts at once: the iOS 27 simulator refuses timed local requests ("Source is
+            // not authorized", seen 2026-10-14). The app shows it as a banner over itself (`willPresent`).
+            try? await Task.sleep(for: .seconds(delay))
             if let category = plan.category {
                 center.setNotificationCategories(category.merged(into: await center.notificationCategories()))
             }
             if let source = plan.attachment {
                 let token = source.needsAuthorization ? try? await accessToken?() : nil
-                if let file = await PushAttachmentLoader().load(source, accessToken: token),
-                   let attachment = try? UNNotificationAttachment(identifier: source.kind.rawValue, url: file) {
-                    box.content.attachments = [attachment]
+                let file = await PushAttachmentLoader().load(source, accessToken: token)
+                do {
+                    guard let file else { throw URLError(.cannotLoadFromNetwork) }
+                    box.content.attachments = [try UNNotificationAttachment(identifier: source.kind.rawValue, url: file)]
+                } catch {
+                    Logger(subsystem: "com.sfenton.home", category: "push").error(
+                        "Preview attachment failed (token \(token != nil)): \(String(describing: error), privacy: .public)")
                 }
             }
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(delay, 1), repeats: false)
-            try? await center.add(UNNotificationRequest(identifier: identifier, content: box.content, trigger: trigger))
+            do {
+                try await center.add(UNNotificationRequest(identifier: identifier, content: box.content, trigger: nil))
+            } catch {
+                let settings = await center.notificationSettings()
+                Logger(subsystem: "com.sfenton.home", category: "push").error(
+                    "Preview not added (authorization \(settings.authorizationStatus.rawValue), alerts \(settings.alertSetting.rawValue)): \(String(describing: error), privacy: .public)")
+            }
         }
     }
 
