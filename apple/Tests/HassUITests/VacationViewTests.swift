@@ -40,7 +40,7 @@ struct VacationViewTests {
     @Test func sharedPiecesRender() {
         #expect(render(InfoBox(title: "Stephen Away", message: "Message", tone: .success)) != nil)
         #expect(render(InfoBox(title: "Steph Away")) != nil)
-        #expect(render(AwayInlineAlert(text: "Error")) != nil)
+        #expect(render(InlineAlert("Error", severity: .error)) != nil)
         #expect(render(VacationChecklistRow(title: "Make the bed", isChecked: true, isUnavailable: false) {}) != nil)
         #expect(render(VacationChecklistRow(title: "Make the bed", isChecked: false, isUnavailable: true) {}) != nil)
         let field = ScheduleDateField("Start Date", .date, WallClock(date: "2026-10-20", time: "09:00"), id: "start") { _ in }

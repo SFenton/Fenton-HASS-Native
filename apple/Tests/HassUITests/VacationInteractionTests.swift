@@ -103,7 +103,7 @@ struct VacationInteractionTests {
         fields[2].onChange(date(-3))
         #expect(vacation.invalidDateRange)
         #expect(ControlProbe.all(AwayActionButton.self, in: sheet.body).isEmpty)
-        #expect(ControlProbe.all(AwayInlineAlert.self, in: sheet.body).map(\.text) == [Vacation.Copy.dateRangeError])
+        #expect(ControlProbe.all(InlineAlert.self, in: sheet.body).map(\.message) == [Vacation.Copy.dateRangeError])
     }
 
     @Test func inlineDatesWriteEachChangeToHomeAssistant() async throws {
@@ -142,7 +142,7 @@ struct VacationInteractionTests {
         let household = HouseholdAwayController(store: h.store, responder: rejecting)
         await household.cancel()
         let screen = VacationModeScreen(store: h.store, household: household, caller: h.house)
-        let alerts = ControlProbe.all(AwayInlineAlert.self, in: screen.body).map(\.text)
+        let alerts = ControlProbe.all(InlineAlert.self, in: screen.body).map(\.message)
         #expect(alerts == [SoloTripCopy.commandFailed])
         #expect(render(screen) != nil)
     }

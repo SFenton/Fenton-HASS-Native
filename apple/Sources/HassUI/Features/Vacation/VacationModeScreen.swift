@@ -42,8 +42,8 @@ struct VacationModeScreen: View {
 
     private var modeSection: some View {
         AwaySection(title: Vacation.Copy.modeTitle, description: Vacation.Copy.modeDescription) {
-            if controller.showsPreChecklistError { AwayInlineAlert(text: Vacation.Copy.preChecklistError) }
-            if let error = SoloTripCopy.commandError(controller.household.errorCode) { AwayInlineAlert(text: error) }
+            if controller.showsPreChecklistError { InlineAlert(Vacation.Copy.preChecklistError, severity: .error) }
+            if let error = SoloTripCopy.commandError(controller.household.errorCode) { InlineAlert(error, severity: .error) }
             GlassTile(
                 title: Vacation.Copy.modeTitle,
                 subtitle: controller.cardSubtitle,
@@ -160,7 +160,7 @@ struct VacationDateFields: View {
                 .font(.subheadline)
                 .foregroundStyle(HassTokens.Ink.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if invalid { AwayInlineAlert(text: Vacation.Copy.dateRangeError) }
+            if invalid { InlineAlert(Vacation.Copy.dateRangeError, severity: .error) }
             ScheduleDateFields(fields: [
                 ScheduleDateField(Vacation.Copy.startDate, .date, range.start, id: "\(identifierPrefix).startDate") {
                     onChange(Vacation.DateRange(start: $0, end: range.end), false)

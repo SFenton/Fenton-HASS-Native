@@ -21,8 +21,6 @@ enum AwayTint {
     static let action = Color(red: 0.0, green: 0.40, blue: 0.80)
     /// Bordered action button text: 4.5:1 on its light wash (0.40/0.80 measured 4.1:1 on iPad), and a lighter blue on dark backgrounds.
     static let actionText = dynamic(light: (0.0, 0.35, 0.72), dark: (0.45, 0.70, 1.0))
-    /// Alert text: a red dark enough for 4.5:1 on light materials and light enough on dark ones.
-    static let alert = dynamic(light: (0.70, 0.11, 0.11), dark: (1.0, 0.55, 0.52))
 
     private static func dynamic(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
         #if canImport(UIKit)
@@ -77,24 +75,6 @@ struct AwaySectionGrid<Content: View>: View {
 }
 
 // MARK: - Alerts and notices
-
-/// An inline error (web `InlineAlert`).
-struct AwayInlineAlert: View {
-    var text: String
-
-    var body: some View {
-        Label {
-            Text(text).fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: "exclamationmark.circle.fill").accessibilityHidden(true)
-        }
-        .font(.subheadline)
-        .foregroundStyle(AwayTint.alert)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Error: \(text)")
-    }
-}
 
 /// The "<Traveler> Away" notice as an ``InfoBox``.
 struct SoloTripNoticeBox: View {

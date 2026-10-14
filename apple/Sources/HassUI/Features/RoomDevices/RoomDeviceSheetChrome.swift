@@ -59,8 +59,8 @@ private struct DeviceSheetSubtitle: ViewModifier {
 
     func body(content: Content) -> some View {
         #if os(iOS)
-        if #available(iOS 26.0, *) {
-            content.navigationSubtitle(subtitle ?? "")
+        if #available(iOS 26.0, *), let subtitle {
+            content.navigationSubtitle(subtitle)
         } else if let subtitle {
             content.toolbar {
                 ToolbarItem(placement: .principal) {

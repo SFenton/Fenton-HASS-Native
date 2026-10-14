@@ -57,6 +57,10 @@ public enum HassTokens {
         /// Supporting text on an always-dark backdrop: white at 85%, at least 4.5:1 on the lightest backdrop color.
         public static let onDarkSecondary = Color.white.opacity(0.85)
 
+        /// Inline error text (``InlineAlert`` error severity): a red dark enough for 4.5:1 on light materials and
+        /// light enough on dark ones (tuned on the Vacation and Solo Trip pages).
+        public static let error: Color = dynamic(light: (0.70, 0.11, 0.11), dark: (1.0, 0.55, 0.52))
+
         /// Destructive actions ("Stop watering"): system red is 3.6:1 on a light grouped row, this is at least
         /// 6:1 on light and dark rows (HIG: Color; WCAG 1.4.3).
         public static let danger: Color = dynamic(light: (0.76, 0.09, 0.09), dark: (1.0, 0.45, 0.43))
