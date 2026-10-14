@@ -9,7 +9,7 @@ pull request on the product repository. Nothing here merges: the runner labels t
 ``.agents/workflow/triage-agent.md``. Small single-host port of FestivalNativeApps' release machine
 (``SFenton/festival-report-tracker``).
 
-    hass_triage.py tick [--dry-run] [--max-items N]   # the hourly entry point (launchd)
+    hass_triage.py tick [--dry-run] [--max-items N]   # the per-minute entry point (launchd)
     hass_triage.py run-issue N [--dry-run]            # work one issue now
     hass_triage.py status [--json]
     hass_triage.py pause | resume
@@ -848,7 +848,8 @@ def install(paths: Paths, interval: int, uninstall: bool, run: Callable[..., Any
     proc = run(["launchctl", "bootstrap", domain, str(paths.plist)], capture_output=True, text=True)
     if proc.returncode != 0:
         raise TriageError(f"launchctl bootstrap failed: {proc.stderr.strip()[:200]}")
-    print(f"Installed {paths.plist} (every {interval // 60} minutes); runs {paths.clone}/tools/triage/hass_triage.py tick.")
+    every = f"{interval} seconds" if interval % 60 else f"{interval // 60} minute{'s' if interval != 60 else ''}"
+    print(f"Installed {paths.plist} (every {every}); runs {paths.clone}/tools/triage/hass_triage.py tick.")
 
 
 # MARK: - CLI
