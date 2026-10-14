@@ -70,7 +70,7 @@ public enum RecipeServiceData {
     /// Grid page size (web `limit: 50`).
     public static let pageSize = 50
     /// The grocery list Home Assistant mirrors recipe adds into.
-    public static let groceryTodoEntityId = "todo.shopping_list"
+    public static let groceryTodoEntityId = ChoresConfig.groceryEntityId
 
     /// `recipe_query` browse body (web `recipeBrowseServiceData`).
     public static func browse(_ criteria: RecipeBrowseCriteria, cursor: String?) -> [String: any Sendable] {

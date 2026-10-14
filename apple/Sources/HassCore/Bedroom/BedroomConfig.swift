@@ -129,7 +129,7 @@ public enum MasterBedroom {
     /// Script that powers a side on or off through the hot-flash broker.
     public static let hotFlashBrokerScript = "sleepypod_hot_flash_broker"
     /// Household Away (Solo Trip) status.
-    public static let householdAwayEntityId = "sensor.household_away_status"
+    public static let householdAwayEntityId = HouseholdAway.statusEntityId
     /// Household Away command script (returns a response).
     public static let householdAwayScript = "household_away_command"
 

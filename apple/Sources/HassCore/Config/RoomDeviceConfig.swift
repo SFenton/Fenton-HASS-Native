@@ -232,7 +232,7 @@ public extension HumidifierConfig {
         targetHumidityEntityId: "number.lv600s_humidifier_target_humidity",
         timerMinutesEntityId: "number.lv600s_humidifier_timer_minutes",
         timerRemainingEntityId: "sensor.lv600s_humidifier_timer_remaining",
-        vacationModeEntityId: "input_boolean.vacation_mode",
+        vacationModeEntityId: Vacation.modeEntityId,
         warmLevelEntityId: "number.lv600s_humidifier_warm_level",
         waterLowEntityId: "binary_sensor.lv600s_humidifier_water_low"
     )

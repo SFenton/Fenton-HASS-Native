@@ -44,10 +44,10 @@ public enum HomeConfig {
     /// `OVERVIEW_STATUS_CHIPS` (`ha-sfenton-react-dash@f5a7bf9:src/constants/atAGlance.ts:128`).
     public static let statusChips: [StatusChip] = [
         .init(title: "Lights", icon: "mdi:lightbulb-group", entityId: "light.lights", tone: .light, sheet: .lights),
-        .init(title: "Security", icon: "mdi:shield-outline", entityId: "alarm_control_panel.aqara_hub_m3_0056_security_system_2", tone: .security, sheet: .security),
+        .init(title: "Security", icon: "mdi:shield-outline", entityId: SecurityConfig.alarmEntityId, tone: .security, sheet: .security),
         .init(title: "Climate", icon: "mdi:thermometer", entityId: "input_text.all_climate_range", tone: .climate, sheet: .climate),
         .init(title: "Occupancy", icon: "mdi:motion-sensor", entityId: "binary_sensor.occupancy_sensors", tone: .presence, sheet: .occupancy),
-        .init(title: "Contact Sensors", icon: "mdi:door", entityId: "binary_sensor.contact_sensors", tone: .contact, sheet: .contacts),
+        .init(title: "Contact Sensors", icon: "mdi:door", entityId: SecurityConfig.contactSensorsEntityId, tone: .contact, sheet: .contacts),
         .init(title: "Air Quality", icon: "mdi:blur", entityId: "input_text.all_aqi_range", tone: .air, sheet: .airQuality,
               colorEntityId: "input_text.all_aqi_color"),
     ]

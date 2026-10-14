@@ -126,7 +126,7 @@ public enum QuickLinks {
     /// The sheet's title (`shell.json` `quickLinks.title`).
     public static let title = "Quick Links"
     /// The alarm panel the Security System tile reflects.
-    public static let securityEntityId = "alarm_control_panel.aqara_hub_m3_0056_security_system_2"
+    public static let securityEntityId = SecurityConfig.alarmEntityId
 
     public static let items: [QuickLink] = [
         QuickLink(id: "rooms", title: "Rooms", icon: "mdi:floor-plan", tone: .climate, action: .detail(.rooms)),
@@ -147,12 +147,9 @@ public enum QuickLinks {
     // MARK: Subtitles
 
     /// EverShelf counters (`everShelfFood.ts:11-21`).
-    public static let totalItemsEntityId = "sensor.evershelf_total_items"
-    public static let expiringSoonEntityId = "sensor.evershelf_expiring_soon"
-    public static let foodSpaceEntityIds = [
-        "sensor.evershelf_items_in_pantry", "sensor.evershelf_items_in_fridge", "sensor.evershelf_items_in_freezer",
-        "sensor.kitchen_evershelf_items_in_spice_rack", "sensor.kitchen_evershelf_items_in_cabinet",
-    ]
+    public static let totalItemsEntityId = FoodConfig.totalItemsEntityId
+    public static let expiringSoonEntityId = FoodConfig.expiringSoonEntityId
+    public static let foodSpaceEntityIds = FoodConfig.spaces.map(\.entityId)
 
     /// "12 Items • 2 Expiring Soon" (web `allFoodSubtitle`): the total counter, else the sum of the spaces.
     public static func allFoodSubtitle(state: (String) -> String?) -> String {

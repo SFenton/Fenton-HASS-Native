@@ -18,11 +18,11 @@ public enum ClimateConfig {
     /// Why the effective mode is what it is.
     public static let homeAwayReasonEntityId = "sensor.thermostat_home_away_reason"
     /// Vacation Mode (`VACATION_MODE_ENTITY_ID`, `portedDashboard.ts:402`).
-    public static let vacationModeEntityId = "input_boolean.vacation_mode"
+    public static let vacationModeEntityId = Vacation.modeEntityId
     /// Automatic Thermostat: Home Assistant's thermostat control.
     public static let integrationEntityId = "input_boolean.enable_disable_thermostat_contact_sensors_integration"
     /// The aggregate contact sensor; the Open Contact Sensors section shows only while it is on.
-    public static let contactSensorsEntityId = "binary_sensor.contact_sensors"
+    public static let contactSensorsEntityId = SecurityConfig.contactSensorsEntityId
 
     // MARK: - Automation
 
