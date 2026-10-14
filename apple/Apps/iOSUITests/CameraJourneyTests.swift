@@ -41,7 +41,7 @@ final class CameraJourneyTests: XCTestCase {
                 tile(app, stream).coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.5)).tap()
                 XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 5),
                               "A tap at \(x) across the \(title) tile opened \(app.navigationBars.firstMatch.identifier)")
-                app.buttons["Done"].tap()
+                app.buttons["sheet.close"].tap()
                 XCTAssertTrue(app.buttons["home.camera.\(stream)"].waitForExistence(timeout: 5))
             }
         }
@@ -58,7 +58,7 @@ final class CameraJourneyTests: XCTestCase {
         XCTAssertTrue(video.waitForExistence(timeout: 5))
         // Live on the first read: a fresh connection would read "Connecting to live video" for a second or more.
         XCTAssertEqual(video.value as? String, "Live", "The viewer attached to the tile's stream")
-        app.buttons["Done"].tap()
+        app.buttons["sheet.close"].tap()
         XCTAssertEqual(tile(app, "front_door").value as? String, "Live", "The tile kept its stream")
     }
 
@@ -109,7 +109,7 @@ final class CameraJourneyTests: XCTestCase {
         // Closing mutes: reopening starts muted again.
         middle.tap()
         waitForValue(sound, "On", timeout: 5)
-        app.buttons["Done"].tap()
+        app.buttons["sheet.close"].tap()
         _ = openCamera(app)
         XCTAssertEqual(app.switches["camera.control.sound"].value as? String, "Off")
     }
@@ -195,7 +195,7 @@ final class CameraJourneyTests: XCTestCase {
             waitForValue(openCamera(app), "Live", timeout: 45)
             sleep(1)
             keepScreenshot(app, "camera-\(suffix)")
-            app.buttons["Done"].tap()
+            app.buttons["sheet.close"].tap()
             sleep(2)
             keepScreenshot(app, "camera-tiles-\(suffix)")
         }
