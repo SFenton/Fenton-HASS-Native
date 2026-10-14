@@ -1,4 +1,5 @@
 import HassCore
+import HassDesign
 import SwiftUI
 
 /// Native username/password sign-in through Home Assistant's login flow, with an MFA step.
@@ -33,7 +34,7 @@ struct LoginView: View {
                         .accessibilityIdentifier("login.server")
                         .disabled(needsMFA)
                 } header: {
-                    Text("Home Assistant")
+                    FormHeader("Home Assistant")
                 }
 
                 if needsMFA {
@@ -43,9 +44,9 @@ struct LoginView: View {
                             .focusesFromWholeRow($focusedField, .code)
                             .accessibilityIdentifier("login.code")
                     } header: {
-                        Text("Two-factor code")
+                        FormHeader("Two-factor code")
                     } footer: {
-                        Text("Enter the code from your authenticator app.")
+                        FormFooter("Enter the code from your authenticator app.")
                     }
                 } else {
                     Section {
