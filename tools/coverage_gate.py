@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -75,100 +74,6 @@ def llvm_file_totals(reports: list[Path], root: Path) -> dict[str, tuple[int, in
                     raise ValueError(f"{name}: duplicated in coverage exports; merge profiles first")
                 totals[name] = (lines["covered"], lines["count"])
     return totals
-
-
-def _resolve_xml_source(name: str, candidates: set[str]) -> str:
-    """Resolve report-local file names without silently choosing a duplicate.
-
-    Args:
-        name: XML filename, absolute path, or JaCoCo package-relative name.
-        candidates: Repository files classified as logic or UX.
-
-    Returns:
-        The unique matching repository-relative source path.
-
-    Raises:
-        ValueError: If the name does not uniquely identify one source file.
-    """
-    normalized = name.replace("\\", "/").lstrip("/")
-    matches = [
-        path for path in candidates
-        if path == normalized
-        or path.endswith("/" + normalized)
-        or normalized.endswith("/" + path)
-    ]
-    if len(matches) != 1:
-        raise ValueError(f"{name}: expected one matching source file, found {matches}")
-    return matches[0]
-
-
-def xml_file_totals(
-    reports: list[Path], candidates: set[str]
-) -> dict[str, tuple[int, int]]:
-    """Merge JaCoCo and Cobertura line hits across host and device test reports.
-
-    Args:
-        reports: XML files produced by the actual platform test runners.
-        candidates: Files named by the configured logic/UI source patterns.
-
-    Returns:
-        Mapping of repository paths to (covered, executable) line counts.
-
-    Raises:
-        ValueError: For unsupported, ambiguous or invalid XML coverage.
-    """
-    lines: dict[str, dict[int, bool]] = {}
-    for report in reports:
-        try:
-            document = ET.parse(report).getroot()
-        except (OSError, ET.ParseError) as error:
-            raise ValueError(f"{report}: cannot read coverage XML: {error}") from error
-        entries: list[tuple[str, list[ET.Element]]] = []
-        if document.tag == "report":
-            for package in document.findall("package"):
-                package_name = package.get("name", "")
-                for source in package.findall("sourcefile"):
-                    filename = source.get("name")
-                    if not filename:
-                        raise ValueError(f"{report}: JaCoCo source without a filename")
-                    entries.append((f"{package_name}/{filename}", source.findall("line")))
-        elif document.tag == "coverage":
-            for source in document.findall(".//class"):
-                filename = source.get("filename")
-                if not filename:
-                    raise ValueError(f"{report}: Cobertura class without a filename")
-                entries.append((filename, source.findall("./lines/line")))
-        else:
-            raise ValueError(f"{report}: expected JaCoCo report or Cobertura coverage XML")
-        if not entries:
-            raise ValueError(f"{report}: no source-file coverage entries")
-        for name, elements in entries:
-            path = _resolve_xml_source(name, candidates)
-            hits = lines.setdefault(path, {})
-            for element in elements:
-                try:
-                    number = int(element.attrib["nr" if document.tag == "report" else "number"])
-                    if document.tag == "report":
-                        missed, covered = int(element.attrib["mi"]), int(element.attrib["ci"])
-                        if missed < 0 or covered < 0:
-                            raise ValueError("negative instruction count")
-                        if missed + covered == 0:
-                            continue
-                        executed = covered > 0
-                    else:
-                        count = int(element.attrib["hits"])
-                        if count < 0:
-                            raise ValueError("negative hit count")
-                        executed = count > 0
-                except (KeyError, ValueError) as error:
-                    raise ValueError(f"{report}: invalid line metrics for {path}") from error
-                if number <= 0:
-                    raise ValueError(f"{report}: invalid line number for {path}")
-                hits[number] = hits.get(number, False) or executed
-    return {
-        path: (sum(covered for covered in hit_map.values()), len(hit_map))
-        for path, hit_map in lines.items()
-    }
 
 
 def check_coverage(
@@ -273,14 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         rules = json.loads(args.rules.read_text(encoding="utf-8"))
-        if args.language == "swift":
-            totals = llvm_file_totals(args.report, args.root)
-        else:
-            candidates = source_files(
-                args.root,
-                [pattern for category in ("logic", "ux") for pattern in rules[args.language][category]]
-            )
-            totals = xml_file_totals(args.report, candidates)
+        totals = llvm_file_totals(args.report, args.root)
         errors = check_coverage(totals, args.root, rules, args.language)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(f"Coverage gate error: {error}", file=sys.stderr)
