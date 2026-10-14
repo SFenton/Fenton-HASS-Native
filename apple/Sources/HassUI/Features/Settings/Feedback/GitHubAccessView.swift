@@ -91,8 +91,7 @@ struct GitHubAccessView: View {
         } header: {
             header(model.access == nil ? "Access Token" : "New Token")
         } footer: {
-            Text("The token is checked with GitHub, then kept in your iCloud Keychain so your other devices can send reports too. It's never included in a report.")
-                .foregroundStyle(HassTokens.Ink.secondary)
+            FormFooter("The token is checked with GitHub, then kept in your iCloud Keychain so your other devices can send reports too. It's never included in a report.")
         }
     }
 
