@@ -12,6 +12,7 @@
 | A design choice the owner hasn't made | [skills/design-decision](skills/design-decision/SKILL.md) |
 | Write or review SwiftUI | [.claude/skills/swiftui-pro](../.claude/skills/swiftui-pro/SKILL.md), applied per [workflow/swiftui-pro.md](workflow/swiftui-pro.md) |
 | Fix a reported issue | [skills/fix-reported-issue](skills/fix-reported-issue/SKILL.md) |
+| Report an Issue form, the request repo, the triage agent | [pages/settings/feedback.md](pages/settings/feedback.md), [workflow/triage-agent.md](workflow/triage-agent.md) |
 | Sign-in, tokens, Keychain | [platforms/apple/auth.md](platforms/apple/auth.md) |
 | Websocket, backgrounding, caching | [platforms/apple/connection-lifecycle.md](platforms/apple/connection-lifecycle.md) |
 | Decide what tests to write | [testing/apple/strategy.md](testing/apple/strategy.md) |

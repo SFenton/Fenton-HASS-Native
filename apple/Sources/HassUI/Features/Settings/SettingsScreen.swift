@@ -46,6 +46,7 @@ struct SettingsPage: View {
 struct SettingsScreen: View {
     @Binding var openTopic: HouseholdSettingsPage?
     @State private var showsHomeAssistant = false
+    @State private var feedbackForm: FeedbackKind?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
 
     /// Creates the list.
@@ -108,9 +109,11 @@ struct SettingsScreen: View {
                 }
                 .accessibilityIdentifier("settings.performance")
             }
+            FeedbackSettingsSection(openForm: $feedbackForm)
         }
         .navigationTitle("Settings")
         .homeAssistantSettingsCover(isPresented: $showsHomeAssistant)
+        .feedbackFormSheet(item: $feedbackForm)
     }
 }
 

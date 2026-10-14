@@ -10,6 +10,7 @@
 
 ## Native
 
+- A **Feedback** section ends the list: Report an Issue and Request a Feature ([feedback.md](feedback.md)).
 - `SettingsScreen` lists Vacation first ([vacation/ios.md](../vacation/ios.md)), then the admin To-Do ([chores/ios.md](../chores/ios.md), hidden from Steph, also a pushing `NavigationLink`), then the household topics ([household.md](household.md)) above the Home Assistant row. The leading-pane split comes with the navigation shell ([split-view](../../design/apple/split-view.md)). Vacation is a `NavigationLink` that pushes on the leading stack, not a split topic: moving it into `HouseholdSettingsPage` so it opens in the trailing pane is a follow-up.
 - The row opens `HomeAssistantSettingsView` with `fullScreenCover` (split-view.md: full-screen modal), so it is single-page on every device and pose. HIG: Modality (full-screen for an immersive, self-contained task with its own navigation), Settings.
 - Sections: **Server** (address, connection, Home Assistant version), **Account** (`auth/current_user` name and role via `HassConnection.currentUser()`), **Home Assistant** (Settings `/config` for administrators and owners, Profile `/profile` for everyone), **Sign Out** with a confirmation dialog (HIG: Action sheets; destructive and needs a password to undo).
