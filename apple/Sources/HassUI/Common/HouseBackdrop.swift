@@ -47,6 +47,12 @@ final class HouseBackdropStore {
         refreshed = true
         let renderURL = directory.appending(path: Self.renderName)
         let directory = directory
+        // Renders from an older recipe are never read again; drop them off the main thread.
+        Task.detached(priority: .background) {
+            for name in Self.retiredRenderNames {
+                try? FileManager.default.removeItem(at: directory.appending(path: name))
+            }
+        }
         for await photo in photos(source) {
             let rendered: CGImage? = await Task.detached(priority: .utility) {
                 guard let render = Self.render(photo) else { return nil }
@@ -60,12 +66,17 @@ final class HouseBackdropStore {
 
     // MARK: Pure helpers
 
-    /// The blurred render's file name in the cache.
-    nonisolated static let renderName = "house-blurred.png"
+    /// The blurred render's file name in the cache. Renamed when the render recipe changes, so an old render
+    /// is never shown under the new scrim.
+    nonisolated static let renderName = "house-blurred-g.png"
+    /// Render files from earlier recipes, removed on the first refresh.
+    nonisolated static let retiredRenderNames = ["house-blurred.png"]
     /// Width the photo is reduced to before blurring; the blur hides the lost detail.
     nonisolated static let renderWidth: CGFloat = 480
-    /// Blur radius at ``renderWidth`` (web `blur(16px)` over a phone-width viewport, about 400 px).
-    nonisolated static let blurRadius: Double = 18
+    /// Blur radius at ``renderWidth`` (direction G: `blur(20px)` over a phone-width viewport, about 400 px).
+    nonisolated static let blurRadius: Double = 20
+    /// Saturation boost (direction G: `saturate(1.1)`).
+    nonisolated static let saturation: Double = 1.1
 
     /// `<server>/local/images/house.webp`, Home Assistant's public `www` folder (no sign-in needed).
     nonisolated static func imageURL(for server: HassServer) -> URL {
@@ -82,8 +93,7 @@ final class HouseBackdropStore {
         URL.cachesDirectory.appending(path: "HouseBackdrop", directoryHint: .isDirectory)
     }
 
-    /// Downsizes, saturates (web `saturate(1.04)`) and blurs the photo. Brightness is left to the view, which
-    /// darkens it in dark mode and washes it in light mode.
+    /// Downsizes, saturates (``saturation``) and blurs the photo once. Darkening is left to the view's scrim.
     /// - Parameter photo: The decoded photo.
     /// - Returns: The render, or nil when Core Image can't draw it.
     nonisolated static func render(_ photo: CGImage) -> CGImage? {
@@ -92,7 +102,7 @@ final class HouseBackdropStore {
         image = image.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         let extent = image.extent
         image = image.clampedToExtent()
-            .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: 1.04])
+            .applyingFilter("CIColorControls", parameters: [kCIInputSaturationKey: saturation])
             .applyingGaussianBlur(sigma: blurRadius)
             .cropped(to: extent)
         return CIContext(options: [.cacheIntermediates: false]).createCGImage(image, from: extent)
@@ -114,8 +124,9 @@ final class HouseBackdropStore {
 
 // MARK: - View
 
-/// The page background: the house photo, blurred and dimmed like the web (`.backdrop` and `.scrim` in
-/// `AppShell.module.css`), drawn once per page by `pageChrome()`. Modals have none.
+/// The page background: the house photo, blurred and under direction G's dark scrim
+/// (`.agents/design/direction-g.md`, Layers), drawn once per page by `pageChrome()`. Modals have none. Pages are
+/// always dark (the shell sets `preferredColorScheme(.dark)`), the way Apple Home's wallpaper works.
 ///
 /// Every page shows the same crop: the photo fills the window (``EnvironmentValues/backdropCanvas``) and each
 /// page, split pane included, shows the part of it under its own frame, so a split reads as one picture.
@@ -123,27 +134,26 @@ final class HouseBackdropStore {
 struct HouseBackdrop: View {
     @Environment(HouseBackdropStore.self) private var store: HouseBackdropStore?
     @Environment(\.backdropCanvas) private var canvas
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
-                HouseBackdropStyle.base(colorScheme)
+                HouseBackdropStyle.base
                 if let image = store?.image, !reduceTransparency {
                     let size = canvas == .zero ? proxy.size : canvas
                     Image(decorative: image, scale: 1)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: size.width, height: size.height)
-                        .scaleEffect(1.05)
+                        .scaleEffect(HouseBackdropStyle.scale)
                         // Shift by this page's window position without re-running the body each transition frame.
                         .visualEffect { content, proxy in
                             let origin = proxy.frame(in: .global).origin
                             return content.offset(x: -origin.x, y: -origin.y)
                         }
                         .transition(.opacity)
-                    HouseBackdropStyle.scrim(colorScheme)
+                    HouseBackdropStyle.scrim
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
@@ -156,34 +166,27 @@ struct HouseBackdrop: View {
     }
 }
 
-/// Colors of the backdrop's layers.
+/// The backdrop's layers (direction G, Layers: the photo scaled 1.06 under a black scrim).
 enum HouseBackdropStyle {
-    /// Under the photo: the web shell's `#111723` in dark mode, the grouped background in light mode.
-    static func base(_ scheme: ColorScheme) -> Color {
-        #if canImport(UIKit)
-        scheme == .dark ? Color(red: 17 / 255, green: 23 / 255, blue: 35 / 255) : Color(uiColor: .systemGroupedBackground)
-        #else
-        scheme == .dark ? Color(red: 17 / 255, green: 23 / 255, blue: 35 / 255) : Color.white
-        #endif
-    }
+    /// Under the photo, and the whole backdrop with Reduce Transparency: the web shell's `#111723`.
+    static let base = Color(red: 17 / 255, green: 23 / 255, blue: 35 / 255)
 
-    /// Over the photo. Dark mode is the web's `brightness(0.76)` plus its scrim (`rgba(3,6,10,0.08)` to
-    /// `rgba(3,6,10,0.42)` over `rgba(6,10,16,0.12)`). Light mode, which the web lacks, washes the photo
-    /// toward white (38 → 52%) so dark text on it keeps its contrast.
-    @ViewBuilder
-    static func scrim(_ scheme: ColorScheme) -> some View {
-        if scheme == .dark {
-            ZStack {
-                Color.black.opacity(0.24)
-                Color(red: 6 / 255, green: 10 / 255, blue: 16 / 255).opacity(0.12)
-                LinearGradient(colors: [Color(red: 3 / 255, green: 6 / 255, blue: 10 / 255).opacity(0.08),
-                                        Color(red: 3 / 255, green: 6 / 255, blue: 10 / 255).opacity(0.42)],
-                               startPoint: .top, endPoint: .bottom)
-            }
-        } else {
-            LinearGradient(colors: [Color.white.opacity(0.38), Color.white.opacity(0.52)],
-                           startPoint: .top, endPoint: .bottom)
-        }
+    /// How far the photo is scaled past the window, so the blur's soft edges stay off screen.
+    static let scale: CGFloat = 1.06
+
+    /// The scrim's black opacity from top to bottom: lighter where the large title sits over the house, denser
+    /// behind the tab bar.
+    static let scrimStops: [Gradient.Stop] = [
+        .init(color: .black.opacity(0.36), location: 0),
+        .init(color: .black.opacity(0.18), location: 0.28),
+        .init(color: .black.opacity(0.36), location: 0.50),
+        .init(color: .black.opacity(0.50), location: 0.75),
+        .init(color: .black.opacity(0.64), location: 1),
+    ]
+
+    /// Over the photo.
+    static var scrim: some View {
+        LinearGradient(stops: scrimStops, startPoint: .top, endPoint: .bottom)
     }
 }
 

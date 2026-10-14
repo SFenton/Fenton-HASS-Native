@@ -75,18 +75,42 @@ struct HouseBackdropTests {
         #expect(store.image?.width == 96)
     }
 
-    @Test func backdropRendersInBothSchemes() {
+    @Test func backdropRendersWithAndWithoutAPhoto() async throws {
         let folder = directory()
         defer { try? FileManager.default.removeItem(at: folder) }
-        let store = HouseBackdropStore(server: server, directory: folder, photos: stream([]))
-        for scheme in [ColorScheme.dark, .light] {
+        let empty = HouseBackdropStore(server: server, directory: folder, photos: stream([]))
+        let lit = HouseBackdropStore(server: server, directory: folder, photos: stream([photo(red: 0.9)]))
+        await lit.refresh()
+        for store in [empty, lit] {
             let view = HouseBackdrop()
                 .environment(store)
                 .environment(\.backdropCanvas, CGSize(width: 390, height: 844))
-                .environment(\.colorScheme, scheme)
                 .frame(width: 390, height: 844)
             #expect(ImageRenderer(content: view).cgImage != nil)
         }
+    }
+
+    @Test func refreshRemovesRendersFromOlderRecipes() async throws {
+        let folder = directory()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let old = folder.appending(path: "house-blurred.png")
+        FileManager.default.createFile(atPath: old.path, contents: Data([1]))
+        let store = HouseBackdropStore(server: server, directory: folder, photos: stream([]))
+        await store.refresh()
+        for _ in 0..<40 where FileManager.default.fileExists(atPath: old.path) {
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect(!FileManager.default.fileExists(atPath: old.path))
+    }
+
+    @Test func scrimFollowsDirectionG() {
+        // 0.36 → 0.18 (28%) → 0.36 (50%) → 0.50 → 0.64, darkest at the bottom behind the tab bar.
+        let stops = HouseBackdropStyle.scrimStops
+        #expect(stops.map(\.location) == [0, 0.28, 0.50, 0.75, 1])
+        #expect(HouseBackdropStyle.scale == 1.06)
+        #expect(HouseBackdropStore.blurRadius == 20)
+        #expect(HouseBackdropStore.saturation == 1.1)
     }
 }
 

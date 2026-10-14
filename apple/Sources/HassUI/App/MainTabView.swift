@@ -61,6 +61,9 @@ struct MainTabView: View {
         .environment(\.shellChrome, chrome)
         .environment(\.backdropCanvas, canvas)
         .environment(\.headerEdgeCap, headerEdgeCap)
+        // Direction G: pages sit on the dimmed house photo, so the signed-in app is always dark, sheets included
+        // in v1 (`.agents/design/direction-g.md`, Layers; plan decision 3).
+        .preferredColorScheme(.dark)
         .onAppear {
             navigator.settingsIsTab = settingsIsTab
             navigator.selection = storedSelection

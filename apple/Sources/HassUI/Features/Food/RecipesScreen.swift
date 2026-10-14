@@ -79,6 +79,7 @@ struct RecipesScreen: View {
         switch collection.phase {
         case .idle, .loading:
             ProgressView("Loading recipes")
+                .progressViewStyle(.arc)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityIdentifier("recipes.loading")
         case .failed:
@@ -216,6 +217,7 @@ struct RecipeGrid: View {
             .padding(.bottom, HassTokens.Spacing.xl)
         } else if collection.nextPageLoading || collection.hydrating {
             ProgressView(collection.hydrating ? "Finding more recipes" : "Loading more recipes")
+                .progressViewStyle(.arc(.compact))
                 .padding(.bottom, HassTokens.Spacing.xl)
                 .accessibilityIdentifier("recipes.nextPage.loading")
         }

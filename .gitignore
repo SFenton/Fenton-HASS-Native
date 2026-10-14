@@ -20,3 +20,9 @@ apple/Apps/*/Info.plist
 
 # Local build output (xcodebuild -derivedDataPath, result bundles).
 build/
+
+# Design skills installed locally by tools/install_design_skills.sh. app-designer-pro is a paid skill and this
+# repo is public, so neither copy is committed.
+.claude/skills/apple-hig/
+.claude/skills/app-designer-pro/
+.claude/commands/duo.md

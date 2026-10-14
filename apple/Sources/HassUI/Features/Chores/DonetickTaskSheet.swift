@@ -47,7 +47,7 @@ struct DonetickTaskSheet: View {
                 } else if let error {
                     ContentUnavailableView("Unable to Load Task", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else {
-                    ProgressView("Loading task").frame(maxWidth: .infinity, maxHeight: .infinity)
+                    ProgressView("Loading task").progressViewStyle(.arc).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .modalChrome()

@@ -1,4 +1,5 @@
 import CoreGraphics
+import HassDesign
 @testable import HassUI
 import SwiftUI
 import Testing
@@ -232,8 +233,31 @@ struct ShellChromeTests {
         #expect(ImageRenderer(content: ProfileButton(name: nil) {}).cgImage != nil)
     }
 
-    @Test func activeChipsWashTheirToneStronger() {
-        #expect(StatusChipStyle.tintOpacity(isActive: true) > StatusChipStyle.tintOpacity(isActive: false))
+    @Test func activeChipsFillWithTheirFamilyAndIdleOnesStayNeutral() {
         #expect(StatusChipStyle.minHeight >= 44)
+        #expect(StatusChipStyle.fillFamily(.occupancy, isActive: true) == .occupancy)
+        #expect(StatusChipStyle.fillFamily(.occupancy, isActive: false) == nil)
+        #expect(StatusChipStyle.fillFamily(nil, isActive: true) == nil)
+        #expect(StatusChipStyle.fillFamily(.neutral, isActive: true) == nil)
+    }
+
+    @Test func homeChipsFollowTheWebColours() {
+        // Security fills with its mode; Climate and Air Quality always fill; the rest only while active.
+        #expect(StatusChipView.family(.security, alarmState: "armed_away") == .securityAway)
+        #expect(StatusChipView.isFilled(.security, family: .securityDisarmed, isActive: false))
+        #expect(!StatusChipView.isFilled(.security, family: nil, isActive: true))
+        #expect(StatusChipView.isFilled(.climate, family: .climate, isActive: false))
+        #expect(StatusChipView.isFilled(.air, family: .air, isActive: false))
+        #expect(!StatusChipView.isFilled(.contact, family: .contact, isActive: false))
+        #expect(StatusChipView.isFilled(.light, family: .lights, isActive: true))
+        #expect(StatusChipView.family(.presence, alarmState: nil) == .occupancy)
+    }
+
+    @Test func chipsRenderFilledAndNeutral() {
+        for (family, active) in [(ColorFamily.lights, true), (.climate, true), (.contact, false), (.securityNight, true)] {
+            let chip = StatusChipButton(title: "Lights", summary: "3 On", symbol: "lightbulb", family: family,
+                                        isActive: active, action: {})
+            #expect(ImageRenderer(content: chip).cgImage != nil)
+        }
     }
 }

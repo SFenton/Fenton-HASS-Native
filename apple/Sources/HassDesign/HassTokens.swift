@@ -21,8 +21,10 @@ public enum HassTokens {
     // MARK: - Radii
 
     public enum Radius {
-        /// Tiles and cards (web Quick Links use 32 px corners; tiles here use the HIG-friendly 20 pt).
-        public static let tile: CGFloat = 20
+        /// Tiles (direction G, Controls: 22 pt).
+        public static let tile: CGFloat = 22
+        /// Modules, cards and inset lists on the wallpaper (direction G, Layers: 26 pt).
+        public static let module: CGFloat = 26
         public static let chip: CGFloat = 16
         public static let media: CGFloat = 16
     }
@@ -39,6 +41,35 @@ public enum HassTokens {
         public static let neutral = Color.secondary
         /// Water (sprinklers); dark enough for white text at 4.5:1.
         public static let water = Color(red: 0.05, green: 0.40, blue: 0.70)
+    }
+
+    // MARK: - Direction G palette
+
+    /// Direction G's fixed colours as `0xRRGGBB` sRGB, kept raw so tests can check contrast
+    /// (`.agents/design/direction-g.md`, Colour). Views use the `Color`s on ``Ink`` and ``Surface``.
+    public enum Palette {
+        /// Tint for text and glyph actions on dark (system blue lifted for small text; `#007AFF` and `#0A84FF`
+        /// fail 4.5:1 on dark).
+        public static let tintText: UInt32 = 0x409CFF
+        /// Tint for filled controls with a white label (``PrimaryButton``, the sheet confirm check).
+        public static let tintFill: UInt32 = 0x0071E3
+        /// Destructive, error and overdue text and glyphs on dark.
+        public static let red: UInt32 = 0xFF6961
+        /// Soon and warning text and glyphs on dark.
+        public static let orange: UInt32 = 0xFFB340
+        /// Count badges (Chores overdue), under white numerals.
+        public static let badge: UInt32 = 0xD93025
+        /// Sheet ground in dark appearance (`systemGray6` dark).
+        public static let sheetGround: UInt32 = 0x1C1C1E
+        /// Cells and tiles inside a sheet (`systemGray5` dark).
+        public static let sheetCell: UInt32 = 0x2C2C2E
+        /// The thin module on the wallpaper: `#1C1C1E` at 66% (G's 55% over a background blur, without the live blur
+        /// the pre-blurred wallpaper makes redundant).
+        public static let moduleThin: UInt32 = 0x1C1C1E
+        /// The dense module that carries red or orange text over the lit windows: `#141416` at 78%.
+        public static let moduleDense: UInt32 = 0x141416
+        /// Secondary label: `rgba(235,235,245,.68)` on modules and `.6` in sheets.
+        public static let secondaryLabel: UInt32 = 0xEBEBF5
     }
 
     // MARK: - Text
@@ -59,15 +90,29 @@ public enum HassTokens {
 
         /// Inline error text (``InlineAlert`` error severity): a red dark enough for 4.5:1 on light materials and
         /// light enough on dark ones (tuned on the Vacation and Solo Trip pages).
-        public static let error: Color = dynamic(light: (0.70, 0.11, 0.11), dark: (1.0, 0.55, 0.52))
+        public static let error: Color = dynamic(light: (0.70, 0.11, 0.11), dark: Palette.red)
 
         /// Destructive actions ("Stop watering"): system red is 3.6:1 on a light grouped row, this is at least
-        /// 6:1 on light and dark rows (HIG: Color; WCAG 1.4.3).
-        public static let danger: Color = dynamic(light: (0.76, 0.09, 0.09), dark: (1.0, 0.45, 0.43))
+        /// 6:1 on light rows and G's `#FF6961` on dark (HIG: Color; WCAG 1.4.3).
+        public static let danger: Color = dynamic(light: (0.76, 0.09, 0.09), dark: Palette.red)
 
-        /// Tint for buttons and links on these pages: the app's light-blue accent is about 2.5:1 as text on a light
-        /// row and under white text on a filled button. This is 5.6:1 in light mode and system blue in dark mode.
-        public static let action: Color = dynamic(light: (0.0, 0.40, 0.80), dark: (0.04, 0.52, 1.0))
+        /// Soon and warning text ("Due Tomorrow"): G's `#FFB340` on dark, a dark amber at 4.5:1 or better on light.
+        public static let warning: Color = dynamic(light: (0.60, 0.33, 0.0), dark: Palette.orange)
+
+        /// Tint for text buttons, links and glyph actions: 5.6:1 on light rows, and G's `#409CFF` on dark.
+        public static let action: Color = dynamic(light: (0.0, 0.40, 0.80), dark: Palette.tintText)
+
+        /// Fill for controls with a white label (``PrimaryButton``, the sheet confirm check): G's `#0071E3`, 4.6:1
+        /// under white in both appearances.
+        public static let actionFill = Color(rgb: Palette.tintFill)
+
+        /// Count badges under white numerals: `#D93025`.
+        public static let badge = Color(rgb: Palette.badge)
+
+        /// A color with light and dark `0xRRGGBB` variants.
+        private static func dynamic(light: (Double, Double, Double), dark: UInt32) -> Color {
+            dynamic(light: light, dark: Color.components(dark))
+        }
 
         /// A color with light and dark variants (watchOS is always dark).
         private static func dynamic(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
@@ -95,6 +140,26 @@ public enum HassTokens {
             Color(nsColor: .labelColor)
             #endif
         }
+    }
+
+    // MARK: - Surfaces
+
+    /// Direction G's grounds (`.agents/design/direction-g.md`, Layers). Pages are always dark on the wallpaper.
+    public enum Surface {
+        /// Sheet ground, dark appearance.
+        public static let sheetGround = Color(rgb: Palette.sheetGround)
+        /// Cells and tiles inside a sheet.
+        public static let sheetCell = Color(rgb: Palette.sheetCell)
+        /// The thin module tint (``SwiftUICore/View/module(_:cornerRadius:)``).
+        public static let moduleThin = Color(rgb: Palette.moduleThin).opacity(0.66)
+        /// The dense module for red and orange text; also the opaque-enough fallback with Reduce Transparency.
+        public static let moduleDense = Color(rgb: Palette.moduleDense).opacity(0.78)
+        /// Hairline separators on dark: white at 14%.
+        public static let separator = Color.white.opacity(0.14)
+        /// Secondary labels on modules.
+        public static let secondaryOnModule = Color(rgb: Palette.secondaryLabel).opacity(0.68)
+        /// Secondary labels in sheets.
+        public static let secondaryInSheet = Color(rgb: Palette.secondaryLabel).opacity(0.6)
     }
 
     /// Minimum hit target (HIG: Buttons).

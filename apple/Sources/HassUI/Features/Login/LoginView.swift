@@ -74,11 +74,13 @@ struct LoginView: View {
                             Text(needsMFA ? "Verify" : "Sign In")
                             if isWorking {
                                 Spacer()
-                                ProgressView()
+                                ArcSpinner(.inline).accessibilityHidden(true)
                             }
                         }
                     }
                     .disabled(!canSubmit)
+                    // The arc is silent; the button says it is busy.
+                    .accessibilityValue(isWorking ? (needsMFA ? "Verifying" : "Signing In") : "")
                     .accessibilityIdentifier("login.submit")
                 }
             }

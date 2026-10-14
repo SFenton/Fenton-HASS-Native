@@ -25,6 +25,7 @@ public struct ComponentGallery: View {
         case chores
         case performance
         case weather
+        case directionG = "direction-g"
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -68,6 +69,7 @@ public struct ComponentGallery: View {
         } else {
             NavigationStack {
                 switch page {
+                case .directionG: DirectionGGallery()
                 case .mediaRemote: MediaRemoteGallery()
                 case .thermostatDial: ThermostatDialGallery()
                 case .security: SecurityGallery()

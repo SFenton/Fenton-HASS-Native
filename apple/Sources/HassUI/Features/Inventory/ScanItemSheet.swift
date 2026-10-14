@@ -181,7 +181,7 @@ struct ScanItemSheet: View {
     private var processing: some View {
         Section {
             HStack(spacing: HassTokens.Spacing.m) {
-                ProgressView()
+                ArcSpinner(.compact).accessibilityHidden(true)
                 Text("Processing…").font(.headline)
             }
             .frame(maxWidth: .infinity, minHeight: 120)
@@ -304,7 +304,7 @@ struct ScanItemSheet: View {
                         .accessibilityHidden(true)
                     Text("Added to \(model.location.title)").font(.headline)
                 } else {
-                    ProgressView()
+                    ArcSpinner(.compact).accessibilityHidden(true)
                     Text("Adding to \(model.location.title)…").font(.headline)
                 }
             }
@@ -373,7 +373,7 @@ struct ScanItemSheet: View {
                     if case .failed = model.cameraStatus {
                         Image(systemName: "exclamationmark.circle").font(.system(size: 42))
                     } else {
-                        ProgressView().tint(.white)
+                        ArcSpinner(.page).accessibilityHidden(true)
                     }
                     Text(cameraStatusText).multilineTextAlignment(.center)
                 }

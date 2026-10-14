@@ -35,7 +35,7 @@ struct RoomChip: View {
         let chip = controller.chip(card)
         let summary = ScreenshotPrivacy.isRedacting && card.kind == .occupancy ? "Hidden" : chip.summary
         StatusChipButton(title: chip.title, summary: summary, symbol: SymbolMap.symbol(for: chip.icon),
-                         tint: card.kind.tone.color, isActive: chip.isActive, action: chip.opensSheet ? action : nil)
+                         family: card.kind.tone.family, isActive: chip.isActive, action: chip.opensSheet ? action : nil)
             .accessibilityIdentifier("room.chip.\(card.title)")
     }
 }

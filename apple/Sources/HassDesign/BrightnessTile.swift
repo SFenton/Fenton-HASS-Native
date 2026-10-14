@@ -3,9 +3,11 @@ import SwiftUI
 import UIKit
 #endif
 
-/// A dimmable light tile (web `LightBrightnessCard.tsx`, pattern: `.agents/patterns/entity-tile.md`).
+/// A dimmable light tile (web `LightBrightnessCard.tsx`, pattern: `.agents/patterns/entity-tile.md`), the light
+/// dragger of direction G (`.agents/design/direction-g.md`, Controls).
 ///
-/// Tap flips power, or opens the light's details when ``onOpen`` is set (web `tapAction: 'more-info'`). A
+/// Drawn as the warm lit tile whose bright band is the brightness. While dragging, the tile lifts, a "30%" bubble
+/// floats over the band's edge and a selection haptic ticks every 10%. Tap flips power, or opens the light's details when ``onOpen`` is set (web `tapAction: 'more-info'`). A
 /// horizontal drag sets brightness from where the finger is across the tile and commits on release, as on the
 /// web; a vertical drag is left to the scroll view. VoiceOver activates the tap (with a "Turn On/Off" action
 /// when tapping opens details) and swipes up or down to step brightness by ``step``.
@@ -37,6 +39,7 @@ public struct BrightnessTile: View {
     @State private var interaction = BrightnessInteraction()
     @State private var pendingTask: Task<Void, Never>?
     @State private var lastDragEnd = ContinuousClock.now - .seconds(1)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Creates a brightness tile.
     public init(
@@ -65,11 +68,13 @@ public struct BrightnessTile: View {
 
     public var body: some View {
         let shown = interaction.shown(live: percent)
+        let isDragging = interaction.dragPercent != nil
         return GlassTileFace(
             title: title,
             subtitle: Self.status(percent: shown, isUnavailable: isUnavailable),
             symbol: symbol,
             tint: tint,
+            family: .lights,
             isActive: shown > 0 && !isUnavailable,
             isUnavailable: isUnavailable,
             showsChevron: onOpen != nil,
@@ -95,8 +100,32 @@ public struct BrightnessTile: View {
                     ))
             }
         }
+        .overlay(alignment: .topLeading) {
+            if isDragging {
+                // Positioned from the tile's size without a GeometryReader, and never in the way of the drag.
+                Color.clear
+                    .overlay(alignment: .topLeading) {
+                        BrightnessBubble(percent: shown)
+                            .offset(y: -BrightnessBubble.lift - BrightnessBubble.height / 2)
+                    }
+                    .visualEffect { content, proxy in
+                        content.offset(x: Self.bubbleCenter(percent: shown, width: proxy.size.width) - BrightnessBubble.width / 2)
+                    }
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
+        // The tile lifts while dragging (only its shadow with Reduce Motion).
+        .scaleEffect(isDragging && !reduceMotion ? 1.03 : 1)
+        // No shadow pass at rest: a blurred shadow over the tile's material is an offscreen render on every frame.
+        .shadow(color: isDragging ? .black.opacity(0.35) : .clear, radius: isDragging ? 12 : 0, y: isDragging ? 6 : 0)
+        .zIndex(isDragging ? 1 : 0)
+        .sensoryFeedback(.selection, trigger: Self.hapticStep(interaction.dragPercent)) { old, new in
+            old != nil && new != nil
+        }
         .allowsHitTesting(!isUnavailable)
         .animation(.snappy(duration: 0.2), value: shown)
+        .animation(.snappy(duration: 0.2), value: isDragging)
         // Any live report replaces the optimistic value (web `useOptimisticState`).
         .onChange(of: percent) { interaction.pendingPercent = nil }
         .accessibilityElement(children: .ignore)
@@ -171,10 +200,46 @@ public struct BrightnessTile: View {
         return tap + " Swipe up or down to adjust brightness."
     }
 
+    /// The 10% step a drag is in, which ticks the haptic as it changes; nil when not dragging.
+    nonisolated static func hapticStep(_ dragPercent: Double?) -> Int? {
+        dragPercent.map { Int(($0 / 10).rounded(.down)) }
+    }
+
+    /// Where the % bubble's centre sits across a tile `width` wide: over the band's edge, kept inside the tile.
+    nonisolated static func bubbleCenter(percent: Int, width: CGFloat) -> CGFloat {
+        let half = BrightnessBubble.width / 2
+        guard width > BrightnessBubble.width else { return width / 2 }
+        return min(width - half, max(half, width * CGFloat(percent) / 100))
+    }
+
     /// The tile's status line and accessibility value: `Off`, `45%` or `Unavailable`.
     nonisolated static func status(percent: Int, isUnavailable: Bool) -> String {
         if isUnavailable { return "Unavailable" }
         return percent > 0 ? "\(percent)%" : "Off"
+    }
+}
+
+/// The "30%" bubble that floats over the band's edge while dragging. VoiceOver hears the tile's value instead.
+struct BrightnessBubble: View {
+    var percent: Int
+
+    /// The bubble's width, wide enough for "100%".
+    nonisolated static let width: CGFloat = 60
+    /// The bubble's height.
+    nonisolated static let height: CGFloat = 32
+    /// How far above the tile's top edge the bubble's centre sits.
+    nonisolated static let lift: CGFloat = 24
+
+    var body: some View {
+        Text("\(percent)%")
+            .font(.subheadline.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(.white)
+            .frame(width: Self.width, height: Self.height)
+            .background(Color(rgb: HassTokens.Palette.sheetCell), in: Capsule())
+            .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
+            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+            .accessibilityHidden(true)
     }
 }
 

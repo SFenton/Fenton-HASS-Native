@@ -73,7 +73,7 @@ struct FreshnessIndicator: View {
     var body: some View {
         if case .snapshot = store.freshness {
             HStack(spacing: HassTokens.Spacing.xs) {
-                ProgressView().controlSize(.mini)
+                ArcSpinner(.inline).foregroundStyle(.secondary).accessibilityHidden(true)
                 Text("Updating").font(.caption).foregroundStyle(.secondary)
             }
             .accessibilityElement(children: .combine)

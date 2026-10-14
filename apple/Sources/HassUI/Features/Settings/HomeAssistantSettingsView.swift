@@ -83,7 +83,7 @@ struct HomeAssistantSettingsView: View {
             } else if userError {
                 infoRow("Signed in as", "Unavailable offline", id: "haSettings.user")
             } else {
-                LabeledContent("Signed in as") { ProgressView().accessibilityLabel("Loading") }
+                LabeledContent("Signed in as") { ArcSpinner(.compact) }
                     .accessibilityIdentifier("haSettings.user")
             }
         } header: {

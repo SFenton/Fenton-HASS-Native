@@ -64,6 +64,7 @@ struct RecipeDetailContent: View {
             switch model.phase {
             case .loading:
                 ProgressView("Loading recipe details")
+                    .progressViewStyle(.arc)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .accessibilityIdentifier("recipe.loading")
             case let .failed(message, unsupported):
@@ -429,7 +430,7 @@ struct GroceryAction: View {
                 } label: {
                     HStack(spacing: HassTokens.Spacing.s) {
                         if model.grocery == .adding {
-                            ProgressView()
+                            ArcSpinner(.inline).accessibilityHidden(true)
                         } else {
                             Image(systemName: "cart.badge.plus")
                         }

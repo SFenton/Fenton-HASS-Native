@@ -6,12 +6,12 @@ import SwiftUI
 /// The one section switcher for a tabbed modal (media remote, thermostat advanced controls, vacuum; pattern:
 /// `.agents/patterns/modal-sheet.md`).
 ///
-/// The web puts its `ModalIconTabNav` at the bottom of the modal; native keeps a segmented control at the top,
-/// pinned under the header (``SwiftUI/View/modalTabBar(_:label:title:symbol:selection:identifier:placement:)``). HIG
-/// Segmented controls (iOS, iPadOS): "Consider it for switching between closely related subviews; use a tab bar
-/// for completely separate app sections", and HIG Tab bars: "Use tabs for navigation, not current-view actions",
-/// navigating "an app's top-level sections". A modal's sections are closely related views of one device, so a
-/// bottom tab bar there would read as app navigation.
+/// Direction G (`.agents/design/direction-g.md`, Sheets) draws it as a system segmented control on a glass
+/// capsule, pinned along the bottom of the modal like the web's `ModalIconTabNav`
+/// (``SwiftUI/View/modalTabBar(_:label:title:symbol:selection:identifier:placement:)``). It stays a segmented
+/// control, not a tab bar: HIG Segmented controls (iOS, iPadOS): "Consider it for switching between closely related
+/// subviews; use a tab bar for completely separate app sections". The glass marks it as a navigation-layer
+/// control floating over the content (HIG: Materials, Liquid Glass).
 ///
 /// Segments show text, or icons when the caller passes `symbol` (the vacuum's labels are too long for five
 /// segments). HIG Segmented controls: "Prefer text or images, not a mix, in one control" and "Limit segments:
@@ -42,6 +42,9 @@ struct ModalTabBar<Item: Hashable & Identifiable>: View {
             .pickerStyle(.menu)
             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
             .accessibilityIdentifier(identifier)
+            // The same glass as the segmented bar, so content scrolling under the bottom bar stays behind it.
+            .padding(.horizontal, HassTokens.Spacing.m)
+            .navigationGlass(in: Capsule())
         } else {
             Picker(label, selection: $selection) {
                 ForEach(tabs) { tab in
@@ -59,24 +62,32 @@ struct ModalTabBar<Item: Hashable & Identifiable>: View {
             .labelsHidden()
             .controlSize(.large)
             .accessibilityIdentifier(identifier)
+            .padding(ModalTabBarStyle.glassInset)
+            .navigationGlass(in: Capsule())
         }
     }
 }
 
 /// Where ``SwiftUI/View/modalTabBar(_:label:title:symbol:selection:identifier:placement:)`` pins the control.
 enum ModalTabBarPlacement: Sendable {
-    /// Under the header (the HIG's segmented-control placement; the default).
+    /// Under the header.
     case top
-    /// Along the bottom edge (reserved for the design direction's glass control).
+    /// Along the bottom edge, floating over the content on glass (direction G; the default).
     case bottom
 }
 
+/// Measurements of the glass section bar.
+enum ModalTabBarStyle {
+    /// Glass visible around the segmented control.
+    static let glassInset: CGFloat = 4
+}
+
 extension View {
-    /// Pins a ``ModalTabBar`` to this modal page, under the header by default. Apply it after ``modalChrome()`` so
-    /// the content fades out under the tab bar as well as the title.
+    /// Pins a ``ModalTabBar`` to this modal page, along the bottom edge by default (direction G). Apply it after
+    /// ``modalChrome()`` so the content fades out under the tab bar as well as the title.
     func modalTabBar<Item: Hashable & Identifiable>(
         _ tabs: [Item], label: String, title: @escaping (Item) -> String, symbol: ((Item) -> String)? = nil,
-        selection: Binding<Item>, identifier: String, placement: ModalTabBarPlacement = .top
+        selection: Binding<Item>, identifier: String, placement: ModalTabBarPlacement = .bottom
     ) -> some View {
         safeAreaInset(edge: placement == .top ? .top : .bottom, spacing: 0) {
             ModalTabBar(tabs: tabs, label: label, title: title, symbol: symbol, selection: selection, identifier: identifier)

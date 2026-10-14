@@ -31,9 +31,8 @@ struct TodoListSection: View {
             }
             let items = controller.visibleItems(hideCompleted: list.hideCompleted)
             if controller.items == nil {
-                ProgressView()
+                ArcSpinner(.compact, label: "Loading \(list.title)")
                     .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                    .accessibilityLabel("Loading \(list.title)")
             } else if layout == .grid {
                 DynamicGridLayout(minCellWidth: 280, maxColumns: 3) {
                     ForEach(items) { row($0) }

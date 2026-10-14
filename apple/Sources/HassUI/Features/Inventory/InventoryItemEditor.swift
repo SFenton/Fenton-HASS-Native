@@ -224,7 +224,7 @@ private struct BatchSection: View {
                 HStack(spacing: HassTokens.Spacing.s) {
                     Text("Prepared Food")
                     if case .prepared(batch.key) = model.busy {
-                        ProgressView().accessibilityLabel("Updating prepared food")
+                        ArcSpinner(.inline, label: "Updating prepared food")
                     }
                 }
             }
@@ -250,7 +250,7 @@ private struct BatchSection: View {
                         Task { await model.save(batch) }
                     } label: {
                         if case .save(batch.key) = model.busy {
-                            ProgressView()
+                            ArcSpinner(.inline)
                         } else {
                             Text("Save").bold()
                         }
@@ -272,7 +272,7 @@ private struct BatchSection: View {
                     Text("Delete").fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     if case .delete(batch.key) = model.busy {
-                        ProgressView()
+                        ArcSpinner(.inline, label: "Deleting")
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

@@ -1,4 +1,5 @@
 import HassCore
+import HassDesign
 import SwiftUI
 #if os(iOS)
 import WebKit
@@ -54,13 +55,13 @@ struct HomeAssistantWebPage: View {
             #if os(iOS)
             HassWebView(session: frontend, path: page.path, reloadToken: reloadToken, isLoading: $isLoading, failed: $failed)
                 .ignoresSafeArea(edges: .bottom)
-                .overlay { if isLoading { ProgressView("Loading \(page.title)…") } }
+                .overlay { if isLoading { ProgressView("Loading \(page.title)…").progressViewStyle(.arc) } }
                 .accessibilityIdentifier("haWeb.\(page.rawValue)")
             #else
             Text(frontend.origin + page.path)
             #endif
         } else {
-            ProgressView("Loading \(page.title)…")
+            ProgressView("Loading \(page.title)…").progressViewStyle(.arc)
         }
     }
 

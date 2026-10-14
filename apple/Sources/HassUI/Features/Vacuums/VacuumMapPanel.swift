@@ -149,7 +149,7 @@ struct VacuumMapFrame: View {
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
             } else {
-                ProgressView()
+                ArcSpinner(.page).accessibilityHidden(true)
                 Text(controller.status.primaryAvailable ? "Loading Current Map…" : "Loading Last Vacuum Map Position…")
                     .font(.subheadline)
             }

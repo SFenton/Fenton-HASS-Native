@@ -116,6 +116,8 @@ public extension View {
             // Modal titles are inline, and a pinned `modalTabBar` belongs to the header: never cap it at the
             // window's bar height.
             .environment(\.headerEdgeCap, nil)
+            // Dark tiles in a sheet sit on the sheet's cell colour rather than the page module (direction G).
+            .environment(\.tileSurface, .sheet)
             .scrollContentBackground(.hidden)
             .background { ModalBackground().ignoresSafeArea() }
     }
