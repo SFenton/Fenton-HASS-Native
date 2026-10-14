@@ -119,54 +119,47 @@ struct FeedbackAttachmentTests {
     }
 }
 
-// MARK: - Issue
+// MARK: - Report
 
-@Suite("Feedback issue composition")
-struct FeedbackIssueTests {
+@Suite("Feedback report")
+struct FeedbackReportTests {
     static let diagnostics = FeedbackDiagnostics(
         app: "0.1.0 (1)", system: "iOS 27.1", device: "iPhone (iPhone18,1)", window: "402 × 874 pt, compact width, portrait",
-        homeAssistant: "2026.10.1, connected", reporter: "Stephen", accessibility: "Text large, VoiceOver off, Reduce Motion off, Light",
+        homeAssistant: "2026.10.1, connected", accessibility: "Text large, VoiceOver off, Reduce Motion off, Light",
         locale: "en_US, America/Los_Angeles"
     )
 
-    @Test func bugIssue() throws {
+    @Test func bugReport() throws {
         var draft = FeedbackDraft(kind: .bug)
-        draft.setTitle("[Bug] Garage\nstuck")
-        draft.description = "It <!-- hides --> things"
-        draft.reproSteps = "1. Open\n2. Tap"
+        draft.setTitle("[Bug] Garage stuck")
+        draft.description = "  It broke \n"
+        draft.reproSteps = "1. Open"
         draft.expectedBehavior = " "
         let photo = FeedbackAttachment(fileURL: URL(fileURLWithPath: "/tmp/a.png"), filename: "a.png", mimeType: "image/png", byteCount: 1, isVideo: false)
         let video = FeedbackAttachment(fileURL: URL(fileURLWithPath: "/tmp/b.mov"), filename: "b.mov", mimeType: "video/quicktime", byteCount: 1, isVideo: true)
-        let issue = FeedbackIssue.compose(draft: draft, platform: .iphoneDuo, diagnostics: Self.diagnostics, media: [
+        let report = FeedbackReport(draft: draft, platform: .iphoneDuo, diagnostics: Self.diagnostics, media: [
             (photo, URL(string: "https://github.com/user-attachments/assets/1")!),
             (video, URL(string: "https://github.com/user-attachments/assets/2")!),
         ])
-        #expect(issue.title == "[Bug] Garage stuck")
-        #expect(issue.labels == ["Bug", "From App", "iPhone Duo"])
-        #expect(issue.body.contains("### Description\n\nIt &lt;!-- hides --> things"))
-        #expect(issue.body.contains("### Steps to Reproduce\n\n1. Open\n2. Tap"))
-        #expect(!issue.body.contains("Expected Behavior"))
-        #expect(issue.body.contains("![a.png](https://github.com/user-attachments/assets/1)\n\nhttps://github.com/user-attachments/assets/2"))
-        #expect(issue.body.contains("| Reported by | Stephen |"))
-        #expect(issue.body.contains("| Home Assistant | 2026.10.1, connected |"))
-        #expect(issue.body.hasSuffix(FeedbackIssue.marker))
-        #expect(issue.body.components(separatedBy: FeedbackIssue.marker).count == 2)
+        #expect(report.kind == "bug" && report.platform == "iphone-duo")
+        #expect(report.title == "[Bug] Garage stuck" && report.description == "It broke")
+        #expect(report.repro == "1. Open" && report.expected == nil)
+        #expect(report.diagnostics.first == ["App", "0.1.0 (1)"] && report.diagnostics.count == 7)
+        #expect(report.media == [.init(name: "a.png", url: "https://github.com/user-attachments/assets/1", video: false),
+                                 .init(name: "b.mov", url: "https://github.com/user-attachments/assets/2", video: true)])
+        let json = try #require(try JSONSerialization.jsonObject(with: JSONEncoder().encode(report)) as? [String: Any])
+        #expect(json["kind"] as? String == "bug")
+        #expect(json["expected"] == nil, "Empty optional boxes are left out")
+        #expect((json["diagnostics"] as? [[String]])?.last == ["Locale", "en_US, America/Los_Angeles"])
     }
 
-    @Test func featureIssueWithoutMedia() {
+    @Test func featureReportDropsBugBoxes() {
         var draft = FeedbackDraft(kind: .feature)
         draft.setTitle("[Feature] Dark mode")
         draft.description = "Please"
         draft.reproSteps = "ignored"
-        var diagnostics = Self.diagnostics
-        diagnostics.reporter = nil
-        diagnostics.locale = "a|b"
-        let issue = FeedbackIssue.compose(draft: draft, platform: .ios, diagnostics: diagnostics, media: [])
-        #expect(issue.labels == ["Feature", "From App", "iOS"])
-        #expect(!issue.body.contains("### Media"))
-        #expect(!issue.body.contains("Steps to Reproduce"))
-        #expect(!issue.body.contains("Reported by"))
-        #expect(issue.body.contains("| Locale | a\\|b |"))
+        let report = FeedbackReport(draft: draft, platform: .ios, diagnostics: Self.diagnostics, media: [])
+        #expect(report.kind == "feature" && report.repro == nil && report.media.isEmpty)
     }
 
     @Test func diagnosticsFormatting() {
@@ -176,24 +169,16 @@ struct FeedbackIssueTests {
         #expect(FeedbackDiagnostics.appVersion(["CFBundleShortVersionString": "1", "CFBundleVersion": "2"], buildDate: date).hasPrefix("1 (2), built 2026-"))
         #expect(FeedbackDiagnostics.windowText(width: 402, height: 874.4, regularWidth: false) == "402 × 874 pt, compact width, portrait")
         #expect(FeedbackDiagnostics.windowText(width: 1210, height: 834, regularWidth: true) == "1210 × 834 pt, regular width, landscape")
-        #expect(Self.diagnostics.rows.map(\.label) == ["App", "System", "Device", "Window", "Home Assistant", "Reported by", "Accessibility", "Locale"])
-    }
-
-    @Test func destination() throws {
-        let destination = FeedbackDestination.requests
-        #expect(destination.slug == "SFenton/fenton-hass-requests")
-        let url = destination.tokenCreationURL.absoluteString
-        #expect(url.hasPrefix("https://github.com/settings/personal-access-tokens/new?"))
-        #expect(url.contains("issues=write") && url.contains("target_name=SFenton"))
+        #expect(Self.diagnostics.rows.map(\.label) == ["App", "System", "Device", "Window", "Home Assistant", "Accessibility", "Locale"])
         #expect(FiledIssue(number: 3, url: URL(string: "https://x")!).number == 3)
     }
 }
 
-// MARK: - GitHub client
+// MARK: - Home Assistant client
 
 /// Records requests and answers from a script.
 final class StubFeedbackTransport: FeedbackHTTPTransport, @unchecked Sendable {
-    typealias Reply = (status: Int, body: String, headers: [String: String])
+    typealias Reply = (status: Int, body: String)
     private let lock = NSLock()
     private var replies: [Reply]
     private(set) var requests: [URLRequest] = []
@@ -205,63 +190,48 @@ final class StubFeedbackTransport: FeedbackHTTPTransport, @unchecked Sendable {
         let reply: Reply = try lock.withLock {
             requests.append(request)
             if let error { throw error }
-            return replies.isEmpty ? (500, "{}", [:]) : replies.removeFirst()
+            return replies.isEmpty ? (500, "{}") : replies.removeFirst()
         }
-        let response = HTTPURLResponse(url: request.url!, statusCode: reply.status, httpVersion: nil, headerFields: reply.headers)!
-        return (Data(reply.body.utf8), response)
+        return (Data(reply.body.utf8), HTTPURLResponse(url: request.url!, statusCode: reply.status, httpVersion: nil, headerFields: nil)!)
     }
 }
 
-@Suite("GitHub feedback client")
-struct GitHubFeedbackClientTests {
-    let access = GitHubAccess(token: "t0ken", login: "SFenton", repositoryID: 42)
+@Suite("Home Assistant feedback client")
+struct HomeAssistantFeedbackClientTests {
+    let server = HassServer(baseURL: URL(string: "https://ha.example.com")!)
 
-    @Test func verifyReadsUserAndRepository() async throws {
-        let transport = StubFeedbackTransport([(200, #"{"login":"SFenton"}"#, [:]), (200, #"{"id":42}"#, [:])])
-        let access = try await GitHubFeedbackClient(transport: transport).verify(token: "  t0ken\n")
-        #expect(access == GitHubAccess(token: "t0ken", login: "SFenton", repositoryID: 42))
-        #expect(transport.requests.map { $0.url!.path } == ["/user", "/repos/SFenton/fenton-hass-requests"])
-        #expect(transport.requests[0].value(forHTTPHeaderField: "Authorization") == "Bearer t0ken")
-        #expect(transport.requests[0].value(forHTTPHeaderField: "X-GitHub-Api-Version") == "2022-11-28")
+    func client(_ transport: StubFeedbackTransport, token: String = "ha-token") -> HomeAssistantFeedbackClient {
+        HomeAssistantFeedbackClient(server: server, accessToken: { token }, transport: transport)
     }
 
-    @Test func verifyMapsFailures() async {
-        await #expect(throws: FeedbackFilingError.tokenRejected) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([(401, "{}", [:])])).verify(token: "x")
-        }
-        await #expect(throws: FeedbackFilingError.noRepositoryAccess) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([(200, #"{"login":"a"}"#, [:]), (404, "{}", [:])])).verify(token: "x")
-        }
-        await #expect(throws: FeedbackFilingError.unexpectedResponse) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([(200, #"{"login":"a"}"#, [:]), (200, #"[]"#, [:])])).verify(token: "x")
-        }
-        await #expect(throws: FeedbackFilingError.unexpectedResponse) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([(200, #"{"x":1}"#, [:]), (200, #"{"id":1}"#, [:])])).verify(token: "x")
-        }
-        let offline = StubFeedbackTransport([])
-        offline.error = URLError(.notConnectedToInternet)
-        await #expect(throws: FeedbackFilingError.network) { try await GitHubFeedbackClient(transport: offline).verify(token: "x") }
-        let cancelled = StubFeedbackTransport([])
-        cancelled.error = CancellationError()
-        await #expect(throws: CancellationError.self) { try await GitHubFeedbackClient(transport: cancelled).verify(token: "x") }
-        let typed = StubFeedbackTransport([])
-        typed.error = FeedbackFilingError.rateLimited
-        await #expect(throws: FeedbackFilingError.rateLimited) { try await GitHubFeedbackClient(transport: typed).verify(token: "x") }
-    }
-
-    @Test func uploadSendsTheFileToUserAttachments() async throws {
+    func attachment(_ data: Data = Data([1, 2, 3])) throws -> FeedbackAttachment {
         let file = FileManager.default.temporaryDirectory.appendingPathComponent("upload-\(UUID().uuidString).png")
-        try Data([1, 2, 3]).write(to: file)
-        defer { try? FileManager.default.removeItem(at: file) }
-        let attachment = FeedbackAttachment(fileURL: file, filename: "shot one.png", mimeType: "image/png", byteCount: 3, isVideo: false)
-        let transport = StubFeedbackTransport([(201, #"{"url":"https://github.com/user-attachments/assets/abc"}"#, [:])])
-        let url = try await GitHubFeedbackClient(transport: transport).upload(attachment, access: access)
+        try data.write(to: file)
+        return FeedbackAttachment(fileURL: file, filename: "shot one.png", mimeType: "image/png", byteCount: Int64(data.count), isVideo: false)
+    }
+
+    @Test func statusReadsAvailability() async throws {
+        let transport = StubFeedbackTransport([(200, #"{"available":true}"#), (200, #"{"available":false}"#), (404, "")])
+        let filer = client(transport)
+        #expect(try await filer.isAvailable())
+        #expect(try await !filer.isAvailable())
+        #expect(try await !filer.isAvailable(), "No integration answers 404")
+        #expect(transport.requests[0].url?.absoluteString == "https://ha.example.com/api/fenton_feedback/status")
+        #expect(transport.requests[0].value(forHTTPHeaderField: "Authorization") == "Bearer ha-token")
+        await #expect(throws: FeedbackFilingError.signedOut) {
+            try await client(StubFeedbackTransport([(401, "")])).isAvailable()
+        }
+    }
+
+    @Test func uploadSendsOneRawFile() async throws {
+        let file = try attachment()
+        defer { try? FileManager.default.removeItem(at: file.fileURL) }
+        let transport = StubFeedbackTransport([(200, #"{"url":"https://github.com/user-attachments/assets/abc"}"#)])
+        let url = try await client(transport).upload(file)
         #expect(url.absoluteString == "https://github.com/user-attachments/assets/abc")
         let request = try #require(transport.requests.first)
-        #expect(request.httpMethod == "POST")
-        #expect(request.url?.host() == "uploads.github.com")
+        #expect(request.httpMethod == "POST" && request.url?.path == "/api/fenton_feedback/media")
         let query = URLComponents(url: request.url!, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        #expect(query.contains(URLQueryItem(name: "repository_id", value: "42")))
         #expect(query.contains(URLQueryItem(name: "name", value: "shot one.png")))
         #expect(query.contains(URLQueryItem(name: "content_type", value: "image/png")))
         #expect(request.httpBody == Data([1, 2, 3]))
@@ -269,96 +239,110 @@ struct GitHubFeedbackClientTests {
     }
 
     @Test func uploadFailures() async throws {
-        let file = FileManager.default.temporaryDirectory.appendingPathComponent("upload-\(UUID().uuidString).png")
-        try Data([1]).write(to: file)
-        defer { try? FileManager.default.removeItem(at: file) }
-        let attachment = FeedbackAttachment(fileURL: file, filename: "a.png", mimeType: "image/png", byteCount: 1, isVideo: false)
-        await #expect(throws: FeedbackFilingError.attachmentRejected("a.png")) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([(422, "{}", [:])])).upload(attachment, access: access)
+        let file = try attachment()
+        defer { try? FileManager.default.removeItem(at: file.fileURL) }
+        await #expect(throws: FeedbackFilingError.attachmentRejected("shot one.png")) {
+            try await client(StubFeedbackTransport([(422, #"{"code":"attachment_rejected"}"#)])).upload(file)
+        }
+        await #expect(throws: FeedbackFilingError.notConfigured) {
+            try await client(StubFeedbackTransport([(503, #"{"code":"not_configured"}"#)])).upload(file)
         }
         await #expect(throws: FeedbackFilingError.unexpectedResponse) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([(201, #"{"url":"http://insecure"}"#, [:])])).upload(attachment, access: access)
+            try await client(StubFeedbackTransport([(200, #"{"url":"http://insecure"}"#)])).upload(file)
         }
         let missing = FeedbackAttachment(fileURL: URL(fileURLWithPath: "/nonexistent/x.png"), filename: "x.png", mimeType: "image/png", byteCount: 1, isVideo: false)
         await #expect(throws: FeedbackFilingError.attachmentRejected("x.png")) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([])).upload(missing, access: access)
-        }
-        await #expect(throws: FeedbackFilingError.tokenRejected) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([(401, "{}", [:])])).upload(attachment, access: access)
+            try await client(StubFeedbackTransport([])).upload(missing)
         }
     }
 
-    @Test func createIssuePostsTitleBodyAndLabels() async throws {
-        let transport = StubFeedbackTransport([(201, #"{"number":7,"html_url":"https://github.com/SFenton/fenton-hass-requests/issues/7"}"#, [:])])
-        let issue = FeedbackIssue(title: "[Bug] X", body: "Body", labels: ["Bug", "From App", "iOS"])
-        let filed = try await GitHubFeedbackClient(transport: transport).createIssue(issue, access: access)
+    @Test func submitPostsTheReport() async throws {
+        var draft = FeedbackDraft(kind: .bug)
+        draft.setTitle("[Bug] X")
+        draft.description = "Y"
+        let report = FeedbackReport(draft: draft, platform: .ios, diagnostics: FeedbackReportTests.diagnostics, media: [])
+        let transport = StubFeedbackTransport([(201, #"{"number":7,"url":"https://github.com/SFenton/fenton-hass-requests/issues/7"}"#)])
+        let filed = try await client(transport).submit(report)
         #expect(filed.number == 7)
         let request = try #require(transport.requests.first)
-        #expect(request.url?.path == "/repos/SFenton/fenton-hass-requests/issues")
+        #expect(request.url?.path == "/api/fenton_feedback/report" && request.value(forHTTPHeaderField: "Content-Type") == "application/json")
         let json = try #require(try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any])
         #expect(json["title"] as? String == "[Bug] X")
-        #expect(json["labels"] as? [String] == ["Bug", "From App", "iOS"])
-        await #expect(throws: FeedbackFilingError.unexpectedResponse) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([(201, #"{"number":7}"#, [:])])).createIssue(issue, access: access)
+        await #expect(throws: FeedbackFilingError.githubProblem) {
+            try await client(StubFeedbackTransport([(502, #"{"code":"github_token_rejected"}"#)])).submit(report)
         }
-        await #expect(throws: FeedbackFilingError.noIssueAccess) {
-            try await GitHubFeedbackClient(transport: StubFeedbackTransport([(403, "{}", [:])])).createIssue(issue, access: access)
+        await #expect(throws: FeedbackFilingError.unexpectedResponse) {
+            try await client(StubFeedbackTransport([(201, #"{"number":7}"#)])).submit(report)
         }
     }
 
-    @Test func statusMapping() {
-        #expect(FeedbackFilingError.forStatus(401, rateLimitRemaining: nil) == .tokenRejected)
-        #expect(FeedbackFilingError.forStatus(403, rateLimitRemaining: "0") == .rateLimited)
-        #expect(FeedbackFilingError.forStatus(429, rateLimitRemaining: nil) == .rateLimited)
-        #expect(FeedbackFilingError.forStatus(403, rateLimitRemaining: "10") == .noIssueAccess)
-        #expect(FeedbackFilingError.forStatus(404, rateLimitRemaining: nil, onRepository: true) == .noRepositoryAccess)
-        #expect(FeedbackFilingError.forStatus(502, rateLimitRemaining: nil) == .unavailable)
-        #expect(FeedbackFilingError.forStatus(418, rateLimitRemaining: nil) == .httpStatus(418))
-        let all: [FeedbackFilingError] = [.tokenRejected, .noRepositoryAccess, .noIssueAccess, .attachmentRejected("a"), .rateLimited,
-                                          .unavailable, .httpStatus(1), .network, .unexpectedResponse]
+    @Test func transportAndTokenFailures() async {
+        let offline = StubFeedbackTransport([])
+        offline.error = URLError(.notConnectedToInternet)
+        await #expect(throws: FeedbackFilingError.network) { try await client(offline).isAvailable() }
+        let cancelled = StubFeedbackTransport([])
+        cancelled.error = CancellationError()
+        await #expect(throws: CancellationError.self) { try await client(cancelled).isAvailable() }
+        let typed = StubFeedbackTransport([])
+        typed.error = FeedbackFilingError.rateLimited
+        await #expect(throws: FeedbackFilingError.rateLimited) { try await client(typed).isAvailable() }
+        let noToken = HomeAssistantFeedbackClient(server: server, accessToken: { throw URLError(.userAuthenticationRequired) },
+                                                  transport: StubFeedbackTransport([]))
+        await #expect(throws: FeedbackFilingError.signedOut) { try await noToken.isAvailable() }
+        let cancelledToken = HomeAssistantFeedbackClient(server: server, accessToken: { throw CancellationError() },
+                                                         transport: StubFeedbackTransport([]))
+        await #expect(throws: CancellationError.self) { try await cancelledToken.isAvailable() }
+    }
+
+    @Test func errorMapping() {
+        let map = FeedbackFilingError.forResponse
+        #expect(map(503, "not_configured", nil) == .notConfigured)
+        #expect(map(429, "rate_limited", nil) == .rateLimited)
+        #expect(map(413, "payload_too_large", nil) == .tooLarge)
+        #expect(map(415, "unsupported_media", nil) == .unsupportedMedia)
+        #expect(map(422, "attachment_rejected", nil) == .attachmentRejected("An attachment"))
+        #expect(map(502, "github_no_issue_access", nil) == .githubProblem)
+        #expect(map(400, "title_required", nil) == .invalidReport)
+        #expect(map(401, nil, nil) == .signedOut)
+        #expect(map(404, nil, nil) == .notConfigured)
+        #expect(map(413, nil, nil) == .tooLarge)
+        #expect(map(415, nil, nil) == .unsupportedMedia)
+        #expect(map(429, nil, nil) == .rateLimited)
+        #expect(map(400, nil, nil) == .invalidReport)
+        #expect(map(503, nil, nil) == .githubProblem)
+        #expect(map(418, nil, nil) == .unexpectedResponse)
+        let all: [FeedbackFilingError] = [.notConfigured, .githubProblem, .invalidReport, .attachmentRejected("a"), .tooLarge,
+                                          .unsupportedMedia, .rateLimited, .signedOut, .network, .unexpectedResponse]
         #expect(all.allSatisfy { $0.errorDescription?.isEmpty == false })
-        #expect(all.filter(\.needsNewToken) == [.tokenRejected, .noRepositoryAccess, .noIssueAccess])
     }
 }
 
-// MARK: - Fixture and stores
+// MARK: - Fixture
 
-@Suite("Feedback fixture and token stores")
+@Suite("Feedback fixture")
 struct FeedbackFixtureTests {
     @Test func fixtureAnswers() async throws {
         let fixture = FeedbackFixtureFiler()
-        #expect(try await fixture.verify(token: " fixture-token ") == FeedbackFixtureFiler.access)
-        await #expect(throws: FeedbackFilingError.tokenRejected) { try await fixture.verify(token: "nope") }
+        #expect(try await fixture.isAvailable())
         let attachment = FeedbackAttachment(fileURL: URL(fileURLWithPath: "/tmp/a.png"), filename: "a.png", mimeType: "image/png", byteCount: 1, isVideo: false)
-        #expect(try await fixture.upload(attachment, access: FeedbackFixtureFiler.access).absoluteString.hasSuffix("fixture-1"))
-        let filed = try await fixture.createIssue(FeedbackIssue(title: "[Bug] ok", body: "", labels: []), access: FeedbackFixtureFiler.access)
-        #expect(filed.number == 1)
-        #expect(fixture.createdIssues.count == 1)
-        await #expect(throws: FeedbackFilingError.unavailable) {
-            try await fixture.createIssue(FeedbackIssue(title: "fixture-failed", body: "", labels: []), access: FeedbackFixtureFiler.access)
+        #expect(try await fixture.upload(attachment).absoluteString.hasSuffix("fixture-1"))
+        var draft = FeedbackDraft(kind: .bug)
+        draft.setTitle("[Bug] ok")
+        draft.description = "d"
+        let ok = FeedbackReport(draft: draft, platform: .ios, diagnostics: FeedbackReportTests.diagnostics, media: [])
+        #expect(try await fixture.submit(ok).number == 1)
+        #expect(fixture.submittedReports.count == 1)
+        draft.setTitle("[Bug] fixture-failed")
+        await #expect(throws: FeedbackFilingError.githubProblem) {
+            try await fixture.submit(FeedbackReport(draft: draft, platform: .ios, diagnostics: FeedbackReportTests.diagnostics, media: []))
         }
-        await #expect(throws: FeedbackFilingError.tokenRejected) {
-            try await fixture.createIssue(FeedbackIssue(title: "fixture-token", body: "", labels: []), access: FeedbackFixtureFiler.access)
+        draft.setTitle("[Bug] fixture-limited")
+        await #expect(throws: FeedbackFilingError.rateLimited) {
+            try await fixture.submit(FeedbackReport(draft: draft, platform: .ios, diagnostics: FeedbackReportTests.diagnostics, media: []))
         }
-    }
-
-    @Test func inMemoryStore() throws {
-        let store = InMemoryGitHubAccessStore()
-        #expect(store.load() == nil)
-        try store.save(FeedbackFixtureFiler.access)
-        #expect(store.load() == FeedbackFixtureFiler.access)
-        store.clear()
-        #expect(store.load() == nil)
-    }
-
-    @Test func keychainStoreRoundTripsWhenTheKeychainIsAvailable() throws {
-        let store = KeychainGitHubAccessStore(service: "com.sfenton.home.github.tests.\(UUID().uuidString)")
-        defer { store.clear() }
-        // Hosted macOS test runs may lack a keychain entitlement for synchronizable items; only check
-        // the round trip when saving works.
-        guard (try? store.save(FeedbackFixtureFiler.access)) != nil else { return }
-        #expect(store.load() == FeedbackFixtureFiler.access)
-        store.clear()
-        #expect(store.load() == nil)
+        let missing = FeedbackFixtureFiler(available: false)
+        #expect(try await !missing.isAvailable())
+        await #expect(throws: FeedbackFilingError.notConfigured) { try await missing.upload(attachment) }
+        await #expect(throws: FeedbackFilingError.notConfigured) { try await missing.submit(ok) }
     }
 }

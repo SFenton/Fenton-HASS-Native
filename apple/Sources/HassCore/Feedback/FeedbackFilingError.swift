@@ -1,69 +1,76 @@
 import Foundation
 
-/// A failed GitHub call, phrased for the person (never GitHub's own text, which can carry request details).
+/// A failed report, phrased for the person. Mapped from the integration's stable `code` (never its text).
 public enum FeedbackFilingError: LocalizedError, Equatable, Sendable {
-    /// 401: the token is wrong, expired or revoked.
-    case tokenRejected
-    /// 403/404 on the repository: the token can't reach the request repository.
-    case noRepositoryAccess
-    /// 403 on creating the issue: the token lacks Issues write.
-    case noIssueAccess
-    /// The upload of one attachment was refused.
+    /// The Fenton Home Feedback integration isn't installed or set up in Home Assistant.
+    case notConfigured
+    /// Home Assistant couldn't file with its GitHub token (expired, revoked, no access, GitHub down).
+    case githubProblem
+    /// The form was refused (a field the integration validates differently).
+    case invalidReport
+    /// One attachment was refused.
     case attachmentRejected(String)
-    /// 403/429 with GitHub's rate-limit headers.
+    case tooLarge
+    case unsupportedMedia
+    /// Too many reports in a short time.
     case rateLimited
-    /// 5xx.
-    case unavailable
-    case httpStatus(Int)
+    /// Home Assistant didn't accept the app's sign-in.
+    case signedOut
     case network
-    /// The answer wasn't what GitHub documents.
     case unexpectedResponse
 
     public var errorDescription: String? {
         switch self {
-        case .tokenRejected:
-            "GitHub didn't accept the access token. It may have expired; add a new one."
-        case .noRepositoryAccess:
-            "The access token can't reach the \(FeedbackDestination.requests.name) repository. Create one with access to it."
-        case .noIssueAccess:
-            "The access token can't create issues. Give it Issues: Read and write."
+        case .notConfigured:
+            "Reporting isn't set up in Home Assistant yet. Add the Fenton Home Feedback integration there."
+        case .githubProblem:
+            "Home Assistant couldn't file it on GitHub. Its GitHub token may need replacing in Fenton Home Feedback."
+        case .invalidReport:
+            "Home Assistant couldn't accept this report. Check the boxes and try again."
         case let .attachmentRejected(name):
-            "GitHub didn't accept \(name). Remove it and try again."
+            "\(name) couldn't be uploaded. Remove it and try again."
+        case .tooLarge:
+            "An attachment is too large to send. Remove it and try again."
+        case .unsupportedMedia:
+            "One of the attachments isn't a supported photo or video. Remove it and try again."
         case .rateLimited:
-            "GitHub is limiting requests right now. Try again in a few minutes."
-        case .unavailable:
-            "GitHub is unavailable right now. Try again in a few minutes."
-        case let .httpStatus(code):
-            "GitHub returned an error (\(code)). Try again."
+            "Too many reports were sent just now. Try again in a few minutes."
+        case .signedOut:
+            "Home Assistant didn't accept the app's sign-in. Sign in again and try again."
         case .network:
-            "Couldn't reach GitHub. Check your connection and try again."
+            "Couldn't reach Home Assistant. Check your connection and try again."
         case .unexpectedResponse:
-            "GitHub sent an unexpected answer. Try again."
+            "Home Assistant sent an unexpected answer. Try again."
         }
     }
 
-    /// Whether the person should replace their token.
-    public var needsNewToken: Bool {
-        switch self {
-        case .tokenRejected, .noRepositoryAccess, .noIssueAccess: true
-        default: false
-        }
-    }
-
-    /// Maps a non-success status.
+    /// Maps a non-success answer from the integration.
     ///
     /// - Parameters:
     ///   - status: HTTP status.
-    ///   - rateLimitRemaining: `x-ratelimit-remaining` header.
-    ///   - onRepository: Whether the call read the repository (403/404 means no access to it).
-    /// - Returns: The error.
-    public static func forStatus(_ status: Int, rateLimitRemaining: String?, onRepository: Bool = false) -> FeedbackFilingError {
+    ///   - code: The body's `code`, when there is one.
+    ///   - attachment: The file being uploaded, for upload errors.
+    public static func forResponse(status: Int, code: String?, attachment: String? = nil) -> FeedbackFilingError {
+        switch code {
+        case "not_configured": return .notConfigured
+        case "rate_limited": return .rateLimited
+        case "payload_too_large": return .tooLarge
+        case "unsupported_media": return .unsupportedMedia
+        case "attachment_rejected": return .attachmentRejected(attachment ?? "An attachment")
+        case let code? where code.hasPrefix("github_"): return .githubProblem
+        case "invalid_form", "title_required", "description_required", "field_too_long", "too_many_attachments",
+             "invalid_media": return .invalidReport
+        default: break
+        }
         switch status {
-        case 401: return .tokenRejected
-        case 403 where rateLimitRemaining == "0", 429: return .rateLimited
-        case 403, 404: return onRepository ? .noRepositoryAccess : .noIssueAccess
-        case 500...599: return .unavailable
-        default: return .httpStatus(status)
+        case 401, 403: return .signedOut
+        case 404: return .notConfigured
+        case 413: return .tooLarge
+        case 415: return .unsupportedMedia
+        case 429: return .rateLimited
+        case 400, 422: return .invalidReport
+        case 502, 503: return .githubProblem
+        default: return .unexpectedResponse
         }
     }
 }

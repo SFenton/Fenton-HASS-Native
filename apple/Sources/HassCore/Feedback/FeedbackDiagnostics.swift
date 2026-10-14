@@ -1,7 +1,8 @@
 import Foundation
 
 /// Device, app and Home Assistant details appended to every report, so the triage agent can reproduce
-/// it on the same device family, size and settings. It never holds a token, password or server address.
+/// it on the same device family, size and settings. It never holds a token, password or server address. The
+/// Home Assistant user who sent it is added by the integration, from the request's own sign-in.
 public struct FeedbackDiagnostics: Sendable, Equatable {
     /// `CFBundleShortVersionString (CFBundleVersion)`, plus the build date when known.
     public var app: String
@@ -13,8 +14,6 @@ public struct FeedbackDiagnostics: Sendable, Equatable {
     public var window: String
     /// Home Assistant version, or "Not connected".
     public var homeAssistant: String
-    /// The signed-in Home Assistant user's name, when known.
-    public var reporter: String?
     /// Text size, VoiceOver, Reduce Motion and appearance, for example "Large, VoiceOver off, Dark".
     public var accessibility: String
     /// Locale and time zone, for example "en_US, America/Los_Angeles".
@@ -23,28 +22,23 @@ public struct FeedbackDiagnostics: Sendable, Equatable {
     /// Creates diagnostics.
     public init(
         app: String, system: String, device: String, window: String, homeAssistant: String,
-        reporter: String?, accessibility: String, locale: String
+        accessibility: String, locale: String
     ) {
         self.app = app
         self.system = system
         self.device = device
         self.window = window
         self.homeAssistant = homeAssistant
-        self.reporter = reporter
         self.accessibility = accessibility
         self.locale = locale
     }
 
-    /// Rows in display order; the reporter row is left out when unknown.
+    /// Rows in display order.
     public var rows: [(label: String, value: String)] {
-        var rows: [(String, String)] = [
+        [
             ("App", app), ("System", system), ("Device", device), ("Window", window),
-            ("Home Assistant", homeAssistant),
+            ("Home Assistant", homeAssistant), ("Accessibility", accessibility), ("Locale", locale),
         ]
-        if let reporter, !reporter.isEmpty { rows.append(("Reported by", reporter)) }
-        rows.append(("Accessibility", accessibility))
-        rows.append(("Locale", locale))
-        return rows
     }
 
     /// The app version text from an Info.plist dictionary.

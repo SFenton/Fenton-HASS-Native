@@ -7,8 +7,8 @@ import SwiftUI
 /// State behind a Report an Issue / Request a Feature sheet, ported from FestivalNativeApps'
 /// `FeedbackFormModel`.
 ///
-/// Owns the draft, the app's private copies of attached media, the GitHub access the report is sent
-/// with and the submit phase. Media is copied into app temporary storage so the original stays
+/// Owns the draft, the app's private copies of attached media, whether Home Assistant can file reports,
+/// and the submit phase. Media is copied into app temporary storage so the original stays
 /// untouched; ``discardMedia()`` deletes the copies.
 @MainActor
 @Observable
@@ -19,15 +19,22 @@ final class FeedbackFormModel {
         /// Uploading media (`step` of `total`, the last step being the issue itself).
         case sending(step: Int, total: Int)
         case finished(FiledIssue)
-        /// The message to show, and whether the token needs replacing.
-        case failed(String, needsToken: Bool)
+        /// The message to show.
+        case failed(String)
+    }
+
+    /// Whether Home Assistant's Fenton Home Feedback integration can file reports.
+    enum Availability: Equatable {
+        case checking
+        case available
+        /// The integration isn't installed or set up.
+        case unavailable
     }
 
     private(set) var draft: FeedbackDraft
     private(set) var attachments: [FeedbackAttachment] = []
     private(set) var phase: Phase = .editing
-    /// The token reports are sent with; nil until one is added on this device (or synced to it).
-    private(set) var access: GitHubAccess?
+    private(set) var availability: Availability = .checking
     /// Why the last picked file was refused, shown under Attach Media.
     private(set) var attachmentMessage: String?
     /// Picked items still being copied, so Submit waits for them.
@@ -38,11 +45,10 @@ final class FeedbackFormModel {
     /// Starts an empty form.
     /// - Parameters:
     ///   - kind: Bug report or feature request.
-    ///   - services: Filing and token storage.
-    init(kind: FeedbackKind, services: FeedbackServices = .current) {
+    ///   - services: Where reports are filed.
+    init(kind: FeedbackKind, services: FeedbackServices) {
         draft = FeedbackDraft(kind: kind)
         self.services = services
-        access = services.store.load()
     }
 
     // MARK: - Draft
@@ -80,24 +86,25 @@ final class FeedbackFormModel {
     /// The reason Submit is disabled, shown under the form; nil when it can be sent.
     var blockingReason: String? {
         if let issue = draft.validationIssue { return issue.message }
-        if access == nil { return "Add a GitHub access token to send." }
+        if availability == .unavailable { return "Reporting isn't set up in Home Assistant yet." }
+        if availability == .checking { return "Checking Home Assistant…" }
         if importing > 0 { return "Adding media…" }
         return nil
     }
 
-    /// Submit is enabled only for a valid draft with access and every picked item copied.
+    /// Submit is enabled only for a valid draft, with Home Assistant ready and every picked item copied.
     var canSubmit: Bool { blockingReason == nil && phase == .editing }
 
-    // MARK: - Access
+    // MARK: - Availability
 
-    /// Reads the saved token again (after the GitHub Access page closes) and, in a Debug build, saves a
-    /// launch token once it verifies.
-    func refreshAccess() async {
-        access = services.store.load()
-        guard access == nil, let token = FeedbackServices.launchToken,
-              let verified = try? await services.filer.verify(token: token) else { return }
-        try? services.store.save(verified)
-        access = verified
+    /// Asks Home Assistant whether it can file reports. A failed check counts as available, so Submit shows the
+    /// real error rather than a guess.
+    func checkAvailability() async {
+        do {
+            availability = try await services.filer.isAvailable() ? .available : .unavailable
+        } catch {
+            availability = .available
+        }
     }
 
     // MARK: - Attachments
@@ -220,13 +227,14 @@ final class FeedbackFormModel {
 
     // MARK: - Submit
 
-    /// Uploads the media, then creates the issue; progress, success and failure land in ``phase``.
+    /// Uploads the media through Home Assistant, then files the report; progress, success and failure land
+    /// in ``phase``.
     ///
     /// - Parameters:
     ///   - platform: Platform label for the issue.
     ///   - diagnostics: Collects the diagnostics table when sending starts.
     func submit(platform: FeedbackPlatform, diagnostics: @escaping @MainActor () async -> FeedbackDiagnostics) {
-        guard canSubmit, let access else { return }
+        guard canSubmit else { return }
         let draft = draft
         let attachments = attachments
         let filer = services.filer
@@ -236,19 +244,19 @@ final class FeedbackFormModel {
                 var media: [(attachment: FeedbackAttachment, url: URL)] = []
                 for (index, attachment) in attachments.enumerated() {
                     self?.phase = .sending(step: index + 1, total: attachments.count + 1)
-                    media.append((attachment, try await filer.upload(attachment, access: access)))
+                    media.append((attachment, try await filer.upload(attachment)))
                 }
                 try Task.checkCancellation()
                 self?.phase = .sending(step: attachments.count + 1, total: attachments.count + 1)
-                let issue = FeedbackIssue.compose(draft: draft, platform: platform, diagnostics: await diagnostics(), media: media)
-                let filed = try await filer.createIssue(issue, access: access)
-                self?.phase = .finished(filed)
+                let report = FeedbackReport(draft: draft, platform: platform, diagnostics: await diagnostics(), media: media)
+                self?.phase = .finished(try await filer.submit(report))
             } catch is CancellationError {
                 self?.phase = .editing
             } catch let error as FeedbackFilingError {
-                self?.phase = .failed(error.errorDescription ?? "", needsToken: error.needsNewToken)
+                if error == .notConfigured { self?.availability = .unavailable }
+                self?.phase = .failed(error.errorDescription ?? "")
             } catch {
-                self?.phase = .failed(FeedbackFilingError.network.errorDescription ?? "", needsToken: false)
+                self?.phase = .failed(FeedbackFilingError.network.errorDescription ?? "")
             }
         }
     }
