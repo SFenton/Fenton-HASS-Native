@@ -67,8 +67,11 @@ struct ColorFamilyTests {
         guard let fill = family.chipFillRGB else { return }
         // Power's chip would need dark ink; no status chip uses it.
         guard family != .power else { return }
-        #expect(contrast(0xFFFFFF, fill) >= 4.5, "\(family) title")
-        #expect(contrast(ColorFamily.mix(0xFFFFFF, fill, 0.92), fill) >= 4.5, "\(family) state")
+        // Text can sit under the chip's 12% white top highlight (`StatusChipStyle`), so measure against that too.
+        let lifted = ColorFamily.mix(0xFFFFFF, fill, 0.12)
+        for ground in [fill, lifted] {
+            #expect(contrast(0xFFFFFF, ground) >= 4.5, "\(family) title and state")
+        }
         #expect(contrast(family.chipGlyphRGB, fill) >= 3, "\(family) glyph")
     }
 

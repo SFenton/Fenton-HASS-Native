@@ -101,8 +101,10 @@ struct StatusChipButton: View {
             VStack(alignment: .leading, spacing: 0) {
                 // Fixed inks: the chip's ground is always dark (a family fill or the module), whatever the scheme.
                 Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                // Full white on a fill: the 12% top highlight lifts the ground, and white at 92% measured 4.3:1 on the
+                // armed-home and cooking chips when the summary wrapped into it (folded Duo, 2026-10-14).
                 Text(summary).font(.caption)
-                    .foregroundStyle(fill != nil ? Color.white.opacity(0.92) : HassTokens.Surface.secondaryOnModule)
+                    .foregroundStyle(fill != nil ? Color.white : HassTokens.Surface.secondaryOnModule)
                     .monospacedDigit()
             }
         }
