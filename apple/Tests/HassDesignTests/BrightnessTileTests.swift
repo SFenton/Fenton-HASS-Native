@@ -97,3 +97,27 @@ struct BrightnessInteractionTests {
         #expect(state.pendingPercent == nil)
     }
 }
+
+struct BrightnessDraggerTests {
+    @Test func hapticTicksOncePerTenPercent() {
+        #expect(BrightnessTile.hapticStep(nil) == nil)
+        #expect(BrightnessTile.hapticStep(0) == 0)
+        #expect(BrightnessTile.hapticStep(9.9) == 0)
+        #expect(BrightnessTile.hapticStep(10) == 1)
+        #expect(BrightnessTile.hapticStep(100) == 10)
+    }
+
+    @Test func bubbleFollowsTheBandInsideTheTile() {
+        #expect(BrightnessTile.bubbleCenter(percent: 50, width: 200) == 100)
+        // Kept inside the tile at either end.
+        #expect(BrightnessTile.bubbleCenter(percent: 0, width: 200) == BrightnessBubble.width / 2)
+        #expect(BrightnessTile.bubbleCenter(percent: 100, width: 200) == 200 - BrightnessBubble.width / 2)
+        // A tile narrower than the bubble centres it.
+        #expect(BrightnessTile.bubbleCenter(percent: 80, width: 40) == 20)
+    }
+
+    @MainActor
+    @Test func bubbleRenders() {
+        #expect(ImageRenderer(content: BrightnessBubble(percent: 30)).cgImage != nil)
+    }
+}

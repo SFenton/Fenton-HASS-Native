@@ -10,9 +10,14 @@ public struct GlassTile<Accessory: View>: View {
     public var title: String
     public var subtitle: String?
     public var symbol: String
+    /// The glyph and rim colour of a ``TileFaceStyle/tinted`` face; defaults to the family's glyph colour.
     public var tint: Color
+    /// The device's colour family (direction G). Nil keeps the tinted face until the caller picks one.
+    public var family: ColorFamily?
     public var isActive: Bool
     public var isUnavailable: Bool
+    /// Draws the error face: a red glyph and red state ("Didn't Respond") on a dense ground.
+    public var isError: Bool
     /// Toggles get `.isToggle` semantics; navigation gets a chevron; read-only tiles are not buttons.
     public var kind: Kind
     /// A state wash drawn under the material (towel rack on, an Eight Sleep side heating).
@@ -36,9 +41,11 @@ public struct GlassTile<Accessory: View>: View {
         title: String,
         subtitle: String? = nil,
         symbol: String,
-        tint: Color,
+        tint: Color? = nil,
+        family: ColorFamily? = nil,
         isActive: Bool,
         isUnavailable: Bool = false,
+        isError: Bool = false,
         kind: Kind = .toggle,
         wash: Color? = nil,
         progress: Double? = nil,
@@ -49,9 +56,11 @@ public struct GlassTile<Accessory: View>: View {
         self.title = title
         self.subtitle = subtitle
         self.symbol = symbol
-        self.tint = tint
+        self.tint = tint ?? family?.glyph ?? .accentColor
+        self.family = family
         self.isActive = isActive
         self.isUnavailable = isUnavailable
+        self.isError = isError
         self.kind = kind
         self.wash = wash
         self.progress = progress
@@ -78,8 +87,10 @@ public struct GlassTile<Accessory: View>: View {
             subtitle: subtitle,
             symbol: symbol,
             tint: tint,
+            family: family,
             isActive: isActive,
             isUnavailable: isUnavailable && kind != .state,
+            isError: isError,
             showsChevron: kind == .navigate,
             level: progress,
             levelTint: progressTint,
@@ -126,6 +137,7 @@ public struct GlassTile<Accessory: View>: View {
 
     private var accessibilityValue: String {
         if isUnavailable { return "Unavailable" }
+        if isError { return subtitle ?? "Error" }
         if kind == .toggle { return isActive ? "On" : "Off" }
         return subtitle ?? ""
     }
@@ -149,18 +161,20 @@ public extension GlassTile where Accessory == EmptyView {
         title: String,
         subtitle: String? = nil,
         symbol: String,
-        tint: Color,
+        tint: Color? = nil,
+        family: ColorFamily? = nil,
         isActive: Bool,
         isUnavailable: Bool = false,
+        isError: Bool = false,
         kind: Kind = .toggle,
         wash: Color? = nil,
         progress: Double? = nil,
         progressTint: Color? = nil,
         action: @escaping () -> Void = {}
     ) {
-        self.init(title: title, subtitle: subtitle, symbol: symbol, tint: tint, isActive: isActive,
-                  isUnavailable: isUnavailable, kind: kind, wash: wash, progress: progress, progressTint: progressTint,
-                  action: action) { EmptyView() }
+        self.init(title: title, subtitle: subtitle, symbol: symbol, tint: tint, family: family, isActive: isActive,
+                  isUnavailable: isUnavailable, isError: isError, kind: kind, wash: wash, progress: progress,
+                  progressTint: progressTint, action: action) { EmptyView() }
     }
 }
 
@@ -182,33 +196,40 @@ public enum GlassTileKind: Equatable, Sendable {
 
 /// The tile's drawing, shared by ``GlassTile`` and ``BrightnessTile`` so every entity tile looks the same.
 /// Public for tiles whose container handles the tap, such as a `NavigationLink` label.
+///
+/// Direction G faces (``TileFaceStyle``): off is dark with the glyph in its family colour, a light that is on is
+/// the warm lit tile, other devices fill with their family colour, and an error is a red glyph and state.
 public struct GlassTileFace: View {
     var title: String
     var subtitle: String?
     var symbol: String
     var tint: Color
+    var family: ColorFamily?
     var isActive: Bool
     var isUnavailable: Bool
+    var isError = false
     var showsChevron = false
-    /// 0...1 fill drawn from the leading edge (brightness), or `nil` for none.
+    /// 0...1 fill drawn from the leading edge (brightness, a cycle's progress), or `nil` for none.
     var level: Double?
-    /// The fill's color; defaults to ``tint``.
+    /// The level fill's colour on a tinted face, or a light's colour washed over the lit band.
     var levelTint: Color?
-    /// A state wash over the material.
+    /// A state wash over a dark face.
     var wash: Color?
     /// Room kept free at the trailing edge for an accessory.
     var trailingInset: CGFloat = 0
 
     /// Creates a tile face.
-    public init(title: String, subtitle: String? = nil, symbol: String, tint: Color, isActive: Bool,
-                isUnavailable: Bool = false, showsChevron: Bool = false, level: Double? = nil, levelTint: Color? = nil,
-                wash: Color? = nil, trailingInset: CGFloat = 0) {
+    public init(title: String, subtitle: String? = nil, symbol: String, tint: Color, family: ColorFamily? = nil,
+                isActive: Bool, isUnavailable: Bool = false, isError: Bool = false, showsChevron: Bool = false,
+                level: Double? = nil, levelTint: Color? = nil, wash: Color? = nil, trailingInset: CGFloat = 0) {
         self.title = title
         self.subtitle = subtitle
         self.symbol = symbol
         self.tint = tint
+        self.family = family
         self.isActive = isActive
         self.isUnavailable = isUnavailable
+        self.isError = isError
         self.showsChevron = showsChevron
         self.level = level
         self.levelTint = levelTint
@@ -218,8 +239,16 @@ public struct GlassTileFace: View {
 
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.tileFillsHeight) private var fillsHeight
+    @Environment(\.tileSurface) private var surface
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private var style: TileFaceStyle {
+        .resolve(family: family, isActive: isActive, isError: isError, isUnavailable: isUnavailable)
+    }
 
     public var body: some View {
+        let style = style
+        let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             HStack {
                 // Decorative: the title names the tile. Symbols carry built-in labels ("Humidifier"), which the audit
@@ -227,25 +256,25 @@ public struct GlassTileFace: View {
                 Image(systemName: symbol)
                     .font(.title3)
                     .symbolVariant(isActive ? .fill : .none)
-                    .foregroundStyle(isActive && isEnabled ? tint : .secondary)
+                    .foregroundStyle(glyphColor(style))
                     .accessibilityHidden(true)
                 Spacer(minLength: 0)
                 if showsChevron {
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(secondaryInk(style).opacity(0.8))
                         .accessibilityHidden(true)
                 }
             }
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(HassTokens.Ink.primary)
+                .foregroundStyle(primaryInk(style))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let subtitle {
                 Text(subtitle)
                     .font(.footnote)
-                    .foregroundStyle(HassTokens.Ink.secondary)
+                    .foregroundStyle(secondaryInk(style))
                     .monospacedDigit()
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -256,29 +285,104 @@ public struct GlassTileFace: View {
         // also fills the row height it is offered.
         .frame(maxWidth: .infinity, minHeight: 88, maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)
         .padding(HassTokens.Spacing.m)
-        .background {
-            let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
-            shape.fill(.regularMaterial)
-                // A light wash, like the level fill, keeps label text above 4.5:1 on any state color.
-                .overlay { if let wash { shape.fill(wash.opacity(0.6)) } }
-                .overlay(alignment: .leading) {
-                    if let level, level > 0 {
-                        GeometryReader { proxy in
-                            // A light wash keeps the label text above 4.5:1 on any light color.
-                            Rectangle()
-                                .fill((levelTint ?? tint).opacity(0.32))
-                                .frame(width: proxy.size.width * min(1, level))
-                        }
-                    }
-                }
-                .clipShape(shape)
-        }
+        .background { ground(style).clipShape(shape) }
         .overlay {
-            RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
-                .strokeBorder(isActive ? tint.opacity(isEnabled ? 0.5 : 0.25) : .clear, lineWidth: 1)
+            if style == .tinted {
+                shape.strokeBorder(tint.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
+            }
         }
         .opacity(isUnavailable ? 0.5 : 1)
-        .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+        .contentShape(shape)
+    }
+
+    // MARK: Ink
+
+    private func glyphColor(_ style: TileFaceStyle) -> Color {
+        switch style {
+        case .off: isEnabled ? (family?.offGlyph ?? Color.secondary) : .secondary
+        case .lit: LitTile.glyph
+        case let .filled(family): family.ink
+        case .tinted: isEnabled ? tint : .secondary
+        case .error: HassTokens.Ink.danger
+        }
+    }
+
+    private func primaryInk(_ style: TileFaceStyle) -> Color {
+        switch style {
+        case .lit: LitTile.ink
+        case let .filled(family): family.ink
+        default: HassTokens.Ink.primary
+        }
+    }
+
+    private func secondaryInk(_ style: TileFaceStyle) -> Color {
+        switch style {
+        case .lit: LitTile.secondaryInk
+        case let .filled(family): family.secondaryInk
+        case .error: HassTokens.Ink.danger
+        default: HassTokens.Ink.secondary
+        }
+    }
+
+    // MARK: Ground
+
+    @ViewBuilder
+    private func ground(_ style: TileFaceStyle) -> some View {
+        switch style {
+        case .off, .tinted, .error:
+            ZStack(alignment: .leading) {
+                darkGround(dense: style == .error)
+                if let wash { wash.opacity(0.6) }
+                levelBand { (levelTint ?? tint).opacity(0.32) }
+            }
+        case .lit:
+            ZStack(alignment: .leading) {
+                LitTile.base
+                levelBand(default: 1) {
+                    LinearGradient(colors: [LitTile.bandTop, LitTile.bandBottom], startPoint: .top, endPoint: .bottom)
+                        // A coloured bulb tints its band; the band stays light enough for dark ink.
+                        .overlay { if let levelTint { levelTint.opacity(0.3) } }
+                }
+            }
+        case let .filled(family):
+            ZStack(alignment: .leading) {
+                if family == .power {
+                    LinearGradient(colors: [LitTile.powerTop, family.fill ?? .yellow], startPoint: .top, endPoint: .bottom)
+                } else {
+                    (family.fill ?? .clear)
+                    // The slight top highlight from the mockups.
+                    LinearGradient(colors: [.white.opacity(0.10), .clear], startPoint: .top, endPoint: .center)
+                }
+                // Progress is a lighter band from the leading edge (a vacuum's or dishwasher's cycle).
+                levelBand { Color.white.opacity(0.16) }
+            }
+        }
+    }
+
+    /// The ground of a dark face: the module material on a page, the sheet's cell colour in a sheet.
+    @ViewBuilder
+    private func darkGround(dense: Bool) -> some View {
+        switch surface {
+        case .sheet:
+            HassTokens.Surface.sheetCell
+        case .page:
+            ZStack {
+                if !reduceTransparency { Rectangle().fill(.ultraThinMaterial) }
+                ModuleBackground.tint(dense ? .dense : .thin, reduceTransparency: reduceTransparency)
+            }
+            .environment(\.colorScheme, .dark)
+        }
+    }
+
+    /// A band from the leading edge as wide as ``level`` (or `default` when there is none).
+    @ViewBuilder
+    private func levelBand(default fallback: Double? = nil, @ViewBuilder fill: () -> some View) -> some View {
+        if let level = level ?? fallback, level > 0 {
+            let band = fill()
+            GeometryReader { proxy in
+                band.frame(width: proxy.size.width * min(1, level))
+            }
+        }
     }
 }
 
