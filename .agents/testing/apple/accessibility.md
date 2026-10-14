@@ -33,6 +33,9 @@
 | Contrast | Content text that overlaps a navigation bar (wholly or partly under it), when it is not one of the bar's own descendants | Scrolled under the bar's scroll-edge effect, which obscures it on purpose; the Vacuums report card measured 1.1–1.2:1 there after the journey scrolled a tab into view (iPhone, 2026-10-11/12). The bar's title and buttons, and text fully below the bar, are still checked |
 
 | Contrast, no element | Only while some page text sits in the floating action bar's row (`fab.*` buttons' top + 52 pt) | The bar's hard scroll edge fades rows beneath it and the issue can lose its element (FloatingActions gallery, iPhone 2026-10-12); same reasoning as the tab bar rule |
+
+Contrast issues are attributed right after the contrast pass: the next pass scrolls the page and an element read afterwards can come back empty, which hid misjudged cards on materials from the rendered-contrast check (Food hub suggestion cards, iPhone 2026-10-13). Gallery audits run in a `FENTON_GALLERY_CLEAN=1` launch so the debug "Last call" line is not part of the page.
+
 | Contrast | Text measuring under 1.5:1 whose frame reaches the floating action bar's strip (`fab.*` buttons' top to the window bottom) | The bar's hard scroll edge covers rows scrolled beneath it, so nothing is drawn there (inventory All Food, Peanut Butter at 1.1:1, iPhone 2026-10-11) |
 | Dynamic Type (AX5 check) | Buttons are measured by their own frames as well as static texts | A Form button's or capsule's label has no static text child, so the AX5 check found nothing to compare (Add Item's Manually Enter Name, Simulate Scan) |
 

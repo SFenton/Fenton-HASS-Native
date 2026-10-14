@@ -33,11 +33,14 @@ final class FoodJourneyTests: XCTestCase {
         }
     }
 
-    private func launch(_ route: String, mode: String? = nil, arguments: [String] = []) -> XCUIApplication {
+    /// - Parameter clean: hides the gallery's debug "Last call" line (`FENTON_GALLERY_CLEAN=1`) for audits, so the
+    ///   audit measures the page as the app draws it.
+    private func launch(_ route: String, mode: String? = nil, clean: Bool = false, arguments: [String] = []) -> XCUIApplication {
         let app = FentonHomeApp.makeApp()
         app.launchEnvironment["FENTON_GALLERY"] = "food"
         app.launchEnvironment["FENTON_GALLERY_ROUTE"] = route
         if let mode { app.launchEnvironment["FENTON_GALLERY_FOOD_MODE"] = mode }
+        if clean { app.launchEnvironment["FENTON_GALLERY_CLEAN"] = "1" }
         app.launchArguments += arguments
         app.launch()
         return app
@@ -98,17 +101,19 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue("\(fridge.label) \(fridge.value as? String ?? "")".contains("38 Items"), "Fridge tile reads '\(fridge.label)'")
         sleep(1)
         keepScreenshot(app, "food-hub-spaces-\(device)")
-        // Audit from the top: scrolled down, the carousel sits half under the translucent bar and measures ~1.1:1.
         let first = element("food.suggestion.1", in: app)
         for _ in 0..<4 where !first.isHittable { app.swipeDown() }
-        app.swipeDown()
-        sleep(1)
-        keepScreenshot(app, "food-hub-\(device)")
-        try audit(app) { self.launch("hub", arguments: FentonHomeApp.ax5) }
-
         first.tap()
         XCTAssertTrue(element("recipe.tabs", in: app).waitForExistence(timeout: 10), "Recipe sheet did not open")
         expectCall("recipe_detail recipe_id=1", in: app)
+
+        // Audit a clean launch from the top: the debug line's bar covered the carousel's lower titles, and scrolled
+        // down the carousel sits half under the translucent bar and measures ~1.1:1.
+        let page = launch("hub", clean: true)
+        XCTAssertTrue(element("food.suggestion.1", in: page).waitForExistence(timeout: 10), "Suggestions did not load")
+        sleep(1)
+        keepScreenshot(page, "food-hub-\(device)")
+        try audit(page) { self.launch("hub", clean: true, arguments: FentonHomeApp.ax5) }
     }
 
     /// The hub's recipe sheet switches tabs (on iPad a live hub sheet ignored taps on the picker, 2026-10-12).

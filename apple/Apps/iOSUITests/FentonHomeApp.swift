@@ -144,6 +144,12 @@ enum FentonHomeApp {
             issues.append(issue)
             return true
         }
+        // Read the contrast issues' elements before the next pass: it scrolls the page to inspect off-screen
+        // elements, and an element read afterwards can come back empty, so a card the audit misjudged on a material
+        // could not be measured (Food hub suggestion cards, iPhone 2026-10-13).
+        let contrastTargets: [(frame: CGRect, label: String, hittable: Bool)?] = issues.map { issue in
+            issue.element.flatMap { $0.exists ? ($0.frame, $0.label, $0.isHittable) : nil }
+        }
         try app.performAccessibilityAudit(for: XCUIAccessibilityAuditType.all.subtracting(.contrast)) { issue in
             issues.append(issue)
             return true
@@ -154,7 +160,7 @@ enum FentonHomeApp {
         let textUnderFloatingBar = floatingBarTop.map { top in
             app.staticTexts.allElementsBoundByIndex.contains { !$0.label.isEmpty && $0.frame.maxY > top && $0.frame.minY < top + 52 }
         } ?? false
-        for issue in issues {
+        for (index, issue) in issues.enumerated() {
             if isSystemDrawn(issue, in: app, popover: popover) { continue }
             if issue.auditType == .contrast, issue.element == nil, textUnderFloatingBar { continue }
             // The presenting page around an iPad form sheet, hidden from assistive technologies by the modal.
@@ -163,7 +169,10 @@ enum FentonHomeApp {
                 continue
             }
             var measured = ""
-            if issue.auditType == .contrast, let element = issue.element, let capture,
+            // The element as the contrast pass saw it, when it is gone now.
+            let target = issue.element.map { (frame: $0.frame, label: $0.label, hittable: $0.isHittable) }
+                ?? (issue.auditType == .contrast && index < contrastTargets.count ? contrastTargets[index] : nil)
+            if issue.auditType == .contrast, let element = target, let capture,
                var ratio = RenderedContrast.ratio(of: element.frame, in: capture) {
                 // The audit scrolls long sheets to inspect elements, so the frame it reports can belong to a later
                 // scroll position than the opening capture (iPad vacuum sheet, 2026-10-12: visible 19:1 text measured
@@ -176,7 +185,7 @@ enum FentonHomeApp {
                 if ratio >= 4.5 { continue }
                 // Nothing drawn at an unreachable element: it is scrolled out of view (e.g. below an iPad
                 // form sheet's edge), not low contrast.
-                if ratio < 1.5, !element.isHittable { continue }
+                if ratio < 1.5, !element.hittable { continue }
                 // Nothing drawn under the floating action bar: its hard scroll edge covers rows that scroll
                 // beneath it (inventory All Food, 2026-10-11), so the text is hidden, not low contrast.
                 if ratio < 1.5, let floatingBarTop, element.frame.maxY > floatingBarTop { continue }
@@ -201,7 +210,7 @@ enum FentonHomeApp {
                 continue
             }
             let element = issue.element
-            open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")' at \(element.map { "\($0.frame)" } ?? "?")\(measured) "
+            open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? target?.label ?? "")' at \(element.map { "\($0.frame)" } ?? target.map { "\($0.frame)" } ?? "?")\(measured) "
                 + issue.detailedDescription)
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
