@@ -82,19 +82,17 @@ final class CameraJourneyTests: JourneyTestCase {
 
         let snapshot = app.buttons["camera.control.snapshot"]
         XCTAssertEqual(snapshot.label, "Snapshot")
-        addUIInterruptionMonitor(withDescription: "Photos") { alert in
-            for title in ["Allow", "Allow Access", "OK"] where alert.buttons[title].exists {
-                alert.buttons[title].tap()
-                return true
-            }
-            return false
-        }
-        // The runner grants Photos add access up front (`simctl privacy grant photos-add`); the monitor covers a prompt.
         snapshot.tap()
+        // A fresh simulator asks for Photos add access: answer the system prompt from SpringBoard while polling.
         // "Saved to Photos" shows for 2 s; poll faster than XCTWaiter's ~1 s so a short window is never missed.
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         var seen: [String] = []
         let deadline = Date().addingTimeInterval(20)
         while Date() < deadline, !seen.contains("Saved to Photos"), !app.alerts["Allow Photos Access"].exists {
+            let prompt = springboard.alerts.firstMatch
+            if prompt.exists, let allow = ["Allow", "Allow Access", "OK"].lazy.map({ prompt.buttons[$0] }).first(where: \.exists) {
+                allow.tap()
+            }
             if let value = snapshot.value as? String, !value.isEmpty, seen.last != value { seen.append(value) }
             usleep(200_000)
         }

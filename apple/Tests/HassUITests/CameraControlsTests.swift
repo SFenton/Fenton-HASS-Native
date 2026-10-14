@@ -135,7 +135,7 @@ struct CameraControlsTests {
 
     private func render(_ view: some View, size: CGSize, typeSize: DynamicTypeSize = .large) -> CGImage? {
         let store = EntityStore()
-        store.replaceAll([EntityState(entityId: "input_boolean.is_front_door_recording", state: "on", attributes: [:])])
+        store.replaceAll([EntityState(entityId: HomeConfig.cameras[0].recordingEntityId!, state: "on", attributes: [:])])
         let pool = CameraStreamPool(modes: [], observesApp: false)
         let content = view
             .environment(connection(store))

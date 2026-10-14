@@ -311,7 +311,7 @@ final class MediaRemoteJourneyTests: XCTestCase {
         app.launch()
         let power = element("remote.power", in: app)
         XCTAssertTrue(power.waitForExistence(timeout: 30), "Remote sheet did not open")
-        XCTAssertFalse(element("loading.spinner", in: app).exists, "The spinner is gone once the content shows")
+        XCTAssertFalse(element("contentGate.spinner", in: app).exists, "The spinner is gone once the content shows")
         XCTAssertTrue(element("remote.app.Plex", in: app).exists, "App tiles show with the rest of the content")
     }
 
