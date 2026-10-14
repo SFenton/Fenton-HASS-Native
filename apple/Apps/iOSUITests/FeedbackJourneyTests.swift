@@ -223,8 +223,7 @@ final class FeedbackJourneyTests: JourneyTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5), "GitHub Access page did not open")
         XCTAssertTrue(app.links["feedback.github.create"].exists || app.buttons["feedback.github.create"].exists)
         field.tap()
-        field.typeText("x")
-        app.buttons["feedback.github.save"].tap()
+        field.typeText("x\n")
         XCTAssertTrue(app.staticTexts["feedback.github.error"].waitForExistence(timeout: 10), "Wrong token accepted")
         field.tap()
         // A secure field may or may not clear itself when editing starts again (iPad keeps "x"); delete enough.
@@ -288,8 +287,7 @@ final class FeedbackJourneyTests: JourneyTestCase {
             keepScreenshot(app, "feedback-github-access-\(suffix)")
             let field = app.secureTextFields["feedback.github.token"]
             field.tap()
-            field.typeText("fixture-token")
-            app.buttons["feedback.github.save"].tap()
+            field.typeText("fixture-token\n")
             XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 10))
             fill(app, title: "Garage tile stuck")
             reveal(app.textViews["feedback.field.description"], in: app, up: false)

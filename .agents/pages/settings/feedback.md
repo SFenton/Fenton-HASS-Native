@@ -26,7 +26,7 @@ Ported from FestivalNativeApps' in-app feedback form (`.agents/controls/feedback
 | Media | `FeedbackLocationScrubber` (ported), `FeedbackMediaFitter`, `FeedbackPickedMedia` | Copy → strip location → fit to 10 MB (JPEG steps, then export presets) → count limit (4). Private copies in `tmp/fenton-feedback-media/<uuid>/`, purged when the sheet goes away |
 | Form | `FeedbackFormModel`, `FeedbackFormSheet`, `FeedbackAttachmentStrip`/`Tile`, `FeedbackFieldHeader`, `SheetDismissAttemptObserver` | As Festival's sheet; progress "Uploading media n of m…" then "Filing your report on GitHub…"; Stop Sending only while media uploads |
 | Token page | `GitHubAccessModel`, `GitHubAccessView` | Pushed inside the sheet; secure field, Save Token verifies before saving, Remove Token confirms, Create a Token on GitHub opens the pre-filled page |
-| Entry | `FeedbackSettingsSection` in `SettingsScreen` | Its own "Feedback" section under the topics; `.feedbackFormSheet(item:)` presents it with `.hassSheet(.form)` (full height on iPhone, form sheet on iPad); the form and GitHub Access use `.modalChrome()` |
+| Entry | `FeedbackSettingsSection` in `SettingsScreen` | Its own section (no header, since the list sits on the house backdrop) after Performance; `.feedbackFormSheet(item:)` presents it with `.hassSheet(.form)` (full height on iPhone, form sheet on iPad); the form and GitHub Access use `.modalChrome()` |
 | Fixture | `FeedbackFixtureFiler`, `FENTON_FEEDBACK_FIXTURE=1` (connected) / `connect` (no token) | `fixture-token` verifies; titles with `fixture-failed` fail. Debug builds also read `FENTON_GITHUB_TOKEN` for a live run without typing a token into the UI |
 
 ## Decisions (HIG via `apple-hig`)
