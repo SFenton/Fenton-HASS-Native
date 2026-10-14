@@ -230,11 +230,20 @@ final class HouseholdSettingsJourneyTests: JourneyTestCase {
                 return large
             }
         }
+        func openPresenceDetail(_ app: XCUIApplication) {
+            openSheet(app, "presenceOverrides")
+            app.buttons["presence.room.switch.kitchen_presence_kitchen_lights_presence_allowed"].tap()
+            XCTAssertTrue(app.buttons["presence.option.enabled"].waitForExistence(timeout: 5))
+        }
         let app = launch("admin", clean: true)
-        openSheet(app, "presenceOverrides")
-        app.buttons["presence.room.switch.kitchen_presence_kitchen_lights_presence_allowed"].tap()
-        XCTAssertTrue(app.buttons["presence.option.enabled"].waitForExistence(timeout: 5))
-        try FentonHomeApp.audit(app)
+        openPresenceDetail(app)
+        // With the AX5 page, "may be clipped" is checked against the text at AX5 like the sheets above; without it the
+        // folded Duo's two-line option titles could not be disproved (2026-10-14).
+        try FentonHomeApp.audit(app) {
+            let large = self.launch("admin", arguments: FentonHomeApp.ax5, clean: true)
+            openPresenceDetail(large)
+            return large
+        }
     }
 
     /// Screenshots of each page, sheet and the presence detail in the current pose (iPad: also landscape).
