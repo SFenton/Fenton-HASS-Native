@@ -150,10 +150,12 @@ final class FeedbackJourneyTests: JourneyTestCase {
         for _ in 0..<4 { app.collectionViews.firstMatch.swipeDown(velocity: .fast) }
         try FentonHomeApp.audit(app) {
             let large = try self.launch(arguments: FentonHomeApp.ax5)
+            // Same position as the audited page: the AX5 page is only compared with it (an element-less Dynamic
+            // Type issue is waived when the same on-screen texts grow 1.35x), so scrolling one of them breaks the
+            // comparison (folded Duo, 2026-10-14: 2 of 12 texts matched). The rows themselves are SettingsLinkRow,
+            // audited at their position on iPhone and iPad.
             self.goToSettings(large)
-            // The AX5 page measures what the audit flagged: scroll to the Feedback rows so they are laid out there
-            // even on short screens.
-            _ = self.feedbackRow(large, "feature")
+            _ = large.buttons["settings.homeAssistant"].waitForExistence(timeout: 10)
             return large
         }
     }
