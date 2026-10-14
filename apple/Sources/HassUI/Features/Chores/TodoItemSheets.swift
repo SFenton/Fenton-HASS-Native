@@ -110,6 +110,8 @@ struct AddAdminTodoSheet: View {
                     PhotosPicker(selection: $selection, maxSelectionCount: AdminTodoUpload.maxImages, matching: .images) {
                         Label(images.isEmpty ? "Add Images" : "Choose Different Images", systemImage: "photo.on.rectangle.angled")
                     }
+                    // The app accent measured 3.3:1 on the modal background (iPad audit, 2026-10-13).
+                    .tint(HassTokens.Ink.action)
                     .accessibilityIdentifier("adminTodo.images")
                 } header: {
                     Text("Images")

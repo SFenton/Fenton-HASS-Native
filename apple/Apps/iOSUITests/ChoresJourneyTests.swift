@@ -98,6 +98,8 @@ final class ChoresJourneyTests: JourneyTestCase {
         app.textFields["task.name"].typeText("Clean the oven")
         XCTAssertTrue(create.isEnabled)
         create.tap()
+        // On iPad the first tap can only end editing in the focused field; tap again if the sheet stayed.
+        if !create.waitForNonExistence(timeout: 2), create.exists, create.isHittable { create.tap() }
         XCTAssertTrue(create.waitForNonExistence(timeout: 5))
         XCTAssertEqual(lastCall(in: app), "donetick.create_task_form")
     }
@@ -192,16 +194,26 @@ final class ChoresJourneyTests: JourneyTestCase {
     /// Signed in, the real Chores tab shows its quick links and Groceries opens. Nothing is checked off.
     func testLiveChoresTabIsReadable() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        let tab = app.tabBars.buttons["Chores"].exists
-            ? app.tabBars.buttons["Chores"]
-            : app.buttons.matching(NSPredicate(format: "label == 'Chores'")).firstMatch
-        XCTAssertTrue(tab.waitForExistence(timeout: 10))
-        tab.tap()
+        openChores(in: app)
         let groceries = element("chores.link.groceries", in: app)
         XCTAssertTrue(groceries.waitForExistence(timeout: 15), "Quick links missing")
         try FentonHomeApp.audit(app)
         groceries.tap()
         XCTAssertTrue(element("todo.page.groceries", in: app).waitForExistence(timeout: 10))
+    }
+
+    /// Opens the Chores section through whichever navigation the window shows: the tab bar, the folded Duo's
+    /// vertical bar (a toolbar to XCUITest), or the iPad flyout.
+    private func openChores(in app: XCUIApplication) {
+        let bar = app.tabBars.buttons["Chores"]
+        let item = bar.exists ? bar : app.toolbars.buttons["Chores"]
+        if item.waitForExistence(timeout: 5), item.isHittable {
+            item.tap()
+        } else {
+            app.buttons["nav.open"].tap()
+            XCTAssertTrue(app.descendants(matching: .any)["nav.flyout"].waitForExistence(timeout: 3), "Flyout did not open")
+            app.buttons["nav.chores"].tap()
+        }
     }
 
     /// Goes back one page: the system Back button wherever the bar puts it (the folded iPhone Duo moves bar items
@@ -221,11 +233,7 @@ final class ChoresJourneyTests: JourneyTestCase {
     /// 2026-10-13: Steph's Chores crashed). Nothing is checked off.
     func testLiveEveryChoresPageOpens() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        let tab = app.tabBars.buttons["Chores"].exists
-            ? app.tabBars.buttons["Chores"]
-            : app.buttons.matching(NSPredicate(format: "label == 'Chores'")).firstMatch
-        XCTAssertTrue(tab.waitForExistence(timeout: 10))
-        tab.tap()
+        openChores(in: app)
         for page in ["groceries", "stephens-chores", "stephs-chores", "unassigned-chores", "home-improvement-chores"] {
             let link = element("chores.link.\(page)", in: app)
             XCTAssertTrue(link.waitForExistence(timeout: 15), "\(page) link missing")
