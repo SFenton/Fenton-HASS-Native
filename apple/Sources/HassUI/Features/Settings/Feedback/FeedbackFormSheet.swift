@@ -174,6 +174,7 @@ struct FeedbackFormSheet: View {
             .accessibilityIdentifier("feedback.attach")
             if model.importing > 0 {
                 ProgressView("Adding media…")
+                    .progressViewStyle(.arc(.compact))
                     .accessibilityIdentifier("feedback.attach.progress")
             }
             if let message = model.attachmentMessage {

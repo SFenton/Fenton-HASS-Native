@@ -37,6 +37,7 @@ struct HumidifierSchedulesTab: View {
             DeviceSection(title: "Activities") {
                 if schedules.loading && !schedules.ready {
                     ProgressView("Loading scheduled activities…")
+                        .progressViewStyle(.arc(.compact))
                         .foregroundStyle(HassTokens.Ink.secondary)
                 } else if schedules.rules.isEmpty {
                     Text("No activities yet. Add morning, evening, or overnight profiles.")

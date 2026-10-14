@@ -74,7 +74,7 @@ struct GitHubAccessView: View {
                 HStack(spacing: HassTokens.Spacing.s) {
                     Text(model.access == nil ? "Save Token" : "Replace Token")
                     if model.check == .verifying {
-                        ProgressView().accessibilityLabel("Checking the token")
+                        ArcSpinner(.inline, label: "Checking the token")
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)

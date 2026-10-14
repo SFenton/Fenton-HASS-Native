@@ -116,7 +116,7 @@ struct InventoryRow: View {
             ZStack {
                 switch state {
                 case .idle: Image(systemName: "cart.badge.plus")
-                case .adding: ProgressView()
+                case .adding: ArcSpinner(.compact, label: "Adding to Groceries")
                 case .added: Image(systemName: "checkmark").foregroundStyle(InventoryTone.success)
                 }
             }
@@ -133,7 +133,7 @@ struct InventoryRow: View {
         let deleting = model.deleting.contains(item.id)
         return Button(action: onDelete) {
             ZStack {
-                if deleting { ProgressView() } else { Image(systemName: "trash") }
+                if deleting { ArcSpinner(.compact, label: "Deleting") } else { Image(systemName: "trash") }
             }
             .frame(width: buttonSize, height: buttonSize)
             .contentShape(Rectangle())

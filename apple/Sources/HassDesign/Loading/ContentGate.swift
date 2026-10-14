@@ -46,11 +46,9 @@ public struct ContentGate<Content: View>: View {
                 .allowsHitTesting(phase.showsContent)
                 .accessibilityHidden(!phase.showsContent)
             if !phase.showsContent {
-                ProgressView()
-                    .controlSize(.large)
+                ArcSpinner(.page)
                     .opacity(model.spinnerShown && phase == .loading ? 1 : 0)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .accessibilityLabel("Loading")
                     .accessibilityIdentifier("contentGate.spinner")
             }
         }

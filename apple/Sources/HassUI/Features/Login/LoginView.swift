@@ -1,4 +1,5 @@
 import HassCore
+import HassDesign
 import SwiftUI
 
 /// Native username/password sign-in through Home Assistant's login flow, with an MFA step.
@@ -73,7 +74,7 @@ struct LoginView: View {
                             Text(needsMFA ? "Verify" : "Sign In")
                             if isWorking {
                                 Spacer()
-                                ProgressView()
+                                ArcSpinner(.inline, label: needsMFA ? "Verifying" : "Signing In")
                             }
                         }
                     }

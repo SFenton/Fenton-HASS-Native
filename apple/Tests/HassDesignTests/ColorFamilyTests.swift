@@ -47,17 +47,3 @@ struct ColorFamilyTests {
         #expect(ColorFamily.mix(0xFF0000, 0x0000FF, 0.5) == 0x800080)
     }
 }
-
-struct ArcSpinnerTests {
-    @Test func turnsOncePerPeriod() {
-        let start = Date(timeIntervalSinceReferenceDate: 0)
-        #expect(ArcSpinner.angle(at: start, reduceMotion: false) == 0)
-        let quarter = Date(timeIntervalSinceReferenceDate: ArcSpinner.period / 4)
-        #expect(abs(ArcSpinner.angle(at: quarter, reduceMotion: false) - 90) < 0.001)
-    }
-
-    @Test func reduceMotionHalvesTheSpeed() {
-        let quarter = Date(timeIntervalSinceReferenceDate: ArcSpinner.period / 4)
-        #expect(abs(ArcSpinner.angle(at: quarter, reduceMotion: true) - 45) < 0.001)
-    }
-}

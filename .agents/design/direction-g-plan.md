@@ -14,6 +14,10 @@
   - `HassUI/Common/RoomOverview/*`: the shared room chip modal, with tints in `RoomOverviewStyle`. The colour families go there.
 - **Still to do:** `AppSection` still has a `settings` case, so moving Settings into the Account sheet is still Phase 2 work.
 - **Colour families and the arc spinner** (Stephen, 2026-10-14) are part of Phase 1. See direction-g.md.
+- **Arc spinner sweep (Phase 1 step 2):** `ArcSpinner` replaced the system spinner in `ContentGate` and every `ProgressView()` spinner outside the open PRs. Titled spinners keep their words with `.progressViewStyle(.arc)` (`ArcProgressViewStyle`); a determinate `ProgressView(value:)` keeps its bar. **Skipped until #35 and #39 merge** (they change these files), to sweep in the PR rebase:
+  - `Features/Chores/DonetickTaskSheet.swift`, `Features/Chores/TodoListSection.swift` (#35)
+  - `Features/Cameras/CameraLiveView.swift` (#39)
+  - Nothing to sweep today in `Features/MediaRemote`, `Features/Security`, `Features/Vacation`, `Features/Home/CameraGrid.swift` or `HassDesign/ScheduleDateFields.swift`; check them again after the merges.
 
 ## Starting point on main (surveyed 2026-10-13, before the merges above)
 

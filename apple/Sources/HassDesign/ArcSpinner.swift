@@ -35,7 +35,7 @@ public struct ArcSpinner: View {
     }
 
     /// Seconds per turn (web `dashboardPageLoadingSpin 820ms linear infinite`).
-    public static let period: TimeInterval = 0.82
+    public nonisolated static let period: TimeInterval = 0.82
 
     private let size: Size
     private let label: String
@@ -77,7 +77,7 @@ public struct ArcSpinner: View {
     }
 
     /// The arc's rotation at `date`, in degrees: one turn per ``period``, or per twice that with Reduce Motion.
-    static func angle(at date: Date, reduceMotion: Bool) -> Double {
+    nonisolated static func angle(at date: Date, reduceMotion: Bool) -> Double {
         let period = reduceMotion ? Self.period * 2 : Self.period
         let phase = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
         return phase * 360

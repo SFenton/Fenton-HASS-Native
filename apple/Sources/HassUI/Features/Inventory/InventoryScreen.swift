@@ -93,6 +93,7 @@ struct InventoryScreen: View {
     private var list: some View {
         if model.phase == .loading {
             ProgressView("Loading \(space.title)")
+                .progressViewStyle(.arc)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityIdentifier("inventory.loading")
         } else if let empty = model.emptyState {
@@ -116,11 +117,10 @@ struct InventoryScreen: View {
             .groupedListStyle()
             .overlay(alignment: .top) {
                 if model.isSearching {
-                    ProgressView()
+                    ArcSpinner(.compact, label: "Searching inventory")
                         .padding(HassTokens.Spacing.s)
                         .background(.regularMaterial, in: Capsule())
                         .padding(.top, HassTokens.Spacing.s)
-                        .accessibilityLabel("Searching inventory")
                         .accessibilityIdentifier("inventory.searching")
                 }
             }
