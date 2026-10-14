@@ -97,10 +97,7 @@ final class ChoresJourneyTests: JourneyTestCase {
         app.textFields["task.name"].tap()
         app.textFields["task.name"].typeText("Clean the oven")
         XCTAssertTrue(create.isEnabled)
-        create.tap()
-        // On iPad the first tap can only end editing in the focused field; tap again if the sheet stayed.
-        if !create.waitForNonExistence(timeout: 2), create.exists, create.isHittable { create.tap() }
-        XCTAssertTrue(create.waitForNonExistence(timeout: 5))
+        submit(create, closing: create)
         XCTAssertEqual(lastCall(in: app), "donetick.create_task_form")
     }
 
@@ -113,8 +110,7 @@ final class ChoresJourneyTests: JourneyTestCase {
         let field = app.textFields["grocery.item"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.typeText("Eggs")
-        app.buttons["grocery.add"].tap()
-        XCTAssertTrue(field.waitForNonExistence(timeout: 5))
+        submit(app.buttons["grocery.add"], closing: field)
         let eggs = app.buttons.matching(NSPredicate(format: "label == 'Eggs'")).firstMatch
         XCTAssertTrue(eggs.waitForExistence(timeout: 5), "New grocery not listed")
         element("todo.item.g1", in: app).tap()
@@ -199,6 +195,14 @@ final class ChoresJourneyTests: JourneyTestCase {
         try FentonHomeApp.audit(app)
         groceries.tap()
         XCTAssertTrue(element("todo.page.groceries", in: app).waitForExistence(timeout: 10))
+    }
+
+    /// Taps a sheet's submit button and waits for `closing` to go. On iPad the first tap can only end editing in
+    /// the focused field, so it taps once more if the sheet stayed.
+    private func submit(_ button: XCUIElement, closing: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        button.tap()
+        if !closing.waitForNonExistence(timeout: 2), button.exists, button.isHittable { button.tap() }
+        XCTAssertTrue(closing.waitForNonExistence(timeout: 5), "Sheet stayed open", file: file, line: line)
     }
 
     /// Opens the Chores section through whichever navigation the window shows: the tab bar, the folded Duo's
