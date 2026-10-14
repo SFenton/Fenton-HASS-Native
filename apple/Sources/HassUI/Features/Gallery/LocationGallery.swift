@@ -36,6 +36,8 @@ struct LocationGallery: View {
                         GalleryLastCall(text: lastAction, title: "Last action")
                             .padding(.horizontal, HassTokens.Spacing.xl)
                             .padding(.vertical, HassTokens.Spacing.s)
+                            // Opaque: over the sheet's bottom edge the bare line measured 4.2:1 (iPhone, 2026-10-14).
+                            .background(.background)
                     }
                 }
                 .hassSheet(.form)
