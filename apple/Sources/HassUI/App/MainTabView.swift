@@ -27,12 +27,6 @@ struct MainTabView: View {
 
     private var chrome: ShellChrome { .resolve(style: style, layout: layout) }
 
-    /// Sections shown as tabs: all of them under the flyout (the bar is hidden), else the compact layout's.
-    private var tabSections: [AppSection] {
-        style == .flyout ? AppSection.allCases : layout.visibleSections
-    }
-
-    private var settingsIsTab: Bool { tabSections.contains(.settings) }
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -64,15 +58,7 @@ struct MainTabView: View {
         // Direction G: pages sit on the dimmed house photo, so the signed-in app is always dark, sheets included
         // in v1 (`.agents/design/direction-g.md`, Layers; plan decision 3).
         .preferredColorScheme(.dark)
-        .onAppear {
-            navigator.settingsIsTab = settingsIsTab
-            navigator.selection = storedSelection
-            if !settingsIsTab { navigator.settingsLeftTabBar() }
-        }
-        .onChange(of: settingsIsTab) { _, isTab in
-            navigator.settingsIsTab = isTab
-            if !isTab { navigator.settingsLeftTabBar() }
-        }
+        .onAppear { navigator.selection = storedSelection }
         .onChange(of: navigator.selection) { _, section in storedSelection = section }
         .onChange(of: style) { _, newStyle in
             if newStyle == .tabBar, !chrome.showsMenuButton { navigator.dismissFlyout() }
@@ -82,29 +68,27 @@ struct MainTabView: View {
         .task(id: isConnected) { await loadProfileName() }
     }
 
-    /// The root tab view: iOS 26 and later use the `Tab` API with the trailing Quick Links tab in compact width.
+    /// The root tab view: iOS 26 and later use the `Tab` API with the trailing Quick Links circle in compact width.
     @ViewBuilder
     private var tabs: some View {
         if #available(iOS 26.0, macOS 26.0, *) {
-            let navigator = navigator, settingsIsTab = settingsIsTab
-            // A selection the bar does not show (Settings while the window turns compact) reads as Home until
-            // ``ShellNavigator/settingsLeftTabBar()`` moves it, so the tab view never selects a missing tab.
-            let selection = Binding<RootTab>(
-                get: { navigator.rootTab == .section(.settings) && !settingsIsTab ? .section(.home) : navigator.rootTab },
-                set: { navigator.rootTab = $0 }
-            )
+            let navigator = navigator
+            let selection = Binding<RootTab>(get: { navigator.rootTab }, set: { navigator.rootTab = $0 })
             TabView(selection: selection) {
-                ForEach(tabSections) { section in
+                ForEach(AppSection.allCases) { section in
                     Tab(section.title, systemImage: section.symbol, value: RootTab.section(section)) {
                         sectionStack(for: section)
                     }
                     .badge(NavigationMenu.badge(for: section, overdue: navigator.overdueChores) ?? 0)
                 }
-                // The trailing tab. The system draws it inside the bar here (FestivalNativeApps' Search tab, whose
-                // page is `.searchable`, is drawn apart). Under the flyout the bar is hidden and nothing selects it
-                // (``ShellNavigator/closeQuickLinks()``).
-                Tab(QuickLinks.title, systemImage: QuickLinksButton.symbol, value: RootTab.quickLinks, role: .search) {
-                    QuickLinksTab(caller: connection)
+                // The trailing tab: its own Quick Links page. Direction G draws it as a circle that presents the
+                // sheet, but iOS 26 draws a role tab inside the bar unless its page is searchable, and selects it
+                // even when the selection binding refuses (measured 2026-10-14), so it stays a page here. Under the
+                // flyout the bar is hidden and Quick Links is a flyout row and a toolbar button that present the sheet.
+                if layout.hasQuickLinksTab {
+                    Tab(QuickLinks.title, systemImage: QuickLinksButton.symbol, value: RootTab.quickLinks, role: .search) {
+                        QuickLinksTab(caller: connection)
+                    }
                 }
             }
         } else {
@@ -123,26 +107,20 @@ struct MainTabView: View {
     /// A section's stack. Sections with list/detail pages use ``OnDemandSplitStack``; the rest push full width.
     @ViewBuilder
     private func sectionStack(for section: AppSection) -> some View {
-        switch section {
-        case .settings:
-            SettingsStack(path: navigator.path(for: section))
-        default:
-            NavigationStack(path: navigator.path(for: section)) {
-                Group {
-                    switch section {
-                    // Inventory pages until the Food & Recipes hub links them (FENTON_OPEN_INVENTORY in debug).
-                    case .home: HomeScreen().inventoryDestinations()
-                    case .security: SecurityScreen()
-                    case .climate: ClimateScreen()
-                    case .chores: ChoresScreen()
-                    default: PlaceholderScreen(title: section.title, symbol: section.symbol)
-                    }
+        NavigationStack(path: navigator.path(for: section)) {
+            Group {
+                switch section {
+                // Inventory pages until the Food & Recipes hub links them (FENTON_OPEN_INVENTORY in debug).
+                case .home: HomeScreen().inventoryDestinations()
+                case .security: SecurityScreen()
+                case .climate: ClimateScreen()
+                case .chores: ChoresScreen()
                 }
-                .sectionRootChrome()
-                .pageChrome()
-                .navigationDestination(for: ShellRoute.self) { _ in SettingsPage() }
             }
+            .sectionRootChrome()
+            .pageChrome()
         }
+        .environment(\.shellSection, section)
     }
 
     /// Where the inline navigation bar ends: the status bar plus a compact bar
@@ -181,12 +159,23 @@ extension View {
     func pageChrome() -> some View { modifier(PageChrome()) }
 }
 
-/// Implementation of ``SwiftUI/View/pageChrome()``.
+/// Implementation of ``SwiftUI/View/pageChrome()``. Inside a sheet (the Account sheet's Settings pages) a page
+/// takes the sheet's chrome instead: wallpaper is never drawn in sheets (direction G, Layers).
 private struct PageChrome: ViewModifier {
     @Environment(\.shellNavigationStyle) private var style
     @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
+    @Environment(\.tileSurface) private var surface
 
     func body(content: Content) -> some View {
+        if surface == .sheet {
+            content.modalChrome()
+        } else {
+            pageContent(content)
+        }
+    }
+
+    @ViewBuilder
+    private func pageContent(_ content: Content) -> some View {
         let isFlyoutOpen = navigator?.isFlyoutOpen ?? false
         #if os(iOS)
         // Both layers: SwiftUI vends a page's own elements past UIKit, and the UIKit navigation bar is

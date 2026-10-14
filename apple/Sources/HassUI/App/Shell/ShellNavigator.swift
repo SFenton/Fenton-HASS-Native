@@ -14,6 +14,9 @@ final class ShellNavigator {
     var paths: [AppSection: NavigationPath] = [:]
     /// The trailing Quick Links tab is showing (``RootTab/quickLinks``); ``selection`` keeps the section under it.
     private(set) var isQuickLinksActive = false
+    /// The section whose root is presenting the Quick Links sheet (flyout row, toolbar button), or nil. The sheet
+    /// opens over the selected section so a page it links pushes on that section's stack.
+    var quickLinksSection: AppSection?
     /// The flyout is showing.
     private(set) var isFlyoutOpen = false
     /// The signed-in user's display name for the profile button, kept between launches so the button never
@@ -21,8 +24,6 @@ final class ShellNavigator {
     var profileName: String? = UserDefaults.standard.string(forKey: ShellNavigator.profileNameKey) {
         didSet { UserDefaults.standard.set(profileName, forKey: Self.profileNameKey) }
     }
-    /// Settings is a tab in the current window; when false, choosing it pushes ``ShellRoute/settings`` instead.
-    var settingsIsTab = true
     /// Defaults key for ``profileName``.
     nonisolated static let profileNameKey = "shell.profileName"
     /// Overdue chore count for the Chores badge (web `useDailyReportContext().overdueCount`);
@@ -44,7 +45,7 @@ final class ShellNavigator {
         )
     }
 
-    /// The root tab view's selection: Quick Links while it shows, otherwise the selected section.
+    /// The root tab view's selection: Quick Links while its trailing tab shows, otherwise the selected section.
     var rootTab: RootTab {
         get { isQuickLinksActive ? .quickLinks : .section(selection) }
         set {
@@ -58,26 +59,14 @@ final class ShellNavigator {
         }
     }
 
-    /// Pushes Settings on the selected section's stack, leaving Quick Links and closing the flyout. The menu opens
-    /// only from a section root, so the stack is at its root here.
-    private func pushSettings() {
-        if selection == .settings { selection = .home }
-        var path = paths[selection] ?? NavigationPath()
-        path.append(ShellRoute.settings)
-        paths[selection] = path
-        isQuickLinksActive = false
-        isFlyoutOpen = false
-    }
-
-    /// Settings left the tab bar (the window became compact): show it pushed on Home instead of a hidden tab.
-    func settingsLeftTabBar() {
-        guard selection == .settings, !isQuickLinksActive else { return }
-        selection = .home
-        pushSettings()
-    }
-
     /// Leaves the Quick Links tab for the section under it (the window grew into flyout style).
     func closeQuickLinks() { isQuickLinksActive = false }
+
+    /// Presents the Quick Links sheet over the selected section, closing the flyout.
+    func openQuickLinks() {
+        isFlyoutOpen = false
+        quickLinksSection = selection
+    }
 
     /// Whether a section is showing its root page.
     func isAtRoot(_ section: AppSection) -> Bool {
@@ -111,10 +100,6 @@ final class ShellNavigator {
     /// Chooses a section from the flyout or tab bar. Choosing the current section pops it to its root
     /// (the web's nav links always land on the section root).
     func select(_ section: AppSection) {
-        if section == .settings, !settingsIsTab {
-            pushSettings()
-            return
-        }
         if section == selection && !isQuickLinksActive {
             paths[section] = NavigationPath()
         }

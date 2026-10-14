@@ -354,11 +354,11 @@ struct SettingsHostedTests {
         }
     }
 
-    /// The real Settings stack (scene-stored selection) renders.
-    @Test func settingsStackRenders() async {
+    /// The Account sheet, with Settings inside it, renders.
+    @Test func accountSheetRenders() async {
         let (session, connection) = offlineEnvironment()
         let hosted = HostedWindow(
-            SettingsStack(path: .constant(NavigationPath()))
+            AccountSheet()
                 .environment(\.horizontalSizeClass, .regular)
                 .environment(ShellNavigator())
                 .environment(connection)

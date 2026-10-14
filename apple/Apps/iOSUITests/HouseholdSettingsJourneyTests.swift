@@ -288,29 +288,15 @@ final class HouseholdSettingsJourneyTests: JourneyTestCase {
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
             self.showSettingsTab(large)
-            self.reveal(large.buttons["settings.topic.admin"], in: large, scroller: large.collectionViews.firstMatch).tap()
+            self.reveal(large.buttons["settings.topic.admin"], in: large, scroller: large.settingsList).tap()
             XCTAssertTrue(self.waitForLiveAdmin(large), "Live state did not load at AX5")
             return large
         }
     }
 
-    /// Goes to Settings: through the navigation flyout in regular width (iPad, unfolded Duo), else the
-    /// tab. The tab bar can appear a moment after launch, and the folded Duo has a rail instead.
+    /// Goes to Settings: the profile avatar's Account sheet (direction G).
     private func showSettingsTab(_ app: XCUIApplication) {
-        let open = app.buttons["nav.open"]
-        if open.waitForExistence(timeout: 3) {
-            open.tap()
-            let row = app.buttons["nav.settings"]
-            XCTAssertTrue(row.waitForExistence(timeout: 5), "Flyout Settings row not found")
-            row.tap()
-            return
-        }
-        let barTab = app.tabBars.buttons["Settings"]
-        let tab = barTab.waitForExistence(timeout: 10)
-            ? barTab
-            : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
-        XCTAssertTrue(tab.waitForExistence(timeout: 10))
-        tab.tap()
+        app.openAccountSettings()
     }
 
     /// Waits for the live Admin page's first tile to show a real state.

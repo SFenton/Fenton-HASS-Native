@@ -1,6 +1,6 @@
 # Settings: Home Assistant settings modal (iPhone and iPad)
 
-> **What:** the Settings tab's Home Assistant row and the full-screen modal it opens. **Read when:** changing `HassUI/Features/Settings`.
+> **What:** Settings (inside the Account sheet behind the profile avatar since direction G), its Home Assistant row and the full-screen modal that row opens. **Read when:** changing `HassUI/Features/Settings`.
 
 ## Web source
 
@@ -10,8 +10,9 @@
 
 ## Native
 
+- **Account sheet (direction G, 2026-10-14).** The profile avatar on every tab root opens `AccountSheet` (`Features/Settings/AccountSheet.swift`, a form sheet on iPad): the signed-in person, a Settings row that pushes `SettingsScreen` inside the sheet (topics push after it; a sheet never splits), and Sign Out behind an alert with a red destructive button (HIG Alerts). Settings is no longer a tab or flyout row. Pages pushed inside the sheet take the sheet's chrome: `pageChrome()` reads `tileSurface == .sheet`, which the sheet sets on its stack, and draws no wallpaper. People at Home and Your Summary, which direction G also puts here, wait on the Daily Report port.
 - A **Feedback** section ends the list: Report an Issue and Request a Feature ([feedback.md](feedback.md)).
-- `SettingsScreen` lists Vacation first ([vacation/ios.md](../vacation/ios.md)), then the admin To-Do ([chores/ios.md](../chores/ios.md), hidden from Steph, also a pushing `NavigationLink`), then the household topics ([household.md](household.md)) above the Home Assistant row. The leading-pane split comes with the navigation shell ([split-view](../../design/apple/split-view.md)). Vacation is a `NavigationLink` that pushes on the leading stack, not a split topic: moving it into `HouseholdSettingsPage` so it opens in the trailing pane is a follow-up.
+- `SettingsScreen` lists Vacation first ([vacation/ios.md](../vacation/ios.md)), then the admin To-Do ([chores/ios.md](../chores/ios.md), hidden from Steph, also a pushing `NavigationLink`), then the household topics ([household.md](household.md)) above the Home Assistant row. Vacation is a `NavigationLink` that pushes on the leading stack.
 - The row opens `HomeAssistantSettingsView` with `fullScreenCover` (split-view.md: full-screen modal), so it is single-page on every device and pose. HIG: Modality (full-screen for an immersive, self-contained task with its own navigation), Settings.
 - Sections: **Server** (address, connection, Home Assistant version), **Account** (`auth/current_user` name and role via `HassConnection.currentUser()`), **Home Assistant** (Settings `/config` for administrators and owners, Profile `/profile` for everyone), **Sign Out** with a confirmation dialog (HIG: Action sheets; destructive and needs a password to undo).
 - Web pages push inside the modal's `NavigationStack` (Back returns to the form). `FrontendSession` writes the app's tokens into `localStorage.hassTokens` at document start, only on the server origin, in a non-persistent `WKWebsiteDataStore`, so the frontend opens signed in and nothing reaches disk. Off-server links open in the browser.
@@ -20,7 +21,7 @@
 ## Tests
 
 - Unit: `FrontendSessionTests`, `HassConnectionUserTests` (over `HAMockConnection`), `TokenManagerTests.validTokensIncludeTheRefreshToken`, `SettingsViewTests` (copy, formatting, role gating, account loading, web-session hand-off, hosted renders). `ImageRenderer` runs a view's `.task`, so a hosted render of the connected modal sends its own `currentUser` request; render it after completing the requests a test checks.
-- Journeys (`SettingsJourneyTests`): Settings tab and modal audits (with AX5 relaunch), live connection and account rows, Settings web page opens signed in (no web login form), Sign Out cancel then confirm (audits the confirmation), screenshot capture.
+- Journeys (`SettingsJourneyTests`, reaching Settings with `XCUIApplication.openAccountSettings()`): Settings and modal audits (with AX5 relaunch), live connection and account rows, Settings web page opens signed in (no web login form), Sign Out cancel then confirm (audits the confirmation), screenshot capture.
 - iOS 27 shows the sign-out confirmation as a popover anchored to the row, with no Cancel button (an outside tap cancels) and a nested duplicate of the confirm button; the audit can dismiss it.
-- Folded iPhone Duo: tabs are a rail (Settings is the `gearshape` button), bar buttons move to the rail (Back is `BackButton`), the form is taller than the screen and the bar hides while it is scrolled, so journeys scroll rows and Done into view.
+- Folded iPhone Duo: tabs are a rail, bar buttons move to the rail (Back is `BackButton`), the form is taller than the screen and the bar hides while it is scrolled, so journeys scroll rows and Done into view.
 - Web-page screenshots stay out of the repo: Home Assistant's Settings dashboard lists repairs, pending updates and installed integrations.

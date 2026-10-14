@@ -248,20 +248,8 @@ final class VacationJourneyTests: JourneyTestCase {
     /// Read-only: nothing is tapped on the page, so the house is never changed.
     func testSettingsOpensVacationOnTheLiveServer() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        // Regular width (iPad, unfolded Duo) reaches Settings through the navigation flyout, else the tab.
-        let open = app.buttons["nav.open"]
-        if open.waitForExistence(timeout: 5) {
-            open.tap()
-            let row = app.buttons["nav.settings"]
-            XCTAssertTrue(row.waitForExistence(timeout: 5), "Flyout Settings row not found")
-            row.tap()
-        } else {
-            let tab = app.tabBars.buttons["Settings"].exists
-                ? app.tabBars.buttons["Settings"]
-                : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND (identifier == 'gearshape' OR identifier == '')")).firstMatch
-            XCTAssertTrue(tab.waitForExistence(timeout: 15), "Settings tab not found")
-            tab.tap()
-        }
+        // Settings is in the Account sheet behind the profile avatar (direction G).
+        app.openAccountSettings()
         assertTarget("settings.vacation", in: app)
         element("settings.vacation", in: app).tap()
         let landed = ["vacation.chooser.vacationMode", "vacation.modeCard", "soloTrip.toggle"].map { element($0, in: app) }

@@ -12,25 +12,9 @@ final class FeedbackJourneyTests: JourneyTestCase {
         try FentonHomeApp.launchSignedIn(arguments: arguments, environment: ["FENTON_FEEDBACK_FIXTURE": fixture])
     }
 
-    /// Goes to Settings: through the navigation menu where there is one (iPhone, iPad, unfolded Duo), else the
-    /// folded Duo's rail.
+    /// Goes to Settings: the profile avatar's Account sheet (direction G).
     private func goToSettings(_ app: XCUIApplication) {
-        let open = app.buttons["nav.open"]
-        if open.waitForExistence(timeout: 8) {
-            open.tap()
-            let row = app.buttons["nav.settings"]
-            XCTAssertTrue(row.waitForExistence(timeout: 5), "Flyout Settings row not found")
-            row.tap()
-            return
-        }
-        let rail = app.buttons.matching(NSPredicate(format: "label == 'Settings' AND (identifier == 'gearshape' OR identifier == '')")).firstMatch
-        let candidates = [app.tabBars.buttons["Settings"], app.toolbars.buttons["Settings"], rail]
-        let deadline = Date().addingTimeInterval(15)
-        repeat {
-            if let found = candidates.first(where: \.exists) { found.tap(); return }
-            usleep(500_000)
-        } while Date() < deadline
-        XCTFail("Settings tab not found")
+        app.openAccountSettings()
     }
 
     /// The feedback row for `kind`, scrolled into view: it ends the Settings list, below the fold.
@@ -38,7 +22,7 @@ final class FeedbackJourneyTests: JourneyTestCase {
         let row = app.buttons["settings.feedback.\(kind)"]
         _ = app.buttons["settings.homeAssistant"].waitForExistence(timeout: 10)
         for _ in 0..<10 where !(row.exists && row.isHittable) {
-            app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+            app.settingsList.swipeUp(velocity: .slow)
         }
         return row
     }
@@ -58,7 +42,7 @@ final class FeedbackJourneyTests: JourneyTestCase {
     @discardableResult
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, up: Bool = true) -> XCUIElement {
         for _ in 0..<8 where !(element.exists && element.isHittable) {
-            if up { app.collectionViews.firstMatch.swipeUp(velocity: .slow) } else { app.collectionViews.firstMatch.swipeDown(velocity: .slow) }
+            if up { app.settingsList.swipeUp(velocity: .slow) } else { app.settingsList.swipeDown(velocity: .slow) }
         }
         return element
     }
@@ -86,7 +70,7 @@ final class FeedbackJourneyTests: JourneyTestCase {
     /// The form dismisses the keyboard interactively: drag the list down from its middle.
     private func dismissKeyboard(_ app: XCUIApplication) {
         for _ in 0..<3 where app.keyboards.firstMatch.exists {
-            let list = app.collectionViews.firstMatch
+            let list = app.settingsList
             list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
                 .press(forDuration: 0.05, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)))
             _ = app.keyboards.firstMatch.waitForNonExistence(timeout: 2)
@@ -131,7 +115,7 @@ final class FeedbackJourneyTests: JourneyTestCase {
         // SettingsJourneyTests: scrolled to the end on the short folded Duo, the topics fade under the header and
         // the audit reports that faded text as element-less contrast issues it can't attribute.
         XCTAssertTrue(feedbackRow(app, "feature").exists)
-        for _ in 0..<4 { app.collectionViews.firstMatch.swipeDown(velocity: .fast) }
+        for _ in 0..<4 { app.settingsList.swipeDown(velocity: .fast) }
         try FentonHomeApp.audit(app) {
             let large = try self.launch(arguments: FentonHomeApp.ax5)
             // Same position as the audited page: the AX5 page is only compared with it (an element-less Dynamic

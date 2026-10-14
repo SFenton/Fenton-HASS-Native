@@ -1,6 +1,6 @@
 import XCTest
 
-/// Settings tab → Home Assistant settings modal: audit, account details, the signed-in web pages
+/// Profile → Account → Settings → Home Assistant settings modal: audit, account details, the signed-in web pages
 /// and Sign Out, on every device family.
 @MainActor
 final class SettingsJourneyTests: XCTestCase {
@@ -17,35 +17,9 @@ final class SettingsJourneyTests: XCTestCase {
         if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
 
-    /// The Settings tab: in the tab bar, or the tab rail the folded iPhone Duo shows instead.
-    private func settingsTab(_ app: XCUIApplication) -> XCUIElement {
-        // The tab bar can appear a moment after launch (unfolded iPhone Duo), and the folded Duo shows a
-        // vertical bar that XCUITest reports as a toolbar (its Settings button lost the `gearshape` id on the
-        // folded Duo, 2026-10-11). Poll every form until one shows up: waiting on
-        // the tab bar alone used up the time before the folded Duo's bar was checked.
-        let rail = app.buttons.matching(NSPredicate(format: "label == 'Settings' AND (identifier == 'gearshape' OR identifier == '')")).firstMatch
-        let candidates = [app.tabBars.buttons["Settings"], app.toolbars.buttons["Settings"], rail]
-        let deadline = Date().addingTimeInterval(15)
-        repeat {
-            if let found = candidates.first(where: \.exists) { return found }
-            usleep(500_000)
-        } while Date() < deadline
-        return rail
-    }
-
-    /// Goes to Settings: through the navigation flyout in regular width (iPad, unfolded Duo), else the tab.
+    /// Goes to Settings: the profile avatar's Account sheet (direction G).
     private func goToSettings(_ app: XCUIApplication) {
-        let open = app.buttons["nav.open"]
-        if open.waitForExistence(timeout: 3) {
-            open.tap()
-            let row = app.buttons["nav.settings"]
-            XCTAssertTrue(row.waitForExistence(timeout: 5), "Flyout Settings row not found")
-            row.tap()
-        } else {
-            let tab = settingsTab(app)
-            XCTAssertTrue(tab.waitForExistence(timeout: 10), "Settings tab not found")
-            tab.tap()
-        }
+        app.openAccountSettings()
     }
 
     /// Selects Settings and waits for its Home Assistant row, scrolled into view: it ends the topic list,
@@ -62,7 +36,7 @@ final class SettingsJourneyTests: XCTestCase {
         let row = app.buttons["settings.homeAssistant"]
         guard app.buttons["settings.topic.admin"].waitForExistence(timeout: 5) || row.exists else { return row }
         for _ in 0..<8 where !(row.exists && row.isHittable) {
-            app.collectionViews.firstMatch.swipeUp(velocity: .slow)
+            app.settingsList.swipeUp(velocity: .slow)
         }
         if !row.exists { _ = row.waitForExistence(timeout: 2) }
         return row
@@ -73,7 +47,7 @@ final class SettingsJourneyTests: XCTestCase {
     @discardableResult
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
         for _ in 0..<6 where !(element.exists && element.isHittable) {
-            app.collectionViews.firstMatch.swipeUp()
+            app.settingsList.swipeUp()
         }
         return element
     }
