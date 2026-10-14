@@ -4,18 +4,7 @@ import XCTest
 /// disabling Vacation Mode, scheduling and ending a Solo Trip, the restore choice, audits on every page and
 /// screenshots, on iPhone, iPhone Duo and iPad.
 @MainActor
-final class VacationJourneyTests: XCTestCase {
-    override func setUp() {
-        continueAfterFailure = false
-        if FentonHomeApp.family == .iPad, ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" {
-            XCUIDevice.shared.orientation = .landscapeLeft
-        }
-    }
-
-    override func tearDown() {
-        MainActor.assumeIsolated { if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait } }
-    }
-
+final class VacationJourneyTests: JourneyTestCase {
     /// A page of the feature, reached the way a person would.
     enum Page: String, CaseIterable {
         case chooser, vacationChecklist, vacationDates, confirmSheet, soloTripIdle, soloTripEditor, soloTripActive, soloTripRestore
@@ -33,19 +22,13 @@ final class VacationJourneyTests: XCTestCase {
         return app
     }
 
-    private func element(_ id: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: id).firstMatch
-    }
-
-    private func lastCall(_ app: XCUIApplication) -> String { app.staticTexts["gallery.lastCall"].label }
-
     /// Waits until the last recorded call contains `text`.
     private func waitForCall(_ text: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let predicate = NSPredicate(format: "label CONTAINS %@", text)
         let found = expectation(for: predicate, evaluatedWith: app.staticTexts["gallery.lastCall"])
         // Up to 10 s: turning Vacation Mode off sends seven calls one after another.
         if XCTWaiter().wait(for: [found], timeout: 10) != .completed {
-            XCTFail("Expected a call containing \(text); last: \(lastCall(app))", file: file, line: line)
+            XCTFail("Expected a call containing \(text); last: \(lastCall(in: app))", file: file, line: line)
         }
     }
 
@@ -191,7 +174,7 @@ final class VacationJourneyTests: XCTestCase {
         tap("vacation.confirm.cancel", in: app)
         XCTAssertTrue(element("vacation.modeCard", in: app).waitForExistence(timeout: 5))
         XCTAssertEqual(element("vacation.modeCard", in: app).value as? String, "Off")
-        XCTAssertEqual(lastCall(app), "Last call: None")
+        XCTAssertEqual(lastCall(in: app), "None")
     }
 
     /// Turning Vacation Mode off resets the checklist and shows it again.
@@ -209,7 +192,7 @@ final class VacationJourneyTests: XCTestCase {
         tapCenter(of: cancel, in: app)
         XCTAssertTrue(cancel.waitForNonExistence(timeout: 5))
         XCTAssertEqual(card.value as? String, "On")
-        XCTAssertEqual(lastCall(app), "Last call: None")
+        XCTAssertEqual(lastCall(in: app), "None")
         // Turn Off turns it off.
         card.tap()
         let yes = app.alerts.buttons["vacation.disable.confirm"].firstMatch
@@ -238,7 +221,7 @@ final class VacationJourneyTests: XCTestCase {
         toggle.tap()
         tap("soloTrip.editor.confirm", in: app)
         waitForCall("operation=schedule", in: app)
-        XCTAssertTrue(lastCall(app).contains("traveler=stephen"))
+        XCTAssertTrue(lastCall(in: app).contains("traveler=stephen"))
         XCTAssertTrue(element("soloTrip.editor.confirm", in: app).waitForNonExistence(timeout: 5))
         XCTAssertTrue(waitForValue("On", of: toggle), "Solo Trip never turned on")
         XCTAssertEqual(stephen.value as? String, "Away")

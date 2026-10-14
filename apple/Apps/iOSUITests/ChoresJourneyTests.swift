@@ -3,18 +3,7 @@ import XCTest
 /// Chores tab, its sub-pages, the admin To-Do and every todo sheet on fixture lists in the debug gallery
 /// (no house changes), plus a read-only signed-in pass of the real Chores tab. Spec: `.agents/pages/chores/spec.md`.
 @MainActor
-final class ChoresJourneyTests: XCTestCase {
-    override func setUp() {
-        continueAfterFailure = false
-        if FentonHomeApp.family == .iPad, ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" {
-            XCUIDevice.shared.orientation = .landscapeLeft
-        }
-    }
-
-    override func tearDown() {
-        MainActor.assumeIsolated { if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait } }
-    }
-
+final class ChoresJourneyTests: JourneyTestCase {
     // MARK: Helpers
 
     private func launch(page: String? = nil, empty: Bool = false, arguments: [String] = []) -> XCUIApplication {
@@ -27,12 +16,6 @@ final class ChoresJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["fab.add"].waitForExistence(timeout: 10), "Add button missing")
         return app
     }
-
-    private func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
-        app.descendants(matching: .any)[id].firstMatch
-    }
-
-    private func lastCall(_ app: XCUIApplication) -> String { app.staticTexts["gallery.lastCall"].label }
 
     /// Scrolls the page until `element` is hittable and clear of the floating Add bar and the gallery's
     /// last-call line (XCUITest calls an element under them hittable, but the tap lands on the overlay).
@@ -65,34 +48,34 @@ final class ChoresJourneyTests: XCTestCase {
     /// Quick links are named buttons with their counts; the viewer's own link reads "Your Chores".
     func testQuickLinksShowCountsAndNavigate() {
         let app = launch()
-        let mine = element(app, "chores.link.stephens-chores")
+        let mine = element("chores.link.stephens-chores", in: app)
         XCTAssertTrue(mine.waitForExistence(timeout: 5))
         XCTAssertEqual(mine.label, "Your Chores")
         XCTAssertEqual(mine.value as? String, "2 overdue tasks · 1 task listed")
-        XCTAssertEqual(element(app, "chores.link.groceries").value as? String, "3 items")
-        XCTAssertEqual(element(app, "chores.link.stephs-chores").label, "Steph's Chores")
+        XCTAssertEqual(element("chores.link.groceries", in: app).value as? String, "3 items")
+        XCTAssertEqual(element("chores.link.stephs-chores", in: app).label, "Steph's Chores")
         XCTAssertGreaterThanOrEqual(mine.frame.height, 43)
         mine.tap()
-        XCTAssertTrue(element(app, "todo.page.stephens-chores").waitForExistence(timeout: 5))
+        XCTAssertTrue(element("todo.page.stephens-chores", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars["Stephen's Chores"].exists)
     }
 
     /// Checking a chore off hides it at once and calls Home Assistant.
     func testCheckingOffAChoreHidesIt() {
         let app = launch()
-        let row = element(app, "todo.item.13--fixture")
+        let row = element("todo.item.13--fixture", in: app)
         reveal(row, in: app)
         XCTAssertEqual(row.label, "Run the dishwasher")
         XCTAssertTrue((row.value as? String)?.hasPrefix("Not done, Due in") == true)
         row.tap()
         XCTAssertTrue(row.waitForNonExistence(timeout: 5), "Completed chore still shown")
-        XCTAssertEqual(lastCall(app), "Last call: todo.update_item 13--fixture")
+        XCTAssertEqual(lastCall(in: app), "todo.update_item 13--fixture")
     }
 
     /// The pencil opens the task form, loads the task, and saving sends the form.
     func testEditingATaskLoadsAndSaves() {
         let app = launch()
-        let edit = element(app, "todo.edit.13--fixture")
+        let edit = element("todo.edit.13--fixture", in: app)
         reveal(edit, in: app)
         XCTAssertEqual(edit.label, "Edit Run the dishwasher")
         edit.tap()
@@ -101,7 +84,7 @@ final class ChoresJourneyTests: XCTestCase {
         XCTAssertEqual(name.value as? String, "Run the dishwasher")
         app.buttons["task.save"].tap()
         XCTAssertTrue(name.waitForNonExistence(timeout: 5))
-        XCTAssertEqual(lastCall(app), "Last call: donetick.update_task_form")
+        XCTAssertEqual(lastCall(in: app), "donetick.update_task_form")
     }
 
     /// Add Task opens an empty form whose Create stays off until the task has a name.
@@ -116,7 +99,7 @@ final class ChoresJourneyTests: XCTestCase {
         XCTAssertTrue(create.isEnabled)
         create.tap()
         XCTAssertTrue(create.waitForNonExistence(timeout: 5))
-        XCTAssertEqual(lastCall(app), "Last call: donetick.create_task_form")
+        XCTAssertEqual(lastCall(in: app), "donetick.create_task_form")
     }
 
     // MARK: Sub-pages
@@ -132,15 +115,15 @@ final class ChoresJourneyTests: XCTestCase {
         XCTAssertTrue(field.waitForNonExistence(timeout: 5))
         let eggs = app.buttons.matching(NSPredicate(format: "label == 'Eggs'")).firstMatch
         XCTAssertTrue(eggs.waitForExistence(timeout: 5), "New grocery not listed")
-        element(app, "todo.item.g1").tap()
-        XCTAssertTrue(element(app, "todo.item.g1").waitForNonExistence(timeout: 5))
-        XCTAssertFalse(element(app, "todo.edit.g2").exists, "Groceries are not editable")
+        element("todo.item.g1", in: app).tap()
+        XCTAssertTrue(element("todo.item.g1", in: app).waitForNonExistence(timeout: 5))
+        XCTAssertFalse(element("todo.edit.g2", in: app).exists, "Groceries are not editable")
     }
 
     func testAdminTodoRenamesAndCompletesWithItsScript() {
         let app = launch(page: "to-do")
         XCTAssertTrue(app.navigationBars["To-Do"].waitForExistence(timeout: 5))
-        element(app, "todo.edit.a1").tap()
+        element("todo.edit.a1", in: app).tap()
         let name = app.textFields["renameTodo.name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["renameTodo.save"].isEnabled)
@@ -148,15 +131,15 @@ final class ChoresJourneyTests: XCTestCase {
         name.typeText(" now")
         app.buttons["renameTodo.save"].tap()
         XCTAssertTrue(name.waitForNonExistence(timeout: 5))
-        XCTAssertEqual(lastCall(app), "Last call: todo.update_item a1")
-        element(app, "todo.item.a2").tap()
-        XCTAssertTrue(element(app, "todo.item.a2").waitForNonExistence(timeout: 5))
-        XCTAssertEqual(lastCall(app), "Last call: script.complete_admin_todo_item a2")
+        XCTAssertEqual(lastCall(in: app), "todo.update_item a1")
+        element("todo.item.a2", in: app).tap()
+        XCTAssertTrue(element("todo.item.a2", in: app).waitForNonExistence(timeout: 5))
+        XCTAssertEqual(lastCall(in: app), "script.complete_admin_todo_item a2")
     }
 
     func testEmptyPagesSayNiceJob() {
         let app = launch(page: "stephens-chores", empty: true)
-        XCTAssertTrue(element(app, "todo.empty").waitForExistence(timeout: 5))
+        XCTAssertTrue(element("todo.empty", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["You have no chores due- nice job!"].exists)
     }
 
@@ -214,11 +197,11 @@ final class ChoresJourneyTests: XCTestCase {
             : app.buttons.matching(NSPredicate(format: "label == 'Chores'")).firstMatch
         XCTAssertTrue(tab.waitForExistence(timeout: 10))
         tab.tap()
-        let groceries = element(app, "chores.link.groceries")
+        let groceries = element("chores.link.groceries", in: app)
         XCTAssertTrue(groceries.waitForExistence(timeout: 15), "Quick links missing")
         try FentonHomeApp.audit(app)
         groceries.tap()
-        XCTAssertTrue(element(app, "todo.page.groceries").waitForExistence(timeout: 10))
+        XCTAssertTrue(element("todo.page.groceries", in: app).waitForExistence(timeout: 10))
     }
 
     /// Signed in, every Chores quick link opens its page without crashing and comes back (owner report
@@ -231,12 +214,12 @@ final class ChoresJourneyTests: XCTestCase {
         XCTAssertTrue(tab.waitForExistence(timeout: 10))
         tab.tap()
         for page in ["groceries", "stephens-chores", "stephs-chores", "unassigned-chores", "home-improvement-chores"] {
-            let link = element(app, "chores.link.\(page)")
+            let link = element("chores.link.\(page)", in: app)
             XCTAssertTrue(link.waitForExistence(timeout: 15), "\(page) link missing")
             reveal(link, in: app).tap()
-            XCTAssertTrue(element(app, "todo.page.\(page)").waitForExistence(timeout: 10), "\(page) did not open")
+            XCTAssertTrue(element("todo.page.\(page)", in: app).waitForExistence(timeout: 10), "\(page) did not open")
             // Let the lists load and draw before leaving.
-            _ = element(app, "todo.empty").waitForExistence(timeout: 4)
+            _ = element("todo.empty", in: app).waitForExistence(timeout: 4)
             XCTAssertEqual(app.state, .runningForeground, "\(page) crashed the app")
             app.navigationBars.buttons.firstMatch.tap()
             XCTAssertTrue(link.waitForExistence(timeout: 10), "Back from \(page) failed")
