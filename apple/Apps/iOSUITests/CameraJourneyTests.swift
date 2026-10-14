@@ -22,6 +22,14 @@ final class CameraJourneyTests: JourneyTestCase {
         return video
     }
 
+    /// Waits for live video over either transport: under host load WebRTC can miss its first-frame window and the
+    /// viewer correctly falls back to HLS ("Live, a few seconds behind"). The WebRTC-only journeys stay strict.
+    private func waitForLive(_ element: XCUIElement, timeout: TimeInterval = 30) {
+        let live = NSPredicate(format: "value BEGINSWITH %@", "Live")
+        let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: live, object: element)], timeout: timeout)
+        XCTAssertEqual(result, .completed, "Camera stayed '\(element.value as? String ?? "")', expected live video")
+    }
+
     private func waitForValue(_ element: XCUIElement, _ value: String, timeout: TimeInterval = 30) {
         let live = NSPredicate(format: "value == %@", value)
         let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: live, object: element)], timeout: timeout)
@@ -64,7 +72,7 @@ final class CameraJourneyTests: JourneyTestCase {
     func testViewerControls() throws {
         let app = try FentonHomeApp.launchSignedIn()
         let video = openCamera(app)
-        waitForValue(video, "Live")
+        waitForLive(video)
         // Sound and Record are toggles (`.isToggle`), which XCUITest reports as switches.
         let sound = app.switches["camera.control.sound"]
         XCTAssertEqual(sound.label, "Sound")
@@ -163,20 +171,20 @@ final class CameraJourneyTests: JourneyTestCase {
     func testReturningFromBackgroundResumes() throws {
         let app = try FentonHomeApp.launchSignedIn()
         let video = openCamera(app)
-        waitForValue(video, "Live")
+        waitForLive(video)
         XCUIDevice.shared.press(.home)
         sleep(2)
         app.activate()
         XCTAssertTrue(video.waitForExistence(timeout: 5))
-        waitForValue(video, "Live")
+        waitForLive(video)
     }
 
     func testViewerPassesAccessibilityAudit() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        waitForValue(openCamera(app), "Live")
+        waitForLive(openCamera(app))
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
-            self.waitForValue(self.openCamera(large), "Live")
+            self.waitForLive(self.openCamera(large))
             return large
         }
     }
@@ -188,7 +196,7 @@ final class CameraJourneyTests: JourneyTestCase {
             if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
             let app = try FentonHomeApp.launchSignedIn()
-            waitForValue(openCamera(app), "Live", timeout: 45)
+            waitForLive(openCamera(app), timeout: 45)
             sleep(1)
             keepScreenshot(app, "camera-\(suffix)")
             app.buttons["sheet.close"].tap()
