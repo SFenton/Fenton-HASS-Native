@@ -35,16 +35,17 @@ The audit thread lands the dedup in small PRs, one concern each, rebased on `mai
 |---|---|---|---|
 | 1 | Move infra types out of feature folders (`ServiceCall`, `HassServiceCalling`, `HassServiceResponding`, `OptimisticOverlay`, `HassServiceCatalog`, `JSONValue(haData:)`); one `StateText.titleCase` and `EntityState.isUnavailable(_:)` | Audit | Done (#32) |
 | 2 | One JSON-number parser and one `HassDates` with cached formatters | Audit | Done (#34) |
-| 3 | One websocket command bridge (`HassConnection.sendCommand`); `TodoServicing` refines `EverShelfCalling` | Audit | In review |
+| 3 | One websocket command bridge (`HassConnection.sendCommand`); `TodoServicing` refines `EverShelfCalling` (#40) | Audit | Done |
 | 4 | Controller shell: superseded by `OptimisticActions` (#36, [optimistic-actions](../patterns/optimistic-actions.md)); controllers move over when their owner next touches them | Feature threads | Reported |
-| 5 | Entity ids defined once in `Config/` | Audit | Planned |
-| 6 | Notices into `InfoBox` (`DeviceAlert`/`SprinklerAlert` into `InlineAlert` in review); section headers into `SettingsSection`; `BedroomTabPicker` into `SheetTabPicker`; color tokens into `HassTokens` | Audit | In progress |
-| 7 | Gallery: `#if DEBUG` on every gallery file (done, #41); one recorder base and one Last-call view | Audit | In progress |
-| 8 | Journey base class `JourneyTestCase` (#51; other journeys move over when touched); dead `coverage_gate.py` XML branch removed; a `HassTestSupport` target for fakes | Audit | In progress |
+| 5 | Shared entity ids defined once (#56); per-room tables in `RoomsConfig`/`RoomGroups` still restate `Config/` ids | Audit | In progress |
+| 6 | Notices: one `InlineAlert` with warning and error severities (#58, #61); Form section text via `FormHeader`/`FormFooter` (#63); section headers into `SettingsSection`; `BedroomTabPicker` into `SheetTabPicker`; color tokens into `HassTokens` | Audit | In progress |
+| 7 | Gallery: `#if DEBUG` on every gallery file (#41); one Last-call view (#54); one recorder base | Audit | In progress |
+| 8 | Journey base class `JourneyTestCase` (#51; other journeys move over when touched); dead `coverage_gate.py` XML branch removed (#52); `HassTestSupport` doubles (#53) | Audit | Done |
 | 9 | Sheet chrome, presentation modifiers, `SheetTabPicker` API | App chrome thread | Reported |
 | 10 | `try?` on user actions, index identity, Reduce Motion in feature screens | Each feature's thread; Sprinklers, Recipes and Inventory done by Audit (#33) | Reported |
 | 11 | Hosted tests that fail only in a full `swift test` on a loaded Mac: `SecurityViewTests.galleryRecorderEchoes`, `OnDemandSplitHostedTests` (frame and placeholder checks). They pass when run alone | Audit | Planned |
 | 12 | `FoodJourneyTests.testHubShowsSuggestionsRecipesAndSpaces` fails its iPhone audit (since the Food lane): the audit flags all 9 suggestion `ImageCard`s, each one `StaticText` with the whole-card frame (175×193) on `.regularMaterial`, and the helper loses their elements after the second, scrolling pass. Needs text-region sampling in `RenderedContrast` or `ImageCard` exposing its title as its own framed element; not a whole-frame waiver (#55 closed) | Open | Reported |
+| 13 | `FoodJourneyTests.testFilterSheetPassesAccessibilityAudit` fails on iPad only (portrait, on main `c5240c3`): "0 of 12 sampled texts on the AX5 page" and 3 element-less Dynamic Type issues. The AX5 relaunch does not show the filter sheet's texts where the page check looks for them, so nothing can be compared | Open | Reported |
 
 ## Rules this audit adds
 
@@ -52,3 +53,4 @@ The audit thread lands the dedup in small PRs, one concern each, rebased on `mai
 - A second copy of anything in this audit is a major review finding. Extend the shared one instead.
 - Every file in `HassUI/Features/Gallery` is wrapped in `#if DEBUG`. Production code reaches the galleries only through `ComponentGallery.requested` and `galleryLastCallBanner()`, which is a no-op in Release.
 - Journeys subclass `JourneyTestCase` ([devices](../testing/apple/devices.md)).
+- Warnings and errors use `InlineAlert`; Form section headers and footers use `FormHeader`/`FormFooter` (the system secondary label is about 3.3:1 on the sheet background).
