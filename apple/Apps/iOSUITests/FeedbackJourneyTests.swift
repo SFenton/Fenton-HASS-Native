@@ -143,12 +143,15 @@ final class FeedbackJourneyTests: JourneyTestCase {
         XCTAssertTrue(app.buttons["feedback.submit"].exists, "Feature form did not open")
         reveal(app.buttons["feedback.close"], in: app, up: false).tap()
         XCTAssertTrue(app.buttons["feedback.submit"].waitForNonExistence(timeout: 5))
-        // Audited last: the AX5 relaunch replaces this app instance.
+        // Audited last (the AX5 relaunch replaces this app instance), from the top of the list like
+        // SettingsJourneyTests: scrolled to the end on the short folded Duo, the topics fade under the header and
+        // the audit reports that faded text as element-less contrast issues it can't attribute.
         XCTAssertTrue(feedbackRow(app, "feature").exists)
+        for _ in 0..<4 { app.collectionViews.firstMatch.swipeDown(velocity: .fast) }
         try FentonHomeApp.audit(app) {
             let large = try self.launch(arguments: FentonHomeApp.ax5)
             self.goToSettings(large)
-            _ = self.feedbackRow(large, "bug")
+            _ = large.buttons["settings.homeAssistant"].waitForExistence(timeout: 10)
             return large
         }
     }
