@@ -21,22 +21,17 @@ struct FeedbackDiagnosticsCollector {
     var platform: FeedbackPlatform
     var traits: Traits
 
-    /// Collects diagnostics, asking Home Assistant for the user's name while connected.
-    func collect(connection: HassConnection) async -> FeedbackDiagnostics {
-        var reporter: String?
-        if case .connected = connection.status, let user = try? await connection.currentUser() {
-            reporter = user.name.flatMap { $0.isEmpty ? nil : $0 }
-        }
-        return Self.diagnostics(
+    /// Collects diagnostics; the integration adds the Home Assistant user from the request's own sign-in.
+    func collect(connection: HassConnection) -> FeedbackDiagnostics {
+        Self.diagnostics(
             platform: platform, traits: traits,
             homeAssistant: HomeAssistantSettingsView.version(connection.status).map { "\($0), \(HomeAssistantSettingsView.statusText(connection.status).lowercased())" }
-                ?? HomeAssistantSettingsView.statusText(connection.status),
-            reporter: reporter
+                ?? HomeAssistantSettingsView.statusText(connection.status)
         )
     }
 
     /// Builds diagnostics from explicit values plus the process (unit-tested).
-    static func diagnostics(platform: FeedbackPlatform, traits: Traits, homeAssistant: String, reporter: String?) -> FeedbackDiagnostics {
+    static func diagnostics(platform: FeedbackPlatform, traits: Traits, homeAssistant: String) -> FeedbackDiagnostics {
         let window = windowSize
         return FeedbackDiagnostics(
             app: FeedbackDiagnostics.appVersion(Bundle.main.infoDictionary, buildDate: buildDate),
@@ -44,7 +39,6 @@ struct FeedbackDiagnosticsCollector {
             device: "\(familyName(platform)) (\(hardwareModel))",
             window: FeedbackDiagnostics.windowText(width: window.width, height: window.height, regularWidth: traits.regularWidth),
             homeAssistant: homeAssistant,
-            reporter: reporter,
             accessibility: accessibilityText(traits),
             locale: "\(Locale.current.identifier), \(TimeZone.current.identifier)"
         )

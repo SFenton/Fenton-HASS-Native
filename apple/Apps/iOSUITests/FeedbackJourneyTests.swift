@@ -1,13 +1,13 @@
 import XCTest
 
 /// Settings → Feedback: Report an Issue and Request a Feature against the in-app fixture
-/// (`FENTON_FEEDBACK_FIXTURE`), so no journey files a real GitHub issue. Audits run on every form and the
-/// GitHub Access page, with an AX5 relaunch.
+/// (`FENTON_FEEDBACK_FIXTURE`), so no journey reaches Home Assistant's relay or files a real GitHub issue. Audits
+/// run on every form and the setup notice, with an AX5 relaunch.
 @MainActor
 final class FeedbackJourneyTests: JourneyTestCase {
     // MARK: - Helpers
 
-    /// Signs in with the feedback fixture: `1` starts with a token, `connect` without one.
+    /// Signs in with the feedback fixture: `1` with the relay set up, `unavailable` without it.
     private func launch(fixture: String = "1", arguments: [String] = []) throws -> XCUIApplication {
         try FentonHomeApp.launchSignedIn(arguments: arguments, environment: ["FENTON_FEEDBACK_FIXTURE": fixture])
     }
@@ -93,22 +93,6 @@ final class FeedbackJourneyTests: JourneyTestCase {
         }
     }
 
-    /// Opens GitHub Access from the form, tapping again if the first tap landed while the form was still
-    /// settling from a scroll or the keyboard closing.
-    private func openAccess(_ app: XCUIApplication) {
-        dismissKeyboard(app)
-        let row = app.buttons["feedback.github"]
-        let field = app.secureTextFields["feedback.github.token"]
-        for _ in 0..<3 where !field.exists {
-            // A row partly under the navigation bar still reports hittable, and a tap at its centre lands on the
-            // bar, so tap its lower part. Never swipe down at the top: that dismisses the sheet (or asks to discard).
-            if !(row.exists && row.isHittable) { reveal(row, in: app, up: false) }
-            sleep(1)
-            row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8)).tap()
-            _ = field.waitForExistence(timeout: 3)
-        }
-    }
-
     /// Submit, scrolled back into view: the folded iPhone Duo hides its bar while the form is scrolled down.
     private func submitButton(_ app: XCUIApplication) -> XCUIElement {
         let submit = app.buttons["feedback.submit"]
@@ -179,11 +163,9 @@ final class FeedbackJourneyTests: JourneyTestCase {
         let app = try launch()
         openForm(app, "feature")
         XCTAssertFalse(app.textViews["feedback.field.repro"].exists, "Feature form shows Steps to Reproduce")
-        XCTAssertTrue(reveal(app.buttons["feedback.github"], in: app).exists, "Sending-as row missing")
         try FentonHomeApp.audit(app, ax5Page: {
             let large = try self.launch(arguments: FentonHomeApp.ax5)
             self.openForm(large, "feature")
-            _ = self.reveal(large.buttons["feedback.github"], in: large)
             return large
         }, presenter: app.buttons["settings.feedback.feature"])
     }
@@ -214,50 +196,27 @@ final class FeedbackJourneyTests: JourneyTestCase {
         XCTAssertTrue(app.buttons["feedback.submit"].waitForNonExistence(timeout: 5), "Done did not close the form")
     }
 
-    /// Without a token the form leads with Add GitHub Access; a wrong token is refused on the page; the
-    /// fixture token is saved and Submit becomes available.
-    func testAddingATokenEnablesSubmit() throws {
-        let app = try launch(fixture: "connect")
-        openForm(app, "feature")
-        let access = app.buttons["feedback.github"]
-        XCTAssertTrue(access.waitForExistence(timeout: 5))
-        XCTAssertTrue(access.label.contains("Add GitHub Access"))
+    /// Without the relay in Home Assistant the form leads with the setup notice and Submit stays off; the
+    /// notice passes the audit.
+    func testUnavailableRelayShowsSetupNotice() throws {
+        let app = try launch(fixture: "unavailable")
+        openForm(app, "bug")
+        let notice = app.descendants(matching: .any)["feedback.setup"].firstMatch
+        XCTAssertTrue(notice.waitForExistence(timeout: 5), "Setup notice missing")
+        XCTAssertTrue(notice.label.contains("Fenton Home Feedback"))
         fill(app, title: "Arrival lights")
-        XCTAssertTrue(reveal(app.staticTexts["feedback.validation"], in: app).label.contains("GitHub access token"))
+        XCTAssertTrue(reveal(app.staticTexts["feedback.validation"], in: app).label.contains("isn't set up"))
         XCTAssertFalse(submitButton(app).isEnabled)
-        let field = app.secureTextFields["feedback.github.token"]
-        openAccess(app)
-        XCTAssertTrue(field.waitForExistence(timeout: 5), "GitHub Access page did not open")
-        XCTAssertTrue(app.links["feedback.github.create"].exists || app.buttons["feedback.github.create"].exists)
-        field.tap()
-        field.typeText("x\n")
-        XCTAssertTrue(app.staticTexts["feedback.github.error"].waitForExistence(timeout: 10), "Wrong token accepted")
-        field.tap()
-        // A secure field may or may not clear itself when editing starts again (iPad keeps "x"); delete enough.
-        // Return submits the field (`onSubmit`): a Save tap while the iPad keyboard is up can be lost.
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "fixture-token\n")
-        XCTAssertTrue(app.secureTextFields["feedback.github.token"].waitForNonExistence(timeout: 10), "Saving did not return to the form")
-        XCTAssertTrue(reveal(app.buttons["feedback.github"], in: app).label.contains("fixture-user"), "Sending-as row missing")
-        _ = submit(app)
-        XCTAssertTrue(app.buttons["feedback.done"].firstMatch.waitForExistence(timeout: 10), "Sent alert missing")
-    }
-
-    /// The GitHub Access page passes the audit, with its AX5 relaunch.
-    func testGitHubAccessPassesAudit() throws {
-        let app = try launch(fixture: "connect")
-        openForm(app, "feature")
-        openAccess(app)
-        XCTAssertTrue(app.secureTextFields["feedback.github.token"].waitForExistence(timeout: 5), "GitHub Access page did not open")
-        try FentonHomeApp.audit(app) {
-            let large = try self.launch(fixture: "connect", arguments: FentonHomeApp.ax5)
-            self.openForm(large, "feature")
-            self.openAccess(large)
-            XCTAssertTrue(large.secureTextFields["feedback.github.token"].waitForExistence(timeout: 5))
+        reveal(notice, in: app, up: false)
+        try FentonHomeApp.audit(app, ax5Page: {
+            let large = try self.launch(fixture: "unavailable", arguments: FentonHomeApp.ax5)
+            self.openForm(large, "bug")
+            XCTAssertTrue(large.descendants(matching: .any)["feedback.setup"].firstMatch.waitForExistence(timeout: 5))
             return large
-        }
+        }, presenter: app.buttons["settings.feedback.bug"])
     }
 
-    /// A failed filing keeps everything typed and offers no token change.
+    /// A failed filing keeps everything typed.
     func testFailedFilingKeepsTheForm() throws {
         let app = try launch()
         openForm(app, "bug")
@@ -268,7 +227,6 @@ final class FeedbackJourneyTests: JourneyTestCase {
             app.buttons["feedback.submit"].tap() // The first tap can land while the keyboard is closing.
         }
         XCTAssertTrue(alert.waitForExistence(timeout: 15), "Failure alert missing")
-        XCTAssertFalse(alert.buttons["Update Token"].exists)
         alert.buttons["OK"].tap()
         XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5))
         let title = reveal(app.textFields["feedback.field.title"], in: app, up: false)
@@ -281,7 +239,7 @@ final class FeedbackJourneyTests: JourneyTestCase {
         for orientation in orientations {
             if orientation != .unknown { XCUIApplication().terminate(); XCUIDevice.shared.orientation = orientation }
             let suffix = orientation == .landscapeLeft ? "landscape" : orientation == .portrait ? "portrait" : "current"
-            let app = try launch(fixture: "connect")
+            let app = try launch()
             goToSettings(app)
             _ = feedbackRow(app, "feature")
             keepScreenshot(app, "feedback-rows-\(suffix)")
@@ -289,13 +247,6 @@ final class FeedbackJourneyTests: JourneyTestCase {
             XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5))
             sleep(1)
             keepScreenshot(app, "feedback-bug-empty-\(suffix)")
-            openAccess(app)
-            XCTAssertTrue(app.secureTextFields["feedback.github.token"].waitForExistence(timeout: 5))
-            keepScreenshot(app, "feedback-github-access-\(suffix)")
-            let field = app.secureTextFields["feedback.github.token"]
-            field.tap()
-            field.typeText("fixture-token\n")
-            XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 10))
             fill(app, title: "Garage tile stuck")
             reveal(app.textViews["feedback.field.description"], in: app, up: false)
             keepScreenshot(app, "feedback-bug-filled-\(suffix)")
@@ -308,6 +259,10 @@ final class FeedbackJourneyTests: JourneyTestCase {
             XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5))
             sleep(1)
             keepScreenshot(app, "feedback-feature-\(suffix)")
+            let unset = try launch(fixture: "unavailable")
+            openForm(unset, "bug")
+            _ = unset.descendants(matching: .any)["feedback.setup"].firstMatch.waitForExistence(timeout: 5)
+            keepScreenshot(unset, "feedback-setup-notice-\(suffix)")
         }
         if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }

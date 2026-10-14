@@ -4,44 +4,44 @@
 
 ## Source
 
-Ported from FestivalNativeApps' in-app feedback form (`.agents/controls/feedback-form/{spec,ios}.md` and `FestivalUI/Features/Settings/Feedback/` there). The web dashboard has no equivalent (it runs inside Home Assistant), so this is a native-only section. Differences from Festival:
+Ported from FestivalNativeApps' in-app feedback form (`.agents/controls/feedback-form/{spec,ios}.md` and `FestivalUI/Features/Settings/Feedback/` there). The web dashboard has no equivalent (it runs inside Home Assistant), so this is a native-only section.
+
+**Filing goes through Home Assistant** (owner, 2026-10-14: "Yes, relay"), the way Festival's app files through its service: the [Fenton Home Feedback](https://github.com/SFenton/ha-fenton-feedback) integration holds the GitHub token, and the app never has one. Differences from Festival:
 
 | Festival | Here | Why |
 |---|---|---|
-| The app posts to its service, which files on GitHub with a server token | The app files on GitHub itself with the person's fine-grained token (Issues: read and write on `SFenton/fenton-hass-requests` only) | No service to hold a token; Home Assistant must not duplicate it; a token shipped in the app is forbidden (AGENTS.md) |
-| Public tracker, anonymous bodies | Private request repo; diagnostics name the Home Assistant user | Screenshots show the house; the household is trusted |
-| Service transcodes media | `FeedbackMediaFitter` shrinks each file to GitHub's 10 MB attachment limit on the device | Same reason |
-| Rows hidden until `/api/features` says so | Rows always shown; the form asks for a token when there is none | No feature flag service |
-| Polls a job for the issue number | Synchronous: uploads, then creates the issue, then shows `#N` with View on GitHub | GitHub answers directly |
+| The app posts to its own service | The app posts to the integration on the signed-in Home Assistant, with its Home Assistant access token | Home Assistant is the app's only server; a token shipped in the app is forbidden (AGENTS.md) |
+| Public tracker, anonymous bodies | Private request repo `SFenton/fenton-hass-requests`; the integration names the Home Assistant user who sent it | Screenshots show the house; the household is trusted |
+| Service transcodes media | `FeedbackMediaFitter` shrinks each file to GitHub's 10 MB attachment limit on the device; each file goes in its own request | Home Assistant's request body limit |
+| Rows hidden until `/api/features` says so | Rows always shown; the form shows a setup notice when the integration is missing | Discoverable for the owner who installs it |
+| Polls a job for the issue number | Synchronous: uploads, then files, then shows `#N` with View on GitHub | The integration answers directly |
 
 ## Native
 
 | Piece | File | Notes |
 |---|---|---|
 | Kinds, prefix rule, validation | `HassCore/Feedback/FeedbackKind.swift`, `FeedbackDraft.swift`, `FeedbackValidationIssue.swift` | `[Bug] `/`[Feature] ` kept by `setTitle`; lengths in UTF-16 |
-| Issue body | `FeedbackIssue.compose` | Sections per filled box, `### Media` (images inline, videos as bare URLs, which GitHub plays), `### Diagnostics` table, `<!-- fenton-feedback:v1 -->`; `<!--` in typed text is escaped |
-| Diagnostics | `FeedbackDiagnostics`, `HassUI/.../FeedbackDiagnosticsCollector.swift` | App version and build date, OS, device family + hardware id, window size/size class/orientation, Home Assistant version and connection, reporter's name, text size/VoiceOver/Reduce Motion/appearance, locale. Never a token, password or server address |
-| GitHub | `GitHubFeedbackClient` over `FeedbackHTTPTransport` | `GET /user` + `GET /repos/…` to verify, `POST uploads.github.com/user-attachments/assets`, `POST /repos/…/issues`; errors mapped to fixed copy in `FeedbackFilingError` (never GitHub's text) |
-| Token | `KeychainGitHubAccessStore` | Synchronizable (iCloud Keychain) so it is entered once per person, `AfterFirstUnlock`; the Home Assistant refresh token stays this-device-only |
+| Report | `FeedbackReport` | The JSON `POST /api/fenton_feedback/report` takes: kind, platform, title, boxes, `[label, value]` diagnostics, uploaded media. The integration composes the issue (sections, inline media, diagnostics, reporter, `<!-- fenton-feedback:v1 -->`, labels) |
+| Client | `HomeAssistantFeedbackClient` over `FeedbackHTTPTransport` | `GET …/status`, `POST …/media` (one raw file), `POST …/report`, each with the app's access token; a 404 means the integration isn't installed. Errors map from the integration's `code` to fixed copy in `FeedbackFilingError` (never its text) |
+| Diagnostics | `FeedbackDiagnostics`, `HassUI/.../FeedbackDiagnosticsCollector.swift` | App version and build date, OS, device family + hardware id, window size/size class/orientation, Home Assistant version and connection, text size/VoiceOver/Reduce Motion/appearance, locale. Never a token, password or server address |
 | Media | `FeedbackLocationScrubber` (ported), `FeedbackMediaFitter`, `FeedbackPickedMedia` | Copy → strip location → fit to 10 MB (JPEG steps, then export presets) → count limit (4). Private copies in `tmp/fenton-feedback-media/<uuid>/`, purged when the sheet goes away |
-| Form | `FeedbackFormModel`, `FeedbackFormSheet`, `FeedbackAttachmentStrip`/`Tile`, `FeedbackFieldHeader`, `SheetDismissAttemptObserver` | As Festival's sheet; progress "Uploading media n of m…" then "Filing your report on GitHub…"; Stop Sending only while media uploads |
-| Token page | `GitHubAccessModel`, `GitHubAccessView` | Pushed inside the sheet; secure field, Save Token verifies before saving, Remove Token confirms, Create a Token on GitHub opens the pre-filled page |
-| Entry | `FeedbackSettingsSection` in `SettingsScreen` | Its own section (no header, since the list sits on the house backdrop) after Performance; `.feedbackFormSheet(item:)` presents it with `.hassSheet(.form)` (full height on iPhone, form sheet on iPad); the form and GitHub Access use `.modalChrome()` |
-| Fixture | `FeedbackFixtureFiler`, `FENTON_FEEDBACK_FIXTURE=1` (connected) / `connect` (no token) | `fixture-token` verifies; titles with `fixture-failed` fail. Debug builds also read `FENTON_GITHUB_TOKEN` for a live run without typing a token into the UI |
+| Form | `FeedbackFormModel`, `FeedbackFormSheet`, `FeedbackAttachmentStrip`/`Tile`, `FeedbackFieldHeader`, `SheetDismissAttemptObserver` | As Festival's sheet; checks availability on open; progress "Uploading media n of m…" then "Filing your report on GitHub…"; Stop Sending only while media uploads |
+| Entry | `FeedbackSettingsSection` in `SettingsScreen` | Its own section (no header, since the list sits on the house backdrop) after Performance; `.feedbackFormSheet(item:)` builds the services from the session and presents with `.hassSheet(.form)`; the form uses `.modalChrome()` |
+| Fixture | `FeedbackFixtureFiler` (Debug only), `FENTON_FEEDBACK_FIXTURE=1` (set up) / `unavailable` | Titles with `fixture-failed` fail as a GitHub problem, `fixture-limited` as rate limited |
 
 ## Decisions (HIG via `apple-hig`)
 
 - **Cancel leading, Submit trailing**, discard confirmation on Cancel and swipe (HIG Sheets; HIG Modality: "If either a dismiss gesture or button could lose user-generated content, get confirmation before closing").
-- **Visible explanations, not placeholders** (HIG Text fields), **Submit disabled with the reason shown** (HIG Entering data), including "Add a GitHub access token to send."
-- **GitHub access leads the form when missing** and moves to the end ("Sending as @login") once set, so the first run explains the requirement before typing.
-- **Secure field for the token** (HIG Entering data: secure text fields for sensitive data); removing it is confirmed (HIG Action sheets) because sending needs a new one.
+- **Visible explanations, not placeholders** (HIG Text fields), **Submit disabled with the reason shown** (HIG Entering data), including "Reporting isn't set up in Home Assistant yet."
+- **Setup notice leads the form** when the integration is missing, saying who can add it, so nobody types a report that can't be sent.
 - **Quick Look** for tapped media; no photo-library permission (`PhotosPicker` runs out of process; HIG Privacy).
 
 ## Test IDs
 
-`settings.feedback.bug|feature`; `feedback.field.title|description|repro|expected`, `.close`, `.submit`, `.attach`, `.attach.media|files|progress`, `.attachments`, `.attachment.N[.remove]`, `.attachments.notice`, `.validation`, `.progress`, `.stop`, `.done`, `.view`, `.discard.confirm|cancel`, `.github`; `feedback.github.login|token|save|error|remove|remove.confirm|create`.
+`settings.feedback.bug|feature`; `feedback.field.title|description|repro|expected`, `.close`, `.submit`, `.attach`, `.attach.media|files|progress`, `.attachments`, `.attachment.N[.remove]`, `.attachments.notice`, `.validation`, `.progress`, `.stop`, `.done`, `.view`, `.discard.confirm|cancel`, `.setup`.
 
 ## Tests
 
-- Unit (`HassCoreTests`): `FeedbackTests` (prefix, validation, platform, attachment policy and names, issue composition and escaping, diagnostics, GitHub client requests and error mapping over a stub transport, fixture, stores), `FeedbackLocationScrubberTests` (ported), `FeedbackMediaFitterTests`. `HassUITests`: `FeedbackFormModelTests` (admit/refuse, submit → filed, failures, cancel, access refresh, staging purge).
-- Journeys (`FeedbackJourneyTests`, fixture only, never a real issue): rows open both forms with audits and AX5 relaunch, discard confirmation then filing #1, adding a token enables Submit (wrong token refused), failed filing keeps the form, screenshot capture.
+- Unit (`HassCoreTests`): `FeedbackTests` (prefix, validation, platform, attachment policy and names, report encoding, diagnostics, Home Assistant client requests and error mapping over a stub transport, fixture), `FeedbackLocationScrubberTests` (ported), `FeedbackMediaFitterTests`. `HassUITests`: `FeedbackFormModelTests` (availability, admit/refuse, submit → filed, failures, cancel, staging purge, hosted renders).
+- Journeys (`FeedbackJourneyTests`, fixture only, never a real issue): rows, bug and feature form audits with AX5 relaunch, discard confirmation then filing #1, the setup notice, failed filing keeps the form, screenshot capture.
+- The integration's own tests (validation, composition, GitHub client, config flow and endpoints inside Home Assistant) live in `SFenton/ha-fenton-feedback`.
