@@ -5,13 +5,14 @@ import Foundation
 /// Away commands answer with an outcome the app must check before trusting a change.
 @MainActor
 public protocol HassServiceResponding: HassServiceCalling {
-    /// Calls `domain.service` with `return_response` and returns the service's response object.
+    /// Calls `domain.service` with `return_response` and returns the whole result (`{"response": ...}`); callers
+    /// unwrap it with ``JSONValue/commandResponse`` or their own parser.
     func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue
 }
 
 extension HassConnection: HassServiceResponding {
     /// Sends `call_service` with `return_response: true` once (no retry across reconnects, so a command is never
-    /// applied twice) and returns the `response` member of the result.
+    /// applied twice) and returns the whole result.
     public func callServiceWithResponse(_ domain: String, _ service: String, data: [String: any Sendable]) async throws -> JSONValue {
         try await callServiceReturningResult(domain, service, data: data)
     }

@@ -3,18 +3,7 @@ import XCTest
 /// The shared floating action bar and filter sheet in the debug gallery: actions, search, sort/filter
 /// sheets, audits and screenshots on iPhone, iPhone Duo and iPad (`.agents/patterns/floating-actions.md`).
 @MainActor
-final class FloatingActionsJourneyTests: XCTestCase {
-    override func setUp() {
-        continueAfterFailure = false
-        if FentonHomeApp.family == .iPad, ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" {
-            XCUIDevice.shared.orientation = .landscapeLeft
-        }
-    }
-
-    override func tearDown() {
-        MainActor.assumeIsolated { if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait } }
-    }
-
+final class FloatingActionsJourneyTests: JourneyTestCase {
     private func launch(arguments: [String] = []) -> XCUIApplication {
         let app = FentonHomeApp.launchGallery("floating-actions", arguments: arguments)
         XCTAssertTrue(app.buttons["fab.add"].waitForExistence(timeout: 10))

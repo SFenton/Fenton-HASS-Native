@@ -4,23 +4,7 @@ import XCTest
 /// prompts, sort/filter, the editor (sheet, or trailing pane on split layouts) and the three-step scan flow,
 /// with audits and screenshots on iPhone, iPhone Duo and iPad (`.agents/pages/inventory/`).
 @MainActor
-final class InventoryJourneyTests: XCTestCase {
-    override func setUp() {
-        continueAfterFailure = false
-        if FentonHomeApp.family == .iPad, ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" {
-            XCUIDevice.shared.orientation = .landscapeLeft
-        }
-    }
-
-    override func tearDown() {
-        MainActor.assumeIsolated { if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait } }
-    }
-
-    private var layout: String {
-        let landscape = ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" ? "-landscape" : ""
-        return "\(FentonHomeApp.family)\(landscape)"
-    }
-
+final class InventoryJourneyTests: JourneyTestCase {
     private func launch(space: String = "pantry", open: String? = nil, state: String? = nil, arguments: [String] = [],
                         clean: Bool = false, environment: [String: String] = [:]) -> XCUIApplication {
         let app = FentonHomeApp.makeApp()
