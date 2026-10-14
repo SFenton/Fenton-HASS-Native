@@ -98,7 +98,7 @@ struct AddAdminTodoSheet: View {
                         .onChange(of: task) { _, value in if value.count > 1000 { task = String(value.prefix(1000)) } }
                         .accessibilityIdentifier("adminTodo.task")
                 } footer: {
-                    Text("This issue is synchronized from the dashboard Admin To-Do list. The repository is public.")
+                    FormFooter("This issue is synchronized from the dashboard Admin To-Do list. The repository is public.")
                 }
                 Section {
                     ForEach(images) { image in
@@ -114,9 +114,9 @@ struct AddAdminTodoSheet: View {
                     .tint(HassTokens.Ink.action)
                     .accessibilityIdentifier("adminTodo.images")
                 } header: {
-                    Text("Images")
+                    FormHeader("Images")
                 } footer: {
-                    Text("Add up to four PNG, JPEG, or WebP images, 10 MB each.")
+                    FormFooter("Add up to four PNG, JPEG, or WebP images, 10 MB each.")
                 }
             }
             .disabled(submitting)
@@ -259,7 +259,7 @@ struct RenameTodoItemSheet: View {
                     .disabled(draft == target.originalTitle && error == nil)
                     .accessibilityIdentifier("renameTodo.reset")
                 } footer: {
-                    Text("This issue is synchronized from the dashboard Admin To-Do list. The repository is public.")
+                    FormFooter("This issue is synchronized from the dashboard Admin To-Do list. The repository is public.")
                 }
             }
             .disabled(submitting)
