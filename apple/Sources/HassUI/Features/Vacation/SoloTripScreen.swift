@@ -50,7 +50,7 @@ struct SoloTripScreen: View {
                 .disabled(controller.toggleDisabled)
                 .accessibilityHint(controller.toggleChecked ? "" : "Asks for the departure and return times.")
                 .accessibilityIdentifier("soloTrip.toggle")
-            if let setupError = controller.setupError { AwayInlineAlert(text: setupError) }
+            if let setupError = controller.setupError { InlineAlert(setupError, severity: .error) }
         }
     }
 
@@ -71,7 +71,7 @@ struct SoloTripScreen: View {
                     },
                 ], commitDelay: liveDateCommitDelay)
                 .disabled(controller.returnFieldsDisabled)
-                if let error = controller.returnError { AwayInlineAlert(text: error) }
+                if let error = controller.returnError { InlineAlert(error, severity: .error) }
             }
             if let status = controller.status {
                 SoloTripStatusView(status: status, notice: nil, actionsDisabled: controller.restoreDisabled) { action in
@@ -127,7 +127,7 @@ struct SoloTripStatusView: View {
 
     var body: some View {
         AwaySection(title: status.title, description: status.description) {
-            if let error = status.error { AwayInlineAlert(text: error) }
+            if let error = status.error { InlineAlert(error, severity: .error) }
             if status.showsActiveNotice, let notice { SoloTripNoticeBox(notice: notice) }
             ForEach(status.actions, id: \.self) { action in
                 AwayActionButton(title: action.title, role: action == .endNow ? .destructive : nil,
@@ -170,7 +170,7 @@ struct SoloTripEditorSheet: View {
                         },
                     ])
                     .disabled(controller.isScheduling)
-                    ForEach(controller.editorAlerts, id: \.self) { AwayInlineAlert(text: $0) }
+                    ForEach(controller.editorAlerts, id: \.self) { InlineAlert($0, severity: .error) }
                     AwayActionButton(title: SoloTripCopy.editorConfirm, prominent: true, identifier: "soloTrip.editor.confirm") {
                         Task { await controller.confirmSchedule() }
                     }

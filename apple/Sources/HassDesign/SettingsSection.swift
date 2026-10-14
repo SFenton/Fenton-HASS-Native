@@ -37,34 +37,59 @@ public struct SettingsSection<Content: View>: View {
     }
 }
 
-/// A warning shown inline under the control it concerns (web `InlineAlert`). The one warning box: settings, room
-/// device sheets and sprinklers all use it (pattern: `.agents/patterns/info-box.md`).
+/// A warning or error shown inline under the control it concerns (web `InlineAlert`): the one inline alert for every
+/// page (pattern: `.agents/patterns/info-box.md`).
+///
+/// A warning is primary ink on an orange wash, read as "Warning: …". An error is red text with no box, read as
+/// "Error: …" (web `InlineAlert` error severity on the Vacation and Solo Trip pages).
 public struct InlineAlert: View {
+    /// How serious the alert is.
+    public enum Severity: Sendable {
+        case warning
+        case error
+    }
+
     public var message: String
-    /// The leading symbol; a warning triangle unless the warning has its own (a low battery).
+    /// The leading symbol; the severity's own unless the alert has one (a low battery).
     public var symbol: String
+    public var severity: Severity
 
     /// Creates an alert.
-    public init(_ message: String, symbol: String = "exclamationmark.triangle.fill") {
+    public init(_ message: String, symbol: String? = nil, severity: Severity = .warning) {
         self.message = message
-        self.symbol = symbol
+        self.severity = severity
+        self.symbol = symbol ?? (severity == .error ? "exclamationmark.circle.fill" : "exclamationmark.triangle.fill")
     }
 
     public var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s) {
-            Image(systemName: symbol)
-                .foregroundStyle(.orange)
-                .accessibilityHidden(true)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(HassTokens.Ink.primary)
-                .fixedSize(horizontal: false, vertical: true)
+        switch severity {
+        case .warning:
+            HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s) {
+                Image(systemName: symbol)
+                    .foregroundStyle(.orange)
+                    .accessibilityHidden(true)
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(HassTokens.Ink.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(HassTokens.Spacing.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Warning: \(message)")
+        case .error:
+            Label {
+                Text(message).fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: symbol).accessibilityHidden(true)
+            }
+            .font(.subheadline)
+            .foregroundStyle(HassTokens.Ink.error)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Error: \(message)")
         }
-        .padding(HassTokens.Spacing.m)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Warning: \(message)")
     }
 }
 
