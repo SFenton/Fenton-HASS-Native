@@ -204,6 +204,19 @@ final class ChoresJourneyTests: JourneyTestCase {
         XCTAssertTrue(element("todo.page.groceries", in: app).waitForExistence(timeout: 10))
     }
 
+    /// Goes back one page: the system Back button wherever the bar puts it (the folded iPhone Duo moves bar items
+    /// into its vertical bar), else the leading-edge back swipe.
+    private func goBack(in app: XCUIApplication) {
+        let back = app.buttons["BackButton"].firstMatch
+        if back.exists, back.isHittable {
+            back.tap()
+            return
+        }
+        let window = app.windows.firstMatch
+        let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 2, dy: window.frame.height / 2))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: window.frame.width * 0.7, dy: 0)))
+    }
+
     /// Signed in, every Chores quick link opens its page without crashing and comes back (owner report
     /// 2026-10-13: Steph's Chores crashed). Nothing is checked off.
     func testLiveEveryChoresPageOpens() throws {
@@ -221,7 +234,7 @@ final class ChoresJourneyTests: JourneyTestCase {
             // Let the lists load and draw before leaving.
             _ = element("todo.empty", in: app).waitForExistence(timeout: 4)
             XCTAssertEqual(app.state, .runningForeground, "\(page) crashed the app")
-            app.navigationBars.buttons.firstMatch.tap()
+            goBack(in: app)
             XCTAssertTrue(link.waitForExistence(timeout: 10), "Back from \(page) failed")
         }
     }
