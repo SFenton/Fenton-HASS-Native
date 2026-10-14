@@ -24,6 +24,11 @@ struct ArcSpinnerTests {
         #expect(size.lineWidth < size.diameter / 4)
     }
 
+    @Test @MainActor func pausedSpinnerStillDraws() {
+        let still = ArcSpinner(.page).environment(\.arcSpinnersPaused, true).foregroundStyle(.white)
+        #expect(ImageRenderer(content: still).cgImage != nil)
+    }
+
     @Test @MainActor func progressStyleDrawsTitledAndDeterminateViews() {
         let titled = ProgressView("Loading recipes").progressViewStyle(.arc)
         let compact = ProgressView("Finding more recipes").progressViewStyle(.arc(.compact))

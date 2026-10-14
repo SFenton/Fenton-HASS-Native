@@ -97,11 +97,12 @@ struct StatusChipButton: View {
             Image(systemName: symbol)
                 .symbolVariant(fill != nil ? .fill : .none)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(fill?.chipGlyph ?? HassTokens.Ink.secondary)
+                .foregroundStyle(fill?.chipGlyph ?? HassTokens.Surface.secondaryOnModule)
             VStack(alignment: .leading, spacing: 0) {
-                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
+                // Fixed inks: the chip's ground is always dark (a family fill or the module), whatever the scheme.
+                Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
                 Text(summary).font(.caption)
-                    .foregroundStyle(fill != nil ? Color.white.opacity(0.92) : HassTokens.Ink.secondary)
+                    .foregroundStyle(fill != nil ? Color.white.opacity(0.92) : HassTokens.Surface.secondaryOnModule)
                     .monospacedDigit()
             }
         }

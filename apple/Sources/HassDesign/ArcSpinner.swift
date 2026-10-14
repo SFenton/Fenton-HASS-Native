@@ -40,6 +40,7 @@ public struct ArcSpinner: View {
     private let size: Size
     private let label: String
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.arcSpinnersPaused) private var paused
 
     /// Creates a spinner.
     /// - Parameters:
@@ -52,7 +53,7 @@ public struct ArcSpinner: View {
 
     public var body: some View {
         let lineWidth = size.lineWidth
-        TimelineView(.animation) { context in
+        TimelineView(.animation(paused: paused)) { context in
             ZStack {
                 Circle()
                     .stroke(.foreground.opacity(0.22), lineWidth: lineWidth)
@@ -84,6 +85,13 @@ public struct ArcSpinner: View {
         let phase = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
         return phase * 360
     }
+}
+
+public extension EnvironmentValues {
+    /// Holds every ``ArcSpinner`` inside still. Only for galleries: a spinner that never stops keeps the app from
+    /// ever going idle, so XCUITest waits out its idle timeout on every action and can lose the runner (iPad,
+    /// 2026-10-14).
+    @Entry var arcSpinnersPaused = false
 }
 
 #Preview("Arc spinner sizes") {

@@ -36,6 +36,8 @@ struct DirectionGGallery: View {
             .padding(HassTokens.Spacing.l)
         }
         .background { DirectionGGalleryWallpaper() }
+        // Still arcs, so XCUITest sees the app go idle (`arcSpinnersPaused`); `-directionGAnimate YES` turns them.
+        .environment(\.arcSpinnersPaused, !UserDefaults.standard.bool(forKey: "directionGAnimate"))
         .navigationTitle("Direction G")
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showsSheet) {

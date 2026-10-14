@@ -297,13 +297,17 @@ public struct GlassTileFace: View {
 
     // MARK: Ink
 
+    // Every ground is fixed (dark module or sheet cell, lit tile, family fill), so the inks are fixed too and never
+    // follow the colour scheme: a light-appearance gallery drew black titles on the dark ground (2.7:1).
+
     private func glyphColor(_ style: TileFaceStyle) -> Color {
-        switch style {
-        case .off: isEnabled ? (family?.offGlyph ?? Color.secondary) : .secondary
+        let muted = HassTokens.Surface.secondaryOnModule
+        return switch style {
+        case .off: isEnabled ? (family?.offGlyph ?? muted) : muted
         case .lit: LitTile.glyph
         case let .filled(family): family.ink
-        case .tinted: isEnabled ? tint : .secondary
-        case .error: HassTokens.Ink.danger
+        case .tinted: isEnabled ? tint : muted
+        case .error: Color(rgb: HassTokens.Palette.red)
         }
     }
 
@@ -311,7 +315,7 @@ public struct GlassTileFace: View {
         switch style {
         case .lit: LitTile.ink
         case let .filled(family): family.ink
-        default: HassTokens.Ink.primary
+        default: .white
         }
     }
 
@@ -319,8 +323,8 @@ public struct GlassTileFace: View {
         switch style {
         case .lit: LitTile.secondaryInk
         case let .filled(family): family.secondaryInk
-        case .error: HassTokens.Ink.danger
-        default: HassTokens.Ink.secondary
+        case .error: Color(rgb: HassTokens.Palette.red)
+        default: HassTokens.Surface.secondaryOnModule
         }
     }
 
