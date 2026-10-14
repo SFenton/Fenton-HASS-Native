@@ -26,6 +26,7 @@ public struct ComponentGallery: View {
         case performance
         case weather
         case directionG = "direction-g"
+        case location
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -63,6 +64,9 @@ public struct ComponentGallery: View {
         } else if page == .vacation {
             // Owns its stack, so its last-call line stays under pushed pages too.
             VacationGallery()
+        } else if page == .location {
+            // Presents its own sheet, which owns its navigation stack.
+            LocationGallery()
         } else if page == .rooms {
             // Owns its stack so pushed rooms inherit the fixture store and caller.
             RoomsGallery()
@@ -85,7 +89,7 @@ public struct ComponentGallery: View {
                 case .inventory: InventoryGallery()
                 case .performance: PerformanceGallery()
                 case .weather: WeatherGallery()
-                case .rooms, .vacation, .food, .chores: EmptyView()
+                case .rooms, .vacation, .food, .chores, .location: EmptyView()
                 }
             }
         }
