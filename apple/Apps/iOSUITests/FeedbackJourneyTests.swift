@@ -4,18 +4,7 @@ import XCTest
 /// (`FENTON_FEEDBACK_FIXTURE`), so no journey files a real GitHub issue. Audits run on every form and the
 /// GitHub Access page, with an AX5 relaunch.
 @MainActor
-final class FeedbackJourneyTests: XCTestCase {
-    override func setUp() {
-        continueAfterFailure = false
-        if FentonHomeApp.family == .iPad, ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" {
-            XCUIDevice.shared.orientation = .landscapeLeft
-        }
-    }
-
-    override func tearDown() {
-        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
-    }
-
+final class FeedbackJourneyTests: JourneyTestCase {
     // MARK: - Helpers
 
     /// Signs in with the feedback fixture: `1` starts with a token, `connect` without one.
@@ -23,11 +12,11 @@ final class FeedbackJourneyTests: XCTestCase {
         try FentonHomeApp.launchSignedIn(arguments: arguments, environment: ["FENTON_FEEDBACK_FIXTURE": fixture])
     }
 
-    /// Goes to Settings: through the navigation flyout in regular width (iPad, unfolded Duo), else the tab
-    /// bar or the folded Duo's rail.
+    /// Goes to Settings: through the navigation menu where there is one (iPhone, iPad, unfolded Duo), else the
+    /// folded Duo's rail.
     private func goToSettings(_ app: XCUIApplication) {
         let open = app.buttons["nav.open"]
-        if open.waitForExistence(timeout: 3) {
+        if open.waitForExistence(timeout: 8) {
             open.tap()
             let row = app.buttons["nav.settings"]
             XCTAssertTrue(row.waitForExistence(timeout: 5), "Flyout Settings row not found")
@@ -59,7 +48,7 @@ final class FeedbackJourneyTests: XCTestCase {
         goToSettings(app)
         let row = feedbackRow(app, kind)
         XCTAssertTrue(row.waitForExistence(timeout: 5), "Feedback row \(kind) not found")
-        XCTAssertGreaterThanOrEqual(row.frame.height, 43.5, "Feedback row below 44 pt")
+        assertTarget(row)
         row.tap()
         XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5), "Feedback form did not open")
         sleep(1) // Let the sheet finish presenting.
@@ -154,12 +143,15 @@ final class FeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(app.buttons["feedback.submit"].exists, "Feature form did not open")
         reveal(app.buttons["feedback.close"], in: app, up: false).tap()
         XCTAssertTrue(app.buttons["feedback.submit"].waitForNonExistence(timeout: 5))
-        // Audited last: the AX5 relaunch replaces this app instance.
+        // Audited last (the AX5 relaunch replaces this app instance), from the top of the list like
+        // SettingsJourneyTests: scrolled to the end on the short folded Duo, the topics fade under the header and
+        // the audit reports that faded text as element-less contrast issues it can't attribute.
         XCTAssertTrue(feedbackRow(app, "feature").exists)
+        for _ in 0..<4 { app.collectionViews.firstMatch.swipeDown(velocity: .fast) }
         try FentonHomeApp.audit(app) {
             let large = try self.launch(arguments: FentonHomeApp.ax5)
             self.goToSettings(large)
-            _ = self.feedbackRow(large, "bug")
+            _ = large.buttons["settings.homeAssistant"].waitForExistence(timeout: 10)
             return large
         }
     }
@@ -234,8 +226,7 @@ final class FeedbackJourneyTests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5), "GitHub Access page did not open")
         XCTAssertTrue(app.links["feedback.github.create"].exists || app.buttons["feedback.github.create"].exists)
         field.tap()
-        field.typeText("x")
-        app.buttons["feedback.github.save"].tap()
+        field.typeText("x\n")
         XCTAssertTrue(app.staticTexts["feedback.github.error"].waitForExistence(timeout: 10), "Wrong token accepted")
         field.tap()
         // A secure field may or may not clear itself when editing starts again (iPad keeps "x"); delete enough.
@@ -299,8 +290,7 @@ final class FeedbackJourneyTests: XCTestCase {
             keepScreenshot(app, "feedback-github-access-\(suffix)")
             let field = app.secureTextFields["feedback.github.token"]
             field.tap()
-            field.typeText("fixture-token")
-            app.buttons["feedback.github.save"].tap()
+            field.typeText("fixture-token\n")
             XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 10))
             fill(app, title: "Garage tile stuck")
             reveal(app.textViews["feedback.field.description"], in: app, up: false)

@@ -43,6 +43,7 @@ struct FeedbackFormSheet: View {
     var body: some View {
         NavigationStack {
             form
+                .modalChrome()
                 .navigationTitle(kind.formTitle)
                 .inlineNavigationTitle()
                 .toolbar { toolbar }
@@ -50,6 +51,7 @@ struct FeedbackFormSheet: View {
                     GitHubAccessView(services: model.services) {
                         Task { await model.refreshAccess() }
                     }
+                    .modalChrome()
                 }
         }
         .interactiveDismissDisabled(model.isSending || model.hasUnsavedInput)

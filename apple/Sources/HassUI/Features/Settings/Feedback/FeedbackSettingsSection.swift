@@ -18,19 +18,18 @@ struct FeedbackSettingsSection: View {
                 .accessibilityIdentifier("settings.feedback.\(kind.rawValue)")
                 .accessibilityHint("Opens a form that files it on GitHub.")
             }
-        } header: {
-            Text("Feedback").foregroundStyle(HassTokens.Ink.secondary)
         }
+        // No section header: the list sits on the house backdrop (page-backdrop R4), where a bare header measured
+        // 1.2:1 on iPad; the rows' own titles say what they do, like the Performance section above.
     }
 }
 
 extension View {
-    /// Presents the feedback form for `kind` as a large sheet, deleting staged media however it closes.
+    /// Presents the feedback form for `kind` through ``SwiftUI/View/hassSheet(_:)`` (full height on iPhone, a form sheet on iPad), deleting staged media however it closes.
     func feedbackFormSheet(item kind: Binding<FeedbackKind?>) -> some View {
         sheet(item: kind, onDismiss: FeedbackFormModel.purgeStagedMedia) { kind in
             FeedbackFormSheet(kind: kind)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+                .hassSheet(.form)
         }
     }
 }
