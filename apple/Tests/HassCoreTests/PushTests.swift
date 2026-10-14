@@ -513,3 +513,71 @@ struct PushCategoryTests {
         #expect(PushAttachmentSource(url: image.url, kind: .file, needsAuthorization: false).byteLimit == 5_000_000)
     }
 }
+
+// MARK: - Enrichment
+
+@Suite("Push enrichment")
+struct PushEnrichmentTests {
+    @Test func plansCategoryThreadAndAttachment() {
+        let payload = PushPayload(group: "garage", actions: [PushAction(action: "CLOSE", title: "Close")], entityID: "camera.front")
+        let plan = PushEnrichment(payload: payload, categoryIdentifier: PushPayload.dynamicCategory, threadIdentifier: "", server: server)
+        #expect(plan.category?.actions.map(\.action) == ["CLOSE"])
+        #expect(!plan.clearsPlaceholderCategory)
+        #expect(plan.threadIdentifier == "garage")
+        #expect(plan.attachment?.url.path == "/api/camera_proxy/camera.front")
+
+        let plain = PushEnrichment(payload: PushPayload(group: "g"), categoryIdentifier: PushPayload.dynamicCategory,
+                                   threadIdentifier: "relay-thread", server: nil)
+        #expect(plain.category == nil)
+        #expect(plain.clearsPlaceholderCategory)
+        #expect(plain.threadIdentifier == nil, "the relay's thread wins")
+        #expect(plain.attachment == nil, "no server, no attachment")
+        #expect(!PushEnrichment(payload: PushPayload(), categoryIdentifier: "calendar", threadIdentifier: "", server: nil).clearsPlaceholderCategory)
+    }
+
+    #if canImport(UserNotifications)
+    @Test func appliesToContent() {
+        let content = UNMutableNotificationContent()
+        content.categoryIdentifier = PushPayload.dynamicCategory
+        let built = PushEnrichment(payload: PushPayload(group: "g", actions: [PushAction(action: "A", title: "A")]),
+                                   categoryIdentifier: content.categoryIdentifier, threadIdentifier: "", server: nil)
+        built.apply(to: content)
+        #expect(content.categoryIdentifier.hasPrefix(PushCategory.prefix))
+        #expect(content.threadIdentifier == "g")
+        let cleared = UNMutableNotificationContent()
+        cleared.categoryIdentifier = PushPayload.dynamicCategory
+        PushEnrichment(payload: PushPayload(), categoryIdentifier: cleared.categoryIdentifier, threadIdentifier: "t", server: nil)
+            .apply(to: cleared)
+        #expect(cleared.categoryIdentifier.isEmpty)
+        #expect(cleared.threadIdentifier.isEmpty)
+    }
+    #endif
+
+    @Test func loaderDownloadsWithinLimits() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("push-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let snapshot = PushAttachmentSource(url: URL(string: "https://ha.example.com/api/camera_proxy/camera.x")!, kind: .image, needsAuthorization: true)
+        let transport = StubHTTPTransport([(200, "jpeg-bytes")])
+        let file = try #require(await PushAttachmentLoader(transport: transport, directory: directory).load(snapshot, accessToken: "tok"))
+        #expect(try String(contentsOf: file, encoding: .utf8) == "jpeg-bytes")
+        #expect(file.pathExtension == "jpg")
+        #expect(transport.requests.first?.value(forHTTPHeaderField: "Authorization") == "Bearer tok")
+
+        // No token for a server file, a failed status, an empty body: nothing.
+        #expect(await PushAttachmentLoader(transport: StubHTTPTransport([]), directory: directory).load(snapshot, accessToken: nil) == nil)
+        #expect(await PushAttachmentLoader(transport: StubHTTPTransport([(404, "x")]), directory: directory).load(snapshot, accessToken: "t") == nil)
+        #expect(await PushAttachmentLoader(transport: StubHTTPTransport([(200, "")]), directory: directory).load(snapshot, accessToken: "t") == nil)
+        // Over the limit.
+        let file5 = PushAttachmentSource(url: URL(string: "https://cdn/x.pdf")!, kind: .file, needsAuthorization: false)
+        let big = String(repeating: "x", count: 5_000_001)
+        #expect(await PushAttachmentLoader(transport: StubHTTPTransport([(200, big)]), directory: directory).load(file5, accessToken: nil) == nil)
+        // A public file needs no token; an unwritable folder fails.
+        let open = StubHTTPTransport([(200, "pdf")])
+        #expect(await PushAttachmentLoader(transport: open, directory: directory).load(file5, accessToken: nil)?.pathExtension == "pdf")
+        #expect(open.requests.first?.value(forHTTPHeaderField: "Authorization") == nil)
+        let missing = directory.appendingPathComponent("missing/deeper")
+        #expect(await PushAttachmentLoader(transport: StubHTTPTransport([(200, "pdf")]), directory: missing).load(file5, accessToken: nil) == nil)
+        #expect(PushAttachmentSource(url: snapshot.url, kind: .image, needsAuthorization: false).fileExtension(mimeType: "image/png; q=1") == "png")
+    }
+}

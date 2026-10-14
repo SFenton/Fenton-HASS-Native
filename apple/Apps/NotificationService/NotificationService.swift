@@ -3,7 +3,7 @@ import HassCore
 import UserNotifications
 
 /// Finishes a Fenton Push notification before the system shows it (contract v1, rule 3;
-/// `.agents/platforms/apple/push.md`):
+/// `.agents/platforms/apple/push.md`), with ``PushEnrichment``:
 ///
 /// - replaces the relay's `fenton.dynamic` placeholder with a category built from the payload's buttons
 ///   (``PushCategory``), registered next to the categories already there;
@@ -11,7 +11,8 @@ import UserNotifications
 /// - attaches the camera snapshot (`/api/camera_proxy/<entity_id>`) or the image, video or file, fetched with the
 ///   signed-in user's token from the Keychain item the app shares through the app group.
 ///
-/// Anything that fails leaves the notification as the relay sent it.
+/// Anything that fails leaves the notification as the relay sent it. `xcrun simctl push` never runs service
+/// extensions; the app's debug local preview (`FENTON_PUSH_PREVIEW`) runs the same enrichment instead.
 final class NotificationService: UNNotificationServiceExtension {
     private let state = DeliveryState()
 
@@ -22,13 +23,25 @@ final class NotificationService: UNNotificationServiceExtension {
             contentHandler(request.content)
             return
         }
-        let thread = content.threadIdentifier.isEmpty ? payload.group : nil
+        let store = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup)
+        let credentials = store.load()
+        let plan = PushEnrichment(payload: payload, categoryIdentifier: content.categoryIdentifier,
+                                  threadIdentifier: content.threadIdentifier, server: credentials?.server)
+        plan.apply(to: content)
         state.begin(content, handler: contentHandler)
         let state = state
         state.task = Task {
-            await Self.applyCategory(payload, to: state)
-            if let thread { state.update { $0.threadIdentifier = thread } }
-            if let attachment = await Self.attachment(for: payload) { state.update { $0.attachments = [attachment] } }
+            if let category = plan.category {
+                let center = UNUserNotificationCenter.current()
+                center.setNotificationCategories(category.merged(into: await center.notificationCategories()))
+            }
+            if let source = plan.attachment {
+                let token = source.needsAuthorization && credentials != nil ? try? await TokenManager(store: store).validAccessToken() : nil
+                if let file = await PushAttachmentLoader().load(source, accessToken: token),
+                   let attachment = try? UNNotificationAttachment(identifier: source.kind.rawValue, url: file) {
+                    state.update { $0.attachments = [attachment] }
+                }
+            }
             state.finish()
         }
     }
@@ -36,41 +49,6 @@ final class NotificationService: UNNotificationServiceExtension {
     override func serviceExtensionTimeWillExpire() {
         state.task?.cancel()
         state.finish()
-    }
-
-    // MARK: - Category
-
-    private static func applyCategory(_ payload: PushPayload, to state: DeliveryState) async {
-        guard let category = PushCategory(actions: payload.actions) else {
-            state.update { if $0.categoryIdentifier == PushPayload.dynamicCategory { $0.categoryIdentifier = "" } }
-            return
-        }
-        let center = UNUserNotificationCenter.current()
-        let existing = await center.notificationCategories()
-        center.setNotificationCategories(category.merged(into: existing))
-        state.update { $0.categoryIdentifier = category.identifier }
-    }
-
-    // MARK: - Attachment
-
-    private static func attachment(for payload: PushPayload) async -> UNNotificationAttachment? {
-        let store = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup)
-        guard let credentials = store.load(),
-              let source = PushAttachmentSource.resolve(payload, server: credentials.server) else { return nil }
-        var request = URLRequest(url: source.url, timeoutInterval: 20)
-        if source.needsAuthorization {
-            guard let token = try? await TokenManager(store: store).validAccessToken() else { return nil }
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        guard let (file, response) = try? await URLSession.shared.download(for: request),
-              let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
-        let size = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-        guard size > 0, size <= source.byteLimit else { return nil }
-        let named = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension(source.fileExtension(mimeType: http.mimeType))
-        guard (try? FileManager.default.moveItem(at: file, to: named)) != nil else { return nil }
-        return try? UNNotificationAttachment(identifier: source.kind.rawValue, url: named)
     }
 }
 

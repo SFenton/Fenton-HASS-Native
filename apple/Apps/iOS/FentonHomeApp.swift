@@ -25,6 +25,15 @@ final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // Set before launch finishes, so a tap that launched the app is delivered.
         UNUserNotificationCenter.current().delegate = self
+        #if DEBUG
+        PushPreview.scheduleIfRequested()
+        if let command = PushPreview.command() {
+            Task {
+                try? await Task.sleep(for: .seconds(2))
+                await push.handleBackground(userInfo: command)
+            }
+        }
+        #endif
         return true
     }
 

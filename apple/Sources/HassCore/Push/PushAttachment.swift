@@ -57,7 +57,8 @@ public struct PushAttachmentSource: Equatable, Sendable {
     /// type from the extension.
     /// - Parameter mimeType: The response's MIME type.
     public func fileExtension(mimeType: String?) -> String {
-        switch mimeType?.lowercased() {
+        // `image/jpeg; charset=…` reads as `image/jpeg`.
+        switch mimeType?.split(separator: ";").first?.trimmingCharacters(in: .whitespaces).lowercased() {
         case "image/jpeg", "image/jpg": return "jpg"
         case "image/png": return "png"
         case "image/gif": return "gif"
@@ -67,11 +68,15 @@ public struct PushAttachmentSource: Equatable, Sendable {
         case "audio/mpeg": return "mp3"
         case "application/pdf": return "pdf"
         default:
+            // `/api/camera_proxy/camera.front_door` has no file extension, only an entity id.
             let ext = url.pathExtension.lowercased()
-            if !ext.isEmpty { return ext }
+            if Self.mediaExtensions.contains(ext) { return ext }
             return kind == .video ? "mp4" : "jpg"
         }
     }
+
+    /// Extensions read from a URL when the response has no known MIME type.
+    static let mediaExtensions: Set<String> = ["jpg", "jpeg", "png", "gif", "heic", "webp", "mp4", "mov", "m4v", "mp3", "m4a", "pdf"]
 
     /// The largest file the system attaches for each kind (UNNotificationAttachment limits).
     public var byteLimit: Int {
