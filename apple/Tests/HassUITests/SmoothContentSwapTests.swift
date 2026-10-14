@@ -151,7 +151,7 @@ struct SmoothContentSwapTests {
     func vacuumContent(_ scenario: VacuumFixtures.Scenario, tab: VacuumTab) -> (VacuumSheetContent, VacuumController, EntityStore, ManualAnimator) {
         let store = VacuumFixtures.store(scenario)
         let controller = VacuumController(vacuum: Vacuums.all.first { !$0.zones.isEmpty && $0.dockControls != nil } ?? Vacuums.all[0],
-                                          store: store, caller: NullCaller(), scheduler: ManualRevertScheduler())
+                                          store: store, caller: RecordingCaller(), scheduler: ManualRevertScheduler())
         let animator = ManualAnimator()
         let content = VacuumSheetContent(tab: tab, controller: controller) { animator.animate($0, $1, $2) }
         return (content, controller, store, animator)

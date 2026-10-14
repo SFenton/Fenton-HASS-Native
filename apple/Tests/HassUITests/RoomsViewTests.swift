@@ -20,7 +20,7 @@ struct RoomsViewTests {
         store.replaceAll(states)
         let hosted = NavigationStack { view }
             .environment(store)
-            .environment(\.roomServiceCaller, NullCaller())
+            .environment(\.roomServiceCaller, RecordingCaller())
             .dynamicTypeSize(typeSize)
             .frame(width: size.width, height: size.height)
         let renderer = ImageRenderer(content: hosted)
@@ -31,7 +31,7 @@ struct RoomsViewTests {
     func page(_ page: RoomPage, states: [EntityState] = RoomsFixtures.states) -> RoomPageContent {
         let store = EntityStore()
         store.replaceAll(states)
-        return RoomPageContent(page: page, store: store, caller: NullCaller(), imageServer: nil)
+        return RoomPageContent(page: page, store: store, caller: RecordingCaller(), imageServer: nil)
     }
 
     @Test(arguments: RoomsConfig.pages)
@@ -51,7 +51,7 @@ struct RoomsViewTests {
         let store = EntityStore()
         store.replaceAll(RoomsFixtures.states)
         for room in RoomsConfig.pages {
-            let controller = RoomController(page: room, store: store, caller: NullCaller())
+            let controller = RoomController(page: room, store: store, caller: RecordingCaller())
             for card in room.allCards where card.sheet != nil {
                 if case .mediaRemote = controller.sheet(for: card) { continue }
                 #expect(render(RoomCardSheet(controller: controller, card: card), size: Self.phone) != nil, "\(room.id) \(card.title)")
@@ -60,8 +60,8 @@ struct RoomsViewTests {
     }
 
     @Test func quickLinksAndTheRoomGridRender() {
-        #expect(render(QuickLinksSheet(caller: NullCaller()) { _ in }, size: Self.phone) != nil)
-        #expect(render(QuickLinksSheet(caller: NullCaller()) { _ in }, size: Self.phone, typeSize: .accessibility5) != nil)
+        #expect(render(QuickLinksSheet(caller: RecordingCaller()) { _ in }, size: Self.phone) != nil)
+        #expect(render(QuickLinksSheet(caller: RecordingCaller()) { _ in }, size: Self.phone, typeSize: .accessibility5) != nil)
         #expect(render(ScrollView { RoomNavigationGrid(caller: nil) { _ in } }, size: Self.phone) != nil)
         #expect(render(ScrollView { RoomNavigationGrid(caller: nil) { _ in } }, size: Self.tabletLandscape) != nil)
         #expect(render(QuickLinksSecurityDetail(), size: Self.phone) != nil)
@@ -137,8 +137,8 @@ struct RoomsViewTests {
         let store = EntityStore()
         store.replaceAll(RoomsFixtures.states)
         let living = RoomsConfig.page(id: "living-room")!
-        let content = RoomPageContent(page: living, store: store, caller: NullCaller(), imageServer: nil)
-        let controller = RoomController(page: living, store: store, caller: NullCaller())
+        let content = RoomPageContent(page: living, store: store, caller: RecordingCaller(), imageServer: nil)
+        let controller = RoomController(page: living, store: store, caller: RecordingCaller())
         let remoteCard = living.allCards.first { $0.title == "Living Room Remote" }!
         let vents = living.allCards.first { $0.title == "Vents" }!
         guard case let .remote(shared) = RoomPageContent.opening(remoteCard, controller: controller) else {
@@ -158,7 +158,7 @@ struct RoomsViewTests {
 
     @Test func quickLinksAndRoomGridHandlersNavigateAndCountVisits() async {
         var routes: [HomeRoute] = []
-        let caller = NullCaller()
+        let caller = RecordingCaller()
         let sheet = QuickLinksSheet(caller: caller) { routes.append($0) }
         for link in QuickLinks.items { sheet.open(link) }
         #expect(routes.contains(.media) && routes.contains(.food))
@@ -171,21 +171,21 @@ struct RoomsViewTests {
         grid.open(RoomNavigation.item(for: "gym")!)
         RoomNavigationGrid(caller: nil) { opened.append($0) }.open(RoomNavigation.item(for: "office")!)
         #expect(opened == ["gym", "office"])
-        for _ in 0..<200 where caller.calls.isEmpty { await Task.yield() }
-        #expect(caller.calls == ["script.turn_on"])
+        for _ in 0..<200 where caller.names.isEmpty { await Task.yield() }
+        #expect(caller.names == ["script.turn_on"])
     }
 
     @Test func cardTilesRunActionsOrOpenSheets() async {
         let store = EntityStore()
         store.replaceAll(RoomsFixtures.states)
-        let caller = NullCaller()
+        let caller = RecordingCaller()
         let bath = RoomsConfig.page(id: "guest-bathroom")!
         let controller = RoomController(page: bath, store: store, caller: caller)
         var opens = 0
         let towel = bath.allCards.first { $0.title == "Towel Rack" }!
         RoomCardTile(controller: controller, card: towel) { opens += 1 }.activate()
         await controller.waitForCalls()
-        #expect(caller.calls.count == 1 && caller.calls[0].hasPrefix("switch.turn_"))
+        #expect(caller.names.count == 1 && caller.names[0].hasPrefix("switch.turn_"))
         if let sheetCard = bath.allCards.first(where: { $0.sheet != nil && $0.action == nil }) {
             RoomCardTile(controller: controller, card: sheetCard) { opens += 1 }.activate()
             #expect(opens == (controller.display(sheetCard).isEnabled ? 1 : 0))
@@ -197,7 +197,7 @@ struct RoomsViewTests {
     @Test func deviceSheetsResolveFromTheirConfigs() {
         let store = EntityStore()
         let fan = BathroomFanController(config: BathroomFanConfig.forPowerEntity(RoomsConfig.BathroomFan.guestPower)!,
-                                        store: store, caller: NullCaller())
+                                        store: store, caller: RecordingCaller())
         let fans = [RoomsConfig.BathroomFan.guestPower: fan]
         func resolve(_ device: RoomDeviceSheet, connected: Bool = true) -> String? {
             RoomDeviceModal.resolve(device, hasConnection: connected) { fans[$0] }?.id
@@ -223,7 +223,7 @@ struct RoomsViewTests {
         store.replaceAll(RoomsFixtures.states)
         let bath = RoomsConfig.page(id: "guest-bathroom")!
         let living = RoomsConfig.page(id: "living-room")!
-        let caller = NullCaller()
+        let caller = RecordingCaller()
         let bathController = RoomController(page: bath, store: store, caller: caller)
         let livingController = RoomController(page: living, store: store, caller: caller)
         let fanCard = bath.allCards.first { $0.control == .bathroomFan }!
@@ -258,10 +258,10 @@ struct RoomsViewTests {
         store.replaceAll(RoomsFixtures.states)
         let bath = RoomsConfig.page(id: "guest-bathroom")!
         let card = bath.allCards.first { $0.control == .bathroomFan }!
-        let fan = BathroomFanController(config: BathroomFanConfig.forPowerEntity(card.entityId)!, store: store, caller: NullCaller())
+        let fan = BathroomFanController(config: BathroomFanConfig.forPowerEntity(card.entityId)!, store: store, caller: RecordingCaller())
         #expect(render(BathroomFanRoomTile(fan: fan, card: card) {}, size: CGSize(width: 370, height: 120)) != nil)
         #expect(render(BathroomFanRoomTile(fan: fan, card: card) {}, size: CGSize(width: 370, height: 300), typeSize: .accessibility5) != nil)
-        let controller = RoomController(page: bath, store: store, caller: NullCaller())
+        let controller = RoomController(page: bath, store: store, caller: RecordingCaller())
         #expect(render(RoomCardView(controller: controller, card: card, fan: fan) {}, size: CGSize(width: 370, height: 120)) != nil)
         #expect(render(page(bath), size: Self.phone) != nil)
     }

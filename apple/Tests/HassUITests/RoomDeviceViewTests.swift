@@ -21,8 +21,8 @@ struct RoomDeviceViewTests {
 
     func humidifier(_ id: String = "humidifier") -> (HumidifierController, HumidifierScheduleController) {
         let store = fixture(id).store
-        return (HumidifierController(config: .masterBedroom, store: store, caller: NullCaller()),
-                HumidifierScheduleController(config: .masterBedroom, store: store, caller: NullCaller(), storage: GalleryScheduleStore()))
+        return (HumidifierController(config: .masterBedroom, store: store, caller: RecordingCaller()),
+                HumidifierScheduleController(config: .masterBedroom, store: store, caller: RecordingCaller(), storage: GalleryScheduleStore()))
     }
 
     // MARK: Renders
@@ -30,7 +30,7 @@ struct RoomDeviceViewTests {
     @Test(arguments: [DynamicTypeSize.large, .accessibility5])
     func everySheetRenders(typeSize: DynamicTypeSize) {
         for fixture in RoomDeviceFixture.all() {
-            let caller = NullCaller()
+            let caller = RecordingCaller()
             let view: AnyView = switch fixture.kind {
             case let .fan(config): AnyView(BathroomFanSheet(config: config, store: fixture.store, caller: caller))
             case let .purifier(config): AnyView(AirPurifierSheet(config: config, store: fixture.store, caller: caller))
@@ -54,7 +54,7 @@ struct RoomDeviceViewTests {
 
     @Test func controlsRenderWithEverythingUnavailable() {
         let store = EntityStore()
-        let caller = NullCaller()
+        let caller = RecordingCaller()
         #expect(render(BathroomFanControls(controller: BathroomFanController(config: .guest, store: store, caller: caller))) != nil)
         #expect(render(AirPurifierControls(controller: AirPurifierController(config: AirPurifierConfig.all[0], store: store, caller: caller))) != nil)
         #expect(render(GrillControls(controller: GrillController(store: store, caller: caller))) != nil)
@@ -96,7 +96,7 @@ struct RoomDeviceViewTests {
 
         let store = fixture("humidifier").store
         set(store, HumidifierConfig.masterBedroom.powerEntityId, "off")
-        let off = HumidifierDials.mist(HumidifierController(config: .masterBedroom, store: store, caller: NullCaller()))
+        let off = HumidifierDials.mist(HumidifierController(config: .masterBedroom, store: store, caller: RecordingCaller()))
         #expect(off.primaryText(for: .single(0)) == "Off")
         #expect(off.targets == .single(0))
         #expect(off.caption(for: nil) == nil)
@@ -104,13 +104,13 @@ struct RoomDeviceViewTests {
 
         set(store, HumidifierConfig.masterBedroom.powerEntityId, "on")
         set(store, HumidifierConfig.masterBedroom.modeEntityId, "Sleep")
-        let sleep = HumidifierDials.mist(HumidifierController(config: .masterBedroom, store: store, caller: NullCaller()))
+        let sleep = HumidifierDials.mist(HumidifierController(config: .masterBedroom, store: store, caller: RecordingCaller()))
         #expect(sleep.primaryText(for: .single(5)) == "Sleep")
         #expect(!sleep.acceptsInput)
 
         set(store, HumidifierConfig.masterBedroom.mistLevelEntityId, "unknown")
         set(store, HumidifierConfig.masterBedroom.modeEntityId, "Manual")
-        let noLevel = HumidifierDials.mist(HumidifierController(config: .masterBedroom, store: store, caller: NullCaller()))
+        let noLevel = HumidifierDials.mist(HumidifierController(config: .masterBedroom, store: store, caller: RecordingCaller()))
         #expect(noLevel.caption(for: nil) == "41% current")
     }
 

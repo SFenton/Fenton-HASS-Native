@@ -15,7 +15,7 @@ struct ClimateViewTests {
     func controller(_ scenario: ClimateFixtures.Scenario = .home, states: [EntityState]? = nil) -> ClimateController {
         let store = EntityStore()
         store.replaceAll(states ?? ClimateFixtures.states(scenario))
-        return ClimateController(store: store, caller: NullCaller())
+        return ClimateController(store: store, caller: RecordingCaller())
     }
 
     func render(_ view: some View, controller: ClimateController, size: CGSize = phone, typeSize: DynamicTypeSize = .large) -> CGImage? {
@@ -109,10 +109,10 @@ struct ClimateViewTests {
 
     /// A bound dial with a caller commits there (the gallery and the Climate controller's recorder).
     @Test func boundDialCommitsThroughItsCaller() async {
-        let caller = NullCaller()
+        let caller = RecordingCaller()
         let dial = ClimateThermostatDial(entityId: "climate.office", title: "Office", action: "heating", caller: caller)
         await dial.commit(.single(71))?.value
-        #expect(caller.calls == ["climate.set_temperature"])
+        #expect(caller.names == ["climate.set_temperature"])
         let climate = controller()
         #expect(render(dial, controller: climate) != nil)
     }

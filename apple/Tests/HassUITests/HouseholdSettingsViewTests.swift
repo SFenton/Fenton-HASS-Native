@@ -12,7 +12,7 @@ import AppKit
 @MainActor
 struct HouseholdSettingsViewTests {
     private func controller(unavailable: Bool = false) -> HouseholdSettingsController {
-        HouseholdSettingsController(store: HouseholdSettingsFixtures.store(unavailable: unavailable), caller: NullCaller())
+        HouseholdSettingsController(store: HouseholdSettingsFixtures.store(unavailable: unavailable), caller: RecordingCaller())
     }
 
     private func render(_ view: some View, width: CGFloat = 402) -> CGImage? {
@@ -49,7 +49,7 @@ struct HouseholdSettingsViewTests {
     }
 
     @Test func pagesBuildFromAStoreAndCaller() {
-        let view = HouseholdSettingsPageView(page: .guests, store: HouseholdSettingsFixtures.store(), caller: NullCaller())
+        let view = HouseholdSettingsPageView(page: .guests, store: HouseholdSettingsFixtures.store(), caller: RecordingCaller())
         #expect(render(NavigationStack { view }) != nil)
     }
 
