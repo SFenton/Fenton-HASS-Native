@@ -177,14 +177,16 @@ struct DonetickTaskFormFields: View {
                 Toggle("Hide While On Vacation", isOn: $form.hideOnVacation)
                     .accessibilityIdentifier("task.hideOnVacation")
             } footer: {
-                Text("This task will not show up in your chores lists while Vacation Mode is active.")
+                FormFooter("This task will not show up in your chores lists while Vacation Mode is active.")
             }
-            Section("Description") {
+            Section {
                 TextField("Description", text: $form.description, axis: .vertical)
                     .lineLimit(3...8)
                     .accessibilityIdentifier("task.description")
+            } header: {
+                FormHeader("Description")
             }
-            Section("Due") {
+            Section {
                 Toggle("Due Date", isOn: DonetickDueBinding.hasDate($form))
                     .accessibilityIdentifier("task.hasDueDate")
                 if !form.dueDate.isEmpty {
@@ -197,6 +199,8 @@ struct DonetickTaskFormFields: View {
                     DatePicker("Time", selection: DonetickDueBinding.time($form), displayedComponents: .hourAndMinute)
                         .accessibilityIdentifier("task.dueTime")
                 }
+            } header: {
+                FormHeader("Due")
             }
             Section {
                 Picker("Priority", selection: $form.priority) {
@@ -222,12 +226,12 @@ struct DonetickTaskFormFields: View {
                     }
                     .accessibilityIdentifier("task.recurrenceUnit")
                 } footer: {
-                    Text("How often to repeat: every 1 to 365 days, weeks, months, or years.")
+                    FormFooter("How often to repeat: every 1 to 365 days, weeks, months, or years.")
                 }
                 .onChange(of: repeatFocused) { _, focused in if !focused { form.normalizeRepeatEvery() } }
             }
             if form.showsRecurrenceDays {
-                Section("Days of Week") {
+                Section {
                     ForEach(DonetickTaskForm.weekdays) { day in
                         let selected = form.recurrenceDays.contains(day.value)
                         Button { form.toggleDay(day.value) } label: {
@@ -242,6 +246,8 @@ struct DonetickTaskFormFields: View {
                         .accessibilityAddTraits(selected ? [.isSelected] : [])
                         .accessibilityIdentifier("task.day.\(day.value)")
                     }
+                } header: {
+                    FormHeader("Days of Week")
                 }
             }
             if let onDelete {

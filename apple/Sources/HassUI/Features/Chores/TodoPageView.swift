@@ -31,7 +31,7 @@ struct TodoPageView<Header: View>: View {
                         list: section.list,
                         controller: section.controller,
                         showsHeader: !page.hideListHeaders,
-                        layout: page.isDonetick ? .grid : .list,
+                        layout: page.isDonetick || page.editsAdminTodo ? .grid : .list,
                         editor: { editAction(for: section.list, item: $0) }
                     )
                 }

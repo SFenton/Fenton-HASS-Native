@@ -57,6 +57,9 @@ public struct ComponentGallery: View {
         if page == .food {
             // Owns its navigation stack so journeys can start on a pushed page.
             FoodGallery()
+        } else if page == .chores {
+            // Owns its stack so pushed todo pages inherit the fixture store and model.
+            ChoresGallery()
         } else if page == .vacation {
             // Owns its stack, so its last-call line stays under pushed pages too.
             VacationGallery()
@@ -80,10 +83,9 @@ public struct ComponentGallery: View {
                 case .climate: ClimateGallery()
                 case .floatingActions: FloatingActionsGallery()
                 case .inventory: InventoryGallery()
-                case .chores: ChoresGallery()
                 case .performance: PerformanceGallery()
                 case .weather: WeatherGallery()
-                case .rooms, .vacation, .food: EmptyView()
+                case .rooms, .vacation, .food, .chores: EmptyView()
                 }
             }
         }

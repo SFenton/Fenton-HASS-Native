@@ -20,10 +20,8 @@ struct FeedbackFormSheet: View {
     @State private var confirmingDiscard = false
     @State private var showingPhotos = false
     @State private var showingFiles = false
-    @State private var showingAccess = false
     @State private var photoSelection: [PhotosPickerItem] = []
-    /// The focused box, so opening GitHub Access first ends editing (with the keyboard up, the row's tap
-    /// otherwise only dismissed it on iPhone).
+    /// The focused box, cleared before sending so the keyboard closes.
     @FocusState private var focusedField: String?
     @Environment(HassConnection.self) private var connection
     @Environment(\.dismiss) private var dismiss
@@ -35,7 +33,7 @@ struct FeedbackFormSheet: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Creates an empty form.
-    init(kind: FeedbackKind, services: FeedbackServices = .current) {
+    init(kind: FeedbackKind, services: FeedbackServices) {
         self.kind = kind
         _model = State(initialValue: FeedbackFormModel(kind: kind, services: services))
     }
@@ -47,12 +45,6 @@ struct FeedbackFormSheet: View {
                 .navigationTitle(kind.formTitle)
                 .inlineNavigationTitle()
                 .toolbar { toolbar }
-                .navigationDestination(isPresented: $showingAccess) {
-                    GitHubAccessView(services: model.services) {
-                        Task { await model.refreshAccess() }
-                    }
-                    .modalChrome()
-                }
         }
         .interactiveDismissDisabled(model.isSending || model.hasUnsavedInput)
         #if os(iOS)
@@ -83,24 +75,18 @@ struct FeedbackFormSheet: View {
             Text("Thank you! It was filed as issue #\(issue.number). The triage agent will pick it up on its next run.")
         }
         .alert("Couldn't Send", isPresented: failedBinding) {
-            if failureNeedsToken {
-                Button("Update Token") {
-                    model.acknowledgeFailure()
-                    showingAccess = true
-                }
-            }
             Button("OK", role: .cancel) { model.acknowledgeFailure() }
         } message: {
             Text(failureMessage)
         }
-        .task { await model.refreshAccess() }
+        .task { await model.checkAvailability() }
     }
 
     // MARK: - Form
 
     private var form: some View {
         Form {
-            if model.access == nil { accessSection }
+            if model.availability == .unavailable { setupSection }
             Section {
                 TextField("Title", text: $model.title)
                     .frame(minHeight: HassTokens.minTarget)
@@ -133,7 +119,6 @@ struct FeedbackFormSheet: View {
                         .accessibilityIdentifier("feedback.validation")
                 }
             }
-            if model.access != nil { accessSection }
         }
         .formStyle(.grouped)
         .scrollDismissesKeyboard(.interactively)
@@ -204,28 +189,19 @@ struct FeedbackFormSheet: View {
         }
     }
 
-    /// GitHub access: a call to add a token at the top while there is none, else who reports are sent
-    /// as, at the bottom.
-    private var accessSection: some View {
+    /// Shown while Home Assistant can't file reports: what's missing and who can add it (the shared
+    /// ``InfoBox``, `.agents/patterns/info-box.md`).
+    private var setupSection: some View {
         Section {
-            Button {
-                focusedField = nil
-                showingAccess = true
-            } label: {
-                SettingsLinkRow(
-                    title: model.access == nil ? "Add GitHub Access" : "Sending as @\(model.access?.login ?? "")",
-                    subtitle: model.access == nil
-                        ? "Reports are filed in a private GitHub repository. Add an access token once for your devices."
-                        : "Change or remove the GitHub token.",
-                    symbol: "key"
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(model.isSending)
-            .accessibilityIdentifier("feedback.github")
-        } header: {
-            Text("GitHub").foregroundStyle(HassTokens.Ink.secondary)
+            InfoBox(
+                title: "Reporting isn't set up yet",
+                message: "Reports are filed through Home Assistant. Whoever manages it can add the Fenton Home Feedback integration in Settings → Devices & services.",
+                tone: .neutral
+            )
+            .accessibilityIdentifier("feedback.setup")
         }
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color.clear)
     }
 
     @ToolbarContentBuilder
@@ -267,12 +243,13 @@ struct FeedbackFormSheet: View {
     }
 
     private func submit() {
+        focusedField = nil
         let collector = FeedbackDiagnosticsCollector(platform: platform, traits: .init(
             dynamicTypeSize: dynamicTypeSize, colorScheme: colorScheme,
             regularWidth: horizontalSizeClass == .regular, voiceOver: voiceOver, reduceMotion: reduceMotion
         ))
         let connection = connection
-        model.submit(platform: platform) { await collector.collect(connection: connection) }
+        model.submit(platform: platform) { collector.collect(connection: connection) }
     }
 
     private var platform: FeedbackPlatform {
@@ -326,13 +303,8 @@ struct FeedbackFormSheet: View {
     }
 
     private var failureMessage: String {
-        if case let .failed(message, _) = model.phase { return message }
+        if case let .failed(message) = model.phase { return message }
         return ""
-    }
-
-    private var failureNeedsToken: Bool {
-        if case let .failed(_, needsToken) = model.phase { return needsToken }
-        return false
     }
 
     private var failedBinding: Binding<Bool> {

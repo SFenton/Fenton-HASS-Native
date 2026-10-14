@@ -102,8 +102,7 @@ struct HomeAssistantSettingsView: View {
         } header: {
             sectionHeader("Home Assistant")
         } footer: {
-            Text("Opens Home Assistant's own pages, signed in as you.")
-                .foregroundStyle(HassTokens.Ink.secondary)
+            FormFooter("Opens Home Assistant's own pages, signed in as you.")
         }
     }
 

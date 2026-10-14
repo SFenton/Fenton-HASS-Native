@@ -200,14 +200,14 @@ struct ScanItemSheet: View {
             }
         } else {
             statusSection
-            Section("What item are you adding?") {
+            Section {
                 TextField("Product name", text: nameBinding)
                     .autocorrectionDisabled()
                     .accessibilityLabel("Product name")
                     .accessibilityIdentifier("scan.name")
                 Button(model.scanBarcodeTitle) { model.scanBarcodeAgain() }
                     .accessibilityIdentifier("scan.scanAgain")
-            }
+            } header: { FormHeader("What item are you adding?") }
         }
     }
 
@@ -221,15 +221,15 @@ struct ScanItemSheet: View {
             }
         } else {
             statusSection
-            Section("When does it expire?") {
+            Section {
                 expiryField
-            }
-            Section("Quick Expiration Dates") {
+            } header: { FormHeader("When does it expire?") }
+            Section {
                 ForEach(ScanItemModel.QuickExpiry.allCases) { quick in
                     FilterOptionRow(title: quick.title, isSelected: model.selectedQuickExpiry == quick) { model.selectQuickExpiry(quick) }
                         .accessibilityIdentifier("scan.quick.\(quick.rawValue)")
                 }
-            }
+            } header: { FormHeader("Quick Expiration Dates") }
             Section {
                 Button(model.readExpiryTitle) { model.readExpiryAgain() }
                     .disabled(camera.source == .unavailable)
@@ -240,12 +240,12 @@ struct ScanItemSheet: View {
 
     @ViewBuilder
     private var reviewPage: some View {
-        Section("What item are you adding?") {
+        Section {
             TextField("Product name", text: nameBinding)
                 .autocorrectionDisabled()
                 .accessibilityLabel("Product name")
                 .accessibilityIdentifier("scan.name")
-        }
+        } header: { FormHeader("What item are you adding?") }
         Section {
             TextField("Quantity", text: quantityBinding)
                 .numericEntryField()
@@ -253,7 +253,7 @@ struct ScanItemSheet: View {
                 .accessibilityLabel("Quantity")
                 .accessibilityIdentifier("scan.quantity")
         } header: {
-            Text("How many are you adding?")
+            FormHeader("How many are you adding?")
         } footer: {
             if let error = model.quantityError {
                 Text(error)
@@ -267,14 +267,14 @@ struct ScanItemSheet: View {
                     .accessibilityIdentifier("scan.location.\(location.rawValue)")
             }
         } header: {
-            Text("Where should it be stored?")
+            FormHeader("Where should it be stored?")
         } footer: {
-            Text(model.locationHint).accessibilityIdentifier("scan.locationHint")
+            FormFooter(model.locationHint).accessibilityIdentifier("scan.locationHint")
         }
-        Section("When does it expire?") {
+        Section {
             expiryField
-        }
-        Section("Prepared Food") {
+        } header: { FormHeader("When does it expire?") }
+        Section {
             Toggle(isOn: Binding(get: { model.preparedFood }, set: { _ in model.togglePreparedFood() })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Prepared Food Item")
@@ -284,7 +284,7 @@ struct ScanItemSheet: View {
                 }
             }
             .accessibilityIdentifier("scan.prepared")
-        }
+        } header: { FormHeader("Prepared Food") }
         if let error = model.addError {
             Section {
                 Label(error, systemImage: "exclamationmark.triangle.fill")

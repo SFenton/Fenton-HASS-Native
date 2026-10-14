@@ -23,10 +23,10 @@ public struct PerformanceScreen: View {
                     .onChange(of: recording) { _, on in Telemetry.isEnabled = on }
                     .accessibilityIdentifier("performance.recording")
             } footer: {
-                Text("Measures scrolling, loading, live updates and images on this device. Nothing leaves the device unless you export it.")
+                FormFooter("Measures scrolling, loading, live updates and images on this device. Nothing leaves the device unless you export it.")
             }
 
-            Section("Scrolling") {
+            Section {
                 if report.scroll.isEmpty {
                     emptyRow("Scroll a page to measure it.")
                 }
@@ -42,29 +42,29 @@ public struct PerformanceScreen: View {
                     PerformanceRow(title: "MetricKit (last day)", value: String(format: "%.1f ms/s", ratio),
                                    detail: "System scroll hitch ratio", tone: ratio < 5 ? .good : ratio < 10 ? .warning : .bad)
                 }
-            }
+            } header: { FormHeader("Scrolling") }
 
-            Section("Page Loading") {
+            Section {
                 if report.pages.isEmpty { emptyRow("No page has waited for content yet.") }
                 ForEach(report.pages) { page in
                     statsRow(page.name, page.stats)
                 }
                 PerformanceRow(title: "Shown instantly", value: "\(report.counter("gate.instant"))",
                                detail: "Pages whose data was already there")
-            }
+            } header: { FormHeader("Page Loading") }
 
-            Section("Live Updates") {
+            Section {
                 if let stats = report.stats["EntityUpdate"] { statsRow("Apply time", stats) }
                 PerformanceRow(title: "Deliveries", value: "\(report.counter("entity.deliveries"))",
                                detail: "\(report.counter("entity.changed")) entity changes")
-            }
+            } header: { FormHeader("Live Updates") }
 
-            Section("Actions") {
+            Section {
                 if let stats = report.stats["ServiceCall"] { statsRow("Service call", stats) }
                 if let stats = report.stats["OptimisticConfirm"] { statsRow("Confirmed by Home Assistant", stats) }
                 PerformanceRow(title: "Rolled back", value: "\(report.counter("optimistic.rollbacks"))",
                                detail: "Optimistic values undone by failed calls")
-            }
+            } header: { FormHeader("Actions") }
 
             Section {
                 PerformanceRow(title: "Cache hits", value: "\(report.counter("image.memoryHits") + report.counter("image.diskHits"))",
@@ -96,7 +96,7 @@ public struct PerformanceScreen: View {
                 }
                 .accessibilityIdentifier("performance.reset")
             } footer: {
-                Text("\(report.recordCount) samples · \(report.metricKitPayloads) MetricKit reports")
+                FormFooter("\(report.recordCount) samples · \(report.metricKitPayloads) MetricKit reports")
             }
         }
         .navigationTitle("Performance")

@@ -151,6 +151,22 @@ struct SoloTripControllerTests {
         #expect(!h.trip.editorOpen)
     }
 
+    /// Ending a trip publishes a status that briefly doesn't match the journal (`command_available` false).
+    /// The page disables the toggle for that moment but shows no setup error (owner report 2026-10-13).
+    @Test func aBriefOutageMidTransitionShowsNoSetupError() async {
+        let h = make(activeTrip())
+        h.store.apply([awayEntity("ending", awayAttributes(mode: "solo_trip", traveler: "stephen", home: "steph", commandAvailable: false))])
+        await Task.yield()
+        await Task.yield()
+        #expect(h.trip.toggleDisabled)
+        #expect(h.trip.setupError == nil)
+        h.store.apply([awayEntity("idle", awayAttributes(revision: 6))])
+        await Task.yield()
+        await Task.yield()
+        #expect(h.trip.setupError == nil)
+        #expect(h.trip.toggleSubtitle == SoloTripCopy.toggleDisabled)
+    }
+
     // MARK: Engaged
 
     @Test func activeTripShowsNoticeAndReturnFields() {

@@ -292,8 +292,7 @@ struct RecipeFilterSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
             } footer: {
-                Text("Only show recipes where at least this percentage of required ingredients is currently available.")
-                    .foregroundStyle(HassTokens.Ink.secondary) // The system footer gray measured 3.3:1 on iPad.
+                FormFooter("Only show recipes where at least this percentage of required ingredients is currently available.")
             }
             FilterSection("Expiring Ingredients") {
                 Toggle(isOn: $draft.expiringOnly) {

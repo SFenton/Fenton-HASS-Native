@@ -332,6 +332,14 @@ enum FentonHomeApp {
     }
 
     private static func isSystemDrawn(_ issue: XCUIAccessibilityAuditIssue, in app: XCUIApplication, popover: CGRect?) -> Bool {
+        // The system compact date picker's own time label, unstyled by the app: the combined date-and-time
+        // picker reports it with no element, or one that no longer resolves (no type, label or frame), although it
+        // renders label ink on the system fill (black on light gray in the audited screenshot, iPhone Vacation
+        // Dates, 2026-10-13). A resolvable element is still checked like any other.
+        if issue.auditType == .contrast, issue.detailedDescription.contains("_UIDatePickerCompact"),
+           issue.element.map({ !$0.exists }) ?? true {
+            return true
+        }
         guard let element = issue.element else {
             // Same for the content behind an action-sheet popover noted as the audit started (the
             // audit can dismiss it): the popover's dismiss region hides it from assistive technologies.
@@ -388,8 +396,7 @@ enum FentonHomeApp {
             // A row scrolled under the glass tab bar is sampled against the bar (iPhone Settings'
             // last row, 2026-10-11: 1.2:1); the bar's own items stay checked.
             if isUnderTabBar(element, in: app) { return true }
-            if element.elementType == .button && app.navigationBars.buttons[element.label].exists { return true }
-            return element.elementType == .staticText && systemSectionHeaders.contains(element.label)
+            return element.elementType == .button && app.navigationBars.buttons[element.label].exists
         case .dynamicType, .textClipped:
             // Toolbar buttons are system-drawn and offer the Large Content Viewer instead of scaling.
             return element.elementType == .button && app.navigationBars.buttons[element.label].exists
@@ -439,13 +446,6 @@ enum FentonHomeApp {
         return !bar.descendants(matching: element.elementType)[element.label].exists
     }
 
-    /// `Form` section headers, styled by the system.
-    private static let systemSectionHeaders: Set<String> = [
-        "Home Assistant", "Two-factor code",
-        // Inventory sort sheet and Add Item (measured 3.3:1 on iPhone, 2026-10-11).
-        "Sort By", "Sort Direction", "What item are you adding?", "How many are you adding?", "Where should it be stored?",
-        "When does it expire?", "Quick Expiration Dates", "Prepared Food",
-    ]
 }
 
 // MARK: - Screenshots
