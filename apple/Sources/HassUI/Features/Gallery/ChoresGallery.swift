@@ -27,20 +27,25 @@ struct ChoresGallery: View {
     }
 
     var body: some View {
-        Group {
-            if page == ChoresConfig.chores {
-                ChoresContent()
-            } else {
-                TodoPageScreen(page: page)
+        // Owns its stack with the fixtures injected above it, as the app injects the store above its section
+        // stacks, so pushed pages inherit them. The last-call line stays inside, on the root page, so the
+        // floating Add bar sits above it (outside the stack it covered the bar at AX5, 2026-10-13).
+        NavigationStack {
+            Group {
+                if page == ChoresConfig.chores {
+                    ChoresContent()
+                } else {
+                    TodoPageScreen(page: page)
+                }
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
-            if !GalleryEnvironment.isClean {
-                GalleryLastCall(text: service.lastCall)
-                    .padding(.horizontal)
-                    .padding(.vertical, 4)
-                    .background(.bar)
+            .safeAreaInset(edge: .bottom) {
+                // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
+                if !GalleryEnvironment.isClean {
+                    GalleryLastCall(text: service.lastCall)
+                        .padding(.horizontal)
+                        .padding(.vertical, 4)
+                        .background(.bar)
+                }
             }
         }
         .environment(store)

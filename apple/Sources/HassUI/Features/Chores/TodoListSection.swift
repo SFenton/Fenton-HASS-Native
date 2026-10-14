@@ -45,6 +45,9 @@ struct TodoListSection: View {
                 }
             }
         }
+        // A container keeps each row's own identifiers: on a plain stack the section's identifier overwrote
+        // them once the rows lost their material card (2026-10-13).
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("todo.section.\(list.entityId)")
     }
 
@@ -69,9 +72,12 @@ struct TodoItemRow: View {
         let due = item.dueLabel(now: now)
         HStack(alignment: .center, spacing: HassTokens.Spacing.s) {
             Button(action: onToggle) {
+                // The symbol takes the title's font and baseline, so it centers on the first line however
+                // the title wraps (the Label idiom; HIG Typography, SF Symbols "Alignment").
                 HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
                     Image(systemName: item.status == .completed ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
+                        .font(.body.weight(.medium))
+                        .imageScale(.large)
                         .foregroundStyle(item.status == .completed ? AnyShapeStyle(.tint) : AnyShapeStyle(HassTokens.Ink.secondary))
                     VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
                         Text(title)
@@ -109,10 +115,8 @@ struct TodoItemRow: View {
                 .accessibilityIdentifier("todo.edit.\(item.identity)")
             }
         }
-        .padding(.leading, HassTokens.Spacing.m)
-        .padding(.trailing, onEdit == nil ? HassTokens.Spacing.m : HassTokens.Spacing.xs)
+        // No card behind the row (owner, 2026-10-13): the circle and spacing carry it, as in Reminders.
         .padding(.vertical, HassTokens.Spacing.xs)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
     }
 
     /// "Not done, Due in 3 days" or "Done".

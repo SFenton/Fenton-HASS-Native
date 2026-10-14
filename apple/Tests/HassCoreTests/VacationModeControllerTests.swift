@@ -126,6 +126,9 @@ struct VacationModeControllerTests {
         #expect(vacation.showsInlineDates)
         #expect(vacation.cardSubtitle == "On")
         vacation.tapCard()
+        #expect(vacation.isConfirmingDisable)
+        vacation.confirmDisable()
+        #expect(!vacation.isConfirmingDisable)
         #expect(!vacation.modeOn)
         await vacation.drain()
         #expect(h.caller.calls.count == 7)
@@ -135,12 +138,65 @@ struct VacationModeControllerTests {
     @Test func liveChangeClearsTheOptimisticValue() async {
         let h = make(mode: "on", checklist: allDone)
         h.controller.tapCard()
+        h.controller.confirmDisable()
         #expect(!h.controller.modeOn)
         h.store.apply([EntityState(entityId: Vacation.modeEntityId, state: "off")])
         await Task.yield()
         await Task.yield()
         #expect(h.scheduler.pending.isEmpty || !h.controller.modeOn)
         #expect(!h.controller.modeOn)
+    }
+
+    /// Turning an engaged vacation off asks first; Cancel changes nothing (owner, 2026-10-13).
+    @Test func disablingAsksFirstAndCancelKeepsItOn() async {
+        let h = make(mode: "on", checklist: allDone)
+        let vacation = h.controller
+        vacation.tapCard()
+        #expect(vacation.isConfirmingDisable)
+        #expect(vacation.modeOn)
+        #expect(vacation.cardAccessibilityHint == "Asks before turning Vacation Mode off.")
+        vacation.cancelDisable()
+        #expect(!vacation.isConfirmingDisable)
+        await vacation.drain()
+        #expect(vacation.modeOn)
+        #expect(h.caller.calls.isEmpty)
+        // Yes works even when SwiftUI cleared the alert's binding first.
+        vacation.tapCard()
+        vacation.cancelDisable()
+        vacation.confirmDisable()
+        #expect(!vacation.modeOn)
+    }
+
+    @Test func cardHintSaysWhatATapDoes() {
+        #expect(make(checklist: allDone).controller.cardAccessibilityHint == "Asks for the vacation dates.")
+        #expect(make().controller.cardAccessibilityHint == "")
+        #expect(make(mode: "unavailable").controller.cardAccessibilityHint == "")
+    }
+
+    /// The helpers echo one at a time: after the new start lands but before the new end, the saved range is
+    /// the new start against the last vacation's end. The confirmed dates stay on screen until both echo,
+    /// so the range error never flashes (owner report, 2026-10-13).
+    @Test func confirmedDatesHoldUntilBothHelpersEcho() async {
+        let h = make(checklist: allDone, start: "2026-10-01 09:00:00", end: "2026-10-05 18:00:00")
+        let vacation = h.controller
+        vacation.tapCard()
+        let picked = Vacation.DateRange(start: WallClock(date: "2026-10-13", time: "08:00"), end: WallClock(date: "2026-10-14", time: "08:00"))
+        vacation.updatePendingRange(picked)
+        vacation.confirm()
+        #expect(vacation.dateRange == picked)
+        h.store.apply([EntityState(entityId: Vacation.startEntityId, state: "2026-10-13 08:00:00")])
+        await Task.yield()
+        await Task.yield()
+        // The saved range alone is reversed here, which used to show the error.
+        #expect(vacation.savedRange.isInvalid(calendar: AwayTestClock.calendar))
+        #expect(!vacation.invalidDateRange)
+        #expect(!vacation.recoveringInvalidDates)
+        #expect(vacation.dateRange == picked)
+        h.store.apply([EntityState(entityId: Vacation.endEntityId, state: "2026-10-14 08:00:00")])
+        await Task.yield()
+        await Task.yield()
+        #expect(vacation.confirmedRange == nil)
+        #expect(vacation.dateRange == picked)
     }
 
     @Test func inlineDateChangesSaveOneHelper() async {

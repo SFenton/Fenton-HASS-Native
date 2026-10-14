@@ -192,4 +192,86 @@ struct HouseholdAwayControllerTests {
         #expect(ids.allSatisfy { $0 == $0.lowercased() && UUID(uuidString: $0) != nil })
         #expect(HouseholdAwayController.commandTimeout == .seconds(10))
     }
+
+    // MARK: - Transitions (owner report 2026-10-13: errors flashed around ending a Solo Trip)
+
+    static func rejected(_ code: String) -> Result<JSONValue, any Error> {
+        .success(.object(["status": .string("rejected"), "error_code": .string(code), "retryable": .bool(true)]))
+    }
+
+    /// A tap that lands while the plan is moving is retried once the sensor publishes the new revision.
+    @Test func aRevisionMismatchIsRetriedWithTheFreshRevision() async {
+        let store = EntityStore()
+        store.replaceAll([awayEntity("active", awayAttributes(mode: "solo_trip", traveler: "stephen", revision: 7))])
+        let responder = ScriptedResponder()
+        responder.responses = [Self.rejected("expected_revision_mismatch"), ScriptedResponder.accepted(revision: 9)]
+        responder.onCommand = { _ in
+            // Home Assistant had already moved to revision 8; the sensor catches up after the refusal.
+            if responder.sent.count == 1 {
+                store.apply([awayEntity("active", awayAttributes(mode: "solo_trip", traveler: "stephen", revision: 8))])
+            }
+        }
+        let controller = HouseholdAwayController(store: store, responder: responder, retryDelay: .milliseconds(200))
+        #expect(await controller.endNow() == .accepted(revision: 9))
+        #expect(controller.errorCode == nil)
+        #expect(responder.sent.map { $0["expected_revision"] as? Int } == [7, 8])
+        #expect(Set(responder.sent.compactMap { $0["request_id"] as? String }).count == 2)
+    }
+
+    @Test func requestInProgressIsRetriedThenGivesUp() async {
+        let (_, responder, store) = make()
+        responder.responses = Array(repeating: Self.rejected("request_in_progress"), count: HouseholdAwayController.maxRetries + 1)
+        let controller = HouseholdAwayController(store: store, responder: responder, retryDelay: .milliseconds(20))
+        #expect(await controller.cancel() == .rejected(errorCode: "request_in_progress"))
+        #expect(responder.sent.count == HouseholdAwayController.maxRetries + 1)
+        #expect(controller.errorCode == "request_in_progress")
+    }
+
+    @Test func aNonRetryableRefusalIsNotRetried() async {
+        let (controller, responder, _) = make()
+        responder.responses = [Self.rejected("solo_trip_not_scheduled")]
+        #expect(await controller.cancel() == .rejected(errorCode: "solo_trip_not_scheduled"))
+        #expect(responder.sent.count == 1)
+    }
+
+    /// The script admitted the change but timed out on its own echo: not a failure.
+    @Test func anIndeterminateAnswerIsNotAnError() async {
+        let (controller, responder, _) = make()
+        responder.responses = [.success(.object(["response": .object([
+            "status": .string("indeterminate"), "error_code": .string("status_echo_timeout"), "revision": .number(4),
+        ])]))]
+        #expect(await controller.endNow() == .accepted(revision: nil))
+        #expect(controller.errorCode == nil)
+    }
+
+    /// A status that briefly doesn't match the journal is not "setup required"; a lasting one is.
+    @Test func setupUnavailableWaitsOutTheGrace() async {
+        let store = EntityStore()
+        store.replaceAll([awayEntity("active", awayAttributes(mode: "solo_trip", traveler: "stephen"))])
+        let controller = HouseholdAwayController(store: store, responder: ScriptedResponder(), setupGrace: .milliseconds(150))
+        #expect(!controller.setupUnavailable)
+        store.apply([awayEntity("ending", awayAttributes(mode: "solo_trip", traveler: "stephen", commandAvailable: false))])
+        try? await Task.sleep(for: .milliseconds(40))
+        #expect(!controller.setupUnavailable)
+        // Available again inside the grace: nothing was ever shown.
+        store.apply([awayEntity("idle", awayAttributes())])
+        try? await Task.sleep(for: .milliseconds(200))
+        #expect(!controller.setupUnavailable)
+        #expect(!controller.commandOutageConfirmed)
+        // Unavailable past the grace: shown.
+        store.apply([awayEntity("idle", awayAttributes(commandAvailable: false))])
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(controller.setupUnavailable)
+        store.apply([awayEntity("idle", awayAttributes())])
+        try? await Task.sleep(for: .milliseconds(40))
+        #expect(!controller.setupUnavailable)
+    }
+
+    /// Unavailable at launch is a setup problem at once (no grace).
+    @Test func unavailableAtLaunchShowsSetupAtOnce() {
+        let store = EntityStore()
+        store.replaceAll([awayEntity("idle", awayAttributes(commandAvailable: false))])
+        let controller = HouseholdAwayController(store: store, responder: ScriptedResponder())
+        #expect(controller.setupUnavailable)
+    }
 }

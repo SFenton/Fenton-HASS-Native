@@ -15,7 +15,15 @@ Spec: [spec.md](spec.md) (web source `ha-sfenton-react-dash@9ac2a46`).
 - **Sheets.** Confirm Vacation and Schedule Solo Trip are `.sheet`s with Cancel (HIG: Sheets; a form sheet on iPad). The Solo Trip sheet stays open and cannot be swiped away while the schedule waits for Home Assistant's echo.
 - **Controls.** Vacation Mode and Solo Trip are `GlassTile` toggles; travelers are `GlassTile`s with the `.isSelected` trait added locally until `GlassTile` gets its `.selection` kind (owned by the room pages lane); checklist rows are toggle buttons with Checked / Not checked values (HIG: Toggles).
 - **Dates** use `ScheduleDateFields` ([pattern](../../patterns/schedule-date-fields.md)). Fields that write to Home Assistant at once (Vacation Dates, Solo Trip return) commit after 0.9 s without a change, so turning a wheel sends one call (spec open question 1). The sheets keep drafts and send on confirm.
-- **Departure from web:** none in behavior. "Learn More" in the setup subtitle has no link on the web either (spec open question 2).
+- **Departures from web (owner, 2026-10-13):**
+  - Each moment is one date-and-time picker: Vacation "Starts"/"Ends", Solo Trip "Departs"/"Returns" (web: four Date/Time fields).
+  - Turning an engaged Vacation Mode off asks first: alert "Are you sure you want to turn off Vacation Mode?", destructive **Turn Off** and **Cancel** (HIG Alerts: confirm destructive actions with a verb; the owner approved "Turn Off" over "Yes", 2026-10-13).
+  - No section title repeats the navigation title on Vacation Mode or Solo Trip; the description stays.
+  - The Vacation Mode section shows no Household Away command error. The web's per-page controller made that error Vacation-only; the native controller is shared, so it carried Solo Trip errors ("could not apply the Solo Trip change") onto Vacation Mode.
+  - Confirmed vacation dates stay on screen until both `input_datetime` helpers echo (10 s fallback). The helpers echo one at a time, and in between the new start against the previous end flashed the range error.
+  - "Setup required" (alert and subtitles) waits 5 s of continuous `command_available: false` (unavailable at launch shows at once). `sensor.household_away_status` compares status with journal only when a status arrives, so each transition can publish one mismatched status.
+  - `expected_revision_mismatch`, `request_in_progress` and `invalid_journal_contract` refusals wait up to 1.5 s for the sensor and resend with its revision, up to three times; `indeterminate` (the script's own echo timeout) counts as accepted and the page waits for the sensor. The web reports all of these as "could not apply".
+- "Learn More" in the setup subtitle has no link on the web either (spec open question 2).
 
 ## Tests
 

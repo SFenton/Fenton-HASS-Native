@@ -98,7 +98,7 @@ struct AddAdminTodoSheet: View {
                         .onChange(of: task) { _, value in if value.count > 1000 { task = String(value.prefix(1000)) } }
                         .accessibilityIdentifier("adminTodo.task")
                 } footer: {
-                    Text("This issue is synchronized from the dashboard Admin To-Do list. The repository is public.")
+                    FormFooter("This issue is synchronized from the dashboard Admin To-Do list. The repository is public.")
                 }
                 Section {
                     ForEach(images) { image in
@@ -110,11 +110,13 @@ struct AddAdminTodoSheet: View {
                     PhotosPicker(selection: $selection, maxSelectionCount: AdminTodoUpload.maxImages, matching: .images) {
                         Label(images.isEmpty ? "Add Images" : "Choose Different Images", systemImage: "photo.on.rectangle.angled")
                     }
+                    // The app accent measured 3.3:1 on the modal background (iPad audit, 2026-10-13).
+                    .tint(HassTokens.Ink.action)
                     .accessibilityIdentifier("adminTodo.images")
                 } header: {
-                    Text("Images")
+                    FormHeader("Images")
                 } footer: {
-                    Text("Add up to four PNG, JPEG, or WebP images, 10 MB each.")
+                    FormFooter("Add up to four PNG, JPEG, or WebP images, 10 MB each.")
                 }
             }
             .disabled(submitting)
@@ -257,7 +259,7 @@ struct RenameTodoItemSheet: View {
                     .disabled(draft == target.originalTitle && error == nil)
                     .accessibilityIdentifier("renameTodo.reset")
                 } footer: {
-                    Text("This issue is synchronized from the dashboard Admin To-Do list. The repository is public.")
+                    FormFooter("This issue is synchronized from the dashboard Admin To-Do list. The repository is public.")
                 }
             }
             .disabled(submitting)

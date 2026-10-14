@@ -1,15 +1,16 @@
 import SwiftUI
 
-/// One date or time picker in ``ScheduleDateFields``.
+/// One date, time, or date-and-time picker in ``ScheduleDateFields``.
 public struct ScheduleDateField: Identifiable {
-    /// Which part of the moment the picker edits.
-    public enum Part: Sendable { case date, time }
+    /// Which part of the moment the picker edits: the date, the time, or both in one row (the Calendar
+    /// app's Starts/Ends idiom; HIG Pickers, "Date pickers").
+    public enum Part: Sendable { case date, time, dateAndTime }
 
     public var label: String
     public var part: Part
     public var value: Date
     public var identifier: String
-    /// Receives the picked moment (the other part unchanged by the picker).
+    /// Receives the picked moment; a date-only or time-only picker leaves the other part unchanged.
     public var onChange: (Date) -> Void
     public var id: String { identifier }
 
@@ -23,7 +24,7 @@ public struct ScheduleDateField: Identifiable {
     }
 }
 
-/// Paired date and time pickers for schedules (pattern: `.agents/patterns/schedule-date-fields.md`;
+/// Date and time pickers for schedules: one combined picker per moment, or a date and a time (pattern: `.agents/patterns/schedule-date-fields.md`;
 /// web `NativePickerField` pairs in `ScheduleConfirmationForm`).
 ///
 /// Each field is a labeled compact `DatePicker` on a material row, two per row when the width allows.
@@ -47,6 +48,17 @@ public struct ScheduleDateFields: View {
             ForEach(fields) { field in
                 ScheduleDatePicker(field: field, commitDelay: commitDelay)
             }
+        }
+    }
+}
+
+extension ScheduleDateField.Part {
+    /// The picker's components.
+    var components: DatePickerComponents {
+        switch self {
+        case .date: .date
+        case .time: .hourAndMinute
+        case .dateAndTime: [.date, .hourAndMinute]
         }
     }
 }
@@ -91,7 +103,7 @@ struct ScheduleDatePicker: View {
     private var label: some View { Text(field.label) }
 
     private var picker: some View {
-        DatePicker(field.label, selection: selection, displayedComponents: field.part == .date ? .date : .hourAndMinute)
+        DatePicker(field.label, selection: selection, displayedComponents: field.part.components)
             .labelsHidden()
             .accessibilityLabel(field.label)
             .accessibilityIdentifier(field.identifier)

@@ -103,6 +103,6 @@ struct VacationChooser: View {
     }
 
     private var soloTripSubtitle: String {
-        household.snapshot.canCommand ? SoloTripCopy.chooserSubtitle : SoloTripCopy.setupRequiredSubtitle
+        household.setupUnavailable ? SoloTripCopy.setupRequiredSubtitle : SoloTripCopy.chooserSubtitle
     }
 }

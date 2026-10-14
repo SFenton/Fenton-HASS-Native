@@ -30,6 +30,15 @@ public final class VacationModeController {
     public private(set) var blockedEnableAttempted = false
     /// Dates being confirmed; non-nil while the confirmation sheet is open.
     public private(set) var pendingRange: Vacation.DateRange?
+    /// Dates just confirmed, shown until both helpers echo them. Without it the inline dates showed the
+    /// previous vacation's helpers (often an end before the new start) and flashed the range error.
+    public private(set) var confirmedRange: Vacation.DateRange?
+    /// The turn-off alert is showing.
+    public private(set) var isConfirmingDisable = false
+    @ObservationIgnored private var confirmedRangeTimer: Task<Void, Never>?
+
+    /// How long confirmed dates wait for the helpers' echo before the live values win again.
+    public static let confirmedRangeRevert: Duration = .seconds(10)
 
     // MARK: - Init
 
@@ -76,8 +85,8 @@ public final class VacationModeController {
         Vacation.DateRange(startState: live(Vacation.startEntityId), endState: live(Vacation.endEntityId), now: now(), calendar: calendar)
     }
 
-    /// The range shown: the sheet's draft while confirming, else the saved one.
-    public var dateRange: Vacation.DateRange { pendingRange ?? savedRange }
+    /// The range shown: the sheet's draft while confirming, the just-confirmed dates until they echo, else the saved one.
+    public var dateRange: Vacation.DateRange { pendingRange ?? confirmedRange ?? savedRange }
 
     /// Start is not before end.
     public var invalidDateRange: Bool { dateRange.isInvalid(calendar: calendar) }
@@ -128,18 +137,24 @@ public final class VacationModeController {
         return cardEnabled ? Vacation.Copy.on : Vacation.Copy.off
     }
 
+    /// What tapping the card does, for VoiceOver.
+    public var cardAccessibilityHint: String {
+        if cardOpensSheet { return "Asks for the vacation dates." }
+        return cardEnabled && !cardDisabled ? "Asks before turning Vacation Mode off." : ""
+    }
+
     /// The card leads to the confirmation sheet.
     public var cardOpensSheet: Bool { !cardDisabled && !cardEnabled && !isConfirming && checklistComplete }
 
     // MARK: - Actions
 
-    /// Taps the Vacation Mode card (web `toggleVacationMode`).
+    /// Taps the Vacation Mode card (web `toggleVacationMode`). Turning an engaged vacation off asks first
+    /// (owner, 2026-10-13; HIG Alerts: confirm a destructive action).
     public func tapCard() {
         guard !cardDisabled else { return }
         if cardEnabled {
             pendingRange = nil
-            overlay.commit(Vacation.modeEntityId, value: "off", live: live(Vacation.modeEntityId), revertAfter: Self.optimisticRevert)
-            send(Vacation.disableCalls())
+            isConfirmingDisable = true
             return
         }
         if isConfirming {
@@ -153,6 +168,19 @@ public final class VacationModeController {
         pendingRange = .makeDefault(now: now(), calendar: calendar)
         blockedEnableAttempted = false
     }
+
+    /// Turns the vacation off after the alert's Turn Off. Doesn't depend on ``isConfirmingDisable``: SwiftUI may
+    /// clear the alert's binding before or after it runs the button's action.
+    public func confirmDisable() {
+        isConfirmingDisable = false
+        guard cardEnabled else { return }
+        confirmedRange = nil
+        overlay.commit(Vacation.modeEntityId, value: "off", live: live(Vacation.modeEntityId), revertAfter: Self.optimisticRevert)
+        send(Vacation.disableCalls())
+    }
+
+    /// Dismisses the turn-off alert, leaving the vacation on.
+    public func cancelDisable() { isConfirmingDisable = false }
 
     /// Checks or unchecks a task.
     public func toggle(_ item: Vacation.ChecklistItem) {
@@ -177,6 +205,8 @@ public final class VacationModeController {
         let range = pendingRange ?? dateRange
         guard !range.isInvalid(calendar: calendar) else { return }
         send(Vacation.confirmCalls(range))
+        confirmedRange = range
+        scheduleConfirmedRangeRevert()
         pendingRange = nil
         blockedEnableAttempted = false
         overlay.commit(Vacation.modeEntityId, value: "on", live: live(Vacation.modeEntityId), revertAfter: Self.optimisticRevert)
@@ -188,6 +218,9 @@ public final class VacationModeController {
     ///   - changedEnd: The end changed (else the start).
     public func updateSavedRange(_ range: Vacation.DateRange, changedEnd: Bool) {
         let recovering = recoveringInvalidDates
+        // Show the edited range until it echoes, so the untouched side doesn't fall back to a stale helper.
+        confirmedRange = range
+        scheduleConfirmedRangeRevert()
         var calls = [changedEnd
             ? Vacation.setDateTime(Vacation.endEntityId, range.end)
             : Vacation.setDateTime(Vacation.startEntityId, range.start)]
@@ -216,6 +249,16 @@ public final class VacationModeController {
 
     private func liveDidChange() {
         for key in overlay.trackedKeys { overlay.liveChanged(key, to: live(key)) }
+        if let confirmedRange, savedRange == confirmedRange { self.confirmedRange = nil }
+    }
+
+    private func scheduleConfirmedRangeRevert() {
+        confirmedRangeTimer?.cancel()
+        confirmedRangeTimer = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: Self.confirmedRangeRevert)
+            guard !Task.isCancelled else { return }
+            self?.confirmedRange = nil
+        }
     }
 
     private func observeLive() {
