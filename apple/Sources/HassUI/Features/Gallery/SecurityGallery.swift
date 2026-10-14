@@ -26,16 +26,11 @@ struct SecurityGallery: View {
         SecurityPage(caller: recorder, canSend: true, showsCameras: false, showsVehicle: true)
             .environment(store)
             .safeAreaInset(edge: .bottom) {
-                if ProcessInfo.processInfo.environment["FENTON_GALLERY_CLEAN"] != "1" {
-                    Text("Last call: \(recorder.lastCall)")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .lineLimit(3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                if !GalleryEnvironment.isClean {
+                    GalleryLastCall(text: recorder.lastCall)
                         .padding(.horizontal)
                         .padding(.vertical, 4)
                         .background(.bar)
-                        .accessibilityIdentifier("gallery.lastCall")
                 }
             }
     }

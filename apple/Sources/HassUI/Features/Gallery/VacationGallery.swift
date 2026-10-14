@@ -24,16 +24,11 @@ struct VacationGallery: View {
         }
             .safeAreaInset(edge: .bottom) {
                 // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
-                if !MediaRemoteGallery.isClean {
-                    Text("Last call: \(house.lastCall)")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .lineLimit(3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                if !GalleryEnvironment.isClean {
+                    GalleryLastCall(text: house.lastCall)
                         .padding(.horizontal)
                         .padding(.vertical, 4)
                         .background(.bar)
-                        .accessibilityIdentifier("gallery.lastCall")
                 }
             }
     }

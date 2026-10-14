@@ -34,23 +34,16 @@ struct VacuumGallery: View {
                         loader: VacuumFixtures.loader(vacuum, scenario: scenario), server: nil, catalog: nil,
                         services: VacuumFixtures.services, initialTab: initialTab)
                 .safeAreaInset(edge: .bottom) {
-                    if !MediaRemoteGallery.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
+                    if !GalleryEnvironment.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
                 }
         }
         .safeAreaInset(edge: .bottom) {
-            if !MediaRemoteGallery.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
+            if !GalleryEnvironment.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
         }
     }
 
     /// The last service call, which journeys read to check what a control sent.
-    private var lastCall: some View {
-        Text("Last call: \(recorder.lastCall)")
-            .font(.caption.monospaced())
-            .foregroundStyle(HassTokens.Ink.secondary)
-            .lineLimit(3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityIdentifier("gallery.lastCall")
-    }
+    private var lastCall: some View { GalleryLastCall(text: recorder.lastCall) }
 }
 
 /// Synthetic vacuum states for the gallery and hosted tests (not a copy of the live house).

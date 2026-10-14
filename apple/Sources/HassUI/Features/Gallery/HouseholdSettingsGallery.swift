@@ -33,14 +33,14 @@ struct HouseholdSettingsGallery: View {
                     .accessibilityIdentifier("settings.topic.\(page.rawValue)")
                 }
             } footer: {
-                if !MediaRemoteGallery.isClean { lastCall }
+                if !GalleryEnvironment.isClean { lastCall }
             }
         }
         .navigationTitle("Household Settings")
         .navigationDestination(item: $open) { page in
             HouseholdSettingsPageView(page: page, store: store, caller: recorder)
                 .safeAreaInset(edge: .bottom) {
-                    if !MediaRemoteGallery.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
+                    if !GalleryEnvironment.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
                 }
         }
     }
@@ -55,12 +55,7 @@ struct HouseholdGalleryLastCall: View {
     var recorder: HouseholdGalleryRecorder
 
     var body: some View {
-        Text("Last call: \(recorder.lastCall)")
-            .font(.caption.monospaced())
-            .foregroundStyle(HassTokens.Ink.secondary)
-            .lineLimit(3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityIdentifier("gallery.lastCall")
+        GalleryLastCall(text: recorder.lastCall)
     }
 }
 

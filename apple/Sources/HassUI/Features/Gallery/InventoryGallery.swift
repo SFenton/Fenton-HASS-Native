@@ -41,16 +41,11 @@ struct InventoryGallery: View {
         InventoryScreen(model: models.model(for: space), models: models, launch: launch)
             .environment(\.inventoryModels, models)
             .safeAreaInset(edge: .top, spacing: 0) {
-                if ProcessInfo.processInfo.environment["FENTON_GALLERY_CLEAN"] != "1" {
-                    Text("Last call: \(server.lastCall)")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                if !GalleryEnvironment.isClean {
+                    GalleryLastCall(text: server.lastCall, lineLimit: 2)
                         .padding(.horizontal)
                         .padding(.vertical, 4)
                         .background(.bar)
-                        .accessibilityIdentifier("gallery.lastCall")
                 }
             }
     }

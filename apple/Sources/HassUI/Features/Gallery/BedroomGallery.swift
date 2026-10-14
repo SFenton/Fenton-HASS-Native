@@ -79,21 +79,14 @@ struct BedroomGallery: View {
                 }
             }
             .safeAreaInset(edge: .top) {
-                if !MediaRemoteGallery.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
+                if !GalleryEnvironment.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
             }
             .hassSheet(.page)
         }
     }
 
     /// The last service call, which journeys read to check what a control sent.
-    private var lastCall: some View {
-        Text("Last call: \(recorder.lastCall)")
-            .font(.caption.monospaced())
-            .foregroundStyle(HassTokens.Ink.primary) // Secondary ink rendered 2.2:1 on the iPad sheet's bar.
-            .lineLimit(3)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .accessibilityIdentifier("gallery.lastCall")
-    }
+    private var lastCall: some View { GalleryLastCall(text: recorder.lastCall) }
 }
 
 // MARK: - Recorder

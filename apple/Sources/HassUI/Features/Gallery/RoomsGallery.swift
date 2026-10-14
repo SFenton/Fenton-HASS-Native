@@ -28,15 +28,11 @@ struct RoomsGallery: View {
         NavigationStack { list }
             .safeAreaInset(edge: .bottom) {
                 // Journeys read what a control sent while a room is open.
-                if route != nil && !MediaRemoteGallery.isClean {
-                    Text("Last call: \(recorder.lastCall)")
-                        .font(.caption2.monospaced())
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                if route != nil && !GalleryEnvironment.isClean {
+                    GalleryLastCall(text: recorder.lastCall, lineLimit: 2)
                         .padding(.horizontal)
                         .padding(.vertical, 4)
                         .background(.bar)
-                        .accessibilityIdentifier("gallery.lastCall")
                 }
             }
             .environment(store)
@@ -56,11 +52,8 @@ struct RoomsGallery: View {
                 Button("Quick Links") { showsQuickLinks = true }
                     .accessibilityIdentifier("gallery.quickLinks")
             } footer: {
-                if route == nil && !MediaRemoteGallery.isClean {
-                    Text("Last call: \(recorder.lastCall)")
-                        .font(.caption.monospaced())
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .accessibilityIdentifier("gallery.lastCall")
+                if route == nil && !GalleryEnvironment.isClean {
+                    GalleryLastCall(text: recorder.lastCall)
                 }
             }
         }
