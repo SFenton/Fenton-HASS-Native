@@ -21,7 +21,7 @@ The asking stages also show three points (arrivals and departures, only to your 
 ## Decisions
 
 - **HIG wins over the modal pattern.** HIG Privacy, Pre-alert screens: one button that opens the system alert, titled "Continue", not "Allow", and no other way out. So the two asking stages drop the Close every modal carries ([modal-sheet](../../patterns/modal-sheet.md)) and can't be swiped away (`interactiveDismissDisabled`). The system alert itself offers the decline.
-- One `PrimaryButton` per screen, pinned in the bottom inset so it stays reachable at AX5.
+- One `PrimaryButton` per screen, at the end of the scrolling content. Not pinned: on an iPad form sheet a pinned bar covered the last point and the audit measured that text through it (3.6:1, 2026-10-14). At AX5 the action is reached by scrolling.
 - The status row is one element: label "Location Access", value the status.
 - Each point is one element (title and detail). The large symbol is decorative and hidden.
 - Dark, like every sheet in Direction G v1 (`preferredColorScheme(.dark)`, as `WeatherSheet`); light text on the grouped ground keeps the secondary copy well above 4.5:1 (the light ground measured 4.4:1 on the Duo, 2026-10-14).

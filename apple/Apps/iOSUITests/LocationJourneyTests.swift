@@ -93,9 +93,11 @@ final class LocationJourneyTests: JourneyTestCase {
             try FentonHomeApp.audit(app) { self.launch(stage, arguments: FentonHomeApp.ax5) }
             let large = launch(stage, arguments: FentonHomeApp.ax5)
             keepScreenshot(large, "location-\(stage)-ax5-\(layout)")
-            if large.buttons["location.primary"].exists {
-                // Reachable at AX5: the button sits in the bottom inset, never scrolled away.
-                XCTAssertTrue(large.buttons["location.primary"].isHittable, "\(stage): the action is out of reach at AX5")
+            let primary = large.buttons["location.primary"]
+            if primary.exists {
+                // Reachable at AX5: the action ends the scrolling content.
+                for _ in 0..<12 where !primary.isHittable { large.swipeUp() }
+                XCTAssertTrue(primary.isHittable, "\(stage): the action is out of reach at AX5")
             }
             large.terminate()
         }

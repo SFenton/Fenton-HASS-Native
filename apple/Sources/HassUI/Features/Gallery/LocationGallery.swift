@@ -34,8 +34,6 @@ struct LocationGallery: View {
                 ) {
                     if !GalleryEnvironment.isClean {
                         GalleryLastCall(text: lastAction, title: "Last action")
-                            .padding(.horizontal, HassTokens.Spacing.xl)
-                            .padding(.bottom, HassTokens.Spacing.s)
                     }
                 }
                 .hassSheet(.form)

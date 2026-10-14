@@ -28,8 +28,8 @@ public struct LocationPermissionView<Footer: View>: View {
     ///   - onRequestPermission: Shows the next system alert (``LocationReporter/requestPermission()``).
     ///   - onOpenSettings: Opens Settings; nil opens the app's Settings page.
     ///   - onClose: Dismisses the screen.
-    ///   - footer: Content pinned under the action (the debug gallery's last-action line). It lives inside the
-    ///     screen's own bottom inset because an inset added outside the navigation stack doesn't move that one.
+    ///   - footer: Content under the action (the debug gallery's last-action line), inside the screen's scroll
+    ///     content because an inset added outside the navigation stack would cover it.
     public init(permission: LocationPermission, onRequestPermission: @escaping () -> Void,
                 onOpenSettings: (() -> Void)? = nil, onClose: @escaping () -> Void,
                 @ViewBuilder footer: () -> Footer) {
@@ -59,7 +59,6 @@ public struct LocationPermissionView<Footer: View>: View {
                     SheetCloseItem(identifier: "location.close", action: onClose)
                 }
             }
-            .safeAreaInset(edge: .bottom) { actionBar }
         }
         .interactiveDismissDisabled(copy.isPreAlert)
         // Sheets are dark in Direction G v1 (`.agents/design/direction-g-plan.md`, Decisions 3), as the signed-in
@@ -105,26 +104,24 @@ public struct LocationPermissionView<Footer: View>: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("location.footnote")
             }
+
+            actionBar
         }
         .padding(.horizontal, HassTokens.Spacing.xl)
         .padding(.vertical, HassTokens.Spacing.l)
     }
 
     @ViewBuilder
+    /// The action and the footer, at the end of the content. Not pinned: on an iPad form sheet a pinned bar
+    /// covered the last point, and the audit measured that text through it (3.6:1, 2026-10-14).
     private var actionBar: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             if let title = copy.actionTitle {
                 PrimaryButton(title) { perform(copy.action) }
                     .accessibilityIdentifier("location.primary")
-                    .padding(.horizontal, HassTokens.Spacing.xl)
-                    .padding(.vertical, HassTokens.Spacing.m)
-                    .frame(maxWidth: 560)
             }
             footer
         }
-        // Opaque, so text scrolled under the pinned action never shows through it (the iOS 17 stand-in for
-        // iOS 26's scroll edge effect).
-        .background(LocationPermissionColors.ground)
     }
 
     func perform(_ action: LocationPermissionCopy.Action?) {
