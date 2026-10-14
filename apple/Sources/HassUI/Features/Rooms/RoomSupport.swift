@@ -60,6 +60,23 @@ extension RoomTone {
     }
 }
 
+extension RoomTone {
+    /// The tone's direction G colour family (`.agents/design/direction-g.md`, Colour families); nil when it has none.
+    var family: ColorFamily? {
+        switch self {
+        case .light: .lights
+        case .air: .air
+        case .climate: .climate
+        case .presence: .occupancy
+        case .contact: .contact
+        case .vacuum: .cleaning
+        case .media: .media
+        case .power: .power
+        case .warning, .neutral: nil
+        }
+    }
+}
+
 extension RoomColor {
     /// The SwiftUI color, alpha included.
     var color: Color { Color(red: red, green: green, blue: blue).opacity(opacity) }

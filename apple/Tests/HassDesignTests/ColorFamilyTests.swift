@@ -41,6 +41,26 @@ struct ColorFamilyTests {
         #expect(Set(unfilled) == [.lights, .neutral])
     }
 
+    @Test(arguments: ColorFamily.allCases)
+    func chipTextAndGlyphReadOnTheChipFill(_ family: ColorFamily) {
+        guard let fill = family.chipFillRGB else { return }
+        // Power's chip would need dark ink; no status chip uses it.
+        guard family != .power else { return }
+        #expect(contrast(0xFFFFFF, fill) >= 4.5, "\(family) title")
+        #expect(contrast(ColorFamily.mix(0xFFFFFF, fill, 0.92), fill) >= 4.5, "\(family) state")
+        #expect(contrast(family.chipGlyphRGB, fill) >= 3, "\(family) glyph")
+    }
+
+    @Test func alarmStatesPickTheirSecurityFamily() {
+        #expect(ColorFamily.security(alarmState: "armed_home") == .securityHome)
+        #expect(ColorFamily.security(alarmState: "armed_away") == .securityAway)
+        #expect(ColorFamily.security(alarmState: "armed_night") == .securityNight)
+        #expect(ColorFamily.security(alarmState: "disarmed") == .securityDisarmed)
+        #expect(ColorFamily.security(alarmState: "triggered") == .securityTriggered)
+        #expect(ColorFamily.security(alarmState: "arming") == nil)
+        #expect(ColorFamily.security(alarmState: nil) == nil)
+    }
+
     @Test func mixBlendsEachChannel() {
         #expect(ColorFamily.mix(0xFFFFFF, 0x000000, 1) == 0xFFFFFF)
         #expect(ColorFamily.mix(0xFFFFFF, 0x000000, 0) == 0x000000)

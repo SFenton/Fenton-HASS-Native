@@ -30,6 +30,9 @@ public enum ColorFamily: String, CaseIterable, Sendable {
     case power
     /// Grill and oven.
     case cooking
+    /// Whole-home climate status (web navy with the yellow thermometer). Thermostat tiles use ``heating`` and
+    /// ``cooling``.
+    case climate
     /// Security by alarm mode, as on the web.
     case securityHome, securityAway, securityNight, securityDisarmed, securityTriggered
     /// Anything without a family: grey glyph, no fill.
@@ -60,6 +63,7 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         case .cleaning: Spec(glyph: 0xC88CFA, fill: 0x7A3FB0, darkInk: false)
         case .power: Spec(glyph: 0xFFD60A, fill: 0xFFD60A, darkInk: true)
         case .cooking: Spec(glyph: 0xFF8A4C, fill: 0xA8420E, darkInk: false)
+        case .climate: Spec(glyph: 0xFFCC00, fill: 0x195482, darkInk: false)
         case .securityHome: Spec(glyph: 0x64B0FF, fill: 0x1565C0, darkInk: false)
         case .securityAway: Spec(glyph: 0xFF6961, fill: 0xC62828, darkInk: false)
         case .securityNight: Spec(glyph: 0xD08CF0, fill: 0x7B1FA2, darkInk: false)
@@ -84,6 +88,42 @@ public enum ColorFamily: String, CaseIterable, Sendable {
 
     /// Supporting text on ``fill``: white at 92% (4.5:1 or better on every fill), or a dark olive on power.
     public var secondaryInk: Color { spec.darkInk ? Color(rgb: 0x282000).opacity(0.82) : .white.opacity(0.92) }
+
+    // MARK: Status chips
+
+    /// An active status chip's fill (direction-g.md, "Status chips follow the web"): the family fill, except
+    /// lights, whose chip is amber where its tile is the lit tile. Nil for families that have no chip fill.
+    public var chipFillRGB: UInt32? {
+        self == .lights ? 0x7A4A00 : spec.fill
+    }
+
+    /// An active status chip's glyph: orange on the amber lights chip, yellow on climate's navy, the family's
+    /// own green on the soft contact green, teal for air; white on every other fill.
+    public var chipGlyphRGB: UInt32 {
+        switch self {
+        case .lights, .climate, .contact, .air: spec.glyph
+        default: 0xFFFFFF
+        }
+    }
+
+    /// ``chipFillRGB`` as a colour.
+    public var chipFill: Color? { chipFillRGB.map { Color(rgb: $0) } }
+
+    /// ``chipGlyphRGB`` as a colour.
+    public var chipGlyph: Color { Color(rgb: chipGlyphRGB) }
+
+    /// The security family for an alarm panel state (web `alarmColor`), or nil while it is arming, pending or
+    /// unknown.
+    public static func security(alarmState: String?) -> ColorFamily? {
+        switch alarmState {
+        case "armed_home": .securityHome
+        case "armed_away": .securityAway
+        case "armed_night": .securityNight
+        case "disarmed": .securityDisarmed
+        case "triggered": .securityTriggered
+        default: nil
+        }
+    }
 
     /// Mixes two `0xRRGGBB` colours: `amount` of `a`, the rest `b`.
     static func mix(_ a: UInt32, _ b: UInt32, _ amount: Double) -> UInt32 {
