@@ -128,8 +128,12 @@ final class CameraJourneyTests: JourneyTestCase {
         let splits = FentonHomeApp.family != .iPhone && window.width > window.height && window.width >= 1000
         let layout = app.descendants(matching: .any)[splits ? "camera.layout.split" : "camera.layout.stacked"]
         XCTAssertTrue(layout.waitForExistence(timeout: 5), "\(FentonHomeApp.family) \(window.size)")
+        let snapshot = app.buttons["camera.control.snapshot"]
+        XCTAssertTrue(snapshot.wait(for: \.isHittable, toEqual: true, timeout: 10))
+        sleep(1) // Measure after the page sheet settles, not mid-presentation.
         let video = app.descendants(matching: .any)["camera.viewer.video"].frame
-        let controls = app.buttons["camera.control.snapshot"].frame
+        let controls = snapshot.frame
+        add(XCTAttachment(string: "video \(video), controls \(controls)\n\(app.debugDescription)"))
         if splits {
             XCTAssertLessThanOrEqual(video.maxX, controls.minX, "Controls trail the video")
         } else {
