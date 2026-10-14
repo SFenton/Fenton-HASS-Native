@@ -99,15 +99,14 @@ final class SettingsJourneyTests: XCTestCase {
         if cancel.exists && cancel.isHittable {
             cancel.tap()
         } else {
-            let dismiss = app.otherElements["PopoverDismissRegion"].firstMatch
-            if dismiss.exists {
-                dismiss.tap()
-            } else {
-                // Just above the popover: outside it, and clear of the bar's Done button.
-                let popover = app.popovers.firstMatch.exists ? app.popovers.firstMatch.frame : confirmButton(app).frame
-                app.coordinate(withNormalizedOffset: .zero)
-                    .withOffset(CGVector(dx: popover.midX, dy: max(popover.minY - 40, 0))).tap()
-            }
+            // An outside tap, just above the popover (below it when it sits near the top), clear of the bar's Done.
+            // Not the dismiss region's own tap: inside the Account sheet there are several, and the first is the
+            // sheet's, oversized around the window, so its centre fell on the popover and kept it open (iPad and
+            // folded Duo, 2026-10-14).
+            let popover = app.popovers.firstMatch.exists ? app.popovers.firstMatch.frame : confirmButton(app).frame
+            let window = app.windows.firstMatch.frame
+            let y = popover.minY > 80 ? popover.minY - 40 : min(popover.maxY + 40, window.maxY - 20)
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: popover.midX, dy: y)).tap()
         }
         XCTAssertTrue(confirmButton(app).waitForNonExistence(timeout: 5), "Sign-out confirmation did not close")
     }
