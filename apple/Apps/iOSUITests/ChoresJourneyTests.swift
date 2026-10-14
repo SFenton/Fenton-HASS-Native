@@ -168,9 +168,8 @@ final class ChoresJourneyTests: JourneyTestCase {
         let sheets: [(name: String, page: String?, open: (XCUIApplication) -> Void, ready: String)] = [
             ("task-create", nil, { $0.buttons["fab.add"].tap() }, "task.save"),
             ("task-edit", nil, { app in
-                let edit = app.descendants(matching: .any)["todo.edit.13--fixture"].firstMatch
-                for _ in 0..<8 where !(edit.exists && edit.isHittable) { app.scrollViews.firstMatch.swipeUp() }
-                edit.tap()
+                // Clear of the Add bar and the last-call line, which cover the row's pencil at AX5.
+                self.reveal(self.element("todo.edit.13--fixture", in: app), in: app).tap()
             }, "task.name"),
             ("grocery-add", "groceries", { $0.buttons["fab.add"].tap() }, "grocery.add"),
             ("admin-todo-add", "to-do", { $0.buttons["fab.add"].tap() }, "adminTodo.add"),
