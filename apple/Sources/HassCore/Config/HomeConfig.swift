@@ -80,19 +80,46 @@ public enum HomeConfig {
     public struct Camera: Sendable, Identifiable, Hashable {
         public var title: String
         public var entityId: String
-        /// go2rtc stream id for the future live view.
+        /// go2rtc stream id for live video.
         public var rtcStreamId: String
         /// Width / height.
         public var aspectRatio: Double
+        /// `on` while the camera is recording (web `recordingEntityId`).
+        public var recordingEntityId: String?
+        /// Script that toggles a manual recording (web `recordingScriptEntityId`).
+        public var recordingScriptEntityId: String?
         public var id: String { entityId }
+
+        public init(title: String, entityId: String, rtcStreamId: String, aspectRatio: Double,
+                    recordingEntityId: String? = nil, recordingScriptEntityId: String? = nil) {
+            self.title = title
+            self.entityId = entityId
+            self.rtcStreamId = rtcStreamId
+            self.aspectRatio = aspectRatio
+            self.recordingEntityId = recordingEntityId
+            self.recordingScriptEntityId = recordingScriptEntityId
+        }
+
+        /// Starts or stops a manual recording (web `toggleRecording`: `script.turn_on`; the script toggles).
+        public var recordCall: ServiceCall? {
+            recordingScriptEntityId.map { ServiceCall("script", "turn_on", target: $0) }
+        }
     }
 
     /// Home cameras in web order.
     public static let cameras: [Camera] = [
-        .init(title: "Front Door", entityId: "camera.front_door_camera", rtcStreamId: "front_door", aspectRatio: 4.0 / 3.0),
-        .init(title: "Driveway", entityId: "camera.garage_camera", rtcStreamId: "garage_camera", aspectRatio: 10.0 / 3.0),
-        .init(title: "Upper Deck", entityId: "camera.upper_deck_camera_2", rtcStreamId: "upper_deck", aspectRatio: 16.0 / 9.0),
-        .init(title: "Lower Deck", entityId: "camera.lower_deck_camera", rtcStreamId: "lower_deck", aspectRatio: 16.0 / 9.0),
+        .init(title: "Front Door", entityId: "camera.front_door_camera", rtcStreamId: "front_door", aspectRatio: 4.0 / 3.0,
+              recordingEntityId: "input_boolean.is_front_door_recording",
+              recordingScriptEntityId: "script.front_door_manual_recording"),
+        .init(title: "Driveway", entityId: "camera.garage_camera", rtcStreamId: "garage_camera", aspectRatio: 10.0 / 3.0,
+              recordingEntityId: "input_boolean.is_driveway_recording",
+              recordingScriptEntityId: "script.driveway_manual_recording"),
+        .init(title: "Upper Deck", entityId: "camera.upper_deck_camera_2", rtcStreamId: "upper_deck", aspectRatio: 16.0 / 9.0,
+              recordingEntityId: "input_boolean.is_upper_deck_recording",
+              recordingScriptEntityId: "script.upper_deck_manual_recording"),
+        .init(title: "Lower Deck", entityId: "camera.lower_deck_camera", rtcStreamId: "lower_deck", aspectRatio: 16.0 / 9.0,
+              recordingEntityId: "input_boolean.is_lower_deck_recording",
+              recordingScriptEntityId: "script.lower_deck_manual_recording"),
     ]
 
     // MARK: - Lights

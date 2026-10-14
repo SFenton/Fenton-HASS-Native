@@ -86,9 +86,13 @@ final class MediaRemoteJourneyTests: XCTestCase {
         XCTAssertEqual(power.label, "Power")
         XCTAssertEqual(power.value as? String, "On")
         assertTarget(power)
-        XCTAssertTrue(app.staticTexts["Power Off"].exists, "Visible text says what the button will do")
 
         let pad = element("remote.dpad", in: app)
+        // Power sits in the pad's top row, in the cell right of Up, so no row of its own (owner, 2026-10-13).
+        let up = pad.buttons["Up"]
+        XCTAssertEqual(power.frame.midY, up.frame.midY, accuracy: 1, "Power shares Up's row")
+        XCTAssertGreaterThan(power.frame.minX, up.frame.maxX, "Power is right of Up")
+        XCTAssertEqual(power.frame.width, up.frame.width, accuracy: 1, "Power is a d-pad-sized button")
         XCTAssertEqual(pad.label, "Living Room SHIELD remote controls")
         for label in ["Up", "Left", "Select", "Right", "Down"] {
             let button = pad.buttons[label]
@@ -101,11 +105,11 @@ final class MediaRemoteJourneyTests: XCTestCase {
         pad.buttons["Select"].tap()
         expectCall("remote.send_command command=DPAD_CENTER entity_id=remote.living_room_shield", in: app)
 
-        // Power off: the fixture echoes the SHIELD off, the pill flips and the d-pad disables.
+        // Power off: the fixture echoes the SHIELD off, power flips and the directions disable; power stays enabled.
         power.tap()
         expectCall("remote.send_command command=POWER entity_id=remote.living_room_shield", in: app)
         XCTAssertTrue(waitFor(power, "value == %@", "Off"), "Power value is \(power.value ?? "nil")")
-        XCTAssertTrue(app.staticTexts["Power On"].waitForExistence(timeout: 5))
+        XCTAssertTrue(power.isEnabled, "Power is how the device turns back on")
         XCTAssertFalse(pad.buttons["Up"].isEnabled)
         XCTAssertFalse(app.buttons["remote.button.Play"].isEnabled)
     }
@@ -118,7 +122,7 @@ final class MediaRemoteJourneyTests: XCTestCase {
         XCTAssertEqual(power.value as? String, "On")
         power.tap()
         expectCall("script.music_room_tv_off", in: app)
-        XCTAssertTrue(app.staticTexts["Power On"].waitForExistence(timeout: 5), "Optimistic off shows at once")
+        XCTAssertTrue(waitFor(power, "value == %@", "Off"), "Optimistic off shows at once")
     }
 
     /// Navigation, playback and volume rows send their configured calls.
@@ -286,15 +290,29 @@ final class MediaRemoteJourneyTests: XCTestCase {
     func testDevicesTabPassesAudit() throws { try audit("theater-room-shield", tab: "devices") }
     func testHueSyncTabPassesAudit() throws { try audit("music-room-remote", tab: "hueSync") }
 
-    /// At AX5 the power pill and d-pad grow and every control stays reachable by scrolling.
+    /// At AX5 the d-pad (with power) grows and every control stays reachable by scrolling.
     func testLargestTextKeepsControlsReachable() {
         let regular = launch("living-room-shield")
-        let regularHeight = regular.staticTexts["Power Off"].frame.height
+        let regularHeight = element("remote.power", in: regular).frame.height
         let app = launch("living-room-shield", arguments: FentonHomeApp.ax5)
-        XCTAssertGreaterThan(app.staticTexts["Power Off"].frame.height, regularHeight * 1.35, "Power text grows at AX5")
+        XCTAssertGreaterThan(element("remote.power", in: app).frame.height, regularHeight * 1.2, "Power grows with the d-pad at AX5")
         for id in ["remote.button.Volume Up", "remote.button.Keyboard", "remote.button.Play"] {
             reveal(app.buttons[id], in: app)
         }
+    }
+
+    /// Online, the sheet holds a centered spinner until every app's artwork has loaded, then shows it all at once:
+    /// no tile is ever drawn empty and filled in later.
+    func testArtworkLoadsBeforeTheSheetShows() {
+        let app = FentonHomeApp.makeApp()
+        app.launchEnvironment["FENTON_GALLERY"] = "media-remote"
+        app.launchEnvironment["FENTON_GALLERY_REMOTE"] = "living-room-shield"
+        app.launchEnvironment["FENTON_GALLERY_TAB"] = "apps"
+        app.launch()
+        let power = element("remote.power", in: app)
+        XCTAssertTrue(power.waitForExistence(timeout: 30), "Remote sheet did not open")
+        XCTAssertFalse(element("contentGate.spinner", in: app).exists, "The spinner is gone once the content shows")
+        XCTAssertTrue(element("remote.app.Plex", in: app).exists, "App tiles show with the rest of the content")
     }
 
     // MARK: - Screenshots
