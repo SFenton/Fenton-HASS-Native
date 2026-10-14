@@ -324,7 +324,9 @@ public struct GlassTileFace: View {
         case .lit: LitTile.secondaryInk
         case let .filled(family): family.secondaryInk
         case .error: Color(rgb: HassTokens.Palette.red)
-        default: HassTokens.Surface.secondaryOnModule
+        // A state wash lifts the dark ground toward its colour, and over a bright sky the 68% ink fell to 4.3:1
+        // (folded Duo Quick Links: Armed Home and the food tile, 2026-10-14).
+        default: wash != nil ? HassTokens.Surface.secondaryOnWash : HassTokens.Surface.secondaryOnModule
         }
     }
 
