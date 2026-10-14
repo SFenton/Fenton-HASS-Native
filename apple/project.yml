@@ -22,6 +22,16 @@ targets:
     dependencies:
       - package: FentonHomeApple
         product: HassUI
+      # Finishes Fenton Push notifications: buttons, camera snapshots (`.agents/platforms/apple/push.md`).
+      - target: FentonHomeNotificationService
+    # Push Notifications and the app group the notification service extension shares the sign-in Keychain item
+    # through (KeychainTokenStore.sharedAccessGroup). TestFlight archives switch aps-environment to production.
+    entitlements:
+      path: Apps/iOS/FentonHome.entitlements
+      properties:
+        aps-environment: development
+        com.apple.security.application-groups:
+          - group.com.sfenton.home
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home
@@ -43,6 +53,9 @@ targets:
 
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
+        # Silent pushes run commands such as clear_notification (contract v1, rule 3).
+        UIBackgroundModes:
+          - remote-notification
         # iPhone is portrait-only; iPad allows all four. iPhone Duo gets every orientation at runtime
         # once a hinge is observed (FentonOrientationSupport, owner 2026-10-10).
         UISupportedInterfaceOrientations~iphone:
@@ -52,6 +65,32 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+  FentonHomeNotificationService:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Apps/NotificationService
+    dependencies:
+      - package: FentonHomeApple
+        product: HassCore
+    entitlements:
+      path: Apps/NotificationService/NotificationService.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sfenton.home
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.NotificationService
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: Apps/NotificationService/Info.plist
+      properties:
+        CFBundleDisplayName: Home Notifications
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
   FentonHomeWatch:
     type: application
     platform: watchOS
