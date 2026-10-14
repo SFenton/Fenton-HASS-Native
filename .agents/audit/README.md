@@ -39,8 +39,8 @@ The audit thread lands the dedup in small PRs, one concern each, rebased on `mai
 | 4 | Controller shell: superseded by `OptimisticActions` (#36, [optimistic-actions](../patterns/optimistic-actions.md)); controllers move over when their owner next touches them | Feature threads | Reported |
 | 5 | Entity ids defined once in `Config/` | Audit | Planned |
 | 6 | Notices into `InfoBox`; section headers into `SettingsSection`; `BedroomTabPicker` into `SheetTabPicker`; color tokens into `HassTokens` | Audit | Planned |
-| 7 | Gallery: `#if DEBUG` on every gallery file (in review); one recorder base and one Last-call view (planned) | Audit | In progress |
-| 8 | Journey base class and shared helpers; a `HassTestSupport` target for fakes; dead `coverage_gate.py` branches and Food debug helpers removed | Audit | Planned |
+| 7 | Gallery: `#if DEBUG` on every gallery file (done, #41); one recorder base and one Last-call view | Audit | In progress |
+| 8 | Journey base class `JourneyTestCase` (#51; other journeys move over when touched); dead `coverage_gate.py` XML branch removed; a `HassTestSupport` target for fakes | Audit | In progress |
 | 9 | Sheet chrome, presentation modifiers, `SheetTabPicker` API | App chrome thread | Reported |
 | 10 | `try?` on user actions, index identity, Reduce Motion in feature screens | Each feature's thread; Sprinklers, Recipes and Inventory done by Audit (#33) | Reported |
 | 11 | Hosted tests that fail only in a full `swift test` on a loaded Mac: `SecurityViewTests.galleryRecorderEchoes`, `OnDemandSplitHostedTests` (frame and placeholder checks). They pass when run alone | Audit | Planned |
@@ -49,3 +49,5 @@ The audit thread lands the dedup in small PRs, one concern each, rebased on `mai
 
 - Before writing a helper, grep `HassCore/Entities`, `HassCore/Connection` and `HassDesign` for it. Feature folders hold feature logic only; infrastructure types live in those three places.
 - A second copy of anything in this audit is a major review finding. Extend the shared one instead.
+- Every file in `HassUI/Features/Gallery` is wrapped in `#if DEBUG`. Production code reaches the galleries only through `ComponentGallery.requested` and `galleryLastCallBanner()`, which is a no-op in Release.
+- Journeys subclass `JourneyTestCase` ([devices](../testing/apple/devices.md)).
