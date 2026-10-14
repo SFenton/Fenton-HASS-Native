@@ -27,7 +27,7 @@ final class ChoresJourneyTests: JourneyTestCase {
             let top = overlays.map(\.frame.minY).min() ?? .greatestFiniteMagnitude
             return element.frame.maxY <= top
         }
-        for _ in 0..<8 where !clear() {
+        for _ in 0..<20 where !clear() { // AX5 pages run many screens long.
             // A short drag, not a fling, so the row stops where it lands and the next tap isn't eaten
             // by deceleration.
             let scroll = app.scrollViews.firstMatch
