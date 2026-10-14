@@ -81,7 +81,8 @@ struct CameraLiveView: View {
         HStack(spacing: HassTokens.Spacing.xs) {
             switch state.phase {
             case .connecting:
-                ProgressView().controlSize(.mini).tint(.white)
+                // The badge text says "Connecting", so the arc stays silent.
+                ArcSpinner(.inline).accessibilityHidden(true)
             case .live:
                 Circle().fill(.red).frame(width: 8, height: 8)
             case .failed:
