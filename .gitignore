@@ -28,3 +28,6 @@ build/
 .claude/skills/apple-hig/
 .claude/skills/app-designer-pro/
 .claude/commands/duo.md
+
+# Review screenshots are never committed (owner, 2026-10-13; .agents/testing/apple/devices.md).
+screenshots/
