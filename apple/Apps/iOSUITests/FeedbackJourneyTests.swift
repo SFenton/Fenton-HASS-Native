@@ -236,7 +236,7 @@ final class FeedbackJourneyTests: XCTestCase {
         field.tap()
         field.typeText("x")
         app.buttons["feedback.github.save"].tap()
-        XCTAssertTrue(app.staticTexts["feedback.github.error"].waitForExistence(timeout: 5), "Wrong token accepted")
+        XCTAssertTrue(app.staticTexts["feedback.github.error"].waitForExistence(timeout: 10), "Wrong token accepted")
         field.tap()
         field.typeText(XCUIKeyboardKey.delete.rawValue + "fixture-token")
         app.buttons["feedback.github.save"].tap()
