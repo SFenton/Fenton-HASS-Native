@@ -111,9 +111,11 @@ final class FeedbackJourneyTests: XCTestCase {
         let row = app.buttons["feedback.github"]
         let field = app.secureTextFields["feedback.github.token"]
         for _ in 0..<3 where !field.exists {
-            reveal(row, in: app, up: false)
+            // Scroll fully to the top: a row only partly under the navigation bar still reports hittable, and a
+            // tap at its centre lands on the bar. Tap its lower part.
+            for _ in 0..<3 { app.collectionViews.firstMatch.swipeDown(velocity: .fast) }
             sleep(1)
-            row.tap()
+            row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8)).tap()
             _ = field.waitForExistence(timeout: 3)
         }
     }
