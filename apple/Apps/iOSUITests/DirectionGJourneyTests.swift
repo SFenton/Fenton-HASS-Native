@@ -32,15 +32,13 @@ final class DirectionGJourneyTests: JourneyTestCase {
         XCTAssertEqual(element("g.tile.light", in: app).value as? String, "60%")
     }
 
-    /// Tapping a chip and a tile records their actions; tapping the light flips it.
-    func testChipTileAndLightTapsAct() {
+    /// Tapping a chip and a tile records their actions (the light's taps are ``testLightTogglesRepeatedly``).
+    func testChipAndTileTapsAct() {
         let app = launch()
         app.buttons["g.chip.Climate"].tap()
         XCTAssertEqual(lastAction(app), "Last action: chip Climate")
         element("g.tile.Office Lamp", in: app).tap()
         XCTAssertEqual(lastAction(app), "Last action: tile Office Lamp")
-        element("g.tile.light", in: app).tap()
-        XCTAssertEqual(lastAction(app), "Last action: power false")
     }
 
     /// The light toggles off and on repeatedly, its face swapping between the lit and off grounds each time.

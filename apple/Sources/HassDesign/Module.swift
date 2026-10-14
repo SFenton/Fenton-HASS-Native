@@ -11,9 +11,13 @@ public enum ModuleDensity: Sendable, CaseIterable {
 
 /// The page material for content on the wallpaper (``SwiftUICore/View/module(_:cornerRadius:)``).
 ///
-/// A content-layer material: a dark tint over the system's thin blur, 26 pt continuous corners, no rim or bevel.
-/// It is never `.glassEffect`, which HIG reserves for the navigation layer (HIG: Materials, Liquid Glass). With
-/// Reduce Transparency the blur goes and the tint turns opaque (HIG: Accessibility, Reduce Transparency).
+/// A content-layer material: a translucent dark tint, 26 pt continuous corners, no rim or bevel. It is never
+/// `.glassEffect`, which HIG reserves for the navigation layer (HIG: Materials, Liquid Glass). With Reduce
+/// Transparency the tint turns opaque (HIG: Accessibility, Reduce Transparency).
+///
+/// No live background blur: modules only ever sit on the wallpaper, which is already blurred once and cached, so a
+/// blur adds nothing visible, while a backdrop layer per tile is a real GPU cost on a page of tiles (and the
+/// simulator's render server crashed under them, 2026-10-14). The tint is denser instead (direction-g.md, Layers).
 struct ModuleBackground: ViewModifier {
     var density: ModuleDensity
     var cornerRadius: CGFloat
@@ -22,17 +26,11 @@ struct ModuleBackground: ViewModifier {
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         content.background {
-            ZStack {
-                if !reduceTransparency {
-                    shape.fill(.ultraThinMaterial)
-                }
-                shape.fill(Self.tint(density, reduceTransparency: reduceTransparency))
-            }
-            .environment(\.colorScheme, .dark)
+            shape.fill(Self.tint(density, reduceTransparency: reduceTransparency))
         }
     }
 
-    /// The tint over the blur, or the opaque fill with Reduce Transparency.
+    /// The translucent tint, or the opaque fill with Reduce Transparency.
     static func tint(_ density: ModuleDensity, reduceTransparency: Bool) -> Color {
         switch (density, reduceTransparency) {
         case (.thin, false): HassTokens.Surface.moduleThin

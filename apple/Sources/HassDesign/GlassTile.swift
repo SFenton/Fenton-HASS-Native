@@ -382,11 +382,8 @@ public struct GlassTileFace: View {
         case .sheet:
             HassTokens.Surface.sheetCell
         case .page:
-            ZStack {
-                if !reduceTransparency { Rectangle().fill(.ultraThinMaterial) }
-                ModuleBackground.tint(dense ? .dense : .thin, reduceTransparency: reduceTransparency)
-            }
-            .environment(\.colorScheme, .dark)
+            // The module's tint without a live blur (``ModuleBackground``).
+            ModuleBackground.tint(dense ? .dense : .thin, reduceTransparency: reduceTransparency)
         }
     }
 

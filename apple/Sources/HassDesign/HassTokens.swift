@@ -63,7 +63,8 @@ public enum HassTokens {
         public static let sheetGround: UInt32 = 0x1C1C1E
         /// Cells and tiles inside a sheet (`systemGray5` dark).
         public static let sheetCell: UInt32 = 0x2C2C2E
-        /// The thin module on the wallpaper: `#1C1C1E` at 55% over a 30 pt background blur.
+        /// The thin module on the wallpaper: `#1C1C1E` at 66% (G's 55% over a background blur, without the live blur
+        /// the pre-blurred wallpaper makes redundant).
         public static let moduleThin: UInt32 = 0x1C1C1E
         /// The dense module that carries red or orange text over the lit windows: `#141416` at 78%.
         public static let moduleDense: UInt32 = 0x141416
@@ -149,8 +150,8 @@ public enum HassTokens {
         public static let sheetGround = Color(rgb: Palette.sheetGround)
         /// Cells and tiles inside a sheet.
         public static let sheetCell = Color(rgb: Palette.sheetCell)
-        /// The thin module tint, drawn over a background blur (``SwiftUICore/View/module(_:)``).
-        public static let moduleThin = Color(rgb: Palette.moduleThin).opacity(0.55)
+        /// The thin module tint (``SwiftUICore/View/module(_:cornerRadius:)``).
+        public static let moduleThin = Color(rgb: Palette.moduleThin).opacity(0.66)
         /// The dense module for red and orange text; also the opaque-enough fallback with Reduce Transparency.
         public static let moduleDense = Color(rgb: Palette.moduleDense).opacity(0.78)
         /// Hairline separators on dark: white at 14%.
