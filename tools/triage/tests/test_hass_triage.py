@@ -392,6 +392,13 @@ class InstallTests(Base):
             self.assertEqual(ht.main(["init-labels"], home=self.home), 0)
         self.assertIn(("label", "SFenton/Fenton-HASS-Native", "Ready to Merge"), fake.calls)
 
+    def test_deny_list_blocks_merging_and_pushing_to_main(self):
+        denied = set(ht.load_config(self.home)["agent"]["disallowed_tools"])
+        for rule in ("Bash(gh pr merge*)", "Bash(gh api *pulls/*/merge*)", "Bash(gh api -X PUT*)", "Bash(gh api graphql*)",
+                     "Bash(git push origin main*)", "Bash(git push origin HEAD:main*)", "Bash(git push origin --force*)",
+                     "Bash(git push --force*)", "Bash(xcrun simctl boot*)", "Bash(xcodebuild test*)"):
+            self.assertIn(rule, denied)
+
     def test_local_config_overrides(self):
         self.paths.config_dir.mkdir(parents=True)
         (self.paths.config_dir / "config.json").write_text(json.dumps({"agent": {"effort": "max"}}))

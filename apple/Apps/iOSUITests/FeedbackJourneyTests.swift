@@ -4,18 +4,7 @@ import XCTest
 /// (`FENTON_FEEDBACK_FIXTURE`), so no journey files a real GitHub issue. Audits run on every form and the
 /// GitHub Access page, with an AX5 relaunch.
 @MainActor
-final class FeedbackJourneyTests: XCTestCase {
-    override func setUp() {
-        continueAfterFailure = false
-        if FentonHomeApp.family == .iPad, ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" {
-            XCUIDevice.shared.orientation = .landscapeLeft
-        }
-    }
-
-    override func tearDown() {
-        if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
-    }
-
+final class FeedbackJourneyTests: JourneyTestCase {
     // MARK: - Helpers
 
     /// Signs in with the feedback fixture: `1` starts with a token, `connect` without one.
@@ -23,11 +12,11 @@ final class FeedbackJourneyTests: XCTestCase {
         try FentonHomeApp.launchSignedIn(arguments: arguments, environment: ["FENTON_FEEDBACK_FIXTURE": fixture])
     }
 
-    /// Goes to Settings: through the navigation flyout in regular width (iPad, unfolded Duo), else the tab
-    /// bar or the folded Duo's rail.
+    /// Goes to Settings: through the navigation menu where there is one (iPhone, iPad, unfolded Duo), else the
+    /// folded Duo's rail.
     private func goToSettings(_ app: XCUIApplication) {
         let open = app.buttons["nav.open"]
-        if open.waitForExistence(timeout: 3) {
+        if open.waitForExistence(timeout: 8) {
             open.tap()
             let row = app.buttons["nav.settings"]
             XCTAssertTrue(row.waitForExistence(timeout: 5), "Flyout Settings row not found")
@@ -59,7 +48,7 @@ final class FeedbackJourneyTests: XCTestCase {
         goToSettings(app)
         let row = feedbackRow(app, kind)
         XCTAssertTrue(row.waitForExistence(timeout: 5), "Feedback row \(kind) not found")
-        XCTAssertGreaterThanOrEqual(row.frame.height, 43.5, "Feedback row below 44 pt")
+        assertTarget(row)
         row.tap()
         XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5), "Feedback form did not open")
         sleep(1) // Let the sheet finish presenting.
