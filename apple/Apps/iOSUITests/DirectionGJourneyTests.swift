@@ -43,6 +43,17 @@ final class DirectionGJourneyTests: JourneyTestCase {
         XCTAssertEqual(lastAction(app), "Last action: power false")
     }
 
+    /// The light toggles off and on repeatedly, its face swapping between the lit and off grounds each time.
+    func testLightTogglesRepeatedly() {
+        let app = launch()
+        let light = element("g.tile.light", in: app)
+        for expected in ["power false", "power true", "power false", "power true", "power false", "power true"] {
+            light.tap()
+            XCTAssertEqual(lastAction(app), "Last action: \(expected)")
+        }
+        XCTAssertEqual(light.value as? String, "100%")
+    }
+
     /// Dragging the light tile sideways sets its brightness.
     func testDraggingTheLightSetsBrightness() {
         let app = launch()

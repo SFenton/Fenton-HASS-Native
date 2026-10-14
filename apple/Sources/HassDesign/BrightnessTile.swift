@@ -117,7 +117,8 @@ public struct BrightnessTile: View {
         }
         // The tile lifts while dragging (only its shadow with Reduce Motion).
         .scaleEffect(isDragging && !reduceMotion ? 1.03 : 1)
-        .shadow(color: .black.opacity(isDragging ? 0.35 : 0), radius: 12, y: 6)
+        // No shadow pass at rest: a blurred shadow over the tile's material is an offscreen render on every frame.
+        .shadow(color: isDragging ? .black.opacity(0.35) : .clear, radius: isDragging ? 12 : 0, y: isDragging ? 6 : 0)
         .zIndex(isDragging ? 1 : 0)
         .sensoryFeedback(.selection, trigger: Self.hapticStep(interaction.dragPercent)) { old, new in
             old != nil && new != nil
