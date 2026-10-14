@@ -396,7 +396,13 @@ class InstallTests(Base):
         denied = set(ht.load_config(self.home)["agent"]["disallowed_tools"])
         for rule in ("Bash(gh pr merge*)", "Bash(gh api *pulls/*/merge*)", "Bash(gh api -X PUT*)", "Bash(gh api graphql*)",
                      "Bash(git push origin main*)", "Bash(git push origin HEAD:main*)", "Bash(git push origin --force*)",
-                     "Bash(git push --force*)", "Bash(xcrun simctl boot*)", "Bash(xcodebuild test*)"):
+                     "Bash(git push --force*)", "Bash(xcrun simctl boot*)", "Bash(xcodebuild test*)",
+                     # Force pushes anywhere in the command, refspecs that land on main, and the REST routes that
+                     # merge into or rewrite main (git push origin -f report/5, report/5:main, HEAD:refs/heads/main,
+                     # gh api …/merges, PATCH …/git/refs/heads/main).
+                     "Bash(git push * -f*)", "Bash(git push * --force*)", "Bash(git push *+*)", "Bash(git push *:main*)",
+                     "Bash(git push *refs/heads/main*)", "Bash(gh api *merges*)", "Bash(gh api *git/refs*)",
+                     "Bash(gh api * -X PATCH*)", "Bash(gh api -X PATCH*)", "Bash(gh api *--method*PATCH*)"):
             self.assertIn(rule, denied)
 
     def test_local_config_overrides(self):

@@ -151,7 +151,9 @@ final class FeedbackJourneyTests: JourneyTestCase {
         try FentonHomeApp.audit(app) {
             let large = try self.launch(arguments: FentonHomeApp.ax5)
             self.goToSettings(large)
-            _ = large.buttons["settings.homeAssistant"].waitForExistence(timeout: 10)
+            // The AX5 page measures what the audit flagged: scroll to the Feedback rows so they are laid out there
+            // even on short screens.
+            _ = self.feedbackRow(large, "feature")
             return large
         }
     }
