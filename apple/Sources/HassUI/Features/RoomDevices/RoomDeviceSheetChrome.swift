@@ -41,24 +41,45 @@ struct RoomDeviceSheetChrome<Content: View>: View {
                 .modalChrome()
                 .navigationTitle(title)
                 .inlineNavigationTitle()
+                .modifier(DeviceSheetSubtitle(title: title, subtitle: subtitle))
                 .toolbar {
-                    ToolbarItem(placement: .principal) {
-                        VStack(spacing: 0) {
-                            Text(title).font(.headline).foregroundStyle(HassTokens.Ink.primary)
-                            if let subtitle {
-                                Text(subtitle).font(.caption).foregroundStyle(HassTokens.Ink.secondary).monospacedDigit()
-                            }
-                        }
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .accessibilityElement(children: .combine)
-                        .accessibilityAddTraits(.isHeader)
-                        .accessibilityIdentifier("device.sheet.title")
-                    }
                     SheetCloseItem(identifier: "device.sheet.done") { dismiss() }
                 }
         }
         .accessibilityIdentifier(identifier)
+    }
+}
+
+/// The device's status under the sheet title. iOS 26 and later draw it as the system navigation subtitle, which
+/// follows the bar's Dynamic Type and Large Content Viewer rules (a custom principal title shrank instead of growing at
+/// AX5 and failed the humidifier audit, 2026-10-13); earlier systems keep the custom two-line title.
+private struct DeviceSheetSubtitle: ViewModifier {
+    var title: String
+    var subtitle: String?
+
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if #available(iOS 26.0, *) {
+            content.navigationSubtitle(subtitle ?? "")
+        } else if let subtitle {
+            content.toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 0) {
+                        Text(title).font(.headline).foregroundStyle(HassTokens.Ink.primary)
+                        Text(subtitle).font(.caption).foregroundStyle(HassTokens.Ink.secondary).monospacedDigit()
+                    }
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityAddTraits(.isHeader)
+                }
+            }
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }
 
