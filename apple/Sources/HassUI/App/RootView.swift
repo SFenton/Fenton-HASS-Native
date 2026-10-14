@@ -4,10 +4,14 @@ import SwiftUI
 
 /// The app's root: sign-in or the main tabs, plus scene-phase handling.
 public struct RootView: View {
-    @State private var session = AppSession()
+    @State private var session: AppSession
     @Environment(\.scenePhase) private var scenePhase
 
-    public init() {}
+    /// Creates the root.
+    /// - Parameter push: The app delegate's push coordinator; previews and tests use an inert one.
+    public init(push: PushCoordinator = .inert()) {
+        _session = State(initialValue: AppSession(push: push))
+    }
 
     public var body: some View {
         Group {
@@ -23,6 +27,7 @@ public struct RootView: View {
                         .environment(connection)
                         .environment(connection.store)
                         .environment(session)
+                        .environment(session.push)
                         .environment(session.backdrop)
                         .task { await session.backdrop?.refresh() }
                         .readsWindowHinge()

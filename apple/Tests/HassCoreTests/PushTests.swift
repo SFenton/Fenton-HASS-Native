@@ -1,5 +1,6 @@
 import Foundation
 @testable import HassCore
+import HassTestSupport
 import Testing
 #if canImport(UserNotifications)
 import UserNotifications
@@ -97,22 +98,22 @@ struct PushConfigTests {
 struct HomeAssistantPushClientTests {
     let registration = PushRegistration(server: server, userID: "u1", webhookID: "hook1")
 
-    func client(_ transport: StubFeedbackTransport) -> HomeAssistantPushClient {
+    func client(_ transport: StubHTTPTransport) -> HomeAssistantPushClient {
         HomeAssistantPushClient(server: server, accessToken: { "ha-token" }, transport: transport)
     }
 
     @Test func configReadsAndMissingIntegration() async throws {
-        let transport = StubFeedbackTransport([(200, configJSON), (404, "")])
+        let transport = StubHTTPTransport([(200, configJSON), (404, "")])
         let push = client(transport)
         #expect(try await push.config()?.available == true)
         #expect(try await push.config() == nil)
         #expect(transport.requests.first?.url?.path == "/api/fenton_push/config")
         #expect(transport.requests.first?.value(forHTTPHeaderField: "Authorization") == "Bearer ha-token")
-        await #expect(throws: PushClientError.status(500)) { try await client(StubFeedbackTransport([(500, "")])).config() }
+        await #expect(throws: PushClientError.status(500)) { try await client(StubHTTPTransport([(500, "")])).config() }
     }
 
     @Test func registers() async throws {
-        let transport = StubFeedbackTransport([(201, #"{"webhook_id":"new-hook","cloudhook_url":null}"#)])
+        let transport = StubHTTPTransport([(201, #"{"webhook_id":"new-hook","cloudhook_url":null}"#)])
         let id = try await client(transport).register(device, appData: PushAppData.cleared)
         #expect(id == "new-hook")
         let request = try #require(transport.requests.first)
@@ -120,15 +121,15 @@ struct HomeAssistantPushClientTests {
         #expect(request.url?.path == "/api/mobile_app/registrations")
         #expect(body(request)["device_name"] as? String == "Stephen's iPhone · Fenton")
         await #expect(throws: PushClientError.unexpectedResponse) {
-            try await client(StubFeedbackTransport([(201, "{}")])).register(device, appData: .cleared)
+            try await client(StubHTTPTransport([(201, "{}")])).register(device, appData: .cleared)
         }
         await #expect(throws: PushClientError.status(400)) {
-            try await client(StubFeedbackTransport([(400, "")])).register(device, appData: .cleared)
+            try await client(StubHTTPTransport([(400, "")])).register(device, appData: .cleared)
         }
     }
 
     @Test func webhookCalls() async throws {
-        let transport = StubFeedbackTransport([(200, "{}"), (200, "")])
+        let transport = StubHTTPTransport([(200, "{}"), (200, "")])
         let push = client(transport)
         try await push.updateRegistration(registration, device: device, appData: .cleared)
         try await push.fireAction(registration, event: PushActionEvent(action: "LOCK", tag: "door", replyText: "hi"))
@@ -146,25 +147,25 @@ struct HomeAssistantPushClientTests {
         #expect(event["reply_text"] as? String == "hi")
 
         await #expect(throws: PushClientError.registrationGone) {
-            try await client(StubFeedbackTransport([(410, "")])).updateRegistration(registration, device: device, appData: .cleared)
+            try await client(StubHTTPTransport([(410, "")])).updateRegistration(registration, device: device, appData: .cleared)
         }
         await #expect(throws: PushClientError.status(503)) {
-            try await client(StubFeedbackTransport([(503, "")])).fireAction(registration, event: PushActionEvent(action: "A", tag: nil))
+            try await client(StubHTTPTransport([(503, "")])).fireAction(registration, event: PushActionEvent(action: "A", tag: nil))
         }
     }
 
     @Test func failuresMap() async {
-        let offline = StubFeedbackTransport([])
+        let offline = StubHTTPTransport([])
         offline.error = URLError(.notConnectedToInternet)
         await #expect(throws: PushClientError.network) { try await client(offline).config() }
-        let cancelled = StubFeedbackTransport([])
+        let cancelled = StubHTTPTransport([])
         cancelled.error = CancellationError()
         await #expect(throws: CancellationError.self) { try await client(cancelled).config() }
         let signedOut = HomeAssistantPushClient(server: server, accessToken: { throw TokenManager.SignedOut() },
-                                                transport: StubFeedbackTransport([]))
+                                                transport: StubHTTPTransport([]))
         await #expect(throws: PushClientError.signedOut) { try await signedOut.config() }
         let cancelledToken = HomeAssistantPushClient(server: server, accessToken: { throw CancellationError() },
-                                                     transport: StubFeedbackTransport([]))
+                                                     transport: StubHTTPTransport([]))
         await #expect(throws: CancellationError.self) { try await cancelledToken.config() }
     }
 
@@ -178,14 +179,14 @@ struct HomeAssistantPushClientTests {
 
 @Suite("Push registrar")
 struct PushRegistrarTests {
-    func registrar(_ transport: StubFeedbackTransport, store: InMemoryPushRegistrationStore) -> PushRegistrar {
+    func registrar(_ transport: StubHTTPTransport, store: InMemoryPushRegistrationStore) -> PushRegistrar {
         PushRegistrar(server: server,
                       client: HomeAssistantPushClient(server: server, accessToken: { "t" }, transport: transport),
                       store: store, device: device)
     }
 
     @Test func skipsWithoutTheIntegration() async throws {
-        let transport = StubFeedbackTransport([(404, "")])
+        let transport = StubHTTPTransport([(404, "")])
         let store = InMemoryPushRegistrationStore()
         #expect(try await registrar(transport, store: store).sync(userID: "u1", token: "aa") == .integrationMissing)
         #expect(transport.requests.count == 1)
@@ -193,7 +194,7 @@ struct PushRegistrarTests {
     }
 
     @Test func registersThenUpdates() async throws {
-        let transport = StubFeedbackTransport([(200, configJSON), (201, #"{"webhook_id":"w1"}"#), (200, configJSON), (200, "{}")])
+        let transport = StubHTTPTransport([(200, configJSON), (201, #"{"webhook_id":"w1"}"#), (200, configJSON), (200, "{}")])
         let store = InMemoryPushRegistrationStore()
         let push = registrar(transport, store: store)
         guard case let .registered(registration, appData) = try await push.sync(userID: "u1", token: "aa") else {
@@ -216,7 +217,7 @@ struct PushRegistrarTests {
     @Test func reRegistersWhenGone() async throws {
         let saved = PushRegistration(server: server, userID: "u1", webhookID: "old")
         let store = InMemoryPushRegistrationStore([saved])
-        let transport = StubFeedbackTransport([(200, configJSON), (410, ""), (201, #"{"webhook_id":"fresh"}"#)])
+        let transport = StubHTTPTransport([(200, configJSON), (410, ""), (201, #"{"webhook_id":"fresh"}"#)])
         guard case let .registered(registration, _) = try await registrar(transport, store: store).sync(userID: "u1", token: nil) else {
             Issue.record("expected a new registration")
             return
@@ -228,14 +229,14 @@ struct PushRegistrarTests {
     @Test func otherErrorsPropagate() async {
         let store = InMemoryPushRegistrationStore([PushRegistration(server: server, userID: "u1", webhookID: "w")])
         await #expect(throws: PushClientError.status(500)) {
-            try await registrar(StubFeedbackTransport([(200, configJSON), (500, "")]), store: store).sync(userID: "u1", token: nil)
+            try await registrar(StubHTTPTransport([(200, configJSON), (500, "")]), store: store).sync(userID: "u1", token: nil)
         }
         #expect(store.registration(server: server, userID: "u1") != nil)
     }
 
     @Test func otherBundleIsWebsocketOnly() async throws {
         let foreign = #"{"available":true,"push_url":"https://relay","bundle_id":"io.robbie.HomeAssistant"}"#
-        let transport = StubFeedbackTransport([(200, foreign), (201, #"{"webhook_id":"w"}"#)])
+        let transport = StubHTTPTransport([(200, foreign), (201, #"{"webhook_id":"w"}"#)])
         guard case let .registered(_, appData) = try await registrar(transport, store: InMemoryPushRegistrationStore())
             .sync(userID: "u1", token: "aa") else {
             Issue.record("expected a registration")
@@ -247,7 +248,7 @@ struct PushRegistrarTests {
     @Test func signOutClearsAppData() async throws {
         let saved = PushRegistration(server: server, userID: "u1", webhookID: "w1")
         let store = InMemoryPushRegistrationStore([saved], active: saved)
-        let transport = StubFeedbackTransport([(200, "{}")])
+        let transport = StubHTTPTransport([(200, "{}")])
         await registrar(transport, store: store).signOut()
         let sent = try #require(body(transport.requests[0])["data"] as? [String: Any])
         #expect((sent["app_data"] as? [String: Any])?.isEmpty == true)
@@ -256,7 +257,7 @@ struct PushRegistrarTests {
         #expect(store.registration(server: server, userID: "u1") == saved)
 
         // Nothing active, or active on another server: nothing sent.
-        let idle = StubFeedbackTransport([])
+        let idle = StubHTTPTransport([])
         await registrar(idle, store: InMemoryPushRegistrationStore()).signOut()
         let elsewhere = PushRegistration(server: HassServer(baseURL: URL(string: "https://other")!), userID: "u1", webhookID: "w")
         await registrar(idle, store: InMemoryPushRegistrationStore([elsewhere], active: elsewhere)).signOut()
@@ -264,26 +265,26 @@ struct PushRegistrarTests {
 
         // Gone: forgotten. Offline: kept.
         let goneStore = InMemoryPushRegistrationStore([saved], active: saved)
-        await registrar(StubFeedbackTransport([(410, "")]), store: goneStore).signOut()
+        await registrar(StubHTTPTransport([(410, "")]), store: goneStore).signOut()
         #expect(goneStore.registration(server: server, userID: "u1") == nil)
         let offlineStore = InMemoryPushRegistrationStore([saved], active: saved)
-        await registrar(StubFeedbackTransport([(503, "")]), store: offlineStore).signOut()
+        await registrar(StubHTTPTransport([(503, "")]), store: offlineStore).signOut()
         #expect(offlineStore.registration(server: server, userID: "u1") == saved)
     }
 
     @Test func firesActions() async throws {
         let saved = PushRegistration(server: server, userID: "u1", webhookID: "w1")
-        let transport = StubFeedbackTransport([(200, "")])
+        let transport = StubHTTPTransport([(200, "")])
         try await registrar(transport, store: InMemoryPushRegistrationStore([saved], active: saved))
             .fireAction(PushActionEvent(action: "SNOOZE", tag: "t"))
         #expect(transport.requests.first?.url?.path == "/api/webhook/w1")
 
         await #expect(throws: PushClientError.signedOut) {
-            try await registrar(StubFeedbackTransport([]), store: InMemoryPushRegistrationStore()).fireAction(PushActionEvent(action: "A", tag: nil))
+            try await registrar(StubHTTPTransport([]), store: InMemoryPushRegistrationStore()).fireAction(PushActionEvent(action: "A", tag: nil))
         }
         let goneStore = InMemoryPushRegistrationStore([saved], active: saved)
         await #expect(throws: PushClientError.registrationGone) {
-            try await registrar(StubFeedbackTransport([(410, "")]), store: goneStore).fireAction(PushActionEvent(action: "A", tag: nil))
+            try await registrar(StubHTTPTransport([(410, "")]), store: goneStore).fireAction(PushActionEvent(action: "A", tag: nil))
         }
         #expect(goneStore.active == nil)
         #expect(goneStore.registration(server: server, userID: "u1") == nil)

@@ -21,14 +21,23 @@ public final class AppSession {
     /// Token source for the signed-in server, used by the Home Assistant settings web view.
     @ObservationIgnored public private(set) var tokens: TokenManager?
 
+    /// Native notifications: registration with Home Assistant and what a notification opens.
+    @ObservationIgnored public let push: PushCoordinator
+
     @ObservationIgnored private let tokenStore: TokenStore
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
 
     /// Creates the session, resuming a saved sign-in if one exists. Restoring is synchronous and
     /// network-free, so the first frame already shows the cached Home screen.
-    public init(tokenStore: TokenStore = KeychainTokenStore(), snapshotCache: EntitySnapshotCache = .init()) {
+    /// - Parameters:
+    ///   - tokenStore: Where the refresh token lives; shared with the notification service extension.
+    ///   - snapshotCache: The disk snapshot of entity states.
+    ///   - push: The app's push coordinator (the app delegate's, so system callbacks reach it).
+    public init(tokenStore: TokenStore = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup),
+                snapshotCache: EntitySnapshotCache = .init(), push: PushCoordinator = .inert()) {
         self.tokenStore = tokenStore
         self.snapshotCache = snapshotCache
+        self.push = push
         #if DEBUG
         // UI tests start signed out: FENTON_UITEST_RESET=1 clears the saved sign-in and snapshot.
         if ProcessInfo.processInfo.environment["FENTON_UITEST_RESET"] == "1" {
@@ -56,7 +65,8 @@ public final class AppSession {
         start(server: server, tokens: TokenManager(store: tokenStore, initial: tokens))
     }
 
-    /// Signs out: revokes the refresh token, clears the Keychain, cache and store.
+    /// Signs out: stops pushes to this phone, then revokes the refresh token; clears the Keychain, cache and
+    /// store. Home Assistant gets the empty push registration before the token is revoked (contract v1, rule 2).
     public func signOut() {
         if case let .signedIn(connection, _) = phase {
             connection.disconnect()
@@ -71,8 +81,10 @@ public final class AppSession {
         tokens = nil
         backdrop = nil
         phase = .signedOut
-        if let stored {
-            Task.detached { await HassLoginFlow.revoke(server: stored.server, refreshToken: stored.refreshToken) }
+        let push = push
+        Task {
+            await push.sessionEnded()
+            if let stored { await HassLoginFlow.revoke(server: stored.server, refreshToken: stored.refreshToken) }
         }
     }
 
@@ -80,6 +92,7 @@ public final class AppSession {
         let connection = HassConnection(server: server, tokens: tokens, store: EntityStore(), snapshotCache: snapshotCache)
         let lifecycle = ConnectionLifecycle(connection: connection)
         self.tokens = tokens
+        push.sessionStarted(server: server) { try await tokens.validAccessToken() }
         // Created before the phase changes so the first signed-in frame already has the cached photo.
         backdrop = HouseBackdropStore(server: server)
         phase = .signedIn(connection, lifecycle)
