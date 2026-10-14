@@ -68,26 +68,33 @@ public struct ComponentGallery: View {
             RoomsGallery()
         } else {
             NavigationStack {
-                switch page {
-                case .directionG: DirectionGGallery()
-                case .mediaRemote: MediaRemoteGallery()
-                case .thermostatDial: ThermostatDialGallery()
-                case .security: SecurityGallery()
-                case .mediaPage: HomePageGallery(kind: .media)
-                case .customLights: HomePageGallery(kind: .customLights)
-                case .sprinklers: HomePageGallery(kind: .sprinklers)
-                case .bedroom: BedroomGallery()
-                case .vacuums: VacuumGallery()
-                case .roomDevices: RoomDevicesGallery()
-                case .householdSettings: HouseholdSettingsGallery()
-                case .climate: ClimateGallery()
-                case .floatingActions: FloatingActionsGallery()
-                case .inventory: InventoryGallery()
-                case .performance: PerformanceGallery()
-                case .weather: WeatherGallery()
-                case .rooms, .vacation, .food, .chores: EmptyView()
+                Group {
+                    switch page {
+                    case .directionG: DirectionGGallery()
+                    case .mediaRemote: MediaRemoteGallery()
+                    case .thermostatDial: ThermostatDialGallery()
+                    case .security: SecurityGallery()
+                    case .mediaPage: HomePageGallery(kind: .media)
+                    case .customLights: HomePageGallery(kind: .customLights)
+                    case .sprinklers: HomePageGallery(kind: .sprinklers)
+                    case .bedroom: BedroomGallery()
+                    case .vacuums: VacuumGallery()
+                    case .roomDevices: RoomDevicesGallery()
+                    case .householdSettings: HouseholdSettingsGallery()
+                    case .climate: ClimateGallery()
+                    case .floatingActions: FloatingActionsGallery()
+                    case .inventory: InventoryGallery()
+                    case .performance: PerformanceGallery()
+                    case .weather: WeatherGallery()
+                    case .rooms, .vacation, .food, .chores: EmptyView()
+                    }
                 }
+                // Direction G: a gallery page sits on the same dark house backdrop as the page it stands in for.
+                // On the system's white ground, G's translucent tiles measured 3.1:1.
+                .scrollContentBackground(.hidden)
+                .pageBackdrop()
             }
+            .preferredColorScheme(.dark)
         }
     }
     #endif
