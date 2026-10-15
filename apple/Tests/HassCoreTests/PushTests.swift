@@ -638,3 +638,40 @@ struct PushTraceTests {
         #expect(trace.lines().last?.contains("attachment failed: /x.jpg") == true)
     }
 }
+
+// MARK: - MJPEG
+
+@Suite("MJPEG frame scanner")
+struct MJPEGFrameScannerTests {
+    let frameA = Data([0xFF, 0xD8, 0x01, 0x02, 0xFF, 0xD9])
+    let frameB = Data([0xFF, 0xD8, 0x03, 0xFF, 0xD9])
+
+    @Test func findsFramesAcrossChunks() {
+        var scanner = MJPEGFrameScanner()
+        let header = Data("--frame\r\nContent-Type: image/jpeg\r\n\r\n".utf8)
+        let stream = header + frameA + Data("\r\n".utf8) + header + frameB + Data("\r\n".utf8)
+        var frames: [Data] = []
+        // Byte by byte: markers split across chunks still match.
+        for byte in stream { frames += scanner.append(Data([byte])) }
+        #expect(frames == [frameA, frameB])
+        // Whole stream at once.
+        var whole = MJPEGFrameScanner()
+        #expect(whole.append(stream) == [frameA, frameB])
+    }
+
+    @Test func dropsJunkAndWaitsForTheEnd() {
+        var scanner = MJPEGFrameScanner()
+        #expect(scanner.append(Data([0x00, 0x11, 0xFF])).isEmpty)
+        #expect(scanner.append(Data([0xD8, 0x05])).isEmpty, "a frame without its end waits")
+        #expect(scanner.append(Data([0xFF, 0xD9])) == [Data([0xFF, 0xD8, 0x05, 0xFF, 0xD9])])
+        // A start marker's own D8 is not taken for an end.
+        #expect(scanner.append(Data([0xFF, 0xD8, 0xD9])).isEmpty)
+    }
+
+    @Test func dropsAnOversizedFrame() {
+        var scanner = MJPEGFrameScanner()
+        let huge = Data([0xFF, 0xD8]) + Data(repeating: 0x01, count: MJPEGFrameScanner.maxFrameBytes)
+        #expect(scanner.append(huge).isEmpty)
+        #expect(scanner.append(frameB) == [frameB], "resynchronizes on the next frame")
+    }
+}

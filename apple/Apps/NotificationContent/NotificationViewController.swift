@@ -54,7 +54,9 @@ final class NotificationViewController: UIViewController, @preconcurrency UNNoti
     }
 }
 
-/// Loads the camera's stream for the expanded notification.
+/// Loads the camera for the expanded notification: Home Assistant's MJPEG stream at once (plain HTTP with the
+/// token, so it works even when the websocket can't connect), and its HLS stream when that comes up, which then
+/// takes over. The first to deliver frames turns on the Live badge.
 @MainActor
 @Observable
 final class CameraNotificationModel {
@@ -63,17 +65,69 @@ final class CameraNotificationModel {
     var player: AVPlayer?
     var isLive = false
     var failed = false
+    /// What the model is doing, shown in debug builds.
+    var status = "starting"
     private var connection: HassConnection?
     private var observation: NSKeyValueObservation?
+    private var mjpeg: Task<Void, Never>?
+    private let trace = PushTrace.shared
 
     func start(entityID: String) {
         let store = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup)
         guard let credentials = store.load() else {
-            PushTrace.shared.record("content: not signed in")
+            note("not signed in")
             failed = true
             return
         }
-        let connection = HassConnection(server: credentials.server, tokens: TokenManager(store: store), store: EntityStore(),
+        let tokens = TokenManager(store: store)
+        mjpeg = Task { await streamMJPEG(entityID: entityID, server: credentials.server, tokens: tokens) }
+        startHLS(entityID: entityID, server: credentials.server, tokens: tokens)
+    }
+
+    func stop() {
+        mjpeg?.cancel()
+        player?.pause()
+        connection?.disconnect()
+    }
+
+    private func note(_ text: String) {
+        status = text
+        trace.record("content: \(text)")
+    }
+
+    // MARK: - MJPEG
+
+    private func streamMJPEG(entityID: String, server: HassServer, tokens: TokenManager) async {
+        do {
+            let token = try await tokens.validAccessToken()
+            var request = URLRequest(url: server.url("/api/camera_proxy_stream/\(entityID)"))
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            note("mjpeg HTTP \(code)")
+            guard code == 200 else { return }
+            var scanner = MJPEGFrameScanner()
+            var chunk = Data()
+            chunk.reserveCapacity(32_768)
+            for try await byte in bytes {
+                chunk.append(byte)
+                guard chunk.count >= 16_384 || byte == 0xD9 else { continue }
+                if let frame = scanner.append(chunk).last, player == nil || !isLive, let image = UIImage(data: frame) {
+                    snapshot = image
+                    if !isLive { isLive = true; note("mjpeg live") }
+                }
+                chunk.removeAll(keepingCapacity: true)
+            }
+        } catch is CancellationError {
+        } catch {
+            note("mjpeg failed \(type(of: error)) \((error as NSError).code)")
+        }
+    }
+
+    // MARK: - HLS
+
+    private func startHLS(entityID: String, server: HassServer, tokens: TokenManager) {
+        let connection = HassConnection(server: server, tokens: tokens, store: EntityStore(),
                                         snapshotCache: EntitySnapshotCache(fileURL: FileManager.default.temporaryDirectory
                                             .appendingPathComponent("notification-snapshot.json")))
         self.connection = connection
@@ -81,35 +135,36 @@ final class CameraNotificationModel {
         Task {
             do {
                 let path = try await connection.cameraStreamPath(entityId: entityID)
-                PushTrace.shared.record("content: stream path received")
-                guard let url = CameraStreamEndpoints.hlsURL(path: path, baseURL: credentials.server.baseURL) else {
-                    failed = true
-                    return
-                }
+                trace.record("content: hls path received")
+                guard let url = CameraStreamEndpoints.hlsURL(path: path, baseURL: server.baseURL) else { return }
                 let item = AVPlayerItem(url: url)
                 let player = AVPlayer(playerItem: item)
                 player.isMuted = true
                 observation = item.observe(\.status) { [weak self] item, _ in
-                    let ready = item.status == .readyToPlay, broken = item.status == .failed
+                    let ready = item.status == .readyToPlay
                     let reason = item.error.map { "\(($0 as NSError).domain) \(($0 as NSError).code)" } ?? ""
                     Task { @MainActor in
-                        if ready { self?.isLive = true; PushTrace.shared.record("content: playing") }
-                        if broken { self?.failed = true; PushTrace.shared.record("content: player failed \(reason)") }
+                        guard let self else { return }
+                        if ready {
+                            self.player = player
+                            self.isLive = true
+                            self.mjpeg?.cancel()
+                            self.note("hls playing")
+                        } else if item.status == .failed {
+                            self.trace.record("content: hls failed \(reason)")
+                        }
                     }
                 }
-                self.player = player
                 player.play()
+                hlsPlayer = player
             } catch {
-                PushTrace.shared.record("content: stream request failed \(type(of: error))")
-                failed = true
+                trace.record("content: hls request failed \(type(of: error))")
             }
         }
     }
 
-    func stop() {
-        player?.pause()
-        connection?.disconnect()
-    }
+    /// Holds the HLS player while it loads, before it is shown.
+    private var hlsPlayer: AVPlayer?
 }
 
 /// The snapshot, then the live player over it, with a Live badge once frames arrive.
@@ -126,6 +181,14 @@ struct CameraNotificationView: View {
                 PlayerLayerView(player: player).opacity(model.isLive ? 1 : 0)
             }
             badge.padding(10)
+            #if DEBUG
+            Text(model.status)
+                .font(.caption2.monospaced())
+                .foregroundStyle(.white)
+                .padding(4)
+                .background(.black.opacity(0.6))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            #endif
         }
         .aspectRatio(16 / 9, contentMode: .fit)
         .accessibilityElement(children: .ignore)
