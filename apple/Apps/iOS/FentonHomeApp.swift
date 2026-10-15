@@ -9,7 +9,7 @@ struct FentonHomeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(push: appDelegate.push)
+            RootView(session: appDelegate.session)
         }
     }
 }
@@ -20,6 +20,9 @@ struct FentonHomeApp: App {
 final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
     /// The app's push coordinator; the root view's session uses this one so system callbacks reach it.
     let push = PushCoordinator(platform: .system, isEnabled: PushLaunchPolicy.isEnabled())
+    /// The app's one session (sign-in, connection, route). Made once here: `FentonHomeApp.body` and `RootView.init`
+    /// run again whenever SwiftUI rebuilds the scene.
+    @MainActor lazy var session = AppSession(push: push)
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
