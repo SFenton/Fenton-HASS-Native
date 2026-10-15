@@ -65,10 +65,7 @@ struct ChoreQuickLinks: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-            Text("Quick Links")
-                .font(.title3.bold())
-                .foregroundStyle(HassTokens.Ink.primary)
-                .accessibilityAddTraits(.isHeader)
+            PageSectionHeader("Quick Links")
             DynamicGridLayout(minCellWidth: 150, maxColumns: 3, equalRowHeights: true) {
                 ForEach(Self.links) { link in
                     let title = link.title(viewer: model.viewer)

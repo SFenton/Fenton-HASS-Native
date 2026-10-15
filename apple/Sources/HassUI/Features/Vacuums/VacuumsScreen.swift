@@ -126,27 +126,24 @@ struct VacuumsPage<Sheet: View>: View {
     private var autoCleanSection: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             PageSectionHeader("Auto-Clean")
-            // G: ModuleList
-            VStack(spacing: 0) {
+            ModuleList {
                 ForEach(Vacuums.autoCleanControls) { control in
-                    if control.id != Vacuums.autoCleanControls.first?.id { VacuumRowDivider() }
                     autoCleanRow(control)
                 }
             }
-            .module()
         }
     }
 
     /// One automation as a switch row: "Main Floor", "Enabled" or "Paused".
     private func autoCleanRow(_ control: Vacuums.AutoCleanControl) -> some View {
         let display = autoClean.display(control)
-        return VacuumListRow(
-            symbol: "clock.arrow.circlepath",
-            // Unavailable rows dim only the glyph; their text keeps full contrast.
-            tint: ColorFamily.cleaning.glyph.opacity(display.isUnavailable ? 0.4 : 1),
-            title: control.title,
+        return ModuleRow(
+            control.title,
             subtitle: display.subtitle,
-            subtitleColor: HassTokens.Surface.secondaryOnModule
+            symbol: "clock.arrow.circlepath",
+            glyph: ColorFamily.cleaning.glyph,
+            // Unavailable rows dim only the glyph; their text keeps full contrast.
+            glyphOpacity: display.isUnavailable ? 0.4 : 1
         ) {
             Toggle(control.title, isOn: Binding(
                 get: { autoClean.display(control).isEnabled },
@@ -157,20 +154,6 @@ struct VacuumsPage<Sheet: View>: View {
             .accessibilityHint("Turns automatic cleaning on or off.")
             .accessibilityIdentifier("vacuums.autoClean.\(control.entityId)")
         }
-    }
-}
-
-/// A page section header: 20 pt Bold over tiles and lists on the wallpaper (direction G, Type).
-private struct PageSectionHeader: View {
-    var title: String
-    init(_ title: String) { self.title = title }
-
-    var body: some View {
-        Text(title)
-            .font(.title3.bold())
-            .foregroundStyle(HassTokens.Ink.primary)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityAddTraits(.isHeader)
     }
 }
 

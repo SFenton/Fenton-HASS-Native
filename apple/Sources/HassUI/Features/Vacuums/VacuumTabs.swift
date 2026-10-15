@@ -83,14 +83,11 @@ struct VacuumControlsTab: View {
             let settings = controller.powerSettings(in: mode)
             if !settings.isEmpty {
                 VacuumSection("Power Settings") {
-                    // G: ModuleList (sheet cell ground)
-                    VStack(spacing: 0) {
-                        ForEach(Array(settings.enumerated()), id: \.element.id) { index, setting in
-                            if index > 0 { VacuumRowDivider() }
+                    ModuleList {
+                        ForEach(settings) { setting in
                             VacuumSettingRow(setting: setting) { controller.select(setting.entityId, option: $0) }
                         }
                     }
-                    .vacuumGroup()
                 }
             }
         }
@@ -217,15 +214,13 @@ struct VacuumControlsTab: View {
         let passes = controller.passesSetting
         if hasRooms || passes != nil {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                // G: ModuleList (sheet cell ground)
-                VStack(spacing: 0) {
+                // Selected Rooms has no glyph, so the hairline under it starts at its text.
+                ModuleList(hasGlyphs: !hasRooms) {
                     if hasRooms { selectedRooms }
                     if let passes {
-                        if hasRooms { Divider().overlay(HassTokens.Surface.separator) }
                         VacuumSettingRow(setting: passes) { controller.select(passes.entityId, option: $0) }
                     }
                 }
-                .vacuumGroup()
                 if hasRooms { VacuumDescription("The vacuum cleans the selected rooms in order.") }
             }
         }
@@ -288,9 +283,9 @@ struct VacuumControlsTab: View {
         }
         if let passes = controller.passesSetting {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                // G: ModuleList (sheet cell ground)
-                VacuumSettingRow(setting: passes) { controller.select(passes.entityId, option: $0) }
-                    .vacuumGroup()
+                ModuleList {
+                    VacuumSettingRow(setting: passes) { controller.select(passes.entityId, option: $0) }
+                }
                 VacuumDescription("These settings are confirmed in Home Assistant before the area-cleaning command is sent.")
             }
         } else {
@@ -384,14 +379,11 @@ struct VacuumAutoCleanTab: View {
     var body: some View {
         VacuumSection("Disabled Auto-Clean Rooms",
                       footer: "Checked rooms are skipped when the coordinator starts an automatic away clean. Use this for closed doors, guests, or projects on the floor; manual selected-room cleans still use the Rooms section.") {
-            // G: ModuleList (sheet cell ground)
-            VStack(spacing: 0) {
-                ForEach(Array(controller.vacuum.autoCleanDisabledRooms.enumerated()), id: \.element.id) { index, room in
-                    if index > 0 { VacuumRowDivider() }
+            ModuleList {
+                ForEach(controller.vacuum.autoCleanDisabledRooms) { room in
                     row(room)
                 }
             }
-            .vacuumGroup()
         }
     }
 
@@ -399,8 +391,8 @@ struct VacuumAutoCleanTab: View {
         let skipped = controller.isAutoCleanDisabled(room)
         let unavailable = VacuumStatusResolver.isUnavailable(controller.store.entity(room.entityId).state?.state)
         return Button { controller.toggleAutoClean(room) } label: {
-            VacuumListRow(symbol: VacuumStyle.symbol(room.icon), title: room.title,
-                          subtitle: unavailable ? "Unavailable" : skipped ? "Skipped" : nil) {
+            ModuleRow(room.title, subtitle: unavailable ? "Unavailable" : skipped ? "Skipped" : nil,
+                      symbol: VacuumStyle.symbol(room.icon)) {
                 Image(systemName: "checkmark")
                     .font(.body.weight(.semibold))
                     .foregroundStyle(HassTokens.Ink.action)
@@ -408,7 +400,7 @@ struct VacuumAutoCleanTab: View {
                     .accessibilityHidden(true)
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ModuleRowButtonStyle())
         .disabled(unavailable)
         .accessibilityLabel("\(room.title) auto-clean")
         .accessibilityValue(unavailable ? "Unavailable" : skipped ? "Skipped" : "Included")
@@ -429,20 +421,17 @@ struct VacuumActionsTab: View {
         let preparing = controller.dockPreparationActive && controller.vacuum.dockControls != nil
         if !actions.isEmpty || controller.dockPreparationActive {
             VacuumSection("Dock Controls") {
-                // G: ModuleList (sheet cell ground)
-                VStack(spacing: 0) {
+                ModuleList {
                     if preparing {
-                        VacuumListRow(symbol: VacuumStyle.symbol("mdi:water"), tint: VacuumStyle.color(.active),
-                                      title: "Washing Mop Pads",
-                                      subtitle: "The dock is washing the mop pads for the current cleaning session. To stop, use Cancel Cleaning Session on the Controls section.")
+                        ModuleRow("Washing Mop Pads",
+                                  subtitle: "The dock is washing the mop pads for the current cleaning session. To stop, use Cancel Cleaning Session on the Controls section.",
+                                  symbol: VacuumStyle.symbol("mdi:water"), glyph: VacuumStyle.color(.active))
                             .accessibilityElement(children: .combine)
                     }
-                    ForEach(Array(actions.enumerated()), id: \.element.id) { index, action in
-                        if index > 0 || preparing { VacuumRowDivider() }
+                    ForEach(actions) { action in
                         row(action)
                     }
                 }
-                .vacuumGroup()
                 if controller.vacuum.dockControls != nil && !controller.mopAttached {
                     InlineAlert("Attach the mop pads before cleaning or drying them at the dock.")
                         .padding(.horizontal, HassTokens.Spacing.l)
@@ -458,10 +447,10 @@ struct VacuumActionsTab: View {
     private func row(_ action: VacuumController.Action) -> some View {
         let tint = Self.tint(action)
         return Button { controller.run(action.kind) } label: {
-            VacuumListRow(symbol: VacuumStyle.symbol(action.icon), tint: tint, title: action.title,
-                          titleColor: action.isDisabled ? HassTokens.Ink.secondary : HassTokens.Ink.action, subtitle: action.detail)
+            VacuumActionRow(symbol: VacuumStyle.symbol(action.icon), tint: tint, title: action.title,
+                            titleColor: action.isDisabled ? HassTokens.Ink.secondary : HassTokens.Ink.action, subtitle: action.detail)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ModuleRowButtonStyle())
         .disabled(action.isDisabled)
         .accessibilityLabel(action.title)
         .accessibilityHint(action.detail ?? "")
@@ -496,14 +485,11 @@ struct VacuumInfoTab: View {
     @ViewBuilder private func group(_ title: String, _ consumables: [VacuumConfig.Consumable]) -> some View {
         if !consumables.isEmpty {
             VacuumSection(title) {
-                // G: ModuleList (sheet cell ground)
-                VStack(spacing: 0) {
-                    ForEach(Array(consumables.enumerated()), id: \.element.id) { index, consumable in
-                        if index > 0 { VacuumRowDivider() }
+                ModuleList {
+                    ForEach(consumables) { consumable in
                         row(consumable)
                     }
                 }
-                .vacuumGroup()
             }
         }
     }
@@ -513,7 +499,7 @@ struct VacuumInfoTab: View {
         let visual = VacuumVisual.consumable(consumable, state: entity?.state)
         let value = VacuumFormat.consumable(consumable, state: entity?.state, unit: entity?.attributes["unit_of_measurement"]?.string)
         let tint = Self.tint(visual.tone)
-        return VacuumListRow(symbol: VacuumStyle.symbol(visual.icon), tint: tint, title: consumable.title) {
+        return ModuleRow(consumable.title, symbol: VacuumStyle.symbol(visual.icon), glyph: tint) {
             Text(value)
                 .font(.body)
                 .monospacedDigit()

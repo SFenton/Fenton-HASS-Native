@@ -36,10 +36,7 @@ struct AwaySection<Content: View>: View {
                             .font(.subheadline.weight(.semibold))
                             .padding(.horizontal, HassTokens.Spacing.l)
                     } else {
-                        Text(title)
-                            .font(.title3.bold())
-                            .foregroundStyle(HassTokens.Ink.primary)
-                            .accessibilityAddTraits(.isHeader)
+                        PageSectionHeader(title)
                     }
                 }
                 .fixedSize(horizontal: false, vertical: true)
@@ -101,23 +98,6 @@ struct AwayActionButton: View {
             }
         }
         .accessibilityIdentifier(identifier)
-    }
-}
-
-/// The ground of an inset list in the away pages: the sheet's cell colour in a sheet, a module on the wallpaper
-/// (direction G, Lists: 26 pt inset lists).
-struct AwayInsetList<Content: View>: View {
-    @ViewBuilder var content: Content
-    @Environment(\.tileSurface) private var surface
-
-    var body: some View {
-        // G: ModuleList
-        let list = VStack(spacing: 0) { content }
-        if surface == .sheet {
-            list.background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module, style: .continuous))
-        } else {
-            list.module()
-        }
     }
 }
 

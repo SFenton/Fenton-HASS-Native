@@ -38,7 +38,7 @@ enum VacuumStyle {
     /// Ink and order badges on ``selectedFill``, and the badge ground everywhere: the sheet's `#1C1C1E`.
     static let selectedInk = Color(rgb: HassTokens.Palette.sheetGround)
 
-    /// Grouped rows in the sheet: the sheet's cell colour at the module radius.
+    /// Cards and the map in the sheet: the module radius.
     static let groupShape = RoundedRectangle(cornerRadius: HassTokens.Radius.module, style: .continuous)
     /// Room cards (tile radius).
     static let cardShape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
@@ -95,34 +95,21 @@ struct VacuumDescription: View {
 
 // MARK: - Rows
 
-/// One row of a grouped list in the sheet: a leading glyph, a 17 pt title, an optional 15 pt subtitle and a trailing
-/// accessory, at least 52 pt tall (60 with a subtitle; direction G, Controls: Lists).
-struct VacuumListRow<Trailing: View>: View {
+/// A dock command as a ``ModuleList`` row: ``ModuleRow``'s glyph, title and subtitle, with the title in the action
+/// tint (mockup n6-vacuum-dock: "each command is a row with a blue title"), which ``ModuleRow``'s fixed white title
+/// can't draw. Its measurements are ``ModuleRow``'s, so the title starts where the list's hairlines do.
+struct VacuumActionRow: View {
     var symbol: String
     var tint: Color
     var title: String
     var titleColor: Color
     var subtitle: String?
-    /// The subtitle's ink: secondary on sheet cells, ``HassTokens/Surface/secondaryOnModule`` on the wallpaper.
-    var subtitleColor: Color
-    var trailing: Trailing
-    @ScaledMetric(relativeTo: .body) private var glyphWidth: CGFloat = VacuumRowMetrics.glyphWidth
-
-    init(symbol: String, tint: Color = HassTokens.Ink.secondary, title: String, titleColor: Color = HassTokens.Ink.primary,
-         subtitle: String? = nil, subtitleColor: Color = HassTokens.Ink.secondary, @ViewBuilder trailing: () -> Trailing) {
-        self.symbol = symbol
-        self.tint = tint
-        self.title = title
-        self.titleColor = titleColor
-        self.subtitle = subtitle
-        self.subtitleColor = subtitleColor
-        self.trailing = trailing()
-    }
+    @ScaledMetric(relativeTo: .body) private var glyphWidth: CGFloat = ModuleRowMetrics.glyphWidth
 
     var body: some View {
-        HStack(spacing: VacuumRowMetrics.glyphGap) {
+        HStack(spacing: ModuleRowMetrics.gap) {
             Image(systemName: symbol)
-                .font(.title3)
+                .font(.body.weight(.medium))
                 .foregroundStyle(tint)
                 .frame(width: glyphWidth)
                 .accessibilityHidden(true)
@@ -133,50 +120,24 @@ struct VacuumListRow<Trailing: View>: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if let subtitle {
                     Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(subtitleColor)
+                        .font(.footnote)
+                        .foregroundStyle(HassTokens.Ink.secondary)
                         .monospacedDigit()
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            trailing
         }
         .padding(.horizontal, HassTokens.Spacing.l)
-        .padding(.vertical, HassTokens.Spacing.s + 2)
+        .padding(.vertical, HassTokens.Spacing.s)
         .frame(maxWidth: .infinity, minHeight: subtitle == nil ? 52 : 60, alignment: .leading)
         .contentShape(Rectangle())
     }
 }
 
-extension VacuumListRow where Trailing == EmptyView {
-    init(symbol: String, tint: Color = HassTokens.Ink.secondary, title: String, titleColor: Color = HassTokens.Ink.primary,
-         subtitle: String? = nil) {
-        self.init(symbol: symbol, tint: tint, title: title, titleColor: titleColor, subtitle: subtitle) { EmptyView() }
-    }
-}
-
-/// Row measurements shared by ``VacuumListRow`` and ``VacuumRowDivider``.
-enum VacuumRowMetrics {
-    /// The leading glyph's column at the default text size.
-    static let glyphWidth: CGFloat = 28
-    /// Between the glyph column and the text.
-    static let glyphGap: CGFloat = 14
-}
-
-/// The hairline between two ``VacuumListRow``s, inset to their text.
-struct VacuumRowDivider: View {
-    @ScaledMetric(relativeTo: .body) private var glyphWidth: CGFloat = VacuumRowMetrics.glyphWidth
-
-    var body: some View {
-        Divider()
-            .overlay(HassTokens.Surface.separator)
-            .padding(.leading, HassTokens.Spacing.l + glyphWidth + VacuumRowMetrics.glyphGap)
-    }
-}
-
 extension View {
-    /// Draws a group of rows on the sheet's cell colour (direction G, Sheets: `#2C2C2E` cells, 26 pt corners).
+    /// Draws a card (the run's state and commands, a status line) on the sheet's cell colour at the module radius
+    /// (direction G, Sheets: `#2C2C2E` cells, 26 pt corners). Lists of rows use ``ModuleList``.
     func vacuumGroup() -> some View {
         background(HassTokens.Surface.sheetCell, in: VacuumStyle.groupShape)
     }
@@ -327,7 +288,7 @@ struct VacuumSecondaryButtonStyle: ButtonStyle {
 
 // MARK: - Setting row
 
-/// A select entity as a row (web `SelectSetting`; direction G, Controls: Choosing one option): two to four options
+/// A select entity as a ``ModuleRow`` (web `SelectSetting`; direction G, Controls: Choosing one option): two to four options
 /// are a system segmented control, anything longer (and every setting at accessibility sizes, where segments cannot
 /// grow) a pop-up menu anchored on the value, such as a five-step suction list.
 ///
@@ -359,12 +320,12 @@ struct VacuumSettingRow: View {
         Group {
             if Self.usesSegments(setting, accessibilitySize: typeSize.isAccessibilitySize) {
                 if Self.segmentsFitBesideTitle(setting) {
-                    VacuumListRow(symbol: symbol, title: setting.title, subtitle: setting.detail) {
+                    ModuleRow(setting.title, subtitle: setting.detail, symbol: symbol) {
                         segments.frame(maxWidth: 170)
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 0) {
-                        VacuumListRow(symbol: symbol, title: setting.title, subtitle: setting.detail)
+                        ModuleRow(setting.title, subtitle: setting.detail, symbol: symbol)
                         segments
                             .padding(.horizontal, HassTokens.Spacing.l)
                             .padding(.bottom, HassTokens.Spacing.m)
@@ -417,14 +378,14 @@ struct VacuumSettingRow: View {
         if typeSize.isAccessibilitySize {
             VStack(alignment: .leading, spacing: 0) {
                 // The menu carries the title as its name.
-                VacuumListRow(symbol: symbol, title: setting.title, subtitle: setting.detail)
+                ModuleRow(setting.title, subtitle: setting.detail, symbol: symbol)
                     .accessibilityHidden(true)
                 menu
                     .padding(.horizontal, HassTokens.Spacing.l)
                     .padding(.bottom, HassTokens.Spacing.s)
             }
         } else {
-            VacuumListRow(symbol: symbol, title: setting.title, subtitle: setting.detail) { menu }
+            ModuleRow(setting.title, subtitle: setting.detail, symbol: symbol) { menu }
         }
     }
 }

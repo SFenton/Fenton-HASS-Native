@@ -65,8 +65,9 @@ struct FoodHubScreen: View {
     private var recipeSections: some View {
         // The carousel draws its own header: "Page 1 of 5" follows its scroll position.
         SuggestedRecipesCarousel(title: "Suggested Recipes", model: models.suggestions, clipsPages: split) { open($0) }
-        FoodLinkRow(title: "All Recipes", symbol: FoodSymbols.symbol(for: "mdi:book-open-page-variant")) { pushed = .recipes }
-            .accessibilityIdentifier("food.allRecipes")
+        FoodLinkRow(
+            title: "All Recipes", symbol: FoodSymbols.symbol(for: "mdi:book-open-page-variant"), identifier: "food.allRecipes"
+        ) { pushed = .recipes }
     }
 
     @ViewBuilder
@@ -75,9 +76,8 @@ struct FoodHubScreen: View {
         FoodSection("All Food") {
             FoodLinkRow(
                 title: "All Food", subtitle: FoodConfig.allFoodSubtitle(state: state),
-                symbol: FoodSymbols.symbol(for: "mdi:food-variant")
+                symbol: FoodSymbols.symbol(for: "mdi:food-variant"), identifier: "food.allFood"
             ) { pushed = .inventory(.allFood) }
-            .accessibilityIdentifier("food.allFood")
         }
         FoodSection("Food Spaces") {
             // Dark G tiles with neutral glyphs: storage spaces are places, which have no colour of their own
@@ -105,13 +105,12 @@ struct FoodHubScreen: View {
 
 // MARK: - Pieces
 
-/// A titled section on the Food pages (web `SectionHeader`): a 20 Bold header over its content, with an optional
-/// trailing detail in secondary ink ("Page 1 of 5" on Suggested Recipes).
+/// A titled section on the Food pages (web `SectionHeader`): a ``PageSectionHeader`` over its content, with an
+/// optional trailing detail in secondary ink ("Page 1 of 5" on Suggested Recipes).
 struct FoodSection<Content: View>: View {
     var title: String
     var detail: String?
     @ViewBuilder var content: Content
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(_ title: String, detail: String? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
@@ -121,25 +120,7 @@ struct FoodSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            // The detail moves under the title at accessibility sizes, so neither is squeezed into a narrow column.
-            let header = dynamicTypeSize.isAccessibilitySize
-                ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.xs))
-                : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s))
-            header {
-                Text(title)
-                    // Direction G, Type: section headers on pages are 20 Bold.
-                    .font(.title3.bold())
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityAddTraits(.isHeader)
-                if let detail {
-                    Text(detail)
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                        .monospacedDigit()
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            PageSectionHeader(title, detail: detail)
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)

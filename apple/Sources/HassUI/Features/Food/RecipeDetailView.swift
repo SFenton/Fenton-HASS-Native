@@ -44,6 +44,8 @@ struct RecipeDetailPane: View {
             .padding(.vertical, HassTokens.Spacing.s)
             Divider()
             RecipeDetailContent(model: model, setsNavigationTitle: false)
+                // The pane's lists keep the sheet's `#2C2C2E` cells rather than the page module.
+                .environment(\.tileSurface, .sheet)
         }
         .background(.background)
         .overlay(alignment: .leading) { Divider() }
@@ -126,14 +128,11 @@ struct RecipeGeneralTab: View {
                 .background(HassTokens.Surface.sheetCell)
                 .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.module))
             if !facts.isEmpty {
-                // G: ModuleList (the sheet's inset list: `#2C2C2E` cells, 26 pt corners, hairlines inset to the text)
-                VStack(spacing: 0) {
-                    ForEach(Array(facts.enumerated()), id: \.element.id) { index, fact in
-                        if index > 0 { RecipeRowDivider() }
+                ModuleList {
+                    ForEach(facts) { fact in
                         RecipeFactRow(fact: fact)
                     }
                 }
-                .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
             }
             if detail.capabilities.general == .none {
                 Notice("Servings, time, difficulty, and equipment are not available in the cached Cookidoo metadata.")
@@ -143,10 +142,10 @@ struct RecipeGeneralTab: View {
                 FactList(title: "Additional Equipment", items: detail.general.equipment)
             }
             if let url = detail.source.canonicalURL {
-                // G: ModuleList
-                RecipeLinkRow(title: detail.source.isCookidoo ? "Open in Cookidoo" : "Open Source Recipe", url: url)
-                    .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
-                    .accessibilityIdentifier("recipe.openSource")
+                ModuleList {
+                    RecipeLinkRow(title: detail.source.isCookidoo ? "Open in Cookidoo" : "Open Source Recipe", url: url)
+                        .accessibilityIdentifier("recipe.openSource")
+                }
             }
         }
     }
@@ -207,10 +206,8 @@ struct FactList: View {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
                 RecipeSectionHeader(title)
                     .padding(.horizontal, HassTokens.Spacing.l)
-                // G: ModuleList
-                VStack(spacing: 0) {
-                    ForEach(Array(items.enumerated()), id: \.offset) { index, item in
-                        if index > 0 { RecipeRowDivider(inset: HassTokens.Spacing.l) }
+                ModuleList(hasGlyphs: false) {
+                    ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                         Text(item)
                             .foregroundStyle(HassTokens.Ink.primary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -219,7 +216,6 @@ struct FactList: View {
                             .frame(maxWidth: .infinity, minHeight: RecipeRowMetrics.minHeight, alignment: .leading)
                     }
                 }
-                .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
             }
         }
     }
@@ -266,14 +262,11 @@ struct RecipeIngredientsTab: View {
                             RecipeSectionHeader(heading, isQuiet: section.headingIsGenerated)
                                 .padding(.horizontal, HassTokens.Spacing.l)
                         }
-                        // G: ModuleList
-                        VStack(spacing: 0) {
-                            ForEach(Array(section.ingredients.enumerated()), id: \.element.id) { index, ingredient in
-                                if index > 0 { RecipeRowDivider(inset: checklist ? RecipeRowMetrics.textInset : HassTokens.Spacing.l) }
+                        ModuleList(hasGlyphs: checklist) {
+                            ForEach(section.ingredients) { ingredient in
                                 IngredientRow(detail: detail, ingredient: ingredient, checklist: checklist)
                             }
                         }
-                        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
                     }
                 }
             }
@@ -287,6 +280,8 @@ struct IngredientRow: View {
     let detail: RecipeDetail
     let ingredient: RecipeDetail.Ingredient
     var checklist: Bool
+    /// The mark's column, scaled like ``ModuleList``'s hairline inset so the title starts where the hairline does.
+    @ScaledMetric(relativeTo: .body) private var glyphWidth = RecipeRowMetrics.glyph
 
     var body: some View {
         let onHand = RecipeFormatting.isOnHand(ingredient)
@@ -295,7 +290,7 @@ struct IngredientRow: View {
                 Image(systemName: Self.mark(ingredient, onHand: onHand))
                     .font(.title3)
                     .foregroundStyle(onHand ? Color.green : HassTokens.Ink.secondary)
-                    .frame(width: RecipeRowMetrics.glyph)
+                    .frame(width: glyphWidth)
                     .accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
@@ -353,49 +348,6 @@ struct ChipFlow: View {
                     .background(Color.secondary.opacity(0.16), in: Capsule())
             }
         }
-    }
-}
-
-/// Lays children left to right, wrapping to new rows.
-struct FlowLayout: Layout {
-    var spacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let rows = arrange(width: proposal.width ?? .infinity, subviews: subviews)
-        let width = rows.map(\.width).max() ?? 0
-        let height = rows.map(\.height).reduce(0, +) + spacing * CGFloat(max(rows.count - 1, 0))
-        return CGSize(width: proposal.width ?? width, height: height)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var y = bounds.minY
-        for row in arrange(width: bounds.width, subviews: subviews) {
-            var x = bounds.minX
-            for index in row.indices {
-                let size = subviews[index].sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
-                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: min(size.width, bounds.width), height: size.height))
-                x += min(size.width, bounds.width) + spacing
-            }
-            y += row.height + spacing
-        }
-    }
-
-    private func arrange(width: CGFloat, subviews: Subviews) -> [(indices: [Int], width: CGFloat, height: CGFloat)] {
-        var rows: [(indices: [Int], width: CGFloat, height: CGFloat)] = []
-        var current: (indices: [Int], width: CGFloat, height: CGFloat) = ([], 0, 0)
-        for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(ProposedViewSize(width: width, height: nil))
-            let itemWidth = min(size.width, width)
-            let needed = current.indices.isEmpty ? itemWidth : current.width + spacing + itemWidth
-            if needed > width, !current.indices.isEmpty {
-                rows.append(current)
-                current = ([index], itemWidth, size.height)
-            } else {
-                current = (current.indices + [index], needed, max(current.height, size.height))
-            }
-        }
-        if !current.indices.isEmpty { rows.append(current) }
-        return rows
     }
 }
 
@@ -489,14 +441,11 @@ struct RecipeInstructionsTab: View {
                             RecipeSectionHeader(heading.label, isQuiet: heading.generated)
                                 .padding(.horizontal, HassTokens.Spacing.l)
                         }
-                        // G: ModuleList
-                        VStack(spacing: 0) {
-                            ForEach(Array(group.steps.enumerated()), id: \.element.id) { stepIndex, step in
-                                if stepIndex > 0 { RecipeRowDivider(inset: HassTokens.Spacing.l) }
+                        ModuleList(hasGlyphs: false) {
+                            ForEach(group.steps) { step in
                                 RecipeStepRow(step: step)
                             }
                         }
-                        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
                     }
                 }
             } else {

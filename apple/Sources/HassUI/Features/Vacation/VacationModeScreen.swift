@@ -71,13 +71,13 @@ struct VacationModeScreen: View {
     private var checklistSection: some View {
         let done = Vacation.checklist.filter(controller.isChecked).count
         return AwaySection(title: "\(Vacation.Copy.checklistTitle) · \(done) of \(Vacation.checklist.count)") {
-            AwayInsetList {
+            // A module on the wallpaper, the sheet's cell colour in the Account and Quick Links sheets.
+            ModuleList {
                 ForEach(Array(Vacation.checklist.enumerated()), id: \.element.id) { index, item in
                     VacationChecklistRow(
                         title: item.title,
                         isChecked: controller.isChecked(item),
-                        isUnavailable: controller.isUnavailable(item),
-                        separated: index > 0
+                        isUnavailable: controller.isUnavailable(item)
                     ) { controller.toggle(item) }
                         .accessibilityIdentifier("vacation.checklist.\(index)")
                 }
@@ -121,14 +121,13 @@ struct VacationModeScreen: View {
 
 // MARK: - Checklist row
 
-/// One pre-vacation task (web `CheckboxRow`): a row of the checklist's inset list with a circle that turns into a
-/// green check, as in Reminders (mockup n5-vacation-mode).
+/// One pre-vacation task (web `CheckboxRow`): a row of the checklist's ``ModuleList`` with a circle that turns into a
+/// green check, as in Reminders (mockup n5-vacation-mode). The title starts 16 + 24 + 14 pt in, where the list insets
+/// its hairlines.
 struct VacationChecklistRow: View {
     var title: String
     var isChecked: Bool
     var isUnavailable: Bool
-    /// Draws the hairline above the row, inset to the title.
-    var separated = false
     var action: () -> Void
 
     var body: some View {
@@ -153,15 +152,6 @@ struct VacationChecklistRow: View {
         }
         .buttonStyle(.plain)
         .disabled(isUnavailable)
-        .overlay(alignment: .top) {
-            if separated {
-                Rectangle()
-                    .fill(HassTokens.Surface.separator)
-                    .frame(height: 0.5)
-                    .padding(.leading, HassTokens.Spacing.l + 24 + 14)
-                    .accessibilityHidden(true)
-            }
-        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityValue(isUnavailable ? "Unavailable" : isChecked ? "Checked" : "Not checked")

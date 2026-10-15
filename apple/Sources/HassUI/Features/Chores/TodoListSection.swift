@@ -16,10 +16,7 @@ struct TodoListSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             if showsHeader {
-                Text(list.title)
-                    .font(.title3.bold())
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .accessibilityAddTraits(.isHeader)
+                PageSectionHeader(list.title)
             }
             if let error = controller.error {
                 InlineAlert(error)
@@ -31,16 +28,13 @@ struct TodoListSection: View {
                     .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
             } else if !items.isEmpty {
                 let now = Date.now
-                // G: ModuleList
-                // Lazy: long lists (groceries) build only the rows on screen.
-                LazyVStack(spacing: 0) {
-                    ForEach(items) { item in
-                        row(item, now: now, separated: item.id != items.first?.id)
-                    }
-                }
                 // Overdue spans are orange and red text, which needs the dense module over the lit windows
                 // (direction G, Layers).
-                .module(TodoListSection.hasLateItem(items, now: now) ? .dense : .thin)
+                ModuleList(TodoListSection.hasLateItem(items, now: now) ? .dense : .thin) {
+                    ForEach(items) { item in
+                        row(item, now: now)
+                    }
+                }
             }
         }
         // A container keeps each row's own identifiers: on a plain stack the section's identifier overwrote
@@ -49,7 +43,7 @@ struct TodoListSection: View {
         .accessibilityIdentifier("todo.section.\(list.entityId)")
     }
 
-    private func row(_ item: TodoItem, now: Date, separated: Bool) -> some View {
+    private func row(_ item: TodoItem, now: Date) -> some View {
         TodoItemRow(
             item: item,
             now: now,
@@ -57,16 +51,6 @@ struct TodoListSection: View {
             onToggle: { Task { await controller.toggle(item, completionScript: list.completionScript) } },
             onEdit: editor(item)
         )
-        .overlay(alignment: .top) {
-            if separated {
-                // Inset to the title, past the 24 pt circle (direction G, Lists: "hairlines inset to the text").
-                Rectangle()
-                    .fill(HassTokens.Surface.separator)
-                    .frame(height: 0.5)
-                    .padding(.leading, TodoItemRow.textInset)
-                    .accessibilityHidden(true)
-            }
-        }
     }
 
     /// Whether any open row shows an overdue span, which is drawn in orange or red.
@@ -79,16 +63,15 @@ struct TodoListSection: View {
 }
 
 /// A checkable task row with its due label and an optional edit button (web `CheckboxRow` in `TodoListPanel`; direction
-/// G mockups n5: a 24 pt circle, a 17 pt title, a 15 pt due line, and a trailing info or pencil glyph).
+/// G mockups n5: a 24 pt circle, a 17 pt title, a 15 pt due line, and a trailing info or pencil glyph). The title starts
+/// 16 + 24 + 14 pt in, where ``ModuleList`` insets its hairlines, so it keeps its own toggle and edit layout over
+/// ``ModuleRow``'s.
 struct TodoItemRow: View {
     var item: TodoItem
     var now: Date = .now
     var editSymbol = "info.circle"
     var onToggle: () -> Void
     var onEdit: (() -> Void)?
-
-    /// Where the title starts: the row's 16 pt margin, the circle and its gap. Hairlines inset to here.
-    static let textInset: CGFloat = HassTokens.Spacing.l + 24 + 14
 
     var body: some View {
         let title = item.displayTitle

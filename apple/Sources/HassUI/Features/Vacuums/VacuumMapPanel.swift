@@ -272,22 +272,18 @@ struct VacuumCleaningReport: View {
             let day = VacuumOutcomeText.day(contract.day)
             let overview = VacuumOutcomeText.overviewSubtitle(counts)
             VacuumSection("Cleaning Report") {
-                // G: ModuleList (sheet cell ground)
-                Button { onOpen(contract) } label: {
-                    VacuumListRow(symbol: VacuumStyle.symbol(visual.icon), tint: VacuumStyle.color(visual.tone),
-                                  title: "\(title) (\(contract.rooms.count))",
-                                  subtitle: overview.isEmpty ? day : "\(day) · \(overview)") {
-                        Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(HassTokens.Ink.secondary)
-                            .accessibilityHidden(true)
+                ModuleList {
+                    Button { onOpen(contract) } label: {
+                        ModuleRow("\(title) (\(contract.rooms.count))",
+                                  subtitle: overview.isEmpty ? day : "\(day) · \(overview)",
+                                  symbol: VacuumStyle.symbol(visual.icon), glyph: VacuumStyle.color(visual.tone),
+                                  showsChevron: true)
                     }
+                    .buttonStyle(ModuleRowButtonStyle())
+                    .accessibilityLabel("Open \(controller.vacuum.title) Automatic Cleaning Report for \(day)")
+                    .accessibilityValue(overview)
+                    .accessibilityIdentifier("vacuum.report")
                 }
-                .buttonStyle(.plain)
-                .vacuumGroup()
-                .accessibilityLabel("Open \(controller.vacuum.title) Automatic Cleaning Report for \(day)")
-                .accessibilityValue(overview)
-                .accessibilityIdentifier("vacuum.report")
             }
         case let .legacy(cleaned, issues):
             VacuumSection(title) { lists(cleaned: cleaned, issues: issues) }
@@ -326,13 +322,11 @@ struct VacuumOutcomeDetailView: View {
     var body: some View {
         let names = VacuumOutcomeText.roomNames(contract, vacuum: vacuum)
         ScrollView {
-            // G: ModuleList (sheet cell ground)
-            VStack(spacing: 0) {
-                ForEach(Array(contract.rooms.enumerated()), id: \.element.id) { index, room in
+            ModuleList {
+                ForEach(contract.rooms) { room in
                     let visual = VacuumOutcomeText.statusVisual(room.status)
-                    if index > 0 { VacuumRowDivider() }
-                    VacuumListRow(symbol: VacuumStyle.symbol(visual.icon), tint: VacuumStyle.color(visual.tone), title: room.roomName,
-                                  subtitle: VacuumOutcomeText.detail(room, roomNames: names)) {
+                    ModuleRow(room.roomName, subtitle: VacuumOutcomeText.detail(room, roomNames: names),
+                              symbol: VacuumStyle.symbol(visual.icon), glyph: VacuumStyle.color(visual.tone)) {
                         Text(VacuumOutcomeText.statusTitle(room.status))
                             .font(.subheadline)
                             .foregroundStyle(HassTokens.Ink.secondary)
@@ -343,7 +337,6 @@ struct VacuumOutcomeDetailView: View {
                     .accessibilityIdentifier("vacuum.outcome.\(room.roomId)")
                 }
             }
-            .vacuumGroup()
             .frame(maxWidth: 640)
             .frame(maxWidth: .infinity)
             .padding(HassTokens.Spacing.l)

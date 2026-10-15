@@ -50,9 +50,9 @@ struct VacationViewTests {
         // The checklist's inset list on the wallpaper (a module) and in a sheet (the cell colour), with a section header.
         for surface in [TileSurface.page, .sheet] {
             let list = AwaySection(title: "Pre-Vacation Checklist · 1 of 2") {
-                AwayInsetList {
+                ModuleList {
                     VacationChecklistRow(title: "Make the bed", isChecked: true, isUnavailable: false) {}
-                    VacationChecklistRow(title: "Water the plants", isChecked: false, isUnavailable: false, separated: true) {}
+                    VacationChecklistRow(title: "Water the plants", isChecked: false, isUnavailable: false) {}
                 }
             }
             #expect(render(list.environment(\.tileSurface, surface)) != nil)
