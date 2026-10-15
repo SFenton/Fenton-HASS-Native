@@ -238,15 +238,15 @@ public enum InventoryCatalog {
 
     // MARK: Copy
 
-    /// `Expires on 10/14/2026` (orange within a week) or `Expired on …` (red), else `No expiration date`.
+    /// `Expires Oct 14, 2026` (orange within a week) or `Expired Oct 9, 2026` (red), else `No Expiration Date`.
     public static func expiryInfo(_ value: String?, calendar: InventoryCalendar) -> ExpiryInfo {
-        guard let value, let date = calendar.date(fromISO: value) else { return ExpiryInfo(label: "No expiration date") }
+        guard let value, let date = calendar.date(fromISO: value) else { return ExpiryInfo(label: "No Expiration Date") }
         let days = calendar.days(until: date)
-        if days < 0 { return ExpiryInfo(label: "Expired on \(calendar.displayDate(date))", tone: .expired) }
-        return ExpiryInfo(label: "Expires on \(calendar.displayDate(date))", tone: days < 7 ? .soon : nil)
+        if days < 0 { return ExpiryInfo(label: "Expired \(calendar.displayDate(date))", tone: .expired) }
+        return ExpiryInfo(label: "Expires \(calendar.displayDate(date))", tone: days < 7 ? .soon : nil)
     }
 
-    /// `Quantity 3 · Expires on …`, or `Multiple Expiration Dates` when batches differ (`rowSubtitle`).
+    /// `Quantity 3 · Expires …`, or `Multiple Expiration Dates` when batches differ (`rowSubtitle`).
     public static func rowSubtitle(_ expiry: ExpiryInfo, quantity: Double?, batchCount: Int) -> String {
         let stock = quantity.map { "Quantity \(InventoryFormat.quantity($0))" }
         let label = batchCount > 1 ? multipleDatesLabel : expiry.label

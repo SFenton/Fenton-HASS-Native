@@ -5,9 +5,10 @@ import SwiftUI
 /// An inventory page: All Food, Pantry, Fridge, Freezer, Spice Rack or Cabinet
 /// (web `EverShelfInventoryPanel`; spec `.agents/pages/inventory/spec.md`).
 ///
-/// Rows come from `evershelf.list_inventory`. Search sits in the navigation bar; Sort, Filter and Scan Item
-/// float at the bottom like the web's floating actions. Multi-batch items open the item editor: as a sheet,
-/// or in the trailing half where the window may split (iPad landscape, unfolded iPhone Duo landscape).
+/// Rows come from `evershelf.list_inventory`, on one dense module under the large title and a "41 Items • 3 Expiring
+/// Soon" line (direction G mockup n6-inventory). Search, Sort, Filter and Scan Item form the page's bottom toolbar.
+/// Rows open the item editor: as a sheet, or in the trailing half where the window may split (iPad landscape,
+/// unfolded iPhone Duo landscape).
 struct InventoryScreen: View {
     @Bindable var model: InventoryListModel
     var models: InventoryModels
@@ -97,24 +98,49 @@ struct InventoryScreen: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .accessibilityIdentifier("inventory.loading")
         } else if let empty = model.emptyState {
-            ScrollView {
-                emptyView(empty)
+            // Centred on the page (mockup n6-inventory-empty), and still scrolling once AX sizes make it taller.
+            GeometryReader { geometry in
+                ScrollView {
+                    InventoryEmptyState(title: empty.title, description: empty.description, isError: model.loadError != nil) {
+                        Task { _ = try? await model.refresh() }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                }
+                .refreshable { _ = try? await model.refresh() }
             }
-            .refreshable { _ = try? await model.refresh() }
         } else {
+            let items = model.visibleItems
+            // G: ModuleList. A `List` rather than a stack on a module: rows keep their swipe actions (delete, add to
+            // groceries), which need a `List` before iOS 27. Each row draws its share of the dense module.
             List {
-                ForEach(model.visibleItems) { item in
-                    InventoryRow(
-                        item: item,
-                        model: model,
-                        selected: canSplit && editing?.itemId == item.id,
-                        onEdit: { presentation.open(item, in: model) },
-                        onShop: { presentation.ask(.shopping(item)) },
-                        onDelete: { presentation.requestDelete(item, in: model) }
-                    )
+                Section {
+                    ForEach(items) { item in
+                        InventoryRow(
+                            item: item,
+                            model: model,
+                            selected: canSplit && editing?.itemId == item.id,
+                            isFirst: item.id == items.first?.id,
+                            isLast: item.id == items.last?.id,
+                            onEdit: { presentation.open(item, in: model) },
+                            onShop: { presentation.ask(.shopping(item)) },
+                            onDelete: { presentation.requestDelete(item, in: model) }
+                        )
+                    }
+                } header: {
+                    // "41 Items • 3 Expiring Soon" under the large title (mockup n6-inventory).
+                    if let summary = model.pageSummary {
+                        Text(summary)
+                            .font(.subheadline)
+                            .foregroundStyle(HassTokens.Ink.secondary)
+                            .textCase(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("inventory.summary")
+                    }
                 }
             }
             .groupedListStyle()
+            // G rows: 64 pt with a subtitle (mockup `.row.n6-inv`).
+            .environment(\.defaultMinListRowHeight, 64)
             .overlay(alignment: .top) {
                 if model.isSearching {
                     ArcSpinner(.compact, label: "Searching inventory")
@@ -128,41 +154,11 @@ struct InventoryScreen: View {
         }
     }
 
-    /// Empty and error states. Plain wrapping text in a scroll view rather than `ContentUnavailableView` in a
-    /// list row, whose title the accessibility audit reports as clipped at large text sizes.
-    private func emptyView(_ empty: (title: String, description: String)) -> some View {
-        VStack(spacing: HassTokens.Spacing.m) {
-            Image(systemName: model.loadError == nil ? "basket" : "exclamationmark.triangle")
-                .font(.largeTitle)
-                .foregroundStyle(HassTokens.Ink.secondary)
-                .accessibilityHidden(true)
-            Text(empty.title)
-                .font(.title3.bold())
-                .foregroundStyle(HassTokens.Ink.primary)
-                .accessibilityAddTraits(.isHeader)
-            Text(empty.description)
-                .foregroundStyle(HassTokens.Ink.secondary)
-            if model.loadError != nil {
-                // Prominent: the bordered style's tinted label read 2.1:1 on its tinted fill.
-                Button("Try Again") { Task { _ = try? await model.refresh() } }
-                    .buttonStyle(.borderedProminent)
-                    .tint(FloatingActionBar.tint)
-                    .frame(minHeight: HassTokens.minTarget)
-            }
-        }
-        .multilineTextAlignment(.center)
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, HassTokens.Spacing.l)
-        .padding(.top, HassTokens.Spacing.xl)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("inventory.empty")
-    }
-
     // MARK: - Floating actions
 
-    /// Sort and Filter (brown while applied) once there is something to sort, then Scan Item: labeled on an
-    /// empty page, icon-only beside the others (web `EverShelfInventoryFloatingActions` + the scan FAB).
+    /// Sort and Filter (filled while applied) once there is something to sort, then Scan Item: a titled glass capsule
+    /// on an empty page (mockup n6-inventory-empty), a glass circle beside the others (web
+    /// `EverShelfInventoryFloatingActions` + the scan FAB).
     private var floatingActions: [FloatingAction] {
         let hasControls = !model.items.isEmpty || model.searchActive
         var actions: [FloatingAction] = []
@@ -170,7 +166,7 @@ struct InventoryScreen: View {
             actions.append(FloatingAction(id: "inventory.sort", title: "Sort", symbol: "arrow.up.arrow.down", showsTitle: false, isActive: model.sortActive) { presentation.sheet = .sort })
             actions.append(FloatingAction(id: "inventory.filter", title: "Filter", symbol: "line.3.horizontal.decrease", showsTitle: false, isActive: model.filterActive) { presentation.sheet = .filter })
         }
-        actions.append(FloatingAction(id: "inventory.scan", title: "Scan Item", symbol: "barcode.viewfinder", showsTitle: !hasControls) { presentation.sheet = .scan })
+        actions.append(FloatingAction(id: "inventory.scan", title: "Scan Item", symbol: "barcode.viewfinder", showsTitle: !hasControls, isProminent: false) { presentation.sheet = .scan })
         return actions
     }
 

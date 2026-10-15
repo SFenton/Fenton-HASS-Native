@@ -54,14 +54,14 @@ struct InventoryEditorModelTests {
         let batches = editor.batches
         #expect(batches.map(\.quantity) == [3, 1])
         #expect(editor.multipleBatches)
-        #expect(editor.heading(batches[0]) == "Expires on 10/20/2026")
-        #expect(editor.heading(batches[1]) == "No expiration date")
-        #expect(editor.qualifier(batches[0]) == " expiring 10/20/2026")
+        #expect(editor.heading(batches[0]) == "Expires Oct 20, 2026")
+        #expect(editor.heading(batches[1]) == "No Expiration Date")
+        #expect(editor.qualifier(batches[0]) == " expiring Oct 20, 2026")
         #expect(editor.qualifier(batches[1]) == " without an expiration date")
-        #expect(editor.locationLine(batches[0]) == "In the fridge")
+        #expect(editor.locationLine(batches[0]) == "In the Fridge")
         var prepared = batches[0]
         prepared.preparedFood = true
-        #expect(editor.locationLine(prepared) == "In the fridge · Prepared")
+        #expect(editor.locationLine(prepared) == "In the Fridge · Prepared")
         #expect(!editor.isDisabled(batches[0]))
         #expect(!editor.dismissalBlocked)
     }
