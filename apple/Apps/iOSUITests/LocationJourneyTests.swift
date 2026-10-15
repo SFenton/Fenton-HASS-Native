@@ -85,9 +85,24 @@ final class LocationJourneyTests: JourneyTestCase {
         }
     }
 
+    /// While Using after iOS showed its one Always alert: Settings instead of Continue, and Close is back.
+    func testWhileUsingAfterTheAlwaysAlertOffersSettings() {
+        let app = launch("when-in-use-asked")
+        XCTAssertEqual(app.staticTexts["location.title"].label, "Notice When You Leave")
+        XCTAssertEqual(status(app), "While Using the App")
+        let primary = app.buttons["location.primary"]
+        XCTAssertEqual(primary.label, "Open Settings")
+        assertTarget(primary)
+        let close = app.buttons["location.close"]
+        XCTAssertTrue(close.exists, "No longer a pre-alert screen")
+        assertTarget(close)
+        primary.tap()
+        XCTAssertEqual(lastAction(app), "Last action: open settings")
+    }
+
     /// Every stage passes the audit at the default size and grows at AX5, with a screenshot of each.
     func testEveryStagePassesAccessibilityAudit() throws {
-        for stage in ["not-determined", "when-in-use", "always", "denied", "reduced-accuracy"] {
+        for stage in ["not-determined", "when-in-use", "when-in-use-asked", "always", "denied", "reduced-accuracy"] {
             let app = launch(stage, arguments: [])
             keepScreenshot(app, "location-\(stage)-\(layout)")
             try FentonHomeApp.audit(app) { self.launch(stage, arguments: FentonHomeApp.ax5) }
@@ -101,5 +116,57 @@ final class LocationJourneyTests: JourneyTestCase {
             }
             large.terminate()
         }
+    }
+}
+
+/// Shadow-mode location after a real sign-in (`.agents/platforms/apple/location.md`): phones offer the permission
+/// screen once and walk the real system alerts to Always; iPad never shows it ("This phone"). The launch never
+/// registers (a test token keeps `mobile_app` registration off), so nothing reaches Home Assistant.
+@MainActor
+final class LocationShadowJourneyTests: JourneyTestCase {
+    private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+
+    private func launchSignedIn() throws -> XCUIApplication {
+        XCUIApplication().resetAuthorizationStatus(for: .location)
+        let ready = FentonHomeApp.family == .iPad ? nil : "location.title"
+        return try FentonHomeApp.launchSignedIn(environment: ["FENTON_LOCATION": "1"], readyIdentifier: ready)
+    }
+
+    /// Taps the system alert button whose label contains `text`.
+    private func answerAlert(_ text: String, file: StaticString = #filePath, line: UInt = #line) {
+        let button = springboard.buttons.matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 15), "No system alert offering \(text)", file: file, line: line)
+        button.tap()
+    }
+
+    func testPhonesOfferLocationAfterSignInAndIPadNever() throws {
+        let app = try launchSignedIn()
+        guard FentonHomeApp.family != .iPad else {
+            XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30))
+            // Long enough for the profile load that offers the screen on a phone.
+            XCTAssertFalse(app.staticTexts["location.title"].waitForExistence(timeout: 8), "iPad never asks for location")
+            keepScreenshot(app, "location-shadow-ipad-\(layout)")
+            return
+        }
+        XCTAssertEqual(app.staticTexts["location.title"].label, "Know When You're Home")
+        XCTAssertFalse(app.buttons["location.close"].exists, "A pre-alert screen has no Close")
+        keepScreenshot(app, "location-shadow-1-ask-\(layout)")
+
+        app.buttons["location.primary"].tap()
+        answerAlert("While Using")
+        XCTAssertTrue(app.staticTexts["Notice When You Leave"].waitForExistence(timeout: 10))
+        XCTAssertEqual(element("location.status", in: app).value as? String, "While Using the App")
+        keepScreenshot(app, "location-shadow-2-while-using-\(layout)")
+
+        app.buttons["location.primary"].tap()
+        answerAlert("Always")
+        XCTAssertTrue(app.staticTexts["Home and Away Are On"].waitForExistence(timeout: 10))
+        keepScreenshot(app, "location-shadow-3-always-\(layout)")
+        let close = app.buttons["location.close"]
+        XCTAssertTrue(close.exists)
+        close.tap()
+        XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["location.title"].exists)
+        keepScreenshot(app, "location-shadow-4-home-\(layout)")
     }
 }

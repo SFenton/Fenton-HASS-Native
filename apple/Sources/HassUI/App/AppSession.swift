@@ -24,6 +24,9 @@ public final class AppSession {
     /// Native notifications: registration with Home Assistant and what a notification opens.
     @ObservationIgnored public let push: PushCoordinator
 
+    /// Location reporting in shadow mode; nil on iPad and in launches that don't report (``LocationLaunchPolicy``).
+    @ObservationIgnored public let location: LocationCoordinator?
+
     @ObservationIgnored private let tokenStore: TokenStore
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
 
@@ -33,16 +36,21 @@ public final class AppSession {
     ///   - tokenStore: Where the refresh token lives; shared with the notification service extension.
     ///   - snapshotCache: The disk snapshot of entity states.
     ///   - push: The app's push coordinator (the app delegate's, so system callbacks reach it).
+    ///   - location: The app's location coordinator (the app delegate's, created at launch for zone relaunches).
     public init(tokenStore: TokenStore = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup),
-                snapshotCache: EntitySnapshotCache = .init(), push: PushCoordinator = .inert()) {
+                snapshotCache: EntitySnapshotCache = .init(), push: PushCoordinator = .inert(),
+                location: LocationCoordinator? = nil) {
         self.tokenStore = tokenStore
         self.snapshotCache = snapshotCache
         self.push = push
+        self.location = location
         #if DEBUG
-        // UI tests start signed out: FENTON_UITEST_RESET=1 clears the saved sign-in and snapshot.
+        // UI tests start signed out: FENTON_UITEST_RESET=1 clears the saved sign-in and snapshot, and the location
+        // screen is offered again.
         if ProcessInfo.processInfo.environment["FENTON_UITEST_RESET"] == "1" {
             tokenStore.clear()
             snapshotCache.clear()
+            LocationCoordinator.resetOffers()
         }
         // FENTON_HASS_TOKEN signs in with a long-lived access token for this launch only (never saved),
         // so journeys can run against the real server without a password.

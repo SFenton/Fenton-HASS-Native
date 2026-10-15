@@ -8,9 +8,11 @@ public struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     /// Creates the root.
-    /// - Parameter push: The app delegate's push coordinator; previews and tests use an inert one.
-    public init(push: PushCoordinator = .inert()) {
-        _session = State(initialValue: AppSession(push: push))
+    /// - Parameters:
+    ///   - push: The app delegate's push coordinator; previews and tests use an inert one.
+    ///   - location: The app delegate's location coordinator; nil where the app doesn't report location.
+    public init(push: PushCoordinator = .inert(), location: LocationCoordinator? = nil) {
+        _session = State(initialValue: AppSession(push: push, location: location))
     }
 
     public var body: some View {
@@ -28,6 +30,8 @@ public struct RootView: View {
                         .environment(connection.store)
                         .environment(session)
                         .environment(session.push)
+                        .environment(session.location)
+                        .locationReporting(session.location)
                         .environment(session.backdrop)
                         .task { await session.backdrop?.refresh() }
                         .readsWindowHinge()

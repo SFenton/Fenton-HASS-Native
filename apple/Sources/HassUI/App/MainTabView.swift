@@ -16,6 +16,7 @@ struct MainTabView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(PushCoordinator.self) private var push: PushCoordinator?
+    @Environment(LocationCoordinator.self) private var location: LocationCoordinator?
 
     private var style: ShellNavigationStyle {
         ShellNavigationStyle.resolve(isRegularWidth: horizontalSizeClass == .regular)
@@ -175,12 +176,14 @@ struct MainTabView: View {
         return false
     }
 
-    /// Reads the signed-in user for the profile button (the cached name shows until it arrives) and for push
-    /// registration, which is per Home Assistant user.
+    /// Reads the signed-in user for the profile button (the cached name shows until it arrives) and for the
+    /// `mobile_app` registration, which is per Home Assistant user; then offers location once the notification
+    /// alert is answered, so the two never stack.
     private func loadProfileName() async {
         guard let connection, let user = try? await connection.currentUser() else { return }
         if navigator.profileName != user.name { navigator.profileName = user.name }
         await push?.didConnect(userID: user.id, userName: user.name)
+        location?.offerPermissionIfNeeded()
     }
 }
 

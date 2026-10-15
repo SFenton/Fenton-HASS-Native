@@ -1,35 +1,7 @@
 import Foundation
 @testable import HassCore
+import HassTestSupport
 import Testing
-
-/// A scripted ``LocationPlatform``: records what the reporter asked for and hands out queued fixes.
-@MainActor
-final class FakeLocationPlatform: LocationPlatform {
-    var permission: LocationPermission
-    var onEvent: (@MainActor (LocationPlatformEvent) -> Void)?
-    var fixes: [LocationFix] = []
-    var calls: [String] = []
-    var monitored: [PlannedRegion] = []
-
-    init(_ permission: LocationPermission) { self.permission = permission }
-
-    func requestWhenInUse() { calls.append("whenInUse") }
-    func requestAlways() { calls.append("always") }
-    func currentFix() async throws -> LocationFix {
-        guard !fixes.isEmpty else { throw LocationPlatformError.unavailable }
-        return fixes.removeFirst()
-    }
-    func startSignificantChanges() { calls.append("startSignificant") }
-    func stopSignificantChanges() { calls.append("stopSignificant") }
-    func monitor(_ regions: [PlannedRegion]) async {
-        calls.append("monitor \(regions.count)")
-        monitored = regions
-    }
-    func stopMonitoring() async {
-        calls.append("stopMonitoring")
-        monitored = []
-    }
-}
 
 let zonesJSON = """
 [{"entity_id":"zone.home","attributes":{"latitude":47.6,"longitude":-122.3,"radius":40,"friendly_name":"Home"}},
@@ -41,7 +13,7 @@ let zonesJSON = """
 struct LocationReporterTests {
     let clock = Date(timeIntervalSince1970: 2_000_000)
 
-    func reporter(_ platform: FakeLocationPlatform, _ transport: StubFeedbackTransport, presence: Bool = true) -> LocationReporter {
+    func reporter(_ platform: FakeLocationPlatform, _ transport: StubHTTPTransport, presence: Bool = true) -> LocationReporter {
         LocationReporter(
             platform: platform,
             client: MobileAppWebhookClient(source: FixedMobileAppWebhookSource(mobileAppWebhook), transport: transport),
@@ -50,7 +22,7 @@ struct LocationReporterTests {
     }
 
     /// The `data` of the `update_location` command at `index` among the recorded requests.
-    func locationData(_ transport: StubFeedbackTransport, _ index: Int) throws -> [String: Any] {
+    func locationData(_ transport: StubHTTPTransport, _ index: Int) throws -> [String: Any] {
         let body = try sentBody(transport.requests[index])
         #expect(body["type"] as? String == "update_location")
         return try #require(body["data"] as? [String: Any])
@@ -58,14 +30,14 @@ struct LocationReporterTests {
 
     @Test func permissionIsRequestedInTwoSteps() {
         let platform = FakeLocationPlatform(.notDetermined)
-        let subject = reporter(platform, StubFeedbackTransport([]))
+        let subject = reporter(platform, StubHTTPTransport([]))
         subject.requestPermission()
         platform.permission = LocationPermission(authorization: .whenInUse)
-        let upgraded = reporter(platform, StubFeedbackTransport([]))
+        let upgraded = reporter(platform, StubHTTPTransport([]))
         upgraded.requestPermission()
         for authorization in [LocationPermission.Authorization.always, .denied, .restricted] {
             platform.permission = LocationPermission(authorization: authorization)
-            reporter(platform, StubFeedbackTransport([])).requestPermission()
+            reporter(platform, StubHTTPTransport([])).requestPermission()
         }
         #expect(platform.calls == ["whenInUse", "always"])
     }
@@ -73,7 +45,7 @@ struct LocationReporterTests {
     @Test func startWithAlwaysMonitorsZonesAndSendsALaunchFix() async throws {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .always))
         platform.fixes = [fixNorth(of: 0, accuracy: 8)]
-        let transport = StubFeedbackTransport([(200, zonesJSON), (200, "{}")])
+        let transport = StubHTTPTransport([(200, zonesJSON), (200, "{}")])
         let subject = reporter(platform, transport)
         await subject.start()
         #expect(subject.isRunning)
@@ -94,7 +66,7 @@ struct LocationReporterTests {
     @Test func whileUsingOnlySendsFixesWithoutBackgroundMonitoring() async throws {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .whenInUse))
         platform.fixes = [fixNorth(of: 0)]
-        let transport = StubFeedbackTransport([(200, zonesJSON), (200, "{}")])
+        let transport = StubHTTPTransport([(200, zonesJSON), (200, "{}")])
         let subject = reporter(platform, transport)
         await subject.start()
         #expect(platform.calls.isEmpty)
@@ -103,7 +75,7 @@ struct LocationReporterTests {
     }
 
     @Test func iPadsAndUnauthorizedDevicesNeverStart() async {
-        let transport = StubFeedbackTransport([])
+        let transport = StubHTTPTransport([])
         let iPad = reporter(FakeLocationPlatform(LocationPermission(authorization: .always)), transport, presence: false)
         await iPad.start()
         let denied = reporter(FakeLocationPlatform(LocationPermission(authorization: .denied)), transport)
@@ -119,7 +91,7 @@ struct LocationReporterTests {
     @Test func zoneEntryAndExitSendTheZoneResult() async throws {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .always))
         platform.fixes = [fixNorth(of: 5000), fixNorth(of: 10, accuracy: 15), fixNorth(of: 2000, accuracy: 30)]
-        let transport = StubFeedbackTransport([(200, zonesJSON), (200, "{}"), (200, "{}"), (200, "{}")])
+        let transport = StubHTTPTransport([(200, zonesJSON), (200, "{}"), (200, "{}"), (200, "{}")])
         let subject = reporter(platform, transport)
         await subject.start()
 
@@ -136,7 +108,7 @@ struct LocationReporterTests {
     @Test func zoneEntryWithoutAFixReportsTheZoneCenter() async throws {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .always))
         platform.fixes = [fixNorth(of: 3000)]
-        let transport = StubFeedbackTransport([(200, zonesJSON), (200, "{}"), (200, "{}")])
+        let transport = StubHTTPTransport([(200, zonesJSON), (200, "{}"), (200, "{}")])
         let subject = reporter(platform, transport)
         await subject.start()
         await subject.handle(.zone(.entered("zone.work")))
@@ -154,7 +126,7 @@ struct LocationReporterTests {
     @Test func significantChangesAreFilteredAndReplanZones() async throws {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .always))
         platform.fixes = [fixNorth(of: 0)]
-        let transport = StubFeedbackTransport([(200, zonesJSON), (200, "{}"), (200, "{}")])
+        let transport = StubHTTPTransport([(200, zonesJSON), (200, "{}"), (200, "{}")])
         let subject = reporter(platform, transport)
         await subject.start()
         await subject.handle(.significantChange(fixNorth(of: 3, at: 5)))
@@ -169,7 +141,7 @@ struct LocationReporterTests {
 
     @Test func eventsWhileStoppedAreIgnored() async {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .always))
-        let transport = StubFeedbackTransport([])
+        let transport = StubHTTPTransport([])
         let subject = reporter(platform, transport)
         await subject.handle(.significantChange(fixNorth(of: 0)))
         await subject.handle(.zone(.entered("zone.home")))
@@ -184,7 +156,7 @@ struct LocationReporterTests {
     @Test func permissionChangesFollowThePlatform() async {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .whenInUse))
         platform.fixes = [fixNorth(of: 0)]
-        let transport = StubFeedbackTransport([(200, zonesJSON), (200, "{}")])
+        let transport = StubHTTPTransport([(200, zonesJSON), (200, "{}")])
         let subject = reporter(platform, transport)
         await subject.start()
 
@@ -206,7 +178,7 @@ struct LocationReporterTests {
     @Test func aGoneRegistrationStopsReporting() async {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .always))
         platform.fixes = [fixNorth(of: 0)]
-        let transport = StubFeedbackTransport([(200, zonesJSON), (410, "")])
+        let transport = StubHTTPTransport([(200, zonesJSON), (410, "")])
         let subject = reporter(platform, transport)
         await subject.start()
         #expect(subject.lastError == .registrationGone)
@@ -217,7 +189,7 @@ struct LocationReporterTests {
     @Test func zoneFailuresAreRecordedAndAFailedSendCanBeRetried() async throws {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .always))
         platform.fixes = [fixNorth(of: 0), fixNorth(of: 0)]
-        let transport = StubFeedbackTransport([(500, ""), (503, ""), (200, "{}")])
+        let transport = StubHTTPTransport([(500, ""), (503, ""), (200, "{}")])
         let subject = reporter(platform, transport)
         await subject.start()
         #expect(subject.isRunning, "A server error keeps reporting on")
@@ -230,7 +202,7 @@ struct LocationReporterTests {
 
     @Test func cancellationIsNotAnError() async {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .always))
-        let transport = StubFeedbackTransport([])
+        let transport = StubHTTPTransport([])
         transport.error = CancellationError()
         let subject = reporter(platform, transport)
         await subject.start()
@@ -240,7 +212,7 @@ struct LocationReporterTests {
 
     @Test func platformEventsReachTheReporter() async {
         let platform = FakeLocationPlatform(.notDetermined)
-        let subject = reporter(platform, StubFeedbackTransport([]))
+        let subject = reporter(platform, StubHTTPTransport([]))
         platform.onEvent?(.permissionChanged(LocationPermission(authorization: .whenInUse)))
         for _ in 0..<50 where subject.permission.authorization != .whenInUse { await Task.yield() }
         #expect(subject.permission.authorization == .whenInUse)
@@ -249,7 +221,7 @@ struct LocationReporterTests {
     @Test func unregisteredStopsToo() async {
         let platform = FakeLocationPlatform(LocationPermission(authorization: .always))
         let subject = LocationReporter(
-            platform: platform, client: MobileAppWebhookClient(source: FixedMobileAppWebhookSource(nil), transport: StubFeedbackTransport([])),
+            platform: platform, client: MobileAppWebhookClient(source: FixedMobileAppWebhookSource(nil), transport: StubHTTPTransport([])),
             isPresenceDevice: true
         )
         await subject.start()

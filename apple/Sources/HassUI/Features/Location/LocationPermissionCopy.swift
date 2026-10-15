@@ -35,7 +35,11 @@ struct LocationPermissionCopy: Equatable {
     /// be swiped away (HIG Privacy: "Don't include additional actions").
     var isPreAlert: Bool { action == .requestPermission }
 
-    init(stage: LocationPermission.Stage) {
+    /// - Parameters:
+    ///   - stage: The permission's stage.
+    ///   - canAskForAlways: Whether iOS will still show the Always alert. It shows it once; after the person keeps
+    ///     While Using, the While Using stage sends them to Settings instead and can be closed.
+    init(stage: LocationPermission.Stage, canAskForAlways: Bool = true) {
         switch stage {
         case .notDetermined:
             title = "Know When You're Home"
@@ -44,6 +48,13 @@ struct LocationPermissionCopy: Equatable {
             action = .requestPermission
             footnote = "Next, iOS asks to use your location. Choose Allow While Using App."
             showsPoints = true
+        case .whenInUse where !canAskForAlways:
+            title = "Notice When You Leave"
+            message = "Home Assistant only hears from this phone while the app is open. To report arrivals and "
+                + "departures with the app closed, choose Always in Settings."
+            action = .openSettings
+            footnote = nil
+            showsPoints = false
         case .whenInUse:
             title = "Notice When You Leave"
             message = "Home Assistant only hears from this phone while the app is open. To report arrivals and "

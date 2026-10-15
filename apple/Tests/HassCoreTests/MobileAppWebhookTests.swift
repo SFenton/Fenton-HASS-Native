@@ -1,5 +1,6 @@
 import Foundation
 @testable import HassCore
+import HassTestSupport
 import Testing
 
 /// The JSON body a stub transport recorded.
@@ -15,12 +16,12 @@ let mobileAppWebhook = MobileAppWebhook(server: mobileAppServer, webhookID: "hoo
 
 @Suite("Mobile app webhook client")
 struct MobileAppWebhookClientTests {
-    func client(_ transport: StubFeedbackTransport, webhook: MobileAppWebhook? = mobileAppWebhook) -> MobileAppWebhookClient {
+    func client(_ transport: StubHTTPTransport, webhook: MobileAppWebhook? = mobileAppWebhook) -> MobileAppWebhookClient {
         MobileAppWebhookClient(source: FixedMobileAppWebhookSource(webhook), transport: transport)
     }
 
     @Test func updateLocationPostsToTheWebhookWithoutAToken() async throws {
-        let transport = StubFeedbackTransport([(200, "{}")])
+        let transport = StubHTTPTransport([(200, "{}")])
         let report = try #require(LocationReport(fix: LocationFix(latitude: 47.6, longitude: -122.3, horizontalAccuracy: 12)))
         try await client(transport).updateLocation(report)
         let request = try #require(transport.requests.first)
@@ -34,7 +35,7 @@ struct MobileAppWebhookClientTests {
     }
 
     @Test func registerAndUpdateSensors() async throws {
-        let transport = StubFeedbackTransport([
+        let transport = StubHTTPTransport([
             (201, #"{"success":true}"#),
             (200, #"{"battery_level":{"success":true},"focus":{"success":true,"is_disabled":true},"#
                 + #""connectivity_ssid":{"success":false,"error":{"code":"not_registered","message":"x"}},"#
@@ -52,24 +53,24 @@ struct MobileAppWebhookClientTests {
     }
 
     @Test func emptyUpdateSendsNothing() async throws {
-        let transport = StubFeedbackTransport([])
+        let transport = StubHTTPTransport([])
         #expect(try await client(transport).updateSensorStates([]) == SensorUpdateOutcome())
         #expect(transport.requests.isEmpty)
     }
 
     @Test func unreadableUpdateResponseIsUnexpected() async throws {
-        let transport = StubFeedbackTransport([(200, "[]")])
+        let transport = StubHTTPTransport([(200, "[]")])
         await #expect(throws: MobileAppWebhookError.unexpectedResponse) {
             _ = try await client(transport).updateSensorStates([MobileAppSensor(uniqueID: "a", name: "A", state: 1)])
         }
-        let nested = StubFeedbackTransport([(200, #"{"a":true}"#)])
+        let nested = StubHTTPTransport([(200, #"{"a":true}"#)])
         await #expect(throws: MobileAppWebhookError.unexpectedResponse) {
             _ = try await client(nested).updateSensorStates([MobileAppSensor(uniqueID: "a", name: "A", state: 1)])
         }
     }
 
     @Test func zonesAreRead() async throws {
-        let transport = StubFeedbackTransport([(200, """
+        let transport = StubHTTPTransport([(200, """
         [{"entity_id":"zone.home","state":"1","attributes":{"latitude":47.6,"longitude":-122.3,"radius":50,"passive":false,"friendly_name":"Home"}},
          {"entity_id":"zone.work","attributes":{"latitude":47.7,"longitude":-122.2,"radius":200.5}},
          {"entity_id":"sensor.not_a_zone","attributes":{"latitude":1,"longitude":2,"radius":3}},
@@ -83,27 +84,27 @@ struct MobileAppWebhookClientTests {
             HAZone(entityID: "zone.work", latitude: 47.7, longitude: -122.2, radius: 200.5, friendlyName: "work"),
         ])
         await #expect(throws: MobileAppWebhookError.unexpectedResponse) {
-            _ = try await client(StubFeedbackTransport([(200, "{}")])).zones()
+            _ = try await client(StubHTTPTransport([(200, "{}")])).zones()
         }
     }
 
     @Test func failuresAreTyped() async throws {
         let report = try #require(LocationReport(fix: LocationFix(latitude: 1, longitude: 2, horizontalAccuracy: 5)))
         await #expect(throws: MobileAppWebhookError.notRegistered) {
-            try await client(StubFeedbackTransport([]), webhook: nil).updateLocation(report)
+            try await client(StubHTTPTransport([]), webhook: nil).updateLocation(report)
         }
         await #expect(throws: MobileAppWebhookError.registrationGone) {
-            try await client(StubFeedbackTransport([(410, "")])).updateLocation(report)
+            try await client(StubHTTPTransport([(410, "")])).updateLocation(report)
         }
         await #expect(throws: MobileAppWebhookError.status(500)) {
-            try await client(StubFeedbackTransport([(500, "")])).updateLocation(report)
+            try await client(StubHTTPTransport([(500, "")])).updateLocation(report)
         }
-        let offline = StubFeedbackTransport([])
+        let offline = StubHTTPTransport([])
         offline.error = URLError(.notConnectedToInternet)
         await #expect(throws: MobileAppWebhookError.network) {
             try await client(offline).updateLocation(report)
         }
-        let cancelled = StubFeedbackTransport([])
+        let cancelled = StubHTTPTransport([])
         cancelled.error = CancellationError()
         await #expect(throws: CancellationError.self) {
             try await client(cancelled).updateLocation(report)
