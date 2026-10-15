@@ -69,7 +69,8 @@ struct VacationModeScreen: View {
     /// The checklist as one inset list, its header counting what is done ("Pre-Vacation Checklist · 3 of 5",
     /// mockup n5-vacation-mode).
     private var checklistSection: some View {
-        let done = Vacation.checklist.filter(controller.isChecked).count
+        // A closure, not `controller.isChecked`: the main-actor method reference would lose its isolation.
+        let done = Vacation.checklist.count(where: { controller.isChecked($0) })
         return AwaySection(title: "\(Vacation.Copy.checklistTitle) · \(done) of \(Vacation.checklist.count)") {
             // A module on the wallpaper, the sheet's cell colour in the Account and Quick Links sheets.
             ModuleList {
@@ -132,7 +133,7 @@ struct VacationChecklistRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .firstTextBaseline, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: ModuleRowMetrics.gap) {
                 // Only the glyph dims while unavailable; the title keeps its contrast (direction G, tiles).
                 Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
                     .font(.body)

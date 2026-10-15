@@ -81,7 +81,7 @@ struct TodoItemRow: View {
             Button(action: onToggle) {
                 // The symbol takes the title's font and baseline, so it centers on the first line however
                 // the title wraps (the Label idiom; HIG Typography, SF Symbols "Alignment").
-                HStack(alignment: .firstTextBaseline, spacing: 14) {
+                HStack(alignment: .firstTextBaseline, spacing: ModuleRowMetrics.gap) {
                     Image(systemName: done ? "checkmark.circle.fill" : "circle")
                         .font(.body)
                         .imageScale(.large)

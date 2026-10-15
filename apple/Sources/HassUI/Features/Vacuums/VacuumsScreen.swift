@@ -166,7 +166,7 @@ enum VacuumPageFormat {
     static func summary(states: [String?]) -> String? {
         let normalized = states.map { $0?.trimmingCharacters(in: .whitespaces).lowercased() ?? "" }
         let parts = [("cleaning", "Cleaning"), ("returning", "Returning"), ("error", "Needs Attention")].compactMap { state, label in
-            let count = normalized.filter { $0 == state }.count
+            let count = normalized.count(where: { $0 == state })
             return count > 0 ? "\(count) \(label)" : nil
         }
         if !parts.isEmpty { return parts.joined(separator: " · ") }

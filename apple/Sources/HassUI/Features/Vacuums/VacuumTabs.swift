@@ -182,7 +182,9 @@ struct VacuumControlsTab: View {
     private var targetPicker: some View {
         let selection = Binding<VacuumCleanTarget>(
             get: { VacuumCleanTarget.current(areaDrawn: controller.areaSelection != nil) },
-            set: pick
+            // A closure, not the bare method: a reference to a main-actor method can't become Binding's
+            // nonisolated setter in Swift 6.
+            set: { pick($0) }
         )
         return Picker("Cleaning Target", selection: selection) {
             Text("Rooms").tag(VacuumCleanTarget.rooms)

@@ -30,7 +30,7 @@ struct InventoryItemEditor: View {
                         .modalChrome()
                         .navigationTitle(model.title)
                         .inlineNavigationTitle()
-                        // "Quantity 3 · In the pantry" (iOS 26; the title alone before).
+                        // "Quantity 3 · In the Pantry" (iOS 26; the title alone before).
                         .sheetSubtitle(model.summary)
                         .toolbar {
                             SheetCancelItem(identifier: "inventory.editor.close", isEnabled: !model.dismissalBlocked && !isSavingAll) { onClose() }
@@ -123,7 +123,7 @@ struct InventoryItemEditor: View {
 }
 
 extension InventoryEditorModel {
-    /// The item name plus the batch's qualifier (`Black Beans expiring 10/14/2026`), as the web's
+    /// The item name plus the batch's qualifier (`Black Beans expiring Oct 14, 2026`), as the web's
     /// `${title}${qualifier}` in control labels and prompts.
     func batchName(_ batch: InventoryBatch) -> String {
         title + qualifier(batch)

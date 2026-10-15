@@ -67,6 +67,7 @@ public struct FloatingActionBar: View {
 
     @FocusState private var searchFocused: Bool
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Creates a bar.
     public init(actions: [FloatingAction], search: FloatingSearch? = nil) {
@@ -100,7 +101,8 @@ public struct FloatingActionBar: View {
         }
         .padding(.horizontal, HassTokens.Spacing.l)
         .padding(.bottom, HassTokens.Spacing.s)
-        .animation(.snappy, value: search?.isExpanded.wrappedValue)
+        // Reduce Motion: the search capsule swaps in place without the spring.
+        .animation(reduceMotion ? nil : .snappy, value: search?.isExpanded.wrappedValue)
     }
 
     private func open(_ search: FloatingSearch) {

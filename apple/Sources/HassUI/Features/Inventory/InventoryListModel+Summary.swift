@@ -8,9 +8,9 @@ extension InventoryListModel {
         guard phase == .content, loadError == nil, !searchActive else { return nil }
         let cards = displayItems
         guard !cards.isEmpty else { return nil }
-        let expiring = cards.filter { card in
+        let expiring = cards.count(where: { card in
             InventoryCatalog.expiryInfo(card.soonestExpiry(calendar), calendar: calendar).tone == .soon
-        }.count
+        })
         return FoodConfig.summary(items: cards.count, expiring: expiring)
     }
 

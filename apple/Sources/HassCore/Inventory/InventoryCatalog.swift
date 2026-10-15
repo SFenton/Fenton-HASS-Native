@@ -254,7 +254,7 @@ public enum InventoryCatalog {
     }
 
     /// Words appended to an item's name so each batch's controls are unique (`batchQualifier`):
-    /// ` expiring 10/14/2026`, ` without an expiration date`, plus ` prepared`.
+    /// ` expiring Oct 14, 2026`, ` without an expiration date`, plus ` prepared`.
     public static func batchQualifier(_ batch: InventoryBatch, multipleBatches: Bool, calendar: InventoryCalendar) -> String {
         guard multipleBatches else { return batch.preparedFood ? " prepared" : "" }
         let label = calendar.date(fromISO: batch.expiryDate).map(calendar.displayDate)

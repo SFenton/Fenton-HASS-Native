@@ -217,7 +217,7 @@ struct InventoryCatalogTests {
         #expect(InventoryCatalog.batchQualifier(batch(prepared: true), multipleBatches: false, calendar: calendar) == " prepared")
         #expect(InventoryCatalog.batchQualifier(batch(expiry: "2026-10-20"), multipleBatches: true, calendar: calendar) == " expiring Oct 20, 2026")
         #expect(InventoryCatalog.batchQualifier(batch(expiry: "2026-10-20", prepared: true), multipleBatches: true, calendar: calendar)
-            == " expiring 10/20/2026 prepared")
+            == " expiring Oct 20, 2026 prepared")
         #expect(InventoryCatalog.batchQualifier(batch(), multipleBatches: true, calendar: calendar) == " without an expiration date")
         #expect(InventoryCatalog.batchQualifier(batch(prepared: true), multipleBatches: true, calendar: calendar)
             == " without an expiration date prepared")
