@@ -47,17 +47,17 @@ struct LocationAccountSection: View {
             }
             .frame(minHeight: HassTokens.minTarget)
             .accessibilityIdentifier("account.location.report")
-
-            if let warning = Self.warning(armed: location.isReportingArmed, stage: permission.stage) {
-                InlineAlert(warning)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                    .accessibilityIdentifier("account.location.warning")
-            }
         } header: {
             FormHeader("Location")
         } footer: {
-            FormFooter(Self.footer)
+            // The warning sits under the card, above what the toggle does, so the card keeps its corners.
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                if let warning = Self.warning(armed: location.isReportingArmed, stage: permission.stage) {
+                    InlineAlert(warning)
+                        .accessibilityIdentifier("account.location.warning")
+                }
+                FormFooter(Self.footer)
+            }
         }
         .sheet(isPresented: $showsPermission) {
             LocationPermissionSheet(location: location) { showsPermission = false }

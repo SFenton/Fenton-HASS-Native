@@ -180,16 +180,18 @@ final class LocationShadowJourneyTests: JourneyTestCase {
 final class LocationAccountJourneyTests: JourneyTestCase {
     private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
 
-    /// Signs in with location on and the toggle reset off; phones wait for the after-sign-in offer.
-    private func launchSignedIn(arguments: [String] = [], offer: Bool) throws -> XCUIApplication {
-        try FentonHomeApp.launchSignedIn(arguments: arguments,
-                                         environment: ["FENTON_LOCATION": "1", "FENTON_LOCATION_REPORT": "0"],
-                                         readyIdentifier: offer ? "location.title" : nil)
+    /// Signs in with location on; the first launch resets the toggle off and waits for the after-sign-in offer on
+    /// phones, later ones keep the saved toggle.
+    private func launchSignedIn(arguments: [String] = [], first: Bool) throws -> XCUIApplication {
+        var environment = ["FENTON_LOCATION": "1"]
+        if first { environment["FENTON_LOCATION_REPORT"] = "0" }
+        return try FentonHomeApp.launchSignedIn(arguments: arguments, environment: environment,
+                                                readyIdentifier: first && FentonHomeApp.family != .iPad ? "location.title" : nil)
     }
 
-    /// Signs in again (location already declined, so no offer) and opens the Account sheet.
-    private func relaunchToAccount(arguments: [String] = []) throws -> XCUIApplication {
-        let app = try launchSignedIn(arguments: arguments, offer: false)
+    /// Signs in again (location already answered, so no offer) and opens the Account sheet.
+    private func relaunchToAccount(arguments: [String] = [], first: Bool = false) throws -> XCUIApplication {
+        let app = try launchSignedIn(arguments: arguments, first: first)
         app.openAccountSheet()
         return app
     }
@@ -197,7 +199,7 @@ final class LocationAccountJourneyTests: JourneyTestCase {
     func testShareLocationAndTheReportToggleOnPhonesOnly() throws {
         XCUIApplication().resetAuthorizationStatus(for: .location)
         guard FentonHomeApp.family != .iPad else {
-            let app = try relaunchToAccount()
+            let app = try relaunchToAccount(first: true)
             XCTAssertTrue(app.buttons["account.settings"].exists)
             XCTAssertFalse(app.buttons["account.location"].exists, "iPad has no Share Location row")
             XCTAssertFalse(app.switches["account.location.report"].exists, "iPad has no Report toggle")
@@ -206,7 +208,7 @@ final class LocationAccountJourneyTests: JourneyTestCase {
         }
 
         // The after-sign-in offer still comes first in the four-tab shell; decline it.
-        var app = try launchSignedIn(offer: true)
+        var app = try launchSignedIn(first: true)
         keepScreenshot(app, "location-account-0-offer-\(layout)")
         app.buttons["location.primary"].tap()
         let decline = springboard.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Don'")).firstMatch
@@ -240,8 +242,7 @@ final class LocationAccountJourneyTests: JourneyTestCase {
         large.terminate()
 
         // Armed survives a relaunch without the debug override.
-        app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_LOCATION": "1"])
-        app.openAccountSheet()
+        app = try relaunchToAccount()
         let armed = app.switches["account.location.report"]
         XCTAssertTrue(armed.waitForExistence(timeout: 5))
         XCTAssertEqual(armed.value as? String, "1", "The toggle persists per install")
