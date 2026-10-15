@@ -53,6 +53,7 @@ struct DonetickTaskSheet: View {
             .modalChrome()
             .navigationTitle(mode.editTarget == nil ? "New Task" : "Edit Task")
             .inlineNavigationTitle()
+            .sheetSubtitle("Donetick")
             // An edit sheet (direction G, Sheets; mockup n5-new-task): circle x Cancel, filled check Create or Save.
             .toolbar {
                 SheetCancelItem(identifier: "task.cancel", isEnabled: busy == nil) { dismiss() }

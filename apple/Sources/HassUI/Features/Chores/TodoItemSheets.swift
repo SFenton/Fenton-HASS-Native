@@ -35,6 +35,7 @@ struct AddGroceryItemSheet: View {
             .modalChrome()
             .navigationTitle("Add Grocery Item")
             .inlineNavigationTitle()
+            .sheetSubtitle("Groceries")
             .toolbar {
                 SheetCancelItem(isEnabled: !submitting) { dismiss() }
                 SheetConfirmItem("Add", isEnabled: !trimmed.isEmpty, isBusy: submitting, busyTitle: "Adding",
@@ -117,6 +118,7 @@ struct AddAdminTodoSheet: View {
             .modalChrome()
             .navigationTitle("Add Task")
             .inlineNavigationTitle()
+            .sheetSubtitle("Admin To-Do")
             .toolbar {
                 SheetCancelItem(isEnabled: !submitting) { dismiss() }
                 SheetConfirmItem("Add", isEnabled: !trimmed.isEmpty, isBusy: submitting, busyTitle: "Adding",
@@ -261,6 +263,7 @@ struct RenameTodoItemSheet: View {
             .modalChrome()
             .navigationTitle("Edit Task")
             .inlineNavigationTitle()
+            .sheetSubtitle("Admin To-Do")
             .toolbar {
                 SheetCancelItem(isEnabled: !submitting) { dismiss() }
                 SheetConfirmItem("Save", isEnabled: Self.canSave(target: target, draft: draft), isBusy: submitting,

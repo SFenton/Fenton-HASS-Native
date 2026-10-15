@@ -7,6 +7,8 @@ import SwiftUI
 /// restores defaults in `onReset`. Cancel (or a swipe down) drops the draft.
 public struct FilterSheet<Content: View>: View {
     public var title: String
+    /// A one-line state under the title, such as "2 Filters On" (``SwiftUICore/View/sheetSubtitle(_:)``).
+    public var subtitle: String?
     /// Apply is enabled only when the draft differs from what is applied.
     public var canApply: Bool
     /// Reset is shown only when the draft differs from the defaults.
@@ -21,9 +23,10 @@ public struct FilterSheet<Content: View>: View {
     @Environment(\.dismiss) private var dismiss
 
     /// Creates a sheet.
-    public init(title: String, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void, onReset: @escaping () -> Void,
-                detents: Set<PresentationDetent>? = nil, @ViewBuilder content: @escaping () -> Content) {
+    public init(title: String, subtitle: String? = nil, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void,
+                onReset: @escaping () -> Void, detents: Set<PresentationDetent>? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
+        self.subtitle = subtitle
         self.canApply = canApply
         self.canReset = canReset
         self.onApply = onApply
@@ -57,6 +60,7 @@ public struct FilterSheet<Content: View>: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
+            .sheetSubtitle(subtitle)
             // An edit sheet (direction G, Sheets): circle x Cancel leading drops the draft, the filled check applies it.
             .toolbar {
                 SheetCancelItem(identifier: "filterSheet.cancel") { dismiss() }
