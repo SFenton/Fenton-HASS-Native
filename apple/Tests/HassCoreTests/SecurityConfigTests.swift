@@ -58,6 +58,27 @@ struct SecurityConfigTests {
         #expect(SecurityConfig.disarmMode.service == "alarm_disarm")
     }
 
+    /// The alarm card leads with Disarm, labelled as the action (mockup n3).
+    @Test func modeButtonsLeadWithDisarm() {
+        #expect(SecurityConfig.modeButtons.map(\.buttonTitle) == ["Disarm", "Home", "Away", "Night"])
+        #expect(SecurityConfig.modeButtons.map(\.state) == ["disarmed", "armed_home", "armed_away", "armed_night"])
+        #expect(SecurityConfig.panelTitle("armed_away") == "Armed Away")
+        #expect(SecurityConfig.panelTitle("triggered") == "Alarm Triggered")
+    }
+
+    /// "Since" names the time today and the date before today; no time, no line.
+    @Test func sinceTextNamesTimeOrDate() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let now = calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 22, minute: 10))!
+        let today = calendar.date(from: DateComponents(year: 2026, month: 10, day: 15, hour: 21, minute: 30))!
+        let earlier = calendar.date(from: DateComponents(year: 2026, month: 10, day: 14, hour: 21, minute: 30))!
+        #expect(SecurityConfig.sinceText(today, now: now, calendar: calendar) == "Since \(today.formatted(date: .omitted, time: .shortened))")
+        #expect(SecurityConfig.sinceText(earlier, now: now, calendar: calendar) == "Since \(earlier.formatted(.dateTime.month(.abbreviated).day()))")
+        #expect(SecurityConfig.sinceText(.distantPast, now: now, calendar: calendar) == nil)
+        #expect(SecurityConfig.sinceText(now.addingTimeInterval(3600), now: now, calendar: calendar) == nil)
+    }
+
     @Test func alarmIconsAndColors() {
         #expect(SecurityConfig.alarmIcon(for: "armed_home") == "mdi:shield-home")
         #expect(SecurityConfig.alarmIcon(for: "armed_night") == "mdi:shield-moon")
