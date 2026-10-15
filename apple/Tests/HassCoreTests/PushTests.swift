@@ -50,7 +50,7 @@ struct PushConfigTests {
         #expect(appData["push_url"] as? String == "https://relay")
         #expect(appData["push_token"] as? String == "ab01")
         #expect(appData["apns_environment"] as? String == "sandbox")
-        #expect(appData["push_websocket_channel"] as? Bool == true)
+        #expect(appData["push_websocket_channel"] == nil, "not claimed until the app listens on it")
 
         let update = device.updateBody(appData: .cleared)
         #expect(update["type"] as? String == "update_registration")
@@ -80,12 +80,13 @@ struct PushConfigTests {
                            PushAppData.resolve(config: config, token: "", environment: .sandbox),
                            PushAppData.resolve(config: PushConfig(available: false), token: "ff", environment: .sandbox)] {
             #expect(socketOnly.pushURL == nil)
-            #expect(socketOnly.json.keys.sorted() == ["push_websocket_channel"])
+            #expect(socketOnly.json.isEmpty)
         }
         // A URL without a token sends no push fields.
         #expect(PushAppData(pushURL: URL(string: "https://r"), pushToken: nil, apnsEnvironment: .sandbox).json["push_url"] == nil)
         #expect(PushAppData(pushURL: URL(string: "https://r"), pushToken: "a", apnsEnvironment: nil).json["apns_environment"] == nil)
         #expect(PushAppData.cleared.json.isEmpty)
+        #expect(PushAppData(pushURL: nil, pushToken: nil, apnsEnvironment: nil, websocketChannel: true).json["push_websocket_channel"] as? Bool == true)
     }
 
     @Test func tokenIsLowercaseHex() {
