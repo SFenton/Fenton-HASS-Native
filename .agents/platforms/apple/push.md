@@ -54,7 +54,7 @@ automation ─ notify.mobile_app_<device>_fenton ─▶ mobile_app ─ POST push
 
 - Debug builds write `Library/Caches/push-trace.log` in the app group (`PushTrace`: step names, entity ids, HTTP statuses; never tokens or text). Copy it with `xcrun devicectl device copy from --device <udid> --domain-type appGroupDataContainer --domain-identifier group.com.sfenton.home --source Library/Caches/push-trace.log --destination <file>` (devicectl reads only `Library`, `Documents` and `tmp`).
 - Extension crashes: `xcrun devicectl device info files --device <udid> --domain-type systemCrashLogs`, then `copy from` the `.ips`.
-- Verified on Stephen's iPhone 18 Pro (2026-10-15, Debug, sandbox): registration and `update_registration` (rename to "Stephen's iPhone · Fenton"), real APNs delivery, buttons from the payload, and the camera snapshot attachment. Sending through `notify.fenton_*` needs the integration fix for the missing `notify.mobile_app` action; `notify.mobile_app_<device>_fenton` works.
+- Verified on Stephen's iPhone 18 Pro (2026-10-15, Debug, sandbox): registration and `update_registration` (rename to "Stephen's iPhone · Fenton"), real APNs delivery, buttons from the payload, and the camera snapshot attachment. `notify.fenton_stephen` (person targets) works with Fenton Push 0.1.1, which calls each device's own `notify.mobile_app_<device>_fenton` (verified 2026-10-15).
 
 ## Testing
 
