@@ -179,6 +179,31 @@ struct FoodModelTests {
         #expect(RecipeFilters.horizons.map { RecipeFilters.horizon($0).title } == ["7 Days", "30 Days", "90 Days"])
     }
 
+    @Test func filterSubtitleCountsNarrowingFilters() {
+        var filters = RecipeFilters.defaults
+        #expect(filters.activeSummary == nil)
+        filters.availabilityWeight = 40
+        #expect(filters.activeSummary == nil, "ranking weights reorder results and are not filters")
+        filters.expiringOnly = true
+        #expect(filters.activeSummary == "1 Filter On")
+        filters.minimumCoverage = 60
+        #expect(filters.activeCount == 2)
+        #expect(filters.activeSummary == "2 Filters On")
+    }
+
+    @Test func recipesSubtitleNamesTheSort() {
+        #expect(RecipeGrid.sortSummary(.availability) == "Sorted by Ingredients Available")
+        #expect(RecipeGrid.sortSummary(.expiry) == "Sorted by Expiring Soon")
+        #expect(RecipeGrid.sortSummary(.alphabetical) == "Sorted Alphabetically")
+    }
+
+    @Test func ingredientMarksFollowInventory() {
+        let detail = FoodFixtures.detail(id: 2)
+        let marks = detail.ingredients.map { IngredientRow.mark($0, onHand: RecipeFormatting.isOnHand($0)) }
+        // Chicken (exact), lemons (missing), garlic (uncertain), olive oil (staple), thyme (missing), butter (overridden to have).
+        #expect(marks == ["checkmark.circle.fill", "circle", "questionmark.circle", "checkmark.circle.fill", "circle", "checkmark.circle.fill"])
+    }
+
     @Test func fixturesAreValid() {
         #expect(Set(FoodFixtures.catalog.map(\.dedupeKey)).count == 120)
         let detail = FoodFixtures.detail(id: 2)
@@ -215,6 +240,10 @@ struct FoodViewTests {
         let models = FoodModels(service: FixtureRecipeService(delay: .zero))
         #expect(render(RecipeSortSheet(current: .expiry) { _ in }) != nil)
         #expect(render(RecipeFilterSheet(current: .defaults, sortedAlphabetically: true) { _ in }) != nil)
+        // Filters on (the subtitle and an enabled horizon), and the horizon's menu at accessibility sizes.
+        let narrowed = RecipeFilters(expiringOnly: true, expiringWithinDays: 30, minimumCoverage: 60)
+        #expect(render(RecipeFilterSheet(current: narrowed, sortedAlphabetically: false) { _ in }) != nil)
+        #expect(render(RecipeFilterSheet(current: narrowed, sortedAlphabetically: false) { _ in }, size: .accessibility5) != nil)
         #expect(render(RecipeGrid(collection: models.collection, selectedId: nil) { _ in }) != nil)
     }
 

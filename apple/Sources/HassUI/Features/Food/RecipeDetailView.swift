@@ -4,7 +4,9 @@ import SwiftUI
 
 // MARK: - Presentations
 
-/// The recipe detail as a sheet (web `RecipeDetailModal`): large detent, its own navigation bar with Close.
+/// The recipe detail as a sheet (web `RecipeDetailModal`): large detent, its own navigation bar with the circle-x
+/// Close, the centred title over "8 of 9 Ingredients" (iOS 26), and the sections in the bottom glass bar (direction G,
+/// Sheets; mockups n6 recipe detail and ingredients).
 struct RecipeDetailSheet: View {
     let model: RecipeDetailModel
     @Environment(\.dismiss) private var dismiss
@@ -53,7 +55,8 @@ struct RecipeDetailPane: View {
 
 // MARK: - Content
 
-/// Title, tab picker and the selected tab (web `RECIPE_DETAIL_TABS`: General, Ingredients, Instructions).
+/// The selected tab under the title, with the tabs in the bottom glass section bar (web `RECIPE_DETAIL_TABS`: General,
+/// Ingredients, Instructions; `.agents/patterns/modal-sheet.md`).
 struct RecipeDetailContent: View {
     @Bindable var model: RecipeDetailModel
     /// False in the split pane, whose page title stays "Recipes".
@@ -77,53 +80,60 @@ struct RecipeDetailContent: View {
                 loaded(detail)
             }
         }
-        .modifier(DetailTitle(title: model.detail?.title ?? model.recipe.title, isEnabled: setsNavigationTitle))
+        .modifier(DetailTitle(title: model.detail?.title ?? model.recipe.title, subtitle: subtitle, isEnabled: setsNavigationTitle))
         .onAppear { model.load() }
         .overlay(alignment: .bottomTrailing) { DetailDebugMarker(model: model) }
     }
 
+    /// "8 of 9 Ingredients" under the title, when the card counted any.
+    private var subtitle: String? {
+        model.recipe.requiredTotal > 0 ? model.recipe.coverageText : nil
+    }
+
     private func loaded(_ detail: RecipeDetail) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-                Picker("Section", selection: $model.tab) {
-                    ForEach(RecipeDetailModel.Tab.allCases) { tab in
-                        Text(tab.title).tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("recipe.tabs")
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
                 switch model.tab {
                 case .general: RecipeGeneralTab(detail: detail, fallbackImageURL: model.recipe.imageURL)
                 case .ingredients: RecipeIngredientsTab(detail: detail, model: model)
                 case .instructions: RecipeInstructionsTab(detail: detail)
                 }
             }
-            .padding(HassTokens.Spacing.l)
+            .padding(.horizontal, HassTokens.Spacing.l)
+            .padding(.vertical, HassTokens.Spacing.m)
         }
         .scrollTelemetry("Recipe Detail")
         .accessibilityIdentifier("recipe.scroll")
+        .modalTabBar(RecipeDetailModel.Tab.allCases, label: "Recipe sections", title: \.title,
+                     selection: $model.tab, identifier: "recipe.tabs")
     }
 }
 
 // MARK: - General
 
-/// Hero image, facts, equipment and the source link (web `GeneralTab`).
+/// Hero image, facts, equipment and the source link (web `GeneralTab`): the photo in a 26 pt card, then the facts as
+/// an inset list with leading glyphs and trailing values (mockup n6 recipe detail).
 struct RecipeGeneralTab: View {
     let detail: RecipeDetail
     var fallbackImageURL: URL?
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
+        let facts = RecipeFormatting.facts(detail)
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
             RemoteImage(url: detail.primaryImageURL ?? detail.thumbnailURL, fallbackURL: fallbackImageURL ?? detail.thumbnailURL, placeholderSymbol: "fork.knife")
                 .aspectRatio(16 / 10, contentMode: .fit)
                 .frame(maxWidth: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous))
-            // One column at accessibility sizes, so labels and values wrap whole words.
-            DynamicGridLayout(minCellWidth: dynamicTypeSize.isAccessibilitySize ? 320 : 150, maxColumns: 3, spacing: HassTokens.Spacing.s) {
-                ForEach(RecipeFormatting.facts(detail)) { fact in
-                    FactTile(fact: fact)
+                .background(HassTokens.Surface.sheetCell)
+                .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.module))
+            if !facts.isEmpty {
+                // G: ModuleList (the sheet's inset list: `#2C2C2E` cells, 26 pt corners, hairlines inset to the text)
+                VStack(spacing: 0) {
+                    ForEach(Array(facts.enumerated()), id: \.element.id) { index, fact in
+                        if index > 0 { RecipeRowDivider() }
+                        RecipeFactRow(fact: fact)
+                    }
                 }
+                .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
             }
             if detail.capabilities.general == .none {
                 Notice("Servings, time, difficulty, and equipment are not available in the cached Cookidoo metadata.")
@@ -133,27 +143,25 @@ struct RecipeGeneralTab: View {
                 FactList(title: "Additional Equipment", items: detail.general.equipment)
             }
             if let url = detail.source.canonicalURL {
-                ExternalLinkButton(title: detail.source.isCookidoo ? "Open in Cookidoo" : "Open Source Recipe", url: url)
+                // G: ModuleList
+                RecipeLinkRow(title: detail.source.isCookidoo ? "Open in Cookidoo" : "Open Source Recipe", url: url)
+                    .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
                     .accessibilityIdentifier("recipe.openSource")
             }
         }
     }
 }
 
-/// A prominent button that opens a web page through `openURL`, in the Food action tint (``FoodStyle/action``).
+/// The tab's one primary action that opens a web page through `openURL` ("Open in Cookidoo" on Instructions): a
+/// ``PrimaryButton`` with the link trait.
 struct ExternalLinkButton: View {
     var title: String
     var url: URL
     @Environment(\.openURL) private var openURL
 
     var body: some View {
-        Button { openURL(url) } label: {
-            Label(title, systemImage: "arrow.up.right.square")
-                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(FoodStyle.action)
-        .accessibilityAddTraits(.isLink)
+        PrimaryButton(title, systemImage: "arrow.up.right.square") { openURL(url) }
+            .accessibilityAddTraits(.isLink)
     }
 }
 
@@ -174,53 +182,22 @@ struct DetailDebugMarker: View {
     }
 }
 
-/// The detail's inline navigation title, when it owns the navigation bar (the sheet).
+/// The detail's inline navigation title and subtitle, when it owns the navigation bar (the sheet).
 struct DetailTitle: ViewModifier {
     var title: String
+    var subtitle: String?
     var isEnabled: Bool
 
     func body(content: Content) -> some View {
         if isEnabled {
-            content.navigationTitle(title).inlineNavigationTitle()
+            content.navigationTitle(title).inlineNavigationTitle().sheetSubtitle(subtitle)
         } else {
             content
         }
     }
 }
 
-/// One fact: symbol, label and value (web `StatusPill`).
-struct FactTile: View {
-    let fact: RecipeFormatting.Fact
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    var body: some View {
-        // The symbol goes above the text at accessibility sizes, leaving the text the tile's full width.
-        let layout = dynamicTypeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
-            : AnyLayout(HStackLayout(alignment: .top, spacing: HassTokens.Spacing.s))
-        layout {
-            Image(systemName: fact.symbol)
-                .foregroundStyle(HassTokens.Ink.secondary)
-                .frame(minWidth: 22)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(fact.label).font(.caption).foregroundStyle(HassTokens.Ink.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(fact.value).font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(HassTokens.Spacing.m)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(fact.label)
-        .accessibilityValue(fact.spokenValue ?? fact.value)
-    }
-}
-
-/// A titled bullet list; nothing when empty.
+/// A titled inset list of names (devices, equipment); nothing when empty.
 struct FactList: View {
     var title: String
     var items: [String]
@@ -228,21 +205,22 @@ struct FactList: View {
     var body: some View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                Text(title).font(.headline).foregroundStyle(HassTokens.Ink.primary).accessibilityAddTraits(.isHeader)
-                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                    Label(item, systemImage: "circle.fill")
-                        .labelStyle(BulletLabelStyle())
+                RecipeSectionHeader(title)
+                    .padding(.horizontal, HassTokens.Spacing.l)
+                // G: ModuleList
+                VStack(spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.offset) { index, item in
+                        if index > 0 { RecipeRowDivider(inset: HassTokens.Spacing.l) }
+                        Text(item)
+                            .foregroundStyle(HassTokens.Ink.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.horizontal, HassTokens.Spacing.l)
+                            .padding(.vertical, HassTokens.Spacing.m)
+                            .frame(maxWidth: .infinity, minHeight: RecipeRowMetrics.minHeight, alignment: .leading)
+                    }
                 }
+                .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
             }
-        }
-    }
-}
-
-private struct BulletLabelStyle: LabelStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s) {
-            configuration.icon.font(.system(size: 5)).foregroundStyle(HassTokens.Ink.secondary).accessibilityHidden(true)
-            configuration.title.foregroundStyle(HassTokens.Ink.primary)
         }
     }
 }
@@ -262,7 +240,9 @@ struct Notice: View {
 
 // MARK: - Ingredients
 
-/// Ingredient checklist with inventory state, and the grocery action (web `IngredientsTab`).
+/// Ingredient checklist with inventory state, and the grocery action (web `IngredientsTab`): each group an inset list
+/// under its header, rows marked with a green check or an empty circle, and the inventory match in small capsules
+/// (mockup n6 recipe ingredients).
 ///
 /// Rows are read-only here; the web's per-row grocery buttons, product picker and match feedback are a
 /// later port (`.agents/pages/food/spec.md`).
@@ -271,7 +251,7 @@ struct RecipeIngredientsTab: View {
     let model: RecipeDetailModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
             if detail.capabilities.ingredients != .none, detail.ingredientsTruncated {
                 Notice("This ingredient list is truncated.")
             }
@@ -279,17 +259,21 @@ struct RecipeIngredientsTab: View {
                 ContentUnavailableView("No Ingredients Available", systemImage: "list.bullet",
                                        description: Text("Ingredient details are not available for this recipe."))
             } else {
+                let checklist = detail.capabilities.ingredients == .checklist
                 ForEach(RecipeFormatting.ingredientSections(detail)) { section in
                     VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
                         if let heading = section.heading {
-                            Text(heading)
-                                .font(.headline)
-                                .foregroundStyle(section.headingIsGenerated ? HassTokens.Ink.secondary : HassTokens.Ink.primary)
-                                .accessibilityAddTraits(.isHeader)
+                            RecipeSectionHeader(heading, isQuiet: section.headingIsGenerated)
+                                .padding(.horizontal, HassTokens.Spacing.l)
                         }
-                        ForEach(section.ingredients) { ingredient in
-                            IngredientRow(detail: detail, ingredient: ingredient, checklist: detail.capabilities.ingredients == .checklist)
+                        // G: ModuleList
+                        VStack(spacing: 0) {
+                            ForEach(Array(section.ingredients.enumerated()), id: \.element.id) { index, ingredient in
+                                if index > 0 { RecipeRowDivider(inset: checklist ? RecipeRowMetrics.textInset : HassTokens.Spacing.l) }
+                                IngredientRow(detail: detail, ingredient: ingredient, checklist: checklist)
+                            }
                         }
+                        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
                     }
                 }
             }
@@ -306,16 +290,16 @@ struct IngredientRow: View {
 
     var body: some View {
         let onHand = RecipeFormatting.isOnHand(ingredient)
-        HStack(alignment: .top, spacing: HassTokens.Spacing.m) {
+        HStack(alignment: .top, spacing: RecipeRowMetrics.gap) {
             if checklist {
-                Image(systemName: onHand ? "checkmark.circle.fill" : "circle")
+                Image(systemName: Self.mark(ingredient, onHand: onHand))
                     .font(.title3)
                     .foregroundStyle(onHand ? Color.green : HassTokens.Ink.secondary)
+                    .frame(width: RecipeRowMetrics.glyph)
                     .accessibilityHidden(true)
             }
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
                 Text(RecipeFormatting.title(ingredient))
-                    .font(.body.weight(.medium))
                     .foregroundStyle(HassTokens.Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
                 if checklist {
@@ -330,18 +314,27 @@ struct IngredientRow: View {
                 }
                 if let match = ingredient.closestMatchLabel {
                     Text("Matched as \(match)").font(.footnote).foregroundStyle(HassTokens.Ink.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(HassTokens.Spacing.m)
-        .frame(minHeight: HassTokens.minTarget)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
+        .padding(.horizontal, HassTokens.Spacing.l)
+        .padding(.vertical, HassTokens.Spacing.m)
+        .frame(maxWidth: .infinity, minHeight: RecipeRowMetrics.minHeight, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(RecipeFormatting.title(ingredient))
         .accessibilityValue(checklist ? (onHand ? "On hand" : "Not on hand") : "")
         .accessibilityHint(RecipeFormatting.accessibilityDetails(detail, ingredient))
         .accessibilityIdentifier("recipe.ingredient.\(ingredient.position)")
+    }
+
+    /// The row's mark: a filled check when on hand, a question mark when EverShelf is unsure of the match (and nobody
+    /// overrode it), else an empty circle. The spoken value stays "On hand" or "Not on hand".
+    static func mark(_ ingredient: RecipeDetail.Ingredient, onHand: Bool) -> String {
+        if onHand { return "checkmark.circle.fill" }
+        if ingredient.overrideAvailability == nil, ingredient.inventoryState == .uncertain { return "questionmark.circle" }
+        return "circle"
     }
 }
 
@@ -350,13 +343,13 @@ struct ChipFlow: View {
     var chips: [String]
 
     var body: some View {
-        FlowLayout(spacing: HassTokens.Spacing.xs) {
+        FlowLayout(spacing: HassTokens.Spacing.s) {
             ForEach(Array(chips.enumerated()), id: \.offset) { _, chip in
                 Text(chip)
-                    .font(.caption)
-                    .foregroundStyle(HassTokens.Ink.primary)
+                    .font(.footnote)
+                    .foregroundStyle(HassTokens.Ink.secondary)
                     .padding(.horizontal, HassTokens.Spacing.s)
-                    .padding(.vertical, 3)
+                    .padding(.vertical, HassTokens.Spacing.xs)
                     .background(Color.secondary.opacity(0.16), in: Capsule())
             }
         }
@@ -406,7 +399,8 @@ struct FlowLayout: Layout {
     }
 }
 
-/// "Add Missing Ingredients to Groceries" with its disabled reason, progress and result (web `RecipeGroceryAction`).
+/// "Add Missing Ingredients to Groceries", the sheet's one ``PrimaryButtonStyle`` button, with its disabled reason,
+/// progress and result (web `RecipeGroceryAction`).
 struct GroceryAction: View {
     let model: RecipeDetailModel
 
@@ -432,33 +426,25 @@ struct GroceryAction: View {
                         if model.grocery == .adding {
                             ArcSpinner(.inline).accessibilityHidden(true)
                         } else {
-                            Image(systemName: "cart.badge.plus")
+                            Image(systemName: "cart.badge.plus").accessibilityHidden(true)
                         }
                         Text("Add Missing Ingredients to Groceries")
                     }
-                    .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(FoodStyle.action)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(model.groceryDisabledReason != nil)
                 .accessibilityIdentifier("recipe.grocery.add")
                 if let reason = model.groceryDisabledReason {
                     Text(reason).font(.footnote).foregroundStyle(HassTokens.Ink.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("recipe.grocery.reason")
                 }
                 if case let .failed(message) = model.grocery {
-                    HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s) {
-                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Color.red).accessibilityHidden(true)
-                        Text(message).foregroundStyle(HassTokens.Ink.primary).fixedSize(horizontal: false, vertical: true)
-                    }
-                    .font(.footnote)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Error: \(message)")
-                    .accessibilityIdentifier("recipe.grocery.error")
+                    InlineAlert(message, severity: .error)
+                        .accessibilityIdentifier("recipe.grocery.error")
                 }
             }
         }
-        .padding(.top, HassTokens.Spacing.s)
         .onChange(of: model.grocery) { _, state in
             #if os(iOS)
             switch state {
@@ -473,12 +459,12 @@ struct GroceryAction: View {
 
 // MARK: - Instructions
 
-/// Numbered steps in groups, or the Cookidoo link (web `InstructionsTab`).
+/// Numbered steps in groups, each an inset list under its header, or the Cookidoo link (web `InstructionsTab`).
 struct RecipeInstructionsTab: View {
     let detail: RecipeDetail
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
             if detail.capabilities.instructions == .externalLink {
                 if let url = detail.instructions.fallbackURL ?? detail.source.canonicalURL {
                     VStack(spacing: HassTokens.Spacing.m) {
@@ -498,25 +484,19 @@ struct RecipeInstructionsTab: View {
             } else if detail.capabilities.instructions == .local, detail.instructions.available {
                 if detail.instructions.truncated { Notice("These instructions are truncated.") }
                 ForEach(Array(detail.instructions.groups.enumerated()), id: \.element.id) { index, group in
-                    VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
+                    VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
                         if let heading = RecipeFormatting.sectionHeading(group.label, index: index, count: detail.instructions.groups.count) {
-                            Text(heading.label)
-                                .font(.headline)
-                                .foregroundStyle(heading.generated ? HassTokens.Ink.secondary : HassTokens.Ink.primary)
-                                .accessibilityAddTraits(.isHeader)
+                            RecipeSectionHeader(heading.label, isQuiet: heading.generated)
+                                .padding(.horizontal, HassTokens.Spacing.l)
                         }
-                        ForEach(group.steps) { step in
-                            HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
-                                Text("\(step.number).")
-                                    .font(.body.weight(.semibold).monospacedDigit())
-                                    .foregroundStyle(HassTokens.Ink.secondary)
-                                Text(step.text)
-                                    .foregroundStyle(HassTokens.Ink.primary)
-                                    .fixedSize(horizontal: false, vertical: true)
+                        // G: ModuleList
+                        VStack(spacing: 0) {
+                            ForEach(Array(group.steps.enumerated()), id: \.element.id) { stepIndex, step in
+                                if stepIndex > 0 { RecipeRowDivider(inset: HassTokens.Spacing.l) }
+                                RecipeStepRow(step: step)
                             }
-                            .accessibilityElement(children: .combine)
-                            .accessibilityLabel("Step \(step.number). \(step.text)")
                         }
+                        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module))
                     }
                 }
             } else {
