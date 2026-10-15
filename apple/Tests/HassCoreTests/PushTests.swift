@@ -605,3 +605,36 @@ struct PushEnrichmentTests {
         #expect(PushAttachmentSource(url: snapshot.url, kind: .image, needsAuthorization: false).fileExtension(mimeType: "image/png; q=1") == "png")
     }
 }
+
+// MARK: - Trace
+
+@Suite("Push trace")
+struct PushTraceTests {
+    @Test func recordsAndTrims() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("trace-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let trace = PushTrace(directory: directory)
+        for index in 0..<(PushTrace.limit + 5) { trace.record("step \(index)") }
+        let lines = trace.lines()
+        #expect(lines.count == PushTrace.limit)
+        #expect(lines.last?.hasSuffix("step \(PushTrace.limit + 4)") == true)
+        // No directory: nothing recorded.
+        let off = PushTrace(directory: nil)
+        off.record("ignored")
+        #expect(off.lines().isEmpty)
+        _ = PushTrace.shared
+    }
+
+    @Test func loaderNotesNetworkFailures() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("trace-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let trace = PushTrace(directory: directory)
+        let offline = StubHTTPTransport([])
+        offline.error = URLError(.timedOut)
+        let source = PushAttachmentSource(url: URL(string: "https://cdn/x.jpg")!, kind: .image, needsAuthorization: false)
+        #expect(await PushAttachmentLoader(transport: offline, directory: directory, trace: trace).load(source, accessToken: nil) == nil)
+        #expect(trace.lines().last?.contains("attachment failed: /x.jpg") == true)
+    }
+}
