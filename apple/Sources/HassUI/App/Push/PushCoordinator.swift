@@ -21,6 +21,7 @@ public final class PushCoordinator {
     @ObservationIgnored private var server: HassServer?
     @ObservationIgnored private var registrar: PushRegistrar?
     @ObservationIgnored private var userID: String?
+    @ObservationIgnored private var userName: String?
     @ObservationIgnored private var token: String?
     @ObservationIgnored private var requestID = 0
     /// The running registration sync, so a token arriving mid-sync waits for it instead of racing it.
@@ -61,10 +62,13 @@ public final class PushCoordinator {
 
     /// The websocket is up and the user is known: ask for permission (first time only), register for remote
     /// notifications, and sync the registration.
-    /// - Parameter userID: The signed-in Home Assistant user.
-    public func didConnect(userID: String) async {
+    /// - Parameters:
+    ///   - userID: The signed-in Home Assistant user.
+    ///   - userName: Their display name, which names a phone the system reports only as "iPhone".
+    public func didConnect(userID: String, userName: String? = nil) async {
         guard isEnabled, registrar != nil, self.userID != userID else { return }
         self.userID = userID
+        self.userName = userName
         if await platform.requestAuthorization() { platform.registerForRemoteNotifications() }
         await sync()
     }
@@ -90,8 +94,8 @@ public final class PushCoordinator {
     private func sync() async {
         await syncTask?.value
         guard isEnabled, let registrar, let userID else { return }
-        let token = token
-        let task = Task { _ = try? await registrar.sync(userID: userID, token: token) }
+        let token = token, userName = userName
+        let task = Task { _ = try? await registrar.sync(userID: userID, userName: userName, token: token) }
         syncTask = task
         await task.value
     }

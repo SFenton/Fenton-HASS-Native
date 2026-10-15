@@ -60,6 +60,16 @@ struct PushConfigTests {
         #expect(updateData["device_name"] as? String == "Stephen's iPhone · Fenton")
     }
 
+    @Test func genericNamesTakeTheOwnersFirstName() {
+        let generic = PushDevice(marketingVersion: "1", build: "1", name: "iPhone", model: "iPhone19,2", osVersion: "27",
+                                 deviceID: "d", apnsEnvironment: .sandbox)
+        #expect(generic.owned(by: "Stephen Fenton").deviceName == "Stephen's iPhone · Fenton")
+        #expect(generic.owned(by: nil).deviceName == "iPhone · Fenton")
+        #expect(generic.owned(by: "  ").deviceName == "iPhone · Fenton")
+        // A name the person chose is kept.
+        #expect(device.owned(by: "Stephanie").deviceName == "Stephen's iPhone · Fenton")
+    }
+
     @Test func appDataResolves() {
         let config = PushConfig(json: Data(configJSON.utf8))
         let push = PushAppData.resolve(config: config, token: "ff", environment: .production)
@@ -205,7 +215,7 @@ struct PushRegistrarTests {
         #expect(appData.pushToken == "aa")
         #expect(store.active == registration)
         #expect(store.registration(server: server, userID: "u1") == registration)
-        guard case .updated = try await push.sync(userID: "u1", token: "bb") else {
+        guard case .updated = try await push.sync(userID: "u1", userName: "Stephen Fenton", token: "bb") else {
             Issue.record("expected an update")
             return
         }

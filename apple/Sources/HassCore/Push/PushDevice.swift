@@ -14,6 +14,8 @@ public struct PushDevice: Equatable, Sendable {
     public var deviceID: String
     /// Which APNs gateway the token belongs to.
     public var apnsEnvironment: APNsEnvironment
+    /// The device's own name, without the suffix.
+    private var baseName: String
 
     /// Creates a device description.
     /// - Parameters:
@@ -28,12 +30,30 @@ public struct PushDevice: Equatable, Sendable {
                 deviceID: String, apnsEnvironment: APNsEnvironment) {
         appVersion = "\(marketingVersion) (\(build))"
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        deviceName = (trimmed.isEmpty ? "iPhone" : trimmed) + PushApp.deviceNameSuffix
+        baseName = trimmed.isEmpty ? "iPhone" : trimmed
+        deviceName = baseName + PushApp.deviceNameSuffix
         self.model = model
         self.osVersion = osVersion
         self.deviceID = deviceID
         self.apnsEnvironment = apnsEnvironment
     }
+
+    /// The device named for its Home Assistant user when the system gives only a generic name.
+    ///
+    /// Since iOS 16 `UIDevice.name` is "iPhone" or "iPad" without a special entitlement, so two people's phones would
+    /// register as "iPhone · Fenton" and get `notify.mobile_app_iphone_fenton` and `…_2`. With the user's first name
+    /// they read "Stephen's iPhone · Fenton". A name the person chose (with the entitlement) is kept.
+    /// - Parameter userName: The Home Assistant user's display name.
+    public func owned(by userName: String?) -> PushDevice {
+        let first = userName?.split(separator: " ").first.map(String.init) ?? ""
+        guard !first.isEmpty, Self.genericNames.contains(baseName) else { return self }
+        var device = self
+        device.deviceName = "\(first)'s \(baseName)" + PushApp.deviceNameSuffix
+        return device
+    }
+
+    /// The names the system reports instead of the person's own.
+    static let genericNames: Set<String> = ["iPhone", "iPad", "iPod touch"]
 
     /// The registration body for `POST /api/mobile_app/registrations`.
     /// - Parameter appData: The push details to send.

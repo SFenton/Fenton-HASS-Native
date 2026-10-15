@@ -180,7 +180,7 @@ struct MainTabView: View {
     private func loadProfileName() async {
         guard let connection, let user = try? await connection.currentUser() else { return }
         if navigator.profileName != user.name { navigator.profileName = user.name }
-        await push?.didConnect(userID: user.id)
+        await push?.didConnect(userID: user.id, userName: user.name)
     }
 }
 

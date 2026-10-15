@@ -44,7 +44,10 @@ public actor PushRegistrar {
     ///   - token: The APNs token as hex, if the system issued one (nil before permission or in a build without
     ///     the capability): the registration is then websocket-only.
     @discardableResult
-    public func sync(userID: String, token: String?) async throws -> Outcome {
+    ///   - userName: The user's display name, which names a phone the system reports only as "iPhone"
+    ///     (``PushDevice/owned(by:)``).
+    public func sync(userID: String, userName: String? = nil, token: String?) async throws -> Outcome {
+        let device = device.owned(by: userName)
         guard var config = try await client.config() else { return .integrationMissing }
         if let bundle = config.bundleID, bundle != PushApp.appID { config.available = false }
         let appData = PushAppData.resolve(config: config, token: token, environment: device.apnsEnvironment)
