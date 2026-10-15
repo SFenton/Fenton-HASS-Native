@@ -181,9 +181,16 @@ struct MediaRemoteConfigTests {
 
     @Test func appleTVCalls() {
         let config = MediaRemotes.masterBedroomAppleTV
-        #expect(config.up.action == .service("script", "apple_tv_remote_send_command", data: [
-            "remote_entity": "remote.master_bedroom_apple_tv", "command": "up",
-        ]))
+        #expect(config.up.action == .service("remote", "send_command", target: "remote.master_bedroom_apple_tv", data: ["command": "up"]),
+                "Presses skip the single-mode script so fast presses aren't dropped")
+        let presses: [(MediaRemoteButton, String)] = [
+            (config.left, "left"), (config.select, "select"), (config.right, "right"), (config.down, "down"),
+            (config.back, "menu"), (config.home, "home"), (config.pause, "pause"), (config.play, "play"),
+        ]
+        for (button, command) in presses {
+            #expect(button.action == .service("remote", "send_command", target: "remote.master_bedroom_apple_tv", data: ["command": .string(command)]),
+                    "\(button.label)")
+        }
         #expect(config.back.label == "Menu")
         #expect(config.back.icon == "mdi:chevron-left")
         #expect(config.home.icon == "mdi:home")
