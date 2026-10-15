@@ -36,7 +36,7 @@ struct LocationGallery: View {
                         GalleryLastCall(text: lastAction, title: "Last action")
                     }
                 }
-                .hassSheet(.form)
+                .hassSheet(.page)
             }
     }
 
