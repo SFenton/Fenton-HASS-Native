@@ -421,12 +421,15 @@ enum FentonHomeApp {
             guard !bar.isEmpty, bar.intersects(frame), frame.minY < bar.maxY - 1 else { continue }
             if !navigationBar.descendants(matching: element.elementType).matching(holder).firstMatch.exists { return true }
         }
-        // Only scroll views that hold this element (not, say, Home's behind a sheet).
+        // Only scroll views that hold this element (not, say, Home's behind a sheet). Each one clips it, so it is out of
+        // view when any of them doesn't contain it: an hour on the next page of Home's weather row sat wholly outside the
+        // row, inside the page's own scroll view, and measured 1.9:1 against the card edge (folded Duo, 2026-10-14).
+        // Not only those it intersects: a cell scrolled wholly out of its row doesn't intersect the row at all.
         let scrollViews = app.scrollViews.allElementsBoundByIndex
-            .filter { $0.frame.intersects(frame) && $0.descendants(matching: element.elementType).matching(holder)
+            .filter { $0.descendants(matching: element.elementType).matching(holder)
                 .allElementsBoundByIndex.contains { $0.frame == frame } }
             .map(\.frame)
-        return !scrollViews.isEmpty && !scrollViews.contains { $0.insetBy(dx: -1, dy: -1).contains(frame) }
+        return scrollViews.contains { !$0.insetBy(dx: -1, dy: -1).contains(frame) }
     }
 
     /// Whether a page text (not the tab bar's own labels) overlaps the tab bar, i.e. is scrolled under it.
