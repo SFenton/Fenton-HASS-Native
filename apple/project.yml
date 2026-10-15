@@ -28,6 +28,8 @@ targets:
         product: HassUI
       # Finishes Fenton Push notifications: buttons, camera snapshots (`.agents/platforms/apple/push.md`).
       - target: FentonHomeNotificationService
+      # The live camera view of an expanded camera notification.
+      - target: FentonHomeNotificationContent
     # Push Notifications and the app group the notification service extension shares the sign-in Keychain item
     # through (KeychainTokenStore.sharedAccessGroup). TestFlight archives switch aps-environment to production.
     entitlements:
@@ -95,6 +97,36 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.usernotifications.service
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+  FentonHomeNotificationContent:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Apps/NotificationContent
+    dependencies:
+      - package: FentonHomeApple
+        product: HassCore
+    entitlements:
+      path: Apps/NotificationContent/NotificationContent.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sfenton.home
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.NotificationContent
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: Apps/NotificationContent/Info.plist
+      properties:
+        CFBundleDisplayName: Home Camera Notifications
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationViewController
+          NSExtensionAttributes:
+            UNNotificationExtensionCategory: fenton.camera
+            UNNotificationExtensionInitialContentSizeRatio: 0.5625
+            UNNotificationExtensionDefaultContentHidden: false
   FentonHomeWatch:
     type: application
     platform: watchOS

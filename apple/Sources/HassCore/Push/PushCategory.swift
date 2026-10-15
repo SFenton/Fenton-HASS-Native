@@ -19,6 +19,10 @@ public struct PushCategory: Equatable, Sendable {
     /// The buttons, in order.
     public let actions: [PushAction]
 
+    /// The fixed category of camera notifications: the notification content extension shows them with a live view
+    /// when expanded, and sets their buttons itself (an extension serves only categories it lists in advance).
+    public static let camera = "fenton.camera"
+
     /// The category for a payload's buttons; nil when it has none.
     public init?(actions: [PushAction]) {
         guard !actions.isEmpty else { return nil }
@@ -26,11 +30,18 @@ public struct PushCategory: Equatable, Sendable {
         identifier = Self.prefix + Self.digest(actions)
     }
 
+    /// The camera category with this notification's buttons (registered again for each camera notification, so
+    /// the buttons also show where the content extension doesn't run).
+    public init(cameraActions actions: [PushAction]) {
+        self.actions = actions
+        identifier = Self.camera
+    }
+
     /// Category ids to register: every existing one, this one, and at most ``limit`` built ones (the oldest built
     /// ids go first; `existing` is in registration order).
     /// - Parameter existing: Ids registered now.
     public func identifiers(merging existing: [String]) -> [String] {
-        let fixed = existing.filter { !$0.hasPrefix(Self.prefix) }
+        let fixed = existing.filter { !$0.hasPrefix(Self.prefix) && $0 != identifier }
         let built = existing.filter { $0.hasPrefix(Self.prefix) && $0 != identifier }
         return fixed + built.suffix(Self.limit - 1) + [identifier]
     }

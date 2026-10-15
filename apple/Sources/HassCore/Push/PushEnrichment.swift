@@ -22,7 +22,9 @@ public struct PushEnrichment: Equatable, Sendable {
     ///   - threadIdentifier: The notification's thread now.
     ///   - server: The signed-in server, if any (attachments need it).
     public init(payload: PushPayload, categoryIdentifier: String, threadIdentifier: String, server: HassServer?) {
-        category = PushCategory(actions: payload.actions)
+        category = payload.entityID?.hasPrefix("camera.") == true
+            ? PushCategory(cameraActions: payload.actions)
+            : PushCategory(actions: payload.actions)
         clearsPlaceholderCategory = category == nil && categoryIdentifier == PushPayload.dynamicCategory
         self.threadIdentifier = threadIdentifier.isEmpty ? payload.group : nil
         attachment = server.flatMap { PushAttachmentSource.resolve(payload, server: $0) }
