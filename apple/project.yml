@@ -58,9 +58,11 @@ targets:
         # Location reports Home and Away to Home Assistant (`.agents/platforms/apple/location.md`).
         NSLocationWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away.
         NSLocationAlwaysAndWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away, even when this app is closed.
-        # Zone crossings and significant location changes relaunch the app in the background.
+        # Zone crossings and significant location changes relaunch the app in the background; silent pushes run
+        # commands such as clear_notification (contract v1, rule 3).
         UIBackgroundModes:
           - location
+          - remote-notification
         UILaunchScreen:
           UIColorName: LaunchBackground
         # Lets ProMotion iPhones scroll and animate at 120 Hz; without it the app is capped at 60 Hz.
@@ -68,9 +70,6 @@ targets:
 
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true
-        # Silent pushes run commands such as clear_notification (contract v1, rule 3).
-        UIBackgroundModes:
-          - remote-notification
         # iPhone is portrait-only; iPad allows all four. iPhone Duo gets every orientation at runtime
         # once a hinge is observed (FentonOrientationSupport, owner 2026-10-10).
         UISupportedInterfaceOrientations~iphone:
