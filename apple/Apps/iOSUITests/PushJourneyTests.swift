@@ -12,6 +12,8 @@ import XCTest
 /// folder the journeys skip.
 final class PushJourneyTests: JourneyTestCase {
     private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+    /// The permission alert was answered in this run (each run installs the app afresh, which resets it).
+    private static var answeredPermission = false
 
     // MARK: - Journeys
 
@@ -84,8 +86,13 @@ final class PushJourneyTests: JourneyTestCase {
             environment["FENTON_PUSH_PREVIEW_DELAY"] = "8"
         }
         let app = try FentonHomeApp.launchSignedIn(environment: environment)
+        // After a boot the iOS 27 simulator can take minutes to show the alert; until it is answered, pushes are
+        // refused ("Source is not authorized"). Wait once per run.
         let allow = springboard.alerts.buttons["Allow"]
-        if allow.waitForExistence(timeout: 15) { allow.tap() }
+        if allow.waitForExistence(timeout: Self.answeredPermission ? 5 : 300) {
+            allow.tap()
+            Self.answeredPermission = true
+        }
         return app
     }
 
