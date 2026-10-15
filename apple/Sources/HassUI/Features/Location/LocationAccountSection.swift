@@ -11,7 +11,9 @@ import SwiftUI
 /// (the permission screen, not the system alert, is the way in).
 struct LocationAccountSection: View {
     @Bindable var location: LocationCoordinator
-    @State private var showsPermission = false
+    /// Set by Share Location; the Account sheet presents the permission screen from its list, since a sheet attached
+    /// to a section inside a `List` didn't present on the folded iPhone Duo (2026-10-15).
+    @Binding var showsPermission: Bool
 
     private var permission: LocationPermission { location.reporter.permission }
     private var status: String { LocationPermissionCopy.status(permission) }
@@ -58,9 +60,6 @@ struct LocationAccountSection: View {
                 }
                 FormFooter(Self.footer)
             }
-        }
-        .sheet(isPresented: $showsPermission) {
-            LocationPermissionSheet(location: location) { showsPermission = false }
         }
     }
 

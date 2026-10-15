@@ -41,12 +41,22 @@ struct LocationAccountSectionTests {
             let location = coordinator(permission, armed: armed)
             for typeSize in [DynamicTypeSize.large, .accessibility5] {
                 let hosted = HostedView(
-                    List { LocationAccountSection(location: location) }.environment(\.tileSurface, .sheet),
+                    List { LocationAccountSection(location: location, showsPermission: .constant(false)) }.environment(\.tileSurface, .sheet),
                     size: LocationPermissionViewTests.phone, typeSize: typeSize
                 )
                 await hosted.settle()
                 #expect(hosted.fingerprint != 0)
             }
+        }
+    }
+
+    @Test func theAccountSheetShowsTheSectionOnlyWithACoordinator() async {
+        // A phone's session has a coordinator; an iPad's has none, so its Account sheet has no Location section.
+        for location in [coordinator(.notDetermined, armed: false), nil] {
+            let hosted = HostedView(AccountSheet().environment(ShellNavigator()).environment(location),
+                                    size: LocationPermissionViewTests.phone, typeSize: .large)
+            await hosted.settle()
+            #expect(hosted.fingerprint != 0)
         }
     }
 

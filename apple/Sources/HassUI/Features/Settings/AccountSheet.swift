@@ -18,6 +18,7 @@ struct AccountSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var openTopic: HouseholdSettingsPage?
     @State private var confirmsSignOut = false
+    @State private var showsLocationPermission = false
 
     var body: some View {
         NavigationStack {
@@ -26,7 +27,7 @@ struct AccountSheet: View {
                     AccountHeader(name: navigator?.profileName)
                 }
                 if let location {
-                    LocationAccountSection(location: location)
+                    LocationAccountSection(location: location, showsPermission: $showsLocationPermission)
                 }
                 Section {
                     NavigationLink {
@@ -46,6 +47,11 @@ struct AccountSheet: View {
                 }
             }
             .modalChrome()
+            .sheet(isPresented: $showsLocationPermission) {
+                if let location {
+                    LocationPermissionSheet(location: location) { showsLocationPermission = false }
+                }
+            }
             .navigationTitle("Account")
             .inlineNavigationTitle()
             .toolbar { SheetCloseItem(identifier: "account.close") { dismiss() } }
