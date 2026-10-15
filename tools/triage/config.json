@@ -61,7 +61,7 @@
     "wait_hours": 168
   },
   "budget_hours": 10,
-  "interval_seconds": 3600,
+  "interval_seconds": 60,
   "labels": {
     "Bug": [
       "d73a4a",

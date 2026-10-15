@@ -2,7 +2,7 @@
 
 > **What:** the simulators every journey runs on and how to run them. **Read when:** running UI or accessibility tests.
 
-| Family | Simulator (override env) | Orientation | Notes |
+| Family | Simulator pool base (pin with env) | Orientation | Notes |
 |---|---|---|---|
 | iPhone | `iPhone 17 Pro` (`FENTON_SIM_IPHONE`) | Portrait only; `LayoutJourneyTests` proves it stays portrait | |
 | iPhone Duo | `iPhone Duo` (`FENTON_SIM_DUO`) | Any | Needs Xcode 27.1+; set folded/unfolded and rotation in Device Hub before each run |
@@ -16,8 +16,8 @@ tools/ios_uitest.sh --env /path/to/temp.env --only duo  # one family
 - `--env` reads credentials locally and passes them as `TEST_RUNNER_FENTON_HASS_*`; signed-in journeys skip without them. Never print, log or commit them.
 - The script compiles once under a `build` slot, then runs each family under its device gate and a `simulator` slot ([capacity](../../platforms/apple/capacity.md)); it waits when the Mac is full. Anything else that boots or drives a simulator (pose setup, host captures) goes inside `python3 tools/devcap.py run --sim <UDID> -- …`. Never touch other projects' simulators.
 - Result bundles land in `apple/.build/uitest-<family>.xcresult` (git-ignored).
-- `FENTON_KEEP_SIM=1` leaves the simulator booted after the run, so a Duo pose set in Device Hub survives into the next run (folded → unfolded portrait → unfolded landscape). The kept simulator is outside any hold, so start the next run within 5 minutes or devcap shuts it down ([capacity](../../platforms/apple/capacity.md)).
-- Use the product Duo `FENTON_SIM_DUO="iPhone Duo (HASS)"`; the bare `iPhone Duo` device is shared.
+- The simulator stays booted (warm) after `tools/ios_uitest.sh`, so consecutive runs on the same device skip the boot and a Duo pose set in Device Hub survives into the next run (folded → unfolded portrait → unfolded landscape). It counts against the simulator slots and is shut down after 60 s idle when another lane is waiting, 5 min idle otherwise, or at once if the run hangs past its hold. A full-suite run (no `-only-testing`/`-skip-testing` filter) shuts the simulator down when it finishes. When you're done with a device after filtered runs, run the last one with `FENTON_SHUTDOWN_SIM=1`, or `python3 tools/devcap.py run --sim <UDID> --shutdown -- true` ([capacity](../../platforms/apple/capacity.md)). `FENTON_KEEP_SIM` is no longer needed.
+- Use the product Duo `FENTON_SIM_DUO="iPhone Duo (HASS)"`; the bare `iPhone Duo` device is shared. Without an override each family runs on a free member of its pool (`<name>`, `<name> (pool 2)`, …), so lanes on the same device type run in parallel ([capacity](../../platforms/apple/capacity.md)).
 - Device Hub can be driven by FestivalNativeApps' `tools/device_hub_ax.swift` helper (via `ios_sim.py`'s `set_duo_pose`, pointed at the HASS Duo) with the Accessibility permission; poses verify by which panel is lit (`simctl io --display=primary` outer, `primary-1` inner).
 - Screenshots: set `TEST_RUNNER_FENTON_REDACT_PRIVATE=1` and `TEST_RUNNER_FENTON_CAPTURE_DIR=<dir>` and answer each `<name>.ready` with `xcrun simctl io <udid> screenshot [--display=…] <dir>/<name>.png` then `<name>.done`; the lit Duo panel is only reachable from the host.
 - Screenshots are never committed (owner, 2026-10-13). Capture to a scratch directory and attach them to the thread reply; `screenshots/` is git-ignored, so never `git add -f` one. The old `docs/screenshots` tree was removed for this reason.
