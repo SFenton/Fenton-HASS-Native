@@ -3,7 +3,7 @@ import Foundation
 /// A short, local trace of what the notification extensions did, for debugging pushes on a device.
 ///
 /// Extensions can't be attached to or easily logged from on a phone, so debug builds append one line per step to
-/// `push-trace.log` in the app group container, which `xcrun devicectl device copy from --domain-type
+/// `Library/Caches/push-trace.log` in the app group container, which `xcrun devicectl device copy from --domain-type
 /// appGroupDataContainer --domain-identifier group.com.sfenton.home` reads. Lines never carry tokens or message
 /// text, only step names, entity ids and HTTP statuses. Release builds record nothing.
 public struct PushTrace: Sendable {
@@ -18,12 +18,15 @@ public struct PushTrace: Sendable {
     /// - Parameter directory: Where the file lives; nil records nothing.
     public init(directory: URL?) {
         file = directory?.appendingPathComponent(Self.fileName)
+        if let directory { try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
     }
 
     /// The app group's trace in debug builds; a no-op trace otherwise.
     public static var shared: PushTrace {
         #if DEBUG
-        PushTrace(directory: FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: KeychainTokenStore.sharedAccessGroup))
+        // Under Library: devicectl copies only from Library, Documents and tmp.
+        PushTrace(directory: FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: KeychainTokenStore.sharedAccessGroup)?
+            .appendingPathComponent("Library/Caches"))
         #else
         PushTrace(directory: nil)
         #endif

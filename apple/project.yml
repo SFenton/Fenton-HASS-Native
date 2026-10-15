@@ -105,6 +105,9 @@ targets:
     dependencies:
       - package: FentonHomeApple
         product: HassCore
+      # Linked explicitly: the system resolves the extension's context class from it before any of our code runs,
+      # and Swift's autolink alone left it unloaded (crash in _extensionContextClass, seen 2026-10-14).
+      - sdk: UserNotificationsUI.framework
     entitlements:
       path: Apps/NotificationContent/NotificationContent.entitlements
       properties:
@@ -114,6 +117,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.NotificationContent
         TARGETED_DEVICE_FAMILY: "1,2"
+        # Keep the code in the extension's own binary rather than Xcode's Debug-only dylib.
+        ENABLE_DEBUG_DYLIB: NO
     info:
       path: Apps/NotificationContent/Info.plist
       properties:
