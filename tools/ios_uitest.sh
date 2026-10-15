@@ -23,8 +23,18 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Simulator names; override with FENTON_SIM_IPHONE / FENTON_SIM_DUO / FENTON_SIM_IPAD.
+# Simulator names; override with FENTON_SIM_IPHONE / FENTON_SIM_DUO / FENTON_SIM_IPAD to pin one device.
+# Without an override each family draws from a pool of identical simulators ("<name>", "<name> (pool 2)", …,
+# FENTON_SIM_POOL members, default the simulator slot count), so lanes on the same device type run in
+# parallel; a lane keeps its last (warm) pool member while it is free.
 # (macOS ships bash 3.2: no associative arrays.)
+pinned_name() {
+  case "$1" in
+    iphone) echo "${FENTON_SIM_IPHONE:-}" ;;
+    duo) echo "${FENTON_SIM_DUO:-}" ;;
+    ipad) echo "${FENTON_SIM_IPAD:-}" ;;
+  esac
+}
 device_name() {
   case "$1" in
     iphone) echo "${FENTON_SIM_IPHONE:-iPhone 17 Pro}" ;;
@@ -84,9 +94,17 @@ for family in iphone duo ipad; do
   if ! xcrun simctl list devices available | grep -q "    $name ("; then
     echo "GAP: no available simulator named '$name' for $family (a gap, not a pass)"; STATUS=1; continue
   fi
-  # Resolve the UDID: xcodebuild's name= matcher misses names with parentheses ("iPhone 17 Pro (Rooms)").
-  udid="$(xcrun simctl list devices available | NAME="$name" awk '{ line = $0; sub(/^ +/, "", line); if (match(line, / \([0-9A-F-]{36}\)/) && substr(line, 1, RSTART - 1) == ENVIRON["NAME"]) { print substr(line, RSTART + 2, 36); exit } }')"
-  echo "== $family: $name ($udid)"
+  last_file="$ROOT/apple/.build/uitest-$family.udid"
+  if [[ -n "$(pinned_name "$family")" ]]; then
+    # Resolve the UDID: xcodebuild's name= matcher misses names with parentheses ("iPhone 17 Pro (Rooms)").
+    udid="$(xcrun simctl list devices available | NAME="$name" awk '{ line = $0; sub(/^ +/, "", line); if (match(line, / \([0-9A-F-]{36}\)/) && substr(line, 1, RSTART - 1) == ENVIRON["NAME"]) { print substr(line, RSTART + 2, 36); exit } }')"
+  else
+    prefer=()
+    [[ -s "$last_file" ]] && prefer=(--prefer "$(cat "$last_file")")
+    udid="$(python3 "$ROOT/tools/devcap.py" pick-sim --name "$name" --pool "${FENTON_SIM_POOL:-0}" ${prefer[@]+"${prefer[@]}"})"
+  fi
+  mkdir -p "$(dirname "$last_file")"; echo "$udid" > "$last_file"
+  echo "== $family: $name pool ($udid)"
   rm -rf "$ROOT/apple/.build/uitest-$family.xcresult"
   SHUTDOWN=(--shutdown-on-timeout)
   [[ "${FENTON_SHUTDOWN_SIM:-}" == 1 || $FULL_SUITE == 1 ]] && SHUTDOWN=(--shutdown)
