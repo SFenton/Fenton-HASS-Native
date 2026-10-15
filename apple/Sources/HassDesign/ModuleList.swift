@@ -13,6 +13,7 @@ import SwiftUI
 /// so rows there sit flush with no hairline (the deployment target, not a device Stephen uses).
 public struct ModuleList<Content: View>: View {
     private let density: ModuleDensity
+    private let hasGlyphs: Bool
     private let content: Content
     @Environment(\.tileSurface) private var surface
     /// Where hairlines start: past the row's leading glyph, at its text.
@@ -21,9 +22,12 @@ public struct ModuleList<Content: View>: View {
     /// Creates a list.
     /// - Parameters:
     ///   - density: ``ModuleDensity/thin`` (default), or ``ModuleDensity/dense`` when a row carries red or orange text.
+    ///   - hasGlyphs: Whether rows lead with a glyph. Hairlines start at the text: past the glyph column (default), or
+    ///     at the row's 16 pt margin for rows of text alone (steps, facts).
     ///   - content: The rows, usually ``ModuleRow``s.
-    public init(_ density: ModuleDensity = .thin, @ViewBuilder content: () -> Content) {
+    public init(_ density: ModuleDensity = .thin, hasGlyphs: Bool = true, @ViewBuilder content: () -> Content) {
         self.density = density
+        self.hasGlyphs = hasGlyphs
         self.content = content()
     }
 
@@ -51,7 +55,7 @@ public struct ModuleList<Content: View>: View {
                         if subview.id != subviews.first?.id {
                             HassTokens.Surface.separator
                                 .frame(height: 0.5)
-                                .padding(.leading, textInset)
+                                .padding(.leading, hasGlyphs ? textInset : HassTokens.Spacing.l)
                                 .accessibilityHidden(true)
                         }
                         subview
