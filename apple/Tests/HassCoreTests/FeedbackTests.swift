@@ -1,5 +1,6 @@
 import Foundation
 @testable import HassCore
+import HassTestSupport
 import Testing
 
 // MARK: - Draft
@@ -176,31 +177,11 @@ struct FeedbackReportTests {
 
 // MARK: - Home Assistant client
 
-/// Records requests and answers from a script.
-final class StubFeedbackTransport: FeedbackHTTPTransport, @unchecked Sendable {
-    typealias Reply = (status: Int, body: String)
-    private let lock = NSLock()
-    private var replies: [Reply]
-    private(set) var requests: [URLRequest] = []
-    var error: (any Error)?
-
-    init(_ replies: [Reply]) { self.replies = replies }
-
-    func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let reply: Reply = try lock.withLock {
-            requests.append(request)
-            if let error { throw error }
-            return replies.isEmpty ? (500, "{}") : replies.removeFirst()
-        }
-        return (Data(reply.body.utf8), HTTPURLResponse(url: request.url!, statusCode: reply.status, httpVersion: nil, headerFields: nil)!)
-    }
-}
-
 @Suite("Home Assistant feedback client")
 struct HomeAssistantFeedbackClientTests {
     let server = HassServer(baseURL: URL(string: "https://ha.example.com")!)
 
-    func client(_ transport: StubFeedbackTransport, token: String = "ha-token") -> HomeAssistantFeedbackClient {
+    func client(_ transport: StubHTTPTransport, token: String = "ha-token") -> HomeAssistantFeedbackClient {
         HomeAssistantFeedbackClient(server: server, accessToken: { token }, transport: transport)
     }
 
@@ -211,7 +192,7 @@ struct HomeAssistantFeedbackClientTests {
     }
 
     @Test func statusReadsAvailability() async throws {
-        let transport = StubFeedbackTransport([(200, #"{"available":true}"#), (200, #"{"available":false}"#), (404, "")])
+        let transport = StubHTTPTransport([(200, #"{"available":true}"#), (200, #"{"available":false}"#), (404, "")])
         let filer = client(transport)
         #expect(try await filer.isAvailable())
         #expect(try await !filer.isAvailable())
@@ -219,14 +200,14 @@ struct HomeAssistantFeedbackClientTests {
         #expect(transport.requests[0].url?.absoluteString == "https://ha.example.com/api/fenton_feedback/status")
         #expect(transport.requests[0].value(forHTTPHeaderField: "Authorization") == "Bearer ha-token")
         await #expect(throws: FeedbackFilingError.signedOut) {
-            try await client(StubFeedbackTransport([(401, "")])).isAvailable()
+            try await client(StubHTTPTransport([(401, "")])).isAvailable()
         }
     }
 
     @Test func uploadSendsOneRawFile() async throws {
         let file = try attachment()
         defer { try? FileManager.default.removeItem(at: file.fileURL) }
-        let transport = StubFeedbackTransport([(200, #"{"url":"https://github.com/user-attachments/assets/abc"}"#)])
+        let transport = StubHTTPTransport([(200, #"{"url":"https://github.com/user-attachments/assets/abc"}"#)])
         let url = try await client(transport).upload(file)
         #expect(url.absoluteString == "https://github.com/user-attachments/assets/abc")
         let request = try #require(transport.requests.first)
@@ -242,17 +223,17 @@ struct HomeAssistantFeedbackClientTests {
         let file = try attachment()
         defer { try? FileManager.default.removeItem(at: file.fileURL) }
         await #expect(throws: FeedbackFilingError.attachmentRejected("shot one.png")) {
-            try await client(StubFeedbackTransport([(422, #"{"code":"attachment_rejected"}"#)])).upload(file)
+            try await client(StubHTTPTransport([(422, #"{"code":"attachment_rejected"}"#)])).upload(file)
         }
         await #expect(throws: FeedbackFilingError.notConfigured) {
-            try await client(StubFeedbackTransport([(503, #"{"code":"not_configured"}"#)])).upload(file)
+            try await client(StubHTTPTransport([(503, #"{"code":"not_configured"}"#)])).upload(file)
         }
         await #expect(throws: FeedbackFilingError.unexpectedResponse) {
-            try await client(StubFeedbackTransport([(200, #"{"url":"http://insecure"}"#)])).upload(file)
+            try await client(StubHTTPTransport([(200, #"{"url":"http://insecure"}"#)])).upload(file)
         }
         let missing = FeedbackAttachment(fileURL: URL(fileURLWithPath: "/nonexistent/x.png"), filename: "x.png", mimeType: "image/png", byteCount: 1, isVideo: false)
         await #expect(throws: FeedbackFilingError.attachmentRejected("x.png")) {
-            try await client(StubFeedbackTransport([])).upload(missing)
+            try await client(StubHTTPTransport([])).upload(missing)
         }
     }
 
@@ -261,7 +242,7 @@ struct HomeAssistantFeedbackClientTests {
         draft.setTitle("[Bug] X")
         draft.description = "Y"
         let report = FeedbackReport(draft: draft, platform: .ios, diagnostics: FeedbackReportTests.diagnostics, media: [])
-        let transport = StubFeedbackTransport([(201, #"{"number":7,"url":"https://github.com/SFenton/fenton-hass-requests/issues/7"}"#)])
+        let transport = StubHTTPTransport([(201, #"{"number":7,"url":"https://github.com/SFenton/fenton-hass-requests/issues/7"}"#)])
         let filed = try await client(transport).submit(report)
         #expect(filed.number == 7)
         let request = try #require(transport.requests.first)
@@ -269,28 +250,28 @@ struct HomeAssistantFeedbackClientTests {
         let json = try #require(try JSONSerialization.jsonObject(with: request.httpBody ?? Data()) as? [String: Any])
         #expect(json["title"] as? String == "[Bug] X")
         await #expect(throws: FeedbackFilingError.githubProblem) {
-            try await client(StubFeedbackTransport([(502, #"{"code":"github_token_rejected"}"#)])).submit(report)
+            try await client(StubHTTPTransport([(502, #"{"code":"github_token_rejected"}"#)])).submit(report)
         }
         await #expect(throws: FeedbackFilingError.unexpectedResponse) {
-            try await client(StubFeedbackTransport([(201, #"{"number":7}"#)])).submit(report)
+            try await client(StubHTTPTransport([(201, #"{"number":7}"#)])).submit(report)
         }
     }
 
     @Test func transportAndTokenFailures() async {
-        let offline = StubFeedbackTransport([])
+        let offline = StubHTTPTransport([])
         offline.error = URLError(.notConnectedToInternet)
         await #expect(throws: FeedbackFilingError.network) { try await client(offline).isAvailable() }
-        let cancelled = StubFeedbackTransport([])
+        let cancelled = StubHTTPTransport([])
         cancelled.error = CancellationError()
         await #expect(throws: CancellationError.self) { try await client(cancelled).isAvailable() }
-        let typed = StubFeedbackTransport([])
+        let typed = StubHTTPTransport([])
         typed.error = FeedbackFilingError.rateLimited
         await #expect(throws: FeedbackFilingError.rateLimited) { try await client(typed).isAvailable() }
         let noToken = HomeAssistantFeedbackClient(server: server, accessToken: { throw URLError(.userAuthenticationRequired) },
-                                                  transport: StubFeedbackTransport([]))
+                                                  transport: StubHTTPTransport([]))
         await #expect(throws: FeedbackFilingError.signedOut) { try await noToken.isAvailable() }
         let cancelledToken = HomeAssistantFeedbackClient(server: server, accessToken: { throw CancellationError() },
-                                                         transport: StubFeedbackTransport([]))
+                                                         transport: StubHTTPTransport([]))
         await #expect(throws: CancellationError.self) { try await cancelledToken.isAvailable() }
     }
 

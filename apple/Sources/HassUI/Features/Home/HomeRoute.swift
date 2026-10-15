@@ -58,6 +58,21 @@ enum HomeRoute: Hashable, Identifiable, Sendable {
         }
     }
 
+    /// The route a notification link opens: this route's own paths, and the Food detail pages (`recipes`,
+    /// `all-food` and the storage pages), which open on the Food hub.
+    init?(pushPath path: String) {
+        if let route = HomeRoute(path: path) {
+            self = route
+        } else if Self.foodDetailPaths.contains(path) {
+            self = .food
+        } else {
+            return nil
+        }
+    }
+
+    /// Food pages under the hub (web `HOME_FOOD_DETAIL_ROUTE_PATHS`, `routes.ts:120`).
+    static let foodDetailPaths: Set<String> = ["recipes", "all-food", "pantry", "fridge", "freezer", "spice-rack", "cabinet"]
+
     /// The navigation title (web `DASHBOARD_ROUTES`).
     var title: String {
         switch self {
