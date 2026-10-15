@@ -1,3 +1,4 @@
+import HassCore
 import Observation
 import SwiftUI
 
@@ -17,6 +18,9 @@ final class ShellNavigator {
     /// The section whose root is presenting the Quick Links sheet (flyout row, toolbar button), or nil. The sheet
     /// opens over the selected section so a page it links pushes on that section's stack.
     var quickLinksSection: AppSection?
+    /// The section whose root is presenting the Account sheet (profile avatar, or a notification that opens
+    /// Settings), or nil (``SectionRootChrome``).
+    var accountSection: AppSection?
     /// The flyout is showing.
     private(set) var isFlyoutOpen = false
     /// The signed-in user's display name for the profile button, kept between launches so the button never
@@ -95,6 +99,29 @@ final class ShellNavigator {
         guard isFlyoutOpen else { return }
         isFlyoutOpen = false
         focusReturnToken &+= 1
+    }
+
+    /// Opens the page a notification points at, on its section's root (web `primaryNavPathForRoute`). A Home page
+    /// is pushed on Home's root; a route the app has no page for opens Home.
+    func open(_ destination: PushDestination) {
+        isFlyoutOpen = false
+        switch destination {
+        case let .section(section):
+            guard let target = AppSection(section) else {
+                // Settings: the Account sheet over the section on screen (direction G).
+                isQuickLinksActive = false
+                accountSection = selection
+                return
+            }
+            paths[target] = NavigationPath()
+            select(target)
+        case let .homePage(path):
+            var stack = NavigationPath()
+            if let route = HomeRoute(pushPath: path) { stack.append(route) }
+            paths[.home] = stack
+            selection = .home
+            isQuickLinksActive = false
+        }
     }
 
     /// Chooses a section from the flyout or tab bar. Choosing the current section pops it to its root

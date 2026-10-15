@@ -199,8 +199,25 @@ private struct SectionRootChrome: ViewModifier {
     @Environment(\.shellChrome) private var chrome
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.roomServiceCaller) private var callerOverride
+    @Environment(\.shellSection) private var section
     @AccessibilityFocusState private var buttonFocused: Bool
     @State private var showsProfile = false
+
+    /// In the shell, the navigator says which section's root presents the Account sheet, so a notification can
+    /// open Settings (``ShellNavigator/open(_:)``). Elsewhere it is local.
+    private var profileIsPresented: Binding<Bool> {
+        guard let navigator, let section else { return $showsProfile }
+        return Binding(
+            get: { navigator.accountSection == section },
+            set: { isPresented in
+                if isPresented {
+                    navigator.accountSection = section
+                } else if navigator.accountSection == section {
+                    navigator.accountSection = nil
+                }
+            }
+        )
+    }
 
     func body(content: Content) -> some View {
         content
@@ -220,11 +237,11 @@ private struct SectionRootChrome: ViewModifier {
             // Declared before Quick Links: the bar lays out later toolbars first, so Profile ends up trailing-most.
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    ProfileButton(name: navigator?.profileName) { showsProfile = true }
+                    ProfileButton(name: navigator?.profileName) { profileIsPresented.wrappedValue = true }
                 }
             }
             .quickLinks(caller: callerOverride ?? connection, showsButton: chrome.showsQuickLinksButton)
-            .accountSheet(isPresented: $showsProfile)
+            .accountSheet(isPresented: profileIsPresented)
             .onChange(of: navigator?.focusReturnToken) { _, _ in buttonFocused = true }
     }
 }

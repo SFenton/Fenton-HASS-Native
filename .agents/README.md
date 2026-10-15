@@ -16,6 +16,8 @@
 | Report an Issue form, the request repo, the triage agent | [pages/settings/feedback.md](pages/settings/feedback.md), [workflow/triage-agent.md](workflow/triage-agent.md) |
 | Sign-in, tokens, Keychain | [platforms/apple/auth.md](platforms/apple/auth.md) |
 | Websocket, backgrounding, caching | [platforms/apple/connection-lifecycle.md](platforms/apple/connection-lifecycle.md) |
+| Push notifications, the notification service extension | [platforms/apple/push.md](platforms/apple/push.md) |
+| Location, Home/Away, device sensors | [platforms/apple/location.md](platforms/apple/location.md), screen: [pages/settings/location.md](pages/settings/location.md) |
 | Decide what tests to write | [testing/apple/strategy.md](testing/apple/strategy.md) |
 | Run tests on iPhone, Duo, iPad | [testing/apple/devices.md](testing/apple/devices.md) |
 | Edit these docs | [workflow/docs-conventions.md](workflow/docs-conventions.md) |

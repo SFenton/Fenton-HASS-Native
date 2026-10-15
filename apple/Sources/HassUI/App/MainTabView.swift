@@ -15,6 +15,7 @@ struct MainTabView: View {
     @State private var windowTop: CGFloat = 0
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(HassConnection.self) private var connection: HassConnection?
+    @Environment(PushCoordinator.self) private var push: PushCoordinator?
 
     private var style: ShellNavigationStyle {
         ShellNavigationStyle.resolve(isRegularWidth: horizontalSizeClass == .regular)
@@ -60,6 +61,12 @@ struct MainTabView: View {
         .preferredColorScheme(.dark)
         .onAppear { navigator.selection = storedSelection }
         .onChange(of: navigator.selection) { _, section in storedSelection = section }
+        // A notification's page: also on appear, for a tap that launched the app.
+        .onChange(of: push?.pendingRequest, initial: true) { _, request in
+            guard let request else { return }
+            navigator.open(request.destination)
+            push?.didOpen(request)
+        }
         .onChange(of: style) { _, newStyle in
             if newStyle == .tabBar, !chrome.showsMenuButton { navigator.dismissFlyout() }
             if newStyle == .flyout { navigator.closeQuickLinks() }
@@ -119,6 +126,8 @@ struct MainTabView: View {
             }
             .sectionRootChrome()
             .pageChrome()
+            // Pages a notification opens (``ShellNavigator/open(_:)``), as Quick Links pushes them.
+            .navigationDestination(for: HomeRoute.self) { HomeRouteDestination(route: $0).pageChrome() }
         }
         .environment(\.shellSection, section)
     }
@@ -144,10 +153,12 @@ struct MainTabView: View {
         return false
     }
 
-    /// Reads the signed-in user's name for the profile button; the cached name shows until it arrives.
+    /// Reads the signed-in user for the profile button (the cached name shows until it arrives) and for push
+    /// registration, which is per Home Assistant user.
     private func loadProfileName() async {
         guard let connection, let user = try? await connection.currentUser() else { return }
         if navigator.profileName != user.name { navigator.profileName = user.name }
+        await push?.didConnect(userID: user.id, userName: user.name)
     }
 }
 

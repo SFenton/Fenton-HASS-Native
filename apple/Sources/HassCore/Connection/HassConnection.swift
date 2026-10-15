@@ -97,9 +97,11 @@ public final class HassConnection {
     // MARK: - Lifecycle
 
     /// Opens the websocket and subscribes to entity states. Safe to call repeatedly.
-    public func connect() {
+    /// - Parameter subscribingToStates: Also subscribe to every entity's state. A notification extension that only
+    ///   sends a command (a camera's stream) passes false, so it stays inside its memory limit.
+    public func connect(subscribingToStates: Bool = true) {
         connection.connect()
-        guard statesSubscription == nil else { return }
+        guard subscribingToStates, statesSubscription == nil else { return }
         statesSubscription = connection.caches.states().subscribe { [weak self] _, cached in
             let entities = cached.all
             MainActor.assumeIsolated { self?.receive(entities) }
