@@ -22,6 +22,12 @@ targets:
     dependencies:
       - package: FentonHomeApple
         product: HassUI
+    # Access Wi-Fi Information lets the SSID and BSSID sensors read the network name, as the official app does
+    # (`.agents/platforms/apple/location.md`). Self-service capability; no Apple review.
+    entitlements:
+      path: Apps/iOS/FentonHome.entitlements
+      properties:
+        com.apple.developer.networking.wifi-info: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home
@@ -36,6 +42,12 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSCameraUsageDescription: Scan item barcodes and printed expiration dates to add groceries to your inventory.
         NSPhotoLibraryAddUsageDescription: Save camera snapshots to your photo library.
+        # Location reports Home and Away to Home Assistant (`.agents/platforms/apple/location.md`).
+        NSLocationWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away.
+        NSLocationAlwaysAndWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away, even when this app is closed.
+        # Zone crossings and significant location changes relaunch the app in the background.
+        UIBackgroundModes:
+          - location
         UILaunchScreen:
           UIColorName: LaunchBackground
         # Lets ProMotion iPhones scroll and animate at 120 Hz; without it the app is capped at 60 Hz.
