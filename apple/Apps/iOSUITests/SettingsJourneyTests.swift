@@ -148,7 +148,9 @@ final class SettingsJourneyTests: XCTestCase {
         let web = app.webViews.firstMatch
         XCTAssertTrue(web.waitForExistence(timeout: 15))
         // The frontend's Settings dashboard lists Devices & services once signed in.
-        let signedIn = web.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] 'Devices'")).firstMatch
+        // Any element: WebKit exposes the entry as a link labelled "Devices & services …" (iPad, 2026-10-14), and
+        // `containing` only matched a text with a matching child.
+        let signedIn = web.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] 'Devices'")).firstMatch
         XCTAssertTrue(signedIn.waitForExistence(timeout: 30), "Home Assistant Settings did not open signed in")
         XCTAssertFalse(web.secureTextFields.firstMatch.exists, "Web login form shown")
         goBack(app)
