@@ -97,11 +97,13 @@ Each lane restyles its screens against its mockups, uses only Phase 1 pieces, an
 
 | Lane | Mockups | Code |
 |---|---|---|
-| **Home** | n1 home, weather, daily report, Quick Links, Account and Settings; n2 lights, light detail, security, doors, climate, occupancy and air quality sheets, cameras | `Features/Home/*` (HomeScreen, StatusRail, CameraGrid, WeatherSummaryCard, GuestPresenceSection, ChipSheet, LightGroupTile), `Features/Cameras/*`, `Features/Settings/*`, `Features/Rooms/QuickLinksSheet` |
+| **Home** | n1 home, weather, daily report, Quick Links, Account and Settings; n2 lights, light detail, security, doors, climate, occupancy and air quality sheets, cameras | `Features/Home/*` (HomeScreen, StatusRail, CameraGrid, WeatherSummaryCard, GuestPresenceSection), `HassUI/Common/RoomOverview/*` (the chip sheets, LightGroupTile; added 2026-10-15), `Features/Cameras/*`, `Features/Settings/*`, `Features/Rooms/QuickLinksSheet` |
 | **Security and Climate** | n3 | `Features/Security/*`, `Features/Climate/*`, `Controls/Thermostat/*`. Hub mode and Fan become `Picker(.menu)`; garage buttons get Sending, Opening, Closing and Error. |
 | **Rooms and devices** | n4 rooms, room pages, fan, purifier, bath fan, humidifier, grill, wake light, bed | `Features/Rooms/*`, `Features/RoomDevices/*`, `Features/Bedroom/*` |
 | **Media and outdoors** | n4 media, remote, custom lights, sprinklers | `Features/Media/*`, `Features/MediaRemote/*`, `Features/CustomLights/*`, `Features/Sprinklers/*` |
 | **Chores, Food and Vacuums** | n5 and n6 | `Features/Chores/*`, `Features/Vacation/*`, `HassDesign/FilterSheet`, `FloatingActionBar`, `Features/Food/*`, `Features/Inventory/*`, `Features/Vacuums/*` |
+
+Shared helpers lanes add for each other (use them, don't copy): `HassDesign/SheetSubtitle.swift` (`.sheetSubtitle(_:)`, a sheet's one-line subtitle: the system navigation subtitle on iOS 26 and later, none earlier; never a custom principal title or `minimumScaleFactor`).
 
 The fifth lane is the largest; if it runs long it splits into Chores and Vacation, and Food, Inventory and Vacuums.
 
