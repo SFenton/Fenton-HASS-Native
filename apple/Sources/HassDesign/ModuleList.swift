@@ -4,13 +4,17 @@ import SwiftUI
 
 /// An inset list on the wallpaper (`.agents/design/direction-g.md`, Controls: Lists): rows on one
 /// ``SwiftUICore/View/module(_:cornerRadius:)`` card with hairlines inset to the text, like an inset grouped list
-/// on a page. Sheets use the system `Form` instead, whose dark grouped colours are G's sheet ground and cells.
+/// on a page. Sheets use the system `Form` where they can, whose dark grouped colours are G's sheet ground and cells;
+/// a sheet that can't be a `Form` (a map, a bottom section bar) gets the same look from this list, which draws its
+/// rows on the sheet's `#2C2C2E` cell when ``SwiftUICore/EnvironmentValues/tileSurface`` is `.sheet`
+/// (`modalChrome()` sets it).
 ///
 /// On iOS 18 and later the list draws a hairline between rows; iOS 17 has no API to visit a view builder's rows,
 /// so rows there sit flush with no hairline (the deployment target, not a device Stephen uses).
 public struct ModuleList<Content: View>: View {
     private let density: ModuleDensity
     private let content: Content
+    @Environment(\.tileSurface) private var surface
     /// Where hairlines start: past the row's leading glyph, at its text.
     @ScaledMetric(relativeTo: .body) private var textInset: CGFloat = ModuleRowMetrics.textInset
 
@@ -24,10 +28,18 @@ public struct ModuleList<Content: View>: View {
     }
 
     public var body: some View {
-        rows
-            .frame(maxWidth: .infinity)
-            .module(density)
-            .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.module, style: .continuous))
+        let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.module, style: .continuous)
+        if surface == .sheet {
+            rows
+                .frame(maxWidth: .infinity)
+                .background(HassTokens.Surface.sheetCell, in: shape)
+                .clipShape(shape)
+        } else {
+            rows
+                .frame(maxWidth: .infinity)
+                .module(density)
+                .clipShape(shape)
+        }
     }
 
     @ViewBuilder

@@ -6,5 +6,5 @@
 - `ModuleRow(title, subtitle:, symbol:, glyph:, glyphOpacity:, showsChevron:) { accessory }`: a family-coloured glyph, the title and an optional subtitle (read as one element), then a trailing accessory (a state capsule, a pop-up menu). 52 pt tall, 60 pt with a subtitle; at accessibility sizes the accessory moves under the text.
 - A row that does something is a `Button` around the row with `ModuleRowButtonStyle` (pressed highlight; disabled text never fades). Give the button the label, value and hint; hide a decorative accessory from VoiceOver.
 - Unavailable rows dim only the glyph (`glyphOpacity: 0.5`), like tiles.
-- Sheets don't use it: they use the system `Form`, whose dark grouped colours are G's sheet ground and cells.
+- Sheets use the system `Form` where they can. A sheet that can't be a `Form` (a map, a bottom section bar) can use the list: under `modalChrome()` (`tileSurface == .sheet`) it draws on the sheet cell colour instead of a module.
 - Users: Security's Doors and Mach-E lists, Climate's Thermostat Hub and Advanced Controls.
