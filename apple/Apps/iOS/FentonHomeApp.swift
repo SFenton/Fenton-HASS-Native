@@ -10,7 +10,7 @@ struct FentonHomeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(push: appDelegate.push, location: appDelegate.location)
+            RootView(session: appDelegate.session)
         }
     }
 }
@@ -31,6 +31,10 @@ final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
     private(set) lazy var location: LocationCoordinator? =
         LocationLaunchPolicy.isEnabled(isPresenceDevice: LocationReporter.deviceIsPresenceDevice)
             ? LocationCoordinator.system(mobileApp: push.mobileApp) : nil
+
+    /// The app's one session (sign-in, connection, route). Made once here: `FentonHomeApp.body` and `RootView.init`
+    /// run again whenever SwiftUI rebuilds the scene.
+    @MainActor lazy var session = AppSession(push: push, location: location)
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
