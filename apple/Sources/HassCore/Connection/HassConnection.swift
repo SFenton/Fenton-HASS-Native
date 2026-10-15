@@ -156,8 +156,9 @@ public final class HassConnection {
     public func refreshRoute() {
         guard let route else { return }
         routeTask?.cancel()
+        let confirmHome: @Sendable () async -> Bool = { [weak self] in await self?.isHomeConfirmedOverPublicURL() ?? false }
         routeTask = Task { [weak self] in
-            let changed = await route.refresh { await self?.isHomeConfirmedOverPublicURL() ?? false }
+            let changed = await route.refresh(confirmHome: confirmHome)
             guard changed, !Task.isCancelled else { return }
             self?.applyRoute()
         }
