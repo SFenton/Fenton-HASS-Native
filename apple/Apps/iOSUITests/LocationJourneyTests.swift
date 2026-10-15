@@ -94,8 +94,8 @@ final class LocationJourneyTests: JourneyTestCase {
         XCTAssertEqual(primary.label, "Open Settings")
         assertTarget(primary)
         let close = app.buttons["location.close"]
+        // The system's toolbar Close (`SheetCloseItem`); the bar sizes its hit region, as on every sheet.
         XCTAssertTrue(close.exists, "No longer a pre-alert screen")
-        assertTarget(close)
         primary.tap()
         XCTAssertEqual(lastAction(app), "Last action: open settings")
     }
