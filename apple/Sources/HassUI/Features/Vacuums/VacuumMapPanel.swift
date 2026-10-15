@@ -37,25 +37,28 @@ final class VacuumMapState {
     }
 }
 
-/// Map, status pills, notices and the cleaning report: the sheet's leading pane (web `VacuumMapAndStatus`).
+/// Map, status chips, notices and the cleaning report: the sheet's leading pane (web `VacuumMapAndStatus`; mockup
+/// n6-vacuum-sheet).
 struct VacuumMapPanel: View {
     var controller: VacuumController
     var mapState: VacuumMapState
+    /// The displayed section and runtime mode: the map marks skipped rooms on Auto-Clean and grows while a run is going.
+    var content: VacuumSheetContent
     var pictureURL: URL?
     var areaVisible: Bool
     var onOpenReport: (VacuumOutcomeContract) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-            VacuumMapFrame(controller: controller, mapState: mapState, area: areaVisible ? controller.areaSelection : nil)
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
+            VacuumMapFrame(controller: controller, mapState: mapState, content: content,
+                           area: areaVisible ? controller.areaSelection : nil)
                 .task(id: MapTaskKey(url: pictureURL, live: controller.status.primaryAvailable)) {
                     await mapState.loader.run(url: pictureURL, live: controller.status.primaryAvailable)
                 }
                 .onChange(of: mapState.loader.map) { _, _ in mapState.refresh() }
                 .onChange(of: mapState.loader.provenance) { _, _ in mapState.refresh() }
             if mapState.loader.provenance == .reported {
-                VacuumNotice(mapState.loader.map?.robotPosition == nil ? "Last Reported Map" : "Last Reported Position", tone: .warning,
-                             text: "This is the last map the vacuum reported before contact was lost. The exact report time is unknown, and the vacuum may have been moved since then.")
+                InlineAlert("\(mapState.loader.map?.robotPosition == nil ? "Last Reported Map" : "Last Reported Position"): This is the last map the vacuum reported before contact was lost. The exact report time is unknown, and the vacuum may have been moved since then.")
             }
             VacuumStatusSummary(controller: controller, mapProvenance: mapState.loader.provenance)
             VacuumCleaningReport(controller: controller, onOpen: onOpenReport)
@@ -65,18 +68,27 @@ struct VacuumMapPanel: View {
     private struct MapTaskKey: Hashable { var url: URL?; var live: Bool }
 }
 
-/// The map frame with its Locate button, loading and unavailable states.
+/// The map card with its Locate button, loading and unavailable states (direction G, Controls: Vacuum map).
 struct VacuumMapFrame: View {
     var controller: VacuumController
     var mapState: VacuumMapState
+    var content: VacuumSheetContent
     var area: MapGridRect?
+
+    /// The map's height limit: it grows while a run is going, when the controls below collapse to one card
+    /// (mockup n6-vacuum-cleaning).
+    static func maxHeight(_ mode: VacuumRuntimeMode) -> CGFloat { mode == .minimal ? 460 : 300 }
 
     var body: some View {
         let scene = mapState.scene
-        ZStack(alignment: .bottomTrailing) {
+        let shown = content.swap.displayed
+        ZStack(alignment: .topLeading) {
             if let scene {
                 GeometryReader { proxy in
-                    ValetudoMapCanvas(scene: scene, roomOrders: roomOrders, area: area)
+                    ValetudoMapCanvas(scene: scene,
+                                      roomOrders: shown.tab == .autoClean ? [:] : roomOrders,
+                                      skippedRooms: shown.tab == .autoClean ? skippedRooms : [],
+                                      area: area)
                         .contentShape(Rectangle())
                         .onTapGesture(coordinateSpace: .local) { location in
                             guard roomsTappable, let room = scene.room(at: location, size: proxy.size),
@@ -85,7 +97,8 @@ struct VacuumMapFrame: View {
                         }
                 }
                 .aspectRatio(scene.aspectRatio, contentMode: .fit)
-                .frame(maxWidth: .infinity, maxHeight: 420)
+                .frame(maxWidth: .infinity, maxHeight: Self.maxHeight(shown.mode))
+                .padding(HassTokens.Spacing.m)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(controller.vacuum.title) Valetudo map")
                 .accessibilityValue(mapAccessibilityValue)
@@ -95,20 +108,23 @@ struct VacuumMapFrame: View {
             }
             if controller.status.primaryAvailable {
                 Button { controller.locate() } label: {
-                    Label("Locate", systemImage: "mappin.and.ellipse")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, HassTokens.Spacing.m)
-                        .frame(minHeight: HassTokens.minTarget)
-                        .background(.regularMaterial, in: Capsule())
+                    Image(systemName: "scope")
+                        .font(.body.weight(.semibold))
+                        .frame(width: HassTokens.minTarget, height: HassTokens.minTarget)
+                        .navigationGlass(in: Circle())
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(HassTokens.Ink.primary)
                 .padding(HassTokens.Spacing.s)
+                .accessibilityLabel("Locate")
                 .accessibilityHint("Asks the robot to play a sound.")
                 .accessibilityIdentifier("vacuum.locate")
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+        .frame(maxWidth: .infinity)
+        .background(ValetudoMapScene.color(ValetudoMapScene.Palette.ground))
+        .clipShape(VacuumStyle.groupShape)
         .alert("Switch to Rooms", isPresented: $confirmingRoom, presenting: pendingZone) { zone in
             Button("Continue") { controller.toggleRoom(zone) }
             Button("Cancel", role: .cancel) {}
@@ -135,6 +151,13 @@ struct VacuumMapFrame: View {
         Dictionary(uniqueKeysWithValues: controller.selectedZones.enumerated().map { ($1.entityId, $0 + 1) })
     }
 
+    /// Rooms the coordinator skips on automatic cleans, as map zones (matched by title, which the Main Floor's
+    /// auto-clean rooms and zones share).
+    private var skippedRooms: Set<String> {
+        let titles = Set(controller.vacuum.autoCleanDisabledRooms.filter { controller.isAutoCleanDisabled($0) }.map(\.title))
+        return Set(controller.vacuum.zones.filter { titles.contains($0.title) }.map(\.entityId))
+    }
+
     private var mapAccessibilityValue: String {
         let rooms = controller.selectedZones.map(\.title)
         return rooms.isEmpty ? "" : "Selected rooms: " + rooms.joined(separator: ", ")
@@ -154,10 +177,10 @@ struct VacuumMapFrame: View {
                     .font(.subheadline)
             }
         }
-        .foregroundStyle(Color.white)
+        // The map card is always dark (`#262628`).
+        .foregroundStyle(HassTokens.Ink.onDark)
         .padding(HassTokens.Spacing.l)
         .frame(maxWidth: .infinity, minHeight: 220)
-        .background(ValetudoMapScene.color(MapRGBA(6, 12, 18, 0.9)))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("vacuum.map.fallback")
     }
@@ -165,54 +188,74 @@ struct VacuumMapFrame: View {
 
 // MARK: - Status
 
-/// Status pills and notices (web `VacuumStatusSummary`).
+/// Status chips and notices (web `VacuumStatusSummary`; mockup n6-vacuum-sheet: Docked, 100%, Dock Idle).
 struct VacuumStatusSummary: View {
     var controller: VacuumController
     var mapProvenance: ValetudoMapProvenance
-    @ScaledMetric(relativeTo: .subheadline) private var minPillWidth: CGFloat = 150
 
     var body: some View {
         let status = controller.status
         let state = controller.statusState
         let stateLabel = VacuumFormat.state(state)
         let visual = VacuumVisual.state(state)
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-            DynamicGridLayout(minCellWidth: minPillWidth, maxColumns: 2) {
-                VacuumInfoPill(icon: visual.icon, label: "Status", value: stateLabel, tone: visual.tone)
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
+            FlowLayout(spacing: HassTokens.Spacing.s) {
+                VacuumStatusChip(symbol: Self.stateSymbol(state, visual: visual), tint: VacuumStyle.color(visual.tone),
+                                 label: "Status", value: stateLabel)
                     .accessibilityIdentifier("vacuum.status")
-                VacuumInfoPill(icon: "mdi:battery", label: "Battery", value: controller.batteryLabel,
-                               tone: status.primaryAvailable ? .neutral : .unavailable)
+                VacuumStatusChip(symbol: Self.batterySymbol(controller.batteryLabel),
+                                 tint: status.primaryAvailable ? HassTokens.Ink.primary : HassTokens.Ink.secondary,
+                                 label: "Battery", value: controller.batteryLabel)
                 if controller.vacuum.dockControls != nil {
                     let dock = VacuumVisual.dock(controller.dockState)
-                    VacuumInfoPill(icon: dock.icon, label: "Dock Status", value: controller.dockLabel,
-                                   tone: status.primaryAvailable ? dock.tone : .unavailable)
+                    let tone = status.primaryAvailable ? dock.tone : .unavailable
+                    VacuumStatusChip(symbol: tone == .neutral || tone == .unavailable ? "ev.charger" : VacuumStyle.symbol(dock.icon),
+                                     tint: tone == .neutral ? HassTokens.Ink.primary : VacuumStyle.color(tone),
+                                     label: "Dock Status", value: "Dock \(controller.dockLabel)")
                 }
             }
             if !status.primaryAvailable && mapProvenance != .reported {
-                VacuumNotice(stateLabel, text: "Home Assistant does not have a current status for the vacuum.")
+                InfoBox(title: stateLabel, message: "Home Assistant does not have a current status for the vacuum.")
             }
             if status.primaryAvailable && status.currentIssue.status == .unknown {
-                VacuumNotice("Error Source Unavailable", tone: .warning,
-                             text: "The current vacuum error status cannot be confirmed because its error source is unavailable.")
+                InlineAlert("Error Source Unavailable: The current vacuum error status cannot be confirmed because its error source is unavailable.")
             }
             if status.currentIssue.status == .present, let raw = status.currentIssue.raw {
-                VacuumNotice("Current Issue", tone: .warning, text: raw)
+                InlineAlert("Current Issue: \(raw)")
             }
             ForEach(status.activeConditions, id: \.code) { condition in
-                VacuumNotice("Home Assistant Condition", text: VacuumStatusResolver.conditionText(condition))
+                InfoBox(title: "Home Assistant Condition", message: VacuumStatusResolver.conditionText(condition))
             }
             if let last = status.lastIssue,
                !status.primaryAvailable || status.currentIssue.status == .unknown || status.policyReason == "source_unreadable" {
-                VacuumNotice("Previous Issue",
-                             text: "Previous Vacuum Issue · \(last.raw) • Observed \(last.reportedAt.formatted(date: .abbreviated, time: .shortened))")
+                InfoBox(title: "Previous Issue",
+                        message: "Previous Vacuum Issue · \(last.raw) · Observed \(last.reportedAt.formatted(date: .abbreviated, time: .shortened))")
             }
+        }
+    }
+
+    /// Docked reads as a green check (mockup n6-vacuum-sheet); other states keep their own glyph.
+    static func stateSymbol(_ state: String, visual: VacuumVisual) -> String {
+        state.lowercased() == "docked" ? "checkmark.circle.fill" : VacuumStyle.symbol(visual.icon)
+    }
+
+    /// The battery glyph nearest the level in a label such as `87%`; the empty battery while the level is unknown.
+    static func batterySymbol(_ label: String) -> String {
+        guard label.hasSuffix("%"), let level = Double(label.dropLast()) else { return "battery.0percent" }
+        return switch level {
+        case ..<13: "battery.0percent"
+        case ..<38: "battery.25percent"
+        case ..<63: "battery.50percent"
+        case ..<88: "battery.75percent"
+        default: "battery.100percent"
         }
     }
 }
 
 // MARK: - Cleaning report
 
-/// The coordinator's while-away report (web `VacuumWhileAwaySection`).
+/// The coordinator's while-away report (web `VacuumWhileAwaySection`; mockup n6-vacuum-info): one row that opens
+/// the room details.
 struct VacuumCleaningReport: View {
     var controller: VacuumController
     var onOpen: (VacuumOutcomeContract) -> Void
@@ -227,12 +270,23 @@ struct VacuumCleaningReport: View {
             let counts = VacuumOutcomeText.counts(contract)
             let visual = VacuumOutcomeText.overviewVisual(counts)
             let day = VacuumOutcomeText.day(contract.day)
-            VacuumSection("\(title) (\(contract.rooms.count))") {
-                GlassTile(title: day, subtitle: VacuumOutcomeText.overviewSubtitle(counts).nilIfEmpty,
-                          symbol: VacuumStyle.symbol(visual.icon), tint: VacuumStyle.color(visual.tone), isActive: true, kind: .navigate) {
-                    onOpen(contract)
+            let overview = VacuumOutcomeText.overviewSubtitle(counts)
+            VacuumSection("Cleaning Report") {
+                // G: ModuleList (sheet cell ground)
+                Button { onOpen(contract) } label: {
+                    VacuumListRow(symbol: VacuumStyle.symbol(visual.icon), tint: VacuumStyle.color(visual.tone),
+                                  title: "\(title) (\(contract.rooms.count))",
+                                  subtitle: overview.isEmpty ? day : "\(day) · \(overview)") {
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(HassTokens.Ink.secondary)
+                            .accessibilityHidden(true)
+                    }
                 }
+                .buttonStyle(.plain)
+                .vacuumGroup()
                 .accessibilityLabel("Open \(controller.vacuum.title) Automatic Cleaning Report for \(day)")
+                .accessibilityValue(overview)
                 .accessibilityIdentifier("vacuum.report")
             }
         case let .legacy(cleaned, issues):
@@ -240,12 +294,14 @@ struct VacuumCleaningReport: View {
         case let .protocolNotice(kind, cleaned, issues):
             VacuumSection(title) {
                 let copy = VacuumOutcomeText.protocolTitle(kind)
-                VacuumNotice(copy.title, tone: .warning, text: copy.description)
+                InlineAlert("\(copy.title): \(copy.description)")
                 if !cleaned.isEmpty || !issues.isEmpty {
                     DisclosureGroup("Unstructured Report Details", isExpanded: $legacyOpen) {
                         VacuumDescription("These details may be inconsistent with the typed status.")
                         lists(cleaned: cleaned, issues: issues)
                     }
+                    .tint(HassTokens.Ink.action)
+                    .padding(.horizontal, HassTokens.Spacing.l)
                     .accessibilityLabel("\(legacyOpen ? "Hide" : "Show") \(controller.vacuum.title) Unstructured Report Details")
                 }
             }
@@ -254,52 +310,45 @@ struct VacuumCleaningReport: View {
 
     @ViewBuilder private func lists(cleaned: [String], issues: [String]) -> some View {
         if !cleaned.isEmpty {
-            VacuumNotice("Cleaned", tone: .ok, text: cleaned.map { "• " + $0 }.joined(separator: "\n"))
+            InfoBox(title: "Cleaned", message: cleaned.map { "• " + $0 }.joined(separator: "\n"), tone: .success)
         }
         if !issues.isEmpty {
-            VacuumNotice("Issues", tone: .warning, text: issues.map { "• " + $0 }.joined(separator: "\n"))
+            InlineAlert("Issues:\n" + issues.map { "• " + $0 }.joined(separator: "\n"))
         }
     }
 }
 
-/// The report detail page: one chip per room (web `VacuumOutcomeDetail`).
+/// The report detail page: one row per room (web `VacuumOutcomeDetail`).
 struct VacuumOutcomeDetailView: View {
     var vacuum: VacuumConfig
     var contract: VacuumOutcomeContract
-    @ScaledMetric(relativeTo: .subheadline) private var minChipWidth: CGFloat = 220
 
     var body: some View {
         let names = VacuumOutcomeText.roomNames(contract, vacuum: vacuum)
         ScrollView {
-            DynamicGridLayout(minCellWidth: minChipWidth, maxColumns: 2) {
-                ForEach(contract.rooms) { room in
+            // G: ModuleList (sheet cell ground)
+            VStack(spacing: 0) {
+                ForEach(Array(contract.rooms.enumerated()), id: \.element.id) { index, room in
                     let visual = VacuumOutcomeText.statusVisual(room.status)
-                    VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
-                        HStack(spacing: HassTokens.Spacing.s) {
-                            Image(systemName: VacuumStyle.symbol(visual.icon)).foregroundStyle(VacuumStyle.color(visual.tone))
-                            Text(room.roomName).font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
-                            Spacer(minLength: HassTokens.Spacing.s)
-                            Text(VacuumOutcomeText.statusTitle(room.status)).font(.footnote.weight(.semibold)).foregroundStyle(HassTokens.Ink.secondary)
-                        }
-                        Text(VacuumOutcomeText.detail(room, roomNames: names))
-                            .font(.footnote)
+                    if index > 0 { VacuumRowDivider() }
+                    VacuumListRow(symbol: VacuumStyle.symbol(visual.icon), tint: VacuumStyle.color(visual.tone), title: room.roomName,
+                                  subtitle: VacuumOutcomeText.detail(room, roomNames: names)) {
+                        Text(VacuumOutcomeText.statusTitle(room.status))
+                            .font(.subheadline)
                             .foregroundStyle(HassTokens.Ink.secondary)
+                            .multilineTextAlignment(.trailing)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(HassTokens.Spacing.m)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(VacuumStyle.rowFill, in: VacuumStyle.rowShape)
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("vacuum.outcome.\(room.roomId)")
                 }
             }
+            .vacuumGroup()
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
             .padding(HassTokens.Spacing.l)
         }
         .navigationTitle("\(vacuum.title) · Automatic Cleaning Report (\(contract.rooms.count))")
         .inlineNavigationTitle()
     }
-}
-
-extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

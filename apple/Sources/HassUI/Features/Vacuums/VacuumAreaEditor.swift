@@ -37,7 +37,7 @@ struct VacuumAreaEditor: View {
                 if let scene = mapState.scene {
                     editor(scene)
                 } else {
-                    VacuumNotice("Map Unavailable", tone: .warning, text: "Home Assistant cannot currently confirm the vacuum's map or position.")
+                    InlineAlert("Map Unavailable: Home Assistant cannot currently confirm the vacuum's map or position.")
                 }
                 summary
             }
@@ -80,7 +80,8 @@ struct VacuumAreaEditor: View {
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 .foregroundStyle(active ? Color.white : HassTokens.Ink.primary)
-                .background(active ? AnyShapeStyle(VacuumStyle.primaryFill) : AnyShapeStyle(VacuumStyle.rowFill), in: VacuumStyle.rowShape)
+                // The live tool fills with the action blue (direction G); the others are grey capsules.
+                .background(active ? AnyShapeStyle(HassTokens.Ink.actionFill) : VacuumStyle.secondaryFill, in: Capsule())
         }
         .buttonStyle(.plain)
         .disabled(disabled)
@@ -190,7 +191,7 @@ struct VacuumAreaEditor: View {
             .accessibilityElement(children: .combine)
             VacuumDescription("Drag to draw an area, drag inside it to move it, and drag any round corner handle to resize it. Pinch to zoom.")
             if !mapState.allows(controller.areaSelection) {
-                VacuumNotice(nil, tone: .warning, text: "The area must stay inside the rooms shown on the map.")
+                InlineAlert("The area must stay inside the rooms shown on the map.")
             }
             VacuumActionButton(action: .init(kind: .cleanArea, title: controller.areaSelection == nil ? "Draw an Area to Continue" : "Use This Area",
                                              icon: "mdi:check", tone: .primary, detail: nil,
