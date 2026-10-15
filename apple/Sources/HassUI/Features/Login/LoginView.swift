@@ -64,20 +64,23 @@ struct LoginView: View {
                 if let errorMessage {
                     Section {
                         Label(errorMessage, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(HassTokens.Ink.danger)
                     }
                 }
 
                 Section {
+                    // Direction G: the screen's one primary action, a filled capsule.
                     Button(action: submit) {
-                        HStack {
-                            Text(needsMFA ? "Verify" : "Sign In")
+                        HStack(spacing: HassTokens.Spacing.s) {
                             if isWorking {
-                                Spacer()
                                 ArcSpinner(.inline).accessibilityHidden(true)
                             }
+                            Text(needsMFA ? "Verify" : "Sign In")
                         }
                     }
+                    .buttonStyle(PrimaryButtonStyle())
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                     .disabled(!canSubmit)
                     // The arc is silent; the button says it is busy.
                     .accessibilityValue(isWorking ? (needsMFA ? "Verifying" : "Signing In") : "")
@@ -87,6 +90,8 @@ struct LoginView: View {
             .navigationTitle("Sign In")
             .onAppear(perform: prefillForDebugTesting)
         }
+        // Direction G is dark throughout; sign-in matches the app it opens.
+        .preferredColorScheme(.dark)
     }
 
     private var canSubmit: Bool {

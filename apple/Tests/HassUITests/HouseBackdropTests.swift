@@ -105,7 +105,7 @@ struct HouseBackdropTests {
     }
 
     @Test func scrimFollowsDirectionG() {
-        // 0.36 → 0.18 (28%) → 0.36 (50%) → 0.50 → 0.64, darkest at the bottom behind the tab bar.
+        // 0.44 → 0.40 (28%) → 0.42 (50%) → 0.52 → 0.64, darkest at the bottom behind the tab bar.
         let stops = HouseBackdropStyle.scrimStops
         #expect(stops.map(\.location) == [0, 0.28, 0.50, 0.75, 1])
         #expect(HouseBackdropStyle.scale == 1.06)

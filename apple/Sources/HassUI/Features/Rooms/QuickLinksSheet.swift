@@ -4,7 +4,7 @@ import SwiftUI
 
 // MARK: - Button
 
-/// The toolbar button that opens Quick Links where it is not the trailing tab (``CompactTabLayout``): iPad, the
+/// The toolbar button that opens Quick Links where it is not the trailing circle (``CompactTabLayout``): iPad, the
 /// unfolded Duo, and iOS before 26. The web shows a floating action button on every page; iOS puts the same action
 /// in the navigation bar (HIG: Toolbars), labeled "Quick Links" for VoiceOver.
 struct QuickLinksButton: View {
@@ -35,18 +35,34 @@ extension View {
 private struct QuickLinksPresenter: ViewModifier {
     var caller: (any HassServiceCalling)?
     var showsButton: Bool
-    @State private var isPresented = false
+    @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
+    @Environment(\.shellSection) private var section
+    @State private var localIsPresented = false
     @State private var pending: HomeRoute?
     @State private var route: HomeRoute?
+
+    /// In the shell, the navigator says which section's root presents the sheet, so the trailing circle, the
+    /// flyout row and this button all open it over the selected section, once. Elsewhere it is local.
+    private var isPresented: Binding<Bool> {
+        guard let navigator, let section else { return $localIsPresented }
+        return Binding(
+            get: { navigator.quickLinksSection == section },
+            set: { if !$0, navigator.quickLinksSection == section { navigator.quickLinksSection = nil } }
+        )
+    }
 
     func body(content: Content) -> some View {
         content
             .toolbar {
                 if showsButton {
-                    ToolbarItem(placement: .primaryAction) { QuickLinksButton { isPresented = true } }
+                    ToolbarItem(placement: .primaryAction) {
+                        QuickLinksButton {
+                            if let navigator, section != nil { navigator.openQuickLinks() } else { localIsPresented = true }
+                        }
+                    }
                 }
             }
-            .sheet(isPresented: $isPresented, onDismiss: {
+            .sheet(isPresented: isPresented, onDismiss: {
                 route = pending
                 pending = nil
             }) {

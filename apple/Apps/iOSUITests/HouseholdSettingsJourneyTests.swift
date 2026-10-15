@@ -230,11 +230,20 @@ final class HouseholdSettingsJourneyTests: JourneyTestCase {
                 return large
             }
         }
+        func openPresenceDetail(_ app: XCUIApplication) {
+            openSheet(app, "presenceOverrides")
+            app.buttons["presence.room.switch.kitchen_presence_kitchen_lights_presence_allowed"].tap()
+            XCTAssertTrue(app.buttons["presence.option.enabled"].waitForExistence(timeout: 5))
+        }
         let app = launch("admin", clean: true)
-        openSheet(app, "presenceOverrides")
-        app.buttons["presence.room.switch.kitchen_presence_kitchen_lights_presence_allowed"].tap()
-        XCTAssertTrue(app.buttons["presence.option.enabled"].waitForExistence(timeout: 5))
-        try FentonHomeApp.audit(app)
+        openPresenceDetail(app)
+        // With the AX5 page, "may be clipped" is checked against the text at AX5 like the sheets above; without it the
+        // folded Duo's two-line option titles could not be disproved (2026-10-14).
+        try FentonHomeApp.audit(app) {
+            let large = self.launch("admin", arguments: FentonHomeApp.ax5, clean: true)
+            openPresenceDetail(large)
+            return large
+        }
     }
 
     /// Screenshots of each page, sheet and the presence detail in the current pose (iPad: also landscape).
@@ -288,29 +297,15 @@ final class HouseholdSettingsJourneyTests: JourneyTestCase {
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
             self.showSettingsTab(large)
-            self.reveal(large.buttons["settings.topic.admin"], in: large, scroller: large.collectionViews.firstMatch).tap()
+            self.reveal(large.buttons["settings.topic.admin"], in: large, scroller: large.settingsList).tap()
             XCTAssertTrue(self.waitForLiveAdmin(large), "Live state did not load at AX5")
             return large
         }
     }
 
-    /// Goes to Settings: through the navigation flyout in regular width (iPad, unfolded Duo), else the
-    /// tab. The tab bar can appear a moment after launch, and the folded Duo has a rail instead.
+    /// Goes to Settings: the profile avatar's Account sheet (direction G).
     private func showSettingsTab(_ app: XCUIApplication) {
-        let open = app.buttons["nav.open"]
-        if open.waitForExistence(timeout: 3) {
-            open.tap()
-            let row = app.buttons["nav.settings"]
-            XCTAssertTrue(row.waitForExistence(timeout: 5), "Flyout Settings row not found")
-            row.tap()
-            return
-        }
-        let barTab = app.tabBars.buttons["Settings"]
-        let tab = barTab.waitForExistence(timeout: 10)
-            ? barTab
-            : app.buttons.matching(NSPredicate(format: "label == 'Settings' AND identifier == 'gearshape'")).firstMatch
-        XCTAssertTrue(tab.waitForExistence(timeout: 10))
-        tab.tap()
+        app.openAccountSettings()
     }
 
     /// Waits for the live Admin page's first tile to show a real state.
