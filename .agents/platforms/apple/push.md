@@ -43,6 +43,19 @@ automation ─ notify.mobile_app_<device>_fenton ─▶ mobile_app ─ POST push
 - Attaches, in order: the camera snapshot for a `camera.*` `entity_id` (`/api/camera_proxy/<entity_id>`), then `image`, `video`, `attachment.url`. Server paths and same-server URLs carry the signed-in user's token, read from the Keychain item the app shares through the app group `group.com.sfenton.home` (`KeychainTokenStore.sharedAccessGroup`; an older unshared item moves in on first read). Size limits: 10 MB image, 50 MB video, 5 MB file.
 - Anything that fails leaves the notification as sent.
 
+## Live camera (content extension, `com.sfenton.home.NotificationContent`)
+
+- A notification with a `camera.*` `entity_id` gets the fixed category `fenton.camera` (`PushCategory.camera`, set by the service extension), which the content extension serves; it sets the notification's buttons at runtime (`extensionContext.notificationActions`) and forwards presses to the app (`.dismissAndForwardAction`).
+- It shows the attached snapshot, then streams Home Assistant's MJPEG (`/api/camera_proxy_stream/<entity_id>`, token header, `MJPEGFrameScanner`), and switches to HLS (`camera/stream` over a commands-only websocket, `HassConnection.connect(subscribingToStates: false)`) when that plays. Debug builds print the step in the view.
+- **Link `UserNotificationsUI.framework` explicitly and keep `ENABLE_DEBUG_DYLIB: NO`.** Without it the extension crashed on the phone in `EXConcreteExtensionContextVendor _extensionContextClass` before any app code (seen 2026-10-14).
+- Status 2026-10-15 (paused by the owner): the expanded view shows the snapshot, but the live video never started, and the extension wrote no trace lines at all, so start by checking whether `didReceive(_:)` runs and whether the extension can write to the app group. The app's websocket also drops on Stephen's server ("Received frame with non-zero reserved bits"), which would break HLS.
+
+## Debugging on a phone
+
+- Debug builds write `Library/Caches/push-trace.log` in the app group (`PushTrace`: step names, entity ids, HTTP statuses; never tokens or text). Copy it with `xcrun devicectl device copy from --device <udid> --domain-type appGroupDataContainer --domain-identifier group.com.sfenton.home --source Library/Caches/push-trace.log --destination <file>` (devicectl reads only `Library`, `Documents` and `tmp`).
+- Extension crashes: `xcrun devicectl device info files --device <udid> --domain-type systemCrashLogs`, then `copy from` the `.ips`.
+- Verified on Stephen's iPhone 18 Pro (2026-10-15, Debug, sandbox): registration and `update_registration` (rename to "Stephen's iPhone · Fenton"), real APNs delivery, buttons from the payload, and the camera snapshot attachment. Sending through `notify.fenton_*` needs the integration fix for the missing `notify.mobile_app` action; `notify.mobile_app_<device>_fenton` works.
+
 ## Testing
 
 - Logic: `HassCoreTests/PushTests.swift`, `HassUITests/PushCoordinatorTests.swift` (REST double: `HassTestSupport/StubHTTPTransport`).
