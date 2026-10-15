@@ -72,6 +72,66 @@ struct RoomsViewTests {
         #expect(render(page(kitchen), size: Self.phone) != nil)
     }
 
+    // MARK: Colour families
+
+    /// The face a card draws in its state (direction G colour families).
+    func face(_ cardTitle: String, in roomId: String, states: [EntityState]) -> RoomTileFace? {
+        let room = RoomsConfig.page(id: roomId)!
+        let store = EntityStore()
+        store.replaceAll(states)
+        let controller = RoomController(page: room, store: store, caller: RecordingCaller())
+        guard let card = room.allCards.first(where: { $0.title == cardTitle }) else { return nil }
+        return RoomTileFace.resolve(card, entity: controller.displayEntity(card), display: controller.display(card),
+                                   running: controller.usesAlternate(card))
+    }
+
+    @Test func everyKindHasAFamily() {
+        #expect(RoomTileFace.family(.light, icon: "mdi:lightbulb") == .lights)
+        #expect(RoomTileFace.family(.light, icon: "mdi:heat-wave") == .power, "The towel rack is power, not a light")
+        #expect(RoomTileFace.family(.fan, icon: "mdi:fan") == .air)
+        #expect(RoomTileFace.family(.vent, icon: "mdi:air-filter") == .vents)
+        #expect(RoomTileFace.family(.humidifier, icon: "mdi:air-humidifier") == .water)
+        #expect(RoomTileFace.family(.vacuum, icon: "mdi:robot-vacuum") == .cleaning)
+        #expect(RoomTileFace.family(.laundry, icon: "mdi:washing-machine") == .cleaning)
+        #expect(RoomTileFace.family(.grill, icon: "mdi:grill") == .cooking)
+        #expect(RoomTileFace.family(.media, icon: "mdi:television") == .media)
+    }
+
+    @Test func bedSidesFillWithTheirAction() {
+        let bed = "climate.sleepypod_eight_pod_left_side"
+        let heating = EntityState(entityId: bed, state: "heat_cool", attributes: ["hvac_action": .string("heating")])
+        #expect(face("Stephen's Bed", in: "master-bedroom", states: [heating]) == RoomTileFace(family: .heating, isActive: true))
+        let cooling = EntityState(entityId: bed, state: "heat_cool", attributes: ["hvac_action": .string("cooling")])
+        #expect(face("Stephen's Bed", in: "master-bedroom", states: [cooling]) == RoomTileFace(family: .cooling, isActive: true))
+        let off = EntityState(entityId: bed, state: "off")
+        #expect(face("Stephen's Bed", in: "master-bedroom", states: [off])?.isActive == false)
+        #expect(face("Stephen's Bed", in: "master-bedroom", states: [])?.isActive == false, "Unavailable stays dark")
+    }
+
+    @Test func ventsFillOnlyWhileOpen() {
+        let open = EntityState(entityId: "cover.living_room_vents", state: "open")
+        #expect(face("Vents", in: "living-room", states: [open]) == RoomTileFace(family: .vents, isActive: true))
+        let closed = EntityState(entityId: "cover.living_room_vents", state: "closed")
+        #expect(face("Vents", in: "living-room", states: [closed]) == RoomTileFace(family: .vents, isActive: false))
+    }
+
+    @Test func dishwasherFillsWhileItRuns() {
+        let program = EntityState(entityId: RoomsConfig.dishwasherProgramEntityId, state: "Eco 50")
+        let running = EntityState(entityId: "sensor.dishwasher_operation_state", state: "run")
+        let progress = EntityState(entityId: "sensor.dishwasher_program_progress", state: "40")
+        #expect(face("Dishwasher", in: "kitchen", states: [program, running, progress]) == RoomTileFace(family: .cleaning, isActive: true))
+        let ready = EntityState(entityId: "sensor.dishwasher_operation_state", state: "ready")
+        #expect(face("Dishwasher", in: "kitchen", states: [program, ready]) == RoomTileFace(family: .cleaning, isActive: false))
+    }
+
+    @Test func togglesKeepTheirOnOffReading() {
+        let rack = "switch.guest_bathroom_towel_rack_switch_top"
+        #expect(face("Towel Rack", in: "guest-bathroom", states: [EntityState(entityId: rack, state: "on")])
+            == RoomTileFace(family: .power, isActive: true))
+        #expect(face("Towel Rack", in: "guest-bathroom", states: [EntityState(entityId: rack, state: "off")])
+            == RoomTileFace(family: .power, isActive: false))
+    }
+
     // MARK: Layout policies
 
     @Test func sectionSpans() {

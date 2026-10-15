@@ -5,8 +5,8 @@ import SwiftUI
 /// One bed side's sheet (pattern: `.agents/patterns/bedroom-devices.md`; web `EightSleepBedModal` in SleepyPod
 /// climate mode).
 ///
-/// The hero (level dial, power, hint and any ringing alarm) sits above the tabs, or beside them where a split is
-/// allowed (iPad and unfolded iPhone Duo in landscape). Alarm day pages and the alarm editor push inside the sheet.
+/// The hero (level dial, power, hint and any ringing alarm) sits above the tab's content, or beside it where a split
+/// is allowed (iPad and unfolded iPhone Duo in landscape). The tabs are the bottom section bar (direction G, Sheets). Alarm day pages and the alarm editor push inside the sheet.
 public struct BedSideSheet: View {
     /// A sheet tab (web `SLEEPYPOD_MODAL_TABS`).
     public enum Tab: String, CaseIterable, Identifiable, Sendable {
@@ -85,6 +85,8 @@ public struct BedSideSheet: View {
             }
             .background { WindowMetricsReader(metrics: $window) }
             .modalChrome()
+            .modalTabBar(Tab.allCases, label: "\(controller.config.title) sections", title: \.title, selection: $tab,
+                         identifier: "bed.tabs")
             .navigationTitle(controller.title)
             .inlineNavigationTitle()
             .toolbar { SheetCloseItem { dismiss() } }
@@ -137,15 +139,19 @@ public struct BedSideSheet: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// A grey capsule under the dial (mockup n4 bed), as on the humidifier.
     private var powerButton: some View {
         Button {
             if controller.isOn { confirmingPowerOff = true } else { controller.setPower(on: true) }
         } label: {
             Label(controller.powerTitle, systemImage: "power")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(HassTokens.Ink.primary)
                 .frame(minWidth: 160, minHeight: HassTokens.minTarget)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(controller.isOn ? BedroomStyle.tint(action: controller.action) : BedroomStyle.off)
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
+        .tint(HassTokens.Ink.primary) // A neutral grey capsule: the accent tint would make it read as the primary action.
         .disabled(!controller.canTogglePower)
         .accessibilityIdentifier("bed.power")
         .confirmationDialog("Turn off \(controller.config.title)?", isPresented: $confirmingPowerOff, titleVisibility: .visible) {
@@ -158,8 +164,6 @@ public struct BedSideSheet: View {
 
     private var tabs: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-            BedroomTabPicker(label: "\(controller.config.title) sections", tabs: Tab.allCases, title: \.title,
-                             selection: $tab, identifier: "bed.tabs")
             switch tab {
             case .temperature: BedScheduleTab(controller: controller)
             case .specialModes: BedSpecialModesTab(controller: controller)
@@ -263,6 +267,8 @@ struct ActiveBedAlarmSection: View {
             BedroomStyle.card(VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
                 BedroomSectionHeader(title: "Alarm Active", detail: state == .ringing ? "Ringing" : "Snoozing")
                 HStack(spacing: HassTokens.Spacing.m) {
+                    // Snooze is a grey capsule and Stop the primary button (mockup n4 bed ringing). The capsule's label is
+                    // primary ink, which keeps 4.5:1 on its fill over the card.
                     Button { controller.snoozeAlarm() } label: {
                         VStack(spacing: 2) {
                             Label("Snooze", systemImage: "zzz").font(.body.weight(.semibold))
@@ -270,20 +276,18 @@ struct ActiveBedAlarmSection: View {
                                 EverySecond { now in Text(controller.snoozeRemaining(now: now)).font(.footnote.monospacedDigit()) }
                             }
                         }
-                        .frame(maxWidth: .infinity, minHeight: 56)
+                        .foregroundStyle(HassTokens.Ink.primary)
+                        .frame(maxWidth: .infinity, minHeight: PrimaryButtonStyle.height)
                     }
-                    // Filled like Stop: the bordered style's gray fill read 1.5:1 against the card in the audit.
-                    .buttonStyle(.borderedProminent)
-                    .tint(BedroomStyle.off)
+                    .buttonStyle(.bordered)
+                    .buttonBorderShape(.capsule)
+                    .tint(HassTokens.Ink.primary) // A neutral grey capsule: the accent tint would make it read as the primary action.
                     .disabled(controller.alarmControlsReadOnly || state == .snoozed)
                     .accessibilityIdentifier("bed.alarm.snooze")
                     Button { controller.stopAlarm() } label: {
-                        Label("Stop Alarm", systemImage: "stop.fill")
-                            .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity, minHeight: 56)
+                        Label("Stop Alarm", systemImage: "stop.circle")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(BedroomStyle.danger)
+                    .buttonStyle(PrimaryButtonStyle())
                     .disabled(controller.alarmControlsReadOnly)
                     .accessibilityIdentifier("bed.alarm.stop")
                 }
@@ -340,8 +344,9 @@ struct BedScheduleTab: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.body.weight(.semibold))
+                .foregroundStyle(HassTokens.Ink.primary)
                 .frame(width: HassTokens.minTarget, height: HassTokens.minTarget)
-                .background(Color.primary.opacity(0.08), in: Circle())
+                .background(HassTokens.Surface.separator, in: Circle())
         }
         .buttonStyle(.plain)
         .disabled(disabled)
@@ -363,7 +368,7 @@ struct BedSpecialModesTab: View {
             HStack(spacing: HassTokens.Spacing.m) {
                 GlassTile(title: "Hot Flash Mode",
                           subtitle: controller.hotFlashAvailable ? (controller.hotFlashActive ? "Active" : "Inactive") : "Unavailable",
-                          symbol: "snowflake", tint: BedroomStyle.cooling, isActive: controller.hotFlashActive,
+                          symbol: "snowflake", family: .cooling, isActive: controller.hotFlashActive,
                           isUnavailable: !controller.hotFlashAvailable || controller.scope.readOnly,
                           kind: .command) {
                     if !controller.hotFlashActive { controller.startHotFlash() }
@@ -424,10 +429,9 @@ struct BedAlarmsTab: View {
                 .accessibilityIdentifier("bed.alarms.\(group.day.rawValue)")
             }
             Button { path.append(.add(nil)) } label: {
-                Label("Add Alarm", systemImage: "plus").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
+                Label("Add Alarm", systemImage: "plus")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(BedroomStyle.action)
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(!controller.alarmsEditable)
             .accessibilityIdentifier("bed.alarms.add")
         }
@@ -479,10 +483,9 @@ struct BedAlarmDayPage: View {
                     .accessibilityIdentifier("bed.day.alarm.\(alarm.time)")
                 }
                 Button { path.append(.add(day)) } label: {
-                    Label("Add Alarm", systemImage: "plus").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
+                    Label("Add Alarm", systemImage: "plus")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(BedroomStyle.action)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(!controller.alarmsEditable)
                 .accessibilityIdentifier("bed.day.add")
             }
@@ -536,10 +539,9 @@ struct BedAlarmEditor: View {
                     .accessibilityIdentifier("bed.editor.wakeLight")
                 ForEach(problems, id: \.self) { BedroomNotice(message: $0) }
                 Button { save() } label: {
-                    Text(saving ? "Saving…" : "Save").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
+                    Text(saving ? "Saving…" : "Save")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(BedroomStyle.action)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(saving || !problems.isEmpty)
                 .accessibilityIdentifier("bed.editor.save")
                 if draft.editingId != nil {
@@ -645,8 +647,9 @@ public struct BedSideTile: View {
     public var body: some View {
         EverySecond { now in
             GlassTile(title: controller.config.title, subtitle: controller.tileSubtitle(now: now), symbol: "bed.double",
-                      tint: BedroomStyle.tint(action: controller.action),
-                      isActive: controller.isOn && !controller.scope.readOnly,
+                      family: BedroomStyle.family(action: controller.action),
+                      // Fills only while heating or cooling, like the room page's climate tiles.
+                      isActive: BedroomStyle.family(action: controller.action) != .neutral && !controller.scope.readOnly,
                       kind: .navigate, action: action)
         }
         .accessibilityIdentifier("tile.bed.\(controller.config.id)")

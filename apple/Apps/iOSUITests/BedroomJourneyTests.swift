@@ -74,7 +74,8 @@ final class BedroomJourneyTests: XCTestCase {
     }
 
     private func selectTab(_ title: String, in app: XCUIApplication) {
-        let segmented = app.segmentedControls.firstMatch
+        // The sheet's section bar (bottom of the sheet); editors carry segmented choices of their own.
+        let segmented = app.segmentedControls.matching(NSPredicate(format: "identifier IN %@", ["bed.tabs", "wake.tabs"])).firstMatch
         if segmented.exists { segmented.buttons[title].tap() } else { app.buttons[title].firstMatch.tap() }
     }
 

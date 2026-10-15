@@ -2,34 +2,28 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// Colors and small views shared by the wake-light and bed sheets.
+/// Colors and small views shared by the wake-light and bed sheets. Tiles and buttons use the direction G pieces
+/// (`ColorFamily`, `PrimaryButtonStyle`); cards sit on the sheet's cell colour.
 enum BedroomStyle {
-    /// Bed tile fills (web `EIGHT_SLEEP_*_BG`).
-    static let heating = Color(red: 136 / 255, green: 64 / 255, blue: 26 / 255)
-    static let cooling = Color(red: 25 / 255, green: 84 / 255, blue: 130 / 255)
-    static let idle = Color(red: 67 / 255, green: 160 / 255, blue: 71 / 255)
-    /// Stop buttons: a deep red that keeps white labels at about 6:1 (system red gives 3.6:1 and fails the audit).
+    /// Stop and Delete fills: a deep red that keeps white labels at about 6:1 (system red gives 3.6:1 and fails the audit).
     static let danger = Color(red: 0.76, green: 0.12, blue: 0.12)
-    /// Primary actions (Add, Save): a deeper blue than the app accent, which leaves white labels at 2.5:1.
-    static let action = Color(red: 0.0, green: 0.40, blue: 0.80)
-    /// The power button while the side is off, and Snooze: a gray that keeps its white label above 4.5:1 (system gray does not).
-    static let off = Color(white: 0.4)
 
-    /// The tile tint for a bed action.
-    static func tint(action: String) -> Color {
+    /// A bed side's colour family for its action, as the dial draws it (direction G, Colour families: Heating and
+    /// Cooling); idle and off are neutral, matching the room page's climate tiles.
+    static func family(action: String) -> ColorFamily {
         switch action {
-        case "heating": heating
-        case "cooling": cooling
-        default: idle
+        case "heating": .heating
+        case "cooling": .cooling
+        default: .neutral
         }
     }
 
-    /// A card background.
+    /// A card on the sheet's cell colour (direction G, Layers: Sheets).
     static func card(_ content: some View) -> some View {
         content
             .padding(HassTokens.Spacing.l)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+            .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
     }
 }
 
@@ -40,8 +34,9 @@ struct BedroomSectionHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+            // 20 Bold, the room section header's size (direction G, Type).
             Text(title)
-                .font(.headline)
+                .font(.title3.bold())
                 .foregroundStyle(HassTokens.Ink.primary)
                 .accessibilityAddTraits(.isHeader)
             if let detail {
@@ -133,7 +128,7 @@ struct BedroomRow<Trailing: View>: View {
         .frame(minHeight: HassTokens.minTarget)
         .padding(.vertical, HassTokens.Spacing.s)
         .padding(.horizontal, HassTokens.Spacing.m)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
     }
 }
 
@@ -158,7 +153,7 @@ struct ChoiceGrid<Value: Hashable>: View {
                             .font(.subheadline.weight(selected ? .semibold : .regular))
                             .foregroundStyle(selected ? Color.white : HassTokens.Ink.primary)
                             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                            .background(selected ? BedroomStyle.action : Color.primary.opacity(0.08),
+                            .background(selected ? HassTokens.Ink.actionFill : HassTokens.Surface.sheetCell,
                                         in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(.plain)
@@ -194,7 +189,7 @@ struct WeekdayPicker: View {
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(selected ? Color.white : HassTokens.Ink.primary)
                             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                            .background(selected ? BedroomStyle.action : Color.primary.opacity(0.08), in: Capsule())
+                            .background(selected ? HassTokens.Ink.actionFill : HassTokens.Surface.sheetCell, in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(day.label)
@@ -233,29 +228,6 @@ struct ClockTimeField: View {
         return String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
     }
 }
-
-/// A segmented tab picker that becomes a menu at accessibility sizes (the remote's tab pattern).
-struct BedroomTabPicker<Tab: Hashable & Identifiable>: View {
-    var label: String
-    var tabs: [Tab]
-    var title: (Tab) -> String
-    @Binding var selection: Tab
-    var identifier: String
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    var body: some View {
-        let picker = Picker(label, selection: $selection) {
-            ForEach(tabs) { Text(title($0)).tag($0) }
-        }
-        .accessibilityIdentifier(identifier)
-        if typeSize.isAccessibilitySize {
-            picker.pickerStyle(.menu).frame(minHeight: HassTokens.minTarget)
-        } else {
-            picker.pickerStyle(.segmented).labelsHidden()
-        }
-    }
-}
-
 
 /// A once-a-second clock for countdowns.
 struct EverySecond<Content: View>: View {

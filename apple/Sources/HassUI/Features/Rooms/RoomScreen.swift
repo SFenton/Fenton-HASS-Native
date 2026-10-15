@@ -256,13 +256,15 @@ struct RoomSectionView: View {
 
     /// The default grid (up to 4 columns), or at most `columns` filling the width. Both keep the scaled minimum tile
     /// width, so they reflow to one column at accessibility sizes (a fixed two columns clipped single long words such
-    /// as "Humidifier" at AX5 on iPad, HIG: Typography).
+    /// as "Humidifier" at AX5 on iPad, HIG: Typography). Tiles in a grid share one height, set by the tallest
+    /// (direction G, Controls: Tiles).
     private func grid(_ cards: [RoomCard], columns: Int? = nil) -> some View {
-        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: columns ?? 4) {
+        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: columns ?? 4, equalRowHeights: true) {
             ForEach(cards) { item in
                 card(item).gridSpan(item.isFullWidth ? 4 : 1)
             }
         }
+        .equalHeightTiles()
     }
 
     private func card(_ card: RoomCard) -> some View {
@@ -283,16 +285,18 @@ struct KitchenGroceriesSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
             RoomSectionHeader(title: "Groceries")
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
+            // Pages, not devices: dark tiles with no colour family (direction G, Colour families).
+            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
                 GlassTile(title: G.listTitle, subtitle: G.subtitle(count: controller.displayedState(G.listEntityId)),
-                          symbol: SymbolMap.symbol(for: "mdi:clipboard-list"), tint: G.listBackground.color, isActive: true,
-                          kind: .navigate, wash: G.listBackground.color) { navigate(.groceryList) }
+                          symbol: SymbolMap.symbol(for: "mdi:clipboard-list"), family: .neutral, isActive: false,
+                          kind: .navigate) { navigate(.groceryList) }
                     .accessibilityIdentifier("room.groceries.list")
                 GlassTile(title: "Food", subtitle: QuickLinks.allFoodSubtitle { controller.displayedState($0) },
-                          symbol: SymbolMap.symbol(for: "mdi:food-fork-drink"), tint: QuickLinks.foodBackground.color, isActive: true,
-                          kind: .navigate, wash: QuickLinks.foodBackground.color) { navigate(.food) }
+                          symbol: SymbolMap.symbol(for: "mdi:food-fork-drink"), family: .neutral, isActive: false,
+                          kind: .navigate) { navigate(.food) }
                     .accessibilityIdentifier("room.groceries.food")
             }
+            .equalHeightTiles()
         }
         .accessibilityElement(children: .contain)
     }

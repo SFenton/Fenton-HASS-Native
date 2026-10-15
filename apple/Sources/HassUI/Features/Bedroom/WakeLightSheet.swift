@@ -4,8 +4,8 @@ import SwiftUI
 
 /// The room's wake-light alarms sheet (pattern: `.agents/patterns/bedroom-devices.md`; web `WakeLightModal`).
 ///
-/// Two tabs: the alarm schedule (with stop controls while a wake runs) and room defaults. Adding or editing an
-/// alarm pushes an editor inside the sheet. Mirrored bed alarms open their bed's sheet through `onOpenBed`.
+/// Two tabs in the bottom section bar (direction G, Sheets): the alarm schedule (with stop controls while a wake
+/// runs) and room defaults. Adding or editing an alarm pushes an editor inside the sheet. Mirrored bed alarms open their bed's sheet through `onOpenBed`.
 public struct WakeLightSheet: View {
     /// A sheet tab.
     public enum Tab: String, CaseIterable, Identifiable, Sendable {
@@ -48,8 +48,6 @@ public struct WakeLightSheet: View {
                         .foregroundStyle(HassTokens.Ink.secondary)
                         .accessibilityIdentifier("wake.subtitle")
                     alerts
-                    BedroomTabPicker(label: "\(controller.config.title) sections", tabs: Tab.allCases, title: \.title,
-                                     selection: $tab, identifier: "wake.tabs")
                     switch tab {
                     case .alarms: alarmsTab
                     case .defaults: WakeLightDefaultsTab(controller: controller)
@@ -60,6 +58,8 @@ public struct WakeLightSheet: View {
                 .padding(HassTokens.Spacing.l)
             }
             .modalChrome()
+            .modalTabBar(Tab.allCases, label: "\(controller.config.title) sections", title: \.title, selection: $tab,
+                         identifier: "wake.tabs")
             .navigationTitle(controller.config.title) // With the room name the bar title clips at AX5.
             .inlineNavigationTitle()
             .toolbar { SheetCloseItem { dismiss() } }
@@ -108,10 +108,8 @@ public struct WakeLightSheet: View {
             if controller.canEdit {
                 Button { path.append(.add) } label: {
                     Label("Add Wake Alarm", systemImage: "plus")
-                        .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(BedroomStyle.action)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(!snapshot.available || controller.configurationPending)
                 .accessibilityIdentifier("wake.add")
             } else {
@@ -317,11 +315,8 @@ struct WakeLightEditor: View {
     @ViewBuilder private var fields: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             Text("Alarm Type").font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
-            Picker("Alarm Type", selection: kindBinding) {
-                ForEach(WakeLight.Kind.allCases, id: \.self) { Text($0.label).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("wake.editor.kind")
+            SegmentedChoice(label: "Alarm Type", options: WakeLight.Kind.allCases, title: \.label, selection: draft.kind,
+                            identifier: "wake.editor.kind") { kindBinding.wrappedValue = $0 }
         }
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             Text("Alarm Name").font(.subheadline.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
@@ -378,10 +373,9 @@ struct WakeLightEditor: View {
     private var buttons: some View {
         VStack(spacing: HassTokens.Spacing.m) {
             Button { save() } label: {
-                Text(saving ? "Saving…" : "Save").frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
+                Text(saving ? "Saving…" : "Save")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(BedroomStyle.action)
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(locked || !dirty || !problems.isEmpty || stale)
             .accessibilityIdentifier("wake.editor.save")
             if !isNew {
@@ -452,7 +446,7 @@ public struct WakeLightTile: View {
     public var body: some View {
         let snapshot = controller.snapshot
         GlassTile(title: controller.config.title, subtitle: WakeLight.subtitle(snapshot), symbol: "sunrise",
-                  tint: HassTokens.Tint.light,
+                  family: .lights,
                   isActive: snapshot.available && snapshot.alarms.contains(where: \.enabled),
                   kind: .navigate, action: action)
             .accessibilityIdentifier("tile.wakeLight")

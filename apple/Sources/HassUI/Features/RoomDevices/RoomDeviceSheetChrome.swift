@@ -2,18 +2,11 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// Colors the device sheets share, from the web's card tones.
+/// Colors the device sheets share. Tiles, chips and buttons take their colours from the direction G colour
+/// families (`ColorFamily`); these are the dial tints the families do not cover.
 enum RoomDeviceStyle {
-    /// Humidifier dial and accents (web `HUMIDIFIER_DIAL_COLOR`, rgba(48, 190, 151)).
-    static let humidifierTint = DialTint(red: 48, green: 190, blue: 151)
-    /// Selected mode tiles (web rgba(0, 150, 136)).
-    static let mode = Color(red: 0, green: 150 / 255, blue: 136 / 255)
-    /// Grill cards (web `GRILL_COLOR`).
-    static let grill = Color(red: 206 / 255, green: 114 / 255, blue: 38 / 255)
-    /// "Turn On" fill: a deep teal that keeps white text above 4.5:1.
-    static let powerOn = Color(red: 0, green: 0.43, blue: 0.39)
-    /// "Turn Off" fill: a deep red that keeps white text above 4.5:1.
-    static let powerOff = Color(red: 0.72, green: 0.15, blue: 0.15)
+    /// Humidifier dial and accents: the mockup's water arc (`#30B4DC`; direction G, Colour families: Water).
+    static let humidifierTint = DialTint(red: 48, green: 180, blue: 220)
     /// Humidity comfort band, 40–50% (web trail rgba(67, 160, 71)).
     static let comfortTrail = DialTint(red: 67, green: 160, blue: 71, opacity: 0.92)
     /// Condensation risk band, 60–80% (web trail rgba(251, 140, 0)).
@@ -83,7 +76,7 @@ private struct DeviceSheetSubtitle: ViewModifier {
     }
 }
 
-/// A titled group of tiles (web `SectionHeader` + `DynamicGrid`).
+/// A titled group of controls (web `SectionHeader` + `DynamicGrid`), under the shared room section header.
 struct DeviceSection<Content: View>: View {
     var title: String
     var footnote: String?
@@ -91,7 +84,7 @@ struct DeviceSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            RemoteSectionHeader(title: title)
+            RoomSectionHeader(title: title, inSheet: true)
             if let footnote {
                 Text(footnote)
                     .font(.footnote)
@@ -105,14 +98,14 @@ struct DeviceSection<Content: View>: View {
     }
 }
 
-/// A grid of choice tiles: 2 columns on a phone, up to 4 where there is room.
+/// A grid of tiles: 2 columns on a phone, up to 4 where there is room, every tile as tall as the tallest.
 struct DeviceTileGrid<Content: View>: View {
     var maxColumns = 4
     @ViewBuilder var content: () -> Content
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 132
 
     var body: some View {
-        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: maxColumns) { content() }
+        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: maxColumns, equalRowHeights: true) { content() }
+            .equalHeightTiles()
     }
 }
-

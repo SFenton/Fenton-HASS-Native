@@ -42,8 +42,8 @@ struct RoomChip: View {
 
 // MARK: - Cards
 
-/// A room card (web `DefaultRoomSourceCard`): a ``GlassTile`` whose kind follows the card's semantics, dimmed when
-/// off, washed by its state color.
+/// A room card (web `DefaultRoomSourceCard`): a ``GlassTile`` whose kind follows the card's semantics, drawn in its
+/// device's colour family (``RoomTileFace``): dark when off, filled when on, the warm lit tile for lights.
 ///
 /// Device cards (humidifier, wake light, vacuum, dishwasher) draw this generic tile until their lanes replace them in
 /// ``RoomCardView``.
@@ -55,15 +55,16 @@ struct RoomCardTile: View {
 
     var body: some View {
         let display = controller.display(card, viewer: viewer)
+        let face = RoomTileFace.resolve(card, entity: controller.displayEntity(card), display: display,
+                                         running: controller.usesAlternate(card))
         GlassTile(
             title: display.title,
             subtitle: display.subtitle,
             symbol: SymbolMap.symbol(for: card.icon),
-            tint: display.isUnavailable ? RoomTone.neutral.color : card.kind.tone.color,
-            isActive: !display.isOff,
+            family: face.family,
+            isActive: face.isActive,
             isUnavailable: card.hasInteraction && !display.isEnabled,
             kind: kind(display.semantics),
-            wash: display.background?.color,
             action: activate
         )
         .accessibilityIdentifier("room.card.\(card.title)")

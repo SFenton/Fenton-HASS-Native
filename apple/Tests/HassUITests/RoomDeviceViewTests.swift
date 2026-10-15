@@ -159,9 +159,10 @@ struct RoomDeviceViewTests {
 
     @Test func spokenFanTimer() {
         #expect(BathroomFanControls.spokenRemaining(65).contains("1 minute"))
-        #expect(DeviceStatusPill.color(.danger) == .red)
-        #expect(DeviceStatusPill.color(.warning) == .orange)
-        #expect(DeviceStatusPill.color(.ok) == .green)
+        #expect(DeviceStatusPill.color(.danger) == HassTokens.Ink.danger)
+        #expect(DeviceStatusPill.color(.warning) == HassTokens.Ink.warning)
+        #expect(DeviceStatusPill.color(.ok) == ColorFamily.occupancy.glyph)
+        #expect(DeviceStatusPill.color(.active) == ColorFamily.water.glyph)
     }
 
     // MARK: Gallery

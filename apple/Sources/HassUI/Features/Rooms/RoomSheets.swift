@@ -56,7 +56,8 @@ struct RoomSheetBody: View {
             RoomAllContacts(controller: controller)
         case let .items(items):
             RoomEntityGrid(title: nil, items: items.map { RoomEntityItem($0.title, $0.entityId, icon: $0.icon) },
-                           controller: controller, format: RoomFormat.compact, isActive: RoomFormat.isActive, tone: card.kind.tone)
+                           controller: controller, format: RoomFormat.compact, isActive: RoomFormat.isActive,
+                           family: RoomTileFace.family(card.kind, icon: card.icon))
         case .device:
             // Wired device sheets (bathroom fan, air quality, humidifier, grill, vacuum) open on their own through
             // ``RoomDeviceModal``. This is the fallback: dishwasher, wake light and beds (lanes still open), and the
@@ -76,29 +77,30 @@ struct RoomSheetBody: View {
 
 // MARK: - Group content
 
-/// A grid of read-only entity tiles (web compact `Card`s in group sheets).
+/// A grid of read-only entity tiles (web compact `Card`s in group sheets), in the card's colour family.
 struct RoomEntityGrid: View {
     var title: String?
     var items: [RoomEntityItem]
     var controller: RoomController
     var format: (EntityState?) -> String
     var isActive: (EntityState?) -> Bool
-    var tone: RoomTone
+    var family: ColorFamily
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
             if let title { RoomSectionHeader(title: title) }
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
+            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
                 ForEach(items) { item in
                     let entity = controller.entity(item.entityId)
-                    let redact = ScreenshotPrivacy.isRedacting && tone == .presence
+                    let redact = ScreenshotPrivacy.isRedacting && family == .occupancy
                     GlassTile(title: item.title, subtitle: redact ? "Hidden" : format(entity), symbol: SymbolMap.symbol(for: item.icon),
-                              tint: tone.color, isActive: !redact && isActive(entity), isUnavailable: RoomFormat.isUnavailable(entity),
+                              family: family, isActive: !redact && isActive(entity), isUnavailable: RoomFormat.isUnavailable(entity),
                               kind: .state)
                         .accessibilityIdentifier("room.entity.\(item.entityId)")
                 }
             }
+            .equalHeightTiles()
         }
     }
 }
@@ -143,7 +145,8 @@ struct RoomDeviceFallback: View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
             RoomEntityGrid(title: nil, items: controller.fallbackEntityIds(for: card).map { id in
                 RoomEntityItem(controller.entity(id)?.friendlyName ?? id, id, icon: card.icon)
-            }, controller: controller, format: RoomFormat.withUnit, isActive: { !RoomFormat.isUnavailable($0) }, tone: card.kind.tone)
+            }, controller: controller, format: RoomFormat.withUnit, isActive: { !RoomFormat.isUnavailable($0) },
+               family: RoomTileFace.family(card.kind, icon: card.icon))
             Text("More controls for this device are coming.")
                 .font(.footnote)
                 .foregroundStyle(HassTokens.Ink.secondary)
