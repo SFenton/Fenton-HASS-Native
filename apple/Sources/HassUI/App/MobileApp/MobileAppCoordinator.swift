@@ -18,6 +18,10 @@ public final class MobileAppCoordinator {
     /// to the real server.
     public let isEnabled: Bool
 
+    /// Whether the registrar may register or update; off in the simulator (``MobileAppRegistrationPolicy``), where a
+    /// webhook saved before that rule is ignored too.
+    public let allowsRegistration: Bool
+
     @ObservationIgnored private let device: @MainActor @Sendable () -> MobileAppDevice
     @ObservationIgnored private let store: any MobileAppRegistrationStore
     @ObservationIgnored private let transport: any FeedbackHTTPTransport
@@ -35,13 +39,16 @@ public final class MobileAppCoordinator {
     ///   - store: Saved webhooks.
     ///   - transport: HTTP to Home Assistant.
     ///   - isEnabled: Register at all.
+    ///   - allowsRegistration: Whether this build may register (the simulator may not, unless told to).
     public init(device: @escaping @MainActor @Sendable () -> MobileAppDevice,
                 store: any MobileAppRegistrationStore = KeychainMobileAppRegistrationStore(),
-                transport: any FeedbackHTTPTransport = URLSessionFeedbackTransport(), isEnabled: Bool = true) {
+                transport: any FeedbackHTTPTransport = URLSessionFeedbackTransport(), isEnabled: Bool = true,
+                allowsRegistration: Bool = MobileAppRegistrationPolicy.allowsRegistration()) {
         self.device = device
         self.store = store
         self.transport = transport
         self.isEnabled = isEnabled
+        self.allowsRegistration = allowsRegistration
     }
 
     /// Where location and sensor commands go: the signed-in user's webhook, read at send time.
@@ -49,7 +56,7 @@ public final class MobileAppCoordinator {
 
     /// The webhook saved by an earlier launch, so location can report before this launch's sync (a background
     /// relaunch for a zone event never reaches the shell).
-    public var savedWebhookExists: Bool { isEnabled && store.active != nil }
+    public var savedWebhookExists: Bool { isEnabled && allowsRegistration && store.active != nil }
 
     /// Calls `listener` whenever ``registration`` changes (location now; sensors later).
     public func onRegistrationChange(_ listener: @escaping @MainActor (MobileAppRegistration?) -> Void) {
@@ -66,7 +73,8 @@ public final class MobileAppCoordinator {
         userID = nil
         setRegistration(nil)
         let client = HomeAssistantPushClient(server: server, accessToken: accessToken, transport: transport)
-        registrar = MobileAppRegistrar(server: server, client: client, store: store, device: device())
+        registrar = MobileAppRegistrar(server: server, client: client, store: store, device: device(),
+                                       allowsRegistration: allowsRegistration)
     }
 
     /// Takes the signed-in user, once per session.

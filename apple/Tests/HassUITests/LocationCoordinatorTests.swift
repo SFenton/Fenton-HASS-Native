@@ -88,6 +88,29 @@ struct LocationCoordinatorTests {
         #expect(!h.location.isReportingArmed)
     }
 
+    @Test func theToggleArmsAndDisarmsAndPersists() async {
+        let saved = MobileAppRegistration(server: server, userID: "u1", webhookID: "w1")
+        let h = harness(LocationPermission(authorization: .always), armed: false,
+                        replies: [(200, zonesJSON), (200, "{}")], saved: saved)
+        h.platform.fixes = [fix]
+        await h.location.resume()
+        #expect(!h.location.reporter.isRunning)
+
+        await h.location.setReportingArmed(true).value
+        #expect(h.location.isReportingArmed)
+        #expect(LocationLaunchPolicy.isReportingArmed(environment: [:], defaults: h.defaults), "saved for the next launch")
+        #expect(h.location.reporter.isRunning)
+        #expect(paths(h.transport) == ["/api/webhook/w1 get_zones", "/api/webhook/w1 update_location"])
+
+        await h.location.setReportingArmed(true).value
+        #expect(paths(h.transport).count == 2, "arming again does nothing")
+
+        await h.location.setReportingArmed(false).value
+        #expect(!h.location.isReportingArmed)
+        #expect(!h.location.reporter.isRunning)
+        #expect(!LocationLaunchPolicy.isReportingArmed(environment: [:], defaults: h.defaults))
+    }
+
     @Test func resumesOnTheSavedWebhookWithoutASync() async {
         let saved = MobileAppRegistration(server: server, userID: "u1", webhookID: "w1")
         let h = harness(LocationPermission(authorization: .whenInUse), replies: [(200, zonesJSON), (200, "{}"), (200, "{}")],

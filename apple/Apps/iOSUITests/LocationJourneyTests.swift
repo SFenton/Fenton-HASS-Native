@@ -170,3 +170,92 @@ final class LocationShadowJourneyTests: JourneyTestCase {
         keepScreenshot(app, "location-shadow-4-home-\(layout)")
     }
 }
+
+/// The Account sheet's Location section after a real sign-in (`.agents/pages/settings/location.md`, Entry points):
+/// on phones Share Location shows the permission and opens the permission screen, and Report to Home Assistant
+/// starts off, arms, warns while access is off, and stays armed after a relaunch; iPad has no Location section. The
+/// launch never registers (a test token and the simulator keep `mobile_app` registration off), so arming sends
+/// nothing to Home Assistant.
+@MainActor
+final class LocationAccountJourneyTests: JourneyTestCase {
+    private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+
+    /// Signs in with location on and the toggle reset off; phones wait for the after-sign-in offer.
+    private func launchSignedIn(arguments: [String] = [], offer: Bool) throws -> XCUIApplication {
+        try FentonHomeApp.launchSignedIn(arguments: arguments,
+                                         environment: ["FENTON_LOCATION": "1", "FENTON_LOCATION_REPORT": "0"],
+                                         readyIdentifier: offer ? "location.title" : nil)
+    }
+
+    /// Signs in again (location already declined, so no offer) and opens the Account sheet.
+    private func relaunchToAccount(arguments: [String] = []) throws -> XCUIApplication {
+        let app = try launchSignedIn(arguments: arguments, offer: false)
+        app.openAccountSheet()
+        return app
+    }
+
+    func testShareLocationAndTheReportToggleOnPhonesOnly() throws {
+        XCUIApplication().resetAuthorizationStatus(for: .location)
+        guard FentonHomeApp.family != .iPad else {
+            let app = try relaunchToAccount()
+            XCTAssertTrue(app.buttons["account.settings"].exists)
+            XCTAssertFalse(app.buttons["account.location"].exists, "iPad has no Share Location row")
+            XCTAssertFalse(app.switches["account.location.report"].exists, "iPad has no Report toggle")
+            keepScreenshot(app, "location-account-ipad-\(layout)")
+            return
+        }
+
+        // The after-sign-in offer still comes first in the four-tab shell; decline it.
+        var app = try launchSignedIn(offer: true)
+        keepScreenshot(app, "location-account-0-offer-\(layout)")
+        app.buttons["location.primary"].tap()
+        let decline = springboard.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Don'")).firstMatch
+        XCTAssertTrue(decline.waitForExistence(timeout: 15), "No system location alert")
+        decline.tap()
+        XCTAssertTrue(app.staticTexts["Location Is Off"].waitForExistence(timeout: 10))
+        app.buttons["location.close"].tap()
+
+        app.openAccountSheet()
+        let row = app.buttons["account.location"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "No Share Location row")
+        XCTAssertEqual(row.label, "Share Location")
+        XCTAssertEqual(row.value as? String, "Off")
+        XCTAssertGreaterThanOrEqual(row.frame.height, 44)
+        let toggle = app.switches["account.location.report"]
+        XCTAssertTrue(toggle.exists, "No Report toggle")
+        XCTAssertEqual(toggle.value as? String, "0", "Reporting is off by default")
+        XCTAssertGreaterThanOrEqual(toggle.frame.height, 44)
+        let warning = app.descendants(matching: .any)["account.location.warning"]
+        XCTAssertFalse(warning.exists, "No warning while off")
+        keepScreenshot(app, "location-account-1-off-\(layout)")
+
+        toggle.switches.firstMatch.tap()
+        XCTAssertEqual(toggle.value as? String, "1")
+        XCTAssertTrue(warning.waitForExistence(timeout: 5), "Armed with access off warns")
+        XCTAssertTrue(warning.label.hasPrefix("Warning: Location access is off"), warning.label)
+        keepScreenshot(app, "location-account-2-armed-\(layout)")
+        try FentonHomeApp.audit(app) { try self.relaunchToAccount(arguments: FentonHomeApp.ax5) }
+        let large = try relaunchToAccount(arguments: FentonHomeApp.ax5)
+        keepScreenshot(large, "location-account-2-armed-ax5-\(layout)")
+        large.terminate()
+
+        // Armed survives a relaunch without the debug override.
+        app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_LOCATION": "1"])
+        app.openAccountSheet()
+        let armed = app.switches["account.location.report"]
+        XCTAssertTrue(armed.waitForExistence(timeout: 5))
+        XCTAssertEqual(armed.value as? String, "1", "The toggle persists per install")
+
+        // Share Location opens the permission screen at its current stage; Close comes back to Account.
+        app.buttons["account.location"].tap()
+        XCTAssertTrue(app.staticTexts["location.title"].waitForExistence(timeout: 5), "Share Location did not open")
+        XCTAssertEqual(app.staticTexts["location.title"].label, "Location Is Off")
+        keepScreenshot(app, "location-account-3-screen-\(layout)")
+        app.buttons["location.close"].tap()
+        XCTAssertTrue(app.buttons["account.location"].waitForExistence(timeout: 5))
+
+        armed.switches.firstMatch.tap()
+        XCTAssertEqual(armed.value as? String, "0")
+        XCTAssertFalse(app.descendants(matching: .any)["account.location.warning"].waitForExistence(timeout: 2))
+    }
+}

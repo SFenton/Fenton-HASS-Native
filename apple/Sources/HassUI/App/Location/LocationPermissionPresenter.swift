@@ -11,13 +11,7 @@ struct LocationPermissionPresenter: ViewModifier {
     func body(content: Content) -> some View {
         content
             .sheet(isPresented: $location.isPresentingPermission) {
-                LocationPermissionView(
-                    permission: location.reporter.permission,
-                    canAskForAlways: !location.hasAskedForAlways,
-                    onRequestPermission: { location.requestPermission() },
-                    onClose: { location.isPresentingPermission = false }
-                )
-                .hassSheet(.page)
+                LocationPermissionSheet(location: location) { location.isPresentingPermission = false }
             }
             .onChange(of: scenePhase) { _, phase in
                 guard phase == .active else { return }

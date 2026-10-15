@@ -196,6 +196,29 @@ struct MobileAppRegistrarTests {
                       store: store, device: device)
     }
 
+    @Test func aSimulatorNeverRegisters() async {
+        // Each simulator signs in as a real person; registering would add a device and a notify service to them.
+        let transport = StubHTTPTransport([(200, configJSON), (201, #"{"webhook_id":"w1"}"#)])
+        let store = InMemoryMobileAppRegistrationStore()
+        let blocked = MobileAppRegistrar(server: server,
+                                         client: HomeAssistantPushClient(server: server, accessToken: { "t" }, transport: transport),
+                                         store: store, device: device, allowsRegistration: false)
+        await #expect(throws: MobileAppRegistrar.Refusal.simulator) { try await blocked.sync(userID: "u1", token: "aa") }
+        #expect(transport.requests.isEmpty)
+        #expect(store.active == nil)
+    }
+
+    @Test func registrationPolicyBlocksOnlyTheSimulator() {
+        #expect(MobileAppRegistrationPolicy.allowsRegistration(environment: [:], isSimulator: false))
+        #expect(MobileAppRegistrationPolicy.allowsRegistration(environment: ["FENTON_MOBILE_APP_REGISTER": "1"], isSimulator: false))
+        #expect(!MobileAppRegistrationPolicy.allowsRegistration(environment: [:], isSimulator: true))
+        #expect(!MobileAppRegistrationPolicy.allowsRegistration(environment: ["FENTON_PUSH": "1"], isSimulator: true),
+                "turning push on doesn't register a simulator")
+        #expect(!MobileAppRegistrationPolicy.allowsRegistration(environment: ["FENTON_MOBILE_APP_REGISTER": "0"], isSimulator: true))
+        #expect(MobileAppRegistrationPolicy.allowsRegistration(environment: ["FENTON_MOBILE_APP_REGISTER": "1"], isSimulator: true))
+        #expect(!MobileAppRegistrationPolicy.isSimulator, "unit tests run on the Mac")
+    }
+
     @Test func registersWebsocketOnlyWithoutTheIntegration() async throws {
         // 404: location and sensors still need the registration, so it goes ahead without push details.
         let transport = StubHTTPTransport([(404, ""), (201, #"{"webhook_id":"w1"}"#), (404, ""), (200, "{}")])

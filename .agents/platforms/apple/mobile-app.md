@@ -22,8 +22,9 @@ One phone is one Home Assistant device. Push ([push](push.md)), location and sen
 - **One per user:** the webhook is reused on the next sign-in as the same user; a 410 forgets it and registers again.
 - **Keychain item:** service `com.sfenton.home.push` (push's original name, kept so phones that registered before the move keep their device), this-device-only, after first unlock.
 - **Sign-out:** `update_registration` with empty `app_data` before the refresh token is revoked; the store's active webhook is cleared, which stops location at once.
+- **Simulator never registers (2026-10-15).** Every simulator signs in as a real person, so each one (and each erase) used to add a `mobile_app` device and a `notify` service to that person. `MobileAppRegistrar` refuses `sync` in the simulator (`Refusal.simulator`, nothing sent) unless the launch sets `FENTON_MOBILE_APP_REGISTER=1` (`MobileAppRegistrationPolicy`), and `MobileAppCoordinator` ignores a webhook saved before the rule. Journeys that need a registration use stubs (`StubHTTPTransport`, `InMemoryMobileAppRegistrationStore`); push journeys don't need one (`simctl push` targets the bundle, and buttons and `clear_notification` run through the debug hooks).
 - **Journeys:** a test-token, reset or gallery launch never registers (`PushLaunchPolicy`, unless `FENTON_PUSH=1`) and keeps webhooks in memory, so a journey sign-out never touches a real registration.
 
 ## Tests
 
-`HassCoreTests/PushTests.swift` (registrar, stores, webhook source), `HassUITests/LocationCoordinatorTests.swift` (`MobileAppCoordinatorTests`), `HassUITests/PushCoordinatorTests.swift`.
+`HassCoreTests/PushTests.swift` (registrar, stores, webhook source, the simulator rule), `HassUITests/LocationCoordinatorTests.swift` (`MobileAppCoordinatorTests`), `HassUITests/PushCoordinatorTests.swift`.

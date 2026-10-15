@@ -11,7 +11,15 @@ import Foundation
 ///   details once the integration answers.
 /// - Sign-out: sends `update_registration` with empty `app_data` before the refresh token is revoked, so Home
 ///   Assistant stops pushing to a signed-out phone. The webhook stays saved for the next sign-in as that user.
+/// - Simulator: never registers or updates (``MobileAppRegistrationPolicy``), so a simulator never becomes one of
+///   the signed-in person's devices; journeys that need a registration use stubs.
 public actor MobileAppRegistrar {
+    /// Why a sync did nothing.
+    public enum Refusal: Error, Equatable, Sendable {
+        /// This build runs in the simulator without `FENTON_MOBILE_APP_REGISTER=1`.
+        case simulator
+    }
+
     /// What a sync did.
     public enum Outcome: Equatable, Sendable {
         /// Registered a new device.
@@ -31,6 +39,7 @@ public actor MobileAppRegistrar {
     private let client: HomeAssistantPushClient
     private let store: any MobileAppRegistrationStore
     private let device: MobileAppDevice
+    private let allowsRegistration: Bool
 
     /// Creates a registrar.
     /// - Parameters:
@@ -38,12 +47,15 @@ public actor MobileAppRegistrar {
     ///   - client: The Fenton Push config and Home Assistant's registration endpoints.
     ///   - store: Saved webhooks.
     ///   - device: This phone.
+    ///   - allowsRegistration: Register and update at all; off in the simulator
+    ///     (``MobileAppRegistrationPolicy/allowsRegistration(environment:isSimulator:)``).
     public init(server: HassServer, client: HomeAssistantPushClient, store: any MobileAppRegistrationStore,
-                device: MobileAppDevice) {
+                device: MobileAppDevice, allowsRegistration: Bool = MobileAppRegistrationPolicy.allowsRegistration()) {
         self.server = server
         self.client = client
         self.store = store
         self.device = device
+        self.allowsRegistration = allowsRegistration
     }
 
     /// Registers or updates for a user.
@@ -53,8 +65,11 @@ public actor MobileAppRegistrar {
     ///     (``MobileAppDevice/owned(by:)``).
     ///   - token: The APNs token as hex, if the system issued one (nil before permission or in a build without
     ///     the capability): the registration is then websocket-only.
+    /// - Throws: ``Refusal/simulator`` without sending anything when registration isn't allowed; a
+    ///   ``PushClientError`` when Home Assistant fails.
     @discardableResult
     public func sync(userID: String, userName: String? = nil, token: String?) async throws -> Outcome {
+        guard allowsRegistration else { throw Refusal.simulator }
         let device = device.owned(by: userName)
         // No integration (404) registers without push details, like `available: false`.
         var config = try await client.config() ?? PushConfig(available: false)

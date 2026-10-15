@@ -23,19 +23,21 @@ public enum LocationLaunchPolicy {
     /// `UserDefaults` key that arms reporting on this install.
     public static let armedKey = "location.reportingArmed"
 
-    /// Whether this install sends location updates. Off until the app's tracker is unlinked from every person
-    /// (shadow mode must never move a person; `presence-inventory.md`): armed by `FENTON_LOCATION_REPORT=1` at
-    /// launch, which also persists it, or by ``armedKey``.
+    /// Whether this install sends location updates: ``armedKey``, which the Account sheet's toggle sets and which is
+    /// off by default (shadow mode must never move a person; `presence-inventory.md`). Debug builds take
+    /// `FENTON_LOCATION_REPORT=1` (or `0`) at launch as an override, which also persists so the toggle shows it.
     /// - Parameters:
     ///   - environment: The launch environment.
     ///   - defaults: Where the armed flag persists.
     public static func isReportingArmed(environment: [String: String] = ProcessInfo.processInfo.environment,
                                         defaults: UserDefaults = .standard) -> Bool {
+        #if DEBUG
         switch environment["FENTON_LOCATION_REPORT"] {
         case "1": defaults.set(true, forKey: armedKey)
         case "0": defaults.removeObject(forKey: armedKey)
         default: break
         }
+        #endif
         return defaults.bool(forKey: armedKey)
     }
 }

@@ -40,6 +40,20 @@ private func paths(_ transport: StubHTTPTransport) -> [String] {
 /// The shared `mobile_app` registration: published to listeners, cleared on sign-out, read by location.
 @MainActor
 struct MobileAppCoordinatorTests {
+    @Test func aSimulatorNeitherRegistersNorUsesASavedWebhook() async {
+        let saved = MobileAppRegistration(server: server, userID: "u1", webhookID: "old")
+        let store = InMemoryMobileAppRegistrationStore([saved], active: saved)
+        let transport = StubHTTPTransport([(200, configJSON), (201, #"{"webhook_id":"w1"}"#)])
+        let mobileApp = MobileAppCoordinator(device: device, store: store, transport: transport, allowsRegistration: false)
+        #expect(!mobileApp.savedWebhookExists, "a webhook saved before the rule is ignored")
+
+        mobileApp.sessionStarted(server: server) { "token" }
+        #expect(mobileApp.begin(userID: "u1", userName: "Stephen Fenton"))
+        await mobileApp.sync()
+        #expect(mobileApp.registration == nil)
+        #expect(transport.requests.isEmpty, "nothing reaches Home Assistant")
+    }
+
     @Test func publishesTheRegistrationAndClearsItOnSignOut() async {
         let store = InMemoryMobileAppRegistrationStore()
         let transport = StubHTTPTransport([(404, ""), (201, #"{"webhook_id":"w1"}"#), (200, "{}")])

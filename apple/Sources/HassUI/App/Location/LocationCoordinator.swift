@@ -13,9 +13,9 @@ import UIKit
 ///
 /// - Starts the ``LocationReporter`` once reporting is armed, a webhook exists (this session's sync, or one saved by
 ///   an earlier launch) and the permission allows it; stops on sign-out.
-/// - Reporting is not armed by default: Stephen's existing `device_tracker.iphone_fenton` is linked to his person
-///   (`presence-inventory.md`, 2026-10-15), so a fix from it would move his presence. It is armed per install
-///   (``LocationLaunchPolicy/isReportingArmed(environment:defaults:)``) once the tracker is unlinked.
+/// - Reporting is off by default, so shadow mode never moves a person whose tracker list still holds this app's
+///   tracker (`presence-inventory.md`). The Account sheet's Location toggle arms it per install
+///   (``setReportingArmed(_:)``, persisted under ``LocationLaunchPolicy/armedKey``).
 /// - Offers the permission screen once per install, after sign-in.
 /// - A deleted registration (410) syncs once more, which registers again, and reporting resumes on the new webhook.
 @MainActor
@@ -29,8 +29,9 @@ public final class LocationCoordinator {
     /// stage sends people to Settings.
     public private(set) var hasAskedForAlways: Bool
 
-    /// Whether location updates are sent at all; the permission screen works either way.
-    public let isReportingArmed: Bool
+    /// Whether location updates are sent at all; the permission screen works either way. Change it with
+    /// ``setReportingArmed(_:)``.
+    public private(set) var isReportingArmed: Bool
 
     @ObservationIgnored private let mobileApp: MobileAppCoordinator
     @ObservationIgnored private let defaults: UserDefaults
@@ -47,7 +48,7 @@ public final class LocationCoordinator {
     ///   - platform: Core Location, or a fake in tests.
     ///   - mobileApp: The shared registration.
     ///   - transport: HTTP to Home Assistant.
-    ///   - isReportingArmed: Send location updates; off leaves only the permission screen.
+    ///   - isReportingArmed: Send location updates at launch; off leaves only the permission screen.
     ///   - batteryLevel: The battery percentage sent with each update.
     ///   - defaults: Where the once-per-install flags live.
     public init(platform: any LocationPlatform, mobileApp: MobileAppCoordinator, isReportingArmed: Bool,
@@ -84,6 +85,27 @@ public final class LocationCoordinator {
         } else {
             await startIfReady()
         }
+    }
+
+    /// Arms or disarms reporting on this install, from the Account sheet's toggle: saves the choice, then starts
+    /// the reporter (when a webhook and permission allow it) or stops it.
+    /// - Parameter armed: Send location updates.
+    /// - Returns: The start or stop, for callers that wait on it (tests); the toggle doesn't.
+    @discardableResult
+    public func setReportingArmed(_ armed: Bool) -> Task<Void, Never> {
+        guard armed != isReportingArmed else { return Task {} }
+        isReportingArmed = armed
+        defaults.set(armed, forKey: LocationLaunchPolicy.armedKey)
+        return Task { [weak self] in
+            guard let self else { return }
+            if armed { await startIfReady() } else { await reporter.stop() }
+        }
+    }
+
+    /// ``isReportingArmed`` as a writable property, for the Account sheet's toggle (`$location.armsReporting`).
+    public var armsReporting: Bool {
+        get { isReportingArmed }
+        set { setReportingArmed(newValue) }
     }
 
     /// Whether a webhook exists to send to.

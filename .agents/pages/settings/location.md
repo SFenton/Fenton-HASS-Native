@@ -33,9 +33,10 @@ The asking stages also show three points (arrivals and departures, only to your 
 
 - After sign-in on iPhone and iPhone Duo, offered once per install while there is something to ask (`LocationCoordinator.offerPermissionIfNeeded`), after the notification alert. Never on iPad.
 - Debug gallery (`FENTON_GALLERY=location`, `FENTON_GALLERY_LOCATION=<stage>` or `when-in-use-asked`); Continue plays the system's answer.
-- The Account sheet row (Location & Presence) comes after the Account sheet lands.
+- The Account sheet's **Location** section (`LocationAccountSection`), iPhone and iPhone Duo only (the section needs a `LocationCoordinator`, which an iPad never has): **Share Location** shows the status value and opens this screen as a page sheet over the Account sheet (`LocationPermissionSheet`, shared with the after-sign-in offer); **Report to Home Assistant** arms reporting per install, off by default. While armed with nothing to send (not set, off, approximate) an `InlineAlert` warning under the toggle says why. Header and footer use `FormHeader` and `FormFooter` (secondary ink on the sheet's grouped ground). HIG: Toggles (a switch row for an on/off setting, its effect in the footer).
 
 ## Tests
 
 - Hosted: `HassUITests/LocationPermissionViewTests` (copy, status, actions, renders of every stage at default and AX5 on phone and tablet widths).
-- Journeys: `Apps/iOSUITests/LocationJourneyTests` (pre-alert rules, walking to Always, Settings stages, audit plus AX5 per stage) and `LocationShadowJourneyTests` (signed in: phones walk the real system alerts to Always; iPad never shows the screen) on iPhone, iPhone Duo and iPad.
+- Journeys: `Apps/iOSUITests/LocationJourneyTests` (pre-alert rules, walking to Always, Settings stages, audit plus AX5 per stage) and `LocationShadowJourneyTests` (signed in: phones walk the real system alerts to Always; iPad never shows the screen) and `LocationAccountJourneyTests` (the offer in the four-tab shell, the Account section's row, toggle, warning, persistence and audit at default and AX5 on phones; no section on iPad) on iPhone, iPhone Duo and iPad.
+- Hosted: `HassUITests/LocationAccountSectionTests` (warning rules, renders at default and AX5).
