@@ -57,7 +57,8 @@ struct AdminTodoScreen: View {
     }
 }
 
-/// Quick links to the Chores sub-pages with their open counts (web `ChoresIntro`, a bounded 2–3 column grid).
+/// Quick links to the Chores sub-pages with their open counts (web `ChoresIntro`, a bounded 2–3 column grid; direction G
+/// mockup n5-chores: dark tiles with the open count top-trailing, Groceries across the last row).
 struct ChoreQuickLinks: View {
     @Environment(ChoresModel.self) private var model
     @Environment(EntityStore.self) private var store
@@ -65,16 +66,16 @@ struct ChoreQuickLinks: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             Text("Quick Links")
-                .font(.title3.weight(.semibold))
+                .font(.title3.bold())
                 .foregroundStyle(HassTokens.Ink.primary)
                 .accessibilityAddTraits(.isHeader)
-            DynamicGridLayout(minCellWidth: 160, maxColumns: 3) {
-                ForEach(ChoresConfig.quickLinks) { link in
+            DynamicGridLayout(minCellWidth: 150, maxColumns: 3, equalRowHeights: true) {
+                ForEach(Self.links) { link in
                     let title = link.title(viewer: model.viewer)
                     let subtitle = link.subtitle { store.entity($0).state }
+                    let count = ChoresConfig.counts(for: link.page) { store.entity($0).state }.total
                     NavigationLink(value: link.page) {
-                        QuickLinkFace(title: title, subtitle: subtitle,
-                                      tint: Color(red: link.color.red / 255, green: link.color.green / 255, blue: link.color.blue / 255))
+                        QuickLinkFace(title: title, subtitle: subtitle, count: count, symbol: Self.symbol(for: link))
                     }
                     .buttonStyle(.plain)
                     .accessibilityElement(children: .ignore)
@@ -82,20 +83,47 @@ struct ChoreQuickLinks: View {
                     .accessibilityValue(subtitle)
                     .accessibilityAddTraits(.isButton)
                     .accessibilityIdentifier("chores.link.\(link.id)")
+                    // Five links: Groceries closes the grid across two tracks, in two or three columns alike.
+                    .gridSpan(link.countsGroceries ? 2 : 1)
                 }
             }
+            .equalHeightTiles()
         }
+    }
+
+    /// The web's links with Groceries moved last, where it spans the final row (mockup n5-chores).
+    static let links = ChoresConfig.quickLinks.filter { !$0.countsGroceries } + ChoresConfig.quickLinks.filter(\.countsGroceries)
+
+    /// The link's glyph: a person for a resident's chores, a tray for Unassigned, a hammer for Home Improvement and
+    /// a cart for Groceries (mockup n5-chores).
+    static func symbol(for link: ChoresConfig.QuickLink) -> String {
+        if link.countsGroceries { return "cart.circle.fill" }
+        if link.resident != nil { return "person.crop.circle.fill" }
+        if link.page == ChoresConfig.unassignedChores { return "tray.circle.fill" }
+        return "hammer.circle.fill"
     }
 }
 
-/// A quick link tile: the shared glass tile face with the link's web color on its icon and border.
+/// A quick link tile: the shared dark tile face (chore lists are neutral grey; direction G, Open questions) with the
+/// list's open count as a bold numeral in the top-trailing corner.
 struct QuickLinkFace: View {
     var title: String
     var subtitle: String
-    var tint: Color
+    var count: Int
+    var symbol: String
 
     var body: some View {
-        GlassTileFace(title: title, subtitle: subtitle, symbol: SymbolMap.symbol(for: "mdi:clipboard-list"),
-                      tint: tint, isActive: true, showsChevron: true)
+        GlassTileFace(title: title, subtitle: subtitle, symbol: symbol, tint: ColorFamily.neutral.glyph,
+                      family: .neutral, isActive: false)
+            .overlay(alignment: .topTrailing) {
+                Text(count, format: .number)
+                    .font(.title2.bold())
+                    .monospacedDigit()
+                    .foregroundStyle(HassTokens.Ink.primary)
+                    .padding(.top, HassTokens.Spacing.m - 2)
+                    .padding(.trailing, HassTokens.Spacing.m + 2)
+                    // The subtitle already speaks the counts.
+                    .accessibilityHidden(true)
+            }
     }
 }

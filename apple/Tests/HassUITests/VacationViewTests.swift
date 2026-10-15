@@ -46,6 +46,18 @@ struct VacationViewTests {
         let field = ScheduleDateField("Start Date", .date, WallClock(date: "2026-10-20", time: "09:00"), id: "start") { _ in }
         #expect(render(ScheduleDateFields(fields: [field], commitDelay: .milliseconds(10))) != nil)
         #expect(render(AwayActionButton(title: "Go", role: .destructive, identifier: "go") {}) != nil)
+        #expect(render(AwayActionButton(title: "Confirm Vacation", prominent: true, identifier: "go") {}) != nil)
+        // The checklist's inset list on the wallpaper (a module) and in a sheet (the cell colour), with a section header.
+        for surface in [TileSurface.page, .sheet] {
+            let list = AwaySection(title: "Pre-Vacation Checklist · 1 of 2") {
+                AwayInsetList {
+                    VacationChecklistRow(title: "Make the bed", isChecked: true, isUnavailable: false) {}
+                    VacationChecklistRow(title: "Water the plants", isChecked: false, isUnavailable: false, separated: true) {}
+                }
+            }
+            #expect(render(list.environment(\.tileSurface, surface)) != nil)
+            #expect(render(list.environment(\.tileSurface, surface).dynamicTypeSize(.accessibility5)) != nil)
+        }
     }
 
     @Test func wallClockFieldKeepsTheOtherPart() {

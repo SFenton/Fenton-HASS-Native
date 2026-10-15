@@ -7,7 +7,7 @@ import SwiftUI
 ///
 /// Lists with nothing open are hidden; when every list is, the page shows its empty state. DoneTick rows open
 /// the task form to edit and the admin To-Do's rows open a rename sheet. The floating Add button opens the
-/// page's create sheet.
+/// page's create sheet. Direction G (mockups n5): each list is a 20 pt bold header over an inset list on the wallpaper.
 struct TodoPageView<Header: View>: View {
     var page: ChoresConfig.Page
     @ViewBuilder var header: () -> Header
@@ -31,7 +31,7 @@ struct TodoPageView<Header: View>: View {
                         list: section.list,
                         controller: section.controller,
                         showsHeader: !page.hideListHeaders,
-                        layout: page.isDonetick || page.editsAdminTodo ? .grid : .list,
+                        editSymbol: page.editsAdminTodo ? "pencil" : "info.circle",
                         editor: { editAction(for: section.list, item: $0) }
                     )
                 }
@@ -58,14 +58,15 @@ struct TodoPageView<Header: View>: View {
         ])
         .sheet(item: $sheet) { sheet in
             sheetContent(sheet)
-                .hassSheet()
+                .modifier(TodoSheetSizing(isShortPrompt: TodoPageLayout.isShortPrompt(sheet, addAction: page.addAction)))
         }
     }
 
     private var emptyState: some View {
         let vacation = store.entity(ChoresConfig.vacationModeEntityId).state?.state == "on"
+        // Centred on the wallpaper with the checklist glyph (mockup n5-empty).
         return ContentUnavailableView {
-            Label(page.emptyTitle, systemImage: "checkmark.circle")
+            Label(page.emptyTitle, systemImage: "checklist")
         } description: {
             Text(page.emptyDescription(viewer: model.viewer, vacationModeOn: vacation))
         }
@@ -129,6 +130,24 @@ enum TodoSheet: Identifiable, Hashable {
     }
 }
 
+/// How tall a todo sheet opens: the medium detent for a short prompt (growing to large), full height otherwise
+/// (``SwiftUI/View/hassSheet(_:)``). At accessibility sizes a prompt opens full height too: half a sheet clipped its
+/// rows at AX5.
+struct TodoSheetSizing: ViewModifier {
+    var isShortPrompt: Bool
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    func body(content: Content) -> some View {
+        if isShortPrompt && !typeSize.isAccessibilitySize {
+            content
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        } else {
+            content.hassSheet()
+        }
+    }
+}
+
 /// A DoneTick task opened from a list row (web `DonetickTaskEditTarget`).
 struct DonetickEditTarget: Hashable, Sendable {
     var itemUid: String
@@ -183,6 +202,18 @@ enum TodoPageLayout {
     /// The empty state shows once every list is known and none is drawn, or when no list is visible at all.
     static func showsEmptyState(_ sections: [Section]) -> Bool {
         sections.allSatisfy { $0.isSettled && !$0.isShown }
+    }
+
+    /// Adding a grocery and renaming a to-do are one-field prompts, which open at the medium detent (direction G, Sheets:
+    /// "Medium detents only for short prompts (… rename, Add Grocery)"). Everything else opens full height.
+    static func isShortPrompt(_ sheet: TodoSheet, addAction: ChoresConfig.AddAction) -> Bool {
+        switch sheet {
+        case .create:
+            if case .groceryItem = addAction { return true }
+            return false
+        case .renameTodo: return true
+        case .editTask: return false
+        }
     }
 
     /// The Add button's label.

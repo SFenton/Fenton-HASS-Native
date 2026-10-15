@@ -36,17 +36,11 @@ struct AddGroceryItemSheet: View {
             .navigationTitle("Add Grocery Item")
             .inlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.disabled(submitting)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(submitting ? "Adding…" : "Add") { Task { await add() } }
-                        .disabled(trimmed.isEmpty || submitting)
-                        .accessibilityIdentifier("grocery.add")
-                }
+                SheetCancelItem(isEnabled: !submitting) { dismiss() }
+                SheetConfirmItem("Add", isEnabled: !trimmed.isEmpty, isBusy: submitting, busyTitle: "Adding",
+                                 identifier: "grocery.add") { Task { await add() } }
             }
         }
-        .hassSheet()
         .interactiveDismissDisabled(submitting)
         .onAppear { focused = true }
     }
@@ -124,14 +118,9 @@ struct AddAdminTodoSheet: View {
             .navigationTitle("Add Task")
             .inlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.disabled(submitting)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(submitting ? "Adding…" : "Add") { Task { await add() } }
-                        .disabled(trimmed.isEmpty || submitting)
-                        .accessibilityIdentifier("adminTodo.add")
-                }
+                SheetCancelItem(isEnabled: !submitting) { dismiss() }
+                SheetConfirmItem("Add", isEnabled: !trimmed.isEmpty, isBusy: submitting, busyTitle: "Adding",
+                                 identifier: "adminTodo.add") { Task { await add() } }
             }
             .onChange(of: selection) { _, items in Task { await readImages(items) } }
         }
@@ -252,14 +241,20 @@ struct RenameTodoItemSheet: View {
                     TextField("Task Name", text: $draft, axis: .vertical)
                         .lineLimit(1...4)
                         .accessibilityIdentifier("renameTodo.name")
-                    Button("Reset") {
-                        draft = target.originalTitle
-                        error = nil
-                    }
-                    .disabled(draft == target.originalTitle && error == nil)
-                    .accessibilityIdentifier("renameTodo.reset")
                 } footer: {
                     FormFooter("This issue is synchronized from the dashboard Admin To-Do list. The repository is public.")
+                }
+                // Reset is a list row in the action tint (direction G, Sheets; mockup n5-edit-todo), shown only when
+                // there is something to reset: a disabled row fails the contrast audit.
+                if draft != target.originalTitle || error != nil {
+                    Section {
+                        Button("Reset to Original") {
+                            draft = target.originalTitle
+                            error = nil
+                        }
+                        .foregroundStyle(HassTokens.Ink.action)
+                        .accessibilityIdentifier("renameTodo.reset")
+                    }
                 }
             }
             .disabled(submitting)
@@ -267,17 +262,11 @@ struct RenameTodoItemSheet: View {
             .navigationTitle("Edit Task")
             .inlineNavigationTitle()
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.disabled(submitting)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(submitting ? "Saving…" : "Save") { Task { await save() } }
-                        .disabled(submitting || !Self.canSave(target: target, draft: draft))
-                        .accessibilityIdentifier("renameTodo.save")
-                }
+                SheetCancelItem(isEnabled: !submitting) { dismiss() }
+                SheetConfirmItem("Save", isEnabled: Self.canSave(target: target, draft: draft), isBusy: submitting,
+                                 busyTitle: "Saving", identifier: "renameTodo.save") { Task { await save() } }
             }
         }
-        .hassSheet()
         .interactiveDismissDisabled(submitting)
     }
 
@@ -305,9 +294,7 @@ struct TodoSheetErrorSection: View {
     var body: some View {
         if let error {
             Section {
-                Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .symbolRenderingMode(.multicolor)
-                    .foregroundStyle(HassTokens.Ink.primary)
+                InlineAlert(error, severity: .error)
                     .accessibilityIdentifier("todoSheet.error")
             }
         }

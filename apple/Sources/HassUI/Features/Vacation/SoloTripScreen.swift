@@ -176,11 +176,10 @@ struct SoloTripEditorSheet: View {
             .modalChrome()
             .navigationTitle(SoloTripCopy.editorTitle)
             .inlineNavigationTitle()
+            // A create sheet (direction G, Sheets): circle x Cancel leading drops the draft; the primary button schedules.
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    SheetCloseButton(identifier: "soloTrip.editor.cancel") { controller.closeEditor() }
-                        .disabled(controller.isScheduling || controller.household.pending)
-                }
+                SheetCancelItem(identifier: "soloTrip.editor.cancel",
+                                isEnabled: !(controller.isScheduling || controller.household.pending)) { controller.closeEditor() }
             }
         }
         .interactiveDismissDisabled(controller.isScheduling)

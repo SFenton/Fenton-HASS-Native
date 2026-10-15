@@ -2,6 +2,7 @@ import Foundation
 @preconcurrency import HAKit
 @preconcurrency import HAKit_Mocks
 @testable import HassCore
+import HassDesign
 @testable import HassUI
 import SwiftUI
 import Testing
@@ -117,6 +118,25 @@ struct ChoresViewTests {
         #expect(TodoPageLayout.showsEmptyState(sections))
     }
 
+    /// Groceries moves last, where it spans the final row; each kind of list has its own glyph (mockup n5-chores).
+    @Test func quickLinksPutGroceriesLastWithGlyphs() {
+        let links = ChoreQuickLinks.links
+        #expect(links.count == ChoresConfig.quickLinks.count)
+        #expect(links.last?.countsGroceries == true)
+        #expect(Set(links.map(ChoreQuickLinks.symbol(for:))).count == 4, "Person, tray, hammer and cart")
+    }
+
+    /// Add Grocery and rename open at the medium detent; the task form opens full height (direction G, Sheets).
+    @Test func shortPromptsOpenAtMediumHeight() {
+        let target = DonetickEditTarget(itemUid: "1", taskId: 1, todoEntityId: "todo.x")
+        let rename = AdminTodoEditTarget(itemUid: "a1", originalTitle: "Port", todoEntityId: "todo.groceries")
+        #expect(TodoPageLayout.isShortPrompt(.create, addAction: ChoresConfig.groceries.addAction))
+        #expect(!TodoPageLayout.isShortPrompt(.create, addAction: ChoresConfig.chores.addAction))
+        #expect(!TodoPageLayout.isShortPrompt(.create, addAction: ChoresConfig.adminTodo.addAction))
+        #expect(TodoPageLayout.isShortPrompt(.renameTodo(rename), addAction: ChoresConfig.adminTodo.addAction))
+        #expect(!TodoPageLayout.isShortPrompt(.editTask(target), addAction: ChoresConfig.chores.addAction))
+    }
+
     @Test func addTitlesFollowTheWeb() {
         #expect(TodoPageLayout.addTitle(ChoresConfig.groceries.addAction) == "Add Groceries")
         #expect(TodoPageLayout.addTitle(ChoresConfig.chores.addAction) == "Add Task")
@@ -138,18 +158,25 @@ struct ChoresViewTests {
             #expect(render(TodoItemRow(item: item, now: now, onToggle: {}, onEdit: {}), fixture, size: CGSize(width: 402, height: 120)) != nil)
             #expect(render(TodoItemRow(item: item, now: now, onToggle: {}), fixture, size: CGSize(width: 402, height: 300), typeSize: .accessibility5) != nil)
         }
+        #expect(TodoListSection.hasLateItem([rows[0]], now: now))
+        #expect(TodoListSection.hasLateItem([rows[1]], now: now))
+        #expect(!TodoListSection.hasLateItem([rows[2], rows[3]], now: now), "Due soon and done rows stay on the thin module")
+        #expect(DueLabel.color(.overdueLong) == HassTokens.Ink.error)
+        #expect(DueLabel.color(.overdueHours) == HassTokens.Ink.warning)
         #expect(TodoItemRow.accessibilityValue(completed: true, due: "Due in 1 hour") == "Done")
         #expect(TodoItemRow.accessibilityValue(completed: false, due: "Due in 1 hour") == "Not done, Due in 1 hour")
         #expect(TodoItemRow.accessibilityValue(completed: false, due: nil) == "Not done")
     }
 
-    @Test func sectionRendersErrorAndGrid() async {
+    @Test func sectionRendersErrorAndList() async {
         let fixture = fixture()
         let list = ChoresConfig.stephensChores.lists[0]
         let controller = fixture.model.todos.controller(for: list.entityId)
-        #expect(render(TodoListSection(list: list, controller: controller, layout: .grid), fixture) != nil, "Loading")
+        #expect(render(TodoListSection(list: list, controller: controller), fixture) != nil, "Loading")
         await controller.load()
-        #expect(render(TodoListSection(list: list, controller: controller, layout: .grid, editor: { _ in {} }), fixture) != nil)
+        #expect(render(TodoListSection(list: list, controller: controller, editSymbol: "pencil", editor: { _ in {} }), fixture) != nil)
+        let items = controller.visibleItems(hideCompleted: list.hideCompleted)
+        #expect(TodoListSection.hasLateItem(items, now: .now), "Past Due rows are late: the module turns dense")
         let failing = MockFailingService()
         let broken = TodoListController(entityId: list.entityId, service: failing, cached: [])
         await broken.load()
