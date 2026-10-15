@@ -210,7 +210,7 @@ struct VacuumRuntimeTests {
         #expect(VacuumRuntime.tabs(for: Vacuums.mainFloor, mode: .minimal, dockState: "idle") == [.controls, .autoClean, .info])
         #expect(VacuumRuntime.tabs(for: Vacuums.mainFloor, mode: .minimal, dockState: "drying") == [.controls, .autoClean, .more, .info])
         #expect(VacuumRuntime.tabs(for: Vacuums.theaterRoom, mode: .full, dockState: nil) == [.controls, .more, .info])
-        #expect(VacuumTab.allCases.map(\.title) == ["Controls", "Rooms", "Auto-Clean", "Actions", "Info"])
+        #expect(VacuumTab.allCases.map(\.title) == ["Controls", "Rooms", "Auto-Clean", "Dock", "Info"])
         #expect(VacuumTab.allCases.allSatisfy { $0.icon.hasPrefix("mdi:") && $0.id == $0.rawValue })
     }
 

@@ -292,7 +292,7 @@ public enum VacuumTab: String, CaseIterable, Identifiable, Sendable {
         case .controls: "Controls"
         case .zones: "Rooms"
         case .autoClean: "Auto-Clean"
-        case .more: "Actions"
+        case .more: "Dock"
         case .info: "Info"
         }
     }
