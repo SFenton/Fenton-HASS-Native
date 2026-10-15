@@ -31,7 +31,11 @@ final class NotificationViewController: UIViewController, @preconcurrency UNNoti
 
     func didReceive(_ notification: UNNotification) {
         let content = notification.request.content
-        guard let payload = PushPayload(userInfo: content.userInfo) else { return }
+        guard let payload = PushPayload(userInfo: content.userInfo) else {
+            PushTrace.shared.record("content: no fenton payload")
+            return
+        }
+        PushTrace.shared.record("content: \(content.categoryIdentifier), \(content.attachments.count) attachments, entity \(payload.entityID ?? "-")")
         // Buttons per notification: the camera category is fixed, so its actions are set here.
         extensionContext?.notificationActions = payload.actions.map(\.notificationAction)
         model.title = content.title
@@ -65,6 +69,7 @@ final class CameraNotificationModel {
     func start(entityID: String) {
         let store = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup)
         guard let credentials = store.load() else {
+            PushTrace.shared.record("content: not signed in")
             failed = true
             return
         }
@@ -76,6 +81,7 @@ final class CameraNotificationModel {
         Task {
             do {
                 let path = try await connection.cameraStreamPath(entityId: entityID)
+                PushTrace.shared.record("content: stream path received")
                 guard let url = CameraStreamEndpoints.hlsURL(path: path, baseURL: credentials.server.baseURL) else {
                     failed = true
                     return
@@ -85,14 +91,16 @@ final class CameraNotificationModel {
                 player.isMuted = true
                 observation = item.observe(\.status) { [weak self] item, _ in
                     let ready = item.status == .readyToPlay, broken = item.status == .failed
+                    let reason = item.error.map { "\(($0 as NSError).domain) \(($0 as NSError).code)" } ?? ""
                     Task { @MainActor in
-                        if ready { self?.isLive = true }
-                        if broken { self?.failed = true }
+                        if ready { self?.isLive = true; PushTrace.shared.record("content: playing") }
+                        if broken { self?.failed = true; PushTrace.shared.record("content: player failed \(reason)") }
                     }
                 }
                 self.player = player
                 player.play()
             } catch {
+                PushTrace.shared.record("content: stream request failed \(type(of: error))")
                 failed = true
             }
         }

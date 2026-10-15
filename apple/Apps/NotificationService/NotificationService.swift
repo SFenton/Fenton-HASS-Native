@@ -23,11 +23,14 @@ final class NotificationService: UNNotificationServiceExtension {
             contentHandler(request.content)
             return
         }
+        let trace = PushTrace.shared
         let store = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup)
         let credentials = store.load()
         let plan = PushEnrichment(payload: payload, categoryIdentifier: content.categoryIdentifier,
                                   threadIdentifier: content.threadIdentifier, server: credentials?.server)
         plan.apply(to: content)
+        trace.record("service: category \(content.categoryIdentifier), \(payload.actions.count) actions, "
+            + "entity \(payload.entityID ?? "-"), signed in \(credentials != nil), attachment \(plan.attachment?.url.path ?? "-")")
         state.begin(content, handler: contentHandler)
         let state = state
         state.task = Task {
@@ -37,9 +40,14 @@ final class NotificationService: UNNotificationServiceExtension {
             }
             if let source = plan.attachment {
                 let token = source.needsAuthorization && credentials != nil ? try? await TokenManager(store: store).validAccessToken() : nil
-                if let file = await PushAttachmentLoader().load(source, accessToken: token),
-                   let attachment = try? UNNotificationAttachment(identifier: source.kind.rawValue, url: file) {
-                    state.update { $0.attachments = [attachment] }
+                if let file = await PushAttachmentLoader(trace: trace).load(source, accessToken: token) {
+                    do {
+                        let attachment = try UNNotificationAttachment(identifier: source.kind.rawValue, url: file)
+                        state.update { $0.attachments = [attachment] }
+                        trace.record("service: attached \(file.pathExtension)")
+                    } catch {
+                        trace.record("service: attachment rejected \((error as NSError).code)")
+                    }
                 }
             }
             state.finish()
@@ -47,6 +55,7 @@ final class NotificationService: UNNotificationServiceExtension {
     }
 
     override func serviceExtensionTimeWillExpire() {
+        PushTrace.shared.record("service: time expired")
         state.task?.cancel()
         state.finish()
     }
