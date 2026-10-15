@@ -546,6 +546,19 @@ struct PushEnrichmentTests {
         #expect(!PushEnrichment(payload: PushPayload(), categoryIdentifier: "calendar", threadIdentifier: "", server: nil).clearsPlaceholderCategory)
     }
 
+    @Test func cameraNotificationsUseTheFixedCameraCategory() {
+        let buttons = [PushAction(action: "VIEW", title: "View", uri: "/x")]
+        let camera = PushEnrichment(payload: PushPayload(actions: buttons, entityID: "camera.front"),
+                                    categoryIdentifier: PushPayload.dynamicCategory, threadIdentifier: "", server: nil)
+        #expect(camera.category?.identifier == PushCategory.camera)
+        #expect(camera.category?.actions == buttons)
+        let silent = PushEnrichment(payload: PushPayload(entityID: "camera.front"), categoryIdentifier: "", threadIdentifier: "", server: nil)
+        #expect(silent.category?.identifier == PushCategory.camera, "the live view needs the category even without buttons")
+        #expect(!silent.clearsPlaceholderCategory)
+        // Registered once, next to the others.
+        #expect(PushCategory(cameraActions: buttons).identifiers(merging: ["calendar", PushCategory.camera]) == ["calendar", PushCategory.camera])
+    }
+
     #if canImport(UserNotifications)
     @Test func appliesToContent() {
         let content = UNMutableNotificationContent()
