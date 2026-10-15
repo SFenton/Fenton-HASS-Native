@@ -34,8 +34,10 @@ final class SettingsJourneyTests: XCTestCase {
     /// screen at AX5, and a `List` only exposes rows it has laid out.
     private func homeAssistantRow(_ app: XCUIApplication) -> XCUIElement {
         let row = app.buttons["settings.homeAssistant"]
-        guard app.buttons["settings.topic.admin"].waitForExistence(timeout: 5) || row.exists else { return row }
-        for _ in 0..<8 where !(row.exists && row.isHittable) {
+        // Wait for the list, not a topic: at AX5 the first rows fill the sheet, so the admin topic isn't laid out yet
+        // and waiting on it skipped the scroll (folded Duo, 2026-10-14).
+        guard app.descendants(matching: .any)["settings.list"].waitForExistence(timeout: 5) || row.exists else { return row }
+        for _ in 0..<12 where !(row.exists && row.isHittable) {
             app.settingsList.swipeUp(velocity: .slow)
         }
         if !row.exists { _ = row.waitForExistence(timeout: 2) }

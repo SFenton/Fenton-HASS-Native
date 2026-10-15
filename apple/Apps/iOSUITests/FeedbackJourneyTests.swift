@@ -115,7 +115,10 @@ final class FeedbackJourneyTests: JourneyTestCase {
         // SettingsJourneyTests: scrolled to the end on the short folded Duo, the topics fade under the header and
         // the audit reports that faded text as element-less contrast issues it can't attribute.
         XCTAssertTrue(feedbackRow(app, "feature").exists)
-        for _ in 0..<4 { app.settingsList.swipeDown(velocity: .fast) }
+        // Only while the list is scrolled: Settings is in the Account sheet now, and a swipe down on a list already at
+        // its top dismisses the sheet (folded Duo and iPad, 2026-10-14).
+        let top = app.settingsList.buttons.firstMatch
+        for _ in 0..<4 where !(top.exists && top.isHittable) { app.settingsList.swipeDown(velocity: .fast) }
         try FentonHomeApp.audit(app) {
             let large = try self.launch(arguments: FentonHomeApp.ax5)
             // Same position as the audited page: the AX5 page is only compared with it (an element-less Dynamic
