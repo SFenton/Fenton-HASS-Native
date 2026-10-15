@@ -170,8 +170,13 @@ final class FeedbackJourneyTests: JourneyTestCase {
         if keep.exists && keep.isHittable {
             keep.tap()
         } else {
-            // iOS 27 anchors the dialog as a popover without Keep Editing; an outside tap keeps editing.
-            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)).tap()
+            // iOS 27 anchors the dialog as a popover without Keep Editing; an outside tap keeps editing. Tap just
+            // above the popover (below it near the top): the window's middle fell on the popover in iPad landscape
+            // and kept it open (2026-10-15).
+            let popover = app.popovers.firstMatch.exists ? app.popovers.firstMatch.frame : discard.frame
+            let window = app.windows.firstMatch.frame
+            let y = popover.minY > 80 ? popover.minY - 40 : min(popover.maxY + 40, window.maxY - 20)
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: popover.midX, dy: y)).tap()
         }
         XCTAssertTrue(discard.waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["feedback.submit"].exists, "Keep Editing closed the form")
