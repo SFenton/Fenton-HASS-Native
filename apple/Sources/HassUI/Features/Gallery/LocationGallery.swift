@@ -20,10 +20,10 @@ struct LocationGallery: View {
     }
 
     var body: some View {
-        Text("Settings")
-            .font(.largeTitle.bold())
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(HassTokens.Spacing.xl)
+        // A blank presenting page: text beside the iPad landscape page sheet is hidden from VoiceOver by the modal,
+        // and the audit reports it as potentially inaccessible (2026-10-14).
+        Color.black
+            .ignoresSafeArea()
             .preferredColorScheme(.dark)
             .sheet(isPresented: .constant(true)) {
                 LocationPermissionView(
