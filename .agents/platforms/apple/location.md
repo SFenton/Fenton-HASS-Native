@@ -9,14 +9,15 @@ Plan and rationale: the owner's "Location, Home/Away and device sensors" report 
 | Piece | Where | Role |
 |---|---|---|
 | `MobileAppWebhookClient` | `HassCore/MobileApp` | `update_location`, `register_sensor`, `update_sensor_states`, `get_zones` to `/api/webhook/<id>`; 410 → `.registrationGone` |
-| `MobileAppWebhookSource` | same | Supplies the current webhook. Implemented by the shared registrar once registration moves out of push (Phase 1); until then only tests and the gallery |
+| `MobileAppWebhookSource` | same | Supplies the current webhook: the shared registration store ([mobile-app](mobile-app.md)) |
 | `LocationReport`, `HAZone`, `ZonePlanner`, `ZoneEventResolver`, `LocationFixFilter`, `LocationTrigger` | same | Pure reporting rules (below) |
 | `MobileAppSensor`, `MobileAppSensorProvider`s, `DeviceStatus` | same | Sensors from one device reading |
 | `LocationReporter` | `HassCore/Location` | Drives permission, zones, significant changes and fixes over the `LocationPlatform` seam |
 | `CoreLocationPlatform` | same, iOS only | `CLLocationManager` + iOS 17 `CLMonitor` |
 | `LocationPermissionView` | `HassUI/Features/Location` | The explainer and permission steps ([page](../../pages/settings/location.md)) |
+| `LocationCoordinator`, `LocationLaunchPolicy`, `LocationPermissionPresenter` | `HassUI/App/Location` | Starts and stops the reporter with the registration and permission; offers the screen once after sign-in |
 
-One `mobile_app` registration per phone, shared with push, so each phone is one Home Assistant device. Webhook calls carry no token (the id addresses the registration) and never use the websocket: they are one-off exchanges, not entity state.
+One `mobile_app` registration per phone, shared with push ([mobile-app](mobile-app.md)), so each phone is one Home Assistant device. Webhook calls carry no token (the id addresses the registration) and never use the websocket: they are one-off exchanges, not entity state.
 
 ## Rules
 
@@ -44,6 +45,15 @@ Names, unique ids, state strings and icons mirror `home-assistant/iOS` (`Sources
 
 The brief's shorthand ids (`ssid`, `region entered`) were replaced by the official ones above (2026-10-14).
 
-## Not wired yet
+## Shadow mode (Phase 2, 2026-10-15)
 
-`LocationReporter` is not started by the app; nothing reads the device yet (no `DeviceStatus` source for battery, network, storage, audio, Focus or geocoding). Phase 1 lifts registration out of push and implements `MobileAppWebhookSource`; Phase 2 starts the reporter after sign-in and adds the Account sheet row; Phase 3 adds the device readers and the Focus capability.
+- **Phones only.** The app delegate creates `LocationCoordinator` at launch when `LocationLaunchPolicy.isEnabled` (not on iPad; not in test-token, reset or gallery launches unless `FENTON_LOCATION=1`). An iPad never shows the permission screen: its copy says "This phone".
+- **Offer once.** After sign-in, once the notification alert is answered (`MainTabView.loadProfileName`), the permission screen is offered once per install while there is something to ask (Not Set, or While Using before the Always alert). iOS shows the Always alert once; afterwards While Using offers Settings and Close (`canAskForAlways`), so the screen never traps anyone.
+- **Start and stop.** The reporter starts when reporting is armed, a webhook exists (this session's sync, or one saved by an earlier launch, so a background relaunch for a zone event can report without the websocket) and the permission is While Using or Always. Each return to the foreground sends a `Launch` fix. Sign-out stops it. A 410 syncs once, which registers again, and reporting resumes on the new webhook.
+- **Only the app's own tracker.** Nothing links the tracker to a person or changes Home Assistant config.
+- **Not armed by default.** Stephen's existing `device_tracker.iphone_fenton` (the push registration) and `simulator_965a` are already linked to `person.stephen_fenton` ([presence inventory](presence-inventory.md)), so a native fix would become a candidate for his person's state and could trigger the away routine. Reporting is armed per install (`FENTON_LOCATION_REPORT=1` at launch persists `location.reportingArmed`; `=0` disarms) only after those trackers are unlinked from every person.
+- **Open:** device readers and sensors (Phase 3); the Account sheet row; a zone relaunch only reopens the zone monitor after `get_zones` answers, so an offline relaunch can miss that crossing.
+
+## Inventory
+
+What Home Assistant does with presence today (zones, people, trackers, the automations that react): [presence-inventory](presence-inventory.md).

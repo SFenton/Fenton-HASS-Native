@@ -14,7 +14,8 @@ automation ─ notify.mobile_app_<device>_fenton ─▶ mobile_app ─ POST push
 
 | Piece | Where |
 |---|---|
-| Config, registration, webhook, payload, links, categories, attachments | `HassCore/Push` (logic, 95% bar) |
+| Config, payload, links, categories, attachments | `HassCore/Push` (logic, 95% bar) |
+| Registration and its webhook (shared with location) | `HassCore/MobileApp`, `HassUI/App/MobileApp` ([mobile-app](mobile-app.md)) |
 | Session wiring, taps, buttons, `clear_notification` | `HassUI/App/Push/PushCoordinator.swift`; `ShellNavigator.open(_:)` |
 | System glue (permission, APNs token, `UNUserNotificationCenterDelegate`) | `Apps/iOS/FentonHomeApp.swift`, `Apps/iOS/SystemPushPlatform.swift` |
 | Notification Service Extension (`com.sfenton.home.NotificationService`) | `Apps/NotificationService/` |
@@ -22,8 +23,8 @@ automation ─ notify.mobile_app_<device>_fenton ─▶ mobile_app ─ POST push
 ## Registration (contract rules 1-2)
 
 - After sign-in, once the websocket is up and the user is known (`MainTabView.loadProfileName`): ask for alert, sound and badge permission (once per install), `registerForRemoteNotifications`, then sync.
-- Sync: `GET /api/fenton_push/config`. **404 (integration not installed): register nothing**, so the app never adds a `mobile_app` device the server can't push to (a deliberate departure from the contract's "register websocket-only", agreed with the integration lane). `available: false`, a foreign `bundle_id` or no APNs token: register without push details; a later `update_registration` adds them. `push_websocket_channel` stays off until the app subscribes to `mobile_app/push_notification_channel` (claiming it without listening makes Home Assistant think a token-less phone is reachable).
-- One webhook per Home Assistant user per server, in the Keychain (`KeychainPushRegistrationStore`, service `com.sfenton.home.push`). Reused on the next sign-in as that user; `update_registration` on every launch and token change; a 410 from the webhook forgets it and registers again.
+- Sync: `GET /api/fenton_push/config`. The registration is shared with location and sensors ([mobile-app](mobile-app.md)): **404 (integration not installed) registers websocket-only** (since 2026-10-15; push used to register nothing). `available: false`, a foreign `bundle_id` or no APNs token: register without push details; a later `update_registration` adds them. `push_websocket_channel` stays off until the app subscribes to `mobile_app/push_notification_channel` (claiming it without listening makes Home Assistant think a token-less phone is reachable).
+- One webhook per Home Assistant user per server, in the Keychain (`KeychainMobileAppRegistrationStore`, service `com.sfenton.home.push`). Reused on the next sign-in as that user; `update_registration` on every launch and token change; a 410 from the webhook forgets it and registers again.
 - `device_name` is `"<UIDevice name> · Fenton"`, so the notify service never collides with the official app's on the same phone.
 - `apns_environment` comes from `embedded.mobileprovision` (`aps-environment`): sandbox for Xcode installs and the simulator, production for TestFlight and the App Store.
 - Sign-out sends `update_registration` with `app_data: {}` **before** the refresh token is revoked (`AppSession.signOut`).

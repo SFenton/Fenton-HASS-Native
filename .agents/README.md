@@ -18,6 +18,7 @@
 | Websocket, backgrounding, caching | [platforms/apple/connection-lifecycle.md](platforms/apple/connection-lifecycle.md) |
 | Location, Home/Away, device sensors | [platforms/apple/location.md](platforms/apple/location.md), screen: [pages/settings/location.md](pages/settings/location.md) |
 | Push notifications, the notification service extension | [platforms/apple/push.md](platforms/apple/push.md) |
+| The shared `mobile_app` registration (push, location, sensors) | [platforms/apple/mobile-app.md](platforms/apple/mobile-app.md) |
 | Decide what tests to write | [testing/apple/strategy.md](testing/apple/strategy.md) |
 | Run tests on iPhone, Duo, iPad | [testing/apple/devices.md](testing/apple/devices.md) |
 | Edit these docs | [workflow/docs-conventions.md](workflow/docs-conventions.md) |

@@ -6,7 +6,7 @@ Native only; the web dashboard has no counterpart. Logic and reporting rules: [l
 
 ## Stages
 
-`LocationPermission.stage` picks one of five. Copy lives in `LocationPermissionCopy`.
+`LocationPermission.stage` picks one of five; While Using has a second form once iOS has shown its one Always alert (`canAskForAlways: false`). Copy lives in `LocationPermissionCopy`.
 
 | Stage | Title | Status value | Button | Close |
 |---|---|---|---|---|
@@ -15,6 +15,7 @@ Native only; the web dashboard has no counterpart. Logic and reporting rules: [l
 | Always | Home and Away Are On | Always | none | Yes |
 | Off (denied or restricted) | Location Is Off | Off / Restricted | Open Settings | Yes |
 | Approximate | Precise Location Is Off | Always, Approximate | Open Settings | Yes |
+| While Using, Always alert already shown | Notice When You Leave | While Using the App | Open Settings | Yes |
 
 The asking stages also show three points (arrivals and departures, only to your server, light on battery) and a footnote naming the option to pick in the system alert.
 
@@ -30,9 +31,11 @@ The asking stages also show three points (arrivals and departures, only to your 
 
 ## Entry points
 
-Debug gallery only (`FENTON_GALLERY=location`, `FENTON_GALLERY_LOCATION=<stage>`); Continue plays the system's answer. The Account sheet row (Location & Presence) comes with the reporter wiring, after the Account sheet lands.
+- After sign-in on iPhone and iPhone Duo, offered once per install while there is something to ask (`LocationCoordinator.offerPermissionIfNeeded`), after the notification alert. Never on iPad.
+- Debug gallery (`FENTON_GALLERY=location`, `FENTON_GALLERY_LOCATION=<stage>` or `when-in-use-asked`); Continue plays the system's answer.
+- The Account sheet row (Location & Presence) comes after the Account sheet lands.
 
 ## Tests
 
 - Hosted: `HassUITests/LocationPermissionViewTests` (copy, status, actions, renders of every stage at default and AX5 on phone and tablet widths).
-- Journeys: `Apps/iOSUITests/LocationJourneyTests` (pre-alert rules, walking to Always, Settings stages, audit plus AX5 per stage) on iPhone, iPhone Duo and iPad.
+- Journeys: `Apps/iOSUITests/LocationJourneyTests` (pre-alert rules, walking to Always, Settings stages, audit plus AX5 per stage) and `LocationShadowJourneyTests` (signed in: phones walk the real system alerts to Always; iPad never shows the screen) on iPhone, iPhone Duo and iPad.

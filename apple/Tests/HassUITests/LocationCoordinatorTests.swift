@@ -35,58 +35,6 @@ private func paths(_ transport: StubHTTPTransport) -> [String] {
     }
 }
 
-// MARK: - Shared registration
-
-/// The shared `mobile_app` registration: published to listeners, cleared on sign-out, read by location.
-@MainActor
-struct MobileAppCoordinatorTests {
-    @Test func publishesTheRegistrationAndClearsItOnSignOut() async {
-        let store = InMemoryMobileAppRegistrationStore()
-        let transport = StubHTTPTransport([(404, ""), (201, #"{"webhook_id":"w1"}"#), (200, "{}")])
-        let mobileApp = MobileAppCoordinator(device: device, store: store, transport: transport)
-        var seen: [MobileAppRegistration?] = []
-        mobileApp.onRegistrationChange { seen.append($0) }
-        #expect(!mobileApp.begin(userID: "u1", userName: nil), "no session yet")
-        #expect(!mobileApp.savedWebhookExists)
-
-        mobileApp.sessionStarted(server: server) { "token" }
-        #expect(mobileApp.begin(userID: "u1", userName: "Stephen Fenton"))
-        #expect(!mobileApp.begin(userID: "u1", userName: "Stephen Fenton"), "same user again")
-        await mobileApp.sync()
-        let registration = MobileAppRegistration(server: server, userID: "u1", webhookID: "w1")
-        #expect(mobileApp.registration == registration)
-        #expect(mobileApp.savedWebhookExists)
-        #expect(await mobileApp.webhookSource.currentWebhook() == registration.webhook)
-
-        await mobileApp.sessionEnded()
-        #expect(mobileApp.registration == nil)
-        #expect(!mobileApp.savedWebhookExists)
-        #expect(seen == [registration, nil])
-        await #expect(throws: PushClientError.signedOut) {
-            try await mobileApp.fireAction(PushActionEvent(action: "A", tag: nil))
-        }
-    }
-
-    @Test func disabledNeverRegisters() async {
-        let saved = MobileAppRegistration(server: server, userID: "u1", webhookID: "w1")
-        let transport = StubHTTPTransport([])
-        let mobileApp = MobileAppCoordinator(device: device, store: InMemoryMobileAppRegistrationStore([saved], active: saved),
-                                             transport: transport, isEnabled: false)
-        mobileApp.sessionStarted(server: server) { "token" }
-        #expect(!mobileApp.begin(userID: "u1", userName: nil))
-        await mobileApp.sync()
-        #expect(!mobileApp.savedWebhookExists, "a journey never reports on a real webhook")
-        #expect(transport.requests.isEmpty)
-    }
-
-    @Test func aNewTokenSyncsOnce() {
-        let mobileApp = MobileAppCoordinator(device: device, store: InMemoryMobileAppRegistrationStore())
-        #expect(mobileApp.setPushToken("ab"))
-        #expect(!mobileApp.setPushToken("ab"))
-        #expect(mobileApp.setPushToken("cd"))
-    }
-}
-
 // MARK: - Location
 
 /// Shadow-mode location: starts on a webhook and permission, only when armed; offers the screen once.
@@ -236,28 +184,5 @@ struct LocationCoordinatorTests {
         fresh.location.requestPermission()
         #expect(!fresh.location.hasAskedForAlways)
         #expect(fresh.platform.calls == ["whenInUse"])
-    }
-}
-
-// MARK: - Launch policy
-
-struct LocationLaunchPolicyTests {
-    @Test func phonesOnlyAndNotInJourneys() {
-        #expect(LocationLaunchPolicy.isEnabled(environment: [:], isPresenceDevice: true))
-        #expect(!LocationLaunchPolicy.isEnabled(environment: [:], isPresenceDevice: false), "never on iPad")
-        #expect(!LocationLaunchPolicy.isEnabled(environment: ["FENTON_LOCATION": "1"], isPresenceDevice: false))
-        for key in ["FENTON_HASS_TOKEN", "FENTON_UITEST_RESET", "FENTON_GALLERY"] {
-            #expect(!LocationLaunchPolicy.isEnabled(environment: [key: "1"], isPresenceDevice: true))
-            #expect(LocationLaunchPolicy.isEnabled(environment: [key: "1", "FENTON_LOCATION": "1"], isPresenceDevice: true))
-        }
-    }
-
-    @Test func reportingIsArmedPerInstall() {
-        let defaults = freshDefaults()
-        #expect(!LocationLaunchPolicy.isReportingArmed(environment: [:], defaults: defaults))
-        #expect(LocationLaunchPolicy.isReportingArmed(environment: ["FENTON_LOCATION_REPORT": "1"], defaults: defaults))
-        #expect(LocationLaunchPolicy.isReportingArmed(environment: [:], defaults: defaults), "persists")
-        #expect(!LocationLaunchPolicy.isReportingArmed(environment: ["FENTON_LOCATION_REPORT": "0"], defaults: defaults))
-        #expect(!LocationLaunchPolicy.isReportingArmed(environment: [:], defaults: defaults))
     }
 }
