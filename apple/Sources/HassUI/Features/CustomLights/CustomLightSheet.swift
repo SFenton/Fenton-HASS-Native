@@ -123,10 +123,11 @@ struct CustomLightSheet: View {
 
     private func otherLights(_ others: [CustomLightsConfig.Light]) -> some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            RoomSectionHeader(title: "Copy Color From")
+            RoomSectionHeader(title: "Copy Color From", inSheet: true)
             DynamicGridLayout(minCellWidth: minSwatchWidth, maxColumns: 4, spacing: HassTokens.Spacing.s, equalRowHeights: true) {
                 ForEach(others) { other in
-                    OtherLightSwatch(light: other, rgb: CustomLightsConfig.RGB(entity: store.entity(other.entityId).state)) { color in
+                    let state = store.entity(other.entityId).state
+                    OtherLightSwatch(light: other, rgb: CustomLightsConfig.RGB(entity: state), isUnavailable: state?.isUnavailable ?? true) { color in
                         caller.fire(CustomLightsConfig.setColor(color, on: light.entityId))
                     }
                 }
@@ -160,10 +161,11 @@ private struct ActionRowStyle: ButtonStyle {
 }
 
 /// Copies another light's color onto the open light (web `OtherLightButton`): a circle of its color with its name
-/// under it, or an empty ring and "Off" while it has no color.
+/// under it, or an empty ring and "Off" (or "Unavailable") while it has no color.
 struct OtherLightSwatch: View {
     var light: CustomLightsConfig.Light
     var rgb: CustomLightsConfig.RGB?
+    var isUnavailable = false
     var apply: (CustomLightsConfig.RGB) -> Void
     @ScaledMetric(relativeTo: .title) private var diameter: CGFloat = 48
 
@@ -185,7 +187,7 @@ struct OtherLightSwatch: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 if rgb == nil {
-                    Text("Off").font(.footnote)
+                    Text(isUnavailable ? "Unavailable" : "Off").font(.footnote)
                 }
             }
             .foregroundStyle(HassTokens.Surface.secondaryInSheet)
@@ -193,12 +195,14 @@ struct OtherLightSwatch: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        // Disabled without dimming: the name and "Off" keep their contrast, and VoiceOver reads it dimmed.
-        .disabled(rgb == nil)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Apply \(light.title) Color")
+        .accessibilityValue(rgb == nil ? (isUnavailable ? "Unavailable" : "Off") : "")
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("customLight.other.\(light.entityId)")
+        // Disabled without dimming, outside the combined element so VoiceOver reads it dimmed (see GlassTile); the
+        // name and status keep their contrast.
+        .disabled(rgb == nil)
     }
 }
 

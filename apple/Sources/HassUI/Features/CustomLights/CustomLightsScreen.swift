@@ -116,7 +116,7 @@ struct ManualControlRow: View {
         Toggle(isOn: Binding(get: { isOn }, set: set)) {
             Label {
                 Text("Manually Control Front Yard Lights")
-                    .foregroundStyle(.white)
+                    .foregroundStyle(HassTokens.Ink.onDark)
                     .fixedSize(horizontal: false, vertical: true)
             } icon: {
                 Image(systemName: "lightbulb.2")
@@ -124,7 +124,6 @@ struct ManualControlRow: View {
                     .accessibilityHidden(true)
             }
         }
-        .tint(.green)
         .disabled(isUnavailable)
         .padding(.horizontal, HassTokens.Spacing.l)
         .padding(.vertical, HassTokens.Spacing.s)
@@ -152,7 +151,7 @@ struct LightingModeButton: View {
                     Image(systemName: "paintpalette")
                         .foregroundStyle(HassTokens.Surface.secondaryOnModule)
                     Text(CustomLightsConfig.lightingModeTitle)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(HassTokens.Ink.onDark)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: HassTokens.Spacing.s)

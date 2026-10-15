@@ -228,21 +228,19 @@ struct SprinklerWaterPage: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            Button {
+            // The one primary action, in the owner's water colour with dark text (direction G, Primary buttons).
+            PrimaryButton("Start Watering", systemImage: SprinklerStyle.symbol, family: .water) {
                 sending = true
                 Task {
                     let ok = await controller.startWatering(zone: zone, minutes: minutes)
                     sending = false
                     if ok { done() }
                 }
-            } label: {
-                Label("Start Watering", systemImage: SprinklerStyle.symbol)
             }
-            // The one primary action, in the owner's water colour with dark text (direction G, Primary buttons).
-            .buttonStyle(PrimaryButtonStyle(family: .water))
             .disabled(!enabled)
-            .padding(HassTokens.Spacing.l)
             .accessibilityIdentifier("sprinkler.startWatering")
+            .padding(HassTokens.Spacing.l)
+            .background(.bar)
         }
         .navigationTitle(zoneState?.name ?? controller.config.title)
         .inlineNavigationTitle()
@@ -340,7 +338,7 @@ struct SprinklerSchedulePage: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            Button {
+            PrimaryButton("Apply", systemImage: "checkmark", family: .water) {
                 sending = true
                 Task {
                     let ok = await controller.saveSchedule(
@@ -348,13 +346,11 @@ struct SprinklerSchedulePage: View {
                     sending = false
                     if ok { done() }
                 }
-            } label: {
-                Label("Apply", systemImage: "checkmark")
             }
-            .buttonStyle(PrimaryButtonStyle(family: .water))
             .disabled(!available || days.isEmpty || times.isEmpty || sending)
-            .padding(HassTokens.Spacing.l)
             .accessibilityIdentifier("sprinkler.schedule.apply")
+            .padding(HassTokens.Spacing.l)
+            .background(.bar)
         }
         .navigationTitle(format.programName(zone: zoneName))
         .sheetSubtitle(program.map(format.summary))
@@ -453,7 +449,7 @@ struct DayPicker: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(minWidth: HassTokens.minTarget, maxWidth: .infinity, minHeight: HassTokens.minTarget)
                     // Chosen days fill with the water colour and dark text, as the primary button (direction G).
-                    .foregroundStyle(on ? Color(rgb: HassTokens.Palette.sheetGround) : HassTokens.Ink.primary)
+                    .foregroundStyle(on ? HassTokens.Surface.sheetGround : HassTokens.Ink.primary)
                     .background(on ? SprinklerStyle.water : Color.secondary.opacity(0.15), in: Circle())
             }
             .buttonStyle(.borderless)

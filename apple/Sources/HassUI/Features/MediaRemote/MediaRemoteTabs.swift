@@ -13,7 +13,7 @@ struct RemoteAppsTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            RoomSectionHeader(title: controller.config.appSectionTitle)
+            RoomSectionHeader(title: controller.config.appSectionTitle, inSheet: true)
             DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
                 ForEach(controller.config.apps) { app in
                     AppTile(app: app, display: controller.display(app), imageURL: imageURL(app)) { controller.tap(app) }
@@ -38,7 +38,6 @@ struct AppTile: View {
     var imageURL: URL?
     var action: () -> Void
     @Environment(\.tileSurface) private var surface
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     private let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous)
 
@@ -63,7 +62,7 @@ struct AppTile: View {
                 .opacity(display.isUnavailable ? 0.4 : 1)
                 Text(app.title)
                     .font(.subheadline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(HassTokens.Ink.onDark)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 if display.isActive {
@@ -92,7 +91,8 @@ struct AppTile: View {
         } else if surface == .sheet {
             HassTokens.Surface.sheetCell
         } else {
-            reduceTransparency ? Color(rgb: HassTokens.Palette.moduleThin) : HassTokens.Surface.moduleThin
+            // The module material, opaque with Reduce Transparency; the tile's own shape clips it.
+            Color.clear.module(cornerRadius: 0)
         }
     }
 
@@ -157,11 +157,12 @@ struct RemoteDeviceRow: View {
                     }
                     .contentShape(Rectangle())
                 }
-                .disabled(display.isDisabled)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(device.title)
                 .accessibilityValue(display.subtitle)
                 .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                // Outside the combined element, so VoiceOver and XCUITest read it as dimmed (see GlassTile).
+                .disabled(display.isDisabled)
             case .state:
                 label
                     .accessibilityElement(children: .ignore)
@@ -242,6 +243,7 @@ struct HueSyncTab: View {
     var controller: MediaRemoteController
     var hue: HueSyncConfig
     @State private var brightness = SliderDraft()
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     static let help = "Light Sync turns on the Sync Box and starts syncing. Choosing a mode does the same. Presence lighting pauses until syncing stops."
 
@@ -310,15 +312,20 @@ struct HueSyncTab: View {
                 .accessibilityValue("Unavailable")
                 .accessibilityIdentifier(identifier)
         } else {
-            Picker(title, selection: Binding(get: { select.selected }, set: { choose($0) })) {
+            let picker = Picker(title, selection: Binding(get: { select.selected }, set: { choose($0) })) {
                 ForEach(options, id: \.self) { option in
                     Text(StateText.titleCase(option)).tag(option)
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            // Segments can't grow with Dynamic Type: a menu naming the choice at accessibility sizes (as ModalTabBar).
+            Group {
+                if typeSize.isAccessibilitySize {
+                    picker.pickerStyle(.menu).frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                } else {
+                    picker.pickerStyle(.segmented).labelsHidden().controlSize(.large)
+                }
+            }
             .disabled(select.isUnavailable)
-            .frame(minHeight: HassTokens.minTarget)
             .accessibilityIdentifier(identifier)
         }
     }
@@ -348,12 +355,13 @@ struct HueSyncTab: View {
             }
             .contentShape(Rectangle())
         }
-        .disabled(input.isDisabled)
         .frame(minHeight: HassTokens.minTarget)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(input.option)
         .accessibilityValue(input.subtitle)
         .accessibilityAddTraits(input.isSelected ? [.isButton, .isSelected] : .isButton)
+        // Outside the combined element, so an unplugged port reads as dimmed (see GlassTile).
+        .disabled(input.isDisabled)
         .accessibilityIdentifier("remote.hue.hdmi.\(input.option)")
     }
 

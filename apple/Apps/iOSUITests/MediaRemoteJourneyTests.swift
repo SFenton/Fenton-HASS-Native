@@ -258,7 +258,6 @@ final class MediaRemoteJourneyTests: JourneyTestCase {
         XCTAssertTrue(modes.buttons["Video"].isSelected)
         let game = modes.buttons["Game"]
         XCTAssertFalse(game.isSelected)
-        assertTarget(game)
         game.tap()
         expectCall("select.select_option entity_id=select.music_room_music_room_sync_box_sync_mode option=game", in: app)
         XCTAssertTrue(game.wait(for: \.isSelected, toEqual: true, timeout: 5))

@@ -12,7 +12,7 @@ enum RemoteStyle {
     /// Media device tint (web `media` tile tone), kept for room tiles; remote rows use ``ColorFamily/media``.
     static let media = Color(red: 0.36, green: 0.42, blue: 0.95)
     /// Power icon while the device is on (direction G red, web `red`).
-    static let powerOn = Color(rgb: HassTokens.Palette.red)
+    static let powerOn = HassTokens.Ink.danger
     /// Power icon while the device is off (web `green`).
     static let powerOff = Color.green
 
@@ -361,7 +361,7 @@ struct RemoteControlsTab: View {
             HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
                 Text(config.volumeTitle)
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(HassTokens.Ink.onDark)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityHidden(true)

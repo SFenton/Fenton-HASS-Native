@@ -104,7 +104,7 @@ struct SprinklerControllerRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.title3.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(HassTokens.Ink.onDark)
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundStyle(isWatering ? ColorFamily.water.glyph : HassTokens.Surface.secondaryOnModule)
