@@ -1,3 +1,4 @@
+import HassCore
 import HassDesign
 import SwiftUI
 
@@ -37,6 +38,17 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
 
     /// Accessibility identifier for this section's navigation item (tab and flyout row alike).
     var navigationIdentifier: String { "nav.\(rawValue)" }
+
+    /// The section a notification opens.
+    init(_ section: PushSection) {
+        switch section {
+        case .home: self = .home
+        case .security: self = .security
+        case .climate: self = .climate
+        case .chores: self = .chores
+        case .settings: self = .settings
+        }
+    }
 }
 
 // MARK: - Menu
