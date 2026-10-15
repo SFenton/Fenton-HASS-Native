@@ -157,9 +157,21 @@ public final class HassConnection {
         guard let route else { return }
         routeTask?.cancel()
         routeTask = Task { [weak self] in
-            let changed = await route.refresh()
+            let changed = await route.refresh { await self?.isHomeConfirmedOverPublicURL() ?? false }
             guard changed, !Task.isCancelled else { return }
             self?.applyRoute()
+        }
+    }
+
+    /// Whether Home Assistant says the signed-in person is home, from live states that came over the public URL.
+    /// The route asks this only before it has pinned the server's instance id, so a network that merely advertises
+    /// our server can't receive the token.
+    func isHomeConfirmedOverPublicURL() async -> Bool {
+        guard route?.isLocal == false, store.freshness == .live, let user = try? await currentUser() else { return false }
+        // Re-checked after the await: the states must still be ones the public URL delivered.
+        guard route?.isLocal == false else { return false }
+        return store.allValues.values.contains { entity in
+            entity.entityId.hasPrefix("person.") && entity.attributes["user_id"]?.string == user.id && entity.state == "home"
         }
     }
 
@@ -169,11 +181,14 @@ public final class HassConnection {
         refreshRoute()
     }
 
-    /// Re-reads the route. HAKit replaces the socket only when the URL changed; the states subscription, the store
-    /// and every view stay as they are.
+    /// Reconnects on the route's current URL; the states subscription, the store and every view stay as they are.
+    ///
+    /// Disconnects first rather than letting `connect()` swap sockets: HAKit's swap leaves the old socket's delegate
+    /// in place, so its late close event could tear down the new socket.
     private func applyRoute() {
         guard wantsConnection else { return }
         Telemetry.count(route?.isLocal == true ? "connection.route.local" : "connection.route.public")
+        connection.disconnect()
         connection.connect()
     }
 
@@ -256,6 +271,8 @@ public final class HassConnection {
         if delta.isFirst {
             // The first live set replaces the disk snapshot, dropping entities the server no longer has.
             store.replaceAll(delta.changed, freshness: .live)
+            // Live presence can now confirm home for a route that has not seen this server at home yet.
+            if route?.isLocal == false { refreshRoute() }
         } else {
             store.apply(delta.changed, removing: delta.removed, freshness: .live)
         }

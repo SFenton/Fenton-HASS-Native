@@ -8,8 +8,14 @@ import os
 /// At home the public URL still leaves the house through Cloudflare and comes back (40–65 ms a request, measured
 /// 2026-10-15), while Home Assistant's home network address answers in about 14 ms. The route finds the server by
 /// its zeroconf advertisement (`_home-assistant._tcp`), accepts it only when the advertisement names this server's
-/// public URL and points at a private address, and checks that the address answers before using it. Anything
-/// else, or any network change, falls back to the public URL. See `.agents/platforms/apple/connection-lifecycle.md`.
+/// public URL, points at a private address and carries this server's instance id, and checks that the address
+/// answers before using it. Anything else, or any network change, falls back to the public URL. See
+/// `.agents/platforms/apple/connection-lifecycle.md`.
+///
+/// The access token goes to the home address over plain HTTP, so any Wi-Fi network (a café's too) must not be able
+/// to pose as home. The advertisement's `uuid` is only ever sent on the home network, so the route pins it the
+/// first time, and only while Home Assistant (over the public TLS connection) says the signed-in person is home;
+/// after that, an advertisement without the pinned id is ignored.
 public final class LocalServerRoute: Sendable {
     /// Home Assistant's zeroconf service type (listed in `NSBonjourServices`).
     public static let serviceType = "_home-assistant._tcp"
@@ -23,6 +29,7 @@ public final class LocalServerRoute: Sendable {
 
     private let finder: any LocalServerFinding
     private let watcher: any NetworkPathWatching
+    private let pins: any LocalServerPinStore
     private let state = OSAllocatedUnfairLock(initialState: State())
 
     private struct State {
@@ -36,11 +43,14 @@ public final class LocalServerRoute: Sendable {
     ///   - server: The signed-in server.
     ///   - finder: Finds and checks the home network address (Bonjour and HTTP in the app, a fake in tests).
     ///   - watcher: Reports network changes.
+    ///   - pins: Remembers the server's instance id once it was seen at home.
     public init(server: HassServer, finder: any LocalServerFinding = BonjourLocalServerFinder(),
-                watcher: any NetworkPathWatching = SystemNetworkPathWatcher()) {
+                watcher: any NetworkPathWatching = SystemNetworkPathWatcher(),
+                pins: any LocalServerPinStore = UserDefaultsLocalServerPinStore()) {
         self.server = server
         self.finder = finder
         self.watcher = watcher
+        self.pins = pins
     }
 
     /// The URL the websocket and REST requests should use now.
@@ -55,18 +65,13 @@ public final class LocalServerRoute: Sendable {
     }
 
     /// Looks for the server on the current network and moves the route to its home network address, or back.
+    /// - Parameter confirmHome: Asked only before the server's instance id is pinned: whether Home Assistant, over
+    ///   the public URL, says the signed-in person is home. The default never pins.
     /// - Returns: Whether ``currentURL`` changed.
     @discardableResult
-    public func refresh() async -> Bool {
+    public func refresh(confirmHome: @escaping @Sendable () async -> Bool = { false }) async -> Bool {
         let generation = state.withLock { $0.generation }
-        var next: URL?
-        if watcher.isOnLocalNetwork {
-            let server = server
-            if let candidate = await finder.firstMatch(timeout: Self.browseTimeout, accept: { LocalServerMatch.localURL(for: server, advertisement: $0) }),
-               await finder.answers(candidate, timeout: Self.probeTimeout) {
-                next = candidate
-            }
-        }
+        let next = await findLocalURL(confirmHome: confirmHome)
         // A cancelled check stopped listening early; its empty answer says nothing about the network.
         guard !Task.isCancelled else { return false }
         return state.withLock { state in
@@ -74,6 +79,24 @@ public final class LocalServerRoute: Sendable {
             state.localURL = next
             return true
         }
+    }
+
+    /// The home network address, when the server advertises one here that it can be trusted with and it answers.
+    private func findLocalURL(confirmHome: @Sendable () async -> Bool) async -> URL? {
+        guard watcher.isOnLocalNetwork else { return nil }
+        let server = server
+        let pinned = pins.instanceID(for: server)
+        guard let advertisement = await finder.firstMatch(timeout: Self.browseTimeout, accept: {
+                  LocalServerMatch.localURL(for: server, advertisement: $0) != nil && LocalServerMatch.isPinned($0, to: pinned)
+              }),
+              let url = LocalServerMatch.localURL(for: server, advertisement: advertisement),
+              let instanceID = advertisement.instanceID else { return nil }
+        if pinned == nil {
+            guard await confirmHome() else { return nil }
+        }
+        guard await finder.answers(url, timeout: Self.probeTimeout) else { return nil }
+        if pinned == nil { pins.save(instanceID, for: server) }
+        return url
     }
 
     /// Drops the home network address (the network changed or the socket failed).
@@ -106,6 +129,8 @@ public final class LocalServerRoute: Sendable {
 
 /// Home Assistant's zeroconf advertisement: the URLs in its `_home-assistant._tcp` TXT record.
 public struct LocalServerAdvertisement: Equatable, Sendable {
+    /// `uuid`: the Home Assistant instance's id, only ever advertised on the home network.
+    public var instanceID: String?
     /// `internal_url`: the address on the home network, e.g. `http://192.168.1.22:8123`.
     public var internalURL: URL?
     /// `external_url`: the public URL.
@@ -114,7 +139,8 @@ public struct LocalServerAdvertisement: Equatable, Sendable {
     public var baseURL: URL?
 
     /// Creates an advertisement.
-    public init(internalURL: URL? = nil, externalURL: URL? = nil, baseURL: URL? = nil) {
+    public init(instanceID: String? = nil, internalURL: URL? = nil, externalURL: URL? = nil, baseURL: URL? = nil) {
+        self.instanceID = instanceID
         self.internalURL = internalURL
         self.externalURL = externalURL
         self.baseURL = baseURL
@@ -123,6 +149,7 @@ public struct LocalServerAdvertisement: Equatable, Sendable {
     /// Reads a TXT record's keys.
     public init(txt: [String: String]) {
         self.init(
+            instanceID: txt["uuid"].flatMap { $0.isEmpty ? nil : $0 },
             internalURL: txt["internal_url"].flatMap(URL.init(string:)),
             externalURL: txt["external_url"].flatMap(URL.init(string:)),
             baseURL: txt["base_url"].flatMap(URL.init(string:))
@@ -143,6 +170,12 @@ public enum LocalServerMatch {
               ["http", "https"].contains(scheme), let host = url.host(), isPrivateHost(host),
               !isSameOrigin(url, server.baseURL) else { return nil }
         return HassServer(baseURL: url).baseURL
+    }
+
+    /// Whether the advertisement carries the pinned instance id; any id passes before one is pinned.
+    static func isPinned(_ advertisement: LocalServerAdvertisement, to pinned: String?) -> Bool {
+        guard let id = advertisement.instanceID else { return false }
+        return pinned.map { $0 == id } ?? true
     }
 
     /// Same scheme, host and port (default ports filled in).
@@ -178,10 +211,18 @@ public enum LocalServerMatch {
 
 /// Finds Home Assistant on the current network and checks an address answers.
 public protocol LocalServerFinding: Sendable {
-    /// Listens for advertisements for up to `timeout`, returning the first URL `accept` gives.
-    func firstMatch(timeout: Duration, accept: @escaping @Sendable (LocalServerAdvertisement) -> URL?) async -> URL?
+    /// Listens for advertisements for up to `timeout`, returning the first one `accept` takes.
+    func firstMatch(timeout: Duration, accept: @escaping @Sendable (LocalServerAdvertisement) -> Bool) async -> LocalServerAdvertisement?
     /// Whether `url` answers as Home Assistant within `timeout`.
     func answers(_ url: URL, timeout: Duration) async -> Bool
+}
+
+/// Remembers each server's instance id (the advertisement's `uuid`) once it was seen at home.
+public protocol LocalServerPinStore: Sendable {
+    /// The pinned id, or nil before the first time at home.
+    func instanceID(for server: HassServer) -> String?
+    /// Pins the id.
+    func save(_ instanceID: String, for server: HassServer)
 }
 
 /// Reports whether the phone is on a local network (Wi-Fi or Ethernet) and when that changes.
@@ -206,21 +247,22 @@ public struct BonjourLocalServerFinder: LocalServerFinding {
         session = URLSession(configuration: configuration)
     }
 
-    public func firstMatch(timeout: Duration, accept: @escaping @Sendable (LocalServerAdvertisement) -> URL?) async -> URL? {
+    public func firstMatch(timeout: Duration, accept: @escaping @Sendable (LocalServerAdvertisement) -> Bool) async -> LocalServerAdvertisement? {
         let browser = NWBrowser(for: .bonjourWithTXTRecord(type: LocalServerRoute.serviceType, domain: nil), using: .tcp)
-        let found = OSAllocatedUnfairLock<URL?>(initialState: nil)
+        let found = OSAllocatedUnfairLock<LocalServerAdvertisement?>(initialState: nil)
         browser.browseResultsChangedHandler = { results, _ in
             for result in results {
-                guard case let .bonjour(record) = result.metadata,
-                      let url = accept(LocalServerAdvertisement(txt: record.dictionary)) else { continue }
-                found.withLock { $0 = $0 ?? url }
+                guard case let .bonjour(record) = result.metadata else { continue }
+                let advertisement = LocalServerAdvertisement(txt: record.dictionary)
+                guard accept(advertisement) else { continue }
+                found.withLock { $0 = $0 ?? advertisement }
             }
         }
         browser.start(queue: Self.queue)
         defer { browser.cancel() }
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline, !Task.isCancelled {
-            if let url = found.withLock({ $0 }) { return url }
+            if let advertisement = found.withLock({ $0 }) { return advertisement }
             try? await Task.sleep(for: .milliseconds(50))
         }
         return found.withLock { $0 }
@@ -236,12 +278,30 @@ public struct BonjourLocalServerFinder: LocalServerFinding {
     }
 }
 
+/// Pins in `UserDefaults`, keyed by the server's public URL. The id is not a secret: it only shows that the
+/// advertisement comes from the house's own network.
+public struct UserDefaultsLocalServerPinStore: LocalServerPinStore {
+    /// Creates the store.
+    public init() {}
+
+    public func instanceID(for server: HassServer) -> String? {
+        UserDefaults.standard.string(forKey: Self.key(for: server))
+    }
+
+    public func save(_ instanceID: String, for server: HassServer) {
+        UserDefaults.standard.set(instanceID, forKey: Self.key(for: server))
+    }
+
+    private static func key(for server: HassServer) -> String { "localServerRoute.instanceID.\(server.baseURL.absoluteString)" }
+}
+
 /// Watches the network path with `NWPathMonitor`.
 public final class SystemNetworkPathWatcher: NetworkPathWatching, @unchecked Sendable {
-    // Unchecked: `monitor` is configured once in `start` and only touched again by `deinit`.
+    // Unchecked: `monitor` is configured once in `start` (guarded by `started`) and only touched again by `deinit`.
     private let monitor = NWPathMonitor()
     private let queue = DispatchQueue(label: "com.sfenton.home.network-path")
     private let local = OSAllocatedUnfairLock(initialState: false)
+    private let started = OSAllocatedUnfairLock(initialState: false)
 
     /// Creates a watcher; nothing happens until ``start(_:)``.
     public init() {}
@@ -251,6 +311,11 @@ public final class SystemNetworkPathWatcher: NetworkPathWatching, @unchecked Sen
     public var isOnLocalNetwork: Bool { local.withLock { $0 } }
 
     public func start(_ onChange: @escaping @Sendable () -> Void) {
+        let first = started.withLock { started in
+            defer { started = true }
+            return !started
+        }
+        guard first else { return }
         monitor.pathUpdateHandler = { [local] path in
             let isLocal = path.status == .satisfied && (path.usesInterfaceType(.wifi) || path.usesInterfaceType(.wiredEthernet))
             local.withLock { $0 = isLocal }
