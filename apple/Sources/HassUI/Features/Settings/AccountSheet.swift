@@ -87,6 +87,7 @@ private struct AccountHeader: View {
             Text(ProfileButton.initials(name) ?? "")
                 .font(.system(size: avatarSize * 0.4, weight: .semibold))
                 .foregroundStyle(.white)
+                .lineLimit(1)
                 .frame(width: avatarSize, height: avatarSize)
                 .background(HassTokens.Ink.actionFill, in: Circle())
                 .overlay { if ProfileButton.initials(name) == nil { Image(systemName: "person.fill").font(.largeTitle).foregroundStyle(.white) } }
