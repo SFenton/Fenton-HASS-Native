@@ -33,7 +33,6 @@ struct CameraGrid: View {
 /// "avoid covering camera views"). VoiceOver still reads whether the tile is live (``statusText(_:)``).
 struct CameraTile: View {
     var camera: HomeConfig.Camera
-    @Environment(\.cameraStreamPool) private var poolOverride
 
     private let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
 

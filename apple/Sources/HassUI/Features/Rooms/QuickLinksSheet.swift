@@ -243,7 +243,8 @@ struct QuickLinkTile: View {
         let security = link.id == "security-system" ? QuickLinks.securityAppearance(state?.state) : nil
         // A navigation tile is never "on": the off face keeps the tile dark with its glyph in the family colour.
         GlassTile(title: link.title, subtitle: Self.subtitle(link, store: store),
-                  symbol: SymbolMap.symbol(for: security?.icon ?? link.icon),
+                  // Redacted screenshots keep the plain shield, so the glyph can't give the alarm mode away.
+                  symbol: SymbolMap.symbol(for: ScreenshotPrivacy.isRedacting ? link.icon : security?.icon ?? link.icon),
                   family: Self.family(link, alarmState: state?.state), isActive: false, kind: .navigate, action: action)
     }
 }

@@ -44,7 +44,6 @@ struct RoomOverviewSheet: View {
 
     /// The sheet's title: its name where the subtitle carries the state, else the web's title with its count.
     static func title(_ kind: RoomOverviewKind, read: RoomOverview.Read) -> String {
-        if #available(iOS 26.0, macOS 26.0, *) { return RoomOverview.sheetName(kind) }
-        return RoomOverview.sheetTitle(kind, read: read)
+        SheetSubtitle.isShown ? RoomOverview.sheetName(kind) : RoomOverview.sheetTitle(kind, read: read)
     }
 }

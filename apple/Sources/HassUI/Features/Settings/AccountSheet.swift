@@ -47,7 +47,8 @@ struct AccountSheet: View {
             .modalChrome()
             .navigationTitle("Account")
             .inlineNavigationTitle()
-            .sheetSubtitle("Signed In")
+            // The header names the person; without a name it already says "Signed In".
+            .sheetSubtitle(navigator?.profileName == nil ? nil : "Signed In")
             .toolbar { SheetCloseItem(identifier: "account.close") { dismiss() } }
             .alert("Sign Out of Home Assistant?", isPresented: $confirmsSignOut) {
                 Button("Sign Out", role: .destructive) { signOut() }

@@ -65,7 +65,7 @@ public enum RoomOverview {
             let on = activeLightCount(read: read)
             return on == 0 ? "All Off" : "\(on) of \(lightEntityIds.count) On"
         case .occupancy:
-            let rooms = groups(.occupancy).filter { occupiedCount($0, read: read) > 0 }.count
+            let rooms = groups(.occupancy).count(where: { occupiedCount($0, read: read) > 0 })
             return rooms == 0 ? "All Clear" : "\(rooms) \(rooms == 1 ? "Room" : "Rooms") Occupied"
         case .contacts:
             return contactCountSummary(openContactCount(read: read))

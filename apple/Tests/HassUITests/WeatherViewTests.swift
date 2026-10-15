@@ -121,15 +121,19 @@ struct WeatherViewTests {
         #expect(WeatherCardContent.todayLabel(WeatherForecast(condition: "sunny", temperature: 80, templow: 60)) == "Today Sunny H:80°  L:60°")
     }
 
-    /// The card's outlook line is the first sentence of today's briefing, and absent until one is written.
+    /// The card's outlook line is the first sentence of today's briefing, absent until one is written and while the
+    /// briefing only says forecasts are missing.
     @Test func cardBriefingLineIsTheFirstSentence() throws {
+        func briefing(_ keys: [String]) throws -> WeatherDayBriefing {
+            let sentences = keys.map { #"{"key":"\#($0)","values":{}}"# }.joined(separator: ",")
+            let json = #"{"dateKey":"2026-10-15","generatedAt":0,"icon":"weather-night","severity":"calm","version":1,"sentences":[\#(sentences)]}"#
+            return try JSONDecoder().decode(WeatherDayBriefing.self, from: Data(json.utf8))
+        }
         #expect(WeatherCardContent.briefingLine(nil) == nil)
-        let json = #"{"dateKey":"2026-10-15","generatedAt":0,"icon":"weather-night","severity":"calm","version":1,"sentences":[{"key":"briefing.unavailable","values":{}},{"key":"briefing.unavailable","values":{}}]}"#
-        let briefing = try JSONDecoder().decode(WeatherDayBriefing.self, from: Data(json.utf8))
-        #expect(WeatherCardContent.briefingLine(briefing) == WeatherCopy.text("briefing.unavailable"))
-        let silent = try JSONDecoder().decode(WeatherDayBriefing.self, from: Data(json.replacingOccurrences(
-            of: #"[{"key":"briefing.unavailable","values":{}},{"key":"briefing.unavailable","values":{}}]"#, with: "[]").utf8))
-        #expect(WeatherCardContent.briefingLine(silent) == nil)
+        #expect(WeatherCardContent.briefingLine(try briefing([])) == nil)
+        #expect(WeatherCardContent.briefingLine(try briefing([WeatherCardContent.unavailableKey])) == nil)
+        #expect(WeatherCardContent.briefingLine(try briefing(["headline.label", WeatherCardContent.unavailableKey]))
+                == WeatherCopy.text("headline.label"))
     }
 
     @Test func modesHaveLabelsAndHints() {

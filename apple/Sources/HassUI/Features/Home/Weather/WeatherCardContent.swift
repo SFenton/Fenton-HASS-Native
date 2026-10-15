@@ -19,6 +19,8 @@ struct WeatherCardContent: View {
     @ScaledMetric(relativeTo: .title) private var glyphSize: CGFloat = 40
     /// The display numeral (direction G, Type: one per screen, Thin, monospaced digits).
     @ScaledMetric(relativeTo: .largeTitle) private var numeralSize: CGFloat = 64
+    /// The briefing's sentence while forecasts are missing (`WeatherDayBriefingGenerator`).
+    static let unavailableKey = "briefing.unavailable"
     /// The numeral's largest size at accessibility text sizes.
     static let maxNumeralSize: CGFloat = 96
 
@@ -63,9 +65,10 @@ struct WeatherCardContent: View {
         "Open seven-day weather forecast. \(current.conditionLabel), \(current.temperatureText)"
     }
 
-    /// The card's one-line outlook: the first sentence of today's briefing, or nil before one is written.
+    /// The card's one-line outlook: the first sentence of today's briefing, or nil before one is written. The
+    /// "appears once … returns forecast data" placeholder sentence is left out: the hours already say so.
     static func briefingLine(_ briefing: WeatherDayBriefing?) -> String? {
-        guard let first = briefing?.sentences.first else { return nil }
+        guard let first = briefing?.sentences.first, first.key != unavailableKey else { return nil }
         let line = WeatherBriefingRenderer.render(first)
         return line.isEmpty ? nil : line
     }
@@ -97,6 +100,8 @@ struct WeatherCardContent: View {
                         .font(.system(size: min(numeralSize, Self.maxNumeralSize), weight: .thin))
                         .monospacedDigit()
                         .lineLimit(1)
+                        // The condition wraps first; the reading never truncates.
+                        .layoutPriority(1)
                 }
                 .frame(minHeight: HassTokens.minTarget)
                 .contentShape(.rect)
