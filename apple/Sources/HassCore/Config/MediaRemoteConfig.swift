@@ -258,10 +258,10 @@ public enum MediaRemoteTab: String, CaseIterable, Hashable, Sendable, Identifiab
 
     public var id: String { rawValue }
 
-    /// The segment title.
+    /// The segment title. The pad's section is "Remote" (direction G, n4 remote).
     public var title: String {
         switch self {
-        case .controls: "Controls"
+        case .controls: "Remote"
         case .apps: "Apps"
         case .devices: "Devices"
         case .hueSync: "Hue Sync"

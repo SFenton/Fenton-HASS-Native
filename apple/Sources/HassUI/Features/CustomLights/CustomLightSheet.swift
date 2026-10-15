@@ -8,7 +8,8 @@ import AppKit
 #endif
 
 /// One custom light's sheet (web `LightMoreInfoSheet.tsx`): its brightness tile and, for color lights, the color,
-/// Reset, Apply to All Lights, and one button per other light to copy that light's color.
+/// Reset to Warm White and Apply to All Lights rows, and one swatch per other light to copy that light's color
+/// (direction G, n4 custom light sheet).
 ///
 /// The web draws a hue wheel and RGB sliders; the app uses the system color picker instead (HIG: Color wells),
 /// which offers the same wheel, sliders and eyedropper and is familiar to VoiceOver users.
@@ -18,7 +19,7 @@ struct CustomLightSheet: View {
     var caller: any HassServiceCalling
     @Environment(\.dismiss) private var dismiss
     @State private var pendingColor: Task<Void, Never>?
-    @ScaledMetric(relativeTo: .subheadline) private var minSwatchWidth: CGFloat = 64
+    @ScaledMetric(relativeTo: .subheadline) private var minSwatchWidth: CGFloat = 76
 
     var body: some View {
         let state = store.entity(light.entityId).state
@@ -48,47 +49,57 @@ struct CustomLightSheet: View {
             }
             .modalChrome()
             .navigationTitle(light.title)
+            .sheetSubtitle(Self.subtitle(state))
             .inlineNavigationTitle()
             .toolbar { SheetCloseItem { dismiss() } }
         }
         .tint(HassTokens.Ink.action)
     }
 
-    // MARK: - Color
-
-    private func colorSection(rgb: CustomLightsConfig.RGB?, unavailable: Bool) -> some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            ColorPicker(selection: colorBinding(rgb), supportsOpacity: false) {
-                Label("Color", systemImage: "paintpalette")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.primary)
-            }
-            .frame(minHeight: HassTokens.minTarget)
-            .disabled(unavailable)
-            .accessibilityIdentifier("customLight.color")
-            HStack(spacing: HassTokens.Spacing.m) {
-                actionButton("Reset", symbol: "arrow.counterclockwise", id: "customLight.reset") {
-                    caller.fire(CustomLightsConfig.reset(light.entityId))
-                }
-                actionButton("Apply to All Lights", symbol: "lightbulb.2", id: "customLight.applyAll", disabled: rgb == nil) {
-                    if let rgb { caller.fire(CustomLightsConfig.setColor(rgb, on: CustomLightsConfig.groupEntityId)) }
-                }
-            }
-            .disabled(unavailable)
-        }
+    /// "On · 80%", "Off" or "Unavailable".
+    static func subtitle(_ state: EntityState?) -> String {
+        guard let state, !state.isUnavailable else { return "Unavailable" }
+        let percent = LightControl.percent(of: state)
+        return percent > 0 ? "On · \(percent)%" : "Off"
     }
 
-    private func actionButton(_ title: String, symbol: String, id: String, disabled: Bool = false,
-                              _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            // Label ink, not the tint: tinted text on the bordered fill measured under 4.5:1.
-            Label(title, systemImage: symbol)
-                .foregroundStyle(disabled ? HassTokens.Ink.secondary : HassTokens.Ink.primary)
-                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
+    // MARK: - Color
+
+    /// The color, Reset to Warm White and Apply to All Lights, as rows of one inset group on the sheet.
+    private func colorSection(rgb: CustomLightsConfig.RGB?, unavailable: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ColorPicker(selection: colorBinding(rgb), supportsOpacity: false) {
+                Label("Color", systemImage: "paintpalette")
+                    .foregroundStyle(HassTokens.Ink.primary)
+            }
+            .padding(.horizontal, HassTokens.Spacing.l)
+            .frame(minHeight: 52)
+            .disabled(unavailable)
+            .accessibilityIdentifier("customLight.color")
+            Divider().padding(.leading, HassTokens.Spacing.l)
+            actionRow("Reset to Warm White", symbol: "arrow.counterclockwise", id: "customLight.reset") {
+                caller.fire(CustomLightsConfig.reset(light.entityId))
+            }
+            .disabled(unavailable)
+            Divider().padding(.leading, HassTokens.Spacing.l)
+            actionRow("Apply to All Lights", symbol: "lightbulb.2", id: "customLight.applyAll") {
+                if let rgb { caller.fire(CustomLightsConfig.setColor(rgb, on: CustomLightsConfig.groupEntityId)) }
+            }
+            .disabled(unavailable || rgb == nil)
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .disabled(disabled)
+        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module, style: .continuous))
+    }
+
+    /// A row that runs an action, its title in the tint (direction G: Reset is a list row, not a grey button).
+    private func actionRow(_ title: String, symbol: String, id: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            WrappingRowLabel(title: title, symbol: symbol)
+                .padding(.horizontal, HassTokens.Spacing.l)
+                .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(ActionRowStyle())
+        .accessibilityLabel(title)
         .accessibilityIdentifier(id)
     }
 
@@ -112,17 +123,16 @@ struct CustomLightSheet: View {
 
     private func otherLights(_ others: [CustomLightsConfig.Light]) -> some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            Text("Other Lights")
-                .font(.headline)
-                .foregroundStyle(HassTokens.Ink.primary)
-                .accessibilityAddTraits(.isHeader)
-            DynamicGridLayout(minCellWidth: minSwatchWidth, maxColumns: 7, spacing: HassTokens.Spacing.s) {
+            RoomSectionHeader(title: "Copy Color From")
+            DynamicGridLayout(minCellWidth: minSwatchWidth, maxColumns: 4, spacing: HassTokens.Spacing.s, equalRowHeights: true) {
                 ForEach(others) { other in
                     OtherLightSwatch(light: other, rgb: CustomLightsConfig.RGB(entity: store.entity(other.entityId).state)) { color in
                         caller.fire(CustomLightsConfig.setColor(color, on: light.entityId))
                     }
                 }
             }
+            .padding(HassTokens.Spacing.m)
+            .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module, style: .continuous))
         }
     }
 
@@ -131,27 +141,63 @@ struct CustomLightSheet: View {
     }
 }
 
-/// Copies another light's color onto the open light (web `OtherLightButton`); disabled while it has no color.
+/// Tint text that keeps its contrast: the tint while enabled, the sheet's secondary label while disabled.
+private struct ActionRowStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        ActionRowBody(configuration: configuration)
+    }
+
+    private struct ActionRowBody: View {
+        var configuration: Configuration
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .foregroundStyle(isEnabled ? HassTokens.Ink.action : HassTokens.Surface.secondaryInSheet)
+                .opacity(configuration.isPressed ? 0.6 : 1)
+        }
+    }
+}
+
+/// Copies another light's color onto the open light (web `OtherLightButton`): a circle of its color with its name
+/// under it, or an empty ring and "Off" while it has no color.
 struct OtherLightSwatch: View {
     var light: CustomLightsConfig.Light
     var rgb: CustomLightsConfig.RGB?
     var apply: (CustomLightsConfig.RGB) -> Void
+    @ScaledMetric(relativeTo: .title) private var diameter: CGFloat = 48
 
     var body: some View {
         Button {
             if let rgb { apply(rgb) }
         } label: {
-            Image(systemName: "lamp.floor.fill")
-                .font(.title3)
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.4), radius: 1)
-                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget + 12)
-                .background(rgb.map(Color.init(rgb:)) ?? Color.secondary.opacity(0.3),
-                            in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
+            VStack(spacing: HassTokens.Spacing.xs) {
+                Group {
+                    if let rgb {
+                        Circle().fill(Color(rgb: rgb))
+                    } else {
+                        Circle().strokeBorder(HassTokens.Surface.secondaryInSheet, lineWidth: 1.5)
+                    }
+                }
+                .frame(width: max(diameter, HassTokens.minTarget), height: max(diameter, HassTokens.minTarget))
+                Text(light.title)
+                    .font(.footnote)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                if rgb == nil {
+                    Text("Off").font(.footnote)
+                }
+            }
+            .foregroundStyle(HassTokens.Surface.secondaryInSheet)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // Disabled without dimming: the name and "Off" keep their contrast, and VoiceOver reads it dimmed.
         .disabled(rgb == nil)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Apply \(light.title) Color")
+        .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("customLight.other.\(light.entityId)")
     }
 }

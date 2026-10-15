@@ -7,11 +7,12 @@ import SwiftUI
 /// Colors and sizes local to the remote.
 enum RemoteStyle {
     /// Fill behind round buttons; sits on the sheet background, not on a material, so it keeps its edge.
+    /// The remote's own round buttons use ``RoundButtonStyle``'s G cell grey; this stays for other sheets' capsules.
     static let buttonFill = Color.primary.opacity(0.09)
-    /// Media device tint (web `media` tile tone).
+    /// Media device tint (web `media` tile tone), kept for room tiles; remote rows use ``ColorFamily/media``.
     static let media = Color(red: 0.36, green: 0.42, blue: 0.95)
-    /// Power icon while the device is on (web `red`).
-    static let powerOn = Color.red
+    /// Power icon while the device is on (direction G red, web `red`).
+    static let powerOn = Color(rgb: HassTokens.Palette.red)
     /// Power icon while the device is off (web `green`).
     static let powerOff = Color.green
 
@@ -32,10 +33,11 @@ struct RemoteSectionHeader: View {
     }
 }
 
-/// A round icon button: tinted fill, pressed scale, dimmed while disabled (HIG: Buttons; ≥ 44 pt).
+/// A round icon button: tinted fill, pressed scale, dimmed while disabled (HIG: Buttons; ≥ 44 pt). Direction G draws
+/// the remote's keys as grey circles in the sheet's cell colour (`.agents/design/direction-g.md`, Controls: Remote).
 struct RoundButtonStyle: ButtonStyle {
     var diameter: CGFloat
-    var fill: Color = RemoteStyle.buttonFill
+    var fill: Color = HassTokens.Surface.sheetCell
 
     func makeBody(configuration: Configuration) -> some View {
         RoundButtonBody(configuration: configuration, diameter: diameter, fill: fill)
@@ -65,6 +67,8 @@ struct RemoteIconButton: View {
     var button: MediaRemoteButton
     var diameter: CGFloat
     var iconFont: Font = .title2
+    /// The circle's fill; clear for keys drawn on a card (volume), which keep their 44 pt target.
+    var fill: Color = HassTokens.Surface.sheetCell
     var onTextPrompt: (String) -> Void = { _ in }
     var onPress: () -> Void = {}
 
@@ -75,7 +79,7 @@ struct RemoteIconButton: View {
         } label: {
             RemoteButtonIcon(button: button, tone: controller.iconTone(for: button), font: iconFont)
         }
-        .buttonStyle(RoundButtonStyle(diameter: diameter))
+        .buttonStyle(RoundButtonStyle(diameter: diameter, fill: fill))
         .accessibilityLabel(button.label)
         .modifier(SemanticsTraits(semantics: controller.semantics(for: button)))
         .accessibilityIdentifier("remote.button.\(button.label)")
@@ -106,7 +110,7 @@ struct RemoteButtonIcon: View {
         switch tone {
         case .active: RemoteStyle.powerOn
         case .inactive: RemoteStyle.powerOff
-        case nil: HassTokens.Ink.primary
+        case nil: .white
         }
     }
 }
@@ -170,12 +174,18 @@ private struct PowerSemantics: ViewModifier {
 
 // MARK: - D-pad
 
-/// The 3×3 directional pad: up, left, select, right and down as large round buttons, with a light haptic on
-/// each press (web `RemoteGrid`; HIG: Playing haptics). Select is blank on a SHIELD and a dot on Apple TV.
+/// The 3×3 remote grid (`.agents/design/direction-g.md`, Controls: Remote): Back, Up and Power; Left, Select and
+/// Right; Home, Down and the keyboard, as large grey circles with a light haptic on each press (web `RemoteGrid`
+/// plus its navigation row; HIG: Playing haptics). Select is blank on a SHIELD and a dot on Apple TV. A remote
+/// without a keyboard (Apple TV) leaves that corner empty.
 struct DirectionalPad: View {
     var controller: MediaRemoteController
     /// The width the pad must fit (the leading column in two columns); `nil` for no limit.
     var maxWidth: CGFloat?
+    /// Whether the inline keyboard is open (the keyboard key reads Expanded or Collapsed).
+    var keyboardOpen = false
+    /// The keyboard key asks for the text prompt on this entity.
+    var onTextPrompt: (String) -> Void = { _ in }
     @ScaledMetric(relativeTo: .title) private var scaledDiameter: CGFloat = 76
     @State private var presses = 0
 
@@ -185,14 +195,14 @@ struct DirectionalPad: View {
     static func diameter(scaled: CGFloat, maxWidth: CGFloat?) -> CGFloat {
         let size = min(max(scaled, 64), 104)
         guard let maxWidth else { return size }
-        return max(HassTokens.minTarget, min(size, (maxWidth - 2 * HassTokens.Spacing.s) / 3))
+        return max(HassTokens.minTarget, min(size, (maxWidth - 2 * HassTokens.Spacing.m) / 3))
     }
 
     var body: some View {
         let config = controller.config
-        Grid(horizontalSpacing: HassTokens.Spacing.s, verticalSpacing: HassTokens.Spacing.s) {
+        Grid(horizontalSpacing: HassTokens.Spacing.m, verticalSpacing: HassTokens.Spacing.m) {
             GridRow {
-                gap
+                button(config.back)
                 button(config.up)
                 // Power stays enabled while the directions are disabled: it is how the device turns on.
                 PowerButton(controller: controller, diameter: diameter) { presses += 1 }
@@ -204,9 +214,14 @@ struct DirectionalPad: View {
                 button(config.right)
             }
             GridRow {
-                gap
+                button(config.home)
                 button(config.down)
-                gap
+                if let keyboard = config.keyboard, !controller.hidesKeyboard {
+                    button(keyboard)
+                        .modifier(KeyboardState(isKeyboard: true, isOpen: keyboardOpen))
+                } else {
+                    gap
+                }
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: presses)
@@ -220,21 +235,9 @@ struct DirectionalPad: View {
     }
 
     private func button(_ button: MediaRemoteButton) -> some View {
-        RemoteIconButton(controller: controller, button: button, diameter: diameter, iconFont: .title, onPress: { presses += 1 })
+        RemoteIconButton(controller: controller, button: button, diameter: diameter, iconFont: .title,
+                         onTextPrompt: onTextPrompt, onPress: { presses += 1 })
             .disabled(controller.controlsDisabled)
-    }
-}
-
-// MARK: - Tab picker
-
-/// The remote's section tabs (``ModalTabBar``).
-struct RemoteTabPicker: View {
-    var tabs: [MediaRemoteTab]
-    var title: String
-    @Binding var selection: MediaRemoteTab
-
-    var body: some View {
-        ModalTabBar(tabs: tabs, label: "\(title) sections", title: \.title, selection: $selection, identifier: "remote.tabs")
     }
 }
 
@@ -265,7 +268,7 @@ struct SliderDraft: Equatable {
     }
 }
 
-/// The inline keyboard under Navigation (web `TextPromptForm`).
+/// The inline keyboard under the pad (web `TextPromptForm`).
 struct KeyboardPrompt: Equatable {
     /// The entity typed into while open.
     var target: String?
@@ -292,19 +295,21 @@ struct KeyboardPrompt: Equatable {
 
 // MARK: - Controls tab
 
-/// Volume, navigation (with the inline keyboard) and playback (web `MediaRemoteModalTabContent`, controls tab).
+/// The Remote section under the pad: the inline keyboard while open, the volume card and the transport keys (web
+/// `MediaRemoteModalTabContent`, controls tab; direction G: volume is a slider between speaker − and +).
 struct RemoteControlsTab: View {
     var controller: MediaRemoteController
+    /// Shared with the pad's keyboard key, which opens it.
+    @Binding var keyboard: KeyboardPrompt
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var keyboard: KeyboardPrompt
     @State private var volume = SliderDraft()
     @FocusState private var fieldFocused: Bool
     @Environment(\.dynamicTypeSize) private var typeSize
     @ScaledMetric(relativeTo: .title2) private var scaledDiameter: CGFloat = 56
 
-    init(controller: MediaRemoteController, keyboard: KeyboardPrompt = KeyboardPrompt()) {
+    init(controller: MediaRemoteController, keyboard: Binding<KeyboardPrompt>) {
         self.controller = controller
-        _keyboard = State(initialValue: keyboard)
+        _keyboard = keyboard
     }
 
     private var diameter: CGFloat { min(max(scaledDiameter, HassTokens.minTarget), 88) }
@@ -312,32 +317,21 @@ struct RemoteControlsTab: View {
     var body: some View {
         let config = controller.config
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
+            if keyboard.isOpen { keyboardForm }
             if controller.showsVolume {
-                section(config.volumeTitle) {
-                    volumeSlider
-                    row([config.volumeDown, config.volumeMute, config.volumeUp], disabled: controller.volumeDisabled)
-                }
-                .accessibilityIdentifier("remote.section.volume")
+                volumeCard
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(config.volumeTitle)
+                    .accessibilityIdentifier("remote.section.volume")
             }
-            section("Navigation") {
-                row([config.back, config.home, controller.hidesKeyboard ? nil : config.keyboard], disabled: controller.controlsDisabled)
-                if keyboard.isOpen { keyboardForm }
-            }
-            section("Controls") {
-                row([config.pause, nil, config.play], disabled: controller.controlsDisabled)
-            }
-            .opacity(controller.isControlOff ? 0.6 : 1)
+            row([config.pause, nil, config.play], disabled: controller.controlsDisabled)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Playback")
         }
         .animation(.default, value: keyboard.isOpen)
         .onChange(of: keyboard.isOpen) { _, open in fieldFocused = open }
-    }
-
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            RemoteSectionHeader(title: title)
-            content()
-        }
-        .accessibilityElement(children: .contain)
+        // Opened from the pad while another section showed (two columns): focus once the field is here.
+        .onAppear { if keyboard.isOpen { fieldFocused = true } }
     }
 
     /// Three equal columns; a `nil` slot keeps its space (web `ButtonRow` spacer).
@@ -346,9 +340,7 @@ struct RemoteControlsTab: View {
             ForEach(Array(buttons.enumerated()), id: \.offset) { _, button in
                 Group {
                     if let button {
-                        RemoteIconButton(controller: controller, button: button, diameter: diameter,
-                                         onTextPrompt: { keyboard.toggle($0) })
-                            .modifier(KeyboardState(isKeyboard: button == controller.config.keyboard, isOpen: keyboard.isOpen))
+                        RemoteIconButton(controller: controller, button: button, diameter: diameter)
                     } else {
                         Color.clear.frame(width: diameter, height: diameter).accessibilityHidden(true)
                     }
@@ -361,6 +353,41 @@ struct RemoteControlsTab: View {
 
     // MARK: Volume
 
+    /// The speaker's card: its name and level, mute, and the slider between Volume Down and Volume Up.
+    private var volumeCard: some View {
+        let config = controller.config
+        let disabled = controller.volumeDisabled
+        return VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+            HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
+                Text(config.volumeTitle)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityHidden(true)
+                Text("\(Int(volume.shown(live: Double(controller.volumePercent)).rounded()))%")
+                    .font(.headline.weight(.regular))
+                    .monospacedDigit()
+                    .foregroundStyle(HassTokens.Surface.secondaryInSheet)
+                    .accessibilityHidden(true)
+                RemoteIconButton(controller: controller, button: config.volumeMute, diameter: HassTokens.minTarget,
+                                 iconFont: .body, fill: .clear)
+                    .disabled(disabled)
+            }
+            HStack(spacing: HassTokens.Spacing.xs) {
+                RemoteIconButton(controller: controller, button: config.volumeDown, diameter: HassTokens.minTarget,
+                                 iconFont: .body, fill: .clear)
+                volumeSlider
+                RemoteIconButton(controller: controller, button: config.volumeUp, diameter: HassTokens.minTarget,
+                                 iconFont: .body, fill: .clear)
+            }
+            .disabled(disabled)
+        }
+        .padding(.horizontal, HassTokens.Spacing.l)
+        .padding(.vertical, HassTokens.Spacing.m)
+        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module, style: .continuous))
+    }
+
     private var volumeSlider: some View {
         let live = Double(controller.volumePercent)
         let shown = volume.shown(live: live)
@@ -368,7 +395,7 @@ struct RemoteControlsTab: View {
         return Slider(value: Binding(get: { volume.shown(live: live) }, set: { volume.set($0, commit: commit) }), in: 0...100, step: 1) {
             volume.editingChanged($0, live: live, commit: commit)
         }
-        .tint(RemoteStyle.media)
+        .tint(HassTokens.Ink.action)
         .disabled(controller.volumeDisabled)
         .frame(minHeight: HassTokens.minTarget)
         .accessibilityLabel("\(controller.config.volumeTitle) volume")
@@ -408,7 +435,7 @@ struct RemoteControlsTab: View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             Text("Text to send")
                 .font(.subheadline)
-                .foregroundStyle(HassTokens.Ink.secondary)
+                .foregroundStyle(HassTokens.Surface.secondaryInSheet)
                 .accessibilityHidden(true)
             // Field, Send and Cancel on one row like the web, so keyboard avoidance that keeps the focused field
             // visible keeps the buttons visible too; stacked at accessibility sizes. One layout only: a

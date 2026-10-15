@@ -51,6 +51,17 @@ struct MediaRemoteViewTests {
         #expect(render(MediaRemotes.livingRoomShield, tab: .hueSync, size: Self.phone) != nil)
     }
 
+    /// The line under the sheet's title: the app and state while on, the state alone otherwise.
+    @Test func subtitleNamesTheAppWhileOn() {
+        let id = "media_player.living_room_shield_2"
+        #expect(MediaRemoteSheet.subtitle(nil) == nil)
+        let playing = EntityState(entityId: id, state: "playing", attributes: ["app_name": .string("Plex")])
+        #expect(MediaRemoteSheet.subtitle(playing) == "Plex · \(MediaRemoteState.format("playing"))")
+        let off = EntityState(entityId: id, state: "off", attributes: ["app_name": .string("Plex")])
+        #expect(MediaRemoteSheet.subtitle(off) == MediaRemoteState.format("off"))
+        #expect(MediaRemoteSheet.subtitle(EntityState(entityId: id, state: "on")) == MediaRemoteState.format("on"))
+    }
+
     // MARK: Layout policy
 
     @Test func twoColumnsOnlyWhereSplitsAreAllowedAndTheSheetIsWide() {
@@ -70,7 +81,7 @@ struct MediaRemoteViewTests {
         #expect(DirectionalPad.diameter(scaled: 76, maxWidth: nil) == 76)
         #expect(DirectionalPad.diameter(scaled: 200, maxWidth: nil) == 104)
         #expect(DirectionalPad.diameter(scaled: 30, maxWidth: nil) == 64)
-        #expect(DirectionalPad.diameter(scaled: 104, maxWidth: 296) == 93.33333333333333)
+        #expect(DirectionalPad.diameter(scaled: 104, maxWidth: 296) == (296 - 24) / 3)
         #expect(DirectionalPad.diameter(scaled: 104, maxWidth: 100) == 44)
     }
 
@@ -193,7 +204,7 @@ struct MediaRemoteViewTests {
         let store = MediaRemoteFixtures.store()
         let controller = MediaRemoteController(config: MediaRemotes.theaterRoomShield, store: store, caller: RecordingCaller())
         let open = KeyboardPrompt(target: "media_player.theater_room_shield", text: "it's")
-        #expect(ImageRenderer(content: RemoteControlsTab(controller: controller, keyboard: open).frame(width: 402)).cgImage != nil)
+        #expect(ImageRenderer(content: RemoteControlsTab(controller: controller, keyboard: .constant(open)).frame(width: 402)).cgImage != nil)
         #expect(ImageRenderer(content: Color.clear.hassSheet(.page).frame(width: 10, height: 10)).cgImage != nil)
         let apps = RemoteAppsTab(controller: controller, imageServer: .fentonHome).frame(width: 402)
         #expect(ImageRenderer(content: apps).cgImage != nil)

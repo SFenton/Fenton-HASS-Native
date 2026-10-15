@@ -155,7 +155,7 @@ struct MediaRemoteConfigTests {
         #expect(MediaRemotes.masterBedroomAppleTV.tabs == [.controls, .apps])
         #expect(MediaRemotes.theaterRoomShield.tabs == [.controls, .apps, .devices])
         #expect(MediaRemotes.musicRoom.tabs == [.controls, .apps, .devices, .hueSync])
-        #expect(MediaRemoteTab.allCases.map(\.title) == ["Controls", "Apps", "Devices", "Hue Sync"])
+        #expect(MediaRemoteTab.allCases.map(\.title) == ["Remote", "Apps", "Devices", "Hue Sync"])
     }
 
     /// Service calls match `mediaRemotes.ts` verbatim.

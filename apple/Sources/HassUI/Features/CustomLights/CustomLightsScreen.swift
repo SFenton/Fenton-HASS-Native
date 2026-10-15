@@ -34,37 +34,37 @@ public struct CustomLightsScreen: View {
         let showsLights = manualOn && mode == CustomLightsConfig.customMode
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-                Text(CustomLightsConfig.frontYardTitle)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .accessibilityAddTraits(.isHeader)
-                GlassTile(
-                    title: "Manually Control Front Yard Lights",
-                    subtitle: manual.map { $0.isUnavailable ? "Unavailable" : (manualOn ? "On" : "Off") } ?? "Unavailable",
-                    symbol: "lightbulb", tint: HassTokens.Tint.light, isActive: manualOn,
-                    isUnavailable: manual?.isUnavailable ?? true
-                ) {
-                    send(CustomLightsConfig.setManualControl(on: !manualOn))
+                RoomSectionHeader(title: CustomLightsConfig.frontYardTitle)
+                VStack(alignment: .leading, spacing: 0) {
+                    ManualControlRow(isOn: manualOn, isUnavailable: manual?.isUnavailable ?? true) {
+                        send(CustomLightsConfig.setManualControl(on: $0))
+                    }
+                    if manualOn {
+                        Divider().padding(.leading, HassTokens.Spacing.l)
+                        LightingModeButton(mode: mode, swatch: swatch(mode)) { picker = true }
+                    }
                 }
-                .accessibilityIdentifier("customLights.manual")
-                if manualOn {
-                    LightingModeButton(mode: mode, swatch: swatch(mode)) { picker = true }
-                }
+                .module()
                 if showsLights {
-                    DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
+                    DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
                         ForEach(CustomLightsConfig.lights) { light in
                             CustomLightTile(light: light, state: store.entity(light.entityId).state, caller: caller) { detail = light }
                         }
                     }
+                    .equalHeightTiles()
+                    // Reset is a list row, not a grey button (direction G, Sheets and Primary buttons).
                     Button {
                         send(CustomLightsConfig.reset())
                     } label: {
-                        Label("Reset All Lights", systemImage: "arrow.counterclockwise")
-                            .foregroundStyle(HassTokens.Ink.primary)
-                            .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
+                        WrappingRowLabel(title: "Reset All Lights", symbol: "arrow.counterclockwise")
+                            .foregroundStyle(HassTokens.Ink.action)
+                            .padding(.horizontal, HassTokens.Spacing.l)
+                            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                    .buttonStyle(.plain)
+                    .module()
+                    .accessibilityLabel("Reset All Lights")
                     .accessibilityIdentifier("customLights.resetAll")
                 }
             }
@@ -104,38 +104,72 @@ public struct CustomLightsScreen: View {
     private func send(_ call: ServiceCall) { caller.fire(call) }
 }
 
-// MARK: - Lighting mode
+// MARK: - Front yard rows
 
-/// The Lighting Mode row: palette icon, the mode with its swatch, and a chevron (web `modeSelect`).
+/// The manual control switch, the first row of the Front Yard module (direction G: switches only in list rows).
+struct ManualControlRow: View {
+    var isOn: Bool
+    var isUnavailable: Bool
+    var set: (Bool) -> Void
+
+    var body: some View {
+        Toggle(isOn: Binding(get: { isOn }, set: set)) {
+            Label {
+                Text("Manually Control Front Yard Lights")
+                    .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "lightbulb.2")
+                    .foregroundStyle(isOn ? ColorFamily.lights.glyph : ColorFamily.lights.offGlyph)
+                    .accessibilityHidden(true)
+            }
+        }
+        .tint(.green)
+        .disabled(isUnavailable)
+        .padding(.horizontal, HassTokens.Spacing.l)
+        .padding(.vertical, HassTokens.Spacing.s)
+        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+        .accessibilityIdentifier("customLights.manual")
+    }
+}
+
+/// The Lighting Mode row: palette icon, the mode's swatch and name in the tint, and the pop-up chevrons
+/// (web `modeSelect`). It opens the lighting modes.
 struct LightingModeButton: View {
     var mode: String
     var swatch: [CustomLightsConfig.RGB]
     var action: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: HassTokens.Spacing.m) {
-                Image(systemName: "paintpalette")
-                    .font(.title3)
-                    .foregroundStyle(HassTokens.Tint.light)
-                VStack(alignment: .leading, spacing: 2) {
+            // The value moves under the title at accessibility sizes, where one row has no room for both.
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.xs))
+                : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.m))
+            layout {
+                HStack(spacing: HassTokens.Spacing.m) {
+                    Image(systemName: "paintpalette")
+                        .foregroundStyle(HassTokens.Surface.secondaryOnModule)
                     Text(CustomLightsConfig.lightingModeTitle)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(HassTokens.Ink.primary)
-                    Text(mode)
-                        .font(.footnote)
-                        .foregroundStyle(HassTokens.Ink.secondary)
+                        .foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: HassTokens.Spacing.s)
-                GradientSwatch(colors: swatch.map(Color.init(rgb:)))
-                Image(systemName: "chevron.down")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: HassTokens.Spacing.s) {
+                    GradientSwatch(colors: swatch.map(Color.init(rgb:)))
+                    Text(mode)
+                        .foregroundStyle(HassTokens.Ink.action)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(HassTokens.Ink.action)
+                }
             }
-            .padding(HassTokens.Spacing.m)
-            .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+            .padding(.horizontal, HassTokens.Spacing.l)
+            .padding(.vertical, HassTokens.Spacing.s)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
