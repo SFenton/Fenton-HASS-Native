@@ -56,6 +56,10 @@ automation ─ notify.mobile_app_<device>_fenton ─▶ mobile_app ─ POST push
 - Extension crashes: `xcrun devicectl device info files --device <udid> --domain-type systemCrashLogs`, then `copy from` the `.ips`.
 - Verified on Stephen's iPhone 18 Pro (2026-10-15, Debug, sandbox): registration and `update_registration` (rename to "Stephen's iPhone · Fenton"), real APNs delivery, buttons from the payload, and the camera snapshot attachment. `notify.fenton_stephen` (person targets) works with Fenton Push 0.1.1, which calls each device's own `notify.mobile_app_<device>_fenton` (verified 2026-10-15).
 
+## Routing on Stephen's server
+
+- 2026-10-15 (owner's request): the YAML notify group "Stephen's Phone" (`notify.stephen_s_phone`, `/config/configuration.yaml`) lists `fenton_stephen` after `mobile_app_iphone_18_pro`, so every automation that notifies Stephen, and `notify.household` (which nests it), reaches both the official app and Fenton. Backup `configuration.yaml.bak-20261015-080415-fenton`. Stephanie's group is unchanged until she runs Fenton.
+
 ## Testing
 
 - Logic: `HassCoreTests/PushTests.swift`, `HassUITests/PushCoordinatorTests.swift` (REST double: `HassTestSupport/StubHTTPTransport`).
