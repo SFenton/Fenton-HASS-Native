@@ -29,6 +29,10 @@ public final class HassConnection {
     /// The server this connection talks to.
     public let server: HassServer
 
+    /// Moves the websocket to Home Assistant's home network address when the phone is at home; nil keeps the
+    /// public URL (tests, extensions).
+    public let route: LocalServerRoute?
+
     /// The entity store this connection feeds.
     public let store: EntityStore
 
@@ -41,6 +45,9 @@ public final class HassConnection {
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     /// The HAKit entities last applied, so each delivery converts only what changed.
     @ObservationIgnored private var lastDelivered: [String: HAEntity] = [:]
+    /// The app wants the socket open (between ``connect(subscribingToStates:)`` and ``disconnect()``).
+    @ObservationIgnored private var wantsConnection = false
+    @ObservationIgnored private var routeTask: Task<Void, Never>?
 
     /// How long live updates are batched before the disk snapshot is rewritten.
     static let snapshotDebounce: Duration = .seconds(10)
@@ -53,10 +60,11 @@ public final class HassConnection {
     ///   - tokens: Supplies access tokens.
     ///   - store: The store to feed.
     ///   - snapshotCache: Disk snapshot of entity states.
-    public convenience init(server: HassServer, tokens: TokenManager, store: EntityStore, snapshotCache: EntitySnapshotCache = .init()) {
-        let baseURL = server.baseURL
+    ///   - route: Uses the home network address at home (``LocalServerRoute``); nil always uses the public URL.
+    public convenience init(server: HassServer, tokens: TokenManager, store: EntityStore, snapshotCache: EntitySnapshotCache = .init(),
+                            route: LocalServerRoute? = nil) {
         let configuration = HAConnectionConfiguration(
-            connectionInfo: { try? HAConnectionInfo(url: baseURL, userAgent: "FentonHome") },
+            connectionInfo: { HassConnection.connectionInfo(server: server, route: route) },
             fetchAuthToken: { completion in
                 nonisolated(unsafe) let completion = completion
                 Task {
@@ -70,16 +78,19 @@ public final class HassConnection {
         )
         self.init(
             server: server, store: store, snapshotCache: snapshotCache,
-            connection: HAKit.connection(configuration: configuration, connectAutomatically: false)
+            connection: HAKit.connection(configuration: configuration, connectAutomatically: false),
+            route: route
         )
     }
 
     /// Creates a connection over a given HAKit connection (tests pass `HAMockConnection`).
-    init(server: HassServer, store: EntityStore, snapshotCache: EntitySnapshotCache = .init(), connection: HAConnection) {
+    init(server: HassServer, store: EntityStore, snapshotCache: EntitySnapshotCache = .init(), connection: HAConnection,
+         route: LocalServerRoute? = nil) {
         self.server = server
         self.store = store
         self.snapshotCache = snapshotCache
         self.connection = connection
+        self.route = route
 
         if let snapshot = snapshotCache.load(for: server) {
             store.replaceAll(snapshot.entities, freshness: .snapshot(savedAt: snapshot.savedAt))
@@ -92,6 +103,16 @@ public final class HassConnection {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshStatus() }
         }
+
+        route?.startWatching { [weak self] in
+            Task { @MainActor in self?.networkDidChange() }
+        }
+    }
+
+    /// Where HAKit connects: the route's current URL (HAKit reads this on every connect and swaps the socket
+    /// only when the URL changed).
+    nonisolated static func connectionInfo(server: HassServer, route: LocalServerRoute?) -> HAConnectionInfo? {
+        try? HAConnectionInfo(url: route?.currentURL ?? server.baseURL, userAgent: "FentonHome")
     }
 
     // MARK: - Lifecycle
@@ -100,7 +121,9 @@ public final class HassConnection {
     /// - Parameter subscribingToStates: Also subscribe to every entity's state. A notification extension that only
     ///   sends a command (a camera's stream) passes false, so it stays inside its memory limit.
     public func connect(subscribingToStates: Bool = true) {
+        wantsConnection = true
         connection.connect()
+        refreshRoute()
         guard subscribingToStates, statesSubscription == nil else { return }
         statesSubscription = connection.caches.states().subscribe { [weak self] _, cached in
             let entities = cached.all
@@ -110,6 +133,9 @@ public final class HassConnection {
 
     /// Closes the websocket and saves the snapshot. The store keeps its values so the UI does not blank.
     public func disconnect() {
+        wantsConnection = false
+        routeTask?.cancel()
+        routeTask = nil
         saveSnapshotNow()
         statesSubscription?.cancel()
         statesSubscription = nil
@@ -121,6 +147,50 @@ public final class HassConnection {
         saveTask?.cancel()
         saveTask = nil
         try? snapshotCache.save(Array(store.allValues.values), server: server)
+    }
+
+    // MARK: - Route
+
+    /// Checks whether Home Assistant answers on the home network and moves the socket there, or back to the
+    /// public URL. Runs on every connect and network change; the current socket keeps working meanwhile.
+    public func refreshRoute() {
+        guard let route else { return }
+        routeTask?.cancel()
+        let confirmHome: @Sendable () async -> Bool = { [weak self] in await self?.isHomeConfirmedOverPublicURL() ?? false }
+        routeTask = Task { [weak self] in
+            let changed = await route.refresh(confirmHome: confirmHome)
+            guard changed, !Task.isCancelled else { return }
+            self?.applyRoute()
+        }
+    }
+
+    /// Whether Home Assistant says the signed-in person is home, from live states that came over the public URL.
+    /// The route asks this only before it has pinned the server's instance id, so a network that merely advertises
+    /// our server can't receive the token.
+    func isHomeConfirmedOverPublicURL() async -> Bool {
+        guard route?.isLocal == false, store.freshness == .live, let user = try? await currentUser() else { return false }
+        // Re-checked after the await: the states must still be ones the public URL delivered.
+        guard route?.isLocal == false else { return false }
+        return store.allValues.values.contains { entity in
+            entity.entityId.hasPrefix("person.") && entity.attributes["user_id"]?.string == user.id && entity.state == "home"
+        }
+    }
+
+    /// A new network: stop using the home address at once (the next connect goes to the public URL), then look again.
+    func networkDidChange() {
+        if route?.reset() == true { applyRoute() }
+        refreshRoute()
+    }
+
+    /// Reconnects on the route's current URL; the states subscription, the store and every view stay as they are.
+    ///
+    /// Disconnects first rather than letting `connect()` swap sockets: HAKit's swap leaves the old socket's delegate
+    /// in place, so its late close event could tear down the new socket.
+    private func applyRoute() {
+        guard wantsConnection else { return }
+        Telemetry.count(route?.isLocal == true ? "connection.route.local" : "connection.route.public")
+        connection.disconnect()
+        connection.connect()
     }
 
     // MARK: - Actions
@@ -202,6 +272,8 @@ public final class HassConnection {
         if delta.isFirst {
             // The first live set replaces the disk snapshot, dropping entities the server no longer has.
             store.replaceAll(delta.changed, freshness: .live)
+            // Live presence can now confirm home for a route that has not seen this server at home yet.
+            if route?.isLocal == false { refreshRoute() }
         } else {
             store.apply(delta.changed, removing: delta.removed, freshness: .live)
         }
@@ -262,7 +334,10 @@ public final class HassConnection {
             switch reason {
             case .disconnected: next = .disconnected
             case .rejected: next = .rejected
-            case .waitingToReconnect: next = .waitingToReconnect
+            case .waitingToReconnect:
+                next = .waitingToReconnect
+                // A failed socket on the home address falls back to the public URL for HAKit's retry.
+                route?.reset()
             }
         }
         if status != next { status = next }

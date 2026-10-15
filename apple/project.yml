@@ -67,6 +67,15 @@ targets:
           UIColorName: LaunchBackground
         # Lets ProMotion iPhones scroll and animate at 120 Hz; without it the app is capped at 60 Hz.
         CADisableMinimumFrameDurationOnPhone: true
+        # At home the app talks to Home Assistant on its home network address (plain HTTP on port 8123) instead of
+        # the public URL through Cloudflare; it finds it by its Bonjour advertisement (LocalServerRoute,
+        # `.agents/platforms/apple/connection-lifecycle.md`). NSAllowsLocalNetworking permits HTTP only to local
+        # names and addresses; every other host still needs HTTPS.
+        NSLocalNetworkUsageDescription: Home connects to Home Assistant directly on your home network, which is faster than going through the internet.
+        NSBonjourServices:
+          - _home-assistant._tcp
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
 
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: true

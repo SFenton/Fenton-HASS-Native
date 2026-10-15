@@ -8,17 +8,19 @@ import SwiftUI
 /// doors, locks and alarm modes like Home Assistant, so journeys press real controls without touching the house.
 /// Cameras are left out (they need a live connection); the hidden Vehicle section is shown so its tile is tested.
 ///
-/// `FENTON_GALLERY_FAIL=1` makes every call fail (garage door error feedback); `FENTON_GALLERY_CLEAN=1` hides
-/// the last-call line for screenshots.
+/// `FENTON_GALLERY_FAIL=1` makes every call fail (garage door error feedback); `FENTON_GALLERY_SCENARIO=unavailable`
+/// reports the alarm, locks and doors as unavailable (dimmed tiles); `FENTON_GALLERY_CLEAN=1` hides the last-call line
+/// for screenshots.
 struct SecurityGallery: View {
     @State private var store: EntityStore
     @State private var recorder: SecurityGalleryRecorder
 
     init() {
-        let store = SecurityFixtures.store()
+        let environment = ProcessInfo.processInfo.environment
+        let store = SecurityFixtures.store(unavailable: environment["FENTON_GALLERY_SCENARIO"] == "unavailable")
         _store = State(initialValue: store)
         _recorder = State(initialValue: SecurityGalleryRecorder(
-            store: store, fails: ProcessInfo.processInfo.environment["FENTON_GALLERY_FAIL"] == "1"
+            store: store, fails: environment["FENTON_GALLERY_FAIL"] == "1"
         ))
     }
 
@@ -87,10 +89,20 @@ final class SecurityGalleryRecorder: HassServiceCalling {
 
 /// Synthetic Security states for the gallery and hosted tests (not a copy of the live house).
 enum SecurityFixtures {
-    @MainActor static func store() -> EntityStore {
+    /// - Parameter unavailable: Report the alarm, locks and doors as `unavailable` (Home Assistant lost them).
+    @MainActor static func store(unavailable: Bool = false) -> EntityStore {
         let store = EntityStore()
-        store.replaceAll(states, freshness: .live)
+        store.replaceAll(unavailable ? unavailableStates : states, freshness: .live)
         return store
+    }
+
+    /// ``states`` with every tile's entity reporting `unavailable`.
+    static var unavailableStates: [EntityState] {
+        let tiles: Set = [
+            SecurityConfig.alarmEntityId, SecurityConfig.frontDoorLockEntityId, SecurityConfig.leftGarageDoorEntityId,
+            SecurityConfig.rightGarageDoorEntityId, SecurityConfig.vehicleLockEntityId,
+        ]
+        return states.map { tiles.contains($0.entityId) ? EntityState(entityId: $0.entityId, state: "unavailable") : $0 }
     }
 
     static let states: [EntityState] = [

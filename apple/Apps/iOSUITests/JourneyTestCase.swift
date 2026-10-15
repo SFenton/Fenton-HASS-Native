@@ -35,6 +35,35 @@ class JourneyTestCase: XCTestCase {
         }
     }
 
+    // MARK: - Shell navigation
+
+    /// Opens a root section through whichever navigation the window shows (`ShellNavigationStyle`): the tab bar
+    /// (iPhone), the folded iPhone Duo's vertical bar (a toolbar to XCUITest), or the flyout in regular width
+    /// (iPad, unfolded Duo). Compact windows also show the menu button, so a visible bar item wins.
+    /// - Parameters:
+    ///   - section: The `AppSection` raw value (`security`), whose flyout row is `nav.<section>`.
+    ///   - title: The section's visible name (`Security`), which labels its bar item.
+    func openSection(_ section: String, title: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let items = [app.tabBars.buttons[title], app.toolbars.buttons[title]]
+        let menu = app.buttons["nav.open"]
+        let start = Date()
+        let deadline = start.addingTimeInterval(10)
+        repeat {
+            if let item = items.first(where: { $0.exists && $0.isHittable }) {
+                item.tap()
+                return
+            }
+            // A bar that exists but stays off screen (a regular-width window) gets two seconds to show.
+            if menu.exists, menu.isHittable, !items.contains(where: \.exists) || Date().timeIntervalSince(start) > 2 { break }
+            usleep(250_000)
+        } while Date() < deadline
+        XCTAssertTrue(menu.exists, "\(title) has no tab and the window has no menu", file: file, line: line)
+        menu.tap()
+        XCTAssertTrue(element("nav.flyout", in: app).waitForExistence(timeout: 5), "Menu did not open", file: file, line: line)
+        app.buttons["nav.\(section)"].tap()
+        XCTAssertTrue(element("nav.flyout", in: app).waitForNonExistence(timeout: 5), "Menu stayed open", file: file, line: line)
+    }
+
     // MARK: - Gallery helpers
 
     /// The first element of any type with accessibility identifier `id`.
