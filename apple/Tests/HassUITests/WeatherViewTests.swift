@@ -121,6 +121,17 @@ struct WeatherViewTests {
         #expect(WeatherCardContent.todayLabel(WeatherForecast(condition: "sunny", temperature: 80, templow: 60)) == "Today Sunny H:80°  L:60°")
     }
 
+    /// The card's outlook line is the first sentence of today's briefing, and absent until one is written.
+    @Test func cardBriefingLineIsTheFirstSentence() throws {
+        #expect(WeatherCardContent.briefingLine(nil) == nil)
+        let json = #"{"dateKey":"2026-10-15","generatedAt":0,"icon":"weather-night","severity":"calm","version":1,"sentences":[{"key":"briefing.unavailable","values":{}},{"key":"briefing.unavailable","values":{}}]}"#
+        let briefing = try JSONDecoder().decode(WeatherDayBriefing.self, from: Data(json.utf8))
+        #expect(WeatherCardContent.briefingLine(briefing) == WeatherCopy.text("briefing.unavailable"))
+        let silent = try JSONDecoder().decode(WeatherDayBriefing.self, from: Data(json.replacingOccurrences(
+            of: #"[{"key":"briefing.unavailable","values":{}},{"key":"briefing.unavailable","values":{}}]"#, with: "[]").utf8))
+        #expect(WeatherCardContent.briefingLine(silent) == nil)
+    }
+
     @Test func modesHaveLabelsAndHints() {
         #expect(WeatherHourlyMode.allCases.map(\.label) == ["Conditions", "Precipitation", "Wind"])
         #expect(WeatherHourlyMode.allCases.allSatisfy { !$0.hint.isEmpty })

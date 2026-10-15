@@ -50,26 +50,25 @@ struct RoomGroupDetail: View {
         case .climate:
             let vent = item.entityId.hasPrefix("cover.")
             sensorTile(item, subtitle: RoomOverview.climateText(entity), symbol: vent ? "fan" : "thermometer.medium",
-                       active: !RoomFormat.isUnavailable(entity),
-                       color: RoomOverview.climateColor(entity, colorEntity: item.colorEntityId.flatMap(read),
-                                                        fallback: RoomOverview.cardColor(.climate, group, read: read)))
+                       family: vent ? .vents : .climate, active: false)
         case .occupancy:
             let occupied = RoomFormat.isOccupied(entity)
             sensorTile(item, subtitle: RoomFormat.occupancy(entity),
                        symbol: SymbolMap.symbol(for: occupied ? "mdi:motion-sensor" : "mdi:motion-sensor-off"),
-                       active: occupied, color: RoomOverview.cardColor(.occupancy, group, read: read), redacts: true)
+                       family: .occupancy, active: occupied, redacts: true)
         case .contacts:
             let open = RoomFormat.isOpen(entity)
             sensorTile(item, subtitle: RoomFormat.contact(entity),
                        symbol: RoomOverviewStyle.contactSymbol(window: RoomFormat.isWindow(item), open: open),
-                       active: open, color: RoomOverview.cardColor(.contacts, group, read: read))
+                       family: .contact, active: open)
         case .airQuality:
             EmptyView()
         }
     }
 
-    /// A read-only sensor tile, washed with the room's color while active (web `source-row` cards, muted when idle).
-    private func sensorTile(_ item: RoomGroupItem, subtitle: String, symbol: String, active: Bool, color: RoomColor,
+    /// A read-only sensor tile (web `source-row` cards): filled with its family colour while active (occupied, open),
+    /// else dark with the family glyph (direction G, Colour families). Temperatures and vents never fill.
+    private func sensorTile(_ item: RoomGroupItem, subtitle: String, symbol: String, family: ColorFamily, active: Bool,
                             redacts: Bool = false) -> some View {
         let redact = redacts && ScreenshotPrivacy.isRedacting
         let entity = read(item.entityId)
@@ -77,11 +76,10 @@ struct RoomGroupDetail: View {
             title: item.title,
             subtitle: redact ? "Hidden" : subtitle,
             symbol: symbol,
-            tint: RoomOverviewStyle.tint(kind),
+            family: family,
             isActive: active && !redact,
             isUnavailable: RoomFormat.isUnavailable(entity),
-            kind: .state,
-            wash: active && !redact ? color.color.opacity(0.45) : nil
+            kind: .state
         )
         .accessibilityIdentifier("room.entity.\(item.entityId)")
     }

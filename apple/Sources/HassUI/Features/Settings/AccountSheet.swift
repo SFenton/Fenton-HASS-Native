@@ -12,6 +12,7 @@ import SwiftUI
 struct AccountSheet: View {
     @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
     @Environment(AppSession.self) private var session: AppSession?
+    @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.dismiss) private var dismiss
     @State private var openTopic: HouseholdSettingsPage?
     @State private var confirmsSignOut = false
@@ -20,15 +21,19 @@ struct AccountSheet: View {
         NavigationStack {
             List {
                 Section {
-                    AccountHeader(name: navigator?.profileName)
+                    AccountHeader(name: navigator?.profileName, server: serverLine)
+                        .listRowBackground(Color.clear)
                 }
                 Section {
                     NavigationLink {
                         AccountSettingsPage(openTopic: $openTopic)
                     } label: {
-                        Label("Settings", systemImage: "gearshape")
-                            .foregroundStyle(HassTokens.Ink.primary)
-                            .frame(minHeight: HassTokens.minTarget)
+                        Label {
+                            Text("Settings").foregroundStyle(HassTokens.Ink.primary)
+                        } icon: {
+                            Image(systemName: "gearshape").foregroundStyle(HassTokens.Ink.secondary)
+                        }
+                        .frame(minHeight: HassTokens.minTarget)
                     }
                     .accessibilityIdentifier("account.settings")
                 }
@@ -42,6 +47,7 @@ struct AccountSheet: View {
             .modalChrome()
             .navigationTitle("Account")
             .inlineNavigationTitle()
+            .sheetSubtitle("Signed In")
             .toolbar { SheetCloseItem(identifier: "account.close") { dismiss() } }
             .alert("Sign Out of Home Assistant?", isPresented: $confirmsSignOut) {
                 Button("Sign Out", role: .destructive) { signOut() }
@@ -56,35 +62,45 @@ struct AccountSheet: View {
         .accessibilityIdentifier("account.sheet")
     }
 
+    /// The line under the name: the server they are signed in to, hidden in shared screenshots.
+    private var serverLine: String {
+        connection.map { HomeAssistantSettingsView.displayedServer($0.server, redacting: ScreenshotPrivacy.isRedacting) }
+            ?? "Home Assistant"
+    }
+
     private func signOut() {
         dismiss()
         session?.signOut()
     }
 }
 
-/// The signed-in person at the top of the Account sheet: the avatar and their name.
+/// The signed-in person at the top of the Account sheet, centred as in Apple's account sheets (direction G mockup
+/// n1 profile): a large monogram, their name and the server they are signed in to.
 private struct AccountHeader: View {
     var name: String?
+    var server: String
+    @ScaledMetric(relativeTo: .largeTitle) private var avatarSize: CGFloat = 84
 
     var body: some View {
-        HStack(spacing: HassTokens.Spacing.m) {
+        VStack(spacing: HassTokens.Spacing.s) {
             Text(ProfileButton.initials(name) ?? "")
-                .font(.title2.weight(.semibold))
+                .font(.system(size: avatarSize * 0.4, weight: .semibold))
                 .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
+                .frame(width: avatarSize, height: avatarSize)
                 .background(HassTokens.Ink.actionFill, in: Circle())
-                .overlay { if ProfileButton.initials(name) == nil { Image(systemName: "person.fill").foregroundStyle(.white) } }
+                .overlay { if ProfileButton.initials(name) == nil { Image(systemName: "person.fill").font(.largeTitle).foregroundStyle(.white) } }
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name ?? "Signed In")
-                    .font(.headline)
-                    .foregroundStyle(HassTokens.Ink.primary)
-                Text("Home Assistant")
-                    .font(.subheadline)
-                    .foregroundStyle(HassTokens.Ink.secondary)
-            }
+            Text(name ?? "Signed In")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(HassTokens.Ink.primary)
+                .multilineTextAlignment(.center)
+            Text(server)
+                .font(.subheadline)
+                .foregroundStyle(HassTokens.Ink.secondary)
+                .multilineTextAlignment(.center)
         }
-        .padding(.vertical, HassTokens.Spacing.xs)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, HassTokens.Spacing.s)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("account.header")
     }
