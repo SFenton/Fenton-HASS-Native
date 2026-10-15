@@ -8,15 +8,15 @@ import Testing
 @MainActor
 struct NavigationShellTests {
     @Test func sectionsMatchTheWebPrimaryNavInOrder() {
-        #expect(AppSection.allCases.map(\.title) == ["Home", "Security", "Climate", "Chores", "Settings"])
-        #expect(AppSection.allCases.map(\.mdiIcon) == ["mdi:home", "mdi:shield", "mdi:thermostat", "mdi:clipboard-list", "mdi:cog"])
+        // Direction G: four tabs; Settings lives in the Account sheet.
+        #expect(AppSection.allCases.map(\.title) == ["Home", "Security", "Climate", "Chores"])
+        #expect(AppSection.allCases.map(\.mdiIcon) == ["mdi:home", "mdi:shield", "mdi:thermostat", "mdi:clipboard-list"])
         #expect(Set(AppSection.allCases.map(\.navigationIdentifier)).count == AppSection.allCases.count)
     }
 
-    @Test func flyoutPinsSettingsBelowThePrimaryFour() {
+    @Test func flyoutListsTheFourSections() {
         #expect(NavigationMenu.primary == [.home, .security, .climate, .chores])
-        #expect(NavigationMenu.footer == [.settings])
-        #expect(Set(NavigationMenu.primary + NavigationMenu.footer) == Set(AppSection.allCases))
+        #expect(NavigationMenu.primary == AppSection.allCases)
     }
 
     @Test func onlyChoresCarriesTheOverdueBadge() {
@@ -66,9 +66,9 @@ struct NavigationShellTests {
 
     @Test func pathBindingWritesThroughToTheSection() {
         let navigator = ShellNavigator()
-        let binding = navigator.path(for: .settings)
+        let binding = navigator.path(for: .chores)
         binding.wrappedValue.append("topic")
-        #expect(navigator.paths[.settings]?.count == 1)
+        #expect(navigator.paths[.chores]?.count == 1)
         #expect(navigator.isAtRoot(.home))
     }
 
@@ -81,14 +81,14 @@ struct NavigationShellTests {
     }
 
     @Test func edgeSwipeOpensTheFlyoutOnlyAtASectionRoot() {
-        let navigator = ShellNavigator(selection: .settings)
+        let navigator = ShellNavigator(selection: .chores)
         let swipe = CGSize(width: 80, height: 5)
         navigator.edgeSwipeEnded(startX: 40, translation: swipe)
         #expect(!navigator.isFlyoutOpen)
         navigator.edgeSwipeEnded(startX: 4, translation: swipe)
         #expect(navigator.isFlyoutOpen)
         navigator.dismissFlyout()
-        navigator.paths[.settings] = NavigationPath(["topic"])
+        navigator.paths[.chores] = NavigationPath(["topic"])
         navigator.edgeSwipeEnded(startX: 4, translation: swipe)
         #expect(!navigator.isFlyoutOpen, "Deeper pages leave the edge to the system back swipe")
     }
@@ -153,22 +153,18 @@ struct SplitGeometryTests {
 /// The compact tab bar layout, shell chrome placement, Quick Links tab selection and the profile button.
 @MainActor
 struct ShellChromeTests {
-    @Test func iOS26CompactBarShowsThePrimaryFourAndQuickLinks() {
-        let modern = CompactTabLayout.resolve(supportsTrailingTab: true)
-        #expect(modern == .primaryWithQuickLinks)
-        #expect(modern.visibleSections == [.home, .security, .climate, .chores])
-        #expect(modern.hasQuickLinksTab)
-        let legacy = CompactTabLayout.resolve(supportsTrailingTab: false)
-        #expect(legacy.visibleSections == AppSection.allCases)
-        #expect(!legacy.hasQuickLinksTab)
+    @Test func iOS26CompactBarAddsTheQuickLinksCircle() {
+        #expect(CompactTabLayout.resolve(supportsTrailingTab: true) == .sectionsWithQuickLinks)
+        #expect(CompactTabLayout.resolve(supportsTrailingTab: true).hasQuickLinksTab)
+        #expect(!CompactTabLayout.resolve(supportsTrailingTab: false).hasQuickLinksTab)
     }
 
-    @Test func menuButtonShowsWhereverSettingsIsNotATab() {
-        #expect(ShellChrome.resolve(style: .tabBar, layout: .primaryWithQuickLinks)
-            == ShellChrome(showsMenuButton: true, showsQuickLinksButton: false))
-        #expect(ShellChrome.resolve(style: .tabBar, layout: .allSections)
+    @Test func menuButtonOnlyUnderTheFlyoutAndQuickLinksButtonWhereThereIsNoCircle() {
+        #expect(ShellChrome.resolve(style: .tabBar, layout: .sectionsWithQuickLinks)
+            == ShellChrome(showsMenuButton: false, showsQuickLinksButton: false))
+        #expect(ShellChrome.resolve(style: .tabBar, layout: .sectionsOnly)
             == ShellChrome(showsMenuButton: false, showsQuickLinksButton: true))
-        #expect(ShellChrome.resolve(style: .flyout, layout: .primaryWithQuickLinks)
+        #expect(ShellChrome.resolve(style: .flyout, layout: .sectionsWithQuickLinks)
             == ShellChrome(showsMenuButton: true, showsQuickLinksButton: true))
     }
 
@@ -178,39 +174,22 @@ struct ShellChromeTests {
         navigator.rootTab = .quickLinks
         #expect(navigator.isQuickLinksActive)
         #expect(navigator.selection == .climate)
-        #expect(navigator.rootTab == .quickLinks)
         // Returning to the section under Quick Links keeps its stack.
         navigator.select(.climate)
         #expect(!navigator.isQuickLinksActive)
         #expect(navigator.paths[.climate]?.count == 1)
         navigator.rootTab = .quickLinks
-        navigator.rootTab = .section(.home)
-        #expect(navigator.selection == .home)
-        #expect(navigator.rootTab == .section(.home))
-        navigator.rootTab = .quickLinks
         navigator.closeQuickLinks()
-        #expect(navigator.rootTab == .section(.home))
+        #expect(navigator.rootTab == .section(.climate))
     }
 
-    @Test func settingsPushesWhereItIsNotATab() {
-        let navigator = ShellNavigator(selection: .climate)
-        navigator.settingsIsTab = false
-        navigator.rootTab = .quickLinks
+    @Test func flyoutAndToolbarPresentTheQuickLinksSheetOverTheSelectedSection() {
+        let navigator = ShellNavigator(selection: .home)
         navigator.openFlyout()
-        navigator.select(.settings)
-        #expect(navigator.selection == .climate)
-        #expect(navigator.paths[.climate]?.count == 1)
-        #expect(!navigator.isQuickLinksActive && !navigator.isFlyoutOpen)
-        // The window turned compact while Settings was the selected tab.
-        let resized = ShellNavigator(selection: .settings)
-        resized.settingsIsTab = false
-        resized.settingsLeftTabBar()
-        #expect(resized.selection == .home)
-        #expect(resized.paths[.home]?.count == 1)
-        // Where Settings is a tab it is simply selected.
-        let regular = ShellNavigator()
-        regular.select(.settings)
-        #expect(regular.selection == .settings && regular.paths[.home] == nil)
+        navigator.openQuickLinks()
+        #expect(navigator.quickLinksSection == .home)
+        #expect(!navigator.isFlyoutOpen)
+        #expect(navigator.rootTab == .section(.home))
     }
 
     @Test func profileNamePersistsBetweenLaunches() {

@@ -2,45 +2,9 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-// MARK: - Stack
-
-/// The Settings section: the list stays in the leading pane and a household page opens beside it where
-/// the window splits (iPad landscape, unfolded Duo landscape), with a placeholder while nothing is
-/// selected; elsewhere a page pushes full screen (`.agents/design/apple/split-view.md` screen
-/// classification).
-struct SettingsStack: View {
-    @Binding var path: NavigationPath
-    @SceneStorage("settings.openTopic") private var openTopic: HouseholdSettingsPage?
-
-    var body: some View {
-        OnDemandSplitStack(path: $path, openItem: $openTopic, alwaysSplit: true) {
-            SettingsScreen(openTopic: $openTopic)
-        } detail: { page in
-            HouseholdSettingsDestination(page: page)
-        } placeholder: {
-            ContentUnavailableView("Select a Setting", systemImage: "gearshape", description: Text("Choose a setting from the list."))
-                .accessibilityIdentifier("settings.placeholder")
-        }
-    }
-}
-
-/// Settings pushed on another section's stack where it is not a tab (the iOS 26 compact bar; ``ShellRoute``): the
-/// list, with each topic pushed after it. Compact windows never split, so it needs no ``OnDemandSplitStack``.
-struct SettingsPage: View {
-    @State private var openTopic: HouseholdSettingsPage?
-
-    var body: some View {
-        SettingsScreen(openTopic: $openTopic)
-            .pageChrome()
-            .navigationDestination(item: $openTopic) { page in
-                HouseholdSettingsDestination(page: page).pageChrome()
-            }
-    }
-}
-
 // MARK: - List
 
-/// The Settings list: the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`: Vacation, which
+/// The Settings list, pushed inside the Account sheet (direction G; ``AccountSheet``): the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`: Vacation, which
 /// pushes its own pages, the admin To-Do, hidden from Steph, which pushes too, then the household topics), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
 /// as a full-screen modal (`.agents/design/apple/split-view.md`).
 struct SettingsScreen: View {
@@ -111,6 +75,7 @@ struct SettingsScreen: View {
             }
             FeedbackSettingsSection(openForm: $feedbackForm)
         }
+        .accessibilityIdentifier("settings.list")
         .navigationTitle("Settings")
         .homeAssistantSettingsCover(isPresented: $showsHomeAssistant)
         .feedbackFormSheet(item: $feedbackForm)

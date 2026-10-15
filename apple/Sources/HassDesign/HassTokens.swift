@@ -157,7 +157,13 @@ public enum HassTokens {
         /// Hairline separators on dark: white at 14%.
         public static let separator = Color.white.opacity(0.14)
         /// Secondary labels on modules.
-        public static let secondaryOnModule = Color(rgb: Palette.secondaryLabel).opacity(0.68)
+        public static let secondaryOnModule = Color(rgb: Palette.secondaryLabel).opacity(secondaryOnModuleOpacity)
+        /// Secondary labels on a module under a state wash (``GlassTileFace``), which lifts the ground.
+        public static let secondaryOnWash = Color(rgb: Palette.secondaryLabel).opacity(secondaryOnWashOpacity)
+        /// ``secondaryOnModule``'s opacity.
+        static let secondaryOnModuleOpacity = 0.68
+        /// ``secondaryOnWash``'s opacity.
+        static let secondaryOnWashOpacity = 0.85
         /// Secondary labels in sheets.
         public static let secondaryInSheet = Color(rgb: Palette.secondaryLabel).opacity(0.6)
     }

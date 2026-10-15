@@ -11,8 +11,13 @@ enum LitTile {
     static let glyph = Color(rgb: 0xD97A00)
     /// Titles on the lit tile.
     static let ink = Color(rgb: 0x1C1C1E)
-    /// Status text on the lit tile (`#1C1C1E` at 72%: 7:1 or better on the base).
-    static let secondaryInk = Color(rgb: 0x1C1C1E).opacity(0.72)
+    /// How strong the status text is: `#1C1C1E` at 85%. At 72% it measured 4.2:1 on a blue bulb's band (Custom
+    /// Lights, "41%"); 85% keeps 5.3:1 under the strongest bulb tint (``bulbTint``).
+    static let secondaryInkOpacity = 0.85
+    /// Status text on the lit tile.
+    static let secondaryInk = Color(rgb: 0x1C1C1E).opacity(secondaryInkOpacity)
+    /// How much a coloured bulb tints its band.
+    static let bulbTint = 0.3
 
     /// Power's fill runs from a lighter yellow at the top.
     static let powerTop = Color(rgb: 0xFFE45C)

@@ -174,13 +174,14 @@ enum HouseBackdropStyle {
     /// How far the photo is scaled past the window, so the blur's soft edges stay off screen.
     static let scale: CGFloat = 1.06
 
-    /// The scrim's black opacity from top to bottom: lighter where the large title sits over the house, denser
-    /// behind the tab bar.
+    /// The scrim's black opacity from top to bottom, denser behind the tab bar. The top third carries the large title
+    /// and the first section header in white, so it never drops below 0.40: at G's original 0.18 an iPhone's light
+    /// sky measured 3.0:1 for the section header and 4.5:1 for the title. 0.40 keeps a sky that bright above 4.5:1.
     static let scrimStops: [Gradient.Stop] = [
-        .init(color: .black.opacity(0.36), location: 0),
-        .init(color: .black.opacity(0.18), location: 0.28),
-        .init(color: .black.opacity(0.36), location: 0.50),
-        .init(color: .black.opacity(0.50), location: 0.75),
+        .init(color: .black.opacity(0.44), location: 0),
+        .init(color: .black.opacity(0.40), location: 0.28),
+        .init(color: .black.opacity(0.42), location: 0.50),
+        .init(color: .black.opacity(0.52), location: 0.75),
         .init(color: .black.opacity(0.64), location: 1),
     ]
 

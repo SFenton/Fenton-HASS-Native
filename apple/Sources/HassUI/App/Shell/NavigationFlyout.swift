@@ -74,10 +74,7 @@ struct NavigationFlyout: View {
                         .accessibilityFocused($headingFocused)
                         .accessibilityIdentifier("nav.flyout.heading")
                     ForEach(NavigationMenu.primary) { row(for: $0) }
-                    // Settings is pinned to the bottom when everything fits; at large text sizes it
-                    // scrolls with the rows.
-                    Spacer(minLength: HassTokens.Spacing.xl)
-                    ForEach(NavigationMenu.footer) { row(for: $0) }
+                    quickLinksRow
                 }
                 .padding(HassTokens.Spacing.m)
                 .frame(minHeight: proxy.size.height, alignment: .top)
@@ -91,6 +88,30 @@ struct NavigationFlyout: View {
         .accessibilityIdentifier("nav.flyout")
         .accessibilityAddTraits(.isModal)
         .accessibilityAction(.escape) { navigator.dismissFlyout() }
+    }
+
+    /// Quick Links after the sections: presents its sheet over the selected section.
+    private var quickLinksRow: some View {
+        Button {
+            navigator.openQuickLinks()
+        } label: {
+            HStack(spacing: HassTokens.Spacing.m) {
+                Image(systemName: QuickLinksButton.symbol)
+                    .font(.body.weight(.semibold))
+                    .frame(width: 28)
+                    .accessibilityHidden(true)
+                Text(QuickLinks.title)
+                Spacer(minLength: HassTokens.Spacing.s)
+            }
+            .foregroundStyle(HassTokens.Ink.primary)
+            .padding(.horizontal, HassTokens.Spacing.m)
+            .padding(.vertical, HassTokens.Spacing.s)
+            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Opens the Quick Links sheet")
+        .accessibilityIdentifier("nav.quickLinks")
     }
 
     private func row(for section: AppSection) -> some View {
@@ -113,7 +134,7 @@ struct NavigationFlyout: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, HassTokens.Spacing.s)
                         .padding(.vertical, 2)
-                        .background(HassTokens.Tint.security, in: Capsule())
+                        .background(HassTokens.Ink.badge, in: Capsule())
                         .accessibilityHidden(true)
                 }
             }
@@ -178,8 +199,25 @@ private struct SectionRootChrome: ViewModifier {
     @Environment(\.shellChrome) private var chrome
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.roomServiceCaller) private var callerOverride
+    @Environment(\.shellSection) private var section
     @AccessibilityFocusState private var buttonFocused: Bool
     @State private var showsProfile = false
+
+    /// In the shell, the navigator says which section's root presents the Account sheet, so a notification can
+    /// open Settings (``ShellNavigator/open(_:)``). Elsewhere it is local.
+    private var profileIsPresented: Binding<Bool> {
+        guard let navigator, let section else { return $showsProfile }
+        return Binding(
+            get: { navigator.accountSection == section },
+            set: { isPresented in
+                if isPresented {
+                    navigator.accountSection = section
+                } else if navigator.accountSection == section {
+                    navigator.accountSection = nil
+                }
+            }
+        )
+    }
 
     func body(content: Content) -> some View {
         content
@@ -199,11 +237,11 @@ private struct SectionRootChrome: ViewModifier {
             // Declared before Quick Links: the bar lays out later toolbars first, so Profile ends up trailing-most.
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    ProfileButton(name: navigator?.profileName) { showsProfile = true }
+                    ProfileButton(name: navigator?.profileName) { profileIsPresented.wrappedValue = true }
                 }
             }
             .quickLinks(caller: callerOverride ?? connection, showsButton: chrome.showsQuickLinksButton)
-            .homeAssistantSettingsCover(isPresented: $showsProfile)
+            .accountSheet(isPresented: profileIsPresented)
             .onChange(of: navigator?.focusReturnToken) { _, _ in buttonFocused = true }
     }
 }
@@ -211,9 +249,9 @@ private struct SectionRootChrome: ViewModifier {
 // MARK: - Profile
 
 /// The profile button at the top trailing edge of every section root (owner, 2026-10-13: "profile goes in top
-/// right"). It shows the signed-in user's initials, or a person symbol until the name is known, and opens Home
-/// Assistant settings (server, account, Home Assistant's own Profile page, Sign Out). The web's header Profile
-/// button opens the Daily Report, which the app has not ported yet.
+/// right"). It shows the signed-in user's initials, or a person symbol until the name is known, and opens the
+/// Account sheet (``AccountSheet``: Settings and Sign Out; direction G). The web's header Profile button opens the
+/// Daily Report, which the app has not ported yet.
 struct ProfileButton: View {
     /// The signed-in user's display name, when known.
     var name: String?
@@ -255,7 +293,7 @@ struct ProfileButton: View {
         }
         .accessibilityLabel("Profile")
         .accessibilityValue(name ?? "")
-        .accessibilityHint("Opens Home Assistant settings and your account")
+        .accessibilityHint("Opens your account and Settings")
         .accessibilityIdentifier("nav.profile")
     }
 }
