@@ -83,8 +83,11 @@ struct ClimateHubList: View {
     }
 }
 
-/// A pop-up menu of choices that stays anchored over its button, the current one checked (direction G, Controls:
-/// "Thermostat Hub mode and Fan are pop-up menus", `Picker(.menu)`; web `ThermostatSelectButton`). HIG: Pop-up buttons.
+/// A pop-up menu of choices, the current one checked (direction G, Controls: "Thermostat Hub mode and Fan are pop-up
+/// menus"; web `ThermostatSelectButton`). HIG: Pop-up buttons.
+///
+/// The picker sits in a `Menu` whose label is the current value and an up-down chevron: a bare `Picker(.menu)` keeps
+/// its own UIKit hit area, which a frame outside it doesn't grow to 44 pt.
 struct HubPicker: View {
     var label: String
     /// The current choice as shown, read as the control's value.
@@ -94,18 +97,27 @@ struct HubPicker: View {
     var onSelect: (String) -> Void
 
     var body: some View {
-        Picker(selection: Binding(get: { selected ?? "" }, set: { if !$0.isEmpty { onSelect($0) } })) {
-            ForEach(options) { option in
-                Label(option.label, systemImage: ClimateStyle.symbol(option.icon ?? "mdi:thermometer-check"))
-                    .tag(option.value)
+        Menu {
+            Picker(label, selection: Binding(get: { selected }, set: { if let value = $0 { onSelect(value) } })) {
+                ForEach(options) { option in
+                    Label(option.label, systemImage: ClimateStyle.symbol(option.icon ?? "mdi:thermometer-check"))
+                        .tag(Optional(option.value))
+                }
             }
+            .pickerStyle(.inline)
         } label: {
-            Text(label)
+            HStack(spacing: 4) {
+                Text(value)
+                    .font(.body)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.footnote.weight(.semibold))
+                    .accessibilityHidden(true)
+            }
+            .foregroundStyle(Color(rgb: HassTokens.Palette.tintText))
+            .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
+            .contentShape(Rectangle())
         }
-        .pickerStyle(.menu)
-        .labelsHidden()
-        .tint(Color(rgb: HassTokens.Palette.tintText))
-        .frame(minHeight: HassTokens.minTarget)
+        .buttonStyle(.plain)
         .disabled(options.isEmpty)
         .accessibilityLabel(label)
         .accessibilityValue(value)

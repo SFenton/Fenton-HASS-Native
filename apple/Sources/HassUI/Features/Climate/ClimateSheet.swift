@@ -209,10 +209,9 @@ struct ClimateRoomsTab: View {
                                             icon: occupied ? "mdi:thermometer-check" : "mdi:thermometer-off")
                         }
                     }
-                    .accessibilityElement(children: .ignore)
+                    // On the link itself, not a wrapping element, so the identifier and state stay on one element.
                     .accessibilityLabel(room.title)
                     .accessibilityValue(ClimateLogic.roomSubtitle(room, lookup))
-                    .accessibilityAddTraits(.isButton)
                     .accessibilityIdentifier("climate.room.\(room.key)")
                 }
             } footer: {
@@ -301,11 +300,9 @@ struct ClimateAutomationTab: View {
                         }
                     }
                     .disabled(options.isEmpty)
-                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel(option.title)
                     .accessibilityValue(value)
                     .accessibilityHint(option.openerDescription)
-                    .accessibilityAddTraits(.isButton)
                     .accessibilityIdentifier("climate.eco.\(option.rawValue)")
                 }
             } header: {
@@ -442,8 +439,8 @@ struct EcoOptionDetail: View {
                             .contentShape(Rectangle())
                         }
                         // Reads the choice and what it does ("Use Eco Away Targets, Use the wider away…").
-                        .accessibilityElement(children: .combine)
-                        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                        .accessibilityLabel([choice.label, choice.description].compactMap { $0 }.joined(separator: ", "))
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .accessibilityIdentifier("climate.option.\(choice.value)")
                     }
                 } footer: {
@@ -475,10 +472,8 @@ struct ClimateTrackingTab: View {
                     // Disabled, not unavailable: VoiceOver reads the subtitle ("Enable Track Selected Rooms first")
                     // and "dimmed".
                     .disabled(!summary.isEnabled(page))
-                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel(page.title)
                     .accessibilityValue(summary.subtitle(page))
-                    .accessibilityAddTraits(.isButton)
                     .accessibilityIdentifier("climate.tracking.\(page.rawValue)")
                 } header: {
                     if page == ClimateConfig.TrackingPage.allCases.first { FormHeader("Room Rules") }
@@ -524,10 +519,9 @@ struct TrackingRoomsDetail: View {
                             .contentShape(Rectangle())
                         }
                         .disabled(controller.isUnavailable(id))
-                        .accessibilityElement(children: .ignore)
                         .accessibilityLabel(room.title)
                         .accessibilityValue(isOn ? "On" : "Off")
-                        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
+                        .accessibilityAddTraits(isOn ? .isSelected : [])
                         .accessibilityIdentifier("climate.track.\(page.rawValue).\(room.key)")
                     }
                 } footer: {

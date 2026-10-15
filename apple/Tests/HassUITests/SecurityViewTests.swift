@@ -61,7 +61,7 @@ struct SecurityViewTests {
         #expect(ImageRenderer(content: large).cgImage != nil)
         let modes = SecurityConfig.modeButtons.map { AlarmModeButton(mode: $0, isSelected: $0.state == "disarmed", isUnavailable: false) {} }
         for mode in modes { #expect(ImageRenderer(content: mode.frame(width: 80)).cgImage != nil) }
-        #expect(SecurityConfig.modeButtons.map(AlarmModeButton.symbol(for:)) == ["shield.slash", "house", "figure.walk", "moon"])
+        #expect(SecurityConfig.modeButtons.map { AlarmModeButton.symbol(for: $0) } == ["shield.slash", "house", "figure.walk", "moon"])
         for state in ["closed", "open", "unavailable"] {
             let tile = GarageDoorTile(tile: SecurityPage.doorTiles[1], liveState: state, caller: caller, canSend: true).frame(width: 170)
             #expect(ImageRenderer(content: tile).cgImage != nil)

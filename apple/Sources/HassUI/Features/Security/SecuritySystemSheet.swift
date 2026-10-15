@@ -214,9 +214,10 @@ struct AlarmModeButton: View {
         }
         .buttonStyle(ModePressStyle())
         .disabled(isUnavailable)
-        .accessibilityElement(children: .ignore)
+        // Label and traits on the Button itself, so its identifier and disabled state stay on one element
+        // (see `GlassTile`).
         .accessibilityLabel(mode.buttonTitle)
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityHint(isSelected ? "" : (mode.needsConfirmation ? "Disarms the security system" : "Sets the security system to \(mode.title)"))
         .accessibilityIdentifier("security.mode.\(mode.state)")
     }
