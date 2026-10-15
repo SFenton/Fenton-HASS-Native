@@ -196,9 +196,20 @@ final class LocationAccountJourneyTests: JourneyTestCase {
         return app
     }
 
+    /// Turns a switch to `on`, waiting for its value; a tap while the sheet settles can be dropped, so it taps once more.
+    private func flip(_ toggle: XCUIElement, on: Bool, file: StaticString = #filePath, line: UInt = #line) {
+        let want = on ? "1" : "0"
+        let flipped = NSPredicate(format: "value == %@", want)
+        for _ in 0..<2 where toggle.value as? String != want {
+            toggle.switches.firstMatch.tap()
+            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)], timeout: 5)
+        }
+        XCTAssertEqual(toggle.value as? String, want, file: file, line: line)
+    }
+
     func testShareLocationAndTheReportToggleOnPhonesOnly() throws {
-        XCUIApplication().resetAuthorizationStatus(for: .location)
         guard FentonHomeApp.family != .iPad else {
+            // No reset here: the iPad never asks, and resetting its authorization timed out on the iOS 27 simulator.
             let app = try relaunchToAccount(first: true)
             XCTAssertTrue(app.buttons["account.settings"].exists)
             XCTAssertFalse(app.buttons["account.location"].exists, "iPad has no Share Location row")
@@ -207,6 +218,7 @@ final class LocationAccountJourneyTests: JourneyTestCase {
             return
         }
 
+        XCUIApplication().resetAuthorizationStatus(for: .location)
         // The after-sign-in offer still comes first in the four-tab shell; decline it.
         var app = try launchSignedIn(first: true)
         keepScreenshot(app, "location-account-0-offer-\(layout)")
@@ -231,8 +243,7 @@ final class LocationAccountJourneyTests: JourneyTestCase {
         XCTAssertFalse(warning.exists, "No warning while off")
         keepScreenshot(app, "location-account-1-off-\(layout)")
 
-        toggle.switches.firstMatch.tap()
-        XCTAssertEqual(toggle.value as? String, "1")
+        flip(toggle, on: true)
         XCTAssertTrue(warning.waitForExistence(timeout: 5), "Armed with access off warns")
         XCTAssertTrue(warning.label.hasPrefix("Warning: Location access is off"), warning.label)
         keepScreenshot(app, "location-account-2-armed-\(layout)")
@@ -255,8 +266,7 @@ final class LocationAccountJourneyTests: JourneyTestCase {
         app.buttons["location.close"].tap()
         XCTAssertTrue(app.buttons["account.location"].waitForExistence(timeout: 5))
 
-        armed.switches.firstMatch.tap()
-        XCTAssertEqual(armed.value as? String, "0")
+        flip(armed, on: false)
         XCTAssertFalse(app.descendants(matching: .any)["account.location.warning"].waitForExistence(timeout: 2))
     }
 }
