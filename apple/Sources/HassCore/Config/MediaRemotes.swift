@@ -34,10 +34,14 @@ public enum MediaRemotes {
         .service("remote", "send_command", target: remote, data: ["command": .string(command)])
     }
 
+    /// A Master Bedroom Apple TV button press, sent straight to `remote.send_command`.
+    ///
+    /// Departure from web (`mediaRemotes.ts:135` calls `script.apple_tv_remote_send_command`): that script only wraps
+    /// one `remote.send_command`, but it runs in Home Assistant's default `single` mode, so a press that arrives while
+    /// the previous one is still running is dropped (live server config, 2026-10-15). Calling the remote directly
+    /// lets fast d-pad scrolling through.
     static func appleTVCommand(_ command: String) -> MediaRemoteAction {
-        .service("script", "apple_tv_remote_send_command", data: [
-            "remote_entity": .string("remote.master_bedroom_apple_tv"), "command": .string(command),
-        ])
+        remoteCommand("remote.master_bedroom_apple_tv", command)
     }
 
     static func androidAppLauncher(entity: String, remote: String, appId: String, extra: [String: JSONValue] = [:]) -> MediaRemoteAction {
