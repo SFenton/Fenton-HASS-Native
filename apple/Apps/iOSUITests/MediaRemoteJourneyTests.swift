@@ -130,7 +130,7 @@ final class MediaRemoteJourneyTests: XCTestCase {
         let app = launch("master-bedroom-apple-tv")
         XCTAssertTrue(element("remote.dpad", in: app).buttons["Select"].exists)
         app.buttons["remote.button.Menu"].tap()
-        expectCall("script.apple_tv_remote_send_command command=menu remote_entity=remote.master_bedroom_apple_tv", in: app)
+        expectCall("remote.send_command command=menu entity_id=remote.master_bedroom_apple_tv", in: app)
         XCTAssertFalse(app.buttons["remote.button.Keyboard"].exists, "Apple TV has no keyboard")
         let volumeUp = app.buttons["remote.button.Volume Up"]
         assertTarget(volumeUp)
@@ -142,7 +142,7 @@ final class MediaRemoteJourneyTests: XCTestCase {
         let play = app.buttons["remote.button.Play"]
         reveal(play, in: app)
         play.tap()
-        expectCall("script.apple_tv_remote_send_command command=play remote_entity=remote.master_bedroom_apple_tv", in: app)
+        expectCall("remote.send_command command=play entity_id=remote.master_bedroom_apple_tv", in: app)
         let slider = app.sliders["remote.volume"]
         reveal(slider, in: app)
         XCTAssertEqual(slider.label, "Volume volume")

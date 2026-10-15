@@ -11,6 +11,10 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "6.0"
+    # Device builds need a signing team; the generated project is git-ignored, so a team picked in
+    # Xcode is lost on every `xcodegen generate`.
+    DEVELOPMENT_TEAM: 3Q9X8JX23S
+    CODE_SIGN_STYLE: Automatic
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 targets:
@@ -22,6 +26,21 @@ targets:
     dependencies:
       - package: FentonHomeApple
         product: HassUI
+      # Finishes Fenton Push notifications: buttons, camera snapshots (`.agents/platforms/apple/push.md`).
+      - target: FentonHomeNotificationService
+      # The live camera view of an expanded camera notification.
+      - target: FentonHomeNotificationContent
+    # Push Notifications and the app group the notification service extension shares the sign-in Keychain item
+    # through (KeychainTokenStore.sharedAccessGroup). TestFlight archives switch aps-environment to production.
+    # Access Wi-Fi Information lets the SSID and BSSID sensors read the network name, as the official app does
+    # (`.agents/platforms/apple/location.md`). Self-service capability; no Apple review.
+    entitlements:
+      path: Apps/iOS/FentonHome.entitlements
+      properties:
+        aps-environment: development
+        com.apple.security.application-groups:
+          - group.com.sfenton.home
+        com.apple.developer.networking.wifi-info: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home
@@ -36,6 +55,14 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSCameraUsageDescription: Scan item barcodes and printed expiration dates to add groceries to your inventory.
         NSPhotoLibraryAddUsageDescription: Save camera snapshots to your photo library.
+        # Location reports Home and Away to Home Assistant (`.agents/platforms/apple/location.md`).
+        NSLocationWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away.
+        NSLocationAlwaysAndWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away, even when this app is closed.
+        # Zone crossings and significant location changes relaunch the app in the background; silent pushes run
+        # commands such as clear_notification (contract v1, rule 3).
+        UIBackgroundModes:
+          - location
+          - remote-notification
         UILaunchScreen:
           UIColorName: LaunchBackground
         # Lets ProMotion iPhones scroll and animate at 120 Hz; without it the app is capped at 60 Hz.
@@ -52,6 +79,67 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+  FentonHomeNotificationService:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Apps/NotificationService
+    dependencies:
+      - package: FentonHomeApple
+        product: HassCore
+    entitlements:
+      path: Apps/NotificationService/NotificationService.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sfenton.home
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.NotificationService
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: Apps/NotificationService/Info.plist
+      properties:
+        CFBundleDisplayName: Home Notifications
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationService
+  FentonHomeNotificationContent:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Apps/NotificationContent
+    dependencies:
+      - package: FentonHomeApple
+        product: HassCore
+      # Linked explicitly: the system resolves the extension's context class from it before any of our code runs,
+      # and Swift's autolink alone left it unloaded (crash in _extensionContextClass, seen 2026-10-14).
+      - sdk: UserNotificationsUI.framework
+    entitlements:
+      path: Apps/NotificationContent/NotificationContent.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sfenton.home
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.NotificationContent
+        TARGETED_DEVICE_FAMILY: "1,2"
+        # Keep the code in the extension's own binary rather than Xcode's Debug-only dylib.
+        ENABLE_DEBUG_DYLIB: NO
+    info:
+      path: Apps/NotificationContent/Info.plist
+      properties:
+        CFBundleDisplayName: Home Camera Notifications
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.usernotifications.content-extension
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).NotificationViewController
+          NSExtensionAttributes:
+            UNNotificationExtensionCategory: fenton.camera
+            UNNotificationExtensionInitialContentSizeRatio: 0.5625
+            UNNotificationExtensionDefaultContentHidden: false
   FentonHomeWatch:
     type: application
     platform: watchOS

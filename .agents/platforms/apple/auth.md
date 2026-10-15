@@ -16,7 +16,8 @@ Uses Home Assistant's login flow API, the same path the HA web login uses, so th
 
 ## Storage
 
-- Refresh token and server URL: Keychain, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, service `com.sfenton.home.auth`. The watch will need a shared access group.
+- Refresh token and server URL: Keychain, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`, service `com.sfenton.home.auth`, in the app group `group.com.sfenton.home` so the notification service extension can fetch camera snapshots ([push](push.md)). An item saved before the group existed moves in on first read; a build without the entitlement keeps an unshared item.
+- Sign-out clears the phone's push registration (`update_registration` with empty `app_data`) before revoking the refresh token.
 - Access token: memory only, in `TokenManager` (an actor that refreshes 60 s before expiry and coalesces concurrent refreshes).
 - Never store the password. Never commit `temp.env` or any token.
 

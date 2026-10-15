@@ -26,6 +26,7 @@ public struct ComponentGallery: View {
         case performance
         case weather
         case directionG = "direction-g"
+        case location
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -63,31 +64,41 @@ public struct ComponentGallery: View {
         } else if page == .vacation {
             // Owns its stack, so its last-call line stays under pushed pages too.
             VacationGallery()
+        } else if page == .location {
+            // Presents its own sheet, which owns its navigation stack.
+            LocationGallery()
         } else if page == .rooms {
             // Owns its stack so pushed rooms inherit the fixture store and caller.
             RoomsGallery()
         } else {
             NavigationStack {
-                switch page {
-                case .directionG: DirectionGGallery()
-                case .mediaRemote: MediaRemoteGallery()
-                case .thermostatDial: ThermostatDialGallery()
-                case .security: SecurityGallery()
-                case .mediaPage: HomePageGallery(kind: .media)
-                case .customLights: HomePageGallery(kind: .customLights)
-                case .sprinklers: HomePageGallery(kind: .sprinklers)
-                case .bedroom: BedroomGallery()
-                case .vacuums: VacuumGallery()
-                case .roomDevices: RoomDevicesGallery()
-                case .householdSettings: HouseholdSettingsGallery()
-                case .climate: ClimateGallery()
-                case .floatingActions: FloatingActionsGallery()
-                case .inventory: InventoryGallery()
-                case .performance: PerformanceGallery()
-                case .weather: WeatherGallery()
-                case .rooms, .vacation, .food, .chores: EmptyView()
+                Group {
+                    switch page {
+                    case .directionG: DirectionGGallery()
+                    case .mediaRemote: MediaRemoteGallery()
+                    case .thermostatDial: ThermostatDialGallery()
+                    case .security: SecurityGallery()
+                    case .mediaPage: HomePageGallery(kind: .media)
+                    case .customLights: HomePageGallery(kind: .customLights)
+                    case .sprinklers: HomePageGallery(kind: .sprinklers)
+                    case .bedroom: BedroomGallery()
+                    case .vacuums: VacuumGallery()
+                    case .roomDevices: RoomDevicesGallery()
+                    case .householdSettings: HouseholdSettingsGallery()
+                    case .climate: ClimateGallery()
+                    case .floatingActions: FloatingActionsGallery()
+                    case .inventory: InventoryGallery()
+                    case .performance: PerformanceGallery()
+                    case .weather: WeatherGallery()
+                    case .rooms, .vacation, .food, .chores, .location: EmptyView()
+                    }
                 }
+                // Direction G: a gallery page sits on the same dark house backdrop as the page it stands in for.
+                // On the system's white ground, G's translucent tiles measured 3.1:1.
+                .scrollContentBackground(.hidden)
+                .pageBackdrop()
             }
+            .preferredColorScheme(.dark)
         }
     }
     #endif

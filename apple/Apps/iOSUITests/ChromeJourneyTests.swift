@@ -51,10 +51,8 @@ final class ChromeJourneyTests: XCTestCase {
         let app = try FentonHomeApp.launchSignedIn()
         XCTAssertTrue(app.buttons["nav.profile"].waitForExistence(timeout: 5), "No profile button")
         XCTAssertGreaterThanOrEqual(app.buttons["nav.profile"].frame.height, 44, "Profile under 44 pt")
-        let settingsTab = tab("Settings", in: app)
-        if !(settingsTab.exists && settingsTab.isHittable) {
-            XCTAssertTrue(app.buttons["nav.open"].isHittable, "Settings unreachable: no tab and no menu")
-        }
+        // Direction G: Settings is in the Account sheet behind the profile avatar, never a tab.
+        XCTAssertFalse(tab("Settings", in: app).exists, "Settings tab")
         let quickLinksTab = tab("Quick Links", in: app)
         XCTAssertTrue(quickLinksTab.exists || app.buttons["quickLinks.open"].exists, "Quick Links unreachable")
     }
@@ -85,10 +83,10 @@ final class ChromeJourneyTests: XCTestCase {
             closeModal(app)
         }
 
-        app.buttons["nav.profile"].tap()
-        XCTAssertTrue(app.buttons["haSettings.done"].waitForExistence(timeout: 5), "Profile did not open settings")
+        app.openAccountSheet()
+        sleep(1)
         keepScreenshot(app, "chrome-modal-profile-\(suffix)")
-        app.buttons["haSettings.done"].tap()
+        app.buttons["account.close"].tap()
 
         let quickLinks = tab("Quick Links", in: app)
         if quickLinks.exists, quickLinks.isHittable {
@@ -111,10 +109,12 @@ final class ChromeJourneyTests: XCTestCase {
             XCTAssertTrue(app.descendants(matching: .any)["nav.flyout"].waitForExistence(timeout: 3))
             sleep(1)
             keepScreenshot(app, "chrome-menu-\(suffix)")
-            app.buttons["nav.settings"].tap()
-        } else {
-            open("settings", title: "Settings", in: app)
+            app.buttons["nav.flyout.scrim"].tap()
         }
+        app.openAccountSheet()
+        sleep(1)
+        keepScreenshot(app, "chrome-account-\(suffix)")
+        app.buttons["account.settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         sleep(1)
         keepScreenshot(app, "chrome-settings-\(suffix)")
