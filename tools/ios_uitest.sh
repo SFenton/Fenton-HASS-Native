@@ -23,8 +23,18 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Simulator names; override with FENTON_SIM_IPHONE / FENTON_SIM_DUO / FENTON_SIM_IPAD.
+# Simulator names; override with FENTON_SIM_IPHONE / FENTON_SIM_DUO / FENTON_SIM_IPAD to pin one device.
+# Without an override each family draws from a pool of identical simulators ("<name>", "<name> (pool 2)", …,
+# FENTON_SIM_POOL members, default the simulator slot count), so lanes on the same device type run in
+# parallel; a lane keeps its last (warm) pool member while it is free.
 # (macOS ships bash 3.2: no associative arrays.)
+pinned_name() {
+  case "$1" in
+    iphone) echo "${FENTON_SIM_IPHONE:-}" ;;
+    duo) echo "${FENTON_SIM_DUO:-}" ;;
+    ipad) echo "${FENTON_SIM_IPAD:-}" ;;
+  esac
+}
 device_name() {
   case "$1" in
     iphone) echo "${FENTON_SIM_IPHONE:-iPhone 17 Pro}" ;;
@@ -51,9 +61,16 @@ for arg in ${EXTRA[@]+"${EXTRA[@]}"}; do
   [[ "$arg" =~ ^[A-Z_][A-Z0-9_]*= ]] && SETTINGS+=("$arg")
 done
 LANE="$(basename "$ROOT")"
+FULL_SUITE=1
+for arg in ${EXTRA[@]+"${EXTRA[@]}"}; do
+  [[ "$arg" == -only-testing* || "$arg" == -skip-testing* ]] && FULL_SUITE=0
+done
 
-# Runs one family's journeys inside its devcap hold; devcap --shutdown then shuts the simulator down
-# before releasing it, even when the hold times out (FENTON_KEEP_SIM=1 keeps it booted).
+# Runs one family's journeys inside its devcap hold. The simulator stays booted (warm) afterwards so the
+# lane's next run skips the boot; it still counts against the simulator slots, and devcap shuts it down
+# after 60 s idle when another lane is waiting, or 5 min idle otherwise. A hung run (hold timeout) shuts it
+# down at once. A full-suite run (no -only-testing/-skip-testing filter) ran every test for the device, so
+# it shuts the simulator down when it finishes; so does FENTON_SHUTDOWN_SIM=1 (the lane is done with it).
 run_family() {
   local family="$1" udid="$2" status=0
   xcodebuild test-without-building -project FentonHome.xcodeproj -scheme FentonHome \
@@ -77,11 +94,20 @@ for family in iphone duo ipad; do
   if ! xcrun simctl list devices available | grep -q "    $name ("; then
     echo "GAP: no available simulator named '$name' for $family (a gap, not a pass)"; STATUS=1; continue
   fi
-  # Resolve the UDID: xcodebuild's name= matcher misses names with parentheses ("iPhone 17 Pro (Rooms)").
-  udid="$(xcrun simctl list devices available | NAME="$name" awk '{ line = $0; sub(/^ +/, "", line); if (match(line, / \([0-9A-F-]{36}\)/) && substr(line, 1, RSTART - 1) == ENVIRON["NAME"]) { print substr(line, RSTART + 2, 36); exit } }')"
-  echo "== $family: $name ($udid)"
+  last_file="$ROOT/apple/.build/uitest-$family.udid"
+  if [[ -n "$(pinned_name "$family")" ]]; then
+    # Resolve the UDID: xcodebuild's name= matcher misses names with parentheses ("iPhone 17 Pro (Rooms)").
+    udid="$(xcrun simctl list devices available | NAME="$name" awk '{ line = $0; sub(/^ +/, "", line); if (match(line, / \([0-9A-F-]{36}\)/) && substr(line, 1, RSTART - 1) == ENVIRON["NAME"]) { print substr(line, RSTART + 2, 36); exit } }')"
+  else
+    prefer=()
+    [[ -s "$last_file" ]] && prefer=(--prefer "$(cat "$last_file")")
+    udid="$(python3 "$ROOT/tools/devcap.py" pick-sim --name "$name" --pool "${FENTON_SIM_POOL:-0}" ${prefer[@]+"${prefer[@]}"})"
+  fi
+  mkdir -p "$(dirname "$last_file")"; echo "$udid" > "$last_file"
+  echo "== $family: $name pool ($udid)"
   rm -rf "$ROOT/apple/.build/uitest-$family.xcresult"
-  SHUTDOWN=(); [[ -n "${FENTON_KEEP_SIM:-}" ]] || SHUTDOWN=(--shutdown)
+  SHUTDOWN=(--shutdown-on-timeout)
+  [[ "${FENTON_SHUTDOWN_SIM:-}" == 1 || $FULL_SUITE == 1 ]] && SHUTDOWN=(--shutdown)
   "${DEVCAP[@]}" --sim "$udid" ${SHUTDOWN[@]+"${SHUTDOWN[@]}"} --purpose "Fenton uitest $family ($LANE)" -- \
     bash -c 'EXTRA=("${@:3}"); run_family "$1" "$2"' _ "$family" "$udid" ${EXTRA[@]+"${EXTRA[@]}"} || STATUS=1
 done
