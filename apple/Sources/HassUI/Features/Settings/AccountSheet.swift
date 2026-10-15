@@ -65,13 +65,24 @@ struct AccountSheet: View {
 /// The signed-in person at the top of the Account sheet: the avatar and their name.
 private struct AccountHeader: View {
     var name: String?
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// The avatar grows with its initials, so they never truncate at accessibility sizes (it was a fixed 56 pt).
+    @ScaledMetric(relativeTo: .title2) private var diameter: CGFloat = 56
+
+    /// Side by side, or the name under the avatar at accessibility sizes so it keeps the sheet's width.
+    private var layout: AnyLayout {
+        typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
+            : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.m))
+    }
 
     var body: some View {
-        HStack(spacing: HassTokens.Spacing.m) {
+        layout {
             Text(ProfileButton.initials(name) ?? "")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
+                .lineLimit(1)
+                .frame(width: diameter, height: diameter)
                 .background(HassTokens.Ink.actionFill, in: Circle())
                 .overlay { if ProfileButton.initials(name) == nil { Image(systemName: "person.fill").foregroundStyle(.white) } }
                 .accessibilityHidden(true)
