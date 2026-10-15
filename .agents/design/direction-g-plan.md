@@ -12,7 +12,10 @@
   - `HassUI/Common/ModalTabBar.swift`: it already has a `.bottom` placement reserved for this direction, so the bottom section bar is a restyle plus a default change.
   - `HassDesign/Loading/ContentGate.swift`: the spinner it shows becomes `ArcSpinner`.
   - `HassUI/Common/RoomOverview/*`: the shared room chip modal, with tints in `RoomOverviewStyle`. The colour families go there.
-- **Still to do:** `AppSection` still has a `settings` case, so moving Settings into the Account sheet is still Phase 2 work.
+- **Phase 2 (shell), 2026-10-14:** `AppSection` has four cases; Settings lives in `AccountSheet` behind the profile avatar (Settings and its topics push inside the sheet; Sign Out sits behind an alert). The iPad flyout lists the four tabs, then Quick Links, which presents the sheet. Sign-in is dark with `PrimaryButtonStyle`. Recorded departures:
+  - **Quick Links on iPhone stays the trailing tab page**, not a circle that presents the sheet: iOS 26 draws a `Tab(role: .search)` inside the bar unless its page is searchable, and selects it even when the selection binding refuses (measured 2026-10-14).
+  - **No split page is left:** Settings was `OnDemandSplitStack`'s only adopter. The component and its hosted tests stay for the next list/detail page.
+  - **People at Home and Your Summary** wait on the Daily Report port.
 - **Colour families and the arc spinner** (Stephen, 2026-10-14) are part of Phase 1. See direction-g.md.
 - **Arc spinner sweep (Phase 1 step 2):** `ArcSpinner` replaced the system spinner in `ContentGate` and every `ProgressView()` spinner outside the open PRs. Titled spinners keep their words with `.progressViewStyle(.arc)` (`ArcProgressViewStyle`); a determinate `ProgressView(value:)` keeps its bar. The Chores and Cameras files skipped while #35 and #39 were open (`DonetickTaskSheet`, `TodoListSection`, `CameraLiveView`) were swept after they merged (2026-10-14).
 

@@ -40,6 +40,35 @@ struct HassTokensTests {
         #expect(contrast(Palette.tintText, Palette.sheetCell) >= 4.5)
     }
 
+    /// `a` over `b` at `amount`.
+    private func mix(_ a: UInt32, _ b: UInt32, _ amount: Double) -> UInt32 {
+        func channel(_ shift: UInt32) -> UInt32 {
+            let ca = Double((a >> shift) & 0xFF), cb = Double((b >> shift) & 0xFF)
+            return UInt32((ca * amount + cb * (1 - amount)).rounded()) << shift
+        }
+        return channel(16) | channel(8) | channel(0)
+    }
+
+    /// The brightest ground under a page tile: a white sky under the backdrop's lightest scrim (black at 40%), then
+    /// the thin module (#1C1C1E at 66%).
+    private var brightModule: UInt32 { mix(Palette.moduleThin, mix(0x000000, 0xFFFFFF, 0.40), 0.66) }
+
+    @Test func secondaryInkReadsOnTheBrightestModule() {
+        let ink = mix(Palette.secondaryLabel, brightModule, HassTokens.Surface.secondaryOnModuleOpacity)
+        #expect(contrast(ink, brightModule) >= 4.5)
+    }
+
+    /// Washes as tiles draw them (their colour at 45-50%, at 60% over the ground): the security, room and food
+    /// colours. The 68% ink measured 4.3:1 on the folded Duo's Armed Home tile; the wash ink keeps 4.5:1.
+    @Test(arguments: [0x1565C0, 0xC62828, 0x7B1FA2, 0x2A732E, 0xA8420E, 0x076C91] as [UInt32])
+    func secondaryInkReadsUnderAWash(_ color: UInt32) {
+        let ground = mix(color, brightModule, 0.5 * 0.6)
+        let ink = mix(Palette.secondaryLabel, ground, HassTokens.Surface.secondaryOnWashOpacity)
+        #expect(contrast(ink, ground) >= 4.5)
+        let old = mix(Palette.secondaryLabel, ground, HassTokens.Surface.secondaryOnModuleOpacity)
+        #expect(contrast(old, ground) < contrast(ink, ground))
+    }
+
     @Test func radiiMatchDirectionG() {
         #expect(HassTokens.Radius.tile == 22)
         #expect(HassTokens.Radius.module == 26)

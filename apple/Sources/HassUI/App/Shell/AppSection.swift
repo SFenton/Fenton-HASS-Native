@@ -4,10 +4,12 @@ import SwiftUI
 
 // MARK: - Sections
 
-/// The app's root sections, matching the web's `PRIMARY_NAV_ROUTES`
-/// (`ha-sfenton-react-dash:src/constants/routes.ts`): Home, Security, Climate, Chores, Settings.
+/// The app's root sections, from the web's `PRIMARY_NAV_ROUTES`
+/// (`ha-sfenton-react-dash:src/constants/routes.ts`): Home, Security, Climate, Chores. Settings is not a section:
+/// direction G moves it into the Account sheet behind the profile avatar (`.agents/design/direction-g.md`,
+/// Navigation).
 enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
-    case home, security, climate, chores, settings
+    case home, security, climate, chores
 
     var id: String { rawValue }
 
@@ -18,7 +20,6 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .security: "Security"
         case .climate: "Climate"
         case .chores: "Chores"
-        case .settings: "Settings"
         }
     }
 
@@ -32,34 +33,36 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .security: "mdi:shield"
         case .climate: "mdi:thermostat"
         case .chores: "mdi:clipboard-list"
-        case .settings: "mdi:cog"
         }
     }
 
     /// Accessibility identifier for this section's navigation item (tab and flyout row alike).
     var navigationIdentifier: String { "nav.\(rawValue)" }
 
-    /// The section a notification opens.
-    init(_ section: PushSection) {
+    /// The section a notification opens; nil for Settings, which lives in the Account sheet (direction G).
+    init?(_ section: PushSection) {
         switch section {
         case .home: self = .home
         case .security: self = .security
         case .climate: self = .climate
         case .chores: self = .chores
-        case .settings: self = .settings
+        case .settings: return nil
         }
     }
 }
 
+extension EnvironmentValues {
+    /// The root section whose stack this view is in; nil outside the shell (galleries, sheets).
+    @Entry var shellSection: AppSection?
+}
+
 // MARK: - Menu
 
-/// The flyout's grouping, from the web rail and drawer (`AdaptiveNavigation.tsx`): the four primary
-/// sections at the top, Settings pinned to the bottom (`margin-top: auto`).
+/// The flyout's rows (direction G, Navigation: "an overlay glass flyout that lists the four tabs and then Quick
+/// Links").
 enum NavigationMenu {
-    /// Rows at the top of the flyout.
+    /// The section rows, in order; Quick Links follows them.
     static let primary: [AppSection] = [.home, .security, .climate, .chores]
-    /// Rows pinned at the bottom of the flyout.
-    static let footer: [AppSection] = [.settings]
 
     /// VoiceOver label for a navigation item. Only Chores carries a badge (web `BADGED_NAV_PATH`), and
     /// the count is spoken after the name like the web's `tabs.overdue` label.
@@ -102,51 +105,33 @@ enum ShellNavigationStyle: Equatable, Sendable {
 
 // MARK: - Compact tab bar
 
-/// A section page pushed on another section's stack because it is not a tab in this window: Settings, chosen
-/// from the menu where the compact bar leaves it out (FestivalNativeApps' drawer pushes a dropped section the
-/// same way). A hidden tab can't be selected: UIKit asserts.
-enum ShellRoute: Hashable, Sendable {
-    case settings
-}
-
-/// A tab in the root tab view: a section, or the trailing Quick Links tab.
+/// A tab in the root tab view: a section, or the trailing Quick Links circle.
 enum RootTab: Hashable, Sendable {
     case section(AppSection)
-    /// Quick Links (web `GlobalQuickLinksAction`), the tab bar's trailing accessory tab on iOS 26 and later.
+    /// Quick Links (web `GlobalQuickLinksAction`), the tab bar's trailing tab on iOS 26 and later.
     case quickLinks
 }
 
-/// Which tabs the compact (iPhone, folded Duo) tab bar shows (owner, 2026-10-13: "Quick Links should be an
-/// accessory like search button is in FestivalNativeApps and profile goes in top right ... show
-/// Home/Security/Climate/Chores as the primary four and Settings can be accessed via flyout").
+/// How the compact (iPhone, folded Duo) tab bar carries Quick Links (direction G, Navigation: "a floating glass
+/// tab bar with Home, Security, Climate and Chores ... Quick Links ... trails the tab bar").
 ///
-/// iOS 26 and later separate a trailing tab (`Tab(role: .search)`) from the bar, as FestivalNativeApps does for
-/// Search. A phone shows five tabs before "More", and the trailing tab counts toward them (FestivalNativeApps
-/// measured on iOS 26.5: five sections plus Search moved Search into More), so Settings leaves the bar and opens
-/// from the menu button (``NavigationFlyout``). HIG Tab bars: "Avoid overflow" and "A dedicated Search tab may be
-/// trailing."
+/// iOS 26 and later show it as the trailing role tab (`Tab(role: .search)`), its own page; direction G's circle that
+/// presents a sheet is a recorded departure (``MainTabView``). Before iOS 26 Quick Links is a toolbar button that
+/// presents the sheet. HIG Tab bars: "A dedicated Search tab may be trailing."
 enum CompactTabLayout: Equatable, Sendable {
-    /// All five sections as tabs; Quick Links is a toolbar button (before iOS 26).
-    case allSections
-    /// The four primary sections and the trailing Quick Links tab; Settings is in the menu.
-    case primaryWithQuickLinks
+    /// The four sections as tabs; Quick Links is a toolbar button (before iOS 26).
+    case sectionsOnly
+    /// The four sections and the trailing Quick Links tab.
+    case sectionsWithQuickLinks
 
     /// The layout for the running system.
     /// - Parameter supportsTrailingTab: The system draws a role tab apart from the bar (iOS 26 and later).
     static func resolve(supportsTrailingTab: Bool) -> CompactTabLayout {
-        supportsTrailingTab ? .primaryWithQuickLinks : .allSections
+        supportsTrailingTab ? .sectionsWithQuickLinks : .sectionsOnly
     }
 
-    /// Sections shown as tabs, in order.
-    var visibleSections: [AppSection] {
-        switch self {
-        case .allSections: AppSection.allCases
-        case .primaryWithQuickLinks: NavigationMenu.primary
-        }
-    }
-
-    /// Whether Quick Links is a tab rather than a toolbar button.
-    var hasQuickLinksTab: Bool { self == .primaryWithQuickLinks }
+    /// Whether Quick Links is the trailing tab rather than a toolbar button.
+    var hasQuickLinksTab: Bool { self == .sectionsWithQuickLinks }
 }
 
 /// Where the shell puts navigation chrome for a window (pure, so it can be unit tested).
@@ -162,10 +147,9 @@ struct ShellChrome: Equatable, Sendable {
     ///   - layout: The compact tab layout.
     static func resolve(style: ShellNavigationStyle, layout: CompactTabLayout) -> ShellChrome {
         switch style {
-        case .flyout:
-            ShellChrome(showsMenuButton: true, showsQuickLinksButton: true)
-        case .tabBar:
-            ShellChrome(showsMenuButton: layout == .primaryWithQuickLinks, showsQuickLinksButton: !layout.hasQuickLinksTab)
+        // iPad: "Quick Links is a floating button" (direction G), and also the flyout's last row.
+        case .flyout: ShellChrome(showsMenuButton: true, showsQuickLinksButton: true)
+        case .tabBar: ShellChrome(showsMenuButton: false, showsQuickLinksButton: !layout.hasQuickLinksTab)
         }
     }
 }

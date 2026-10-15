@@ -198,17 +198,18 @@ struct PushNavigationTests {
         #expect(navigator.selection == .security)
         #expect(navigator.isAtRoot(.security))
         #expect(!navigator.isFlyoutOpen)
-        for (section, expected) in [(PushSection.home, AppSection.home), (.climate, .climate), (.chores, .chores), (.settings, .settings)] {
+        for (section, expected) in [(PushSection.home, AppSection.home), (.climate, .climate), (.chores, .chores)] {
             navigator.open(.section(section))
             #expect(navigator.selection == expected)
         }
     }
 
-    @Test func settingsOutsideTheTabBarIsPushed() {
+    @Test func settingsOpensTheAccountSheetOverTheCurrentSection() {
         let navigator = ShellNavigator(selection: .chores)
-        navigator.settingsIsTab = false
+        navigator.paths[.chores] = NavigationPath(["detail"])
         navigator.open(.section(.settings))
         #expect(navigator.selection == .chores)
+        #expect(navigator.accountSection == .chores)
         #expect(!navigator.isAtRoot(.chores))
     }
 
