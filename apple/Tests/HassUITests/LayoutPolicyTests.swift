@@ -62,3 +62,34 @@ struct OrientationPolicyTests {
         #expect(calls == 1)
     }
 }
+
+/// Home's two columns on the hinge (plan Phase 4, decision 5).
+struct HomeColumnsTests {
+    /// Unfolded Duo landscape as measured on the simulator: 951 pt wide, hinge band 455.3 to 495.7 pt, content ending at
+    /// the system's trailing bar (868 pt).
+    let hinge = CGRect(x: 455.3, y: 0, width: 40.4, height: 669)
+    let duoContent = CGRect(x: 0, y: 0, width: 868, height: 669)
+
+    @Test func splitsOnTheHingeOfTheUnfoldedDuoInLandscape() throws {
+        let columns = try #require(HomeColumns.resolve(container: duoContent, isRegularWidth: true, hinge: hinge))
+        #expect(columns.isHinge)
+        #expect(abs(columns.leadingWidth - 455.3) < 0.01)
+        #expect(abs(columns.bandWidth - 40.4) < 0.01)
+        #expect(abs(columns.leadingWidth + columns.bandWidth + columns.trailingWidth - duoContent.width) < 0.01)
+    }
+
+    @Test func iPadLandscapeStaysOneColumn() {
+        // Wide enough to split in a split view, but no hinge: the midpoint split is for list/detail pages only.
+        #expect(HomeColumns.resolve(container: CGRect(x: 0, y: 0, width: 1194, height: 834), isRegularWidth: true, hinge: nil) == nil)
+    }
+
+    @Test func portraitCompactAndNarrowWindowsStayOneColumn() {
+        // Unfolded portrait: taller than wide.
+        #expect(HomeColumns.resolve(container: CGRect(x: 0, y: 0, width: 669, height: 951), isRegularWidth: true,
+                                    hinge: CGRect(x: 0, y: 455, width: 669, height: 40)) == nil)
+        // Folded outer display: compact, no hinge.
+        #expect(HomeColumns.resolve(container: CGRect(x: 0, y: 0, width: 466, height: 678), isRegularWidth: false, hinge: nil) == nil)
+        // A trailing half under 360 pt does not split.
+        #expect(HomeColumns.resolve(container: CGRect(x: 0, y: 0, width: 800, height: 600), isRegularWidth: true, hinge: hinge) == nil)
+    }
+}

@@ -124,21 +124,29 @@ public extension View {
 
     /// Presents this modal at full height on iPhone with a visible grabber (owner, 2026-10-13: "All modals
     /// (security system, cameras, etc.) need to open to full height on iPhone"), the one sheet sizing API.
-    /// - Parameter width: The iPad sheet size: the system default, a form sheet or a page sheet (two-column
-    ///   remotes, thermostat and bedroom sheets, the humidifier). No effect on iPhone. HIG: Sheets ("Prefer page
-    ///   or form sheet styles in an iPadOS app").
-    func hassSheet(_ width: HassSheetWidth = .automatic) -> some View {
+    ///
+    /// Every sheet names its iPad size (plan Phase 4, decision 4; HIG: Sheets, "Prefer page or form sheet styles in an
+    /// iPadOS app"): `.page` for viewing and control sheets with tile grids, dials, maps or a second column, `.form`
+    /// for lists, editors and prompts. The default is `.form`, so a sheet that forgets still gets a narrow, readable
+    /// sheet rather than the system's full-screen-ish default; choose `.page` explicitly when the content has columns.
+    /// - Parameter width: The iPad sheet size: a form sheet or a page sheet. No effect on iPhone.
+    func hassSheet(_ width: HassSheetWidth = .form) -> some View {
         modifier(HassSheetPresentation(width: width))
+    }
+
+    /// Only the iPad sheet size, for sheets that keep their own detents (a short prompt that opens at the medium
+    /// detent and grows to large). iOS 18 and later; earlier systems keep the system's size.
+    /// - Parameter width: The iPad sheet size.
+    func hassSheetSizing(_ width: HassSheetWidth) -> some View {
+        modifier(HassSheetSizing(width: width))
     }
 }
 
 /// How wide a ``SwiftUI/View/hassSheet(_:)`` modal is on iPad.
-public enum HassSheetWidth: Sendable {
-    /// The system's default for the presentation.
-    case automatic
-    /// A form sheet (device controls, short forms).
+public enum HassSheetWidth: Sendable, Equatable {
+    /// A form sheet (540 pt): lists, editors, prompts, short device controls.
     case form
-    /// A page sheet, with room for two columns.
+    /// A page sheet, with room for tile grids, dials, maps and two columns.
     case page
 }
 
@@ -147,20 +155,28 @@ private struct HassSheetPresentation: ViewModifier {
     var width: HassSheetWidth
 
     func body(content: Content) -> some View {
-        let sheet = content
+        content
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+            .hassSheetSizing(width)
+    }
+}
+
+/// Implementation of ``SwiftUI/View/hassSheetSizing(_:)``.
+private struct HassSheetSizing: ViewModifier {
+    var width: HassSheetWidth
+
+    func body(content: Content) -> some View {
         #if os(watchOS)
-        sheet
+        content
         #else
         if #available(iOS 18.0, macOS 15.0, *) {
             switch width {
-            case .automatic: sheet
-            case .form: sheet.presentationSizing(.form)
-            case .page: sheet.presentationSizing(.page)
+            case .form: content.presentationSizing(.form)
+            case .page: content.presentationSizing(.page)
             }
         } else {
-            sheet
+            content
         }
         #endif
     }

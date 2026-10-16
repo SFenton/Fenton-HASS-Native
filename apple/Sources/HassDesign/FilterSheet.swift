@@ -74,6 +74,8 @@ public struct FilterSheet<Content: View>: View {
         // clipped rows at the sheet's edge at AX5.
         .presentationDetents(detents ?? [.large])
         .presentationDragIndicator(.visible)
+        // A form sheet on iPad: filters, sorts and pickers are lists and editors.
+        .hassSheetSizing(.form)
         #if os(iOS)
         // Opaque, not glass: at the medium detent the page's floating buttons otherwise show through and fail contrast.
         // In the dark sheet this is G's `#1C1C1E` ground under `#2C2C2E` rows.

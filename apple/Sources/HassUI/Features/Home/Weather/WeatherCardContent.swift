@@ -50,7 +50,7 @@ struct WeatherCardContent: View {
         .accessibilityIdentifier("home.weather")
         .sheet(isPresented: $isPresented) {
             WeatherSheet(forecasts: forecasts)
-                .hassSheet()
+                .hassSheet(.page)
         }
         .onAppear {
             if startsOpen, !didAutoOpen {

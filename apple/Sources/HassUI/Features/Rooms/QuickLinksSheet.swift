@@ -129,7 +129,7 @@ struct QuickLinksSheet: View {
                 }
                 .toolbar { SheetCloseItem(identifier: "quickLinks.close") { dismiss() } }
         }
-        .hassSheet()
+        .hassSheet(.page)
         .accessibilityIdentifier("quickLinks.sheet")
     }
 

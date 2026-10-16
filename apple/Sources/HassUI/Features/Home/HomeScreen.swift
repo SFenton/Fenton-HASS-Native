@@ -7,20 +7,21 @@ struct HomeScreen: View {
     @Environment(EntityStore.self) private var store
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.roomServiceCaller) private var callerOverride
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.windowHinge) private var hinge
     @State private var sheet: HomeSheet?
+    /// The space Home's content is offered, in window coordinates, for ``HomeColumns``.
+    @State private var container: CGRect = .zero
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-                StatusRail { sheet = .chip($0) }
-                WeatherSummaryCard()
-                    .padding(.horizontal, HassTokens.Spacing.l)
-                GuestPresenceSection()
-                    .padding(.horizontal, HassTokens.Spacing.l)
-                CameraGrid { sheet = .camera($0) }
-                    .padding(.horizontal, HassTokens.Spacing.l)
-            }
-            .padding(.vertical, HassTokens.Spacing.m)
+            content
+                // Measure the space offered, not the content: a flexible frame (with `minWidth: 0`) is the same on
+                // every pass, so the columns never feed back into the width that decides them
+                // (`.agents/design/apple/split-view.md`, Implementation).
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
+                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { container = $0 }
+                .padding(.vertical, HassTokens.Spacing.m)
         }
         .scrollTelemetry("Home")
         .accessibilityIdentifier("home.scroll")
@@ -33,7 +34,7 @@ struct HomeScreen: View {
             switch sheet {
             case let .chip(kind):
                 chipSheet(kind)
-                    .hassSheet()
+                    .hassSheet(.page)
             case let .camera(camera):
                 CameraViewer(camera: camera)
             }
@@ -42,6 +43,39 @@ struct HomeScreen: View {
 }
 
 extension HomeScreen {
+    /// One column everywhere, except the unfolded Duo in landscape: two halves on the hinge (mockup n1-duo-unfolded).
+    @ViewBuilder
+    private var content: some View {
+        if let columns = HomeColumns.resolve(container: container, isRegularWidth: horizontalSizeClass == .regular, hinge: hinge) {
+            // Chips and weather lead; cameras and guests trail. Nothing crosses the hinge, and the hinge band is empty.
+            HStack(alignment: .top, spacing: 0) {
+                VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
+                    StatusRail { sheet = .chip($0) }
+                    WeatherSummaryCard()
+                        .padding(.horizontal, HassTokens.Spacing.l)
+                }
+                .frame(width: columns.leadingWidth, alignment: .topLeading)
+                Color.clear.frame(width: columns.bandWidth).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
+                    CameraGrid { sheet = .camera($0) }
+                    GuestPresenceSection()
+                }
+                .padding(.horizontal, HassTokens.Spacing.l)
+                .frame(width: columns.trailingWidth, alignment: .topLeading)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
+                StatusRail { sheet = .chip($0) }
+                WeatherSummaryCard()
+                    .padding(.horizontal, HassTokens.Spacing.l)
+                GuestPresenceSection()
+                    .padding(.horizontal, HassTokens.Spacing.l)
+                CameraGrid { sheet = .camera($0) }
+                    .padding(.horizontal, HassTokens.Spacing.l)
+            }
+        }
+    }
+
     /// The sheet a chip opens: the Security page's alarm controls (web `SecurityControls`), else a room overview.
     @ViewBuilder
     private func chipSheet(_ kind: HomeConfig.ChipSheet) -> some View {
