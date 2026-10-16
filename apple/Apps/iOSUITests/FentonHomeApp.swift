@@ -23,11 +23,16 @@ enum FentonHomeApp {
         return (username, password, environment["FENTON_HASS_SERVER"])
     }
 
-    /// A fresh app handle; forwards `FENTON_REDACT_PRIVATE` so shared screenshots hide private data.
+    /// A fresh app handle; forwards `FENTON_REDACT_PRIVATE` so shared screenshots hide private data, and
+    /// `FENTON_APPEARANCE` (`light` or `dark`) so a whole run can draw its sheets in light
+    /// (`TEST_RUNNER_FENTON_APPEARANCE=light`, or `tools/ios_uitest.sh --appearance light`).
     static func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
         if let redact = ProcessInfo.processInfo.environment["FENTON_REDACT_PRIVATE"] {
             app.launchEnvironment["FENTON_REDACT_PRIVATE"] = redact
+        }
+        if let appearance = ProcessInfo.processInfo.environment["FENTON_APPEARANCE"] {
+            app.launchEnvironment["FENTON_APPEARANCE"] = appearance
         }
         return app
     }
@@ -92,9 +97,12 @@ enum FentonHomeApp {
     }
 
     /// Launches the debug component gallery on `page` (e.g. `thermostat-dial`): fixture data, no sign-in.
-    static func launchGallery(_ page: String, arguments: [String] = []) -> XCUIApplication {
+    /// - Parameter appearance: `light` or `dark` pins the sheets' appearance for this launch (`FENTON_APPEARANCE`); nil
+    ///   keeps the runner's, else the simulator's own.
+    static func launchGallery(_ page: String, arguments: [String] = [], appearance: String? = nil) -> XCUIApplication {
         let app = makeApp()
         app.launchEnvironment["FENTON_GALLERY"] = page
+        if let appearance { app.launchEnvironment["FENTON_APPEARANCE"] = appearance }
         app.launchArguments += arguments
         app.launch()
         return app

@@ -45,3 +45,56 @@ public enum TileFaceStyle: Equatable, Sendable {
         }
     }
 }
+
+// MARK: - Appearance
+
+/// Whether a tile's neutral parts (off ground, title and state ink, glyph) are drawn for the dark or the light
+/// appearance. Only a tile in a sheet under the light scheme is light: pages are always dark, and a lit or filled face
+/// keeps its fixed fill and ink either way.
+public enum TileAppearance: Equatable, Sendable {
+    case dark
+    case light
+
+    /// The appearance for a tile on `surface` under `scheme`.
+    public static func resolve(surface: TileSurface, scheme: ColorScheme) -> Self {
+        surface == .sheet && scheme == .light ? .light : .dark
+    }
+
+    /// The scheme the appearance's colours are drawn for.
+    public var scheme: ColorScheme { self == .light ? .light : .dark }
+
+    /// The glyph and state colour of an error face: `#FF6961` on dark, a dark red on a light cell.
+    public var errorRGB: UInt32 {
+        self == .light ? HassTokens.Palette.redLight : HassTokens.Palette.red
+    }
+
+    /// How strongly a state wash tints the ground: 60% over a dark module, 22% over a white cell so the ink on it keeps
+    /// 4.5:1.
+    public var washOpacity: Double { self == .light ? 0.22 : 0.6 }
+}
+
+public extension TileFaceStyle {
+    /// A caller's tint made legible as a glyph on a light cell: unchanged when it already reaches 3:1 (WCAG 1.4.11) on
+    /// the sheet ground, else mixed toward black until it does, keeping its hue.
+    /// - Parameter rgb: The tint's sRGB channels, 0 to 1.
+    /// - Returns: The tint's channels, darkened as needed.
+    static func lightGlyph(forTint rgb: (red: Double, green: Double, blue: Double)) -> (red: Double, green: Double, blue: Double) {
+        func luminance(_ c: (red: Double, green: Double, blue: Double)) -> Double {
+            func linear(_ v: Double) -> Double { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+            return 0.2126 * linear(c.red) + 0.7152 * linear(c.green) + 0.0722 * linear(c.blue)
+        }
+        let ground = Double((HassTokens.Palette.sheetGroundLight >> 16) & 0xFF) / 255
+        let groundLuminance = luminance((ground, ground, ground))
+        func ratio(_ c: (red: Double, green: Double, blue: Double)) -> Double {
+            let l = luminance(c)
+            return (max(l, groundLuminance) + 0.05) / (min(l, groundLuminance) + 0.05)
+        }
+        var keep = 1.0
+        var shaded = rgb
+        while ratio(shaded) < 3.3, keep > 0 {
+            keep -= 0.02
+            shaded = (rgb.red * keep, rgb.green * keep, rgb.blue * keep)
+        }
+        return shaded
+    }
+}

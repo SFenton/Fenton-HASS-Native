@@ -240,7 +240,11 @@ public struct GlassTileFace: View {
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.tileFillsHeight) private var fillsHeight
     @Environment(\.tileSurface) private var surface
+    @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    /// Light only for a tile in a sheet under the light scheme: pages are always dark.
+    private var appearance: TileAppearance { .resolve(surface: surface, scheme: scheme) }
 
     private var style: TileFaceStyle {
         .resolve(family: family, isActive: isActive, isError: isError, isUnavailable: isUnavailable)
@@ -292,7 +296,7 @@ public struct GlassTileFace: View {
         .background { ground(style).clipShape(shape) }
         .overlay {
             if style == .tinted {
-                shape.strokeBorder(tint.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
+                shape.strokeBorder(tintGlyph.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
                     .opacity(isUnavailable ? 0.5 : 1)
             }
         }
@@ -301,17 +305,32 @@ public struct GlassTileFace: View {
 
     // MARK: Ink
 
-    // Every ground is fixed (dark module or sheet cell, lit tile, family fill), so the inks are fixed too and never
-    // follow the colour scheme: a light-appearance gallery drew black titles on the dark ground (2.7:1).
+    // The lit tile and the family fills are fixed grounds with fixed inks, in every appearance. The off, tinted and error
+    // faces sit on a dark module (pages) or the sheet's cell, which is white in a light sheet: their inks follow
+    // ``appearance`` (a light-appearance gallery once drew black titles on the dark ground, 2.7:1).
+
+    /// A grey for glyphs and chevrons that carry no meaning of their own.
+    private var muted: Color {
+        appearance == .light ? HassTokens.Surface.secondaryInSheet : HassTokens.Surface.secondaryOnModule
+    }
+
+    /// The caller's tint as a glyph on the face: unchanged on dark, darkened to 3:1 on a light cell.
+    private var tintGlyph: Color {
+        guard appearance == .light else { return tint }
+        var environment = EnvironmentValues()
+        environment.colorScheme = .light
+        let resolved = tint.resolve(in: environment)
+        let shaded = TileFaceStyle.lightGlyph(forTint: (Double(resolved.red), Double(resolved.green), Double(resolved.blue)))
+        return Color(.sRGB, red: shaded.red, green: shaded.green, blue: shaded.blue, opacity: Double(resolved.opacity))
+    }
 
     private func glyphColor(_ style: TileFaceStyle) -> Color {
-        let muted = HassTokens.Surface.secondaryOnModule
-        return switch style {
-        case .off: isEnabled ? (family?.offGlyph ?? muted) : muted
+        switch style {
+        case .off: isEnabled ? (family.map { Color(rgb: $0.offGlyphRGB(appearance.scheme)) } ?? muted) : muted
         case .lit: LitTile.glyph
         case let .filled(family): family.ink
-        case .tinted: isEnabled ? tint : muted
-        case .error: Color(rgb: HassTokens.Palette.red)
+        case .tinted: isEnabled ? tintGlyph : muted
+        case .error: Color(rgb: appearance.errorRGB)
         }
     }
 
@@ -319,7 +338,7 @@ public struct GlassTileFace: View {
         switch style {
         case .lit: LitTile.ink
         case let .filled(family): family.ink
-        default: .white
+        default: appearance == .light ? HassTokens.Ink.primary : .white
         }
     }
 
@@ -327,10 +346,13 @@ public struct GlassTileFace: View {
         switch style {
         case .lit: LitTile.secondaryInk
         case let .filled(family): family.secondaryInk
-        case .error: Color(rgb: HassTokens.Palette.red)
+        case .error: Color(rgb: appearance.errorRGB)
         // A state wash lifts the dark ground toward its colour, and over a bright sky the 68% ink fell to 4.3:1
-        // (folded Duo Quick Links: Armed Home and the food tile, 2026-10-14).
-        default: wash != nil ? HassTokens.Surface.secondaryOnWash : HassTokens.Surface.secondaryOnModule
+        // (folded Duo Quick Links: Armed Home and the food tile, 2026-10-14). On a light cell the wash is faint
+        // (``TileAppearance/washOpacity``) and the label colour at 72% holds 4.5:1 over it.
+        default:
+            if appearance == .light { wash != nil ? HassTokens.Ink.secondary : HassTokens.Surface.secondaryInSheet }
+            else { wash != nil ? HassTokens.Surface.secondaryOnWash : HassTokens.Surface.secondaryOnModule }
         }
     }
 
@@ -342,7 +364,7 @@ public struct GlassTileFace: View {
         case .off, .tinted, .error:
             ZStack(alignment: .leading) {
                 darkGround(dense: style == .error)
-                if let wash { wash.opacity(0.6) }
+                if let wash { wash.opacity(appearance.washOpacity) }
                 levelBand { (levelTint ?? tint).opacity(0.32) }
             }
         case .lit:

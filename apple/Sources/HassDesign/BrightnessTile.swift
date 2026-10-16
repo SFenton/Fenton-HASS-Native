@@ -236,6 +236,8 @@ struct BrightnessBubble: View {
             .monospacedDigit()
             .foregroundStyle(.white)
             .frame(width: Self.width, height: Self.height)
+            // A fixed dark capsule with white text in every appearance (like the system's volume HUD): over a light
+            // sheet the shadow separates it, and over the lit band it stays readable.
             .background(Color(rgb: HassTokens.Palette.sheetCell), in: Capsule())
             .shadow(color: .black.opacity(0.3), radius: 6, y: 2)
             .dynamicTypeSize(...DynamicTypeSize.xxLarge)

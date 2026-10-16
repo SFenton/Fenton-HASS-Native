@@ -9,7 +9,8 @@ struct PrimaryButtonTests {
         #expect(tint.fill == HassTokens.Ink.actionFill)
         #expect(tint.label == .white)
         let water = PrimaryButtonStyle.colors(.water)
-        #expect(water.fill == ColorFamily.water.glyph)
+        // Fixed: the family's dark-appearance glyph, never the light-sheet variant.
+        #expect(water.fill == Color(rgb: ColorFamily.water.spec.glyph))
         #expect(water.label == Color(rgb: HassTokens.Palette.sheetGround))
         #expect(PrimaryButtonStyle.height == 50)
     }

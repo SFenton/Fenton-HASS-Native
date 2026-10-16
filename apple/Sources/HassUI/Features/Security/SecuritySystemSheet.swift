@@ -47,6 +47,7 @@ struct AlarmPanel: View {
     var caller: any HassServiceCalling
     @Environment(EntityStore.self) private var store
     @Environment(\.tileSurface) private var surface
+    @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var confirmingDisarm = false
     @State private var actions: OptimisticActions?
@@ -61,7 +62,7 @@ struct AlarmPanel: View {
         let redacting = ScreenshotPrivacy.isRedacting
         let triggered = !redacting && shown == "triggered"
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m + 2) {
-            header(shown: shown, live: live, unavailable: unavailable, redacting: redacting)
+            header(shown: shown, live: live, unavailable: unavailable, redacting: redacting, triggered: triggered)
             DynamicGridLayout(minCellWidth: minModeWidth, maxColumns: 4, spacing: HassTokens.Spacing.s, equalRowHeights: true) {
                 ForEach(SecurityConfig.modeButtons) { mode in
                     AlarmModeButton(
@@ -91,7 +92,7 @@ struct AlarmPanel: View {
 
     // MARK: Header
 
-    private func header(shown: String?, live: EntityState?, unavailable: Bool, redacting: Bool) -> some View {
+    private func header(shown: String?, live: EntityState?, unavailable: Bool, redacting: Bool, triggered: Bool) -> some View {
         let family = redacting || unavailable ? nil : ColorFamily.security(alarmState: shown)
         let title = redacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.panelTitle(shown))
         let since = redacting || unavailable ? nil : live.flatMap { SecurityConfig.sinceText($0.lastChanged) }
@@ -105,16 +106,18 @@ struct AlarmPanel: View {
                 // Unavailable dims the glyph only; the text keeps full strength (``GlassTileFace``).
                 .opacity(unavailable ? 0.5 : 1)
                 .frame(width: badgeSize, height: badgeSize)
-                .background(family?.fill ?? ColorFamily.neutral.glyph.opacity(0.5), in: Circle())
+                // Unknown or hidden: a fixed mid grey under the white glyph, on a dark module and a white cell alike.
+                .background(family?.fill ?? Color(rgb: Self.neutralBadge), in: Circle())
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+                    // White on a page, the label colour in a light sheet.
+                    .foregroundStyle(HassTokens.Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle)
                     .font(.subheadline)
-                    .foregroundStyle(subtitleInk)
+                    .foregroundStyle(subtitleInk(triggered: triggered))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -126,8 +129,14 @@ struct AlarmPanel: View {
         .accessibilityIdentifier("security.system.state")
     }
 
-    private var subtitleInk: Color {
-        surface == .sheet ? HassTokens.Surface.secondaryInSheet : HassTokens.Surface.secondaryOnModule
+    /// The badge fill when the panel's state is unknown or hidden: `#636366`, 6:1 under the white glyph.
+    private static let neutralBadge: UInt32 = 0x636366
+
+    /// The subtitle's ink: the sheet's secondary ink, a stronger one over a light sheet's red alarm wash (the faint
+    /// red lowers the ground's luminance), or the module's on a page.
+    private func subtitleInk(triggered: Bool) -> Color {
+        guard surface == .sheet else { return HassTokens.Surface.secondaryOnModule }
+        return triggered && scheme == .light ? HassTokens.Ink.secondary : HassTokens.Surface.secondaryInSheet
     }
 
     // MARK: Ground
@@ -140,7 +149,8 @@ struct AlarmPanel: View {
         switch surface {
         case .sheet:
             shape.fill(HassTokens.Surface.sheetCell)
-                .overlay { if triggered { shape.fill(alarm.opacity(0.42)) } }
+                // Fainter over a white cell, so the secondary ink on it keeps 4.5:1.
+                .overlay { if triggered { shape.fill(alarm.opacity(scheme == .light ? 0.16 : 0.42)) } }
         case .page:
             Color.clear
                 .module(triggered ? .dense : .thin)
@@ -197,7 +207,9 @@ struct AlarmModeButton: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(.white)
+            // White on a selected mode's fill; the label colour on the unselected ground (page, or a sheet in either
+            // appearance).
+            .foregroundStyle(isSelected ? Color.white : HassTokens.Ink.primary)
             .padding(.vertical, HassTokens.Spacing.s)
             .padding(.horizontal, HassTokens.Spacing.xs)
             .frame(maxWidth: .infinity, minHeight: 64, maxHeight: .infinity)
@@ -205,7 +217,7 @@ struct AlarmModeButton: View {
                 if isSelected, let fill = ColorFamily.security(alarmState: mode.state)?.fill {
                     shape.fill(fill)
                 } else if onAlarm {
-                    shape.fill(.white.opacity(0.14))
+                    shape.fill(HassTokens.Ink.primary.opacity(0.14))
                 } else {
                     shape.fill(.fill.tertiary)
                 }

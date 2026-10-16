@@ -73,12 +73,53 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         }
     }
 
-    /// Glyph colour on dark tiles, chips and rows.
-    public var glyph: Color { Color(rgb: spec.glyph) }
+    /// The glyph on a light sheet: ``Spec/glyph`` darkened until it is at least 3:1 (WCAG 1.4.11, non-text) on the
+    /// white cell and on the sheet ground `#F2F2F7`, keeping its hue. (The dark values are 1.5–2.7:1 on white.)
+    public var glyphLightRGB: UInt32 {
+        switch self {
+        case .lights: 0xBD6F24
+        case .heating: 0xCF6326
+        case .cooling: 0x2D8F97
+        case .vents: 0x6D80C2
+        case .air: 0x209285
+        case .water: 0x358DA8
+        case .occupancy, .securityDisarmed: 0x40924A
+        case .contact: 0x54905A
+        case .media: 0xC96085
+        case .cleaning: 0x9C6DC3
+        case .power: 0x998006
+        case .cooking: 0xC46A3B
+        case .climate: 0x9E7E00
+        case .securityHome: 0x4C86C2
+        case .securityAway, .securityTriggered: 0xD95952
+        case .securityNight: 0xA26DBB
+        case .neutral: 0x818186
+        }
+    }
 
-    /// Glyph colour on an off tile: the family colour mixed 72% with system grey, so the kind of device stays
-    /// visible without reading as on.
-    public var offGlyph: Color { Color(rgb: Self.mix(spec.glyph, 0x8E8E93, 0.72)) }
+    /// The glyph colour for an appearance, as `0xRRGGBB`.
+    public func glyphRGB(_ scheme: ColorScheme) -> UInt32 {
+        scheme == .light ? glyphLightRGB : spec.glyph
+    }
+
+    /// The off glyph for an appearance: the glyph mixed 72% with grey (system grey on dark, `#6C6C70` on light so the
+    /// mix keeps 3:1 on white), so the kind of device stays visible without reading as on.
+    public func offGlyphRGB(_ scheme: ColorScheme) -> UInt32 {
+        scheme == .light
+            ? Self.mix(glyphLightRGB, Self.offGreyLight, 0.72)
+            : Self.mix(spec.glyph, Self.offGreyDark, 0.72)
+    }
+
+    private static let offGreyDark: UInt32 = 0x8E8E93
+    private static let offGreyLight: UInt32 = 0x6C6C70
+
+    /// Glyph colour on the surface it is drawn on: the dark value on pages and dark sheets, ``glyphLightRGB`` in a light
+    /// sheet. Not for a fixed fill (a filled button, a chip): use `Color(rgb: spec.glyph)` there.
+    public var glyph: Color { Color.adaptive(light: glyphLightRGB, dark: spec.glyph) }
+
+    /// Glyph colour on an off tile: the family colour mixed 72% with grey, so the kind of device stays visible without
+    /// reading as on. Adapts like ``glyph``.
+    public var offGlyph: Color { Color.adaptive(light: offGlyphRGB(.light), dark: offGlyphRGB(.dark)) }
 
     /// The on-tile fill, or nil when the family is never filled.
     public var fill: Color? { spec.fill.map { Color(rgb: $0) } }

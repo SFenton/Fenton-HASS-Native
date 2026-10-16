@@ -10,7 +10,8 @@ import SwiftUI
 struct DirectionGGallery: View {
     @State private var lastAction = "none"
     @State private var brightness = 60
-    @State private var showsSheet = false
+    /// `-directionGSheet open` presents the section sheet at launch, so a journey audits it (also at AX5) without a tap.
+    @State private var showsSheet = UserDefaults.standard.string(forKey: "directionGSheet") == "open"
     /// `-directionGOrder lower` puts the modules, spinners and buttons first, so a journey audits them unscrolled
     /// (scrolled, the tiles under the header fade read as failing contrast).
     private let lowerFirst = UserDefaults.standard.string(forKey: "directionGOrder") == "lower"
@@ -166,35 +167,75 @@ struct DirectionGGallery: View {
     }
 }
 
-/// A sheet with tiles on the sheet surface and the bottom glass section bar.
+/// A sheet with tiles on the sheet surface and the bottom glass section bar. Launch with `FENTON_APPEARANCE=light` to
+/// draw it in the light appearance (`SystemAppearance`); the page behind stays dark.
 private struct DirectionGGallerySheet: View {
     enum Section: String, CaseIterable, Identifiable {
-        case controls = "Controls", apps = "Apps", settings = "Settings"
+        case controls = "Controls", families = "Families", apps = "Apps", settings = "Settings"
         var id: Self { self }
     }
 
-    @State private var section: Section = .controls
+    /// `-directionGSheetSection Families` picks the first section, so a journey audits each one at launch.
+    @State private var section = Section(rawValue: UserDefaults.standard.string(forKey: "directionGSheetSection") ?? "") ?? .controls
 
     var body: some View {
         HassModal("Living Room TV") {
             ScrollView {
-                DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
+                VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
                     switch section {
-                    case .controls:
-                        GlassTile(title: "Power", subtitle: "On", symbol: "power", family: .media, isActive: true)
-                        GlassTile(title: "Mute", subtitle: "Off", symbol: "speaker.slash", family: .media, isActive: false)
+                    case .controls: controls
+                    case .families: families
                     case .apps:
-                        GlassTile(title: "Netflix", symbol: "play.rectangle", family: .media, isActive: false, kind: .command)
-                    case .settings:
-                        GlassTile(title: "Sleep Timer", subtitle: "Off", symbol: "moon", family: .media,
-                                  isActive: false, kind: .navigate)
+                        DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
+                            GlassTile(title: "Netflix", symbol: "play.rectangle", family: .media, isActive: false, kind: .command)
+                        }
+                        .equalHeightTiles()
+                    case .settings: settings
                     }
                 }
-                .equalHeightTiles()
                 .padding(HassTokens.Spacing.l)
             }
             .modalTabBar(Section.allCases, label: "TV sections", title: \.rawValue, selection: $section,
                          identifier: "g.sheet.tabs")
+        }
+    }
+
+    /// Filled, off, lit, error, tinted and washed faces on the sheet's cell.
+    private var controls: some View {
+        DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
+            GlassTile(title: "Power", subtitle: "On", symbol: "power", family: .media, isActive: true)
+            GlassTile(title: "Mute", subtitle: "Off", symbol: "speaker.slash", family: .media, isActive: false)
+            GlassTile(title: "Floor Lamp", subtitle: "Off", symbol: "lamp.floor", family: .lights, isActive: false)
+            GlassTile(title: "Table Lamp", subtitle: "60%", symbol: "lamp.table", family: .lights, isActive: true)
+            GlassTile(title: "Bath Fan", subtitle: "Didn't Respond", symbol: "fan", family: .air, isActive: false, isError: true)
+            GlassTile(title: "Unassigned Device", subtitle: "On", symbol: "switch.2", tint: .teal, isActive: true)
+            GlassTile(title: "Dishwasher", subtitle: "Washing · 40%", symbol: "dishwasher", family: .cleaning,
+                      isActive: true, progress: 0.4)
+            GlassTile(title: "Armed Home", subtitle: "Since 6:51 PM", symbol: "house", family: .securityHome,
+                      isActive: false, wash: ColorFamily.securityHome.fill)
+        }
+        .equalHeightTiles()
+    }
+
+    /// Every colour family off, so each light variant's glyph is on screen.
+    private var families: some View {
+        DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
+            ForEach(ColorFamily.allCases, id: \.self) { family in
+                GlassTile(title: family.rawValue.capitalized, subtitle: "Off", symbol: "circle.hexagongrid", family: family,
+                          isActive: false)
+            }
+        }
+        .equalHeightTiles()
+    }
+
+    /// An inset list with a chevron row, a value row and a plain row, on the sheet's cell.
+    private var settings: some View {
+        ModuleList {
+            ModuleRow("Sleep Timer", subtitle: "Off", symbol: "moon", glyph: ColorFamily.media.offGlyph, showsChevron: true)
+            ModuleRow("Input", symbol: "rectangle.on.rectangle", glyph: ColorFamily.media.glyph) {
+                Text("HDMI 2").foregroundStyle(HassTokens.Surface.secondaryInSheet)
+            }
+            ModuleRow("Reset Remote", symbol: "arrow.counterclockwise")
         }
     }
 }

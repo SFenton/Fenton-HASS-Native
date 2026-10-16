@@ -62,7 +62,8 @@ struct AppTile: View {
                 .opacity(display.isUnavailable ? 0.4 : 1)
                 Text(app.title)
                     .font(.subheadline)
-                    .foregroundStyle(HassTokens.Ink.onDark)
+                    // White on a room page's module; the label colour in the remote sheet, in either appearance.
+                    .foregroundStyle(surface == .sheet ? HassTokens.Ink.primary : HassTokens.Ink.onDark)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                 if display.isActive {

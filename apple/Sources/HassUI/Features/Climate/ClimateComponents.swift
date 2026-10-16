@@ -37,7 +37,7 @@ struct ClimateNotice: View {
         HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
             Image(systemName: symbol)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(isWarning ? Color(rgb: HassTokens.Palette.orange) : Color(rgb: HassTokens.Palette.tintText))
+                .foregroundStyle(isWarning ? HassTokens.Ink.warning : HassTokens.Ink.action)
                 .accessibilityHidden(true)
             Text(text)
                 .font(.subheadline)
@@ -66,7 +66,7 @@ struct ClimateHubList: View {
         let fans = ClimateLogic.fanModeOptions(entity)
         ModuleList {
             ModuleRow("Thermostat Hub", subtitle: state, symbol: ClimateStyle.symbol("mdi:thermostat"),
-                      glyph: ClimateStyle.tint(action: action) ?? HassTokens.Surface.secondaryOnModule) {
+                      glyph: ClimateStyle.tint(action: action)) {
                 HubPicker(label: "Thermostat Hub Mode", value: state, options: ClimateLogic.hvacModeOptions(entity),
                           selected: controller.shown(ClimateController.hubModeKey)) { controller.setHubMode($0) }
                     .accessibilityIdentifier("climate.hub.mode")
@@ -113,7 +113,7 @@ struct HubPicker: View {
                     .font(.footnote.weight(.semibold))
                     .accessibilityHidden(true)
             }
-            .foregroundStyle(Color(rgb: HassTokens.Palette.tintText))
+            .foregroundStyle(HassTokens.Ink.action)
             .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
             .contentShape(Rectangle())
         }

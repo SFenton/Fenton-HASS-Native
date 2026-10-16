@@ -70,6 +70,34 @@ public enum HassTokens {
         public static let moduleDense: UInt32 = 0x141416
         /// Secondary label: `rgba(235,235,245,.68)` on modules and `.6` in sheets.
         public static let secondaryLabel: UInt32 = 0xEBEBF5
+
+        // MARK: Light appearance (sheets only)
+
+        /// Sheet ground in light appearance (`systemGroupedBackground` light).
+        public static let sheetGroundLight: UInt32 = 0xF2F2F7
+        /// Cells and tiles inside a light sheet (`secondarySystemGroupedBackground` light).
+        public static let sheetCellLight: UInt32 = 0xFFFFFF
+        /// Secondary label in a light sheet (`secondaryLabel` light's colour; see ``secondaryInSheetLightOpacity``).
+        public static let secondaryLabelLight: UInt32 = 0x3C3C43
+        /// Secondary text in a light sheet: ``secondaryLabelLight`` at 76%, 5:1 or better on the sheet ground and
+        /// cells (the system's own 60% is 3.3:1 on white).
+        public static let secondaryInSheetLightOpacity = 0.76
+        /// Secondary text in a dark sheet: ``secondaryLabel`` at 60%.
+        public static let secondaryInSheetDarkOpacity = 0.6
+        /// Hairlines in a light sheet: `separator` light, `#3C3C43` at 29%.
+        public static let separatorLightOpacity = 0.29
+        /// Hairlines on dark: white at 14%.
+        public static let separatorDarkOpacity = 0.14
+        /// Tint for text and glyph actions on a light sheet (5.6:1 on white, 5:1 on the sheet ground).
+        public static let tintTextLight: UInt32 = 0x0066CC
+        /// Destructive, error and overdue text and glyphs on a light sheet (6:1 on white).
+        public static let redLight: UInt32 = 0xC21717
+        /// Soon and warning text on a light sheet (a dark amber, 5:1 on white).
+        public static let orangeLight: UInt32 = 0x995400
+        /// Success text and glyphs on dark (the system's dark-mode green).
+        public static let success: UInt32 = 0x30D158
+        /// Success text and glyphs on a light sheet (5.6:1 on white).
+        public static let successLight: UInt32 = 0x1E7B34
     }
 
     // MARK: - Text
@@ -101,6 +129,10 @@ public enum HassTokens {
 
         /// Tint for text buttons, links and glyph actions: 5.6:1 on light rows, and G's `#409CFF` on dark.
         public static let action: Color = dynamic(light: (0.0, 0.40, 0.80), dark: Palette.tintText)
+
+        /// Success and "ok" text and glyphs (a running device, a green status): the system's dark-mode green
+        /// (`#30D158`) on dark, a deeper green (`#1E7B34`, 5.6:1) on a light sheet where system green is 2.3:1.
+        public static let success: Color = .adaptive(light: Palette.successLight, dark: Palette.success)
 
         /// Fill for controls with a white label (``PrimaryButton``, the sheet confirm check): G's `#0071E3`, 4.6:1
         /// under white in both appearances.
@@ -144,18 +176,22 @@ public enum HassTokens {
 
     // MARK: - Surfaces
 
-    /// Direction G's grounds (`.agents/design/direction-g.md`, Layers). Pages are always dark on the wallpaper.
+    /// Direction G's grounds (`.agents/design/direction-g.md`, Layers). Pages are always dark on the wallpaper; the
+    /// sheet tokens (``sheetGround``, ``sheetCell``, ``separator``, ``secondaryInSheet``) are light and dark pairs that
+    /// follow the sheet's appearance (``SwiftUICore/View/followsSystemAppearance()``).
     public enum Surface {
-        /// Sheet ground, dark appearance.
-        public static let sheetGround = Color(rgb: Palette.sheetGround)
-        /// Cells and tiles inside a sheet.
-        public static let sheetCell = Color(rgb: Palette.sheetCell)
+        /// Sheet ground: `#1C1C1E` in dark appearance, the system grouped background (`#F2F2F7`) in light.
+        public static let sheetGround = Color.adaptive(light: Palette.sheetGroundLight, dark: Palette.sheetGround)
+        /// Cells and tiles inside a sheet: `#2C2C2E` in dark appearance, white in light.
+        public static let sheetCell = Color.adaptive(light: Palette.sheetCellLight, dark: Palette.sheetCell)
         /// The thin module tint (``SwiftUICore/View/module(_:cornerRadius:)``).
         public static let moduleThin = Color(rgb: Palette.moduleThin).opacity(0.66)
         /// The dense module for red and orange text; also the opaque-enough fallback with Reduce Transparency.
         public static let moduleDense = Color(rgb: Palette.moduleDense).opacity(0.78)
-        /// Hairline separators on dark: white at 14%.
-        public static let separator = Color.white.opacity(0.14)
+        /// Hairline separators: white at 14% on dark, the system separator colour in a light sheet.
+        public static let separator = Color.adaptive(
+            light: Palette.secondaryLabelLight, lightAlpha: Palette.separatorLightOpacity,
+            dark: 0xFFFFFF, darkAlpha: Palette.separatorDarkOpacity)
         /// Secondary labels on modules.
         public static let secondaryOnModule = Color(rgb: Palette.secondaryLabel).opacity(secondaryOnModuleOpacity)
         /// Secondary labels on a module under a state wash (``GlassTileFace``), which lifts the ground.
@@ -164,8 +200,11 @@ public enum HassTokens {
         static let secondaryOnModuleOpacity = 0.68
         /// ``secondaryOnWash``'s opacity.
         static let secondaryOnWashOpacity = 0.85
-        /// Secondary labels in sheets.
-        public static let secondaryInSheet = Color(rgb: Palette.secondaryLabel).opacity(0.6)
+        /// Secondary labels in sheets: 60% light-grey on dark, 76% dark-grey on light (4.5:1 or better on both
+        /// grounds and on the cells).
+        public static let secondaryInSheet = Color.adaptive(
+            light: Palette.secondaryLabelLight, lightAlpha: Palette.secondaryInSheetLightOpacity,
+            dark: Palette.secondaryLabel, darkAlpha: Palette.secondaryInSheetDarkOpacity)
     }
 
     /// Minimum hit target (HIG: Buttons).

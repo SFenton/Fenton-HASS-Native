@@ -57,8 +57,9 @@ struct MainTabView: View {
         .environment(\.shellChrome, chrome)
         .environment(\.backdropCanvas, canvas)
         .environment(\.headerEdgeCap, headerEdgeCap)
-        // Direction G: pages sit on the dimmed house photo, so the signed-in app is always dark, sheets included
-        // in v1 (`.agents/design/direction-g.md`, Layers; plan decision 3).
+        // Direction G: pages sit on the dimmed house photo, so the signed-in shell is always dark. Sheets follow the
+        // system appearance instead: `RootView` publishes it, and `hassSheet()` / `HassModal` apply it to themselves
+        // (`.agents/design/direction-g.md`, Layers; plan decision 6).
         .preferredColorScheme(.dark)
         .onAppear { navigator.selection = storedSelection }
         .onChange(of: navigator.selection) { _, section in storedSelection = section }

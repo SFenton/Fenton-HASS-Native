@@ -38,6 +38,7 @@ struct InventoryItemEditor: View {
                                              identifier: "inventory.editor.save") { saveAll() }
                         }
                 }
+                .followsSystemAppearance()
                 .presentationDetents([.large])
                 .presentationDragIndicator(model.dismissalBlocked ? .hidden : .visible)
                 .interactiveDismissDisabled(model.dismissalBlocked || isSavingAll)
