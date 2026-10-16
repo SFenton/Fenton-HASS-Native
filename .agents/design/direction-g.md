@@ -141,7 +141,7 @@ SF Pro only.
 | Switches | Only in list rows. |
 | Primary buttons | At most one per screen: a 50pt capsule filled `#0071E3` with a white label. A sheet about one owner's thing may use that owner's hue with dark text (Sprinklers cyan). There are no white or grey primary buttons. |
 | Lists | Inset grouped, 26pt radius on pages, 52/60pt rows, hairlines inset to the text. Footers carry the web's explanations; on the wallpaper, explanations go inside the card. |
-| Cameras | 2×2 on Home and Security, cards 1 : 0.78 like the web's tile (fill-cropped, centred), nothing over the image except a small name label with a red live dot while the stream shows frames (HIG HomeKit must). The viewer is full-bleed with a live dot and glass Snapshot / Audio / Record. While connecting, the last snapshot stays fully visible with a "Snapshot from 6:51 PM" pill. |
+| Cameras | 2×2 on Home and Security, cards 1 : 0.78 like the web's tile (fill-cropped, centred), nothing over the image except a small name label with a red live dot while the stream shows frames (HIG HomeKit must). The viewer is full-bleed with a live dot and glass Snapshot / Audio / Record. While connecting, or after a live stream stalls, the last snapshot stays fully visible with a pill: "Last live 6:51 PM" once the stream has been live (the snapshot's own time is not known), else "Connecting". |
 | Vacuum map | Flat neutral room shapes. Selected rooms are white with black numbered order badges, and skipped rooms are hatched. While cleaning, the map grows and the controls collapse to one card with Pause and Stop. |
 
 ## Loading and feedback

@@ -218,6 +218,7 @@ final class WebRTCFrameMonitor: NSObject, RTCVideoRenderer, @unchecked Sendable 
     private let lock = NSLock()
     private var latest: RTCVideoFrame?
     private var reported = false
+    private var count = 0
     private let onFirstFrame: @Sendable () -> Void
 
     init(onFirstFrame: @escaping @Sendable () -> Void) {
@@ -230,11 +231,15 @@ final class WebRTCFrameMonitor: NSObject, RTCVideoRenderer, @unchecked Sendable 
         guard let frame else { return }
         let first = lock.withLock { () -> Bool in
             latest = frame
+            count += 1
             defer { reported = true }
             return !reported
         }
         if first { onFirstFrame() }
     }
+
+    /// How many frames have decoded: the stall watchdog compares it once a second, so nothing is read per frame.
+    var frameCount: Int { lock.withLock { count } }
 
     /// The latest decoded frame, or `nil` before the first frame.
     func latestFrame() -> RTCVideoFrame? {
