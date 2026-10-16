@@ -72,7 +72,7 @@ struct SecurityPage: View {
                 GuestPresenceSection(caller: caller)
                     .padding(.horizontal, HassTokens.Spacing.l)
                 if showsCameras {
-                    CameraGrid { sheet = .camera($0) }
+                    CameraGrid(idPrefix: "security.camera") { sheet = .camera($0) }
                         .padding(.horizontal, HassTokens.Spacing.l)
                 }
                 if showsVehicle {

@@ -204,6 +204,52 @@ final class CameraJourneyTests: JourneyTestCase {
         }
     }
 
+    /// The cards are nearly square like the web's (1 : 0.78) on Home and Security, whatever the camera's own shape
+    /// (the Driveway is 10:3), and the viewer keeps each camera's own aspect ratio (owner request 2026-10-16).
+    func testCardsAreNearSquareAndTheViewerKeepsItsAspect() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        func assertSquare(_ element: XCUIElement, _ name: String) {
+            let ratio = element.frame.height / element.frame.width
+            XCTAssertEqual(ratio, 0.78, accuracy: 0.03, "\(name) card is \(element.frame.size), not 1 : 0.78")
+        }
+        for (stream, title) in Self.cameras { assertSquare(tile(app, stream), "Home \(title)") }
+        // Two tiles in a row share a height, so the grid is even.
+        XCTAssertEqual(tile(app, "front_door").frame.height, tile(app, "garage_camera").frame.height, accuracy: 1)
+        openSection("security", title: "Security", in: app)
+        for (stream, title) in Self.cameras { assertSquare(securityTile(app, stream), "Security \(title)") }
+        openSection("home", title: "Home", in: app)
+        let video = openCamera(app)
+        let shape = video.frame
+        XCTAssertEqual(shape.width / shape.height, 4.0 / 3.0, accuracy: 0.05, "The viewer keeps the camera's own 4:3, got \(shape.size)")
+        keepScreenshot(app, "camera-viewer-aspect-\(layout)")
+    }
+
+    /// Security's tile for a camera, scrolled into view with its middle clear of the floating tab bar.
+    private func securityTile(_ app: XCUIApplication, _ streamId: String) -> XCUIElement {
+        let tile = app.buttons["security.camera.\(streamId)"]
+        XCTAssertTrue(tile.waitForExistence(timeout: 10), "\(streamId) has no tile on Security")
+        let clearBottom = app.windows.firstMatch.frame.maxY - 120
+        for _ in 0..<6 where !tile.isHittable || tile.frame.midY > clearBottom { app.swipeUp() }
+        return tile
+    }
+
+    /// Security shows the streams Home already has (owner report 2026-10-16: "delayed on the Security tab while live on
+    /// Home"). Every tile is live on Home; on the first read after Security's tile is on screen it is live too, with no
+    /// second connect, and Home's tiles are still live when the owner goes back.
+    func testSecurityTilesShowTheStreamsHomeAlreadyHas() throws {
+        let app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_CAMERA_MODE": "webrtc"])
+        let streams = Self.cameras.map(\.0)
+        for stream in streams { waitForValue(tile(app, stream), "Live", timeout: 45) }
+        openSection("security", title: "Security", in: app)
+        for stream in streams {
+            let element = securityTile(app, stream)
+            // A fresh connection reads "Snapshot" for a second or more, so a live read here is the shared stream.
+            XCTAssertEqual(element.value as? String, "Live", "Security's \(stream) tile did not attach to Home's live stream")
+        }
+        openSection("home", title: "Home", in: app)
+        for stream in streams { XCTAssertEqual(tile(app, stream).value as? String, "Live", "Home's \(stream) tile kept its stream") }
+    }
+
     /// The viewer, left open across a long background, is live again on return.
     func testViewerResumesAfterALongBackground() throws {
         let app = try FentonHomeApp.launchSignedIn()

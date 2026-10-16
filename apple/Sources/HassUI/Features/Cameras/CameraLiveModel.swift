@@ -36,6 +36,8 @@ final class CameraLiveModel {
     let camera: HomeConfig.Camera
     /// Called when every mode failed, so the pool can drop the stream's retention.
     @ObservationIgnored var onExhausted: (() -> Void)?
+    /// Called when a stream shows its first frame (the pool forgets the camera's failed attempts).
+    @ObservationIgnored var onLive: (() -> Void)?
     /// Called when ``isMuted`` changes, so the pool can update the app's audio session.
     @ObservationIgnored var onMuteChange: (() -> Void)?
     @ObservationIgnored private var hlsVideoOutput: AVPlayerItemVideoOutput?
@@ -150,6 +152,7 @@ final class CameraLiveModel {
         state.firstFrame(mode)
         attempt?.cancel()
         attempt = nil
+        onLive?()
     }
 
     // MARK: - Attempts
