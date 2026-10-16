@@ -43,6 +43,8 @@ final class CameraLiveModel {
     /// Opens a mode's player for a model (production opens go2rtc WebRTC or HLS through Home Assistant); tests
     /// substitute one that records instead of touching the network.
     @ObservationIgnored let opener: CameraStreamOpener?
+    /// How long each mode may take to show its first frame (``CameraStreamMode/firstFrameTimeout``; tests shorten it).
+    @ObservationIgnored private let firstFrameTimeout: (CameraStreamMode) -> Duration
 
     @ObservationIgnored private weak var connection: HassConnection?
     @ObservationIgnored private var generation = 0
@@ -57,9 +59,12 @@ final class CameraLiveModel {
     ///   - camera: The camera to stream.
     ///   - modes: Modes to try in order; defaults to ``defaultModes``.
     ///   - opener: Replaces the network opening of each mode (tests).
-    init(camera: HomeConfig.Camera, modes: [CameraStreamMode] = CameraLiveModel.defaultModes, opener: CameraStreamOpener? = nil) {
+    ///   - firstFrameTimeout: Replaces each mode's first-frame timeout (tests).
+    init(camera: HomeConfig.Camera, modes: [CameraStreamMode] = CameraLiveModel.defaultModes, opener: CameraStreamOpener? = nil,
+         firstFrameTimeout: @escaping (CameraStreamMode) -> Duration = \.firstFrameTimeout) {
         self.camera = camera
         self.opener = opener
+        self.firstFrameTimeout = firstFrameTimeout
         state = CameraStreamState(modes: modes)
     }
 
@@ -171,7 +176,10 @@ final class CameraLiveModel {
                     }
                 }
                 CameraTrace.record("\(self?.camera.rtcStreamId ?? "?") opened \(mode), waiting for a frame")
-                try await Task.sleep(for: mode.firstFrameTimeout)
+                try await Task.sleep(for: self?.firstFrameTimeout(mode) ?? mode.firstFrameTimeout)
+                // A sleep whose timer already fired returns normally even if the first frame cancelled it while
+                // the main actor was busy, so a live stream must not be failed by its stale timeout.
+                try Task.checkCancellation()
                 self?.modeFailed(mode, generation: current)
             } catch is CancellationError {
             } catch {

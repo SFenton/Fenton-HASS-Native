@@ -145,7 +145,6 @@ Still open:
 - **Unfolded Duo:** landscape is verified (#84); unfolded portrait, the partly folded pose, light sheets and the accessibility sweep were not run there.
 - **Light sheets:** iPad landscape, iOS 17–25 fallbacks and a real Control Center toggle on a device are unverified.
 - **Vacuums:** two element-less contrast issues on iPhone are unattributed (`.agents/testing/apple/accessibility.md`, Open findings).
-- **Tests:** a full `swift test` run fails `ValetudoMapDrawingTests/entitiesAndMaterialsChangeTheDrawing` and `OnDemandSplitHostedTests` (3), on clean main too; they pass alone (order-dependent hosted state).
 - **macOS:** deferred until a Mac target exists (decision 8).
 
 ## Dependencies on wave-2 threads
