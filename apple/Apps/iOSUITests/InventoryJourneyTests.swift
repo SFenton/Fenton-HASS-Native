@@ -94,6 +94,9 @@ final class InventoryJourneyTests: JourneyTestCase {
         XCTAssertFalse(app.staticTexts["Quantity 3 · Multiple Expiration Dates"].exists, "The old long subtitle is back")
         let copy = beans.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Black Beans'")).firstMatch
         XCTAssertTrue(copy.label.contains("Quantity 3"), "VoiceOver label is '\(copy.label)'")
+        // The module keeps the page margin; it ran edge to edge once when a margin override replaced the list's own inset.
+        XCTAssertGreaterThanOrEqual(beans.frame.minX, 12, "The rows run edge to edge")
+        XCTAssertLessThanOrEqual(beans.frame.maxX, app.windows.firstMatch.frame.width - 12, "The rows run edge to edge")
         let cart = beans.buttons["inventory.row.cart"]
         XCTAssertTrue(cart.exists)
         let honeyCart = row(app, "Honey").buttons["inventory.row.cart"]

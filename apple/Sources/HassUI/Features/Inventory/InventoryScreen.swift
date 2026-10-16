@@ -26,6 +26,13 @@ struct InventoryScreen: View {
     /// and its rows put the name and the cart a thousand points apart; the margins center a 720 pt measure instead.
     static let readableWidth: CGFloat = 720
 
+    /// The list's side margin for a column `width` wide: the page margin while the column is narrower than the readable
+    /// measure, else whatever centres the measure. (`contentMargins` replaces the list's own inset, so a narrow column must
+    /// keep the page margin or its modules run edge to edge.)
+    static func sideMargin(forWidth width: CGFloat) -> CGFloat {
+        max(HassTokens.Spacing.l, (width - readableWidth) / 2)
+    }
+
     /// - Parameter presentation: what the page starts out presenting (tests and previews).
     init(model: InventoryListModel, models: InventoryModels, launch: InventoryLaunch? = nil, presentation: InventoryPresentation = InventoryPresentation()) {
         self.model = model
@@ -132,7 +139,7 @@ struct InventoryScreen: View {
             .groupedListStyle()
             // Tight between the summary line and the first module; the section headers carry their own space.
             .compactListSections()
-            .contentMargins(.horizontal, max(0, (listWidth - Self.readableWidth) / 2), for: .scrollContent)
+            .contentMargins(.horizontal, Self.sideMargin(forWidth: listWidth), for: .scrollContent)
             .onGeometryChange(for: CGFloat.self, of: \.size.width) { listWidth = $0 }
             // G rows: 64 pt with a subtitle (mockup `.row.n6-inv`).
             .environment(\.defaultMinListRowHeight, 64)
