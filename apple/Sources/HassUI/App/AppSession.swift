@@ -104,7 +104,7 @@ public final class AppSession {
         self.tokens = tokens
         push.sessionStarted(server: server) { try await tokens.validAccessToken() }
         // Created before the phase changes so the first signed-in frame already has the cached photo.
-        backdrop = HouseBackdropStore(server: server)
+        backdrop = HouseBackdropStore.session(for: server)
         phase = .signedIn(connection, lifecycle)
         lifecycle.didBecomeActive()
     }

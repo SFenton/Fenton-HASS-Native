@@ -88,6 +88,40 @@ final class HouseBackdropStore {
         ImagePipeline.shared.images(for: url, maxPixel: Int(renderWidth))
     }
 
+    /// The store a signed-in session shows. Debug builds honour `FENTON_BACKDROP_FIXTURE=1` (UI tests): a bright
+    /// synthetic photo rendered into a throwaway folder, so a journey can tell wallpaper from the plain base color
+    /// whatever the house photo looks like, and never touches the real cached render.
+    static func session(for server: HassServer) -> HouseBackdropStore {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["FENTON_BACKDROP_FIXTURE"] == "1" {
+            let folder = URL.temporaryDirectory.appending(path: "HouseBackdropFixture-\(UUID().uuidString)", directoryHint: .isDirectory)
+            let photo = fixturePhoto()
+            return HouseBackdropStore(server: server, directory: folder) { _ in
+                AsyncStream { continuation in
+                    if let photo { continuation.yield(photo) }
+                    continuation.finish()
+                }
+            }
+        }
+        #endif
+        return HouseBackdropStore(server: server)
+    }
+
+    #if DEBUG
+    /// A bright diagonal gradient (orange to sky blue): after the darkest scrim stop (0.64) it still measures about
+    /// ten times the plain base color's luminance.
+    nonisolated static func fixturePhoto() -> CGImage? {
+        guard let context = CGContext(data: nil, width: 480, height: 320, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: [
+                CGColor(red: 1, green: 0.63, blue: 0.24, alpha: 1), CGColor(red: 0.47, green: 0.78, blue: 1, alpha: 1),
+              ] as CFArray, locations: [0, 1]) else { return nil }
+        context.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 480, y: 320), options: [])
+        return context.makeImage()
+    }
+    #endif
+
     /// The cache folder: Caches/HouseBackdrop.
     nonisolated static var defaultDirectory: URL {
         URL.cachesDirectory.appending(path: "HouseBackdrop", directoryHint: .isDirectory)
@@ -188,6 +222,18 @@ enum HouseBackdropStyle {
     /// Over the photo.
     static var scrim: some View {
         LinearGradient(stops: scrimStops, startPoint: .top, endPoint: .bottom)
+    }
+}
+
+/// The window's size, which the backdrop photo fills (``EnvironmentValues/backdropCanvas``).
+enum BackdropCanvas {
+    /// The window's size from a view laid out inside the safe area: its size plus the insets on every edge.
+    /// - Parameters:
+    ///   - container: The measured view's size, which excludes the safe area.
+    ///   - insets: The safe area insets that view sees (the status bar, the tab bar, the home indicator).
+    static func size(container: CGSize, insets: EdgeInsets) -> CGSize {
+        CGSize(width: container.width + max(0, insets.leading) + max(0, insets.trailing),
+               height: container.height + max(0, insets.top) + max(0, insets.bottom))
     }
 }
 
