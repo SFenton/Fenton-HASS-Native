@@ -40,6 +40,10 @@ final class CameraLiveModel {
     @ObservationIgnored var onMuteChange: (() -> Void)?
     @ObservationIgnored private var hlsVideoOutput: AVPlayerItemVideoOutput?
 
+    /// Opens a mode's player for a model (production opens go2rtc WebRTC or HLS through Home Assistant); tests
+    /// substitute one that records instead of touching the network.
+    @ObservationIgnored let opener: CameraStreamOpener?
+
     @ObservationIgnored private weak var connection: HassConnection?
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var attempt: Task<Void, Never>?
@@ -52,8 +56,10 @@ final class CameraLiveModel {
     /// - Parameters:
     ///   - camera: The camera to stream.
     ///   - modes: Modes to try in order; defaults to ``defaultModes``.
-    init(camera: HomeConfig.Camera, modes: [CameraStreamMode] = CameraLiveModel.defaultModes) {
+    ///   - opener: Replaces the network opening of each mode (tests).
+    init(camera: HomeConfig.Camera, modes: [CameraStreamMode] = CameraLiveModel.defaultModes, opener: CameraStreamOpener? = nil) {
         self.camera = camera
+        self.opener = opener
         state = CameraStreamState(modes: modes)
     }
 
@@ -82,6 +88,7 @@ final class CameraLiveModel {
     /// Starts (or restarts) from the first mode.
     func start(connection: HassConnection) {
         self.connection = connection
+        CameraTrace.record("\(camera.rtcStreamId) start (running \(isRunning), \(state.phase))")
         stop()
         state.restart()
         isRunning = state.phase != .failed
@@ -89,13 +96,22 @@ final class CameraLiveModel {
         connectCurrentMode()
     }
 
-    /// Stops every stream. The state keeps its phase so a paused view still reads correctly.
+    /// Stops every stream. The state keeps its phase, which is only right for a stream that is going away.
     func stop() {
         generation += 1
         attempt?.cancel()
         attempt = nil
         isRunning = false
         tearDownPlayers()
+    }
+
+    /// Stops the stream because the app is leaving the foreground, and says so: the phase goes back to
+    /// connecting, so views put the snapshot back over the (now empty) player instead of leaving a black frame
+    /// that read "Live" until the stream restarted. ``start(connection:)`` follows on return.
+    func suspend() {
+        stop()
+        state.restart()
+        CameraTrace.record("\(camera.rtcStreamId) suspended")
     }
 
     // MARK: - Controls
@@ -130,6 +146,7 @@ final class CameraLiveModel {
     /// A player showed its first frame.
     func firstFrame(_ mode: CameraStreamMode) {
         guard mode == state.mode, state.phase == .connecting else { return }
+        CameraTrace.record("\(camera.rtcStreamId) first frame \(mode)")
         state.firstFrame(mode)
         attempt?.cancel()
         attempt = nil
@@ -144,10 +161,16 @@ final class CameraLiveModel {
         tearDownPlayers()
         attempt = Task { [weak self] in
             do {
-                switch mode {
-                case .hls: try await self?.openHLS(connection, generation: current)
-                case .webRTC: try await self?.openWebRTC(connection, generation: current)
+                CameraTrace.record("\(self?.camera.rtcStreamId ?? "?") open \(mode)")
+                if let self, let opener {
+                    try await opener(self, mode, connection, current)
+                } else {
+                    switch mode {
+                    case .hls: try await self?.openHLS(connection, generation: current)
+                    case .webRTC: try await self?.openWebRTC(connection, generation: current)
+                    }
                 }
+                CameraTrace.record("\(self?.camera.rtcStreamId ?? "?") opened \(mode), waiting for a frame")
                 try await Task.sleep(for: mode.firstFrameTimeout)
                 self?.modeFailed(mode, generation: current)
             } catch is CancellationError {
@@ -159,6 +182,7 @@ final class CameraLiveModel {
 
     private func modeFailed(_ mode: CameraStreamMode, generation failed: Int) {
         guard failed == generation, mode == state.mode else { return }
+        CameraTrace.record("\(camera.rtcStreamId) \(mode) failed")
         attempt?.cancel()
         attempt = nil
         state.failed(mode)
@@ -170,7 +194,16 @@ final class CameraLiveModel {
         connectCurrentMode()
     }
 
+    /// Commands sent while the socket is down can be dropped by HAKit without an answer, so the first one waits
+    /// for it (a connected socket costs nothing).
+    private func waitForSocket(_ connection: HassConnection) async {
+        if case .connected = connection.status { return }
+        _ = await connection.awaitConnected(timeout: .seconds(10))
+    }
+
     private func openHLS(_ connection: HassConnection, generation current: Int) async throws {
+        await waitForSocket(connection)
+        guard current == generation else { throw CancellationError() }
         let path = try await connection.cameraStreamPath(entityId: camera.entityId)
         guard current == generation else { throw CancellationError() }
         guard let url = CameraStreamEndpoints.hlsURL(path: path, baseURL: connection.server.baseURL) else {
@@ -201,6 +234,8 @@ final class CameraLiveModel {
 
     private func openWebRTC(_ connection: HassConnection, generation current: Int) async throws {
         #if canImport(WebRTC) && canImport(UIKit)
+        await waitForSocket(connection)
+        guard current == generation else { throw CancellationError() }
         let signed = try await connection.signPath(CameraStreamEndpoints.webRTCSocketPath)
         guard current == generation else { throw CancellationError() }
         guard let url = CameraStreamEndpoints.webRTCSocketURL(
@@ -237,6 +272,11 @@ final class CameraLiveModel {
         #endif
     }
 }
+
+/// Opens one mode's stream for a model: it must leave the model's players set up and return, after which the
+/// model waits for a first frame. The arguments are the model, the mode, the connection and the model's attempt
+/// generation (stale attempts are ignored).
+typealias CameraStreamOpener = @MainActor (CameraLiveModel, CameraStreamMode, HassConnection, Int) async throws -> Void
 
 /// A grabbed live frame, converted to an image off the main actor.
 enum CameraFrame: @unchecked Sendable {
