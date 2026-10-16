@@ -247,7 +247,7 @@ final class ClimateJourneyTests: XCTestCase {
         let living = element("climate.room.living_room", in: app)
         XCTAssertTrue(living.waitForExistence(timeout: 5))
         XCTAssertEqual(living.label, "Living Room")
-        XCTAssertEqual(value(living), "70.9°F · Occupied")
+        XCTAssertEqual(value(living), "70.9°F\nOccupied")
         living.tap()
         XCTAssertTrue(heading("Living Room", in: app).waitForExistence(timeout: 5))
         let dial = element("climate.roomDial", in: app)

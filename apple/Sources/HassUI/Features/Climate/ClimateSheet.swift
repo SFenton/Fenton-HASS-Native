@@ -205,7 +205,8 @@ struct ClimateRoomsTab: View {
                     ForEach(ClimateConfig.rooms) { room in
                         GlassTile(
                             title: room.title,
-                            subtitle: ClimateLogic.roomSubtitle(room, lookup),
+                            // Two lines, so a narrow tile never breaks the pair mid-way ("70.9°F ·" over "Occupied").
+                            subtitle: "\(ClimateLogic.roomTemperature(room, lookup))\n\(ClimateLogic.roomOccupancy(room, lookup))",
                             symbol: SymbolMap.symbol(for: RoomNavigation.item(for: room.key.replacingOccurrences(of: "_", with: "-"))?.icon ?? "mdi:home-thermometer"),
                             family: .neutral,
                             fillRGB: RoomPalette.fill(forKey: room.key),

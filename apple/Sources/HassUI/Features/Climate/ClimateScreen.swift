@@ -115,6 +115,9 @@ struct ClimatePage: View {
                     commitEntityIds: { targets in Self.wholeHomeCommitIds(dialEntityId: dialEntityId, targets: targets) }
                 )
                 .frame(maxWidth: .infinity)
+                // The 270° ring leaves the bottom of its square empty (about 14% of the side); the hub pill tucks
+                // into it instead of sitting a ring's width below (owner, 2026-10-16: "takes up too much space").
+                .padding(.bottom, -Self.dialBottomOverlap)
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("climate.wholeHome")
                 ThermostatHubPill(controller: controller)
@@ -131,6 +134,9 @@ struct ClimatePage: View {
             .frame(maxWidth: .infinity)
         }
     }
+
+    /// How much of the Whole Home dial's empty bottom the hub pill reclaims.
+    static let dialBottomOverlap: CGFloat = 36
 
     /// The web fans a range set on the global thermostat out to every room (`useCommitThermostatTemperature`);
     /// the eco-away thermostat and single targets go to the dial's own entity.

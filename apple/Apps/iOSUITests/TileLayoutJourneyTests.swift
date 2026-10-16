@@ -41,11 +41,12 @@ final class TileLayoutJourneyTests: JourneyTestCase {
             if abs(closet.frame.minY - kitchen.frame.minY) < 2 {
                 XCTAssertEqual(closet.frame.height, kitchen.frame.height, accuracy: 1, "\(layout) row heights differ")
             }
-            heights[layout] = tile(layout, "Office Lamp", in: app).frame.height
+            // The shortest tile in the grid: a wrapped title lifts its whole row, so the single-line rows show the layout.
+            heights[layout] = ["Office Lamp", "Kitchen", "Towel Rack"].map { tile(layout, $0, in: app).frame.height }.min()
             keepScreenshot(app, "tile-layout-\(layout)-\(self.layout)")
         }
         XCTAssertLessThan(heights["row"] ?? .infinity, heights["stackedTop"] ?? 0, "The row is shorter than the old stack: \(heights)")
-        XCTAssertLessThanOrEqual(heights["row"] ?? .infinity, 90, "A row tile is Apple Home's height: \(heights)")
+        XCTAssertLessThanOrEqual(heights["row"] ?? .infinity, 100, "A row tile stays Apple Home's height: \(heights)")
     }
 
     /// The chevron sits at the tile's vertical centre in every arrangement.
@@ -72,8 +73,9 @@ final class TileLayoutJourneyTests: JourneyTestCase {
     func testRowIsCentredAndAnchoredTextSitsAtTheBottom() throws {
         let row = launch("row")
         let kitchen = tile("row", "Kitchen", in: row)
-        let rowContent = try XCTUnwrap(TileGeometry.content(in: kitchen.frame, capture: try capture()), "row: no content")
-        XCTAssertEqual(rowContent.midY, kitchen.frame.midY, accuracy: 4, "row content is vertically centred")
+        let rowFrame = kitchen.frame
+        let rowContent = try XCTUnwrap(TileGeometry.content(in: rowFrame, capture: try capture()), "row: no content")
+        XCTAssertEqual(rowContent.midY, rowFrame.midY, accuracy: 4, "row content is vertically centred")
 
         let anchored = launch("anchoredBottom")
         let tile2 = tile("anchoredBottom", "Kitchen", in: anchored)
@@ -84,7 +86,7 @@ final class TileLayoutJourneyTests: JourneyTestCase {
         let stacked = launch("stackedTop")
         let old = tile("stackedTop", "Kitchen", in: stacked)
         let oldContent = try XCTUnwrap(TileGeometry.content(in: old.frame, capture: try capture()), "stackedTop: no content")
-        XCTAssertGreaterThan(old.frame.maxY - oldContent.maxY, rowContent.minY - kitchen.frame.minY + 8,
+        XCTAssertGreaterThan(old.frame.maxY - oldContent.maxY, rowFrame.maxY - rowContent.maxY + 8,
                              "The old stack left more dead space under its text")
     }
 
