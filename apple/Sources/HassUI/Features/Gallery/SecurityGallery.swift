@@ -9,7 +9,8 @@ import SwiftUI
 /// Cameras are left out (they need a live connection); the hidden Vehicle section is shown so its tile is tested.
 ///
 /// `FENTON_GALLERY_FAIL=1` makes every call fail (garage door error feedback); `FENTON_GALLERY_SCENARIO=unavailable`
-/// reports the alarm, locks and doors as unavailable (dimmed rows), `=triggered` sounds the alarm;
+/// reports the alarm, locks and doors as unavailable (dimmed tiles), `=triggered` sounds the alarm, `=openHome`,
+/// `=openAway` and `=openArmed` open a door in the three house states the Contact Sensors chip tells apart;
 /// `FENTON_GALLERY_CLEAN=1` hides the last-call line for screenshots.
 struct SecurityGallery: View {
     @State private var store: EntityStore
@@ -99,6 +100,12 @@ enum SecurityFixtures {
         case unavailable
         /// The alarm is sounding.
         case triggered
+        /// A door is open, someone is home and the system is off: the Contact Sensors chip's amber state.
+        case openHome
+        /// A door is open and the household is away: the coral state.
+        case openAway
+        /// A door is open while the system is armed: the red state with the alert glyph.
+        case openArmed
     }
 
     /// - Parameter unavailable: Report the alarm, locks and doors as `unavailable` (Home Assistant lost them).
@@ -115,11 +122,21 @@ enum SecurityFixtures {
     /// The states for a scenario. The alarm entered its mode 40 minutes ago, so the card reads "Since …".
     static func states(_ scenario: Scenario) -> [EntityState] {
         let since = Date.now.addingTimeInterval(-40 * 60)
-        return (scenario == .unavailable ? unavailableStates : states).map { entity in
-            guard entity.entityId == SecurityConfig.alarmEntityId, scenario != .unavailable else { return entity }
-            return EntityState(entityId: entity.entityId, state: scenario == .triggered ? "triggered" : entity.state,
-                               attributes: entity.attributes, lastChanged: since)
+        let mode: String? = switch scenario {
+        case .triggered: "triggered"
+        case .openHome, .openAway: "disarmed"
+        case .standard, .unavailable, .openArmed: nil
         }
+        var states = (scenario == .unavailable ? unavailableStates : states).map { entity in
+            guard entity.entityId == SecurityConfig.alarmEntityId, scenario != .unavailable else { return entity }
+            return EntityState(entityId: entity.entityId, state: mode ?? entity.state, attributes: entity.attributes, lastChanged: since)
+        }
+        // The Contact Sensors chip counts the real sensors: the open scenarios open one and set the house around it.
+        if [.openHome, .openAway, .openArmed].contains(scenario) {
+            states.append(EntityState(entityId: RoomOverview.contactEntityIds[0], state: "on"))
+            states.append(EntityState(entityId: ClimateConfig.homeAwayEntityId, state: scenario == .openAway ? "Away" : "Home"))
+        }
+        return states
     }
 
     /// ``states`` with every tile's entity reporting `unavailable`.

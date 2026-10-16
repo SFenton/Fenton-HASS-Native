@@ -1,4 +1,5 @@
 import Foundation
+import HassTelemetry
 import Observation
 
 /// The app's one source of weather forecasts, shared by the Home card and the Weather sheet.
@@ -55,6 +56,7 @@ public final class WeatherForecastStore {
     @ObservationIgnored private var sourceRevision: String?
     @ObservationIgnored private var connected = true
     @ObservationIgnored private var foreground = true
+    @ObservationIgnored private var census: ResourceCensus.Registration?
 
     // MARK: - Init
 
@@ -81,6 +83,12 @@ public final class WeatherForecastStore {
         self.scheduler = scheduler
         self.clock = clock
         restore()
+        census = ResourceCensus.shared.register { [weak self] in self?.liveResources ?? [:] }
+    }
+
+    /// What the store holds right now (`ResourceCensus`): consumers, the refresh timer and fetches in flight.
+    var liveResources: [String: Int] {
+        ["Weather.consumers": consumers, "Weather.timer": cancelTimer == nil ? 0 : 1, "Weather.fetches": fetchTasks.count]
     }
 
     // MARK: - Lifecycle

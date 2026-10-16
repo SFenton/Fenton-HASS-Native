@@ -505,7 +505,9 @@ struct TaskRevertSchedulerTests {
         _ = scheduler.schedule(after: .milliseconds(10)) { ran += 1 }
         let cancelled = scheduler.schedule(after: .milliseconds(10)) { ran += 10 }
         cancelled.cancel()
-        try await Task.sleep(for: .milliseconds(150))
+        // Waits for the work rather than a fixed time: other suites can hold the main actor past any deadline.
+        for _ in 0..<500 where ran == 0 { try await Task.sleep(for: .milliseconds(10)) }
+        try await Task.sleep(for: .milliseconds(50)) // The cancelled work was due at the same moment.
         #expect(ran == 1)
     }
 }

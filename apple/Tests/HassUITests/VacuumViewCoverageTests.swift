@@ -778,6 +778,15 @@ struct ValetudoMapDrawingTests {
         return data as Data
     }
 
+    /// Whether two renders differ by more than antialiasing noise: some channel of some pixel moves by more than 2.
+    ///
+    /// The first `ImageRenderer` render in a process comes out a level or two off on a few edge pixels, so exact
+    /// byte equality depends on which test rendered first (`.agents/testing/apple/README.md`, Order-independent tests).
+    func differs(_ a: Data, _ b: Data) -> Bool {
+        guard a.count == b.count else { return true }
+        return zip(a, b).contains { abs(Int($0) - Int($1)) > 2 }
+    }
+
     /// The vacuum's fixture map with one of every drawable entity, in centimetres around its middle.
     func enriched(_ vacuum: VacuumConfig) -> ValetudoMap {
         var map = ValetudoMapFixtures.map(vacuum.vacuumMapId)
@@ -819,20 +828,26 @@ struct ValetudoMapDrawingTests {
         let size = CGSize(width: 360, height: 360 / rich.aspectRatio)
         let before = try #require(pixels(ValetudoMapCanvas(scene: plain), size: size))
         let after = try #require(pixels(ValetudoMapCanvas(scene: rich), size: size))
-        #expect(before != after, "Entities are drawn (direction G draws rooms flat, without material accents)")
+        #expect(differs(before, after), "Entities are drawn (direction G draws rooms flat, without material accents)")
         // The same map reported from memory keeps only the robot and the dock.
         let reported = ValetudoMapScene(map: enriched(vacuum).reportedOnly(), vacuum: vacuum, provenance: .reported)
         let reportedPixels = try #require(pixels(ValetudoMapCanvas(scene: reported), size: size))
-        #expect(reportedPixels != after)
+        #expect(differs(reportedPixels, after))
         // Zoomed and panned, with an area and numbered rooms, it still draws.
         let area = MapGeometry.defaultRect(rich.interactionGeometry)
         let zoomed = ValetudoMapCanvas(scene: rich, viewport: MapViewport(panX: 10, panY: -10, zoom: 3),
                                        roomOrders: Dictionary(uniqueKeysWithValues: rich.rooms.enumerated().map { ($1.entityId, $0 + 1) }),
                                        area: area, showsHandles: true)
-        #expect(try #require(pixels(zoomed, size: size)) != after)
-        // A room the coordinator skips is hatched.
+        #expect(differs(try #require(pixels(zoomed, size: size)), after))
+        // A room the coordinator skips is hatched; a vacuum without room selection has no rooms to hatch.
         let skipped = ValetudoMapCanvas(scene: plain, skippedRooms: Set(plain.rooms.prefix(1).map(\.entityId)))
-        #expect(try #require(pixels(skipped, size: size)) != before, "A skipped room is hatched")
+        let skippedPixels = try #require(pixels(skipped, size: size))
+        if vacuum.mapRoomSelection {
+            #expect(differs(skippedPixels, before), "A skipped room is hatched")
+        } else {
+            #expect(plain.rooms.isEmpty)
+            #expect(!differs(skippedPixels, before), "Without room selection nothing is hatched")
+        }
     }
 
     @Test func aMapTooLargeToRasteriseHasNoCellImageButStillHasAFrame() {

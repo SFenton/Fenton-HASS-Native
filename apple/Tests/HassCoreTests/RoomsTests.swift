@@ -279,6 +279,41 @@ struct RoomsTests {
         #expect(room.chip(doors).icon == "mdi:door-open")
     }
 
+    /// Owner, 2026-10-16: a contact chip says whether the house is closed, open with someone home, open while away, or open
+    /// while the system is armed; the alarm outranks being away.
+    @Test func roomContactChipsFollowTheHouse() {
+        let (room, store, _, _) = controller("garage", ["binary_sensor.garage_doors": "off"])
+        let doors = card("garage", "Doors")
+        #expect(room.chip(doors).contact == .allClosed)
+        set(store, "binary_sensor.garage_doors", "on")
+        #expect(room.chip(doors).contact == .openHome)
+        set(store, ClimateConfig.homeAwayEntityId, "Away")
+        #expect(room.chip(doors).contact == .openAway)
+        set(store, SecurityConfig.alarmEntityId, "armed_night")
+        #expect(room.chip(doors).contact == .openArmed)
+        set(store, SecurityConfig.alarmEntityId, "disarmed")
+        set(store, ClimateConfig.homeAwayEntityId, "Home")
+        #expect(room.chip(doors).contact == .openHome)
+        set(store, "binary_sensor.garage_doors", "unavailable")
+        #expect(room.chip(doors).contact == .unavailable)
+        #expect(room.chip(card("garage", "Doors")).webColor == nil)
+    }
+
+    @Test func roomClimateAndAirChipsCarryTheWebColour() {
+        let (room, store, _, _) = controller("living-room", [:])
+        let climate = card("living-room", "Climate")
+        let air = card("living-room", "Air Quality")
+        #expect(room.chip(climate).webColor == nil, "No helper and no range: the family navy")
+        set(store, climate.entityId, "70.0°F - 74.0°F")
+        #expect(room.chip(climate).webColor == RoomOverview.colorFromTemperature(72), "The gradient at the range's mean")
+        set(store, "input_text.living_room_climate_color", "rgba(158, 209, 46, 1)")
+        #expect(room.chip(climate).webColor == RoomColor(158, 209, 46), "The helper wins")
+        #expect(room.chip(air).webColor == ChipWebColor.airTeal, "No AQI helper yet: the web teal")
+        set(store, "input_text.living_room_aqi_color", "rgba(255, 190, 0, 1)")
+        #expect(room.chip(air).webColor == RoomColor(255, 190, 0))
+        #expect(room.chip(card("living-room", "Lights")).webColor == nil)
+    }
+
     // MARK: Sheets
 
     @Test func sheetsRouteByKind() {
