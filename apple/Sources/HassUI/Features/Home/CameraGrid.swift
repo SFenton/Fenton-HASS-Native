@@ -3,16 +3,15 @@ import HassDesign
 import ImageIO
 import SwiftUI
 
-/// Home cameras (web `CameraTile` grid: `columns={2} maxCellWidth={280} maxColumns={4}`).
+/// Home cameras (web `CameraTile` grid: `columns={2} maxCellWidth={280} maxColumns={4}`), 2×2 on iPhone
+/// (`.agents/design/direction-g.md`, Controls: Cameras).
 struct CameraGrid: View {
     var onOpen: (HomeConfig.Camera) -> Void
     @Environment(\.cameraStreamPool) private var poolOverride
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-            Text("Cameras")
-                .font(.title3.weight(.semibold))
-                .accessibilityAddTraits(.isHeader)
+            RoomSectionHeader(title: "Cameras")
             DynamicGridLayout(minCellWidth: 160, maxColumns: 4) {
                 ForEach(HomeConfig.cameras) { camera in
                     Button { onOpen(camera) } label: {
@@ -30,15 +29,14 @@ struct CameraGrid: View {
 }
 
 /// One camera tile: the camera's shared live stream (web `CameraTile` → `RtcPilotCamera variant="tile"`) over
-/// its latest snapshot, with its title and, while live, a Live label.
+/// its latest snapshot, with a small name label and nothing else over the picture (direction G; HIG: HomeKit,
+/// "avoid covering camera views"). VoiceOver still reads whether the tile is live (``statusText(_:)``).
 struct CameraTile: View {
     var camera: HomeConfig.Camera
-    @Environment(\.cameraStreamPool) private var poolOverride
 
-    private let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous)
+    private let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
 
     var body: some View {
-        let isLive = (poolOverride ?? .shared).model(for: camera).state.phase == .live
         // The cell sets the 16:9 frame and the video fills it, so wide cameras can't widen the tile.
         Color.clear
             .aspectRatio(16.0 / 9.0, contentMode: .fit)
@@ -48,20 +46,9 @@ struct CameraTile: View {
             // and without this its overflow took taps meant for the Front Door tile beside it.
             .contentShape(shape)
             .overlay(alignment: .bottomLeading) {
-                HStack(alignment: .bottom, spacing: HassTokens.Spacing.xs) {
-                    // Wraps at large Dynamic Type instead of truncating.
-                    label { Text(camera.title).fixedSize(horizontal: false, vertical: true) }
-                    Spacer(minLength: 0)
-                    if isLive {
-                        label {
-                            HStack(spacing: HassTokens.Spacing.xs) {
-                                Circle().fill(.red).frame(width: 6, height: 6)
-                                Text("Live")
-                            }
-                        }
-                    }
-                }
-                .padding(HassTokens.Spacing.s)
+                // Wraps at large Dynamic Type instead of truncating.
+                label { Text(camera.title).fixedSize(horizontal: false, vertical: true) }
+                    .padding(HassTokens.Spacing.s)
             }
     }
 
