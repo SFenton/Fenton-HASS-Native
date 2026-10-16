@@ -85,7 +85,7 @@ struct InventoryScreen: View {
         ) { item in
             Button("Delete", role: .destructive) { Task { await model.delete(item) } }
         }
-        .animation(.default, value: canSplit && editing != nil)
+        .motionSafeAnimation(.default, reduced: .easeInOut(duration: 0.2), value: canSplit && editing != nil)
     }
 
     // MARK: - List

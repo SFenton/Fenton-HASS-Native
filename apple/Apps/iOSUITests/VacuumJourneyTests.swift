@@ -347,6 +347,8 @@ final class VacuumJourneyTests: XCTestCase {
     }
 
     func testPagePassesAudit() throws { try audit(nil) }
+    /// Robots that stopped answering: their tiles show Unavailable (the live Theater Room did in the 2026-10-15 sweep).
+    func testUnavailablePagePassesAudit() throws { try audit(nil, scenario: "unavailable") }
     func testControlsPassAudit() throws { try audit(Self.mainFloor) }
     func testRoomsPassAudit() throws { try audit(Self.mainFloor, tab: "zones") }
     func testAutoCleanPassesAudit() throws { try audit(Self.mainFloor, tab: "autoClean") }

@@ -96,7 +96,8 @@ struct RoomTileFace: Equatable {
     static let powerIcons: Set<String> = ["mdi:heat-wave"]
 
     /// The family a kind of card belongs to. Thermostats and bed sides change family with their action
-    /// (``resolve(_:entity:display:)``).
+    /// (``resolve(_:entity:display:running:)``);
+    /// `.neutral` here is only what an unavailable climate card draws.
     static func family(_ kind: RoomCardKind, icon: String) -> ColorFamily {
         switch kind {
         case .light, .wakeLight: powerIcons.contains(icon) ? .power : .lights
@@ -132,13 +133,11 @@ struct RoomTileFace: Equatable {
             // The purifier card reads its fan mode, set whenever it runs; the air quality card is a reading.
             return RoomTileFace(family: family, isActive: entity?.domain != "sensor" && entity?.state != "off")
         case .climate:
-            // Heating and cooling fill with the dial's colours (web `climateActionTone`); idle and off stay dark.
+            // Heating and cooling fill with the dial's colours (web `climateActionTone`); idle and off stay dark but
+            // keep a family glyph: Heating in heat mode, else Cooling (`ThermostatTileFace`).
             let action = entity.map { $0.attributes["hvac_action"]?.string ?? $0.state } ?? ""
-            switch action {
-            case "heating": return RoomTileFace(family: .heating, isActive: true)
-            case "cooling": return RoomTileFace(family: .cooling, isActive: true)
-            default: return RoomTileFace(family: family, isActive: false)
-            }
+            let face = ThermostatTileFace.thermostat(action: action, mode: entity?.state)
+            return RoomTileFace(family: face.family, isActive: face.isActive)
         case .occupancy:
             return RoomTileFace(family: family, isActive: RoomFormat.isOccupied(entity))
         case .vacuum:

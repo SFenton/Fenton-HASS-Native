@@ -93,14 +93,15 @@ public struct ImageCard: View {
         accessibilitySize ? 1...100 : 1...3
     }
 
-    /// The scrim under the caption (mockups n6: clear over the top third, near black at the foot), so white text keeps
-    /// 4.5:1 on a white plate.
+    /// The scrim under the caption (mockups n6: clear over the top, near black at the foot), so white text keeps 4.5:1
+    /// on a white plate. A three-line title reaches up to about half the card, so the scrim is already 55% black there
+    /// (it started at 30% and was only 26% at that height: "Spaghetti" on a white plate, folded Duo, 2026-10-16).
     static var scrim: LinearGradient {
         LinearGradient(
             stops: [
-                .init(color: .black.opacity(0), location: 0.3),
-                .init(color: .black.opacity(0.55), location: 0.62),
-                .init(color: .black.opacity(0.8), location: 1),
+                .init(color: .black.opacity(0), location: 0.2),
+                .init(color: .black.opacity(0.55), location: 0.5),
+                .init(color: .black.opacity(0.82), location: 1),
             ],
             startPoint: .top, endPoint: .bottom
         )

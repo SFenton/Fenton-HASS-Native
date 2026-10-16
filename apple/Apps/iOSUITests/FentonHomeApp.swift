@@ -28,6 +28,8 @@ enum FentonHomeApp {
     /// (`TEST_RUNNER_FENTON_APPEARANCE=light`, or `tools/ios_uitest.sh --appearance light`).
     static func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
+        // The settings belong to the simulator, so every launch states them: none unless a journey asks.
+        app.launchEnvironment["FENTON_SYSTEM_SETTINGS"] = "none"
         if let redact = ProcessInfo.processInfo.environment["FENTON_REDACT_PRIVATE"] {
             app.launchEnvironment["FENTON_REDACT_PRIVATE"] = redact
         }
@@ -99,9 +101,11 @@ enum FentonHomeApp {
     /// Launches the debug component gallery on `page` (e.g. `thermostat-dial`): fixture data, no sign-in.
     /// - Parameter appearance: `light` or `dark` pins the sheets' appearance for this launch (`FENTON_APPEARANCE`); nil
     ///   keeps the runner's, else the simulator's own.
-    static func launchGallery(_ page: String, arguments: [String] = [], appearance: String? = nil) -> XCUIApplication {
+    static func launchGallery(_ page: String, arguments: [String] = [], environment: [String: String] = [:],
+                              appearance: String? = nil) -> XCUIApplication {
         let app = makeApp()
         app.launchEnvironment["FENTON_GALLERY"] = page
+        app.launchEnvironment.merge(environment) { _, new in new }
         if let appearance { app.launchEnvironment["FENTON_APPEARANCE"] = appearance }
         app.launchArguments += arguments
         app.launch()
@@ -110,6 +114,23 @@ enum FentonHomeApp {
 
     /// Launch arguments for the largest accessibility text size (AX5).
     static let ax5 = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+
+    /// A system accessibility setting a journey can launch the app with (`.agents/testing/apple/accessibility.md`,
+    /// System accessibility settings). UIKit's `-UIAccessibility...Enabled` launch arguments do not reach SwiftUI's
+    /// environment (probed 2026-10-15), so the debug app sets the simulator's own settings from
+    /// `FENTON_SYSTEM_SETTINGS` (`DebugSystemSettings`). Pass ``environment(_:)`` as the launch environment, then
+    /// prove it took with the `system-accessibility` gallery (`SystemSettingsJourneyTests`).
+    enum SystemSetting: String, CaseIterable {
+        case reduceMotion, reduceTransparency, increaseContrast, boldText
+
+        /// The launch environment that turns exactly the given settings on (and the rest off).
+        static func environment(_ settings: [SystemSetting]) -> [String: String] {
+            ["FENTON_SYSTEM_SETTINGS": settings.isEmpty ? "none" : settings.map(\.rawValue).joined(separator: ",")]
+        }
+    }
+
+    /// Every setting at once: Reduce Motion, Reduce Transparency, Increase Contrast and Bold Text.
+    static let allSystemSettings = SystemSetting.environment(SystemSetting.allCases)
 
     /// Runs the full audit, accepting only issues on system-drawn elements the app does not style:
     /// the grouped `Form` section header's secondary text, toolbar bar buttons (e.g. a sheet's glass Close), and
@@ -139,6 +160,8 @@ enum FentonHomeApp {
         // Read once: per-issue queries add up, and many accessibility requests crash the iPad simulator's backboardd.
         let floatingBarTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fab.'"))
             .allElementsBoundByIndex.map(\.frame.minY).min()
+        // Noted before the audit too: it can dismiss an alert as well.
+        let alertUp = app.alerts.firstMatch.exists
         // The audit can dismiss a popover while it runs, so note it before starting.
         let popover = app.otherElements["PopoverDismissRegion"].exists && app.popovers.firstMatch.exists
             ? app.popovers.firstMatch.frame : nil
@@ -162,9 +185,25 @@ enum FentonHomeApp {
         let textUnderFloatingBar = floatingBarTop.map { top in
             app.staticTexts.allElementsBoundByIndex.contains { !$0.label.isEmpty && $0.frame.maxY > top && $0.frame.minY < top + 52 }
         } ?? false
+        // An element-less contrast issue cannot be placed. It is accepted only when every labelled text and button on
+        // the page measures at least 4.5:1 in a capture from this run (read once, only when one comes back).
+        var lowText: [String]?
+        func everyTextClears() -> Bool {
+            if lowText == nil { lowText = capture.map { lowestVisibleText(below: 4.5, in: app, capture: $0) } ?? ["no capture"] }
+            return lowText?.isEmpty == true
+        }
         for issue in issues {
             if isSystemDrawn(issue, in: app, popover: popover) { continue }
+            // The page behind a system alert is hidden from assistive technologies by the alert; its text comes back as
+            // element-less "potentially inaccessible text" (Security disarm alert, iPad, 2026-10-16: 6 issues).
+            if issue.element == nil, issue.auditType == .elementDetection, alertUp { continue }
             if issue.auditType == .contrast, issue.element == nil, textUnderFloatingBar { continue }
+            if issue.auditType == .contrast, issue.element == nil, everyTextClears() {
+                let note = "Element-less contrast issue accepted: every labelled text and button on screen measured at least 4.5:1 rendered"
+                print(note)
+                XCTContext.runActivity(named: note) { _ in }
+                continue
+            }
             // The presenting page around an iPad form sheet, hidden from assistive technologies by the modal.
             if issue.element == nil, issue.auditType == .elementDetection, let presenter,
                presenter.exists, !presenter.isHittable {
@@ -188,6 +227,9 @@ enum FentonHomeApp {
                 // Nothing drawn under the floating action bar: its hard scroll edge covers rows that scroll
                 // beneath it (inventory All Food, 2026-10-11), so the text is hidden, not low contrast.
                 if ratio < 1.5, let floatingBarTop, element.frame.maxY > floatingBarTop { continue }
+                // Text mostly inside the bar's strip is faded by the same edge, so it measures low but not nothing
+                // (Chores "Replace LV600S Water Filter Sponge" under Add Task, folded Duo, 2.7:1, 2026-10-16).
+                if let floatingBarTop, element.frame.midY > floatingBarTop { continue }
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             // "May be clipped at larger sizes" is disproved the same way as partial support: at AX5 the text is
@@ -209,8 +251,11 @@ enum FentonHomeApp {
                 continue
             }
             let element = issue.element
+            if issue.auditType == .contrast, element == nil, let lowText, !lowText.isEmpty {
+                open.append("Texts under 4.5:1 rendered on this page (an element-less contrast issue needs none): " + lowText.joined(separator: "; "))
+            }
             open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")' at \(element.map { "\($0.frame)" } ?? "?")\(measured) "
-                + issue.detailedDescription)
+                + issue.detailedDescription + (element == nil ? " [\(issue)]" : ""))
         }
         let auditedScreen = XCTAttachment(screenshot: app.screenshot())
         if let ax5Page, !unconfirmedType.isEmpty || unattributedType > 0 || !clipped.isEmpty {
@@ -261,7 +306,12 @@ enum FentonHomeApp {
                 scroller.swipeUp()
             }
             func grew(_ label: String, _ height: CGFloat) -> Bool? {
-                largeHeights[label].map { $0 >= height * 1.35 }
+                // Text already 60 pt tall at AX5 is bigger than the largest standard text (AX5 body is about 53 pt): a
+                // display numeral drawn to fit its dial (the thermostat's 72, 91 → 71 pt in iPad landscape, 2026-10-16)
+                // needs no further growth.
+                // Only a bare number: a paragraph is that tall just by wrapping.
+                let numeral = Double(label) != nil
+                return largeHeights[label].map { $0 >= height * 1.35 || (numeral && $0 >= 60) }
             }
             // A live value (humidity, temperature) can change between launches; then the page decides:
             // the sampled texts together are 1.35x taller and none shrank. Measured together because a
@@ -412,13 +462,44 @@ enum FentonHomeApp {
             // 3.3:1 on a light sheet, as in Apple's own sheets. The app cannot restyle it; the dark sheets pass.
             if element.elementType == .staticText,
                app.navigationBars.staticTexts.matching(NSPredicate(format: "label == %@", element.label)).firstMatch.exists { return true }
-            return element.elementType == .button && app.navigationBars.buttons[element.label].exists
+            return element.elementType == .button && app.navigationBars.buttons.matching(label: element.label).firstMatch.exists
         case .dynamicType, .textClipped:
             // Toolbar buttons are system-drawn and offer the Large Content Viewer instead of scaling.
-            return element.elementType == .button && app.navigationBars.buttons[element.label].exists
+            return element.elementType == .button && app.navigationBars.buttons.matching(label: element.label).firstMatch.exists
         default:
             return false
         }
+    }
+
+    /// The labelled static texts and buttons fully inside the window that measure under `minimum`:1 rendered in
+    /// `capture`, as `label (ratio)`; empty when all clear. One snapshot, so many accessibility requests do not crash
+    /// the iPad simulator's backboardd.
+    private static func lowestVisibleText(below minimum: Double, in app: XCUIApplication,
+                                          capture: RenderedContrast.Capture) -> [String] {
+        guard let root = try? app.snapshot() else { return ["no snapshot"] }
+        let window = app.windows.firstMatch.frame
+        var low: [String] = []
+        // The visible frames of the scroll views around a node: text outside one is scrolled out of view (a carousel's
+        // next page, whose cards still sit inside the window) and is sampled against whatever covers it.
+        func walk(_ node: XCUIElementSnapshot, clips: [CGRect]) {
+            // System bars (the tab bar, the folded Duo's rail) are not the app's text. A frame taller than a text line
+            // holds a photo (a recipe card, a camera tile): its median surface says nothing about the caption on it,
+            // so only text-sized frames are measured.
+            if node.elementType == .tabBar || node.elementType == .toolbar { return }
+            if [.staticText, .button].contains(node.elementType), !node.label.isEmpty,
+               !node.frame.isEmpty, node.frame.height <= 60, window.insetBy(dx: -1, dy: -1).contains(node.frame),
+               clips.allSatisfy({ $0.insetBy(dx: -1, dy: -1).contains(node.frame) }),
+               let ratio = RenderedContrast.ratio(of: node.frame, in: capture),
+               // Under 1.5:1 nothing is drawn at the frame (the existing rule for text hidden behind a bar or a sheet).
+               ratio < minimum, ratio >= 1.5 {
+                low.append(String(format: "'%@' %.1f at %@", node.label, ratio, "\(node.frame)"))
+            }
+            var inner = clips
+            if [.scrollView, .collectionView, .table].contains(node.elementType), !node.frame.isEmpty { inner.append(node.frame) }
+            node.children.forEach { walk($0, clips: inner) }
+        }
+        walk(root, clips: [])
+        return low
     }
 
     /// Text scrolled (partly) out of its scroll view is sampled against whatever covers it there, such as
@@ -454,7 +535,7 @@ enum FentonHomeApp {
         guard bar.exists else { return false }
         let barFrame = bar.frame
         return app.staticTexts.allElementsBoundByIndex.contains { text in
-            !text.label.isEmpty && text.frame.intersects(barFrame) && !bar.staticTexts[text.label].exists
+            !text.label.isEmpty && text.frame.intersects(barFrame) && !bar.staticTexts.matching(label: text.label).firstMatch.exists
         }
     }
 
@@ -471,9 +552,19 @@ enum FentonHomeApp {
     private static func isUnderTabBar(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         let bar = app.tabBars.firstMatch
         guard bar.exists, element.frame.intersects(bar.frame) else { return false }
-        return !bar.descendants(matching: element.elementType)[element.label].exists
+        return !bar.descendants(matching: element.elementType).matching(label: element.label).firstMatch.exists
     }
 
+}
+
+// MARK: - Queries
+
+extension XCUIElementQuery {
+    /// Elements whose label is exactly `label`. The string subscript throws for identifiers over 128 characters, and
+    /// a long label (the Climate Advanced Controls rows) is one; a predicate has no such limit.
+    func matching(label: String) -> XCUIElementQuery {
+        matching(NSPredicate(format: "label == %@", label))
+    }
 }
 
 // MARK: - Screenshots

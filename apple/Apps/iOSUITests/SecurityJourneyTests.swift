@@ -58,7 +58,13 @@ final class SecurityJourneyTests: JourneyTestCase {
     /// Scrolls the page until `element` can be tapped (AX5 and the folded Duo push tiles below the fold).
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         let scroll = app.scrollViews["security.scroll"].firstMatch
-        for _ in 0..<8 where !(element.exists && element.isHittable) {
+        // The gallery's Last call bar floats over the foot of the page: a control under it reports hittable, but a tap
+        // lands on the bar (the AX5 disarm alert never opened on iPhone, 2026-10-16).
+        let bar = app.staticTexts["gallery.lastCall"].firstMatch
+        func clear() -> Bool {
+            element.exists && element.isHittable && (!bar.exists || element.frame.maxY <= bar.frame.minY + 1)
+        }
+        for _ in 0..<8 where !clear() {
             let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.75))
             start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -200)))
         }
@@ -246,7 +252,8 @@ final class SecurityJourneyTests: JourneyTestCase {
             let disarm = large.buttons["security.mode.disarmed"].firstMatch
             self.reveal(disarm, in: large)
             disarm.tap()
-            XCTAssertTrue(large.alerts.firstMatch.waitForExistence(timeout: 5))
+            if !large.alerts.firstMatch.waitForExistence(timeout: 5) { self.keepScreenshot(large, "disarm-alert-missing-\(self.layout)") }
+            XCTAssertTrue(large.alerts.firstMatch.exists, "The disarm alert did not appear at AX5")
             sleep(1)
             return large
         }

@@ -108,6 +108,18 @@ struct RoomsViewTests {
         #expect(face("Stephen's Bed", in: "master-bedroom", states: [])?.isActive == false, "Unavailable stays dark")
     }
 
+    @Test func idleAndOffThermostatsKeepAFamilyGlyph() {
+        let bed = "climate.sleepypod_eight_pod_left_side"
+        let heatIdle = EntityState(entityId: bed, state: "heat", attributes: ["hvac_action": .string("idle")])
+        #expect(face("Stephen's Bed", in: "master-bedroom", states: [heatIdle]) == RoomTileFace(family: .heating, isActive: false))
+        let heatNone = EntityState(entityId: bed, state: "heat", attributes: ["hvac_action": .string("none")])
+        #expect(face("Stephen's Bed", in: "master-bedroom", states: [heatNone]) == RoomTileFace(family: .heating, isActive: false))
+        let heatCoolIdle = EntityState(entityId: bed, state: "heat_cool", attributes: ["hvac_action": .string("idle")])
+        #expect(face("Stephen's Bed", in: "master-bedroom", states: [heatCoolIdle]) == RoomTileFace(family: .cooling, isActive: false))
+        let off = EntityState(entityId: bed, state: "off")
+        #expect(face("Stephen's Bed", in: "master-bedroom", states: [off]) == RoomTileFace(family: .cooling, isActive: false))
+    }
+
     @Test func ventsFillOnlyWhileOpen() {
         let open = EntityState(entityId: "cover.living_room_vents", state: "open")
         #expect(face("Vents", in: "living-room", states: [open]) == RoomTileFace(family: .vents, isActive: true))

@@ -158,6 +158,17 @@ final class RoomsJourneyTests: XCTestCase {
         XCTAssertTrue(element("bed.power", in: app).exists)
     }
 
+    /// The Master Bedroom's beds: one heating (filled), one idle in heat mode (the off face keeps the Heating glyph).
+    /// The glyph colours are unit-tested (`ThermostatTileFace`); this keeps the page for review.
+    func testIdleBedKeepsItsFamilyGlyph() {
+        let app = launch(room: "master-bedroom", clean: true)
+        let idle = element("room.card.Steph's Bed", in: app)
+        reveal(idle, in: app)
+        assertTarget(idle)
+        reveal(element("room.card.Stephen's Bed", in: app), in: app)
+        keepScreenshot(app, "master-bedroom-beds-\(FentonHomeApp.family)")
+    }
+
     /// Rooms without sections say so.
     func testEmptyRoom() {
         let app = launch(room: "hallway")
