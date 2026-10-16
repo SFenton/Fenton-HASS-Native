@@ -1,7 +1,7 @@
 {
   "thresholds": {
     "logic": 95,
-    "ux": 90
+    "ux": 95
   },
   "swift": {
     "sourceRoots": ["apple/Sources/**/*.swift"],

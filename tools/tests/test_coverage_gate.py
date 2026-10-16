@@ -14,7 +14,7 @@ from tempfile import TemporaryDirectory
 from tools import coverage_gate
 
 RULES = {
-    "thresholds": {"logic": 95, "ux": 90},
+    "thresholds": {"logic": 95, "ux": 95},
     "swift": {
         "sourceRoots": ["apple/Sources/**/*.swift"],
         "logic": ["apple/Sources/Core/**/*.swift"],
@@ -87,7 +87,7 @@ class CoverageGateTests(unittest.TestCase):
             "apple/Sources/Core/Protocol.swift",
             "apple/Sources/UI/B.swift",
         )
-        report = self.report({"apple/Sources/Core/A.swift": (96, 100), "apple/Sources/UI/B.swift": (9, 10)})
+        report = self.report({"apple/Sources/Core/A.swift": (96, 100), "apple/Sources/UI/B.swift": (19, 20)})
         status, out, err = self.run_gate("--report", str(report))
         self.assertEqual((status, err), (0, ""))
         self.assertIn("1 file(s) have no LLVM record", out)

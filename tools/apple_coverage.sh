@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SwiftPM coverage gate: runs every package test bundle with LLVM coverage on the macOS host and
-# requires 95% logic (HassCore + HassTelemetry) / 90% UX (HassDesign + HassUI) lines. Ported from FestivalNativeApps.
+# requires 95% logic (HassCore + HassTelemetry) / 95% UX (HassDesign + HassUI) lines. Ported from FestivalNativeApps.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

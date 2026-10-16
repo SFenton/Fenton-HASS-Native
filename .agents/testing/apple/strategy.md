@@ -30,7 +30,7 @@ Mechanisms: hosted tests in `HassUITests` for labels, traits and order; an XCUIT
 
 ## Certification gates (two, independent)
 
-1. **Line coverage:** ≥ 95% logic (`HassCore`, `HassTelemetry`) and ≥ 90% UX (`HassDesign`, `HassUI`), measured from real LLVM reports by `tools/apple_coverage.sh` (`contracts/coverage-rules.json`). Never exclude handwritten code to pass. The script exports one report across every `*Tests.xctest` binary: `swift test`'s own JSON export reads only one bundle, which silently dropped all UX coverage before 2026-10-10.
+1. **Line coverage:** ≥ 95% logic (`HassCore`, `HassTelemetry`) and ≥ 95% UX (raised from 90 by the owner, 2026-10-16) (`HassDesign`, `HassUI`), measured from real LLVM reports by `tools/apple_coverage.sh` (`contracts/coverage-rules.json`). Never exclude handwritten code to pass. The script exports one report across every `*Tests.xctest` binary: `swift test`'s own JSON export reads only one bundle, which silently dropped all UX coverage before 2026-10-10.
 2. **Device journeys:** every journey passes on iPhone, iPhone Duo and iPad (`tools/ios_uitest.sh`). An unavailable simulator or pose is a gap, not a pass.
 
 `tools/apple_coverage.sh` merges every test bundle's profiles and exports all bundles together: the swiftbuild backend builds one bundle per test target and `swift test --show-codecov-path` exports only one, which left `HassDesign` and `HassUI` unmeasured until 2026-10-11.
