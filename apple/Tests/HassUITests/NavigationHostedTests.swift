@@ -31,21 +31,30 @@ final class HostedWindow {
         window.orderFrontRegardless()
     }
 
-    /// Lets SwiftUI apply pending updates, deferred tasks and animations.
+    /// One layout pass and run-loop turn, about 30 ms when nothing else holds the main actor.
+    private static let pass: TimeInterval = 0.03
+
+    /// Lets SwiftUI apply pending updates, deferred tasks and animations: about `seconds` worth of layout passes.
+    ///
+    /// Counted in passes, not against a deadline. Other main-actor suites run between the sleeps and inside
+    /// `RunLoop.main.run`, so in a full `swift test` a wall-clock budget can run out before this window has laid
+    /// out once (`.agents/testing/apple/README.md`, Order-independent tests).
     func settle(_ seconds: TimeInterval = 0.6) async {
-        let deadline = Date().addingTimeInterval(seconds)
-        while Date() < deadline {
+        for _ in 0..<max(1, Int((seconds / Self.pass).rounded())) {
             window.contentView?.layoutSubtreeIfNeeded()
             Self.pumpRunLoop()
             try? await Task.sleep(for: .milliseconds(10))
         }
     }
 
-    /// Settles until `condition` holds (or `timeout` passes), for the first window in a process,
-    /// which takes longer to lay out than later ones.
+    /// Settles until `condition` holds (or about `timeout` worth of passes have run), for the first window in a
+    /// process, which takes longer to lay out than later ones.
     func settle(until condition: () -> Bool, timeout: TimeInterval = 5) async {
-        let deadline = Date().addingTimeInterval(timeout)
-        while !condition(), Date() < deadline { await settle(0.1) }
+        var waited: TimeInterval = 0
+        while !condition(), waited < timeout {
+            await settle(0.1)
+            waited += 0.1
+        }
         await settle(0.2)
     }
 
