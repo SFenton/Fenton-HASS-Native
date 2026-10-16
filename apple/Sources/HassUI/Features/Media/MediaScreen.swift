@@ -71,19 +71,17 @@ struct MediaSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            Text(section.title)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(HassTokens.Ink.primary)
-                .accessibilityAddTraits(.isHeader)
+            RoomSectionHeader(title: section.title)
             if let lead = section.lead {
                 MediaCardTile(card: lead, controller: controller, openRemote: openRemote)
             }
             if !section.followUps.isEmpty {
-                DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
+                DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
                     ForEach(section.followUps) { card in
                         MediaCardTile(card: card, controller: controller, openRemote: openRemote)
                     }
                 }
+                .equalHeightTiles()
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -92,7 +90,8 @@ struct MediaSectionView: View {
     }
 }
 
-/// One media tile: opens a remote, or runs its command.
+/// One media tile: opens a remote, or runs its command. Direction G: dark with a pink glyph while off, filled
+/// media pink while on (``ColorFamily/media``).
 struct MediaCardTile: View {
     var card: MediaPageConfig.Card
     var controller: MediaRemoteController
@@ -105,10 +104,10 @@ struct MediaCardTile: View {
             if let remote = card.remote {
                 // A remote opens whatever the TV's state: its power button is how the TV turns on.
                 GlassTile(title: card.device.title, subtitle: display.subtitle, symbol: look.symbol,
-                          tint: RemoteStyle.media, isActive: display.isActive, kind: .navigate) { openRemote(remote) }
+                          family: .media, isActive: display.isActive, kind: .navigate) { openRemote(remote) }
             } else {
                 GlassTile(title: card.device.title, subtitle: display.subtitle, symbol: look.symbol,
-                          tint: RemoteStyle.media, isActive: display.isActive, isUnavailable: display.isDisabled,
+                          family: .media, isActive: display.isActive, isUnavailable: display.isDisabled,
                           kind: look.kind) { controller.tap(card.device) }
             }
         }

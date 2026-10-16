@@ -4,15 +4,22 @@ import XCTest
 /// house): semantics, service calls, layout per pose, accessibility audits and screenshots on iPhone, iPhone Duo
 /// and iPad (`.agents/patterns/media-remote.md`).
 @MainActor
-final class MediaRemoteJourneyTests: XCTestCase {
-    override func setUp() { continueAfterFailure = false }
-    override func tearDown() {
-        MainActor.assumeIsolated {
-            if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
+final class MediaRemoteJourneyTests: JourneyTestCase {
+    // MARK: - Helpers
+
+    /// An element each section shows once the sheet is up: power on Remote (and in every section in two
+    /// columns), otherwise the section's first control.
+    private func readyID(_ remote: String, tab: String) -> String {
+        switch (remote, tab) {
+        case (_, "controls"): "remote.power"
+        case ("music-room-remote", "apps"): "remote.app.Fortnite"
+        case (_, "apps"): "remote.app.Plex"
+        case ("music-room-remote", "devices"): "remote.device.TV"
+        case (_, "devices"): "remote.device.Projector"
+        case (_, "hueSync"): "remote.hue.Light Sync"
+        default: "remote.tabs"
         }
     }
-
-    // MARK: - Helpers
 
     private func launch(_ remote: String, tab: String = "controls", arguments: [String] = []) -> XCUIApplication {
         let app = FentonHomeApp.makeApp()
@@ -22,23 +29,22 @@ final class MediaRemoteJourneyTests: XCTestCase {
         app.launchEnvironment["FENTON_GALLERY_OFFLINE"] = "1"
         app.launchArguments += arguments
         app.launch()
-        let power = element("remote.power", in: app)
-        XCTAssertTrue(power.waitForExistence(timeout: 30), "Remote sheet did not open")
-        XCTAssertTrue(power.wait(for: \.isHittable, toEqual: true, timeout: 10), "Sheet still presenting")
+        let ready = element(readyID(remote, tab: tab), in: app)
+        XCTAssertTrue(ready.waitForExistence(timeout: 30), "Remote sheet did not open")
+        XCTAssertTrue(ready.wait(for: \.isHittable, toEqual: true, timeout: 10), "Sheet still presenting")
         sleep(1) // Mid-animation frames fail contrast and clipping.
         return app
     }
 
-    private func element(_ id: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any)[id].firstMatch
+    private func expectCall(_ expected: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        expectLastCall(expected, in: app, file: file, line: line)
     }
 
-    private func lastCall(_ app: XCUIApplication) -> String { app.staticTexts["gallery.lastCall"].firstMatch.label }
-
-    private func expectCall(_ expected: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
-        let label = app.staticTexts["gallery.lastCall"].firstMatch
-        let matched = label.wait(for: \.label, toEqual: "Last call: \(expected)", timeout: 10)
-        XCTAssertTrue(matched, "Last call was '\(label.label)'", file: file, line: line)
+    /// Flips a list row's switch: XCUITest taps a row's middle, which lands on its label and leaves the switch alone.
+    private func flip(_ toggle: XCUIElement, in app: XCUIApplication) {
+        reveal(toggle, in: app)
+        let knob = toggle.switches.firstMatch
+        if knob.exists { knob.tap() } else { toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.5)).tap() }
     }
 
     /// Scrolls toward `element` in short drags until it is hittable: full swipes overshoot long columns
@@ -65,11 +71,6 @@ final class MediaRemoteJourneyTests: XCTestCase {
         XCTAssertTrue(element.isHittable, "\(element) never came into view: frame \(element.frame), window \(window), scroll views \(scrolls)")
     }
 
-    private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertGreaterThanOrEqual(element.frame.width, 43, element.label, file: file, line: line)
-        XCTAssertGreaterThanOrEqual(element.frame.height, 43, element.label, file: file, line: line)
-    }
-
     private func isSelected(_ element: XCUIElement) -> Bool { element.isSelected }
 
     private func waitFor(_ element: XCUIElement, _ format: String, _ argument: String, timeout: TimeInterval = 10) -> Bool {
@@ -93,8 +94,15 @@ final class MediaRemoteJourneyTests: XCTestCase {
         XCTAssertEqual(power.frame.midY, up.frame.midY, accuracy: 1, "Power shares Up's row")
         XCTAssertGreaterThan(power.frame.minX, up.frame.maxX, "Power is right of Up")
         XCTAssertEqual(power.frame.width, up.frame.width, accuracy: 1, "Power is a d-pad-sized button")
+        // Direction G: Back and Home take the pad's leading corners, the keyboard its trailing bottom corner.
+        let back = app.buttons["remote.button.Back"]
+        XCTAssertEqual(back.frame.midY, up.frame.midY, accuracy: 1, "Back shares Up's row")
+        XCTAssertLessThan(back.frame.maxX, up.frame.minX, "Back is left of Up")
+        let down = pad.buttons["Down"]
+        XCTAssertEqual(app.buttons["remote.button.Home"].frame.midY, down.frame.midY, accuracy: 1, "Home shares Down's row")
+        XCTAssertEqual(app.buttons["remote.button.Keyboard"].frame.midY, down.frame.midY, accuracy: 1, "The keyboard shares Down's row")
         XCTAssertEqual(pad.label, "Living Room SHIELD remote controls")
-        for label in ["Up", "Left", "Select", "Right", "Down"] {
+        for label in ["Back", "Up", "Left", "Select", "Right", "Home", "Down"] {
             let button = pad.buttons[label]
             XCTAssertTrue(button.exists, label)
             XCTAssertTrue(button.isEnabled, label)
@@ -147,8 +155,8 @@ final class MediaRemoteJourneyTests: XCTestCase {
         reveal(slider, in: app)
         XCTAssertEqual(slider.label, "Volume volume")
         slider.adjust(toNormalizedSliderPosition: 0.8)
-        XCTAssertTrue(waitFor(app.staticTexts["gallery.lastCall"].firstMatch, "label CONTAINS %@", "media_player.volume_set"), lastCall(app))
-        XCTAssertTrue(lastCall(app).contains("entity_id=media_player.primary_bedroom"), lastCall(app))
+        XCTAssertTrue(waitFor(app.staticTexts["gallery.lastCall"].firstMatch, "label CONTAINS %@", "media_player.volume_set"), lastCall(in: app))
+        XCTAssertTrue(lastCall(in: app).contains("entity_id=media_player.primary_bedroom"), lastCall(in: app))
     }
 
     /// The keyboard opens an inline field; Send types the text with quotes escaped and closes it.
@@ -172,19 +180,25 @@ final class MediaRemoteJourneyTests: XCTestCase {
 
     // MARK: - Tabs
 
-    /// Only tabs with content appear, and they switch the content below the d-pad.
+    /// Only sections with content appear, in the bottom glass bar, and they switch the content: in one column the
+    /// pad belongs to Remote; in two columns it stays in the leading column for every section.
     func testTabsShowOnlyWhatTheRemoteHas() {
         let app = launch("theater-room-shield")
         let tabs = app.segmentedControls["remote.tabs"]
         XCTAssertTrue(tabs.exists)
         XCTAssertEqual(tabs.buttons.count, 3)
+        XCTAssertGreaterThan(tabs.frame.midY, app.windows.firstMatch.frame.midY, "The section bar sits at the bottom")
         tabs.buttons["Devices"].tap()
         XCTAssertTrue(element("remote.device.Projector", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(tabs.buttons["Devices"].isSelected)
-        // Power stays in every tab's layout; on short screens the tab change scrolls the picker to the top.
         let power = element("remote.power", in: app)
-        XCTAssertTrue(power.exists, "Power is on every tab")
-        reveal(power, in: app, down: true)
+        if element("remote.layout.twoColumn", in: app).exists {
+            XCTAssertTrue(power.exists, "The pad stays beside every section in two columns")
+        } else {
+            XCTAssertFalse(power.exists, "The pad belongs to the Remote section in one column")
+            tabs.buttons["Remote"].tap()
+            XCTAssertTrue(power.waitForExistence(timeout: 5), "Remote brings the pad back")
+        }
     }
 
     /// App tiles launch apps; the running app carries the selected trait.
@@ -206,43 +220,52 @@ final class MediaRemoteJourneyTests: XCTestCase {
         expectCall("script.launch_app_on_media_player app_id=com.plexapp.android entity=media_player.living_room_shield remote_entity=remote.living_room_shield", in: living)
     }
 
-    /// Device tiles toggle their devices; the PC presses the matching input button.
+    /// Device rows are switches that toggle their devices; the PC presses the matching input button.
     func testDevicesToggle() {
         let app = launch("theater-room-shield", tab: "devices")
-        let projector = element("remote.device.Projector", in: app)
+        let projector = app.switches["remote.device.Projector"]
         XCTAssertTrue(projector.waitForExistence(timeout: 5))
-        XCTAssertEqual(projector.label, "Projector")
-        XCTAssertEqual(projector.value as? String, "On")
+        XCTAssertTrue(projector.label.hasPrefix("Projector"), projector.label)
+        XCTAssertEqual(projector.value as? String, "1")
         assertTarget(projector)
-        projector.tap()
+        flip(projector, in: app)
         expectCall("media_player.toggle entity_id=media_player.sony_projector", in: app)
-        XCTAssertTrue(waitFor(projector, "value == %@", "Off"), "Projector value is \(projector.value ?? "nil")")
-        let pc = element("remote.device.Theater Room PC", in: app)
-        reveal(pc, in: app)
-        pc.tap()
+        XCTAssertTrue(waitFor(projector, "value == %@", "0"), "Projector value is \(projector.value ?? "nil")")
+        flip(app.switches["remote.device.Theater Room PC"], in: app)
         expectCall("input_button.press entity_id=input_button.theater_pc_on", in: app)
+    }
+
+    /// The Music Room's sources are a checkmark choice and its speaker only reports its state.
+    func testMusicRoomSourcesAreAChoice() {
+        let app = launch("music-room-remote", tab: "devices")
+        let server = app.buttons["remote.device.Server"]
+        reveal(server, in: app)
+        XCTAssertFalse(server.isSelected)
+        server.tap()
+        XCTAssertTrue(server.wait(for: \.isSelected, toEqual: true, timeout: 5), "The chosen source is selected")
+        XCTAssertFalse(app.buttons["remote.device.Sonos Beam"].exists, "A state-only device is not a button")
+        XCTAssertTrue(element("remote.device.Sonos Beam", in: app).exists)
     }
 
     /// Hue Sync: toggles are switches, modes and choices are selected, unplugged inputs are disabled.
     func testHueSyncControls() {
         let app = launch("music-room-remote", tab: "hueSync")
-        let lightSync = element("remote.hue.Light Sync", in: app)
+        let lightSync = app.switches["remote.hue.Light Sync"]
         XCTAssertTrue(lightSync.waitForExistence(timeout: 5))
-        XCTAssertEqual(lightSync.value as? String, "Off")
-        let video = element("remote.hue.mode.video", in: app)
-        reveal(video, in: app)
-        XCTAssertTrue(video.isSelected)
-        let game = element("remote.hue.mode.game", in: app)
+        XCTAssertEqual(lightSync.value as? String, "0")
+        let modes = app.segmentedControls["remote.hue.mode"]
+        reveal(modes, in: app)
+        XCTAssertTrue(modes.buttons["Video"].isSelected)
+        let game = modes.buttons["Game"]
         XCTAssertFalse(game.isSelected)
-        assertTarget(game)
         game.tap()
         expectCall("select.select_option entity_id=select.music_room_music_room_sync_box_sync_mode option=game", in: app)
         XCTAssertTrue(game.wait(for: \.isSelected, toEqual: true, timeout: 5))
-        XCTAssertTrue(waitFor(lightSync, "value == %@", "On"), "Choosing a mode starts syncing")
+        XCTAssertTrue(waitFor(lightSync, "value == %@", "1"), "Choosing a mode starts syncing")
 
-        let high = element("remote.hue.intensity.high", in: app)
-        reveal(high, in: app)
-        high.tap()
+        let intensity = app.segmentedControls["remote.hue.intensity"]
+        reveal(intensity, in: app)
+        intensity.buttons["High"].tap()
         expectCall("select.select_option entity_id=select.music_room_music_room_sync_box_intensity option=high", in: app)
         let unplugged = element("remote.hue.hdmi.HDMI 4", in: app)
         reveal(unplugged, in: app)
@@ -261,8 +284,8 @@ final class MediaRemoteJourneyTests: XCTestCase {
             XCUIDevice.shared.orientation = .landscapeLeft
             app = launch("theater-room-shield")
             XCTAssertTrue(element("remote.layout.twoColumn", in: app).waitForExistence(timeout: 5), "iPad landscape splits")
-            XCTAssertLessThan(element("remote.power", in: app).frame.maxX, app.segmentedControls["remote.tabs"].frame.minX,
-                              "Power leads, tab content trails")
+            XCTAssertLessThan(element("remote.power", in: app).frame.maxX, app.buttons["remote.button.Play"].frame.minX,
+                              "The pad leads, the section trails")
             return
         }
         let app = launch("theater-room-shield")
@@ -309,10 +332,10 @@ final class MediaRemoteJourneyTests: XCTestCase {
         app.launchEnvironment["FENTON_GALLERY_REMOTE"] = "living-room-shield"
         app.launchEnvironment["FENTON_GALLERY_TAB"] = "apps"
         app.launch()
-        let power = element("remote.power", in: app)
-        XCTAssertTrue(power.waitForExistence(timeout: 30), "Remote sheet did not open")
+        let plex = element("remote.app.Plex", in: app)
+        XCTAssertTrue(plex.waitForExistence(timeout: 30), "Remote sheet did not open")
         XCTAssertFalse(element("contentGate.spinner", in: app).exists, "The spinner is gone once the content shows")
-        XCTAssertTrue(element("remote.app.Plex", in: app).exists, "App tiles show with the rest of the content")
+        XCTAssertTrue(element("remote.app.Plex", in: app).isHittable, "App tiles show with the rest of the content")
     }
 
     // MARK: - Screenshots
@@ -333,7 +356,7 @@ final class MediaRemoteJourneyTests: XCTestCase {
                 app.launchEnvironment["FENTON_GALLERY_TAB"] = tab
                 app.launchEnvironment["FENTON_GALLERY_CLEAN"] = "1"
                 app.launch()
-                XCTAssertTrue(element("remote.power", in: app).waitForExistence(timeout: 30))
+                XCTAssertTrue(element(readyID(remote, tab: tab), in: app).waitForExistence(timeout: 30))
                 sleep(3) // Artwork loads from the server's public /local folder.
                 keep(app, "remote-\(tab)-\(suffix)")
             }

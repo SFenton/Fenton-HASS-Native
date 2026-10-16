@@ -30,6 +30,7 @@ struct SprinklerControllerSheet: View {
             overview
                 .modalChrome()
                 .navigationTitle(controller.config.title)
+                .sheetSubtitle(format.subtitle(controller.snapshot))
                 .inlineNavigationTitle()
                 .toolbar { SheetCloseItem { dismiss() } }
                 .navigationDestination(for: SprinklerDetail.self) { detail in
@@ -67,13 +68,13 @@ struct SprinklerControllerSheet: View {
                                tone: Self.tone(snapshot), surface: .groupedList)
                     StatusPill(label: "Battery", value: format.battery(snapshot), symbol: "battery.100percent",
                                tone: snapshot.batteryLow ? .warning : .neutral, surface: .groupedList)
-                    StatusPill(label: "Next watering", value: format.nextStart(snapshot), symbol: "calendar.badge.clock", surface: .groupedList)
-                    StatusPill(label: "Last watering", value: format.lastStart(snapshot.lastRun),
+                    StatusPill(label: "Next Watering", value: format.nextStart(snapshot), symbol: "calendar.badge.clock", surface: .groupedList)
+                    StatusPill(label: "Last Watering", value: format.lastStart(snapshot.lastRun),
                                detail: snapshot.lastRun.runTimeMinutes.map(format.minutes), symbol: "clock.arrow.circlepath", surface: .groupedList)
                 }
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
-            } header: { SprinklerHeader("Status") }
+            } header: { FormHeader("Status") }
 
             Section {
                 ForEach(Array(snapshot.zones.enumerated()), id: \.element.config.valveEntityId) { index, zone in
@@ -89,28 +90,28 @@ struct SprinklerControllerSheet: View {
                     .accessibilityHint("Water now")
                     .accessibilityIdentifier("sprinkler.zone.\(index)")
                 }
-            } header: { SprinklerHeader("Zones") }
+            } header: { FormHeader("Zones") }
 
             Section {
                 Button(role: .destructive) { controller.stopWatering() } label: {
-                    WrappingRowLabel(title: "Stop watering", symbol: "stop.circle")
+                    WrappingRowLabel(title: "Stop Watering", symbol: "stop.circle")
                         .foregroundStyle(controller.isWatering ? HassTokens.Ink.danger : HassTokens.Ink.secondary)
                 }
-                .accessibilityLabel("Stop watering")
+                .accessibilityLabel("Stop Watering")
                 .disabled(!controller.isWatering)
                 .accessibilityIdentifier("sprinkler.stop")
-            } header: { SprinklerHeader("Controls") }
+            } header: { FormHeader("Controls") }
 
             Section {
                 Toggle(isOn: Binding(get: { controller.rainDelay }, set: { controller.setRainDelay($0) })) {
-                    Label("Rain delay · 24 hours", systemImage: "cloud.heavyrain")
+                    Label("Rain Delay · 24 Hours", systemImage: "cloud.heavyrain")
                 }
                 .accessibilityIdentifier("sprinkler.rainDelay")
                 Toggle(isOn: Binding(get: { controller.smartWatering }, set: { controller.setSmartWatering($0) })) {
-                    Label("Smart watering", systemImage: "wand.and.stars")
+                    Label("Smart Watering", systemImage: "wand.and.stars")
                 }
                 .accessibilityIdentifier("sprinkler.smartWatering")
-            } header: { SprinklerHeader("Settings") }
+            } header: { FormHeader("Settings") }
             .disabled(!snapshot.available)
 
             Section {
@@ -118,7 +119,7 @@ struct SprinklerControllerSheet: View {
                 ForEach(programRows(snapshot), id: \.zone.config.valveEntityId) { row in
                     ProgramRow(controller: controller, index: row.index, zoneName: row.zone.name, program: row.program, format: format)
                 }
-            } header: { SprinklerHeader("Schedule") }
+            } header: { FormHeader("Schedule") }
         }
         .accessibilityIdentifier("sprinkler.overview")
     }
@@ -178,28 +179,16 @@ struct SprinklerRow: View {
                 .foregroundStyle(isActive ? SprinklerStyle.water : HassTokens.Ink.secondary)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.body.weight(.semibold)).foregroundStyle(HassTokens.Ink.primary)
-                ForEach(lines, id: \.self) { line in
-                    Text(line).font(.footnote).foregroundStyle(HassTokens.Ink.secondary)
-                }
+                Text(title).foregroundStyle(HassTokens.Ink.primary)
+                // A watering zone's state reads in the water colour (`#4CC9F0` on the sheet cell is 8:1).
+                Text(lines.joined(separator: " · "))
+                    .font(.subheadline)
+                    .foregroundStyle(isActive ? SprinklerStyle.water : HassTokens.Ink.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(minHeight: HassTokens.minTarget, alignment: .leading)
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// A section header drawn with the app's ink, so it keeps contrast on the grouped background.
-struct SprinklerHeader: View {
-    var title: String
-    init(_ title: String) { self.title = title }
-
-    var body: some View {
-        Text(title)
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(HassTokens.Ink.secondary)
-            .textCase(nil)
-            .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -224,37 +213,34 @@ struct SprinklerWaterPage: View {
             }
             Section {
                 Stepper(value: $minutes, in: range) {
-                    StepperRow(title: "Run time", symbol: "timer", value: "\(minutes) min")
+                    StepperRow(title: "Run Time", symbol: "timer", value: "\(minutes) min")
                 }
                 .accessibilityValue("\(minutes) minutes")
                 .disabled(!controller.canStartWatering || !(zoneState?.available ?? false))
                 .accessibilityIdentifier("sprinkler.runTime")
-            } header: { SprinklerHeader("Water now · \(zoneState?.name ?? controller.config.title)") } footer: {
+            } header: { FormHeader("Water Now") } footer: {
                 if controller.isWatering {
-                    Text("Another zone is watering. Stop it to water this one.")
-                        .foregroundStyle(HassTokens.Ink.secondary)
+                    FormFooter("Another zone is watering. Stop it to water this one.")
                         .accessibilityIdentifier("sprinkler.waterBlocked")
+                } else {
+                    FormFooter("Waters \(zoneState?.name ?? controller.config.title) once, for \(range.lowerBound) to \(range.upperBound) minutes. The schedule is not changed.")
                 }
             }
         }
         .safeAreaInset(edge: .bottom) {
-            Button {
+            // The one primary action, in the owner's water colour with dark text (direction G, Primary buttons).
+            PrimaryButton("Start Watering", systemImage: SprinklerStyle.symbol, family: .water) {
                 sending = true
                 Task {
                     let ok = await controller.startWatering(zone: zone, minutes: minutes)
                     sending = false
                     if ok { done() }
                 }
-            } label: {
-                Label("Start watering", systemImage: SprinklerStyle.symbol)
-                    .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .disabled(!enabled)
+            .accessibilityIdentifier("sprinkler.startWatering")
             .padding(HassTokens.Spacing.l)
             .background(.bar)
-            .accessibilityIdentifier("sprinkler.startWatering")
         }
         .navigationTitle(zoneState?.name ?? controller.config.title)
         .inlineNavigationTitle()
@@ -298,22 +284,22 @@ struct SprinklerSchedulePage: View {
             }
             Section {
                 Toggle(isOn: Binding(get: { enabled }, set: { controller.setProgramEnabled(zone: zone, $0) })) {
-                    Label("Program enabled", systemImage: "calendar.badge.checkmark")
+                    Label("Program Enabled", systemImage: "calendar.badge.checkmark")
                 }
                 .disabled(!available)
                 .accessibilityIdentifier("sprinkler.schedule.enabled")
                 Button { controller.startProgram(zone: zone) } label: {
                     // No fixed frame: a List row is already 44 pt tall and grows with the text (AX5 flagged clipping).
-                    WrappingRowLabel(title: "Start program", symbol: "play.fill")
+                    WrappingRowLabel(title: "Start Program Now", symbol: "play.fill")
                 }
                 .disabled(!controller.canStartWatering || !enabled)
                 // One name for the row (a hidden glyph read as unexposed text to the audit).
-                .accessibilityLabel("Start program")
+                .accessibilityLabel("Start Program Now")
                 .accessibilityIdentifier("sprinkler.schedule.start")
             }
             Section {
                 DayPicker(days: $days).disabled(!available)
-            } header: { SprinklerHeader("Days") }
+            } header: { FormHeader("Days") }
             Section {
                 // Rows are identified by their own id, not their position, so removing one keeps the others' pickers.
                 ForEach(Array(times.enumerated()), id: \.element.id) { index, time in
@@ -337,24 +323,22 @@ struct SprinklerSchedulePage: View {
                 }
                 .accessibilityLabel("Add Another Start Time")
                 .accessibilityIdentifier("sprinkler.schedule.addTime")
-            } header: { SprinklerHeader("Start Times") }
+            } header: { FormHeader("Start Times") }
             .disabled(!available)
             Section {
                 Stepper(value: $budget, in: SprinklersConfig.budgetRange.min...SprinklersConfig.budgetRange.max,
                         step: SprinklersConfig.budgetRange.step) {
-                    StepperRow(title: "Watering budget", symbol: "percent", value: "\(budget)%")
+                    StepperRow(title: "Watering Budget", symbol: "percent", value: "\(budget)%")
                 }
                 .accessibilityValue("\(budget) percent")
                 .disabled(!available)
                 .accessibilityIdentifier("sprinkler.schedule.budget")
             } footer: {
-                Text("Run time · \(program?.runTimeMinutes ?? 0) min")
-                    .font(.footnote)
-                    .foregroundStyle(HassTokens.Ink.secondary)
+                FormFooter("Run Time · \(program?.runTimeMinutes ?? 0) min")
             }
         }
         .safeAreaInset(edge: .bottom) {
-            Button {
+            PrimaryButton("Apply", systemImage: "checkmark", family: .water) {
                 sending = true
                 Task {
                     let ok = await controller.saveSchedule(
@@ -362,18 +346,14 @@ struct SprinklerSchedulePage: View {
                     sending = false
                     if ok { done() }
                 }
-            } label: {
-                Label("Apply", systemImage: "checkmark")
-                    .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
             .disabled(!available || days.isEmpty || times.isEmpty || sending)
+            .accessibilityIdentifier("sprinkler.schedule.apply")
             .padding(HassTokens.Spacing.l)
             .background(.bar)
-            .accessibilityIdentifier("sprinkler.schedule.apply")
         }
         .navigationTitle(format.programName(zone: zoneName))
+        .sheetSubtitle(program.map(format.summary))
         .inlineNavigationTitle()
         .onDisappear { controller.clearError() }
     }
@@ -468,7 +448,8 @@ struct DayPicker: View {
                 Text(SprinklerFormat.dayLetters[day])
                     .font(.subheadline.weight(.semibold))
                     .frame(minWidth: HassTokens.minTarget, maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                    .foregroundStyle(on ? Color.white : HassTokens.Ink.primary)
+                    // Chosen days fill with the water colour and dark text, as the primary button (direction G).
+                    .foregroundStyle(on ? HassTokens.Surface.sheetGround : HassTokens.Ink.primary)
                     .background(on ? SprinklerStyle.water : Color.secondary.opacity(0.15), in: Circle())
             }
             .buttonStyle(.borderless)

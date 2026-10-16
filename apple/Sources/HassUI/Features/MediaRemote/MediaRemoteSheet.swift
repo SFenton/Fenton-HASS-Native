@@ -4,14 +4,18 @@ import SwiftUI
 
 /// The media remote sheet (pattern: `.agents/patterns/media-remote.md`; web `MediaRemoteModalContent.tsx`).
 ///
-/// The d-pad (with power in its top-right cell) is always visible; a segmented control picks between the tabs
-/// that have content. Where a split is allowed (iPad and unfolded iPhone Duo in landscape) and the sheet is wide
-/// enough, the d-pad moves to a leading column and the tab content scrolls in the trailing one; everywhere else
-/// it is one scrolling column (HIG: Layout, Sheets). A ``ContentGate`` shows a centered spinner until every app's
-/// artwork (all tabs) has loaded into the ``ImagePipeline``, then fades the whole content in at once.
+/// Direction G (`.agents/design/direction-g.md`, Sheets and Controls: Remote): the sections the remote has (Remote,
+/// Apps, Devices, Hue Sync) sit in the bottom glass section bar. Remote shows the 3×3 pad (power in its top-right
+/// cell), the volume card and the transport keys; the other sections show only their content. Where a split is
+/// allowed (iPad and unfolded iPhone Duo in landscape) and the sheet is wide enough, the pad stays in a leading
+/// column and the section scrolls in the trailing one; everywhere else it is one column (HIG: Layout, Sheets). A
+/// ``ContentGate`` shows a centered spinner until every app's artwork (all sections) has loaded into the
+/// ``ImagePipeline``, then fades the whole content in at once.
 public struct MediaRemoteSheet: View {
     @State private var controller: MediaRemoteController
     @State private var tab: MediaRemoteTab
+    /// The inline keyboard, opened from the pad's keyboard key and shown in the Remote section.
+    @State private var keyboard = KeyboardPrompt()
     @State private var window = WindowMetrics()
     /// Whether the sheet's artwork has settled; until then a centered spinner stands in for the content.
     @State private var isReady: Bool
@@ -80,6 +84,14 @@ public struct MediaRemoteSheet: View {
         return config.apps.compactMap { $0.imagePath.map(server.url) }
     }
 
+    /// The line under the title: the media player's app and state ("Plex · Playing"), or its state alone.
+    static func subtitle(_ player: EntityState?) -> String? {
+        guard let player else { return nil }
+        let state = MediaRemoteState.format(player.state)
+        guard !MediaRemoteState.isOff(player.state), let app = player.attributes["app_name"]?.string, !app.isEmpty else { return state }
+        return "\(app) · \(state)"
+    }
+
     /// Creates the sheet on the app's connection.
     public init(config: MediaRemoteConfig, connection: HassConnection, initialTab: MediaRemoteTab = .controls) {
         self.init(config: config, store: connection.store, caller: connection, imageServer: connection.server, initialTab: initialTab)
@@ -92,7 +104,9 @@ public struct MediaRemoteSheet: View {
             }
             .background { WindowMetricsReader(metrics: $window) }
             .modalChrome()
+            .modifier(RemoteSectionBar(tabs: controller.config.tabs, title: controller.config.remoteTitle, selection: $tab))
             .navigationTitle(controller.config.title)
+            .sheetSubtitle(Self.subtitle(controller.store.entity(controller.config.mediaEntityId).state))
             .inlineNavigationTitle()
             .toolbar { SheetCloseItem { dismiss() } }
         }
@@ -111,27 +125,15 @@ public struct MediaRemoteSheet: View {
                 if twoColumns {
                     HStack(alignment: .top, spacing: 0) {
                         ScrollView {
-                            leadingColumn(width: proxy.size.width / 2 - 2 * HassTokens.Spacing.l)
+                            pad(width: proxy.size.width / 2 - 2 * HassTokens.Spacing.l)
                                 .padding(HassTokens.Spacing.l)
                         }
-                            .frame(width: proxy.size.width / 2)
-                        ScrollViewReader { reader in
-                            ScrollView { tabColumn(reader: reader).padding(HassTokens.Spacing.l) }
-                        }
                         .frame(width: proxy.size.width / 2)
+                        section(includesPad: false)
+                            .frame(width: proxy.size.width / 2)
                     }
                 } else {
-                    ScrollViewReader { reader in
-                        ScrollView {
-                            VStack(spacing: HassTokens.Spacing.xl) {
-                                leadingColumn(width: nil)
-                                tabColumn(reader: reader)
-                            }
-                            .frame(maxWidth: 640)
-                            .frame(maxWidth: .infinity)
-                            .padding(HassTokens.Spacing.l)
-                        }
-                    }
+                    section(includesPad: true)
                 }
             }
             .accessibilityIdentifier(twoColumns ? "remote.layout.twoColumn" : "remote.layout.singleColumn")
@@ -140,27 +142,63 @@ public struct MediaRemoteSheet: View {
 
     // MARK: - Columns
 
-    private func leadingColumn(width: CGFloat?) -> some View {
-        DirectionalPad(controller: controller, maxWidth: width)
-            .frame(maxWidth: .infinity)
+    private func pad(width: CGFloat?) -> some View {
+        DirectionalPad(controller: controller, maxWidth: width, keyboardOpen: keyboard.isOpen) { target in
+            keyboard.toggle(target)
+            // The field lives in the Remote section; in two columns another section may be showing.
+            if keyboard.isOpen { tab = .controls }
+        }
+        .frame(maxWidth: .infinity)
     }
 
-    private func tabColumn(reader: ScrollViewProxy) -> some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-            if controller.config.tabs.count > 1 {
-                RemoteTabPicker(tabs: controller.config.tabs, title: controller.config.remoteTitle, selection: $tab)
-                    .id(MediaRemoteLayout.tabTopID)
+    /// The selected section. Remote and Apps scroll in one column; Devices and Hue Sync are inset grouped lists,
+    /// which scroll themselves.
+    @ViewBuilder
+    private func section(includesPad: Bool) -> some View {
+        switch tab {
+        case .controls:
+            RemoteScroll {
+                VStack(spacing: HassTokens.Spacing.xl) {
+                    if includesPad { pad(width: nil) }
+                    RemoteControlsTab(controller: controller, keyboard: $keyboard)
+                }
             }
-            switch tab {
-            case .controls: RemoteControlsTab(controller: controller)
-            case .apps: RemoteAppsTab(controller: controller, imageServer: imageBaseURL)
-            case .devices: RemoteDevicesTab(controller: controller)
-            case .hueSync:
-                if let hue = controller.config.hueSync { HueSyncTab(controller: controller, hue: hue) }
-            }
+        case .apps:
+            RemoteScroll { RemoteAppsTab(controller: controller, imageServer: imageBaseURL) }
+        case .devices:
+            RemoteDevicesTab(controller: controller)
+        case .hueSync:
+            if let hue = controller.config.hueSync { HueSyncTab(controller: controller, hue: hue) }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: tab) { _, _ in reader.scrollTo(MediaRemoteLayout.tabTopID, anchor: .top) }
+    }
+}
+
+/// One scrolling column, at most 640 pt wide and centred.
+private struct RemoteScroll<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        ScrollView {
+            content
+                .frame(maxWidth: 640)
+                .frame(maxWidth: .infinity)
+                .padding(HassTokens.Spacing.l)
+        }
+    }
+}
+
+/// The remote's sections in the bottom glass section bar (``ModalTabBar``), when it has more than one.
+private struct RemoteSectionBar: ViewModifier {
+    var tabs: [MediaRemoteTab]
+    var title: String
+    @Binding var selection: MediaRemoteTab
+
+    func body(content: Content) -> some View {
+        if tabs.count > 1 {
+            content.modalTabBar(tabs, label: "\(title) sections", title: \.title, selection: $selection, identifier: "remote.tabs")
+        } else {
+            content
+        }
     }
 }
 
@@ -170,9 +208,6 @@ public struct MediaRemoteSheet: View {
 enum MediaRemoteLayout {
     /// The narrowest sheet that holds the d-pad column beside the tab content.
     static let minimumTwoColumnWidth: CGFloat = 640
-
-    /// Scroll anchor at the top of the tab column.
-    static let tabTopID = "remote.tabTop"
 
     /// Two columns only where the window may split (landscape, regular width) and the sheet is wide enough.
     static func usesTwoColumns(window: CGSize, isRegularWidth: Bool, container: CGSize) -> Bool {
