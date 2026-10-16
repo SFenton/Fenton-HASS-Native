@@ -130,6 +130,27 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
 
     func testQuickLinks() throws { try sweep("quick-links") { self.openQuickLinks(in: $0) } }
 
+    /// Regular width (iPad, the unfolded Duo) floats Quick Links as a 56 pt glass circle on the section roots; compact
+    /// width opens it from the tab bar or the menu. Either way the sheet opens and passes the audit. Does not skip:
+    /// an `XCTSkip` hangs the runner on the unfolded Duo.
+    func testQuickLinksFloatingCircle() throws {
+        try sweep("quick-links-circle") {
+            let circle = $0.buttons["quickLinks.open"]
+            if circle.waitForExistence(timeout: 5) {
+                self.assertTarget(circle)
+                let window = $0.windows.firstMatch.frame
+                if circle.frame.midY > window.midY {
+                    XCTAssertGreaterThanOrEqual(circle.frame.width, 55, "The floating circle is 56 pt")
+                    XCTAssertGreaterThan(circle.frame.midX, window.midX, "The floating circle is trailing")
+                }
+                circle.tap()
+            } else {
+                self.openSection("quickLinks", title: "Quick Links", in: $0)
+            }
+            XCTAssertTrue(self.element("quickLinks.rooms", in: $0).waitForExistence(timeout: 10), "Quick Links did not open")
+        }
+    }
+
     func testAccount() throws {
         try sweep("account") { $0.openAccountSheet() }
     }
@@ -229,6 +250,8 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
             if node.elementType == .tabBar || node.elementType == .toolbar { return }
             // The floating action bar overlays the foot of the page; it is read last, wherever it floats.
             if node.identifier.hasPrefix("fab.") { return }
+            // So does regular width's Quick Links circle (bottom trailing); the toolbar one sits in the bar.
+            if node.identifier == "quickLinks.open" { return }
             let isControl = controls.contains(node.elementType)
             if (node.elementType == .staticText || isControl), !node.label.isEmpty,
                !node.frame.isEmpty, window.intersects(node.frame), window.contains(CGPoint(x: node.frame.midX, y: node.frame.midY)) {

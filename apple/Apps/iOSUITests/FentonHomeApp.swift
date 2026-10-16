@@ -151,6 +151,8 @@ enum FentonHomeApp {
         // Read once: per-issue queries add up, and many accessibility requests crash the iPad simulator's backboardd.
         let floatingBarTop = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fab.'"))
             .allElementsBoundByIndex.map(\.frame.minY).min()
+        // Noted before the audit too: it can dismiss an alert as well.
+        let alertUp = app.alerts.firstMatch.exists
         // The audit can dismiss a popover while it runs, so note it before starting.
         let popover = app.otherElements["PopoverDismissRegion"].exists && app.popovers.firstMatch.exists
             ? app.popovers.firstMatch.frame : nil
@@ -183,6 +185,9 @@ enum FentonHomeApp {
         }
         for issue in issues {
             if isSystemDrawn(issue, in: app, popover: popover) { continue }
+            // The page behind a system alert is hidden from assistive technologies by the alert; its text comes back as
+            // element-less "potentially inaccessible text" (Security disarm alert, iPad, 2026-10-16: 6 issues).
+            if issue.element == nil, issue.auditType == .elementDetection, alertUp { continue }
             if issue.auditType == .contrast, issue.element == nil, textUnderFloatingBar { continue }
             if issue.auditType == .contrast, issue.element == nil, everyTextClears() {
                 let note = "Element-less contrast issue accepted: every labelled text and button on screen measured at least 4.5:1 rendered"
