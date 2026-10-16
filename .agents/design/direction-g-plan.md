@@ -137,6 +137,18 @@ Stephen, 2026-10-15: "continue Phase 4 ... when done commit and merge." Three la
 
 Feature files are shared between lanes for one-line edits (a grid cap, a sheet size, a colour token); whichever lane merges second resolves.
 
+#### Phase 4 status (2026-10-16)
+
+Merged: iPad and Duo layout (#84), light-appearance sheets (#85), accessibility pass (#86), each reviewed by the planner.
+
+Still open:
+- **Unfolded Duo:** landscape is verified (#84); unfolded portrait, the partly folded pose, light sheets and the accessibility sweep were not run there.
+- **Light sheets:** iPad landscape, iOS 17–25 fallbacks and a real Control Center toggle on a device are unverified.
+- **Vacuums:** two element-less contrast issues on iPhone are unattributed (`.agents/testing/apple/accessibility.md`, Open findings).
+- **Tests:** a full `swift test` run fails `ValetudoMapDrawingTests/entitiesAndMaterialsChangeTheDrawing` and `OnDemandSplitHostedTests` (3), on clean main too; they pass alone (order-dependent hosted state).
+- **Coverage:** `tools/apple_coverage.sh` errors on classification entries for files such as Feedback, LitTile and Telemetry, so there is no repo-wide gate number.
+- **macOS:** deferred until a Mac target exists (decision 8).
+
 ## Dependencies on wave-2 threads
 
 | Thread | Why G waits for it |
