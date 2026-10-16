@@ -29,19 +29,10 @@ struct RoomChip: View {
     var body: some View {
         let chip = controller.chip(card)
         let summary = ScreenshotPrivacy.isRedacting && card.kind == .occupancy ? "Hidden" : chip.summary
-        StatusChipButton(title: chip.title, summary: summary, symbol: SymbolMap.symbol(for: chip.icon),
-                         family: card.kind.tone.family, isActive: Self.isFilled(card.kind.tone, isActive: chip.isActive),
-                         action: chip.opensSheet ? action : nil)
+        let appearance = StatusChipAppearance.room(card, chip: chip)
+        StatusChipButton(title: chip.title, summary: summary, symbol: appearance.symbol, family: appearance.family,
+                         isActive: appearance.isFilled, tint: appearance.tint, action: chip.opensSheet ? action : nil)
             .accessibilityIdentifier("room.chip.\(card.title)")
-    }
-
-    /// Whether the chip draws filled: Climate and Air Quality always, as on Home (``StatusRail/isFilled(_:family:isActive:)``;
-    /// direction G, Status chips: "Climate: always web navy"; mockup fc-room-master), the rest while active.
-    static func isFilled(_ tone: RoomTone, isActive: Bool) -> Bool {
-        switch tone {
-        case .climate, .air: true
-        default: isActive
-        }
     }
 }
 

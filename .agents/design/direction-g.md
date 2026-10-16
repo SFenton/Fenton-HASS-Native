@@ -82,15 +82,25 @@ Pages are always dark-styled because they sit on the dimmed photo, the way Apple
 | Food (owner, 2026-10-16: "Food Spaces / All Food should have colours like the web") | Food hub tiles, always filled: Pantry `#855A25`, Fridge and All Recipes `#196B94`, Freezer `#2F4A9E`, Spice Rack `#AA4727`, Cabinet `#6A5F55`, All Food `#4A6B4E` | each a lightened tint of its fill | the web's tile colours (`ha-sfenton-react-dash@9ac2a46:src/constants/everShelfFood.ts:13-18`, `FoodHubPage.tsx:46,60`), nudged until white ink passes 4.5:1 and no two spaces read as one (≥ 30 apart in sRGB). The Freezer indigo sits near Vents and the Spice Rack near Cooking, as the web's own colours do; they never share a page |
 | Security | by mode, as on the web | white on the fill | Home `#1565C0`, Away `#C62828`, Night `#7B1FA2`, Disarmed `#2A732E`, Triggered `#D70015` |
 
-**Status chips follow the web:**
+**Status chips follow the web** (owner, 2026-10-16: climate, air quality, occupancy and contact chips brought to web parity; one rule per chip, in `StatusChipAppearance` and `HassCore/Chips`):
 - Lights on: amber, orange glyph.
 - Security: filled with the mode colour, white glyph.
-- Climate: always web navy `#195482` with the yellow `#FFCC00` thermometer.
-- Occupancy: green fill with a white walking glyph when occupied, neutral when clear.
-- Doors or windows open: soft green with a green door-open glyph, neutral "All Closed" when shut.
-- Air quality: teal fill, glyph in the AQI colour.
+- **Climate follows the temperature** (owner, 2026-10-16: "temperature-dependent, like the web"). The web colours every climate card with the `input_text.*_climate_color` helper Home Assistant computes, else its temperature gradient (`ha-sfenton-react-dash@9ac2a46:src/components/cards/climateColor.ts:8-15,49-59`, `ClimateCard.tsx:71`). The Home chip reads `input_text.all_climate_color`, a room chip its `input_text.<room>_climate_color`; with neither it takes the gradient at the mean of the range text (50 °F blue, 60 purple, 68 green, 74 yellow, 80 orange, 85 red, clamped). The fill is that colour scaled to 73% (and darkened further until white reads at 4.5:1, also under the top highlight); the thermometer stays the web's yellow `#FFCC00` where it keeps 3:1, else a lightened tint. No colour at all falls back to the old navy `#195482`. Beds keep the family colour.
+- **Air quality follows the AQI.** Fill and glyph use `input_text.all_aqi_color` (a room chip its `input_text.<room>_aqi_color`; the web teal `rgb(0, 150, 136)` while unset) through the same scale-and-lighten rule, so good air is `#006E63`, within a step of the Air family teal. The summary is the web's, `AQI <range> · PM2.5 <range>` (`AtAGlancePage.tsx:1187`); the web has no "Good" word on this chip, so there is none.
+- **Occupancy:** a person glyph, outline while clear and filled while detected, with the Occupancy green fill only while detected. The web tints this chip by detection alone (`StatusRail.tsx:41-46`: green fill and `motion-sensor` when active, neutral `motion-sensor-off` when clear); it has no alarm or away tint, so neither has the native chip.
+- **Contact Sensors reads the house** (owner, 2026-10-16: "need to decide all closed, open but we're home, open but we're away, open but security system is on"). The web draws this chip green when open and neutral when closed and has no house rule, so these are the planner's decisions. One rule, `ContactChipState`, shared by Home, every room rail and Security:
 
-Open doors and occupancy are both green on the web. The softer fill tells them apart. The alternative, if they should differ, is the web's window-open coral (`#B23A26` fill).
+| State | When | Fill | Glyph | State text |
+|---|---|---|---|---|
+| All closed | nothing open | soft contact green `#3B523E` | door closed, `#7ED787` | "All Closed" (a single sensor: "Closed") |
+| Open, home | something open, someone home, system not armed | warning amber `#8A5200` (the `#FFB340` warning, darkened for white text) | door open, `#FFC25C` | "<n> Open" |
+| Open, away | something open, household effectively away, system not armed | the web's window-open coral `#B23A26` | door open, `#FFD2C8` | "<n> Open" |
+| Open, armed | something open and the alarm is in any armed mode or triggered (outranks away) | triggered red `#D70015` | alert triangle, white | "<n> Open" |
+
+  "Away" is `ClimateLogic.isEffectivelyAway` (Whole Home mode, `sensor.thermostat_effective_home_away`), the app's one home/away reading. The alert triangle keeps the armed state from resting on colour alone. The web's count text ("N Open") stays; the owner's "Back Deck Open" wording was an example, and the web has no per-sensor name here.
+- **Colour changes animate.** A chip's fill and glyph cross-fade when the colour changes or the chip turns on or off (a warmer house, a door opening, the alarm arming): 0.6 s ease-in-out, scoped to colour so the chip's width and glyph never slide. Reduce Motion allows the cross-fade (no movement), shortened to 0.2 s (`StatusChipStyle.colorAnimation`).
+
+**Security Doors are tiles** (owner, 2026-10-16): the Doors section is a grid of `GlassTile`s in the Doors and windows family (front-door lock, left and right garage doors; Mach-E's car lock when shown), not rows. A tile is filled while the door is open, unlocked or moving and dark while closed or locked; a jammed lock or a failed garage command draws the red error face; garage doors keep their Sending, Opening, Closing and Error states. Same grid rules as room tiles: 140 pt scaled minimum width, equal heights, one column at accessibility sizes.
 
 People and rooms have no colour of their own.
 
@@ -123,7 +133,7 @@ SF Pro only.
 
 | Control | Rule |
 |---|---|
-| Status chips (Home, room pages, Security) | Capsules with glyph, title and one-line state, coloured as on the web (see Colour families). Neutral when nothing is active. They scroll horizontally in compact width and wrap in regular width (`ChipRail`). |
+| Status chips (Home, room pages, Security) | Capsules with glyph, title and one-line state, coloured as on the web (see Colour families, "Status chips follow the web"); Contact Sensors also read the house. Neutral when nothing is active. Colour changes cross-fade. They scroll horizontally in compact width and wrap in regular width (`ChipRail`). |
 | Tiles | 2 columns on iPhone, 22pt radius, equal heights within a grid (the tallest name, such as "Master Bedroom Closet" on two lines, sets the row). Off is dark with the glyph in its family colour. On fills with the family colour and white ink; lights use the warm lit tile. Errors use a red glyph and red state text. A chevron appears only when the tile opens something. |
 | **Light dragger** (signature) | Tap a light tile to toggle it. Press and drag sideways to set brightness: the bright band follows the finger, a "30%" bubble floats beside it, there is a haptic tick every 10%, and the tile lifts while dragging. A room's lights stack as full-width slabs that work the same way. The light detail adds a 168pt brightness slab, White and Color modes, a colour-temperature track with presets, and a colour wheel. |
 | **Thermostat dial** (signature) | main's `ThermostatDial` exactly: a 22pt round-capped 270° track, heat arc orange to the heat setpoint, cool arc teal from the cool setpoint, white knobs, a dark dot for the current temperature, "Heating", a Thin numeral with a raised °F, and the range line. The bed and humidifier dials reuse its geometry. |
@@ -152,7 +162,7 @@ SF Pro only.
 - **Duo:** four chips show beside the hinge.
 - **Advanced Controls root:** has no Back button.
 - **Garage:** opens on tap, with no confirmation.
-- **Mach-E:** its Doors row is shown on Security.
+- **Mach-E:** its Doors tile is shown on Security.
 - **Room pages:** keep the Lights chip; the alternative is a tile per light.
 - **Remote apps:** placeholder icons, not real app icons.
 - **Library:** kept as a storage choice.

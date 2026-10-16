@@ -45,13 +45,16 @@ public final class HassConnection {
     @ObservationIgnored let connection: HAConnection
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
     @ObservationIgnored private var statesSubscription: HACancellable?
-    @ObservationIgnored private var stateObserver: NSObjectProtocol?
+    // Read in `deinit`, which is nonisolated; only the main actor writes it.
+    @ObservationIgnored nonisolated(unsafe) private var stateObserver: NSObjectProtocol?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
     /// The HAKit entities last applied, so each delivery converts only what changed.
     @ObservationIgnored private var lastDelivered: [String: HAEntity] = [:]
     /// The app wants the socket open (between ``connect(subscribingToStates:)`` and ``disconnect()``).
     @ObservationIgnored var wantsConnection = false
     @ObservationIgnored private var routeTask: Task<Void, Never>?
+    /// Gauges for what this connection registers (`ResourceCensus`).
+    @ObservationIgnored private var census: ResourceCensus.Registration?
 
     /// How long live updates are batched before the disk snapshot is rewritten.
     static let snapshotDebounce: Duration = .seconds(10)
@@ -111,6 +114,24 @@ public final class HassConnection {
         route?.startWatching { [weak self] in
             Task { @MainActor in self?.networkDidChange() }
         }
+
+        census = ResourceCensus.shared.register { [weak self] in self?.liveResources ?? [:] }
+    }
+
+    /// What this connection has registered right now (`ResourceCensus`): each is 0 or 1, and a resume leaves them as
+    /// they were.
+    var liveResources: [String: Int] {
+        [
+            "Connection.statesSubscription": statesSubscription == nil ? 0 : 1,
+            "Connection.stateObserver": stateObserver == nil ? 0 : 1,
+            "Connection.saveTask": saveTask == nil ? 0 : 1,
+            "Connection.routeTask": routeTask == nil ? 0 : 1,
+        ]
+    }
+
+    deinit {
+        // A block observer stays registered until it is removed; dropping the token would leave it behind.
+        if let stateObserver { NotificationCenter.default.removeObserver(stateObserver) }
     }
 
     /// Where HAKit connects: the route's current URL (HAKit reads this on every connect and swaps the socket
