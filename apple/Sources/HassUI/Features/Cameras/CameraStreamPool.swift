@@ -12,6 +12,13 @@ import UIKit
 /// camera has been shown its stream keeps running for the session (``CameraStreamRetention``), so moving
 /// between Home, Security and the viewer never reconnects. Every stream stops when the app goes to the
 /// background and the retained ones restart when it returns; their snapshots cover the gap.
+///
+/// **Coming back from the background** the websocket may be gone or dead, and Home Assistant's commands for a
+/// stream (`auth/sign_path`, `camera/stream`) are dropped by HAKit without an answer when they are caught by a
+/// reconnect (owner report 2026-10-16: streams never came back). So the return first makes the connection
+/// answer (``HassConnection/ensureLive(timeout:)``), then starts the streams, and any stream that is still
+/// wanted but not running, or gave up while the socket was down, restarts when the socket next becomes ready.
+/// A healthy stream is never touched. See `.agents/platforms/apple/connection-lifecycle.md`, "Camera streams".
 @MainActor
 @Observable
 final class CameraStreamPool {
@@ -22,18 +29,30 @@ final class CameraStreamPool {
     @ObservationIgnored private var retention: CameraStreamRetention
     @ObservationIgnored private weak var connection: HassConnection?
     @ObservationIgnored private let modes: [CameraStreamMode]
+    @ObservationIgnored private let opener: CameraStreamOpener?
+    @ObservationIgnored private let prepareConnection: @MainActor (HassConnection) async -> Void
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    /// The foreground restart while it waits for the connection; nil when none is pending.
+    @ObservationIgnored private var resumeTask: Task<Void, Never>?
 
     /// - Parameters:
     ///   - modes: Modes each stream tries, in order.
     ///   - retainsShownStreams: Keep shown streams running for the session (web parity).
-    ///   - observesApp: Stop and restart streams with the app's background and foreground transitions.
-    init(modes: [CameraStreamMode] = CameraLiveModel.defaultModes, retainsShownStreams: Bool = true, observesApp: Bool = true) {
+    ///   - observesApp: Stop and restart streams with the app's background and foreground transitions, and
+    ///     restart stalled ones when the connection becomes ready again.
+    ///   - opener: Replaces how each mode opens its stream (tests).
+    ///   - prepareConnection: Runs when the app returns, before streams restart; the default makes the websocket
+    ///     answer, reconnecting it if it is dead.
+    init(modes: [CameraStreamMode] = CameraLiveModel.defaultModes, retainsShownStreams: Bool = true, observesApp: Bool = true,
+         opener: CameraStreamOpener? = nil,
+         prepareConnection: @escaping @MainActor (HassConnection) async -> Void = { _ = await $0.ensureLive() }) {
         self.modes = modes
+        self.opener = opener
+        self.prepareConnection = prepareConnection
         retention = CameraStreamRetention(retainsShownStreams: retainsShownStreams)
-        #if canImport(UIKit)
         guard observesApp else { return }
         let center = NotificationCenter.default
+        #if canImport(UIKit)
         observers = [
             center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.enterBackground() }
@@ -43,6 +62,9 @@ final class CameraStreamPool {
             },
         ]
         #endif
+        observers.append(center.addObserver(forName: HassConnection.didBecomeReadyNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.connectionBecameReady() }
+        })
     }
 
     // MARK: - Models
@@ -53,7 +75,7 @@ final class CameraStreamPool {
     /// invalidates a view. Views observe the returned model's own state.
     func model(for camera: HomeConfig.Camera) -> CameraLiveModel {
         if let model = models[camera.id] { return model }
-        let model = CameraLiveModel(camera: camera, modes: modes)
+        let model = CameraLiveModel(camera: camera, modes: modes, opener: opener)
         model.onExhausted = { [weak self] in self?.retention.failed(camera.id) }
         model.onMuteChange = { [weak self] in self?.updateAudio() }
         models[camera.id] = model
@@ -66,11 +88,14 @@ final class CameraStreamPool {
     // MARK: - Views
 
     /// A view showing the camera appeared: starts its stream unless it is already connecting or live.
+    ///
+    /// While the app is coming back from the background the start waits for the connection check with the rest
+    /// (``enterForeground()``).
     @discardableResult
     func appear(_ camera: HomeConfig.Camera, connection: HassConnection) -> CameraLiveModel {
         self.connection = connection
         let model = model(for: camera)
-        if retention.appear(camera.id, isRunning: model.isRunning) == .start {
+        if retention.appear(camera.id, isRunning: model.isRunning) == .start, resumeTask == nil {
             model.start(connection: connection)
         }
         return model
@@ -93,18 +118,44 @@ final class CameraStreamPool {
     // MARK: - App lifecycle
 
     func enterBackground() {
+        CameraTrace.record("pool background, \(models.values.filter(\.isRunning).count) running")
+        resumeTask?.cancel()
+        resumeTask = nil
         for id in retention.enterBackground() {
-            models[id]?.stop()
+            models[id]?.suspend()
         }
         // Sound never keeps playing behind the app; cameras reopen muted like the web's pooled cards.
         models.values.forEach { $0.setMuted(true) }
     }
 
+    /// The app is returning. Streams restart once the connection answers; the snapshots stay up meanwhile.
     func enterForeground() {
         let ids = retention.enterForeground()
-        guard let connection else { return }
-        for id in ids {
-            models[id]?.start(connection: connection)
+        guard let connection, !ids.isEmpty else { return }
+        CameraTrace.record("pool foreground, \(ids.count) wanted, connection \(connection.status)")
+        resumeTask?.cancel()
+        resumeTask = Task { [weak self] in
+            if let self { await prepareConnection(connection) }
+            guard !Task.isCancelled, let self else { return }
+            resumeTask = nil
+            CameraTrace.record("pool resuming, connection \(connection.status)")
+            startStalled(connection)
+        }
+    }
+
+    /// The websocket became ready (first connect, or after a drop). Streams that are wanted but not running, or
+    /// that gave up while the socket was down, start again; connecting and live ones are left alone.
+    func connectionBecameReady() {
+        guard resumeTask == nil, let connection else { return }
+        startStalled(connection)
+    }
+
+    /// Starts every wanted stream that is not running or has failed.
+    private func startStalled(_ connection: HassConnection) {
+        for id in retention.wanted {
+            guard let model = models[id], !model.isRunning || model.state.phase == .failed else { continue }
+            CameraTrace.record("\(model.camera.rtcStreamId) restarting (running \(model.isRunning), \(model.state.phase))")
+            model.start(connection: connection)
         }
     }
 

@@ -37,8 +37,9 @@ struct CameraControlsTests {
         #expect(!pool.shouldRun(front))
     }
 
-    @Test func shownCamerasStayRetainedUntilTheBackground() {
-        let pool = CameraStreamPool(modes: [.webRTC], observesApp: false)
+    @Test func shownCamerasStayRetainedUntilTheBackground() async {
+        // No connection check: the return restarts the stream after it, which is covered in CameraStreamPoolTests.
+        let pool = CameraStreamPool(modes: [.webRTC], observesApp: false, prepareConnection: { _ in })
         let front = HomeConfig.cameras[0]
         pool.disappear(front) // Disappearing before appearing is harmless.
         let model = pool.appear(front, connection: connection())
@@ -50,6 +51,7 @@ struct CameraControlsTests {
         #expect(!model.isRunning)
         #expect(model.isMuted, "Sound never plays behind the app")
         pool.enterForeground()
+        for _ in 0..<300 where !model.isRunning { try? await Task.sleep(for: .milliseconds(10)) }
         #expect(model.isRunning)
         model.stop()
     }
