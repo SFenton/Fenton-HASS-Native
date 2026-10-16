@@ -37,7 +37,10 @@ final class ClimateJourneyTests: XCTestCase {
         for _ in 0..<14 {
             // Scroll inside the sheet when one is up: an iPad sheet doesn't cover the window, and a drag on the
             // dimmed area outside it scrolls nothing.
-            let sheets = app.scrollViews.matching(NSPredicate(format: "identifier BEGINSWITH 'climate.sheet.' OR identifier == 'climate.detail'"))
+            // Sheet pages are forms (collection views); the page is a scroll view.
+            let named = NSPredicate(format: "identifier BEGINSWITH 'climate.sheet.' OR identifier == 'climate.detail'")
+            let sheets = app.descendants(matching: .any).matching(NSPredicate(format: "elementType IN %@",
+                [XCUIElement.ElementType.scrollView, .collectionView, .table].map(\.rawValue))).matching(named)
             // The one holding the element: after Back the popped detail's scroll view can linger in the tree.
             let holder = element.exists
                 ? sheets.allElementsBoundByIndex.first { $0.descendants(matching: .any)[element.identifier].exists }
@@ -67,9 +70,25 @@ final class ClimateJourneyTests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [found], timeout: 4), .completed, "Last call was '\(label.label)'", file: file, line: line)
     }
 
-    /// The sheet page heading reading `title` (the bar title is replaced by a wrapping heading).
+    /// The sheet page's navigation bar titled `title`.
     private func heading(_ title: String, in app: XCUIApplication) -> XCUIElement {
-        app.staticTexts.matching(NSPredicate(format: "identifier == 'climate.sheetHeading' AND label == %@", title)).firstMatch
+        app.navigationBars[title]
+    }
+
+    /// The Thermostat Hub row's text: "Thermostat Hub, <state>" (its mode menu is a separate element).
+    private func hubRow(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Thermostat Hub, '")).firstMatch
+    }
+
+    /// Flips a system switch in a form row: XCUITest's tap on the row's centre misses the switch.
+    private func flip(_ toggle: XCUIElement) {
+        let inner = toggle.switches.firstMatch
+        if inner.exists, inner.isHittable { inner.tap() } else { toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap() }
+    }
+
+    /// A section header (grouped forms may draw it in capitals).
+    private func header(_ title: String, in app: XCUIApplication) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", title)).firstMatch
     }
 
     private func value(_ element: XCUIElement) -> String { element.value as? String ?? "" }
@@ -97,11 +116,11 @@ final class ClimateJourneyTests: XCTestCase {
 
     // MARK: - Page
 
-    /// Whole Home dial, hub pill and picker buttons, open contacts and the three entries, with names and roles.
+    /// Whole Home dial, hub row and pop-up menus, open contacts and the three entries, with names and roles.
     func testPageSectionsAndSemantics() {
         let app = launch()
         XCTAssertTrue(element("thermostatDial.readout", in: app).label.hasPrefix("Whole Home thermostat, Heating"))
-        XCTAssertEqual(element("climate.hub", in: app).label, "Thermostat Hub, Heat")
+        XCTAssertEqual(hubRow(in: app).label, "Thermostat Hub, Heat")
         let mode = element("climate.hub.mode", in: app)
         XCTAssertEqual(mode.label, "Thermostat Hub Mode")
         XCTAssertEqual(value(mode), "Heat")
@@ -175,7 +194,9 @@ final class ClimateJourneyTests: XCTestCase {
             app.buttons["Rooms"].tap()
         }
         XCTAssertTrue(element("climate.sheet.rooms", in: app).waitForExistence(timeout: 5))
-        XCTAssertEqual(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'climate.room.'")).count, 11)
+        // Forms load rows as they scroll: the first and the last room.
+        XCTAssertTrue(element("climate.room.living_room", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(reveal(element("climate.room.theater_room", in: app), in: app).exists)
         app.buttons["Close"].tap()
         XCTAssertTrue(element("climate.wholeHome", in: app).waitForExistence(timeout: 5))
     }
@@ -197,20 +218,20 @@ final class ClimateJourneyTests: XCTestCase {
         XCTAssertNotEqual(vent.elementType, .button, "Vents are read-only")
         XCTAssertEqual(vent.label, "Vent 2")
         XCTAssertEqual(value(vent), "Open")
-        XCTAssertTrue(app.staticTexts["Living Room Vents"].exists)
+        XCTAssertTrue(header("Living Room Vents", in: app).exists)
         back(app)
         XCTAssertTrue(element("climate.sheet.rooms", in: app).waitForExistence(timeout: 5))
     }
 
-    /// Automation: toggles are switches that send `homeassistant.toggle`; an Eco option page selects with
-    /// `select.select_option` and its opener shows the new value.
+    /// Automation: toggles are system switches that send `homeassistant.toggle`; an Eco option page selects with
+    /// `select.select_option` and its row shows the new value.
     func testAutomationTogglesAndEcoOptionPage() {
         let app = launch(open: "automation")
         let eco = reveal(element("climate.toggle.switch.thermostat_contact_sensors_eco_mode", in: app), in: app)
         XCTAssertEqual(eco.label, "Eco Mode")
-        XCTAssertEqual(value(eco), "On")
-        eco.tap()
-        XCTAssertTrue(hasValue(eco, "Off"))
+        XCTAssertEqual(value(eco), "1")
+        flip(eco)
+        XCTAssertTrue(hasValue(eco, "0"))
         waitForCall("homeassistant.toggle entity_id=switch.thermostat_contact_sensors_eco_mode", in: app)
 
         let opener = reveal(element("climate.eco.eco-away", in: app), in: app)
@@ -219,8 +240,8 @@ final class ClimateJourneyTests: XCTestCase {
         opener.tap()
         XCTAssertTrue(heading("Eco Behavior When Away", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(element("climate.option.Keep Eco Active", in: app).isSelected)
-        XCTAssertTrue(app.staticTexts["Use the wider away temperature range while everyone is away."].exists)
         let targets = reveal(element("climate.option.Use Eco Away Targets", in: app), in: app)
+        XCTAssertTrue(targets.label.hasSuffix("Use the wider away temperature range while everyone is away."), targets.label)
         targets.tap()
         XCTAssertTrue(targets.wait(for: \.isSelected, toEqual: true, timeout: 3))
         waitForCall("select.select_option entity_id=select.thermostat_contact_sensors_eco_behavior_when_away option=Use Eco Away Targets", in: app)
@@ -228,31 +249,30 @@ final class ClimateJourneyTests: XCTestCase {
         XCTAssertTrue(hasValue(reveal(element("climate.eco.eco-away", in: app), in: app), "Use Eco Away Targets"))
     }
 
-    /// Predictive Comfort on: the tile opens the detail and the power button turns it off; off: a tap turns it on.
-    func testPredictiveComfortTileAndDetail() {
+    /// Predictive Comfort is a switch (`switch.turn_on` / `turn_off`); while on, Current Prediction opens the detail.
+    func testPredictiveComfortSwitchAndDetail() {
         let app = launch(open: "automation")
-        let tile = reveal(element("climate.predictive", in: app), in: app)
-        XCTAssertEqual(value(tile), "On · Pre-Cool")
-        tile.tap()
+        let predictive = reveal(element("climate.predictive", in: app), in: app)
+        XCTAssertEqual(predictive.label, "Predictive Comfort, On · Pre-Cool")
+        XCTAssertEqual(value(predictive), "1")
+        reveal(element("climate.predictive.open", in: app), in: app).tap()
         XCTAssertTrue(heading("Predictive Comfort", in: app).waitForExistence(timeout: 5))
         XCTAssertEqual(element("climate.predictive.recommendation", in: app).label, "Recommendation: Pre-Cool")
         XCTAssertEqual(element("climate.metric.Comfort Band", in: app).label, "Comfort Band, 71.0°F - 74.0°F")
-        let reasons = reveal(element("climate.predictive.reasons", in: app), in: app)
-        XCTAssertTrue(reasons.staticTexts["Why this prediction?"].exists)
+        reveal(element("climate.predictive.reasons", in: app), in: app)
+        XCTAssertTrue(header("Why This Prediction", in: app).exists)
         XCTAssertTrue(app.staticTexts["Predicted indoor temperature is 75.1°F, above your 71.0°F - 74.0°F comfort band."].exists)
         let allowAway = reveal(element("climate.toggle.switch.thermostat_contact_sensors_predictive_allow_away", in: app), in: app)
         XCTAssertEqual(allowAway.label, "Predictive Comfort While Away")
-        XCTAssertEqual(value(allowAway), "Off")
+        XCTAssertEqual(value(allowAway), "0")
         back(app)
 
-        let power = reveal(element("climate.predictive.power", in: app), in: app)
-        XCTAssertEqual(power.label, "Turn off Predictive Comfort")
-        power.tap()
+        let power = reveal(element("climate.predictive", in: app), in: app)
+        flip(power)
         waitForCall("switch.turn_off entity_id=switch.thermostat_contact_sensors_predictive_comfort_mode", in: app)
-        let off = element("climate.predictive", in: app)
-        XCTAssertTrue(hasValue(off, "Off"))
-        XCTAssertFalse(element("climate.predictive.power", in: app).exists)
-        off.tap()
+        XCTAssertTrue(hasValue(power, "0"))
+        XCTAssertFalse(element("climate.predictive.open", in: app).exists, "Current Prediction hides while off")
+        flip(power)
         waitForCall("switch.turn_on entity_id=switch.thermostat_contact_sensors_predictive_comfort_mode", in: app)
     }
 
@@ -282,8 +302,8 @@ final class ClimateJourneyTests: XCTestCase {
         back(app)
 
         let track = reveal(element("climate.toggle.switch.thermostat_contact_sensors_only_track_selected_rooms", in: app), in: app)
-        track.tap()
-        XCTAssertTrue(hasValue(track, "Off"))
+        flip(track)
+        XCTAssertTrue(hasValue(track, "0"))
         let disabled = reveal(element("climate.tracking.selected-rooms", in: app), in: app)
         XCTAssertFalse(disabled.isEnabled)
         XCTAssertEqual(value(disabled), "Enable Track Selected Rooms first")
@@ -292,14 +312,14 @@ final class ClimateJourneyTests: XCTestCase {
 
     // MARK: - Live server (read-only)
 
-    /// Signed in against the house: the Climate tab shows the Whole Home dial and all eleven rooms; audits the
+    /// Signed in against the house: the Climate tab shows the Whole Home dial and a room's reading; audits the
     /// live page. Nothing is tapped that changes a setting.
     func testLiveClimatePageReadsTheHouse() throws {
         let app = try FentonHomeApp.launchSignedIn()
         openClimateTab(app)
         XCTAssertTrue(element("thermostatDial.readout", in: app).waitForExistence(timeout: 15))
         XCTAssertTrue(element("thermostatDial.readout", in: app).label.hasPrefix("Whole Home thermostat"))
-        XCTAssertTrue(element("climate.hub", in: app).label.hasPrefix("Thermostat Hub, "))
+        XCTAssertTrue(hubRow(in: app).exists)
         // The AX5 relaunch confirms iPad's "partially unsupported" Dynamic Type report (a known false positive).
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
@@ -309,8 +329,7 @@ final class ClimateJourneyTests: XCTestCase {
         }
         reveal(element("climate.entry.rooms", in: app), in: app).tap()
         XCTAssertTrue(element("climate.sheet.rooms", in: app).waitForExistence(timeout: 5))
-        XCTAssertEqual(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'climate.room.'")).count, 11)
-        XCTAssertTrue(value(element("climate.room.office", in: app)).contains("°F · "))
+        XCTAssertTrue(value(reveal(element("climate.room.office", in: app), in: app)).contains("°F · "))
     }
 
     private func openClimateTab(_ app: XCUIApplication) {

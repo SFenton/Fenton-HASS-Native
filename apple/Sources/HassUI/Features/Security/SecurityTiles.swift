@@ -24,95 +24,11 @@ extension SecurityConfig {
     }
 }
 
-// MARK: - Tiles
+// MARK: - Garage door tile
 
-/// One Security tile, by kind.
-struct SecurityTile: View {
-    var tile: SecurityConfig.Tile
-    var caller: any HassServiceCalling
-    var canSend: Bool
-    var openSystem: () -> Void
-    @Environment(EntityStore.self) private var store
-    /// The lock's tapped state, shown until Home Assistant reports a change (rolled back if the call fails).
-    @State private var actions: OptimisticActions?
-
-    var body: some View {
-        Group {
-            switch tile.kind {
-            case .alarm:
-                AlarmTile(tile: tile, state: store.entity(tile.entityId).state, action: openSystem)
-            case .lock, .vehicle:
-                LockTile(tile: tile, state: shownState) { call in
-                    let actions = actions ?? OptimisticActions(store: store, rules: [tile.entityId: .liveChange], caller: caller)
-                    self.actions = actions
-                    // Live change clears it: locks report "locking" and "unlocking" on the way.
-                    actions.perform(call, showing: [OptimisticIntent(tile.entityId, value: call.service == "lock" ? "locked" : "unlocked")])
-                }
-            case .garageDoor:
-                GarageDoorTile(tile: tile, liveState: store.entity(tile.entityId).state?.state, caller: caller, canSend: canSend)
-            }
-        }
-    }
-
-    /// The live state with any pending tapped value over it.
-    private var shownState: EntityState? {
-        let live = store.entity(tile.entityId).state
-        guard let live, let pending = actions?.shown(tile.entityId), pending != live.state else { return live }
-        return EntityState(entityId: live.entityId, state: pending, attributes: live.attributes)
-    }
-}
-
-/// The Security System tile: the panel's mode; opens the mode sheet.
-struct AlarmTile: View {
-    var tile: SecurityConfig.Tile
-    var state: EntityState?
-    var action: () -> Void
-
-    var body: some View {
-        let redacting = ScreenshotPrivacy.isRedacting
-        let unavailable = state?.isUnavailable ?? true
-        GlassTile(
-            title: tile.title,
-            subtitle: redacting ? "Hidden" : (unavailable ? "Unavailable" : SecurityConfig.stateText(state?.state)),
-            symbol: SymbolMap.symbol(for: redacting ? tile.icon : SecurityConfig.alarmIcon(for: state?.state)),
-            tint: redacting ? SecurityConfig.Tone.active.color : SecurityConfig.tone(for: .alarm, state: state?.state).color,
-            isActive: !unavailable,
-            isUnavailable: unavailable,
-            kind: .navigate,
-            action: action
-        )
-        .accessibilityHint("Opens security system modes")
-    }
-}
-
-/// A lock tile (front door, or the car): locks when unlocked, unlocks otherwise, with explicit services.
-struct LockTile: View {
-    var tile: SecurityConfig.Tile
-    var state: EntityState?
-    var send: (ServiceCall) -> Void
-
-    var body: some View {
-        let value = state?.state
-        let unavailable = state?.isUnavailable ?? true
-        let locks = SecurityConfig.lockService(for: value) == "lock"
-        let open = value == "unlocked" || value == "open"
-        GlassTile(
-            title: tile.title,
-            subtitle: unavailable ? "Unavailable" : SecurityConfig.stateText(value),
-            symbol: tile.kind == .vehicle ? SymbolMap.symbol(for: tile.icon) : (open ? "lock.open" : "lock"),
-            tint: SecurityConfig.tone(for: tile.kind, state: value).color,
-            // The web mutes the car tile unless it is unlocked or open (`isActiveState`).
-            isActive: tile.kind == .vehicle ? open : !unavailable,
-            isUnavailable: unavailable,
-            kind: .command
-        ) {
-            send(SecurityConfig.lockCall(entityId: tile.entityId, state: value))
-        }
-        .accessibilityHint(unavailable ? "" : (locks ? "Locks" : "Unlocks"))
-    }
-}
-
-/// A garage door tile driven by ``GarageDoorController`` (web `GarageDoorTile.tsx`).
+/// A garage door tile driven by ``GarageDoorController`` (web `GarageDoorTile.tsx`): the garage room cards draw it.
+/// The Security page shows the same door as a row (``GarageDoorRow``). Direction G: the contact family, filled while
+/// the door is open or moving, and the red error face after a failed command.
 struct GarageDoorTile: View {
     var tile: SecurityConfig.Tile
     var liveState: String?
@@ -130,29 +46,20 @@ struct GarageDoorTile: View {
 
     var body: some View {
         let unavailable = !controller.isAvailable
-        let text = Self.subtitle(for: controller)
         GlassTile(
             title: tile.title,
-            subtitle: text,
-            symbol: SymbolMap.symbol(for: controller.displayState == "closed" || unavailable ? "mdi:garage" : "mdi:garage-open"),
-            tint: Self.tone(for: controller).color,
-            isActive: !unavailable,
+            subtitle: Self.subtitle(for: controller),
+            symbol: GarageDoorRow.symbol(for: controller),
+            family: .contact,
+            isActive: !unavailable && controller.displayState != "closed",
             isUnavailable: unavailable,
+            isError: controller.phase == .error,
             kind: .command
         ) {
             controller.send()
         }
-        .accessibilityHint(unavailable ? "" : (GarageDoorController.command(for: controller.liveState)?.opens == true ? "Opens the door" : "Closes the door"))
-        .onAppear {
-            controller.liveDidChange(liveState)
-            controller.connectionDidChange(canSend: canSend)
-        }
-        .onChange(of: liveState) { _, state in controller.liveDidChange(state) }
-        .onChange(of: canSend) { _, value in controller.connectionDidChange(canSend: value) }
-        .onChange(of: controller.phase) { _, phase in
-            // VoiceOver hears the feedback without moving focus (web `announcement`).
-            if phase != .idle { AccessibilityNotification.Announcement("\(tile.title), \(Self.subtitle(for: controller))").post() }
-        }
+        .accessibilityHint(GarageDoorRow.hint(for: controller))
+        .garageDoorFeedback(controller, title: tile.title, liveState: liveState, canSend: canSend)
     }
 
     /// "Sending Open…" / "Sending Close…" while sending, "Error" after a failure, else the shown state.
@@ -168,5 +75,37 @@ struct GarageDoorTile: View {
     /// Red after a failure, else the shown state's tone.
     static func tone(for controller: GarageDoorController) -> SecurityConfig.Tone {
         controller.phase == .error ? .danger : SecurityConfig.tone(for: .garageDoor, state: controller.displayState)
+    }
+}
+
+// MARK: - Door feedback
+
+extension View {
+    /// Feeds a garage door's live state and connection into its controller, and announces its feedback to VoiceOver
+    /// without moving focus (web `announcement`). Shared by ``GarageDoorTile`` and ``GarageDoorRow``.
+    func garageDoorFeedback(_ controller: GarageDoorController, title: String, liveState: String?, canSend: Bool) -> some View {
+        modifier(GarageDoorFeedback(controller: controller, title: title, liveState: liveState, canSend: canSend))
+    }
+}
+
+private struct GarageDoorFeedback: ViewModifier {
+    var controller: GarageDoorController
+    var title: String
+    var liveState: String?
+    var canSend: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                controller.liveDidChange(liveState)
+                controller.connectionDidChange(canSend: canSend)
+            }
+            .onChange(of: liveState) { _, state in controller.liveDidChange(state) }
+            .onChange(of: canSend) { _, value in controller.connectionDidChange(canSend: value) }
+            .onChange(of: controller.phase) { _, phase in
+                if phase != .idle {
+                    AccessibilityNotification.Announcement("\(title), \(GarageDoorTile.subtitle(for: controller))").post()
+                }
+            }
     }
 }

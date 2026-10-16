@@ -9,15 +9,16 @@ import SwiftUI
 /// Cameras are left out (they need a live connection); the hidden Vehicle section is shown so its tile is tested.
 ///
 /// `FENTON_GALLERY_FAIL=1` makes every call fail (garage door error feedback); `FENTON_GALLERY_SCENARIO=unavailable`
-/// reports the alarm, locks and doors as unavailable (dimmed tiles); `FENTON_GALLERY_CLEAN=1` hides the last-call line
-/// for screenshots.
+/// reports the alarm, locks and doors as unavailable (dimmed rows), `=triggered` sounds the alarm;
+/// `FENTON_GALLERY_CLEAN=1` hides the last-call line for screenshots.
 struct SecurityGallery: View {
     @State private var store: EntityStore
     @State private var recorder: SecurityGalleryRecorder
 
     init() {
         let environment = ProcessInfo.processInfo.environment
-        let store = SecurityFixtures.store(unavailable: environment["FENTON_GALLERY_SCENARIO"] == "unavailable")
+        let scenario = SecurityFixtures.Scenario(rawValue: environment["FENTON_GALLERY_SCENARIO"] ?? "") ?? .standard
+        let store = SecurityFixtures.store(scenario)
         _store = State(initialValue: store)
         _recorder = State(initialValue: SecurityGalleryRecorder(
             store: store, fails: environment["FENTON_GALLERY_FAIL"] == "1"
@@ -83,17 +84,42 @@ final class SecurityGalleryRecorder: HassServiceCalling {
     private func set(_ id: String, _ state: String) {
         var entity = store.value(id) ?? EntityState(entityId: id, state: state)
         entity.state = state
+        entity.lastChanged = .now
         store.apply([entity])
     }
 }
 
 /// Synthetic Security states for the gallery and hosted tests (not a copy of the live house).
 enum SecurityFixtures {
+    /// Which house the fixtures describe.
+    enum Scenario: String {
+        /// Armed Home, the front door locked, the left door closed and the right one open.
+        case standard
+        /// Home Assistant lost the alarm, locks and doors.
+        case unavailable
+        /// The alarm is sounding.
+        case triggered
+    }
+
     /// - Parameter unavailable: Report the alarm, locks and doors as `unavailable` (Home Assistant lost them).
     @MainActor static func store(unavailable: Bool = false) -> EntityStore {
+        store(unavailable ? .unavailable : .standard)
+    }
+
+    @MainActor static func store(_ scenario: Scenario) -> EntityStore {
         let store = EntityStore()
-        store.replaceAll(unavailable ? unavailableStates : states, freshness: .live)
+        store.replaceAll(states(scenario), freshness: .live)
         return store
+    }
+
+    /// The states for a scenario. The alarm entered its mode 40 minutes ago, so the card reads "Since …".
+    static func states(_ scenario: Scenario) -> [EntityState] {
+        let since = Date.now.addingTimeInterval(-40 * 60)
+        return (scenario == .unavailable ? unavailableStates : states).map { entity in
+            guard entity.entityId == SecurityConfig.alarmEntityId, scenario != .unavailable else { return entity }
+            return EntityState(entityId: entity.entityId, state: scenario == .triggered ? "triggered" : entity.state,
+                               attributes: entity.attributes, lastChanged: since)
+        }
     }
 
     /// ``states`` with every tile's entity reporting `unavailable`.

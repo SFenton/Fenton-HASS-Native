@@ -121,6 +121,8 @@ public enum SecurityConfig {
         public var id: String { state }
         /// Disarming opens the house, so it asks first (HIG: Alerts, confirming actions with serious consequences).
         public var needsConfirmation: Bool { state == "disarmed" }
+        /// The mode button's label: the action for Disarm ("Disarm"), the mode's name otherwise (mockup n3).
+        public var buttonTitle: String { needsConfirmation ? "Disarm" : title }
 
         /// The service call that selects this mode.
         public var call: ServiceCall { ServiceCall("alarm_control_panel", service, target: SecurityConfig.alarmEntityId) }
@@ -136,6 +138,24 @@ public enum SecurityConfig {
 
     /// The mode that disarms.
     public static var disarmMode: AlarmMode { alarmModes.first(where: \.needsConfirmation)! }
+
+    /// The mode buttons in the alarm card's order (direction G mockup n3): Disarm first, then Home, Away and Night.
+    public static var modeButtons: [AlarmMode] { [disarmMode] + alarmModes.filter { !$0.needsConfirmation } }
+
+    /// The alarm card's title: the mode as a fact ("Armed Home"), or "Alarm Triggered".
+    public static func panelTitle(_ state: String?) -> String {
+        state == "triggered" ? "Alarm Triggered" : stateText(state)
+    }
+
+    /// When the panel entered its state: "Since 9:30 PM" today, "Since Oct 14" before today, or nil when Home
+    /// Assistant gave no time (a snapshot or fixture) or the time is in the future.
+    public static func sinceText(_ changed: Date, now: Date = .now, calendar: Calendar = .current) -> String? {
+        guard changed != .distantPast, changed <= now.addingTimeInterval(60) else { return nil }
+        let when = calendar.isDate(changed, inSameDayAs: now)
+            ? changed.formatted(date: .omitted, time: .shortened)
+            : changed.formatted(.dateTime.month(.abbreviated).day())
+        return "Since \(when)"
+    }
 
     /// Alarm state colors as 0...255 RGB (`SECURITY_STATE_META`, securityState.ts:7).
     public static func alarmColor(for state: String?) -> (red: Int, green: Int, blue: Int) {
