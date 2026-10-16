@@ -25,12 +25,16 @@ struct ThermostatTileFaceTests {
         #expect(ThermostatTileFace.bedSide(action: "cooling", level: -3) == .init(family: .cooling, isActive: true))
     }
 
-    @Test func idleBedSidesDrawTheirLevelsFamily() {
-        // At or above zero: Heating. Below zero: Cooling. No level yet: Heating.
-        #expect(ThermostatTileFace.bedSide(action: "idle", level: 0) == .init(family: .heating, isActive: false))
+    @Test func bedSidesThatAreOnFillWithTheirLevelsFamily() {
+        // On near zero ("idle") still fills: Heating at or above zero, Cooling below.
+        #expect(ThermostatTileFace.bedSide(action: "idle", level: 0) == .init(family: .heating, isActive: true))
+        #expect(ThermostatTileFace.bedSide(action: "idle", level: -0.5) == .init(family: .cooling, isActive: true))
+        #expect(ThermostatTileFace.bedSide(action: "idle", level: nil) == .init(family: .heating, isActive: true))
+    }
+
+    @Test func offBedSidesDrawTheirLevelsFamilyOnTheDarkFace() {
         #expect(ThermostatTileFace.bedSide(action: "off", level: 4) == .init(family: .heating, isActive: false))
         #expect(ThermostatTileFace.bedSide(action: "off", level: -4) == .init(family: .cooling, isActive: false))
-        #expect(ThermostatTileFace.bedSide(action: "idle", level: -0.5) == .init(family: .cooling, isActive: false))
         #expect(ThermostatTileFace.bedSide(action: "off", level: nil) == .init(family: .heating, isActive: false))
     }
 

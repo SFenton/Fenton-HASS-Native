@@ -650,7 +650,7 @@ public struct BedSideTile: View {
         EverySecond { now in
             GlassTile(title: controller.config.title, subtitle: controller.tileSubtitle(now: now), symbol: "bed.double",
                       family: face.family,
-                      // Fills only while heating or cooling, like the room page's climate tiles.
+                      // Fills while the side is on (``ThermostatTileFace/bedSide(action:level:isAvailable:)``).
                       isActive: face.isActive && !controller.scope.readOnly,
                       kind: .navigate, action: action)
         }

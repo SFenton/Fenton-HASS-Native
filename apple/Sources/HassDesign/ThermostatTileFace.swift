@@ -31,16 +31,22 @@ public struct ThermostatTileFace: Equatable, Sendable {
     }
 
     /// The face for a bed side from its action (`BedLevel.action`) and displayed level.
+    ///
+    /// A bed side that is on holds its water at the set level even at 0, so it fills whenever it is on (owner,
+    /// 2026-10-16: "Beds are on right now but still no colors"): Heating at or above zero, Cooling below. Only an off
+    /// side draws the dark face, keeping the glyph of its level's family.
     /// - Parameters:
-    ///   - action: `heating`, `cooling`, `idle` or `off`.
-    ///   - level: The side's target level; below zero the off glyph is Cooling, otherwise Heating.
+    ///   - action: `heating`, `cooling`, `idle` (on, near zero) or `off`.
+    ///   - level: The side's target level; below zero the family is Cooling, otherwise Heating.
     ///   - isAvailable: The side answers. An unavailable side stays on the grey ``ColorFamily/neutral`` face.
     public static func bedSide(action: String, level: Double?, isAvailable: Bool = true) -> Self {
         guard isAvailable else { return Self(family: .neutral, isActive: false) }
+        let levelFamily: ColorFamily = (level ?? 0) < 0 ? .cooling : .heating
         switch action {
         case "heating": return Self(family: .heating, isActive: true)
         case "cooling": return Self(family: .cooling, isActive: true)
-        default: return Self(family: (level ?? 0) < 0 ? .cooling : .heating, isActive: false)
+        case "off": return Self(family: levelFamily, isActive: false)
+        default: return Self(family: levelFamily, isActive: true)
         }
     }
 }
