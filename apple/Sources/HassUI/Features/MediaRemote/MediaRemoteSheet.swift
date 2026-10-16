@@ -195,7 +195,8 @@ private struct RemoteSectionBar: ViewModifier {
 
     func body(content: Content) -> some View {
         if tabs.count > 1 {
-            content.modalTabBar(tabs, label: "\(title) sections", title: \.title, selection: $selection, identifier: "remote.tabs")
+            content.modalTabBar(tabs, label: "\(title) sections", title: \.title,
+                                  symbol: ModalTabSymbols.symbol(for:), selection: $selection, identifier: "remote.tabs")
         } else {
             content
         }
