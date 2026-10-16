@@ -138,8 +138,12 @@ enum CompactTabLayout: Equatable, Sendable {
 struct ShellChrome: Equatable, Sendable {
     /// Show the leading menu button that opens ``NavigationFlyout``.
     var showsMenuButton: Bool
-    /// Quick Links is a toolbar button on section roots (otherwise it is the trailing tab).
+    /// Quick Links is a toolbar button on section roots (iOS before 26 in compact width; otherwise it is the trailing
+    /// tab or, in regular width, the floating circle).
     var showsQuickLinksButton: Bool
+    /// Quick Links is the floating glass circle at the bottom trailing corner of section roots (regular width: iPad and
+    /// the unfolded Duo; direction G mockup n1-ipad-home).
+    var showsFloatingQuickLinks = false
 
     /// Resolves the chrome.
     /// - Parameters:
@@ -148,7 +152,7 @@ struct ShellChrome: Equatable, Sendable {
     static func resolve(style: ShellNavigationStyle, layout: CompactTabLayout) -> ShellChrome {
         switch style {
         // iPad: "Quick Links is a floating button" (direction G), and also the flyout's last row.
-        case .flyout: ShellChrome(showsMenuButton: true, showsQuickLinksButton: true)
+        case .flyout: ShellChrome(showsMenuButton: true, showsQuickLinksButton: false, showsFloatingQuickLinks: true)
         case .tabBar: ShellChrome(showsMenuButton: false, showsQuickLinksButton: !layout.hasQuickLinksTab)
         }
     }

@@ -2,6 +2,7 @@
 import AppKit
 import Foundation
 import HassCore
+import HassDesign
 @testable import HassUI
 import Observation
 import SwiftUI
