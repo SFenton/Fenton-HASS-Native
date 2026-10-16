@@ -6,7 +6,7 @@ import UIKit
 /// The split between pages and sheets (`.agents/design/direction-g.md`, Layers; plan decision 6): pages sit on the
 /// dimmed house photo, so the signed-in shell forces dark (`preferredColorScheme(.dark)`), and sheets follow the
 /// system appearance. The shell cannot read the system appearance from its own environment, because the override
-/// answers first, so it measures the window scene (``SwiftUICore/View/publishesSystemAppearance()``) and every sheet
+/// answers first, so `RootView` measures the display (``SwiftUICore/View/publishesSystemAppearance()``) and every sheet
 /// applies the result to itself (``SwiftUICore/View/followsSystemAppearance()``, done by `hassSheet()` and
 /// ``HassModal``).
 public enum SystemAppearance {
@@ -27,14 +27,26 @@ public enum SystemAppearance {
         }
     }
 
-    /// ``resolve(override:system:)`` for this process: the launch override and the first window scene.
+    /// ``resolve(override:system:)`` for this process, read now: the launch override and the display's style.
+    ///
+    /// The display (`UIScreen`) is the source because the window, its scene's views and the shell's environment all carry
+    /// the dark override, and because a read costs nothing, so a sheet can ask when it is presented instead of trusting
+    /// a value that a missed trait-change callback left stale.
+    /// - Parameter fallback: The scheme to use when the display cannot be read.
     @MainActor
-    public static func current() -> ColorScheme {
+    public static func current(fallback: ColorScheme = .dark) -> ColorScheme {
+        resolve(override: overrideValue, system: liveSystemScheme() ?? fallback)
+    }
+
+    /// The display's own scheme, or nil without a window scene (previews, `swift test`).
+    @MainActor
+    static func liveSystemScheme() -> ColorScheme? {
         #if os(iOS)
-        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
-        return resolve(override: overrideValue, system: scene.map { scheme(of: $0.traitCollection) })
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let scene = scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+        return scene.map { scheme(of: $0.screen.traitCollection) }
         #else
-        return resolve(override: overrideValue, system: nil)
+        return nil
         #endif
     }
 
@@ -87,16 +99,19 @@ private struct PublishSystemAppearance: ViewModifier {
 }
 
 private struct FollowSystemAppearance: ViewModifier {
-    @Environment(\.systemColorScheme) private var scheme
+    /// What the shell last published. Read so the sheet re-evaluates when it changes; the display is asked again each
+    /// time, so a sheet presented after a change is right even before the callback arrives.
+    @Environment(\.systemColorScheme) private var published
 
     func body(content: Content) -> some View {
-        content.preferredColorScheme(scheme)
+        content.preferredColorScheme(SystemAppearance.current(fallback: published))
     }
 }
 
 #if os(iOS)
-/// An invisible view that reports the window scene's interface style, which `preferredColorScheme` does not touch,
-/// now and whenever the user changes the appearance.
+/// An invisible view that reports the user's interface style, which `preferredColorScheme` does not touch: the display's
+/// (`UIScreen`) rather than the window's or a view's, which carry the shell's dark override. It reads again when the
+/// scene's traits change and when the app becomes active, so a change made in Control Center reaches the sheets.
 private struct SceneAppearanceProbe: UIViewRepresentable {
     @Binding var scheme: ColorScheme
 
@@ -115,20 +130,38 @@ private struct SceneAppearanceProbe: UIViewRepresentable {
     final class ProbeView: UIView {
         var onChange: (ColorScheme) -> Void = { _ in }
         private var registration: (any UITraitChangeRegistration)?
+        private var activation: (any NSObjectProtocol)?
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
             registration = nil
+            activation = nil
             guard let scene = window?.windowScene else { return }
-            report(scene.traitCollection)
-            registration = scene.registerForTraitChanges([UITraitUserInterfaceStyle.self]) { [weak self] (scene: UIWindowScene, _) in
-                self?.report(scene.traitCollection)
+            report()
+            registration = scene.registerForTraitChanges([UITraitUserInterfaceStyle.self]) { [weak self] (_: UIWindowScene, _) in
+                self?.report()
+            }
+            activation = NotificationCenter.default.addObserver(
+                forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+            ) { [weak self] _ in
+                MainActor.assumeIsolated { self?.report() }
             }
         }
 
-        private func report(_ traits: UITraitCollection) {
-            onChange(SystemAppearance.resolve(override: SystemAppearance.overrideValue,
-                                              system: SystemAppearance.scheme(of: traits)))
+        private func report() {
+            guard let window else { return }
+            let system = SystemAppearance.scheme(of: window.screen.traitCollection)
+            onChange(SystemAppearance.resolve(override: SystemAppearance.overrideValue, system: system))
+            #if DEBUG
+            // `FENTON_APPEARANCE_DEBUG=1` exposes what each source says, for a journey that checks the system path.
+            if ProcessInfo.processInfo.environment["FENTON_APPEARANCE_DEBUG"] == "1" {
+                isAccessibilityElement = true
+                accessibilityIdentifier = "appearance.probe"
+                accessibilityLabel = "screen=\(window.screen.traitCollection.userInterfaceStyle.rawValue) "
+                    + "scene=\(window.windowScene?.traitCollection.userInterfaceStyle.rawValue ?? -1) "
+                    + "window=\(window.traitCollection.userInterfaceStyle.rawValue)"
+            }
+            #endif
         }
     }
 }

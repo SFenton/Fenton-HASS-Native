@@ -104,9 +104,14 @@ struct AppTile: View {
     private var fallback: some View {
         Image(systemName: SymbolMap.symbol(for: app.icon ?? "mdi:play-box"))
             .font(.largeTitle)
-            .foregroundStyle(app.whiteBackground ? Color.black : display.isActive ? ColorFamily.media.glyph : ColorFamily.media.offGlyph)
+            .foregroundStyle(app.whiteBackground ? Color.black : display.isActive ? Self.activeFallback : Self.idleFallback)
             .accessibilityHidden(true)
     }
+
+    /// The placeholder glyph is large enough that the audit reads it as text (4.5:1), so a light sheet gets a deeper
+    /// media pink (4.9:1 on white) and a grey (6:1) where the family glyphs are 3.8:1 and 4.3:1. Dark is the family's.
+    private static let activeFallback = Color.adaptive(light: 0xC0436F, dark: ColorFamily.media.spec.glyph)
+    private static let idleFallback = Color.adaptive(light: 0x636366, dark: ColorFamily.media.offGlyphRGB(.dark))
 }
 
 // MARK: - Devices

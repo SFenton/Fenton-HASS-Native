@@ -21,10 +21,6 @@ final class LightSheetsJourneyTests: JourneyTestCase {
         return app
     }
 
-    private func element(_ id: String, in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any)[id].firstMatch
-    }
-
     /// Waits for `id` to be on screen and hittable, then lets the presentation settle (mid-animation frames fail
     /// contrast and clipping).
     private func waitReady(_ id: String, in app: XCUIApplication, what: String) {
@@ -104,28 +100,45 @@ final class LightSheetsJourneyTests: JourneyTestCase {
         assertPageIsDark(app, "after the sheet closed")
     }
 
-    /// With no override at all, the system appearance drives the sheets: dark, then light after the user changes it
-    /// while the app runs (the scene's trait change reaches the sheets), and the pages never leave dark.
-    func testSystemAppearanceAloneDrivesTheSheets() {
-        let original = XCUIDevice.shared.appearance
-        defer { XCUIDevice.shared.appearance = original }
-        XCUIDevice.shared.appearance = .dark
+    /// A system-appearance launch with no override: the probe says what the app measured.
+    private func launchFollowingTheSystem() -> (app: XCUIApplication, probe: XCUIElement) {
         let app = FentonHomeApp.makeApp()
         app.launchEnvironment.removeValue(forKey: "FENTON_APPEARANCE")
         app.launchEnvironment["FENTON_GALLERY"] = "direction-g"
+        app.launchEnvironment["FENTON_APPEARANCE_DEBUG"] = "1"
         app.launch()
         XCTAssertTrue(app.buttons["g.chip.Lights"].waitForExistence(timeout: 10))
-        openGallerySheet(app)
-        assertSheet(app, isLight: false, "system dark")
-        app.buttons["sheet.close"].tap()
-        XCTAssertTrue(app.buttons["sheet.close"].waitForNonExistence(timeout: 5))
+        let probe = element("appearance.probe", in: app)
+        XCTAssertTrue(probe.waitForExistence(timeout: 5), "No appearance probe")
+        return (app, probe)
+    }
 
+    /// With no override at all, a light system draws light sheets over dark pages, and a dark one dark sheets.
+    func testSystemAppearanceAloneDrivesTheSheets() {
+        let original = XCUIDevice.shared.appearance
+        defer { XCUIDevice.shared.appearance = original }
+        for (appearance, isLight) in [(XCUIDevice.Appearance.light, true), (.dark, false)] {
+            XCUIDevice.shared.appearance = appearance
+            let (app, probe) = launchFollowingTheSystem()
+            assertPageIsDark(app, "system \(appearance == .light ? "light" : "dark")")
+            openGallerySheet(app)
+            assertSheet(app, isLight: isLight, "system \(isLight ? "light" : "dark") (\(probe.label))")
+            if isLight { keepScreenshot(app, "light-system-appearance-\(layout)") }
+            app.terminate()
+        }
+    }
+
+    /// The user changes the appearance while the app runs (Control Center): the next sheet follows, the pages stay dark.
+    func testSystemAppearanceChangeReachesARunningApp() {
+        let original = XCUIDevice.shared.appearance
+        defer { XCUIDevice.shared.appearance = original }
+        XCUIDevice.shared.appearance = .dark
+        let (app, probe) = launchFollowingTheSystem()
         XCUIDevice.shared.appearance = .light
         sleep(2)
         assertPageIsDark(app, "after the system turned light")
         openGallerySheet(app)
-        assertSheet(app, isLight: true, "system light")
-        keepScreenshot(app, "light-system-appearance-\(layout)")
+        assertSheet(app, isLight: true, "after the change (\(probe.label))")
     }
 
     /// A pinned dark appearance keeps the sheet dark, whatever the simulator shows.
@@ -191,10 +204,11 @@ final class LightSheetsJourneyTests: JourneyTestCase {
 
     /// The media remote: the keys, the apps grid and the devices list.
     func testMediaRemotePassesAuditInLight() throws {
-        for (tab, ready) in [("controls", "remote.power"), ("apps", "remote.app.Plex"), ("devices", "remote.device.Projector")] {
+        for (remote, tab, ready) in [("living-room-shield", "controls", "remote.power"), ("living-room-shield", "apps", "remote.app.Plex"),
+                                     ("theater-room-shield", "devices", "remote.device.Projector")] {
             try auditLight("remote-\(tab)") { arguments in
                 let app = self.gallery("media-remote", environment: [
-                    "FENTON_GALLERY_REMOTE": "living-room-shield", "FENTON_GALLERY_TAB": tab, "FENTON_GALLERY_OFFLINE": "1",
+                    "FENTON_GALLERY_REMOTE": remote, "FENTON_GALLERY_TAB": tab, "FENTON_GALLERY_OFFLINE": "1",
                 ], arguments: arguments)
                 self.waitReady(ready, in: app, what: "remote sheet")
                 return app

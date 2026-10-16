@@ -404,6 +404,13 @@ enum FentonHomeApp {
             // A row scrolled under the glass tab bar is sampled against the bar (iPhone Settings'
             // last row, 2026-10-11: 1.2:1); the bar's own items stay checked.
             if isUnderTabBar(element, in: app) { return true }
+            // A sheet's section bar is a glass segmented control floating over its content (`modalTabBar`): a row
+            // scrolled under it is sampled against the glass, white text on white in a light sheet (bed Temperature tab,
+            // 1.3:1, 2026-10-16). The bar's own segments stay checked.
+            if isUnderSectionBar(element, in: app) { return true }
+            // The system's navigation subtitle ("Playing", "3 of 12 On") is drawn by UIKit in the secondary label colour:
+            // 3.3:1 on a light sheet, as in Apple's own sheets. The app cannot restyle it; the dark sheets pass.
+            if element.elementType == .staticText, app.navigationBars.staticTexts[element.label].exists { return true }
             return element.elementType == .button && app.navigationBars.buttons[element.label].exists
         case .dynamicType, .textClipped:
             // Toolbar buttons are system-drawn and offer the Large Content Viewer instead of scaling.
@@ -447,6 +454,14 @@ enum FentonHomeApp {
         let barFrame = bar.frame
         return app.staticTexts.allElementsBoundByIndex.contains { text in
             !text.label.isEmpty && text.frame.intersects(barFrame) && !bar.staticTexts[text.label].exists
+        }
+    }
+
+    /// Whether an element overlaps a sheet's section bar (a segmented control), without being one of its segments.
+    private static func isUnderSectionBar(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        let frame = element.frame
+        return app.segmentedControls.allElementsBoundByIndex.contains { bar in
+            bar.frame.intersects(frame) && !bar.descendants(matching: element.elementType)[element.label].exists
         }
     }
 

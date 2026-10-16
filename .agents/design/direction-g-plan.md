@@ -110,7 +110,7 @@ The fifth lane is the largest; if it runs long it splits into Chores and Vacatio
 ### Phase 4: platforms and polish
 - iPad 4-column grids, form and page sheets, flyout. Duo unfolded once the Duo simulator can unfold again (blocked today).
 - macOS sidebar, toolbar Quick Links, Settings window, panels for the thermostat and remote (only if a Mac target is in scope by then).
-- Light-appearance sheets.
+- Light-appearance sheets (done 2026-10-15, `PROGRESS.md`).
 - A full-app pass of the contrast audit, Dynamic Type at AX5, VoiceOver order and Reduce Motion.
 
 #### Phase 4 spec (2026-10-15)
