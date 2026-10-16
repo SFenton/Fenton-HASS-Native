@@ -122,7 +122,7 @@ extension PresenceOverrideState {
 struct HouseholdTileGrid<Content: View>: View {
     /// Narrowest tile before the grid drops a column.
     var minWidth: CGFloat = 200
-    var maxColumns = 3
+    var maxColumns = 6
     @ViewBuilder var content: Content
     @ScaledMetric(relativeTo: .subheadline) private var scale: CGFloat = 1
 
@@ -178,8 +178,8 @@ struct GuestControlsContent: View {
     var body: some View {
         let config = HouseholdSettingsConfig.Guests.self
         SettingsSection(title: config.section.title, paragraphs: config.section.paragraphs) {
-            // Web: two columns, up to three, cells at most 320 px.
-            HouseholdTileGrid(minWidth: 150, maxColumns: 3) {
+            // Web: two columns, up to three, cells at most 320 px; the app keeps growing (four or more on iPad).
+            HouseholdTileGrid(minWidth: 150, maxColumns: 6) {
                 ForEach(config.tiles) { HouseholdToggleTile(tile: $0, controller: controller) }
             }
         }

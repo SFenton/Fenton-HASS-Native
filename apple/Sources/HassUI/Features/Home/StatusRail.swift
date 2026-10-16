@@ -3,6 +3,7 @@ import HassDesign
 import SwiftUI
 
 /// A page's status chips (pattern: `.agents/patterns/status-rail.md`): Home shows all of them, Security its two.
+/// They scroll in compact width and wrap in regular width, stopping short of a hinge (``ChipRail``).
 struct StatusRail: View {
     /// The chips, in order.
     var chips: [HomeConfig.StatusChip] = HomeConfig.statusChips
@@ -11,17 +12,11 @@ struct StatusRail: View {
     var onOpen: (HomeConfig.ChipSheet) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: HassTokens.Spacing.s) {
-                ForEach(chips) { chip in
-                    StatusChipView(chip: chip, idPrefix: idPrefix) { onOpen(chip.sheet) }
-                }
+        ChipRail {
+            ForEach(chips) { chip in
+                StatusChipView(chip: chip, idPrefix: idPrefix) { onOpen(chip.sheet) }
             }
-            .padding(.horizontal, HassTokens.Spacing.l)
         }
-        // A horizontal scroll view draws into the side safe areas; clip it to its frame so chips never
-        // scroll under the folded iPhone Duo's trailing toolbar rail.
-        .clipped()
     }
 }
 

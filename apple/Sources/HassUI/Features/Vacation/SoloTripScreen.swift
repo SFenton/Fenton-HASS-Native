@@ -183,6 +183,6 @@ struct SoloTripEditorSheet: View {
             }
         }
         .interactiveDismissDisabled(controller.isScheduling)
-        .hassSheet()
+        .hassSheet(.form)
     }
 }

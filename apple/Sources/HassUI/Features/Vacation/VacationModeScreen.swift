@@ -217,6 +217,6 @@ struct VacationConfirmationSheet: View {
             // A create sheet (direction G, Sheets): circle x Cancel leading drops the dates; the primary button confirms.
             .toolbar { SheetCancelItem(identifier: "vacation.confirm.cancel") { controller.cancelConfirmation() } }
         }
-        .hassSheet()
+        .hassSheet(.form)
     }
 }

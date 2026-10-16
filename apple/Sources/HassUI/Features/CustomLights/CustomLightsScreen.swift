@@ -84,12 +84,12 @@ public struct CustomLightsScreen: View {
                 send(CustomLightsConfig.selectMode(option))
             }
             .galleryLastCallBanner()
-            .hassSheet()
+            .hassSheet(.form)
         }
         .sheet(item: $detail) { light in
             CustomLightSheet(light: light, store: store, caller: caller)
                 .galleryLastCallBanner()
-                .hassSheet()
+                .hassSheet(.page)
         }
     }
 

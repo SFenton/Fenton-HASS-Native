@@ -12,16 +12,28 @@ public struct DynamicGridMetrics: Equatable, Sendable {
     /// Columns are `floor((width + spacing) / (minCellWidth + spacing))`, clamped to `1...maxColumns`;
     /// leftover width is shared equally (web `dynamicGridLayout.ts`).
     /// A non-finite width (an unbounded `.infinity` size probe) gets every column at the minimum width.
-    public init(width: CGFloat, minCellWidth: CGFloat, maxColumns: Int, spacing: CGFloat) {
+    ///
+    /// With `evenColumns` (a window with a hinge, the unfolded iPhone Duo) a count of two or more rounds down to
+    /// an even number (``evenRounded(_:)``), so the fold falls between tracks rather than through a tile; a single
+    /// track stays single.
+    public init(width: CGFloat, minCellWidth: CGFloat, maxColumns: Int, spacing: CGFloat, evenColumns: Bool = false) {
         guard width.isFinite else {
             columns = max(maxColumns, 1)
             cellWidth = minCellWidth
             return
         }
         let fit = Int(((width + spacing) / (minCellWidth + spacing)).rounded(.down))
-        let columns = min(max(fit, 1), max(maxColumns, 1))
+        var columns = min(max(fit, 1), max(maxColumns, 1))
+        if evenColumns { columns = Self.evenRounded(columns) }
         self.columns = columns
         self.cellWidth = max(0, (width - spacing * CGFloat(columns - 1)) / CGFloat(columns))
+    }
+
+    /// The count rounded down to an even number, never below two: 5 becomes 4, 3 becomes 2. One track (a window
+    /// too narrow for two) stays one. Hinge-aware grids use it (`.agents/patterns/dynamic-grid.md`).
+    public static func evenRounded(_ columns: Int) -> Int {
+        guard columns >= 2 else { return max(columns, 1) }
+        return columns - columns % 2
     }
 
     /// Width of an item spanning `span` tracks (clamped to the track count).
@@ -78,6 +90,10 @@ public struct DynamicGridLayout: Layout {
     /// height. Measured on every layout pass, so it follows Dynamic Type and rotation. Tiles fill the height they
     /// are offered inside ``View/equalHeightTiles()``.
     public var equalRowHeights: Bool
+    /// Rounds the column count down to an even number (``DynamicGridMetrics/evenRounded(_:)``). Set for you from the
+    /// environment: grids called as `DynamicGridLayout(...) { }` turn it on while ``SwiftUICore/EnvironmentValues/windowHinge``
+    /// is set (the unfolded iPhone Duo), so no tile straddles the fold.
+    public var evenColumns = false
 
     /// Creates a grid.
     public init(minCellWidth: CGFloat = 150, maxColumns: Int = 4, spacing: CGFloat = HassTokens.Spacing.m,
@@ -86,6 +102,13 @@ public struct DynamicGridLayout: Layout {
         self.maxColumns = maxColumns
         self.spacing = spacing
         self.equalRowHeights = equalRowHeights
+    }
+
+    /// Calls the grid as a view, reading the window's hinge so the column count rounds to an even number across a
+    /// fold. A `Layout` cannot read the environment itself, so the call goes through a small wrapper view.
+    @MainActor
+    public func callAsFunction<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        HingeAwareGrid(layout: self, content: content())
     }
 
     /// Row heights measured per width during one layout pass. Scroll views and stacks propose the same width
@@ -109,7 +132,8 @@ public struct DynamicGridLayout: Layout {
     }
 
     public func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) {
-        let metrics = DynamicGridMetrics(width: bounds.width, minCellWidth: minCellWidth, maxColumns: maxColumns, spacing: spacing)
+        let metrics = DynamicGridMetrics(width: bounds.width, minCellWidth: minCellWidth, maxColumns: maxColumns, spacing: spacing,
+                                         evenColumns: evenColumns)
         let rows = rowHeights(width: bounds.width, subviews: subviews, cache: &cache)
         let placements = metrics.placements(spans: subviews.map { $0[GridSpanKey.self] })
         var rowTops: [CGFloat] = []
@@ -137,7 +161,8 @@ public struct DynamicGridLayout: Layout {
     }
 
     private func measureRows(width: CGFloat, subviews: Subviews) -> [CGFloat] {
-        let metrics = DynamicGridMetrics(width: width, minCellWidth: minCellWidth, maxColumns: maxColumns, spacing: spacing)
+        let metrics = DynamicGridMetrics(width: width, minCellWidth: minCellWidth, maxColumns: maxColumns, spacing: spacing,
+                                         evenColumns: evenColumns)
         let placements = metrics.placements(spans: subviews.map { $0[GridSpanKey.self] })
         var heights: [CGFloat] = []
         var headerRows = Set<Int>()
@@ -155,5 +180,18 @@ public struct DynamicGridLayout: Layout {
     static func equalized(_ heights: [CGFloat], headerRows: Set<Int>) -> [CGFloat] {
         let tallest = heights.indices.filter { !headerRows.contains($0) }.map { heights[$0] }.max() ?? 0
         return heights.indices.map { headerRows.contains($0) ? heights[$0] : tallest }
+    }
+}
+
+/// Applies the window's hinge to a ``DynamicGridLayout`` (see ``DynamicGridLayout/callAsFunction(_:)``).
+private struct HingeAwareGrid<Content: View>: View {
+    var layout: DynamicGridLayout
+    var content: Content
+    @Environment(\.windowHinge) private var hinge
+
+    var body: some View {
+        var layout = layout
+        layout.evenColumns = layout.evenColumns || hinge != nil
+        return AnyLayout(layout) { content }
     }
 }

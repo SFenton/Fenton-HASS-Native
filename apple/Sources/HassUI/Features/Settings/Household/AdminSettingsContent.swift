@@ -158,7 +158,7 @@ struct PresenceOverridesSheet: View {
                 PresenceOverrideDetail(room: room, controller: controller, done: { dismiss() })
             }
         }
-        .hassSheet()
+        .hassSheet(.page)
     }
 }
 
@@ -231,6 +231,6 @@ struct AutoResetSheet: View {
                 }
             }
         }
-        .hassSheet()
+        .hassSheet(.page)
     }
 }
