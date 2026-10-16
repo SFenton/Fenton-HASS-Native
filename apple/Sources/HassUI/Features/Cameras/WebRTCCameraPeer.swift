@@ -32,7 +32,7 @@ final class WebRTCCameraPeer: NSObject, @unchecked Sendable {
     let frames: WebRTCFrameMonitor
 
     private let peer: RTCPeerConnection
-    private let socket: URLSessionWebSocketTask
+    private let socket: SignallingSocket
     private let onFailure: @Sendable () -> Void
     private let lock = NSLock()
     private var finished = false
@@ -62,7 +62,7 @@ final class WebRTCCameraPeer: NSObject, @unchecked Sendable {
         audioTrack = audio
         frames = monitor
         self.peer = peer
-        socket = URLSession.shared.webSocketTask(with: socketURL)
+        socket = SignallingSocket(url: socketURL)
         self.onFailure = onFailure
         super.init()
         peer.delegate = self
@@ -87,7 +87,8 @@ final class WebRTCCameraPeer: NSObject, @unchecked Sendable {
         peer.offer(for: Self.constraints) { [weak self] description, _ in
             guard let self else { return }
             guard let description else { return self.fail() }
-            self.peer.setLocalDescription(description) { error in
+            self.peer.setLocalDescription(description) { [weak self] error in
+                guard let self else { return }
                 if error != nil { return self.fail() }
                 self.send(.offer(description.sdp))
             }
@@ -153,7 +154,7 @@ final class WebRTCCameraPeer: NSObject, @unchecked Sendable {
     }
 
     private func send(_ signal: WebRTCSignal) {
-        socket.send(.string(signal.encoded())) { [weak self] error in
+        socket.send(signal.encoded()) { [weak self] error in
             if error != nil { self?.fail() }
         }
     }
@@ -179,7 +180,7 @@ final class WebRTCCameraPeer: NSObject, @unchecked Sendable {
 
     private func close() {
         videoTrack?.remove(frames)
-        socket.cancel(with: .goingAway, reason: nil)
+        socket.cancel()
         peer.close()
     }
 }

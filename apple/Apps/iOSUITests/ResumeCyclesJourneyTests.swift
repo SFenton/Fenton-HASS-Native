@@ -20,7 +20,7 @@ final class ResumeCyclesJourneyTests: JourneyTestCase {
     /// Gauges that follow what is happening (a stream still connecting, a forecast in flight) but can never exceed a
     /// fixed bound; a leak per resume would climb past it.
     static let bounded: [String: Int] = [
-        "Camera.players": 4, "Camera.attempts": 4, "Camera.observations": 8, "Weather.fetches": 2,
+        "Camera.players": 4, "Camera.signallingSockets": 4, "Camera.attempts": 4, "Camera.observations": 8, "Weather.fetches": 2,
         "Connection.saveTask": 1, "Connection.routeTask": 1, "FrameMonitor.displayLinks": 1, "Weather.timer": 1,
     ]
 
