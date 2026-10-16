@@ -23,13 +23,18 @@ enum FentonHomeApp {
         return (username, password, environment["FENTON_HASS_SERVER"])
     }
 
-    /// A fresh app handle; forwards `FENTON_REDACT_PRIVATE` so shared screenshots hide private data.
+    /// A fresh app handle; forwards `FENTON_REDACT_PRIVATE` so shared screenshots hide private data, and
+    /// `FENTON_APPEARANCE` (`light` or `dark`) so a whole run can draw its sheets in light
+    /// (`TEST_RUNNER_FENTON_APPEARANCE=light`, or `tools/ios_uitest.sh --appearance light`).
     static func makeApp() -> XCUIApplication {
         let app = XCUIApplication()
         // The settings belong to the simulator, so every launch states them: none unless a journey asks.
         app.launchEnvironment["FENTON_SYSTEM_SETTINGS"] = "none"
         if let redact = ProcessInfo.processInfo.environment["FENTON_REDACT_PRIVATE"] {
             app.launchEnvironment["FENTON_REDACT_PRIVATE"] = redact
+        }
+        if let appearance = ProcessInfo.processInfo.environment["FENTON_APPEARANCE"] {
+            app.launchEnvironment["FENTON_APPEARANCE"] = appearance
         }
         return app
     }
@@ -94,10 +99,14 @@ enum FentonHomeApp {
     }
 
     /// Launches the debug component gallery on `page` (e.g. `thermostat-dial`): fixture data, no sign-in.
-    static func launchGallery(_ page: String, arguments: [String] = [], environment: [String: String] = [:]) -> XCUIApplication {
+    /// - Parameter appearance: `light` or `dark` pins the sheets' appearance for this launch (`FENTON_APPEARANCE`); nil
+    ///   keeps the runner's, else the simulator's own.
+    static func launchGallery(_ page: String, arguments: [String] = [], environment: [String: String] = [:],
+                              appearance: String? = nil) -> XCUIApplication {
         let app = makeApp()
         app.launchEnvironment["FENTON_GALLERY"] = page
         app.launchEnvironment.merge(environment) { _, new in new }
+        if let appearance { app.launchEnvironment["FENTON_APPEARANCE"] = appearance }
         app.launchArguments += arguments
         app.launch()
         return app
@@ -445,6 +454,14 @@ enum FentonHomeApp {
             // A row scrolled under the glass tab bar is sampled against the bar (iPhone Settings'
             // last row, 2026-10-11: 1.2:1); the bar's own items stay checked.
             if isUnderTabBar(element, in: app) { return true }
+            // A sheet's section bar is a glass segmented control floating over its content (`modalTabBar`): a row
+            // scrolled under it is sampled against the glass, white text on white in a light sheet (bed Temperature tab,
+            // 1.3:1, 2026-10-16). The bar's own segments stay checked.
+            if isUnderSectionBar(element, in: app) { return true }
+            // The system's navigation subtitle ("Playing", "3 of 12 On") is drawn by UIKit in the secondary label colour:
+            // 3.3:1 on a light sheet, as in Apple's own sheets. The app cannot restyle it; the dark sheets pass.
+            if element.elementType == .staticText,
+               app.navigationBars.staticTexts.matching(NSPredicate(format: "label == %@", element.label)).firstMatch.exists { return true }
             return element.elementType == .button && app.navigationBars.buttons.matching(label: element.label).firstMatch.exists
         case .dynamicType, .textClipped:
             // Toolbar buttons are system-drawn and offer the Large Content Viewer instead of scaling.
@@ -519,6 +536,15 @@ enum FentonHomeApp {
         let barFrame = bar.frame
         return app.staticTexts.allElementsBoundByIndex.contains { text in
             !text.label.isEmpty && text.frame.intersects(barFrame) && !bar.staticTexts.matching(label: text.label).firstMatch.exists
+        }
+    }
+
+    /// Whether an element overlaps a sheet's section bar (a segmented control), without being one of its segments.
+    private static func isUnderSectionBar(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        let frame = element.frame
+        return app.segmentedControls.allElementsBoundByIndex.contains { bar in
+            bar.frame.intersects(frame)
+                && !bar.descendants(matching: element.elementType).matching(NSPredicate(format: "label == %@", element.label)).firstMatch.exists
         }
     }
 

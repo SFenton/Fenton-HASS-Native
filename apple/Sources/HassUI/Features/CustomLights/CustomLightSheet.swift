@@ -198,9 +198,9 @@ struct OtherLightSwatch: View {
         .accessibilityValue(rgb == nil ? (isUnavailable ? "Unavailable" : "Off") : "")
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("customLight.other.\(light.entityId)")
-        // Disabled without dimming, outside the combined element so VoiceOver reads it dimmed (see GlassTile); the
-        // name and status keep their contrast.
-        .disabled(rgb == nil)
+        // An off light has no color to copy: it ignores taps (its value reads "Off") rather than being `.disabled`,
+        // which dimmed the name and status to 2:1 on a light sheet's white cell.
+        .allowsHitTesting(rgb != nil)
     }
 }
 

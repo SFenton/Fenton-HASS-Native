@@ -12,8 +12,8 @@ enum AwayTint {
     static let pending = Color(red: 0.12, green: 0.53, blue: 0.90)
     /// Solo Trip (web `SOLO_TRIP_COLOR` 91,141,239).
     static let soloTrip = Color(red: 0.36, green: 0.55, blue: 0.94)
-    /// A checked pre-vacation task: the system green the mockups use for done (n5-vacation-mode).
-    static let checked = Color.green
+    /// A checked pre-vacation task: the green the mockups use for done (n5-vacation-mode), deeper on a light sheet.
+    static let checked = HassTokens.Ink.success
 }
 
 // MARK: - Section

@@ -45,3 +45,31 @@ public enum TileFaceStyle: Equatable, Sendable {
         }
     }
 }
+
+// MARK: - Light glyphs
+
+public extension TileFaceStyle {
+    /// A caller's tint made legible as a glyph on a light cell: unchanged when it already reaches 3:1 (WCAG 1.4.11) on
+    /// the sheet ground, else mixed toward black until it does, keeping its hue.
+    /// - Parameter rgb: The tint's sRGB channels, 0 to 1.
+    /// - Returns: The tint's channels, darkened as needed.
+    static func lightGlyph(forTint rgb: (red: Double, green: Double, blue: Double)) -> (red: Double, green: Double, blue: Double) {
+        func luminance(_ c: (red: Double, green: Double, blue: Double)) -> Double {
+            func linear(_ v: Double) -> Double { v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+            return 0.2126 * linear(c.red) + 0.7152 * linear(c.green) + 0.0722 * linear(c.blue)
+        }
+        let ground = Double((HassTokens.Palette.sheetGroundLight >> 16) & 0xFF) / 255
+        let groundLuminance = luminance((ground, ground, ground))
+        func ratio(_ c: (red: Double, green: Double, blue: Double)) -> Double {
+            let l = luminance(c)
+            return (max(l, groundLuminance) + 0.05) / (min(l, groundLuminance) + 0.05)
+        }
+        var keep = 1.0
+        var shaded = rgb
+        while ratio(shaded) < 3.3, keep > 0 {
+            keep -= 0.02
+            shaded = (rgb.red * keep, rgb.green * keep, rgb.blue * keep)
+        }
+        return shaded
+    }
+}

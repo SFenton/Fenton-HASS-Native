@@ -19,10 +19,36 @@ It never comes from custom chrome, custom surfaces or a custom palette.
 |---|---|---|
 | Wallpaper | The house photo (`/local/images/house.webp`), blurred 20, saturation 1.1, scaled 1.06, under a dark scrim. The scrim runs 0.44 → 0.40 (28%) → 0.42 (50%) → 0.52 → 0.64 from top to bottom; the top third stays at 0.40 or more so white titles and headers pass 4.5:1 over a light sky (2026-10-14 audit). Decode it once at screen size, blur it once and cache the bitmap; never run a live `.blur` per frame. | Every tab root and pushed page, on every platform. Never in sheets. |
 | Modules on the wallpaper | `systemGray6` dark at 55% with a 30pt background blur (thin material); built as `#1C1C1E` at 66% with no live blur, because the wallpaper is already blurred and a backdrop layer per tile cost GPU time (and crashed the simulator's render server, 2026-10-14). 26pt radius, no rim or bevel, white text. A module that carries red or orange status text (overdue chores, expired food, an error tile) uses the denser `rgba(20,20,22,.78)` so that text stays readable over the lit windows. | Cards, inset lists and tiles on pages. These are content-layer materials and never `.glassEffect` (HIG must). |
-| Sheets | System sheet in dark appearance: `#1C1C1E` ground, `#2C2C2E` cells and tiles. The presenting page scales back and dims. | Every modal. |
+| Sheets | System sheet in the **system appearance** (owner decision, 2026-10-15). Dark: `#1C1C1E` ground, `#2C2C2E` cells and tiles. Light: `#F2F2F7` ground (`systemGroupedBackground`), white cells and tiles (`secondarySystemGroupedBackground`), label ink. The presenting page scales back and dims. | Every modal, except the ones that are dark by design (below). |
 | Liquid Glass | System glass. iOS 17–25 fall back to `.ultraThinMaterial` capsules. | Navigation only: the tab bar, the Quick Links circle, toolbar circles (Profile, Back, Close, Cancel, Save), bottom section controls and page bottom toolbars. |
 
-Pages are always dark-styled because they sit on the dimmed photo, the way Apple Home's wallpaper works. Sheets are designed dark in the mockups. Light appearance for sheets is a follow-up.
+Pages are always dark-styled because they sit on the dimmed photo, the way Apple Home's wallpaper works. Sheets follow the system appearance, like Apple's own sheets in Home, Settings and Reminders (HIG: Dark Mode, "support both appearances"; Color).
+
+**How the split works** (`HassDesign/SystemAppearance.swift`):
+- The shell and the galleries keep `preferredColorScheme(.dark)` on the window, which hides the user's appearance from their own environment. `RootView` publishes the display's own interface style instead (`UIScreen`, which the override does not touch; `publishesSystemAppearance()`) as `EnvironmentValues.systemColorScheme`, and each sheet reads the display again when it is presented, so a change made while the app runs reaches the next sheet at once. The window scene's traits were observed dark while the display was light, so they are not the source.
+- Known gaps: the system navigation subtitle ("Playing") is drawn by UIKit in `secondaryLabel` and measures 3.3:1 on a light sheet, as in Apple's own sheets, so the journey audit waives it as system chrome. The vacuum map canvas keeps its dark neutral ground in a light sheet.
+- Every sheet states that scheme for itself: `hassSheet()`, `HassModal`, `FilterSheet`, `OptionPickerSheet` and the inventory editor apply `followsSystemAppearance()`. A sheet that bypasses all of those stays dark, so a new sheet must use `hassSheet()`.
+- Always dark by design, passed as `hassSheet(appearance: .dark)` or `preferredColorScheme(.dark)`: the Weather sheet (a condition gradient), the camera viewer (live video), Login and the Location permission sheet.
+- Tokens are light and dark pairs resolved from the scheme at draw time (`Color.adaptive`), so a view needs no branch: the same `Surface.sheetCell` is white in a light sheet and `#2C2C2E` in a dark one, and on a page (always dark) it never changes. Debug builds also honour `FENTON_APPEARANCE=light|dark` at launch, so journeys can render sheets in light without changing the simulator.
+
+| Token | Dark | Light |
+|---|---|---|
+| `Surface.sheetGround` | `#1C1C1E` | `#F2F2F7` |
+| `Surface.sheetCell` | `#2C2C2E` | `#FFFFFF` |
+| `Surface.secondaryInSheet` | `#EBEBF5` at 60% | `#3C3C43` at 76% (the system's 60% is 3.3:1 on white; this is 5:1 or better on the ground and the cell) |
+| `Surface.separator` | white at 14% | `#3C3C43` at 29% |
+| `Ink.action` (text and glyph tint) | `#409CFF` | `#0066CC` |
+| `Ink.error`, `Ink.danger`, `Ink.warning` | `#FF6961`, `#FF6961`, `#FFB340` | darker reds and amber at 4.5:1 or better on white |
+| `Ink.success` | `#30D158` | `#1E7B34` |
+
+**Tiles and rows in a light sheet:**
+- An off tile is a white cell with label-colour title, `secondaryInSheet` state and the family glyph. Each family has a darker light glyph (`ColorFamily.glyphLightRGB`, at least 3:1 on white and on the ground, same hue); the off glyph mixes it 72% with `#6C6C70`.
+- Error faces draw `#C21717` (6:1 on white). A state wash tints the cell at 22% instead of 60% so the secondary ink holds 4.5:1.
+- Lit tiles and filled family tiles are unchanged: fixed fills with fixed inks look the same in both appearances, which is also what keeps the family colour meaning.
+- A caller's tint on a family-less tile is darkened until it reaches 3:1 on the ground.
+- `ModuleList` and `ModuleRow` in a sheet draw their cell, hairlines, title and secondary ink from the same tokens.
+- The brightness bubble stays a dark capsule with white text in both appearances, like the system volume HUD.
+- Selected rooms in the vacuum sheet are the label's opposite (white with dark ink in dark, `#1C1C1E` with white ink in light), because white would vanish on a white cell.
 
 ## Colour
 

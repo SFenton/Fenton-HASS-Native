@@ -11,7 +11,7 @@ enum VacuumStyle {
     static func color(_ tone: VacuumTone) -> Color {
         switch tone {
         case .active: ColorFamily.cleaning.glyph
-        case .ok: .green
+        case .ok: HassTokens.Ink.success
         case .returning: HassTokens.Ink.action
         case .warning: HassTokens.Ink.warning
         case .danger: HassTokens.Ink.danger
@@ -32,11 +32,12 @@ enum VacuumStyle {
     /// The SF Symbol for an MDI name.
     static func symbol(_ mdi: String) -> String { SymbolMap.symbol(for: mdi) }
 
-    /// A selected room (map, room cards, order chips): a white ground with dark ink, the way the mockups draw a
-    /// chosen room (direction G, Controls: Vacuum map).
-    static let selectedFill = Color.white
-    /// Ink and order badges on ``selectedFill``, and the badge ground everywhere: the sheet's `#1C1C1E`.
-    static let selectedInk = Color(rgb: HassTokens.Palette.sheetGround)
+    /// A selected room (map, room cards, order chips): the label's opposite, white with dark ink in a dark sheet the way
+    /// the mockups draw a chosen room (direction G, Controls: Vacuum map), and `#1C1C1E` with white ink on a light
+    /// sheet, where white would vanish on the cell.
+    static let selectedFill = Color.adaptive(light: HassTokens.Palette.sheetGround, dark: 0xFFFFFF)
+    /// Ink on ``selectedFill`` and the order badge's disc: `#1C1C1E` in a dark sheet, white in a light one.
+    static let selectedInk = Color.adaptive(light: 0xFFFFFF, dark: HassTokens.Palette.sheetGround)
 
     /// Cards and the map in the sheet: the module radius.
     static let groupShape = RoundedRectangle(cornerRadius: HassTokens.Radius.module, style: .continuous)
@@ -207,7 +208,8 @@ struct VacuumOrderBadge: View {
         Text("\(order)")
             .font(.footnote.weight(.bold))
             .monospacedDigit()
-            .foregroundStyle(.white)
+            // The opposite of the disc: white on `#1C1C1E` in a dark sheet, `#1C1C1E` on white in a light one.
+            .foregroundStyle(VacuumStyle.selectedFill)
             .frame(minWidth: size, minHeight: size)
             .background(VacuumStyle.selectedInk, in: Circle())
             .accessibilityHidden(true)

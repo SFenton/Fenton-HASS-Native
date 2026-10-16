@@ -7,7 +7,9 @@
 # device gate plus a `simulator` slot (tools/devcap.py, shared with FestivalNativeApps). When the Mac is
 # full the script waits its turn; `python3 tools/devcap.py status` shows who holds what.
 #
-# Usage: tools/ios_uitest.sh [--env path/to/temp.env] [--only iphone|duo|ipad] [extra xcodebuild args]
+# Usage: tools/ios_uitest.sh [--env path/to/temp.env] [--only iphone|duo|ipad] [--appearance light|dark] [extra xcodebuild args]
+#   --appearance draws every sheet in that appearance (FENTON_APPEARANCE; pages stay dark). Without it sheets follow the
+#   simulator's own setting.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -19,6 +21,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --env) ENV_FILE="$2"; shift 2 ;;
     --only) ONLY="$2"; shift 2 ;;
+    --appearance) export TEST_RUNNER_FENTON_APPEARANCE="$2"; shift 2 ;;
     *) EXTRA+=("$1"); shift ;;
   esac
 done

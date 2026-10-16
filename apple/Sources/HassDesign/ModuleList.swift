@@ -4,10 +4,11 @@ import SwiftUI
 
 /// An inset list on the wallpaper (`.agents/design/direction-g.md`, Controls: Lists): rows on one
 /// ``SwiftUICore/View/module(_:cornerRadius:)`` card with hairlines inset to the text, like an inset grouped list
-/// on a page. Sheets use the system `Form` where they can, whose dark grouped colours are G's sheet ground and cells;
+/// on a page. Sheets use the system `Form` where they can, whose grouped colours are G's sheet ground and cells;
 /// a sheet that can't be a `Form` (a map, a bottom section bar) gets the same look from this list, which draws its
-/// rows on the sheet's `#2C2C2E` cell when ``SwiftUICore/EnvironmentValues/tileSurface`` is `.sheet`
-/// (`modalChrome()` sets it).
+/// rows on the sheet's cell (`#2C2C2E` dark, white light, ``HassTokens/Surface/sheetCell``) when
+/// ``SwiftUICore/EnvironmentValues/tileSurface`` is `.sheet` (`modalChrome()` sets it), with the title and secondary
+/// ink and the hairlines of the sheet's appearance.
 ///
 /// On iOS 18 and later the list draws a hairline between rows; iOS 17 has no API to visit a view builder's rows,
 /// so rows there sit flush with no hairline (the deployment target, not a device Stephen uses).
@@ -74,11 +75,12 @@ public struct ModuleList<Content: View>: View {
 /// accessory (a value, a state capsule, a pop-up menu) and a chevron when the row opens something. 52 pt tall, 60 pt
 /// with a subtitle. At accessibility text sizes the accessory moves under the text so neither truncates.
 ///
-/// Pure drawing: wrap it in a `Button` (with ``ModuleRowButtonStyle``) or give it a control as its accessory. Inks
-/// are fixed because the wallpaper is always dark.
+/// Pure drawing: wrap it in a `Button` (with ``ModuleRowButtonStyle``) or give it a control as its accessory. On a
+/// page the inks are fixed white because the wallpaper is always dark; in a sheet (``SwiftUICore/EnvironmentValues/tileSurface``)
+/// they follow the sheet's appearance.
 public struct ModuleRow<Accessory: View>: View {
     private let symbol: String?
-    private let glyph: Color
+    private let glyph: Color?
     private let title: String
     private let subtitle: String?
     private let subtitleInk: Color?
@@ -86,6 +88,7 @@ public struct ModuleRow<Accessory: View>: View {
     private let glyphOpacity: Double
     private let accessory: Accessory
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.tileSurface) private var surface
     @ScaledMetric(relativeTo: .body) private var glyphWidth: CGFloat = ModuleRowMetrics.glyphWidth
 
     /// Creates a row.
@@ -93,13 +96,13 @@ public struct ModuleRow<Accessory: View>: View {
     ///   - title: The row's name.
     ///   - subtitle: An optional second line (a state, or what the row opens).
     ///   - symbol: The leading SF Symbol, or nil for none.
-    ///   - glyph: The symbol's colour; a family's glyph, or secondary for neutral rows.
+    ///   - glyph: The symbol's colour; a family's glyph, or nil for the row's secondary ink (neutral rows).
     ///   - subtitleInk: Overrides the subtitle's secondary ink (a red error on a dense list).
     ///   - glyphOpacity: Dims only the glyph (unavailable rows keep their text at full contrast).
     ///   - showsChevron: Draws a trailing chevron: the row opens something.
     ///   - accessory: Trailing content.
     public init(_ title: String, subtitle: String? = nil, symbol: String? = nil,
-                glyph: Color = HassTokens.Surface.secondaryOnModule, subtitleInk: Color? = nil, glyphOpacity: Double = 1,
+                glyph: Color? = nil, subtitleInk: Color? = nil, glyphOpacity: Double = 1,
                 showsChevron: Bool = false, @ViewBuilder accessory: () -> Accessory) {
         self.title = title
         self.subtitle = subtitle
@@ -137,7 +140,7 @@ public struct ModuleRow<Accessory: View>: View {
             if let symbol {
                 Image(systemName: symbol)
                     .font(.body.weight(.medium))
-                    .foregroundStyle(glyph)
+                    .foregroundStyle(glyph ?? secondaryInk)
                     .opacity(glyphOpacity)
                     .frame(width: glyphWidth)
                     .accessibilityHidden(true)
@@ -145,12 +148,12 @@ public struct ModuleRow<Accessory: View>: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(surface == .sheet ? HassTokens.Ink.primary : .white)
                     .fixedSize(horizontal: false, vertical: true)
                 if let subtitle {
                     Text(subtitle)
                         .font(.footnote)
-                        .foregroundStyle(subtitleInk ?? HassTokens.Surface.secondaryOnModule)
+                        .foregroundStyle(subtitleInk ?? secondaryInk)
                         .monospacedDigit()
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -166,16 +169,21 @@ public struct ModuleRow<Accessory: View>: View {
         if showsChevron {
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+                .foregroundStyle(secondaryInk)
                 .accessibilityHidden(true)
         }
+    }
+
+    /// Secondary text and neutral glyphs: the module's on a page, the sheet's in a sheet.
+    private var secondaryInk: Color {
+        surface == .sheet ? HassTokens.Surface.secondaryInSheet : HassTokens.Surface.secondaryOnModule
     }
 }
 
 public extension ModuleRow where Accessory == EmptyView {
     /// Creates a row with no accessory.
     init(_ title: String, subtitle: String? = nil, symbol: String? = nil,
-         glyph: Color = HassTokens.Surface.secondaryOnModule, subtitleInk: Color? = nil, glyphOpacity: Double = 1,
+         glyph: Color? = nil, subtitleInk: Color? = nil, glyphOpacity: Double = 1,
          showsChevron: Bool = false) {
         self.init(title, subtitle: subtitle, symbol: symbol, glyph: glyph, subtitleInk: subtitleInk,
                   glyphOpacity: glyphOpacity, showsChevron: showsChevron) { EmptyView() }
@@ -203,7 +211,8 @@ public struct ModuleRowButtonStyle: ButtonStyle {
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background { if configuration.isPressed { Color.white.opacity(0.10) } }
+            // White on a page and in a dark sheet, black in a light one: the label colour at 10%.
+            .background { if configuration.isPressed { HassTokens.Ink.primary.opacity(0.10) } }
     }
 }
 
