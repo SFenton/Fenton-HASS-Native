@@ -17,39 +17,47 @@ struct TodoPageView<Header: View>: View {
     @State private var sheet: TodoSheet?
     /// Bumped after a save or delete so every list reloads (web `todoReloadVersion`).
     @State private var reloadVersion = 0
+    /// The task a swipe or menu asked to delete, until the confirmation answers.
+    @State private var deletion: TodoDeletion?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-                header()
-                let sections = TodoPageLayout.sections(for: page, viewerUserId: model.viewerUserId, store: store, todos: model.todos)
-                if TodoPageLayout.showsEmptyState(sections) {
-                    emptyState
-                }
-                ForEach(sections.filter(\.isShown)) { section in
-                    TodoListSection(
-                        list: section.list,
-                        controller: section.controller,
-                        showsHeader: !page.hideListHeaders,
-                        editSymbol: page.editsAdminTodo ? "pencil" : "info.circle",
-                        editor: { editAction(for: section.list, item: $0) }
-                    )
-                }
+        let sections = TodoPageLayout.sections(for: page, viewerUserId: model.viewerUserId, store: store, todos: model.todos)
+        let shown = sections.filter(\.isShown)
+        // A real `List` (not a ScrollView of stacks): swipe actions need one before iOS 27. Rows draw their own module card
+        // (`ModuleRowBackground`); everything else is a plain row on the wallpaper.
+        List {
+            if Header.self != EmptyView.self {
+                header().modifier(TodoPlainRow(top: 0, bottom: HassTokens.Spacing.s))
             }
-            .padding(.horizontal, HassTokens.Spacing.l)
-            .padding(.vertical, HassTokens.Spacing.m)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                // Every visible list loads, drawn or not, so a hidden list reappears when its entity says
-                // it has items again.
-                ForEach(page.lists.filter { $0.isVisible(to: model.viewerUserId, openItems: store.entity($0.entityId).state) }) { list in
-                    Color.clear
-                        .task(id: TodoReloadKey(entity: store.entity(list.entityId).state, version: reloadVersion)) {
-                            await model.todos.controller(for: list.entityId).load()
-                        }
-                }
-                .accessibilityHidden(true)
+            if TodoPageLayout.showsEmptyState(sections) {
+                emptyState.modifier(TodoPlainRow(top: HassTokens.Spacing.m, bottom: 0))
             }
+            ForEach(shown) { section in
+                TodoListSection(
+                    list: section.list,
+                    controller: section.controller,
+                    showsHeader: !page.hideListHeaders,
+                    leadsPage: section.id == shown.first?.id && Header.self == EmptyView.self,
+                    editor: { editAction(for: section.list, item: $0) },
+                    deleter: page.deletesItems ? { deletion = TodoDeletion(controller: section.controller, item: $0, isGrocery: page.id == ChoresConfig.groceries.id) } : nil
+                )
+            }
+        }
+        .groupedListStyle()
+        .environment(\.defaultMinListRowHeight, 1)
+        // Chores animate away when completed and back in if the call fails (owner, 2026-10-16). Under Reduce Motion the
+        // rows fade instead of sliding (HIG Motion).
+        .motionSafeAnimation(.default, reduced: .easeInOut(duration: 0.2), value: TodoPageLayout.animationKey(shown))
+        .background {
+            // Every visible list loads, drawn or not, so a hidden list reappears when its entity says
+            // it has items again.
+            ForEach(page.lists.filter { $0.isVisible(to: model.viewerUserId, openItems: store.entity($0.entityId).state) }) { list in
+                Color.clear
+                    .task(id: TodoReloadKey(entity: store.entity(list.entityId).state, version: reloadVersion)) {
+                        await model.todos.controller(for: list.entityId).load()
+                    }
+            }
+            .accessibilityHidden(true)
         }
         .scrollTelemetry("Chores · \(page.id)")
         .accessibilityIdentifier("todo.page.\(page.id)")
@@ -59,6 +67,19 @@ struct TodoPageView<Header: View>: View {
         .sheet(item: $sheet) { sheet in
             sheetContent(sheet)
                 .modifier(TodoSheetSizing(isShortPrompt: TodoPageLayout.isShortPrompt(sheet, addAction: page.addAction)))
+        }
+        .confirmationDialog(
+            deletion.map { "Delete \($0.item.displayTitle)?" } ?? "",
+            isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } }),
+            titleVisibility: .visible,
+            presenting: deletion
+        ) { deletion in
+            Button(deletion.isGrocery ? "Delete Item" : "Delete Task", role: .destructive) {
+                Task { await deletion.controller.remove(deletion.item) }
+            }
+            .accessibilityIdentifier("todo.delete.confirm")
+        } message: { _ in
+            Text("This can't be undone.")
         }
     }
 
@@ -164,6 +185,13 @@ struct AdminTodoEditTarget: Hashable, Sendable {
     var todoEntityId: String
 }
 
+/// A task a swipe, menu or VoiceOver action asked to delete, awaiting confirmation.
+struct TodoDeletion {
+    var controller: TodoListController
+    var item: TodoItem
+    var isGrocery: Bool
+}
+
 /// Reloads a list when its entity changes or a sheet saved.
 struct TodoReloadKey: Hashable {
     var entity: EntityState?
@@ -198,6 +226,15 @@ enum TodoPageLayout {
             guard controller.items != nil else { return Section(list: list, controller: controller, isShown: true, isSettled: false) }
             let hasItems = !controller.visibleItems(hideCompleted: list.hideCompleted).isEmpty
             return Section(list: list, controller: controller, isShown: hasItems, isSettled: true)
+        }
+    }
+
+    /// Everything that makes a row appear or leave, so one implicit animation covers a completion, its rollback, a
+    /// delete and a list appearing.
+    @MainActor
+    static func animationKey(_ sections: [Section]) -> [String] {
+        sections.flatMap { section in
+            [section.id] + section.controller.visibleItems(hideCompleted: section.list.hideCompleted).map { "\(section.id)/\($0.id)" }
         }
     }
 

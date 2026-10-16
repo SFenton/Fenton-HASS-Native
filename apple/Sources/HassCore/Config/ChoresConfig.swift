@@ -98,6 +98,14 @@ public enum ChoresConfig {
         public var resident: Resident?
         public var addAction: AddAction
 
+        /// Whether rows can be deleted: DoneTick tasks and groceries (`todo.remove_item` after a confirmation). The admin
+        /// To-Do is synced to GitHub issues, so it can only be renamed or completed.
+        public var deletesItems: Bool {
+            if isDonetick { return true }
+            if case .groceryItem = addAction { return true }
+            return false
+        }
+
         /// Whether rows can be renamed (the admin To-Do only).
         public var editsAdminTodo: Bool {
             if case .adminTodo = addAction { return true }
@@ -225,7 +233,8 @@ public enum ChoresConfig {
     public struct QuickLink: Hashable, Sendable, Identifiable {
         public var title: String
         public var page: Page
-        /// sRGB 0...255 (web card colors).
+        /// sRGB 0...255, the web's card colour. Reference only: the app colours tiles by `ColorFamily` in HassDesign
+        /// because these collide with device families (owner, 2026-10-16).
         public var color: (red: Double, green: Double, blue: Double)
         public var countsGroceries = false
         public var resident: Resident?

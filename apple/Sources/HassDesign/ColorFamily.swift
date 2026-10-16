@@ -35,6 +35,9 @@ public enum ColorFamily: String, CaseIterable, Sendable {
     case climate
     /// Security by alarm mode, as on the web.
     case securityHome, securityAway, securityNight, securityDisarmed, securityTriggered
+    /// The Chores quick-link tiles (owner, 2026-10-16: "header tiles for Chores sub-pages need distinct colours not
+    /// reused elsewhere"). Indigo, fuchsia, mustard, steel slate and cocoa: none within 0.06 (OKLab) of any device or security fill.
+    case choreStephen, choreSteph, choreUnassigned, choreHome, groceries
     /// Anything without a family: grey glyph, no fill.
     case neutral
 
@@ -47,6 +50,9 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         /// Whether text on ``fill`` is dark (power) rather than white.
         public let darkInk: Bool
     }
+
+    /// The Chores quick-link families, in tile order.
+    public static let choreFamilies: [ColorFamily] = [.choreStephen, .choreSteph, .choreUnassigned, .choreHome, .groceries]
 
     /// The raw values (direction-g.md table).
     public var spec: Spec {
@@ -69,6 +75,11 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         case .securityNight: Spec(glyph: 0xD08CF0, fill: 0x7B1FA2, darkInk: false)
         case .securityDisarmed: Spec(glyph: 0x5BD16A, fill: 0x2A732E, darkInk: false)
         case .securityTriggered: Spec(glyph: 0xFF6961, fill: 0xD70015, darkInk: false)
+        case .choreStephen: Spec(glyph: 0xB4A8FF, fill: 0x4C3CCB, darkInk: false)
+        case .choreSteph: Spec(glyph: 0xFF8FE3, fill: 0xA8209A, darkInk: false)
+        case .choreUnassigned: Spec(glyph: 0xF2C94C, fill: 0x705600, darkInk: false)
+        case .choreHome: Spec(glyph: 0xA9BBD6, fill: 0x4A5A70, darkInk: false)
+        case .groceries: Spec(glyph: 0xE0AE8A, fill: 0x6E4430, darkInk: false)
         case .neutral: Spec(glyph: 0x8E8E93, fill: nil, darkInk: false)
         }
     }
@@ -93,6 +104,11 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         case .securityHome: 0x4C86C2
         case .securityAway, .securityTriggered: 0xD95952
         case .securityNight: 0xA26DBB
+        case .choreStephen: 0x4C3CCB
+        case .choreSteph: 0xA8209A
+        case .choreUnassigned: 0x705600
+        case .choreHome: 0x4A5A70
+        case .groceries: 0x6E4430
         case .neutral: 0x818186
         }
     }

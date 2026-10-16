@@ -73,7 +73,8 @@ struct ChoreQuickLinks: View {
                     let subtitle = link.subtitle { store.entity($0).state }
                     let count = ChoresConfig.counts(for: link.page) { store.entity($0).state }.total
                     NavigationLink(value: link.page) {
-                        QuickLinkFace(title: title, subtitle: subtitle, count: count, symbol: Self.symbol(for: link))
+                        QuickLinkFace(title: title, subtitle: subtitle, count: count, symbol: Self.symbol(for: link),
+                                      family: Self.family(for: link))
                     }
                     .buttonStyle(.plain)
                     .accessibilityElement(children: .ignore)
@@ -92,6 +93,17 @@ struct ChoreQuickLinks: View {
     /// The web's links with Groceries moved last, where it spans the final row (mockup n5-chores).
     static let links = ChoresConfig.quickLinks.filter { !$0.countsGroceries } + ChoresConfig.quickLinks.filter(\.countsGroceries)
 
+    /// The link's colour: one family per page, so a link keeps its colour whoever is signed in.
+    static func family(for link: ChoresConfig.QuickLink) -> ColorFamily {
+        switch link.page {
+        case ChoresConfig.groceries: .groceries
+        case ChoresConfig.stephensChores: .choreStephen
+        case ChoresConfig.stephsChores: .choreSteph
+        case ChoresConfig.unassignedChores: .choreUnassigned
+        default: .choreHome
+        }
+    }
+
     /// The link's glyph: a person for a resident's chores, a tray for Unassigned, a hammer for Home Improvement and
     /// a cart for Groceries (mockup n5-chores).
     static func symbol(for link: ChoresConfig.QuickLink) -> String {
@@ -102,22 +114,23 @@ struct ChoreQuickLinks: View {
     }
 }
 
-/// A quick link tile: the shared dark tile face (chore lists are neutral grey; direction G, Open questions) with the
-/// list's open count as a bold numeral in the top-trailing corner.
+/// A quick link tile: a filled tile face in the link's own colour with a white filled glyph (owner, 2026-10-16: chore
+/// header tiles take colours nothing else uses; see ``ColorFamily/choreFamilies``) and the list's open count as a bold
+/// numeral in the top-trailing corner.
 struct QuickLinkFace: View {
     var title: String
     var subtitle: String
     var count: Int
     var symbol: String
+    var family: ColorFamily
 
     var body: some View {
-        GlassTileFace(title: title, subtitle: subtitle, symbol: symbol, tint: ColorFamily.neutral.glyph,
-                      family: .neutral, isActive: false)
+        GlassTileFace(title: title, subtitle: subtitle, symbol: symbol, tint: family.glyph, family: family, isActive: true)
             .overlay(alignment: .topTrailing) {
                 Text(count, format: .number)
                     .font(.title2.bold())
                     .monospacedDigit()
-                    .foregroundStyle(HassTokens.Ink.primary)
+                    .foregroundStyle(family.ink)
                     .padding(.top, HassTokens.Spacing.m - 2)
                     .padding(.trailing, HassTokens.Spacing.m + 2)
                     // The subtitle already speaks the counts.

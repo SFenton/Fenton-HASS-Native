@@ -119,16 +119,13 @@ public struct FloatingActionBar: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, HassTokens.Spacing.l + 2)
                 .frame(minHeight: Self.size)
-                .background {
-                    if action.isProminent {
-                        Capsule().fill(Self.tint)
-                    }
-                }
-                .modifier(GlassUnlessProminent(isProminent: action.isProminent, shape: Capsule()))
+                // Liquid Glass in both cases (owner, 2026-10-16): the primary action is blue-tinted glass, a secondary one
+                // clear of tint, so the page shows through the bar.
+                .modifier(BarGlass(tint: action.isProminent ? Self.tint : nil, shape: Capsule()))
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .shadow(color: .black.opacity(action.isProminent ? 0.35 : 0.2), radius: 13, y: 5)
+        .accessibilityLabel(action.title)
         .accessibilityAddTraits(action.isActive ? [.isSelected] : [])
         .accessibilityIdentifier("fab.\(action.id)")
     }
@@ -139,14 +136,10 @@ public struct FloatingActionBar: View {
                 .font(.title3.weight(.medium))
                 .foregroundStyle(isActive ? Self.activeGlyph : .white)
                 .frame(width: Self.size, height: Self.size)
-                .background {
-                    if isActive { Circle().fill(Self.activeTint) }
-                }
-                .modifier(GlassUnlessProminent(isProminent: isActive, shape: Circle()))
+                .modifier(BarGlass(tint: isActive ? Self.activeTint : nil, shape: Circle()))
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .shadow(color: .black.opacity(isActive ? 0.35 : 0.2), radius: 11, y: 4)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isActive ? [.isSelected] : [])
         .accessibilityIdentifier("fab.\(id)")
@@ -168,11 +161,10 @@ public struct FloatingActionBar: View {
             .foregroundStyle(query.isEmpty ? HassTokens.Surface.secondaryOnWash : .white)
             .padding(.horizontal, HassTokens.Spacing.l)
             .frame(maxWidth: .infinity, minHeight: Self.size)
-            .navigationGlass(in: Capsule())
+            .modifier(BarGlass(tint: nil, shape: Capsule()))
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .shadow(color: .black.opacity(0.2), radius: 11, y: 4)
         .accessibilityLabel(search.prompt)
         .accessibilityValue(query)
         .accessibilityAddTraits(query.isEmpty ? [] : [.isSelected])
@@ -206,8 +198,7 @@ public struct FloatingActionBar: View {
         }
         .padding(.leading, HassTokens.Spacing.l)
         .frame(minHeight: Self.size)
-        .navigationGlass(in: Capsule())
-        .shadow(color: .black.opacity(0.2), radius: 11, y: 4)
+        .modifier(BarGlass(tint: nil, shape: Capsule(), isInteractive: false))
         .frame(maxWidth: .infinity)
     }
 
@@ -215,26 +206,50 @@ public struct FloatingActionBar: View {
     static let size: CGFloat = 52
 }
 
-/// Glass behind a bar button, unless it carries its own solid fill (the prominent capsule, an active circle).
-private struct GlassUnlessProminent<S: Shape>: ViewModifier {
-    var isProminent: Bool
+/// Liquid Glass behind a bar button (HIG, Materials: "Use Liquid Glass for controls and navigation … floating above
+/// content. Let content scroll and peek through while preserving control and navigation legibility"). An optional tint
+/// colours it (the primary action's blue, an applied sort or filter's light fill); the interactive variant lifts and
+/// shimmers under a touch. Below iOS 26 it is a thin material with the tint laid over it.
+private struct BarGlass<S: Shape>: ViewModifier {
+    var tint: Color?
     var shape: S
+    var isInteractive = true
+
+    /// Opacity of the tint over the thin material when there is no glass.
+    private static var fallbackTintOpacity: Double { 0.88 }
 
     func body(content: Content) -> some View {
-        if isProminent {
-            content
+        #if os(watchOS)
+        content.background(.ultraThinMaterial, in: shape)
+        #else
+        if #available(iOS 26.0, macOS 26.0, *) {
+            content.glassEffect(glass, in: shape)
         } else {
-            content.navigationGlass(in: shape)
+            content.background {
+                shape.fill(.ultraThinMaterial)
+                if let tint { shape.fill(tint.opacity(Self.fallbackTintOpacity)) }
+            }
         }
+        #endif
     }
+
+    #if !os(watchOS)
+    @available(iOS 26.0, macOS 26.0, *)
+    private var glass: Glass {
+        var glass = Glass.regular
+        if let tint { glass = glass.tint(tint) }
+        return isInteractive ? glass.interactive() : glass
+    }
+    #endif
 }
 
 public extension View {
     /// Pins floating actions to the bottom trailing corner and insets the page so content scrolls clear of them.
     /// No actions and no search draws nothing.
     ///
-    /// On iOS 26 and later the bar is a `safeAreaBar` with a hard scroll edge effect, so rows scrolled under the
-    /// buttons are covered instead of showing through at low contrast (HIG: Materials › Scroll edge effects).
+    /// On iOS 26 and later the bar is a `safeAreaBar` with a soft bottom scroll edge effect: the buttons are Liquid
+    /// Glass, rows scroll up into and under them and show through, and the bar's height is added to the scroll view's
+    /// safe area, so the last row can always scroll clear of it (HIG: Materials; Scroll views › Scroll edge effects).
     @ViewBuilder
     func floatingActionBar(_ actions: [FloatingAction], search: FloatingSearch? = nil) -> some View {
         let bar = Group {
@@ -247,7 +262,7 @@ public extension View {
         #else
         if #available(iOS 26, macOS 26, *) {
             safeAreaBar(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
-                .scrollEdgeEffectStyle(.hard, for: .bottom)
+                .scrollEdgeEffectStyle(.soft, for: .bottom)
         } else {
             safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
         }

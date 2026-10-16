@@ -126,6 +126,89 @@ struct ChoresViewTests {
         #expect(Set(links.map(ChoreQuickLinks.symbol(for:))).count == 4, "Person, tray, hammer and cart")
     }
 
+    /// Owner, 2026-10-16: each quick link has its own colour, one per page, none shared with a device family.
+    @Test func quickLinksHaveDistinctChoreColours() {
+        let families = ChoreQuickLinks.links.map(ChoreQuickLinks.family(for:))
+        #expect(Set(families).count == ChoreQuickLinks.links.count, "One colour per link")
+        #expect(Set(families) == Set(ColorFamily.choreFamilies))
+        let taken = Set(ColorFamily.allCases.filter { !ColorFamily.choreFamilies.contains($0) }.compactMap(\.spec.fill))
+        #expect(families.allSatisfy { !taken.contains($0.spec.fill ?? 0) })
+        #expect(families.allSatisfy { !$0.spec.darkInk }, "White ink on every tile")
+    }
+
+    /// Swipe buttons keep white labels readable (WCAG 1.4.3) on their fills.
+    @Test func swipeTintsKeepWhiteLabelsReadable() {
+        for action in TodoRowActions.Action.allCases {
+            var environment = EnvironmentValues()
+            environment.colorScheme = .dark
+            let resolved = TodoListSection.swipeTint(action).resolve(in: environment)
+            func channel(_ value: Float) -> Double {
+                let c = Double(value)
+                return c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+            }
+            let luminance = 0.2126 * channel(resolved.red) + 0.7152 * channel(resolved.green) + 0.0722 * channel(resolved.blue)
+            #expect(1.05 / (luminance + 0.05) >= 4.5, "\(action)")
+        }
+    }
+
+    /// The check circle takes the title's font at the symbol's default scale (owner, 2026-10-16): no taller than the
+    /// title's line, at the default size and at AX5.
+    @Test func checkCircleIsNoTallerThanTheTitle() {
+        for typeSize in [DynamicTypeSize.large, .accessibility5] {
+            let circle = ImageRenderer(content: Image(systemName: TodoItemRow.checkSymbol(done: false)).font(.body)
+                .environment(\.dynamicTypeSize, typeSize))
+            let title = ImageRenderer(content: Text("Mg").font(.body).environment(\.dynamicTypeSize, typeSize))
+            #expect(circle.cgImage != nil && title.cgImage != nil)
+            #expect(circle.cgImage!.height <= title.cgImage!.height + 2, "\(typeSize)")
+        }
+        #expect(TodoItemRow.editSymbol == "square.and.pencil")
+    }
+
+    /// Swipe, menu and VoiceOver offer the same actions (owner, 2026-10-16): Complete leads; Delete (outermost) and
+    /// Edit trail; a completed task offers Mark Not Done; the admin To-Do can't delete.
+    @Test func rowActionsRouteByPageAndStatus() {
+        let open = TodoItem(uid: "1--x", summary: "A")
+        let done = TodoItem(uid: "2--x", summary: "B", status: .completed)
+        let editable = TodoRowActions(item: open, canEdit: true, canDelete: true)
+        #expect(editable.leading == [.complete])
+        #expect(editable.trailing == [.delete, .edit], "Delete is outermost, so a full swipe asks to delete")
+        #expect(editable.all == [.complete, .delete, .edit])
+        #expect(TodoRowActions(item: done, canEdit: false, canDelete: false).leading == [.reopen])
+        #expect(TodoRowActions(item: open, canEdit: true, canDelete: false).trailing == [.edit])
+        #expect(TodoRowActions(item: open, canEdit: false, canDelete: false).trailing.isEmpty)
+        #expect(TodoRowActions.Action.allCases.allSatisfy { !$0.title.isEmpty && !$0.symbol.isEmpty })
+        #expect(ChoresConfig.chores.deletesItems && ChoresConfig.stephensChores.deletesItems)
+        #expect(ChoresConfig.groceries.deletesItems)
+        #expect(!ChoresConfig.adminTodo.deletesItems)
+    }
+
+    @Test func animationKeyChangesWhenARowLeavesAndReturns() async {
+        let fixture = fixture()
+        await loadAll(fixture)
+        let page = ChoresConfig.stephensChores
+        func key() -> [String] {
+            TodoPageLayout.animationKey(TodoPageLayout.sections(for: page, viewerUserId: nil, store: fixture.store, todos: fixture.model.todos).filter(\.isShown))
+        }
+        let before = key()
+        let controller = fixture.model.todos.controller(for: "todo.stephen_s_due_today")
+        let item = controller.items![0]
+        await controller.toggle(item)
+        #expect(key() != before, "The row leaves the key as soon as it is checked off")
+    }
+
+    @Test func fixtureCanRefuseCheckOffs() async throws {
+        let store = EntityStore()
+        let service = ChoresFixtureService(store: store, lists: ChoresFixtures.lists(), failsCompletion: true)
+        store.replaceAll(service.entityStates())
+        let controller = TodoListController(entityId: "todo.stephen_s_due_today", service: service)
+        controller.revertDelay = .seconds(30)
+        await controller.load()
+        let item = controller.items![0]
+        await controller.toggle(item)
+        #expect(controller.visibleItems(hideCompleted: true).count == 1, "The row returns after the failure")
+        #expect(controller.error != nil)
+    }
+
     /// Add Grocery and rename open at the medium detent; the task form opens full height (direction G, Sheets).
     @Test func shortPromptsOpenAtMediumHeight() {
         let target = DonetickEditTarget(itemUid: "1", taskId: 1, todoEntityId: "todo.x")
@@ -172,16 +255,16 @@ struct ChoresViewTests {
         let fixture = fixture()
         let list = ChoresConfig.stephensChores.lists[0]
         let controller = fixture.model.todos.controller(for: list.entityId)
-        #expect(render(TodoListSection(list: list, controller: controller), fixture) != nil, "Loading")
+        #expect(render(List { TodoListSection(list: list, controller: controller) }, fixture) != nil, "Loading")
         await controller.load()
-        #expect(render(TodoListSection(list: list, controller: controller, editSymbol: "pencil", editor: { _ in {} }), fixture) != nil)
+        #expect(render(List { TodoListSection(list: list, controller: controller, editor: { _ in {} }, deleter: { _ in }) }, fixture) != nil)
         let items = controller.visibleItems(hideCompleted: list.hideCompleted)
         #expect(TodoListSection.hasLateItem(items, now: .now), "Past Due rows are late: the module turns dense")
         let failing = MockFailingService()
         let broken = TodoListController(entityId: list.entityId, service: failing, cached: [])
         await broken.load()
         #expect(broken.error != nil)
-        #expect(render(TodoListSection(list: list, controller: broken, showsHeader: false), fixture) != nil)
+        #expect(render(List { TodoListSection(list: list, controller: broken, showsHeader: false) }, fixture) != nil)
     }
 
     // MARK: Sheets

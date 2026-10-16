@@ -53,7 +53,6 @@ struct DonetickTaskSheet: View {
             .modalChrome()
             .navigationTitle(mode.editTarget == nil ? "New Task" : "Edit Task")
             .inlineNavigationTitle()
-            .sheetSubtitle("Donetick")
             // An edit sheet (direction G, Sheets; mockup n5-new-task): circle x Cancel, filled check Create or Save.
             .toolbar {
                 SheetCancelItem(identifier: "task.cancel", isEnabled: busy == nil) { dismiss() }
@@ -143,6 +142,11 @@ struct DonetickTaskFormFields: View {
     var onDelete: (() -> Void)?
     @FocusState private var repeatFocused: Bool
 
+    /// What the Task Name field is for.
+    static let nameFooter = "A short name for the chore, as it appears in your lists. For example, “Take out the recycling”."
+    /// What the Description field is for.
+    static let descriptionFooter = "Optional. Add steps, notes or where to find supplies. It shows with the task when you open it."
+
     var body: some View {
         // Grouped as in the mockups (n5-new-task): what, who, when, then vacation.
         Form {
@@ -152,12 +156,25 @@ struct DonetickTaskFormFields: View {
                         .accessibilityIdentifier("task.error")
                 }
             }
+            // Two fields, each with its own header and footer saying what goes in it (owner, 2026-10-16).
             Section {
                 TextField("Task Name", text: $form.name)
                     .accessibilityIdentifier("task.name")
+            } header: {
+                FormHeader("Task Name")
+            } footer: {
+                FormFooter(Self.nameFooter)
+                    .accessibilityIdentifier("task.name.footer")
+            }
+            Section {
                 TextField("Description", text: $form.description, axis: .vertical)
                     .lineLimit(3...8)
                     .accessibilityIdentifier("task.description")
+            } header: {
+                FormHeader("Description")
+            } footer: {
+                FormFooter(Self.descriptionFooter)
+                    .accessibilityIdentifier("task.description.footer")
             }
             Section {
                 Picker("Assignee", selection: $form.assignee) {
