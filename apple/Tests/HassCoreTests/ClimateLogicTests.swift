@@ -181,6 +181,8 @@ struct ClimateLogicTests {
                             attributes: [room.temperatureEntityId: ["unit_of_measurement": .string("°F")]])
         #expect(ClimateLogic.roomSubtitle(room, states) == "70.9°F · Occupied")
         #expect(ClimateLogic.roomSubtitle(room, lookup([:])) == "--°F · Unknown")
+        #expect(ClimateLogic.roomTemperature(room, states) == "70.9°F")
+        #expect(ClimateLogic.roomOccupancy(room, states) == "Occupied")
         #expect(ClimateLogic.isOccupied(EntityState(entityId: "sensor.x", state: "active")))
         #expect(ClimateLogic.isOccupied(EntityState(entityId: "sensor.x", state: "on")))
         #expect(!ClimateLogic.isOccupied(EntityState(entityId: "sensor.x", state: "inactive")))

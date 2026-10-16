@@ -45,26 +45,30 @@ enum SecuritySheet: Identifiable, Hashable {
 }
 
 /// The page body, shared by ``SecurityScreen`` and the debug gallery (which passes a recording caller and no
-/// cameras, so journeys never reach the house).
+/// cameras, so journeys never reach the house). Direction G mockup n3: the status chips, the alarm card, the Doors
+/// list, guests, cameras and the car.
 struct SecurityPage: View {
     var caller: any HassServiceCalling
     var canSend: Bool
     var showsCameras: Bool
     var showsVehicle: Bool
-    @Environment(EntityStore.self) private var store
     @State private var sheet: SecuritySheet?
-    /// Grows with Dynamic Type so tiles drop to fewer columns instead of clipping their titles.
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
     /// The Security and Contact Sensors chips (`SECURITY_STATUS_CHIPS`).
     static let chips = HomeConfig.statusChips.filter { [.security, .contacts].contains($0.sheet) }
 
+    /// The locks and garage doors, in web order (the alarm tile became the card above them).
+    static let doorTiles = SecurityConfig.controlTiles.filter { $0.kind != .alarm }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-                StatusRail(chips: Self.chips, idPrefix: "security") { sheet = .chip($0) }
-                tileSection("Security", tiles: SecurityConfig.controlTiles)
-                    .padding(.horizontal, HassTokens.Spacing.l)
+                VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
+                    StatusRail(chips: Self.chips, idPrefix: "security") { sheet = .chip($0) }
+                    AlarmPanel(caller: caller)
+                        .padding(.horizontal, HassTokens.Spacing.l)
+                }
+                doorSection("Doors", tiles: Self.doorTiles)
                 GuestPresenceSection(caller: caller)
                     .padding(.horizontal, HassTokens.Spacing.l)
                 if showsCameras {
@@ -72,8 +76,7 @@ struct SecurityPage: View {
                         .padding(.horizontal, HassTokens.Spacing.l)
                 }
                 if showsVehicle {
-                    tileSection("Vehicle", tiles: SecurityConfig.vehicleTiles)
-                        .padding(.horizontal, HassTokens.Spacing.l)
+                    doorSection("Mach-E", tiles: SecurityConfig.vehicleTiles)
                 }
             }
             .padding(.vertical, HassTokens.Spacing.m)
@@ -98,17 +101,16 @@ struct SecurityPage: View {
         }
     }
 
-    private func tileSection(_ title: String, tiles: [SecurityConfig.Tile]) -> some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-            Text(title)
-                .font(.title3.weight(.semibold))
-                .accessibilityAddTraits(.isHeader)
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
+    /// A titled inset list of lock and garage rows.
+    private func doorSection(_ title: String, tiles: [SecurityConfig.Tile]) -> some View {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.s + 2) {
+            RoomSectionHeader(title: title)
+            ModuleList {
                 ForEach(tiles) { tile in
-                    SecurityTile(tile: tile, caller: caller, canSend: canSend) { sheet = .system }
-                        .accessibilityIdentifier("security.tile.\(tile.entityId)")
+                    SecurityDoorRow(tile: tile, caller: caller, canSend: canSend)
                 }
             }
         }
+        .padding(.horizontal, HassTokens.Spacing.l)
     }
 }

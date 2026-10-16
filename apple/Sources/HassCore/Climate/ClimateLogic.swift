@@ -145,8 +145,18 @@ public enum ClimateLogic {
 
     /// `70.9°F · Occupied` (web `ThermostatRoomRow`).
     public static func roomSubtitle(_ room: ClimateConfig.Room, _ lookup: EntityLookup) -> String {
+        "\(roomTemperature(room, lookup)) · \(roomOccupancy(room, lookup))"
+    }
+
+    /// A room's temperature, `70.9°F` (the trailing value of its row).
+    public static func roomTemperature(_ room: ClimateConfig.Room, _ lookup: EntityLookup) -> String {
         let temperature = lookup(room.temperatureEntityId)
-        return "\(self.temperature(number(temperature.map { .string($0.state) }), unit: unit(of: temperature))) · \(StateText.titleCase(lookup(room.occupancyEntityId)?.state))"
+        return self.temperature(number(temperature.map { .string($0.state) }), unit: unit(of: temperature))
+    }
+
+    /// A room's occupancy, `Occupied` (the subtitle of its row).
+    public static func roomOccupancy(_ room: ClimateConfig.Room, _ lookup: EntityLookup) -> String {
+        StateText.titleCase(lookup(room.occupancyEntityId)?.state)
     }
 
     /// A vent cover's state text (web `ClimateCard` → `formatCompactEntityState`).

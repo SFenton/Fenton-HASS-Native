@@ -1,41 +1,15 @@
 import HassCore
 import HassDesign
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#else
-import AppKit
-#endif
 
 // MARK: - Style
 
-/// Colors and sizes local to the Climate page.
+/// Colours local to the Climate page and sheet.
 enum ClimateStyle {
-    /// Heating `#cd5401` (web `THERMOSTAT_HEAT_COLOR`).
-    static let heat = Color(hex: ClimateConfig.heatColorHex)
-    /// Cooling `#2c8e98` (web `THERMOSTAT_COOL_COLOR`).
-    static let cool = Color(hex: ClimateConfig.coolColorHex)
-    /// Toggles and openers (web `tone="switch"`): the climate tint, lightened in dark mode so icons keep their
-    /// contrast on the dark material (HIG: Color, Dark Mode).
-    static let control = adaptive(light: (0.10, 0.33, 0.51), dark: (0.45, 0.70, 0.95))
-
-    private static func adaptive(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
-        #if canImport(UIKit)
-        Color(uiColor: UIColor { traits in
-            let c = traits.userInterfaceStyle == .dark ? dark : light
-            return UIColor(red: c.0, green: c.1, blue: c.2, alpha: 1)
-        })
-        #else
-        Color(nsColor: NSColor(name: nil) { appearance in
-            let c = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
-            return NSColor(red: c.0, green: c.1, blue: c.2, alpha: 1)
-        })
-        #endif
-    }
-    /// An open vent (web `VENT_OPEN_COLOR`, rgb 30 136 229).
-    static let ventOpen = Color(red: 30 / 255, green: 136 / 255, blue: 229 / 255)
-    /// An open door or window.
-    static let contact = HassTokens.Tint.contact
+    /// Heating: the heating family's glyph (the dial's heat `#CD5401`, lifted for a glyph on dark).
+    static let heat = ColorFamily.heating.glyph
+    /// Cooling: the cooling family's glyph (the dial's cool `#2C8E98`, lifted).
+    static let cool = ColorFamily.cooling.glyph
 
     /// The tint for an `hvac_action`: heat, cool, or `nil` when idle (web `thermostatActionColor`).
     static func tint(action: String) -> Color? {
@@ -50,192 +24,73 @@ enum ClimateStyle {
     static func symbol(_ mdi: String) -> String { SymbolMap.symbol(for: mdi) }
 }
 
-extension Color {
-    /// A color from `0xRRGGBB`.
-    init(hex: Int) {
-        self.init(red: Double((hex >> 16) & 0xFF) / 255, green: Double((hex >> 8) & 0xFF) / 255, blue: Double(hex & 0xFF) / 255)
-    }
-}
+// MARK: - Page notice
 
-// MARK: - Section
-
-/// A section: heading, optional description, then content (web `SectionHeader` + `Description`).
-struct ClimateSection<Content: View>: View {
-    var title: String
-    var description: String?
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            RemoteSectionHeader(title: title)
-            if let description { ClimateDescription(text: description) }
-            content
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// Supporting copy above a control (web `Description`).
-struct ClimateDescription: View {
-    var text: String
-
-    var body: some View {
-        Text(text)
-            .font(.subheadline)
-            .foregroundStyle(HassTokens.Ink.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-/// A description followed by its control (web `ThermostatModalControl`).
-struct ClimateControlGroup<Content: View>: View {
-    var description: String
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-            ClimateDescription(text: description)
-            content
-        }
-    }
-}
-
-// MARK: - Notice
-
-/// An informational card (web `Notice` / `InlineAlert`), read as one element.
+/// A notice on the wallpaper (web `Notice` / the integration warning; mockup n3's away and warning cards): a glyph and
+/// the text on a module, read as one element. A warning sits on the dense module with an orange glyph.
 struct ClimateNotice: View {
     var text: String
     var symbol = "info.circle"
-    var tint: Color = ClimateStyle.control
+    var isWarning = false
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
             Image(systemName: symbol)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(tint)
+                .foregroundStyle(isWarning ? Color(rgb: HassTokens.Palette.orange) : Color(rgb: HassTokens.Palette.tintText))
                 .accessibilityHidden(true)
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(HassTokens.Ink.primary)
+                .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(HassTokens.Spacing.m)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous).strokeBorder(tint.opacity(0.4), lineWidth: 1)
-        }
+        .padding(.vertical, HassTokens.Spacing.m + 2)
+        .padding(.horizontal, HassTokens.Spacing.l)
+        .module(isWarning ? .dense : .thin)
         .accessibilityElement(children: .combine)
-    }
-}
-
-// MARK: - Toggle tile
-
-/// A switch or input_boolean tile: optimistic on/off through ``ClimateController/toggle(_:)``
-/// (web `ThermostatToggleSetting`).
-struct ClimateToggleTile: View {
-    var controller: ClimateController
-    var entityId: String
-    var title: String
-    var icon: String
-
-    var body: some View {
-        let isOn = controller.isOn(entityId)
-        RemoteGlassTile(
-            title: title,
-            subtitle: ClimateLogic.compactState(controller.entity(entityId), state: controller.shown(entityId)),
-            symbol: ClimateStyle.symbol(icon),
-            tint: ClimateStyle.control,
-            isActive: isOn,
-            isDisabled: controller.isUnavailable(entityId),
-            semantics: .toggle(isOn: isOn)
-        ) { controller.toggle(entityId) }
-        .accessibilityIdentifier("climate.toggle.\(entityId)")
-    }
-}
-
-/// A tile that opens a detail page (web `GlassTile disclosure`).
-struct ClimateOpenerTile: View {
-    var title: String
-    var subtitle: String?
-    var icon: String
-    var isDisabled = false
-    var action: () -> Void
-
-    var body: some View {
-        // Disabled, not unavailable: VoiceOver reads the subtitle ("Enable Track Selected Rooms first") and
-        // "dimmed", rather than "Unavailable". `.disabled` outside so assistive technologies report it.
-        GlassTile(title: title, subtitle: subtitle, symbol: ClimateStyle.symbol(icon), tint: ClimateStyle.control,
-                  isActive: false, kind: .navigate, action: action)
-            .disabled(isDisabled)
-            .opacity(isDisabled ? 0.5 : 1)
     }
 }
 
 // MARK: - Thermostat Hub
 
-/// The physical thermostat's pill: icon, title, state tinted by `hvac_action`, then HVAC mode and fan dropdowns
-/// (web `ThermostatHubPill`).
-struct ThermostatHubPill: View {
+/// The physical thermostat's rows (web `ThermostatHubPill`; mockup n3): the hub with its state, glyph tinted by
+/// `hvac_action`, and its mode as a pop-up menu, then the fan's pop-up menu when the hub reports fan modes.
+struct ClimateHubList: View {
     var controller: ClimateController
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let entity = controller.entity(ClimateConfig.hubEntityId)
         let action = ClimateLogic.hvacAction(entity)
-        let tint = ClimateStyle.tint(action: action)
         let state = ClimateLogic.compactState(entity, state: controller.shown(ClimateController.hubModeKey))
-        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.m))
-            : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.m))
-        layout {
-            HStack(spacing: HassTokens.Spacing.m) {
-                Image(systemName: ClimateStyle.symbol("mdi:thermostat"))
-                    .font(.title2)
-                    .foregroundStyle(tint ?? HassTokens.Ink.secondary)
-                    .frame(minWidth: 32)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Thermostat Hub")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(HassTokens.Ink.primary)
-                    Text(state)
-                        .font(.footnote)
-                        .foregroundStyle(HassTokens.Ink.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("climate.hub")
-            HStack(spacing: HassTokens.Spacing.s) {
-                let modes = ClimateLogic.hvacModeOptions(entity)
-                HubMenu(symbol: "power", label: "Thermostat Hub Mode", value: state, options: modes,
-                        selected: controller.shown(ClimateController.hubModeKey)) { controller.setHubMode($0) }
+        let fans = ClimateLogic.fanModeOptions(entity)
+        ModuleList {
+            ModuleRow("Thermostat Hub", subtitle: state, symbol: ClimateStyle.symbol("mdi:thermostat"),
+                      glyph: ClimateStyle.tint(action: action) ?? HassTokens.Surface.secondaryOnModule) {
+                HubPicker(label: "Thermostat Hub Mode", value: state, options: ClimateLogic.hvacModeOptions(entity),
+                          selected: controller.shown(ClimateController.hubModeKey)) { controller.setHubMode($0) }
                     .accessibilityIdentifier("climate.hub.mode")
-                let fans = ClimateLogic.fanModeOptions(entity)
-                if !fans.isEmpty {
-                    let fan = ClimateLogic.selectOption(controller.shown(ClimateController.hubFanKey) ?? "")
-                    HubMenu(symbol: ClimateStyle.symbol("mdi:fan"), label: "Thermostat Hub Fan", value: fan, options: fans,
-                            selected: controller.shown(ClimateController.hubFanKey)) { controller.setHubFan($0) }
+            }
+            if !fans.isEmpty {
+                let fan = ClimateLogic.selectOption(controller.shown(ClimateController.hubFanKey) ?? "")
+                ModuleRow("Fan", symbol: ClimateStyle.symbol("mdi:fan")) {
+                    HubPicker(label: "Thermostat Hub Fan", value: fan, options: fans,
+                              selected: controller.shown(ClimateController.hubFanKey)) { controller.setHubFan($0) }
                         .accessibilityIdentifier("climate.hub.fan")
                 }
             }
         }
-        .padding(HassTokens.Spacing.m)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
-                .strokeBorder(tint?.opacity(0.6) ?? .clear, lineWidth: 1.5)
-        }
-        .accessibilityElement(children: .contain)
     }
 }
 
-/// A 44 pt icon button with a disclosure chevron that opens a native dropdown of choices, the current one checked
-/// (web `ThermostatSelectButton`). HIG: Pull-down buttons, Menus.
-struct HubMenu: View {
-    var symbol: String
+/// A pop-up menu of choices, the current one checked (direction G, Controls: "Thermostat Hub mode and Fan are pop-up
+/// menus"; web `ThermostatSelectButton`). HIG: Pop-up buttons.
+///
+/// The picker sits in a `Menu` whose label is the current value and an up-down chevron: a bare `Picker(.menu)` keeps
+/// its own UIKit hit area, which a frame outside it doesn't grow to 44 pt.
+struct HubPicker: View {
     var label: String
+    /// The current choice as shown, read as the control's value.
     var value: String
     var options: [ClimateLogic.Option]
     var selected: String?
@@ -251,19 +106,20 @@ struct HubMenu: View {
             }
             .pickerStyle(.inline)
         } label: {
-            HStack(spacing: 2) {
-                Image(systemName: symbol).font(.body.weight(.semibold))
-                Image(systemName: "chevron.down").font(.caption.weight(.bold))
+            HStack(spacing: 4) {
+                Text(value)
+                    .font(.body)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.footnote.weight(.semibold))
+                    .accessibilityHidden(true)
             }
-            .foregroundStyle(HassTokens.Ink.primary)
-            .frame(minWidth: 60, minHeight: HassTokens.minTarget)
-            .background(RemoteStyle.buttonFill, in: Capsule())
-            .contentShape(Capsule())
+            .foregroundStyle(Color(rgb: HassTokens.Palette.tintText))
+            .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(options.isEmpty)
         .accessibilityLabel(label)
         .accessibilityValue(value)
-        .accessibilityHint("Shows choices.")
     }
 }
