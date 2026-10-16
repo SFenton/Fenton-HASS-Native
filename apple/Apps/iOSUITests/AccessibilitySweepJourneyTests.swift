@@ -225,7 +225,8 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
         let controls: Set<XCUIElement.ElementType> = [.button, .switch, .slider, .textField, .secureTextField, .link, .toggle, .segmentedControl]
         var stops: [Stop] = []
         func walk(_ node: XCUIElementSnapshot) {
-            if node.elementType == .tabBar { return }
+            // Bars are not page content: the tab bar, and the folded Duo's vertical rail (a toolbar to XCUITest).
+            if node.elementType == .tabBar || node.elementType == .toolbar { return }
             let isControl = controls.contains(node.elementType)
             if (node.elementType == .staticText || isControl), !node.label.isEmpty,
                !node.frame.isEmpty, window.intersects(node.frame), window.contains(CGPoint(x: node.frame.midX, y: node.frame.midY)) {

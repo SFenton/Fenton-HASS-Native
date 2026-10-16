@@ -176,12 +176,10 @@ enum FentonHomeApp {
         } ?? false
         // An element-less contrast issue cannot be placed. It is accepted only when every labelled text and button on
         // the page measures at least 4.5:1 in a capture from this run (read once, only when one comes back).
-        var pageTextClear: Bool?
+        var lowText: [String]?
         func everyTextClears() -> Bool {
-            if let pageTextClear { return pageTextClear }
-            let clear = capture.map { allVisibleTextMeasures(atLeast: 4.5, in: app, capture: $0) } ?? false
-            pageTextClear = clear
-            return clear
+            if lowText == nil { lowText = capture.map { lowestVisibleText(below: 4.5, in: app, capture: $0) } ?? ["no capture"] }
+            return lowText?.isEmpty == true
         }
         for issue in issues {
             if isSystemDrawn(issue, in: app, popover: popover) { continue }
@@ -215,6 +213,9 @@ enum FentonHomeApp {
                 // Nothing drawn under the floating action bar: its hard scroll edge covers rows that scroll
                 // beneath it (inventory All Food, 2026-10-11), so the text is hidden, not low contrast.
                 if ratio < 1.5, let floatingBarTop, element.frame.maxY > floatingBarTop { continue }
+                // Text mostly inside the bar's strip is faded by the same edge, so it measures low but not nothing
+                // (Chores "Replace LV600S Water Filter Sponge" under Add Task, folded Duo, 2.7:1, 2026-10-16).
+                if let floatingBarTop, element.frame.midY > floatingBarTop { continue }
                 measured = String(format: " (rendered %.1f:1)", ratio)
             }
             // "May be clipped at larger sizes" is disproved the same way as partial support: at AX5 the text is
@@ -236,6 +237,9 @@ enum FentonHomeApp {
                 continue
             }
             let element = issue.element
+            if issue.auditType == .contrast, element == nil, let lowText, !lowText.isEmpty {
+                open.append("Texts under 4.5:1 rendered on this page (an element-less contrast issue needs none): " + lowText.joined(separator: "; "))
+            }
             open.append("\(issue.compactDescription): \(element?.elementType.rawValue ?? 0) '\(element?.label ?? "")' at \(element.map { "\($0.frame)" } ?? "?")\(measured) "
                 + issue.detailedDescription + (element == nil ? " [\(issue)]" : ""))
         }
@@ -440,23 +444,28 @@ enum FentonHomeApp {
         }
     }
 
-    /// Whether every labelled static text and button fully inside the window measures at least `minimum`:1 rendered in
-    /// `capture`. One snapshot, so many accessibility requests do not crash the iPad simulator's backboardd.
-    private static func allVisibleTextMeasures(atLeast minimum: Double, in app: XCUIApplication,
-                                               capture: RenderedContrast.Capture) -> Bool {
-        guard let root = try? app.snapshot() else { return false }
+    /// The labelled static texts and buttons fully inside the window that measure under `minimum`:1 rendered in
+    /// `capture`, as `label (ratio)`; empty when all clear. One snapshot, so many accessibility requests do not crash
+    /// the iPad simulator's backboardd.
+    private static func lowestVisibleText(below minimum: Double, in app: XCUIApplication,
+                                          capture: RenderedContrast.Capture) -> [String] {
+        guard let root = try? app.snapshot() else { return ["no snapshot"] }
         let window = app.windows.firstMatch.frame
-        var clear = true
+        var low: [String] = []
         func walk(_ node: XCUIElementSnapshot) {
+            // System bars (the tab bar, the folded Duo's rail) are not the app's text. A frame taller than a text line
+            // holds a photo (a recipe card, a camera tile): its median surface says nothing about the caption on it,
+            // so only text-sized frames are measured.
+            if node.elementType == .tabBar || node.elementType == .toolbar { return }
             if [.staticText, .button].contains(node.elementType), !node.label.isEmpty,
-               !node.frame.isEmpty, window.insetBy(dx: -1, dy: -1).contains(node.frame),
+               !node.frame.isEmpty, node.frame.height <= 60, window.insetBy(dx: -1, dy: -1).contains(node.frame),
                let ratio = RenderedContrast.ratio(of: node.frame, in: capture), ratio < minimum {
-                clear = false
+                low.append(String(format: "'%@' %.1f at %@", node.label, ratio, "\(node.frame)"))
             }
             node.children.forEach(walk)
         }
         walk(root)
-        return clear
+        return low
     }
 
     /// Text scrolled (partly) out of its scroll view is sampled against whatever covers it there, such as
