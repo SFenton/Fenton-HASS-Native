@@ -84,7 +84,9 @@ struct VacuumsPage<Sheet: View>: View {
             Text(line)
                 .font(.subheadline)
                 .monospacedDigit()
-                .foregroundStyle(HassTokens.Ink.secondary)
+                // Straight on the wallpaper, which is always dark-styled: 72% label ink measured 4.0:1 ("1 Cleaning", iPhone,
+                // 2026-10-16), so use the always-dark secondary at 85%.
+                .foregroundStyle(HassTokens.Ink.onDarkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("vacuums.summary")

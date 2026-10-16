@@ -217,7 +217,7 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
     func testRoomDeviceSheet() throws {
         try sweep("room-device") {
             self.openMasterBedroom(in: $0)
-            self.tap("room.card.Humidifier", in: $0)
+            self.tap("room.card.Air Purifier", in: $0)
             self.waitForSheet(in: $0)
         }
     }
