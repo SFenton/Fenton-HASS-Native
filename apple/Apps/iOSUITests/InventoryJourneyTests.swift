@@ -84,6 +84,69 @@ final class InventoryJourneyTests: JourneyTestCase {
         XCTAssertFalse(row(app, "Honey").buttons["inventory.row.delete"].exists, "Rows delete from their swipe action")
     }
 
+    /// The design pass (owner, 2026-10-16): the stock count is a trailing number (and part of the row's spoken label),
+    /// the expiry line stays short, and the actions stay beside the text on every row.
+    func testRowsShowQuantityTrailingAndKeepActionsBesideTheText() {
+        let app = launch()
+        let beans = row(app, "Black Beans")
+        XCTAssertTrue(beans.waitForExistence(timeout: 10))
+        XCTAssertTrue(beans.staticTexts["Multiple Expiration Dates"].exists, "The subtitle is the expiry alone")
+        XCTAssertFalse(app.staticTexts["Quantity 3 · Multiple Expiration Dates"].exists, "The old long subtitle is back")
+        let copy = beans.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Black Beans'")).firstMatch
+        XCTAssertTrue(copy.label.contains("Quantity 3"), "VoiceOver label is '\(copy.label)'")
+        let cart = beans.buttons["inventory.row.cart"]
+        XCTAssertTrue(cart.exists)
+        let honeyCart = row(app, "Honey").buttons["inventory.row.cart"]
+        // The cart sits at the same x on a two-line and a one-line row, and on the title's line, not under it.
+        XCTAssertEqual(cart.frame.minX, honeyCart.frame.minX, accuracy: 2, "Cart buttons do not line up")
+        XCTAssertLessThan(cart.frame.minY, copy.frame.maxY, "Actions wrapped under the text")
+        XCTAssertGreaterThanOrEqual(cart.frame.width, 43)
+        XCTAssertGreaterThanOrEqual(cart.frame.height, 43)
+    }
+
+    /// The page waits for its rows like the web: the spinner shows over a hidden page, then leaves as the rows and the
+    /// floating actions arrive together.
+    func testPageSpinnerThenRows() {
+        // Answers take 5 s, so the spinner outlasts the simulator's own launch and can be watched.
+        let app = launch(environment: ["FENTON_GALLERY_LATENCY_MS": "5000"])
+        let spinner = app.descendants(matching: .any)["contentGate.spinner"].firstMatch
+        XCTAssertTrue(spinner.waitForExistence(timeout: 5), "The spinner never showed")
+        XCTAssertEqual(spinner.label, "Loading Pantry")
+        XCTAssertFalse(row(app, "Honey").exists, "Rows show under the spinner")
+        XCTAssertFalse(app.buttons["fab.inventory.scan"].exists, "The floating actions show under the spinner")
+        XCTAssertTrue(row(app, "Honey").waitForExistence(timeout: 25))
+        XCTAssertTrue(spinner.waitForNonExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["fab.inventory.scan"].waitForExistence(timeout: 5))
+    }
+
+    /// A page whose rows never arrive stays on the spinner.
+    func testLoadingStateHoldsTheSpinner() {
+        let app = launch(state: "loading")
+        XCTAssertTrue(app.descendants(matching: .any)["contentGate.spinner"].firstMatch.waitForExistence(timeout: 5))
+        sleep(2)
+        XCTAssertTrue(app.descendants(matching: .any)["contentGate.spinner"].firstMatch.exists)
+        XCTAssertFalse(app.buttons["fab.inventory.scan"].exists)
+        XCTAssertFalse(app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'inventory.row.'")).firstMatch.exists)
+    }
+
+    /// Sorted by expiration date, rows group under status headers with their counts.
+    func testExpirySortGroupsRowsUnderStatusHeaders() throws {
+        let app = launch(space: "all-food", clean: true, environment: ["FENTON_GALLERY_SORT": "expiry"])
+        let expired = app.descendants(matching: .any)["inventory.section.expired"].firstMatch
+        XCTAssertTrue(expired.waitForExistence(timeout: 15), "No Expired header")
+        for id in ["soon", "later"] {
+            XCTAssertTrue(app.descendants(matching: .any)["inventory.section.\(id)"].firstMatch.exists, "No \(id) header")
+        }
+        XCTAssertTrue(expired.label.contains("Expired"), expired.label)
+        // Jasmine Rice is the one expired card, listed under that header and above Chicken Soup under Expiring Soon.
+        XCTAssertLessThan(row(app, "Jasmine Rice").frame.minY, row(app, "Chicken Soup").frame.minY)
+        sleep(1)
+        keepScreenshot(app, "inventory-all-food-expiry-\(layout)")
+        try FentonHomeApp.audit(app) {
+            self.launch(space: "all-food", arguments: FentonHomeApp.ax5, clean: true, environment: ["FENTON_GALLERY_SORT": "expiry"])
+        }
+    }
+
     /// Cart asks for a quantity, then sends EverShelf's shopping service and the to-do list item.
     func testAddToGroceriesAsksForQuantity() {
         let app = launch(environment: ["FENTON_GALLERY_HOLD_ADDED": "1"])
