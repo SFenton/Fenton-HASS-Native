@@ -30,34 +30,10 @@ struct StatusChipView: View {
     var body: some View {
         let summary = ScreenshotPrivacy.isRedacting && [.security, .occupancy].contains(chip.sheet)
             ? "Hidden" : HomeConfig.summary(for: chip) { store.entity($0).state }
-        let state = store.entity(chip.entityId).state
-        let family = Self.family(chip.tone, alarmState: state?.state)
-        StatusChipButton(title: chip.title, summary: summary, symbol: SymbolMap.symbol(for: chip.icon),
-                         family: family, isActive: Self.isFilled(chip.tone, family: family, isActive: state?.isActive ?? false),
-                         action: action)
+        let appearance = StatusChipAppearance.home(chip) { store.entity($0).state }
+        StatusChipButton(title: chip.title, summary: summary, symbol: appearance.symbol,
+                         family: appearance.family, isActive: appearance.isFilled, tint: appearance.tint, action: action)
         .accessibilityIdentifier("\(idPrefix).chip.\(chip.sheet.rawValue)")
-    }
-
-    /// The chip's colour family; security follows the alarm mode.
-    static func family(_ tone: HomeConfig.ChipTone, alarmState: String?) -> ColorFamily? {
-        switch tone {
-        case .light: .lights
-        case .security: ColorFamily.security(alarmState: alarmState)
-        case .climate: .climate
-        case .presence: .occupancy
-        case .contact: .contact
-        case .air: .air
-        }
-    }
-
-    /// Whether the chip draws filled. Security (by mode), Climate and Air Quality always do, as on the web; the
-    /// others only while their entity is active (lights on, someone home, a door open).
-    static func isFilled(_ tone: HomeConfig.ChipTone, family: ColorFamily?, isActive: Bool) -> Bool {
-        switch tone {
-        case .security: family != nil
-        case .climate, .air: true
-        case .light, .presence, .contact: isActive
-        }
     }
 }
 
@@ -70,8 +46,11 @@ struct StatusChipButton: View {
     var family: ColorFamily?
     /// Whether the chip draws filled in its family colour, rather than neutral.
     var isActive: Bool
+    /// A computed look (a temperature or AQI colour, a contact state) that wins over ``family``; the chip draws filled.
+    var tint: ChipTint? = nil
     /// `nil` draws an inert chip (no sheet), which is not a button.
     var action: (() -> Void)?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if let action {
@@ -87,12 +66,15 @@ struct StatusChipButton: View {
     }
 
     private var face: some View {
-        let fill = StatusChipStyle.fillFamily(family, isActive: isActive)
+        let fill = StatusChipStyle.fillTint(family, isActive: isActive, tint: tint)
         return HStack(spacing: HassTokens.Spacing.s) {
             Image(systemName: symbol)
                 .symbolVariant(fill != nil ? .fill : .none)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(fill?.chipGlyph ?? HassTokens.Surface.secondaryOnModule)
+                // Colour only: the chip's width and glyph swap never ride this animation.
+                .animation(StatusChipStyle.colorAnimation(reduceMotion: reduceMotion)) {
+                    $0.foregroundStyle(fill?.glyphColor ?? HassTokens.Surface.secondaryOnModule)
+                }
             VStack(alignment: .leading, spacing: 0) {
                 // Fixed inks: the chip's ground is always dark (a family fill or the module), whatever the scheme.
                 Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
@@ -107,7 +89,7 @@ struct StatusChipButton: View {
         .padding(.trailing, HassTokens.Spacing.l)
         .padding(.vertical, HassTokens.Spacing.xs)
         .frame(minHeight: StatusChipStyle.minHeight)
-        .background { StatusChipStyle.background(fill) }
+        .background { StatusChipBackground(tint: fill) }
         .contentShape(Capsule())
     }
 }
@@ -127,15 +109,37 @@ enum StatusChipStyle {
         return family
     }
 
-    /// The chip's ground: the family's chip fill, or the thin module when neutral.
-    @MainActor @ViewBuilder
-    static func background(_ fill: ColorFamily?) -> some View {
-        if let color = fill?.chipFill {
-            Capsule()
-                .fill(color)
-                .overlay { Capsule().fill(LinearGradient(colors: [.white.opacity(0.12), .clear], startPoint: .top, endPoint: .center)) }
-        } else {
-            Color.clear.module(.thin, cornerRadius: minHeight / 2)
+    /// The tint the chip draws: a computed `tint`, else its active family's, else nil for the neutral chip.
+    static func fillTint(_ family: ColorFamily?, isActive: Bool, tint: ChipTint?) -> ChipTint? {
+        tint ?? fillFamily(family, isActive: isActive).flatMap { ChipTint(family: $0) }
+    }
+
+    /// The colour cross-fade (HIG, Motion: quick and subtle). Reduce Motion keeps a shorter fade: a colour change moves
+    /// nothing, so it is the allowed substitute (`.agents/testing/apple/accessibility.md`, Reduce Motion).
+    static func colorAnimation(reduceMotion: Bool) -> Animation {
+        .easeInOut(duration: reduceMotion ? 0.2 : 0.6)
+    }
+}
+
+/// The chip's ground: the tint's fill with a slight top highlight, or the thin module when neutral. A colour change
+/// cross-fades inside the fill only, so the capsule's size (a longer state text) never slides.
+private struct StatusChipBackground: View {
+    var tint: ChipTint?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Group {
+            if let tint {
+                Color.clear
+                    .animation(StatusChipStyle.colorAnimation(reduceMotion: reduceMotion)) { $0.background(tint.fillColor) }
+                    .overlay { LinearGradient(colors: [.white.opacity(ChipTint.highlight), .clear], startPoint: .top, endPoint: .center) }
+                    .clipShape(Capsule())
+                    .transition(.opacity)
+            } else {
+                Color.clear.module(.thin, cornerRadius: StatusChipStyle.minHeight / 2)
+                    .transition(.opacity)
+            }
         }
+        .animation(StatusChipStyle.colorAnimation(reduceMotion: reduceMotion), value: tint != nil)
     }
 }

@@ -121,11 +121,11 @@ struct RoomsViewTests {
     }
 
     @Test func roomClimateAndAirChipsAlwaysFill() {
-        #expect(RoomChip.isFilled(.climate, isActive: false))
-        #expect(RoomChip.isFilled(.air, isActive: false))
-        #expect(!RoomChip.isFilled(.light, isActive: false))
-        #expect(RoomChip.isFilled(.presence, isActive: true))
-        #expect(!RoomChip.isFilled(.contact, isActive: false))
+        #expect(StatusChipAppearance.isFilled(.climate, isActive: false))
+        #expect(StatusChipAppearance.isFilled(.air, isActive: false))
+        #expect(!StatusChipAppearance.isFilled(.light, isActive: false))
+        #expect(StatusChipAppearance.isFilled(.presence, isActive: true))
+        #expect(!StatusChipAppearance.isFilled(.contact, isActive: false))
     }
 
     @Test func ventsFillOnlyWhileOpen() {
