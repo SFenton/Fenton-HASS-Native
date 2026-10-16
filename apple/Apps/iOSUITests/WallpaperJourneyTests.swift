@@ -13,11 +13,25 @@ import XCTest
 /// portrait like the iPhone. Skips without credentials.
 @MainActor
 final class WallpaperJourneyTests: JourneyTestCase {
-    /// WCAG relative luminance below which a sample is the plain base (`#111723` under 0.44 black is 0.004; the
-    /// fixture photo under the densest scrim, 0.64, is about 0.05).
-    private static let wallpaperFloor = 0.02
+    /// How far (0-255, per channel) a sample may sit from the plain base under the scrim and still count as plain.
+    private static let plainTolerance = 3
     /// Points in from the window's edge, clear of the antialiased rim.
     private static let edgeInset: CGFloat = 4
+    /// The base color's channels (`HouseBackdropStyle.base`, `#111723`).
+    private static let base = [17.0, 23.0, 35.0]
+    /// The scrim's black opacity by fraction of the window height (`HouseBackdropStyle.scrimStops`).
+    private static let scrim: [(location: Double, opacity: Double)] = [(0, 0.44), (0.28, 0.40), (0.50, 0.42), (0.75, 0.52), (1, 0.64)]
+
+    /// The plain base color under the scrim at `fraction` of the window's height: what shows where there is no photo.
+    private static func plain(atFraction fraction: Double) -> [Double] {
+        let f = min(max(fraction, 0), 1)
+        var opacity = scrim[scrim.count - 1].opacity
+        for (low, high) in zip(scrim, scrim.dropFirst()) where f <= high.location {
+            opacity = low.opacity + (high.opacity - low.opacity) * (f - low.location) / (high.location - low.location)
+            break
+        }
+        return base.map { $0 * (1 - opacity) }
+    }
 
     private func launch() throws -> XCUIApplication {
         // `nav.profile` is on every section root: the app reopens on the section the last run left (SceneStorage).
@@ -40,13 +54,20 @@ final class WallpaperJourneyTests: JourneyTestCase {
         ]
     }
 
-    /// The samples that show the plain base instead of the photo, with their luminance.
+    /// The samples that show the plain base (the fixture photo is far brighter, so only a dark page element, such as a
+    /// full-bleed recipe photo, could come close, and it would not match the base to within a few levels), with their
+    /// color.
     private func uncovered(in app: XCUIApplication) -> [String] {
         let window = app.windows.firstMatch.frame
         guard let capture = RenderedContrast.Capture.screen() else { return ["no capture"] }
         return samplePoints(of: window).compactMap { name, point in
-            guard let luminance = RenderedContrast.luminance(at: point, in: capture) else { return "\(name) off the capture" }
-            return luminance < Self.wallpaperFloor ? "\(name) \(String(format: "%.4f", luminance))" : nil
+            let x = Int(point.x * capture.scale), y = Int(point.y * capture.scale)
+            guard x >= 0, y >= 0, x < capture.width, y < capture.height else { return "\(name) off the capture" }
+            let i = (y * capture.width + x) * 4
+            let pixel = [Double(capture.pixels[i]), Double(capture.pixels[i + 1]), Double(capture.pixels[i + 2])]
+            let expected = Self.plain(atFraction: (point.y - window.minY) / window.height)
+            let isPlain = zip(pixel, expected).allSatisfy { abs($0 - $1) <= Double(Self.plainTolerance) }
+            return isPlain ? "\(name) rgb \(pixel.map { Int($0) })" : nil
         }
     }
 
@@ -95,15 +116,20 @@ final class WallpaperJourneyTests: JourneyTestCase {
         sleep(1)
     }
 
-    /// Drags the page down repeatedly so its top is showing.
-    private func scrollToTop(_ app: XCUIApplication) {
-        let window = app.windows.firstMatch
-        for _ in 0..<10 {
-            let from = window.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.2))
-            from.press(forDuration: 0.05, thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.85)),
-                       withVelocity: .fast, thenHoldForDuration: 0)
+    /// Back: the bar's back button, which the folded iPhone Duo moves to its rail.
+    private func goBack(in app: XCUIApplication) {
+        let back = app.buttons["BackButton"].firstMatch
+        if back.exists { back.tap() } else { app.navigationBars.buttons.element(boundBy: 0).tap() }
+    }
+
+    /// Backs out of a page pushed over Quick Links until its tiles show again.
+    private func backToQuickLinks(in app: XCUIApplication) {
+        let tiles = element("quickLinks.rooms", in: app)
+        for _ in 0..<4 where !(tiles.exists && tiles.isHittable) {
+            goBack(in: app)
+            sleep(1)
         }
-        sleep(1)
+        XCTAssertTrue(tiles.waitForExistence(timeout: 10), "Back did not return to Quick Links")
     }
 
     /// Scrolls until `target` can be tapped, then taps it.
@@ -153,6 +179,8 @@ final class WallpaperJourneyTests: JourneyTestCase {
         assertCovered(app, "todo-list")
         scrollToBottom(app)
         assertCovered(app, "todo-list-bottom")
+        goBack(in: app) // A pushed page has no menu or tab to leave through on regular width.
+        XCTAssertTrue(app.navigationBars["Chores"].waitForExistence(timeout: 10), "Back did not return to Chores")
         openHome(in: app)
 
         openQuickLinks(in: app)
@@ -167,17 +195,17 @@ final class WallpaperJourneyTests: JourneyTestCase {
         assertCovered(app, "room")
         scrollToBottom(app)
         assertCovered(app, "room-bottom")
+        // Back out to the tiles rather than reopening Quick Links from the bar: the folded Duo's vertical bar was not
+        // reachable from a pushed page that had been scrolled.
         for (page, scroll) in [("food", "food.scroll"), ("media", "media.scroll")] {
-            // A tab bar that tucked away while the page scrolled comes back at the top.
-            scrollToTop(app)
-            openQuickLinks(in: app)
+            backToQuickLinks(in: app)
             tap("quickLinks.\(page)", in: app)
             XCTAssertTrue(element(scroll, in: app).waitForExistence(timeout: 15), "\(page) did not open")
             assertCovered(app, page)
             scrollToBottom(app)
             assertCovered(app, "\(page)-bottom")
         }
-        scrollToTop(app)
+        backToQuickLinks(in: app)
         openHome(in: app)
     }
 
