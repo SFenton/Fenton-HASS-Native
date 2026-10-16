@@ -140,6 +140,50 @@ final class FastScrollPerformanceTests: XCTestCase {
     func testFlickSprinklers() throws { try measureFlicks("Sprinklers") }
     func testFlickAdminSettings() throws { try measureFlicks("Admin settings") }
 
+    // MARK: - Chip rail (sideways)
+
+    private static let chipRailPage = Page(name: "Chip rail", scrollId: "perf.chips", gallery: "performance",
+                                           environment: ["FENTON_GALLERY_PERF": "chips"])
+
+    /// Fast swipes along the rail and back, the way a person looks for the chip they want.
+    private func swipeRail(_ rail: XCUIElement, times: Int = 4) {
+        for _ in 0..<times {
+            rail.swipeLeft(velocity: .fast)
+            rail.swipeRight(velocity: .fast)
+        }
+    }
+
+    /// The rail scrolls sideways (the first chip moves off its start) and swipes in both directions leave the page standing.
+    func testChipRailSwipesWithoutLosingContent() throws {
+        let (app, _) = launch(Self.chipRailPage)
+        let rail = app.descendants(matching: .any)["chipRail.scroll"].firstMatch
+        XCTAssertTrue(rail.waitForExistence(timeout: 10), "The chip rail did not open")
+        let first = app.buttons["home.chip.lights"]
+        let startX = first.frame.minX
+        rail.swipeLeft(velocity: .fast)
+        XCTAssertLessThan(first.frame.minX, startX, "The rail did not scroll sideways")
+        swipeRail(rail, times: 2)
+        XCTAssertEqual(app.state, .runningForeground, "The app crashed while swiping the rail")
+        XCTAssertTrue(first.exists, "The chips vanished after swiping")
+    }
+
+    /// Hitch ratio, deceleration and CPU for fast sideways swipes of Home's six-chip rail over a page of 120 tiles
+    /// (owner, 2026-10-16: "horizontal scrolling on status chips in pages is stutter[y]"). Set a baseline per device in
+    /// Xcode's report; `.agents/testing/apple/performance.md` has the simulator profile that finds the cause.
+    func testSwipeChipRail() throws {
+        try requireMeasurableDevice()
+        let (app, _) = launch(Self.chipRailPage)
+        let rail = app.descendants(matching: .any)["chipRail.scroll"].firstMatch
+        XCTAssertTrue(rail.waitForExistence(timeout: 10), "The chip rail did not open")
+        swipeRail(rail, times: 2)
+        let options = XCTMeasureOptions()
+        options.iterationCount = 5
+        var railMetrics = metrics
+        // The app-wide hitch time ratio over the whole swipe sequence (iOS 26 and later).
+        if #available(iOS 26, *) { railMetrics.append(XCTHitchMetric(application: app)) }
+        measure(metrics: railMetrics, options: options) { swipeRail(rail) }
+    }
+
     // MARK: - Live server (physical device)
 
     /// Tab pages on the live server: real entity counts, with live updates arriving while the page scrolls.
