@@ -34,8 +34,13 @@ struct FeedbackFormSheet: View {
 
     /// Creates an empty form.
     init(kind: FeedbackKind, services: FeedbackServices) {
+        self.init(kind: kind, model: FeedbackFormModel(kind: kind, services: services))
+    }
+
+    /// Creates the form over an existing model (tests drive the model while the sheet is on screen).
+    init(kind: FeedbackKind, model: FeedbackFormModel) {
         self.kind = kind
-        _model = State(initialValue: FeedbackFormModel(kind: kind, services: services))
+        _model = State(initialValue: model)
     }
 
     var body: some View {
