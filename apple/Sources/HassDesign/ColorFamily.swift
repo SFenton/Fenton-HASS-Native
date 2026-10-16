@@ -115,11 +115,18 @@ public enum ColorFamily: String, CaseIterable, Sendable {
 
     /// Glyph colour on the surface it is drawn on: the dark value on pages and dark sheets, ``glyphLightRGB`` in a light
     /// sheet. Not for a fixed fill (a filled button, a chip): use `Color(rgb: spec.glyph)` there.
-    public var glyph: Color { Color.adaptive(light: glyphLightRGB, dark: spec.glyph) }
+    public var glyph: Color { Self.adaptiveGlyphs[self] ?? .gray }
 
     /// Glyph colour on an off tile: the family colour mixed 72% with grey, so the kind of device stays visible without
     /// reading as on. Adapts like ``glyph``.
-    public var offGlyph: Color { Color.adaptive(light: offGlyphRGB(.light), dark: offGlyphRGB(.dark)) }
+    public var offGlyph: Color { Self.adaptiveOffGlyphs[self] ?? .gray }
+
+    /// Built once per family: a dynamic colour is a new object each time it is made, so views and tests that compare
+    /// two reads of ``glyph`` need the same instance.
+    private static let adaptiveGlyphs: [ColorFamily: Color] = Dictionary(
+        uniqueKeysWithValues: allCases.map { ($0, Color.adaptive(light: $0.glyphLightRGB, dark: $0.spec.glyph)) })
+    private static let adaptiveOffGlyphs: [ColorFamily: Color] = Dictionary(
+        uniqueKeysWithValues: allCases.map { ($0, Color.adaptive(light: $0.offGlyphRGB(.light), dark: $0.offGlyphRGB(.dark))) })
 
     /// The on-tile fill, or nil when the family is never filled.
     public var fill: Color? { spec.fill.map { Color(rgb: $0) } }
