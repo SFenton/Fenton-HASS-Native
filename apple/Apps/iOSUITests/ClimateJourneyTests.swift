@@ -369,7 +369,7 @@ final class ClimateJourneyTests: XCTestCase {
         }
         reveal(element("climate.entry.rooms", in: app), in: app).tap()
         XCTAssertTrue(element("climate.sheet.rooms", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(value(reveal(element("climate.room.office", in: app), in: app)).contains("°F · "))
+        XCTAssertTrue(value(reveal(element("climate.room.office", in: app), in: app)).contains("°F\n"))
     }
 
     private func openClimateTab(_ app: XCUIApplication) {
