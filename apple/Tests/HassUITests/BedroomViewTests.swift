@@ -83,6 +83,19 @@ struct BedroomViewTests {
         #expect(BedDial.configuration(flash.bed(.right)).actionText == "Hot Flash")
     }
 
+    @Test func roomBedCardsReadTheSideNotTheClimateEntity() async {
+        let (devices, _) = devices(.default)
+        let card = RoomsConfig.page(id: "master-bedroom")!.allCards.first { $0.title == "Stephen's Bed" }!
+        let bed = RoomCardView.bed(card, in: devices)
+        #expect(bed?.config.side == .left)
+        #expect(RoomCardView.bed(card, in: nil) == nil, "Without the page's beds the card keeps the climate rule")
+        // Left at +3 heats: the room card fills, though the climate entity only says "heat".
+        #expect(bed.map(RoomCardView.face) == RoomTileFace(family: .heating, isActive: true))
+        devices.bed(.left).setPower(on: false)
+        await devices.bed(.left).waitForCalls()
+        #expect(bed.map(RoomCardView.face) == RoomTileFace(family: .heating, isActive: false))
+    }
+
     @Test func bedTilesKeepTheirFamilyWhenIdleOrOff() async {
         let (devices, _) = devices(.default)
         func face(_ side: BedSide) -> ThermostatTileFace {

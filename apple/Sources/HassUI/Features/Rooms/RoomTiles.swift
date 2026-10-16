@@ -30,8 +30,18 @@ struct RoomChip: View {
         let chip = controller.chip(card)
         let summary = ScreenshotPrivacy.isRedacting && card.kind == .occupancy ? "Hidden" : chip.summary
         StatusChipButton(title: chip.title, summary: summary, symbol: SymbolMap.symbol(for: chip.icon),
-                         family: card.kind.tone.family, isActive: chip.isActive, action: chip.opensSheet ? action : nil)
+                         family: card.kind.tone.family, isActive: Self.isFilled(card.kind.tone, isActive: chip.isActive),
+                         action: chip.opensSheet ? action : nil)
             .accessibilityIdentifier("room.chip.\(card.title)")
+    }
+
+    /// Whether the chip draws filled: Climate and Air Quality always, as on Home (``StatusRail/isFilled(_:family:isActive:)``;
+    /// direction G, Status chips: "Climate: always web navy"; mockup fc-room-master), the rest while active.
+    static func isFilled(_ tone: RoomTone, isActive: Bool) -> Bool {
+        switch tone {
+        case .climate, .air: true
+        default: isActive
+        }
     }
 }
 
@@ -45,16 +55,18 @@ struct RoomChip: View {
 struct RoomCardTile: View {
     var controller: RoomController
     var card: RoomCard
+    /// A device controller's own face and subtitle (a bed side reads its level and power, not the climate entity).
+    var device: (face: RoomTileFace, subtitle: String)? = nil
     var onOpen: () -> Void
     @Environment(\.householdViewer) private var viewer
 
     var body: some View {
         let display = controller.display(card, viewer: viewer)
-        let face = RoomTileFace.resolve(card, entity: controller.displayEntity(card), display: display,
-                                         running: controller.usesAlternate(card))
+        let face = device?.face ?? RoomTileFace.resolve(card, entity: controller.displayEntity(card), display: display,
+                                                         running: controller.usesAlternate(card))
         GlassTile(
             title: display.title,
-            subtitle: display.subtitle,
+            subtitle: device?.subtitle ?? display.subtitle,
             symbol: SymbolMap.symbol(for: card.icon),
             family: face.family,
             isActive: face.isActive,
@@ -87,6 +99,8 @@ struct RoomCardView: View {
     var card: RoomCard
     /// The page's shared controller when this card is a bathroom fan.
     var fan: BathroomFanController?
+    /// The page's beds, when its caller can read service responses.
+    var bedroom: BedroomDevices?
     var onOpen: () -> Void
     @Environment(HassConnection.self) private var connection: HassConnection?
 
@@ -99,9 +113,28 @@ struct RoomCardView: View {
             GarageDoorTile(tile: tile, liveState: controller.store.entity(card.entityId).state?.state,
                            caller: controller.caller, canSend: connection.map { SecurityScreen.canSend($0.status) } ?? true)
                 .accessibilityIdentifier("room.card.\(card.title)")
+        } else if let bed = Self.bed(card, in: bedroom) {
+            // A bed side's climate entity says "heat" whatever the pod is doing; its controller knows the level and
+            // power (the web's Eight Sleep tile), so the tile fills while the side is on.
+            EverySecond { now in
+                RoomCardTile(controller: controller, card: card,
+                             device: (Self.face(bed), bed.tileSubtitle(now: now)), onOpen: onOpen)
+            }
         } else {
             RoomCardTile(controller: controller, card: card, onOpen: onOpen)
         }
+    }
+
+    /// The bed side a card shows, when the page has its controllers.
+    static func bed(_ card: RoomCard, in bedroom: BedroomDevices?) -> BedSideController? {
+        guard let bedroom, let sheet = card.sheet, let side = MasterBedroom.bed(id: sheet)?.side else { return nil }
+        return bedroom.bed(side)
+    }
+
+    /// A bed side's tile face (``ThermostatTileFace/bedSide(action:level:isAvailable:)``).
+    static func face(_ bed: BedSideController) -> RoomTileFace {
+        let face = ThermostatTileFace.bedSide(action: bed.action, level: bed.displayedTarget, isAvailable: bed.sideAvailable)
+        return RoomTileFace(family: face.family, isActive: face.isActive && !bed.scope.readOnly)
     }
 
     /// The Security garage door tile for a garage card, keeping the card's title and icon.

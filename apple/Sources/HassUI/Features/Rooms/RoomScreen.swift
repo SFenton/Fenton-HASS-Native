@@ -123,7 +123,8 @@ struct RoomPageContent: View {
                         .gridSpan(count == 1 ? 2 : 1)
                 }
                 ForEach(visible) { section in
-                    RoomSectionView(controller: controller, section: section, imageServer: imageServer, fans: fans, onOpen: open)
+                    RoomSectionView(controller: controller, section: section, imageServer: imageServer, fans: fans, bedroom: bedroom,
+                                    onOpen: open)
                         .gridSpan(RoomSectionView.isFullWidth(section, sectionCount: count) ? 2 : 1)
                 }
             }
@@ -218,6 +219,8 @@ struct RoomSectionView: View {
     var section: RoomSection
     var imageServer: HassServer?
     var fans: [String: BathroomFanController] = [:]
+    /// The Master Bedroom's beds, so their cards read each side's level and power.
+    var bedroom: BedroomDevices?
     var onOpen: (RoomCard) -> Void
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
@@ -268,7 +271,7 @@ struct RoomSectionView: View {
     }
 
     private func card(_ card: RoomCard) -> some View {
-        RoomCardView(controller: controller, card: card, fan: fans[card.entityId]) { onOpen(card) }
+        RoomCardView(controller: controller, card: card, fan: fans[card.entityId], bedroom: bedroom) { onOpen(card) }
     }
 }
 
