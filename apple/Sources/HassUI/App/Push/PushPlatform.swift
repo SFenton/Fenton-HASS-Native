@@ -5,7 +5,7 @@ import Observation
 /// The system services the coordinator uses; the app supplies UIKit and UserNotifications, tests supply stubs.
 public struct PushPlatform: Sendable {
     /// This phone's registration facts.
-    public var device: @MainActor @Sendable () -> PushDevice
+    public var device: @MainActor @Sendable () -> MobileAppDevice
     /// Asks for alert, sound and badge permission (once; later calls return the stored answer).
     public var requestAuthorization: @Sendable () async -> Bool
     /// `UIApplication.registerForRemoteNotifications()`.
@@ -18,7 +18,7 @@ public struct PushPlatform: Sendable {
     public var openExternal: @MainActor @Sendable (URL) -> Void
 
     /// Creates a platform.
-    public init(device: @escaping @MainActor @Sendable () -> PushDevice,
+    public init(device: @escaping @MainActor @Sendable () -> MobileAppDevice,
                 requestAuthorization: @escaping @Sendable () async -> Bool,
                 registerForRemoteNotifications: @escaping @MainActor @Sendable () -> Void,
                 deliveredNotifications: @escaping @Sendable () async -> [DeliveredNotification],
@@ -34,7 +34,7 @@ public struct PushPlatform: Sendable {
 
     /// A platform that does nothing (previews, the debug gallery, and UI journeys that must not prompt).
     public static let inert = PushPlatform(
-        device: { PushDevice(marketingVersion: "0", build: "0", name: "Preview", model: "Preview", osVersion: "0",
+        device: { MobileAppDevice(marketingVersion: "0", build: "0", name: "Preview", model: "Preview", osVersion: "0",
                              deviceID: "preview", apnsEnvironment: .sandbox) },
         requestAuthorization: { false },
         registerForRemoteNotifications: {},

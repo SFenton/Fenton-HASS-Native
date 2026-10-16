@@ -24,8 +24,7 @@ public struct MobileAppWebhook: Equatable, Sendable {
 /// Supplies the current registration's webhook, or nil when this phone is not registered (signed out, or the
 /// registration has not run yet).
 ///
-/// The shared `mobile_app` registrar implements it over the registration store once registration moves out of
-/// push (plan Phase 1); until then only tests and the debug gallery do.
+/// The app's source is the registration store (``MobileAppRegistrationStore``), kept by ``MobileAppRegistrar``.
 public protocol MobileAppWebhookSource: Sendable {
     /// The webhook to send to now, or nil.
     func currentWebhook() async -> MobileAppWebhook?

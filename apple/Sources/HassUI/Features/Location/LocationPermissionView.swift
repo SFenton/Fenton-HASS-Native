@@ -14,6 +14,7 @@ import UIKit
 /// modal pattern; the status stages (Always, Off, Approximate) keep Close.
 public struct LocationPermissionView<Footer: View>: View {
     private let permission: LocationPermission
+    private let canAskForAlways: Bool
     private let onRequestPermission: () -> Void
     private let onOpenSettings: (() -> Void)?
     private let onClose: () -> Void
@@ -25,22 +26,25 @@ public struct LocationPermissionView<Footer: View>: View {
     /// Creates the screen.
     /// - Parameters:
     ///   - permission: The current permission; the screen follows it as it changes.
+    ///   - canAskForAlways: Whether iOS will still show the Always alert (it shows it once); when not, While Using
+    ///     offers Settings and Close.
     ///   - onRequestPermission: Shows the next system alert (``LocationReporter/requestPermission()``).
     ///   - onOpenSettings: Opens Settings; nil opens the app's Settings page.
     ///   - onClose: Dismisses the screen.
     ///   - footer: Content under the action (the debug gallery's last-action line), inside the screen's scroll
     ///     content because an inset added outside the navigation stack would cover it.
-    public init(permission: LocationPermission, onRequestPermission: @escaping () -> Void,
+    public init(permission: LocationPermission, canAskForAlways: Bool = true, onRequestPermission: @escaping () -> Void,
                 onOpenSettings: (() -> Void)? = nil, onClose: @escaping () -> Void,
                 @ViewBuilder footer: () -> Footer) {
         self.permission = permission
+        self.canAskForAlways = canAskForAlways
         self.onRequestPermission = onRequestPermission
         self.onOpenSettings = onOpenSettings
         self.onClose = onClose
         self.footer = footer()
     }
 
-    private var copy: LocationPermissionCopy { LocationPermissionCopy(stage: permission.stage) }
+    private var copy: LocationPermissionCopy { LocationPermissionCopy(stage: permission.stage, canAskForAlways: canAskForAlways) }
 
     public var body: some View {
         NavigationStack {
@@ -161,10 +165,10 @@ public struct LocationPermissionView<Footer: View>: View {
 
 public extension LocationPermissionView where Footer == EmptyView {
     /// Creates the screen with nothing under the action.
-    init(permission: LocationPermission, onRequestPermission: @escaping () -> Void,
+    init(permission: LocationPermission, canAskForAlways: Bool = true, onRequestPermission: @escaping () -> Void,
          onOpenSettings: (() -> Void)? = nil, onClose: @escaping () -> Void) {
-        self.init(permission: permission, onRequestPermission: onRequestPermission, onOpenSettings: onOpenSettings,
-                  onClose: onClose) { EmptyView() }
+        self.init(permission: permission, canAskForAlways: canAskForAlways, onRequestPermission: onRequestPermission,
+                  onOpenSettings: onOpenSettings, onClose: onClose) { EmptyView() }
     }
 }
 

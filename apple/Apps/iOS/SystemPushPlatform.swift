@@ -27,14 +27,14 @@ extension PushPlatform {
 /// This phone's registration facts (contract v1, rule 2).
 enum SystemDevice {
     @MainActor
-    static func current(bundle: Bundle = .main) -> PushDevice {
+    static func current(bundle: Bundle = .main) -> MobileAppDevice {
         #if targetEnvironment(simulator)
         let isSimulator = true
         #else
         let isSimulator = false
         #endif
         let profile = bundle.url(forResource: "embedded", withExtension: "mobileprovision").flatMap { try? Data(contentsOf: $0) }
-        return PushDevice(
+        return MobileAppDevice(
             marketingVersion: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
             build: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0",
             name: UIDevice.current.name,

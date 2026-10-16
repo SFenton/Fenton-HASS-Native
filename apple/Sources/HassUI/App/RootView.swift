@@ -30,6 +30,8 @@ public struct RootView: View {
                         .environment(connection.store)
                         .environment(session)
                         .environment(session.push)
+                        .environment(session.location)
+                        .locationReporting(session.location)
                         .environment(session.backdrop)
                         .task { await session.backdrop?.refresh() }
                         .readsWindowHinge()

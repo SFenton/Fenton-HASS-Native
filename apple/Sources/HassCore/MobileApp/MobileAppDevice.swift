@@ -1,7 +1,7 @@
 import Foundation
 
 /// The device facts `mobile_app` registration sends (contract v1, rule 2).
-public struct PushDevice: Equatable, Sendable {
+public struct MobileAppDevice: Equatable, Sendable {
     /// `app_version`: `"<marketing> (<build>)"`.
     public var appVersion: String
     /// `device_name`, already carrying ``PushApp/deviceNameSuffix``.
@@ -44,7 +44,7 @@ public struct PushDevice: Equatable, Sendable {
     /// register as "iPhone · Fenton" and get `notify.mobile_app_iphone_fenton` and `…_2`. With the user's first name
     /// they read "Stephen's iPhone · Fenton". A name the person chose (with the entitlement) is kept.
     /// - Parameter userName: The Home Assistant user's display name.
-    public func owned(by userName: String?) -> PushDevice {
+    public func owned(by userName: String?) -> MobileAppDevice {
         let first = userName?.split(separator: " ").first.map(String.init) ?? ""
         guard !first.isEmpty, Self.genericNames.contains(baseName) else { return self }
         var device = self
