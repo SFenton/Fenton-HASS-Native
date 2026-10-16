@@ -35,6 +35,11 @@ final class RoomDevicesJourneyTests: XCTestCase {
         app.descendants(matching: .any)[id].firstMatch
     }
 
+    /// One option of a segmented choice (`SegmentedChoice`), found by its control and title.
+    private func segment(_ control: String, _ title: String, in app: XCUIApplication) -> XCUIElement {
+        app.segmentedControls[control].buttons[title].firstMatch
+    }
+
     private func expectCall(_ expected: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let label = app.staticTexts["gallery.lastCall"].firstMatch
         let matched = label.wait(for: \.label, toEqual: "Last call: \(expected)", timeout: 10)
@@ -102,19 +107,19 @@ final class RoomDevicesJourneyTests: XCTestCase {
 
     // MARK: - Air quality
 
-    /// Modes are selectable; Auto shows its sub-modes and Manual its speeds.
+    /// Modes are segmented choices; Auto shows its sub-modes and Manual its speeds.
     func testPurifierModesAndSpeeds() {
-        let app = launch("purifier-manual", ready: "purifier.mode.Manual")
-        XCTAssertTrue(element("purifier.mode.Manual", in: app).isSelected)
-        XCTAssertTrue(element("purifier.speed.Medium", in: app).isSelected)
-        XCTAssertFalse(element("purifier.auto.Quiet", in: app).exists)
-        element("purifier.speed.High", in: app).tap()
+        let app = launch("purifier-manual", ready: "purifier.mode")
+        XCTAssertTrue(segment("purifier.mode", "Manual", in: app).isSelected)
+        XCTAssertTrue(segment("purifier.speed", "Medium", in: app).isSelected)
+        XCTAssertFalse(element("purifier.auto", in: app).exists)
+        segment("purifier.speed", "High", in: app).tap()
         expectCall("fan.set_percentage entity_id=fan.living_room_air_purifier_levoit_purifier percentage=100", in: app)
-        element("purifier.mode.Auto", in: app).tap()
+        segment("purifier.mode", "Auto", in: app).tap()
         expectCall("select.select_option entity_id=select.living_room_air_purifier_fan_mode option=Auto", in: app)
-        let quiet = element("purifier.auto.Quiet", in: app)
+        let quiet = segment("purifier.auto", "Quiet", in: app)
         XCTAssertTrue(quiet.waitForExistence(timeout: 5))
-        XCTAssertFalse(element("purifier.speed.High", in: app).exists)
+        XCTAssertFalse(element("purifier.speed", in: app).exists)
         quiet.tap()
         expectCall("select.select_option entity_id=select.living_room_air_purifier_auto_mode option=Quiet", in: app)
         XCTAssertTrue(quiet.wait(for: \.isSelected, toEqual: true, timeout: 5))
@@ -145,11 +150,11 @@ final class RoomDevicesJourneyTests: XCTestCase {
         XCTAssertEqual(handle.label, "Mist level")
         XCTAssertEqual(handle.value as? String, "5")
         assertTarget(handle)
-        let high = element("humidifier.mist.High", in: app)
+        let high = segment("humidifier.mist", "High", in: app)
         reveal(high, in: app)
         high.tap()
         expectCall("script.master_bedroom_humidifier_set_level level=8", in: app)
-        let warm = element("humidifier.warm.High", in: app)
+        let warm = segment("humidifier.warm", "High", in: app)
         reveal(warm, in: app)
         warm.tap()
         expectCall("number.set_value entity_id=number.lv600s_humidifier_warm_level value=3", in: app)
@@ -169,7 +174,7 @@ final class RoomDevicesJourneyTests: XCTestCase {
         let app = launch("humidifier-fault", ready: "humidifier.power")
         XCTAssertFalse(element("thermostatDial.handle.target", in: app).exists, "Read-only while faulted")
         XCTAssertTrue(app.staticTexts["Reinsert the water tank to restore controls."].exists)
-        XCTAssertFalse(element("humidifier.mode.Sleep", in: app).isEnabled)
+        XCTAssertFalse(segment("humidifier.mode", "Sleep", in: app).isEnabled)
     }
 
     /// Schedules list the activities; editing one and saving writes the helper.
@@ -206,7 +211,8 @@ final class RoomDevicesJourneyTests: XCTestCase {
             XCUIDevice.shared.orientation = .landscapeLeft
             app = launch("humidifier", ready: "humidifier.power")
             XCTAssertTrue(element("humidifier.layout.twoColumn", in: app).waitForExistence(timeout: 5), "iPad landscape splits")
-            XCTAssertLessThan(element("humidifier.power", in: app).frame.maxX, app.segmentedControls["humidifier.tabs"].frame.minX)
+            // The hero leads; the tab's controls trail (the section bar runs along the bottom of both).
+            XCTAssertLessThan(element("humidifier.power", in: app).frame.maxX, app.segmentedControls["humidifier.mode"].frame.minX)
             return
         }
         let app = launch("humidifier", ready: "humidifier.power")
@@ -230,7 +236,7 @@ final class RoomDevicesJourneyTests: XCTestCase {
     }
 
     func testFanPassesAudit() throws { try audit("fan-master", ready: "fan.power") }
-    func testPurifierPassesAudit() throws { try audit("purifier-auto", ready: "purifier.mode.Auto") }
+    func testPurifierPassesAudit() throws { try audit("purifier-auto", ready: "purifier.mode") }
     // The header, not a card: at AX5 the cards start below the folded iPhone Duo's fold.
     func testGrillPassesAudit() throws { try audit("grill", ready: "grill.header") }
     func testHumidifierControlsPassAudit() throws { try audit("humidifier", ready: "humidifier.power") }
@@ -249,7 +255,7 @@ final class RoomDevicesJourneyTests: XCTestCase {
 
     /// Every sheet in the current pose (iPad: both orientations), named `device-<fixture>-<tab>-<orientation>`.
     func testCaptureDeviceScreens() {
-        let shots = [("fan-master", "fan.power", "controls"), ("purifier-auto", "purifier.mode.Auto", "controls"),
+        let shots = [("fan-master", "fan.power", "controls"), ("purifier-auto", "purifier.mode", "controls"),
                      ("grill", "grill.header", "controls"), ("humidifier", "humidifier.power", "controls"),
                      ("humidifier", "humidifier.power", "schedules"), ("humidifier", "humidifier.power", "info"),
                      ("humidifier-fault", "humidifier.power", "controls")]

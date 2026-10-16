@@ -146,16 +146,23 @@ public final class RoomController {
         return entity
     }
 
+    /// Whether the card shows its alternate entity now (the dishwasher's progress while it runs).
+    public func usesAlternate(_ card: RoomCard) -> Bool {
+        guard let alternate = card.alternate, let gate = entity(alternate.whenEntityId) else { return false }
+        return alternate.whenStates.contains(gate.state)
+    }
+
+    /// The entity a card shows now: its alternate while that applies, else its own.
+    public func displayEntity(_ card: RoomCard) -> EntityState? {
+        entity(usesAlternate(card) ? card.alternate!.entityId : card.entityId)
+    }
+
     /// How a card shows for `viewer`.
     public func display(_ card: RoomCard, viewer: HouseholdResident? = nil) -> RoomCardDisplay {
-        var useAlternate = false
-        if let alternate = card.alternate, let gate = entity(alternate.whenEntityId) {
-            useAlternate = alternate.whenStates.contains(gate.state)
-        }
-        let entityId = useAlternate ? card.alternate!.entityId : card.entityId
+        let useAlternate = usesAlternate(card)
         let showState = useAlternate ? card.alternate!.showState : card.showState
         let subtitleIds = useAlternate ? card.alternate!.subtitleEntityIds : card.subtitleEntityIds
-        let entity = entity(entityId)
+        let entity = displayEntity(card)
 
         let unavailable = RoomFormat.isUnavailable(entity)
         let disabledByState = entity.map { card.disabledStates.contains($0.state) } ?? false

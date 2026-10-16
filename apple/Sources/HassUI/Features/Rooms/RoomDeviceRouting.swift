@@ -109,7 +109,7 @@ struct BathroomFanRoomTile: View {
             title: card.title,
             subtitle: fan.powerStateText,
             symbol: SymbolMap.symbol(for: card.icon),
-            tint: RoomTone.power.color,
+            family: .air,
             isActive: fan.powerAvailable && fan.powerOn,
             kind: .navigate,
             action: onOpen
@@ -125,14 +125,17 @@ struct BathroomFanRoomTile: View {
         .tileIdentifier("room.card.\(card.title)")
     }
 
+    /// A round toggle on the tile. White on the fan's filled air tile, the air glyph colour while off; the circle is
+    /// the hairline white so it reads on both faces without a material layer per tile (direction G, Layers).
     private func accessory(_ label: String, symbol: String, isOn: Bool, isAvailable: Bool, id: String,
                            action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        let tileIsFilled = fan.powerAvailable && fan.powerOn
+        return Button(action: action) {
             Image(systemName: symbol)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(isOn ? RoomTone.power.color : HassTokens.Ink.secondary)
+                .foregroundStyle(tileIsFilled ? ColorFamily.air.ink : (isOn ? ColorFamily.air.glyph : HassTokens.Surface.secondaryOnModule))
                 .frame(width: HassTokens.minTarget, height: HassTokens.minTarget)
-                .background(.thinMaterial, in: Circle())
+                .background(HassTokens.Surface.separator, in: Circle())
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

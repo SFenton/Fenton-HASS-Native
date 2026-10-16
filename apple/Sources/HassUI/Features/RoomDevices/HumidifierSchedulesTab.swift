@@ -24,7 +24,7 @@ struct HumidifierSchedulesTab: View {
                 .foregroundStyle(HassTokens.Ink.primary)
                 .disabled(schedules.toggleDisabled)
                 .padding(HassTokens.Spacing.m)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+                .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
                 .accessibilityIdentifier("humidifier.scheduling")
                 Text("Schedules run on Home Assistant. Manual changes last until the next activity or restart/reconnect recovery.")
                     .font(.footnote)
@@ -52,14 +52,11 @@ struct HumidifierSchedulesTab: View {
             }
 
             if schedules.canEdit {
+                // The tab's one primary action (direction G, Controls: Primary buttons).
                 Button(action: onAdd) {
-                    // Primary ink: system blue on the bordered fill measured 2.1:1 on the iPad sheet.
                     Label("Add Scheduled Activity", systemImage: "plus")
-                        .foregroundStyle(HassTokens.Ink.primary)
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(schedules.loading || schedules.saving || !schedules.ready)
                 .accessibilityIdentifier("humidifier.addActivity")
             } else {
@@ -81,7 +78,7 @@ struct HumidifierSchedulesTab: View {
                         .foregroundStyle(HassTokens.Ink.secondary)
                     Text(HumidifierSchedule.profileSummary(rule) + (running ? " • Active now" : ""))
                         .font(.footnote)
-                        .foregroundStyle(running ? Color(RoomDeviceStyle.humidifierTint) : HassTokens.Ink.secondary)
+                        .foregroundStyle(running ? ColorFamily.water.glyph : HassTokens.Ink.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .multilineTextAlignment(.leading)
@@ -89,10 +86,10 @@ struct HumidifierSchedulesTab: View {
             }
             .padding(HassTokens.Spacing.m)
             .frame(minHeight: HassTokens.minTarget)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+            .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
-                    .strokeBorder(running ? Color(RoomDeviceStyle.humidifierTint) : .clear, lineWidth: 1)
+                    .strokeBorder(running ? ColorFamily.water.glyph : .clear, lineWidth: 1)
             }
             .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
         }
@@ -221,16 +218,9 @@ struct HumidifierActivityEditor: View {
                 }
             }
             DeviceSection(title: "Warm Mist") {
-                DeviceTileGrid {
-                    ForEach(HumidifierConfig.warmLevels) { level in
-                        RemoteGlassTile(title: level.title, symbol: SymbolMap.symbol(for: level.icon), tint: RoomDeviceStyle.mode,
-                                        isActive: draft.warmLevel == level.value, isDisabled: false,
-                                        semantics: .selection(isSelected: draft.warmLevel == level.value)) {
-                            draft.warmLevel = level.value
-                        }
-                        .accessibilityIdentifier("activity.warm.\(level.title)")
-                    }
-                }
+                SegmentedChoice(label: "Warm mist", options: HumidifierConfig.warmLevels, title: \.title,
+                                selection: HumidifierConfig.warmLevels.first(where: { $0.value == draft.warmLevel }),
+                                identifier: "activity.warm") { draft.warmLevel = $0.value }
             }
             DeviceSection(title: "Display") {
                 Toggle(isOn: $draft.display) { Label("Display", systemImage: "display") }

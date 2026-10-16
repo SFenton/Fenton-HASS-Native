@@ -33,20 +33,20 @@ public struct AirPurifierSheet: View {
     }
 }
 
-/// The purifier's sections.
+/// The purifier's sections: each a short single choice (direction G, Controls: Choosing one option).
 struct AirPurifierControls: View {
     var controller: AirPurifierController
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-            section("Fan Modes", options: AirPurifierController.fanModes, selected: controller.mode,
+            section("Fan Mode", options: AirPurifierController.fanModes, selected: controller.mode,
                     disabled: controller.modeUnavailable, id: "mode", select: controller.selectMode)
             if controller.showsAutoModes {
-                section("Auto Modes", options: AirPurifierController.autoModes, selected: controller.autoMode,
+                section("Auto Mode", options: AirPurifierController.autoModes, selected: controller.autoMode,
                         disabled: controller.autoModeUnavailable, id: "auto", select: controller.selectAutoMode)
             }
             if controller.showsSpeeds {
-                section("Manual Modes", options: AirPurifierController.speeds, selected: controller.percentage,
+                section("Fan Speed", options: AirPurifierController.speeds, selected: controller.percentage,
                         disabled: controller.fanUnavailable, id: "speed", select: controller.selectSpeed)
             }
         }
@@ -57,17 +57,9 @@ struct AirPurifierControls: View {
     private func section(_ title: String, options: [AirPurifierController.Option], selected: String?, disabled: Bool,
                          id: String, select: @escaping (AirPurifierController.Option) -> Void) -> some View {
         DeviceSection(title: title) {
-            DeviceTileGrid(maxColumns: options.count) {
-                ForEach(options) { option in
-                    let isSelected = selected == option.value
-                    RemoteGlassTile(title: option.title, symbol: SymbolMap.symbol(for: option.icon), tint: RoomDeviceStyle.mode,
-                                    isActive: isSelected && !disabled, isDisabled: disabled,
-                                    semantics: .selection(isSelected: isSelected)) {
-                        select(option)
-                    }
-                    .accessibilityIdentifier("purifier.\(id).\(option.title)")
-                }
-            }
+            SegmentedChoice(label: title, options: options, title: \.title,
+                            selection: options.first(where: { $0.value == selected }), identifier: "purifier.\(id)", select: select)
+                .disabled(disabled)
         }
     }
 }
@@ -102,7 +94,7 @@ public struct GrillSheet: View {
     }
 }
 
-/// The grill's header and cards.
+/// The grill's header and cards: the cooking family (direction G, Colour families: Cooking).
 struct GrillControls: View {
     var controller: GrillController
 
@@ -111,9 +103,9 @@ struct GrillControls: View {
             HStack(spacing: HassTokens.Spacing.m) {
                 Image(systemName: "flame.fill")
                     .font(.title2)
-                    .foregroundStyle(controller.isOff ? HassTokens.Ink.secondary : RoomDeviceStyle.grill)
+                    .foregroundStyle(controller.isOff ? HassTokens.Surface.secondaryInSheet : ColorFamily.cooking.ink)
                     .frame(width: HassTokens.minTarget, height: HassTokens.minTarget)
-                    .background(.regularMaterial, in: Circle())
+                    .background(controller.isOff ? HassTokens.Surface.sheetCell : ColorFamily.cooking.fill ?? .clear, in: Circle())
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(controller.config.title).font(.headline).foregroundStyle(HassTokens.Ink.primary)
@@ -126,9 +118,9 @@ struct GrillControls: View {
             DeviceTileGrid(maxColumns: 2) {
                 ForEach(controller.config.details) { detail in
                     let display = controller.display(detail)
-                    RemoteGlassTile(title: detail.title, subtitle: display.value, symbol: SymbolMap.symbol(for: detail.icon),
-                                    tint: RoomDeviceStyle.grill, isActive: display.isActive, isDisabled: display.isUnavailable,
-                                    semantics: detail.isSwitch ? .toggle(isOn: display.isActive) : .state) {
+                    GlassTile(title: detail.title, subtitle: display.value, symbol: SymbolMap.symbol(for: detail.icon),
+                              family: .cooking, isActive: display.isActive, isUnavailable: display.isUnavailable,
+                              kind: detail.isSwitch ? .toggle : .state) {
                         controller.toggle(detail)
                     }
                     .accessibilityIdentifier("grill.\(detail.title)")

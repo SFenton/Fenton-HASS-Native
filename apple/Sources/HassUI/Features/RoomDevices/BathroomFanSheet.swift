@@ -39,16 +39,16 @@ struct BathroomFanControls: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
+            // Both switches belong to the fan, so both use its air family (direction G, Colour families).
             DeviceTileGrid(maxColumns: 2) {
-                RemoteGlassTile(title: "Power", subtitle: controller.powerStateText, symbol: "power",
-                                tint: HassTokens.Tint.presence, isActive: controller.powerOn && controller.powerAvailable,
-                                isDisabled: !controller.powerAvailable, semantics: .toggle(isOn: controller.powerOn)) {
+                GlassTile(title: "Power", subtitle: controller.powerStateText, symbol: "power", family: .air,
+                          isActive: controller.powerOn && controller.powerAvailable, isUnavailable: !controller.powerAvailable) {
                     controller.setPower(!controller.powerOn)
                 }
                 .accessibilityIdentifier("fan.power")
-                RemoteGlassTile(title: "Lock", subtitle: controller.lockStateText, symbol: controller.locked ? "lock.fill" : "lock.open",
-                                tint: HassTokens.Tint.security, isActive: controller.locked && controller.lockAvailable,
-                                isDisabled: !controller.lockAvailable, semantics: .toggle(isOn: controller.locked)) {
+                GlassTile(title: "Lock", subtitle: controller.lockStateText, symbol: controller.locked ? "lock.fill" : "lock.open",
+                          family: .air, isActive: controller.locked && controller.lockAvailable,
+                          isUnavailable: !controller.lockAvailable) {
                     controller.setLocked(!controller.locked)
                 }
                 .accessibilityIdentifier("fan.lock")
@@ -73,12 +73,10 @@ struct BathroomFanControls: View {
         }
     }
 
-    /// Duration menu and Set (web `SelectActionField`).
+    /// Duration menu, then Set as the sheet's one primary button (web `SelectActionField`; direction G, Controls:
+    /// Primary buttons).
     private var timerPicker: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: HassTokens.Spacing.m) { durationMenu; Spacer(minLength: 0); setButton }
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.m) { durationMenu; setButton }
-        }
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) { durationMenu; setButton }
     }
 
     private var durationMenu: some View {
@@ -93,11 +91,9 @@ struct BathroomFanControls: View {
     }
 
     private var setButton: some View {
-        Button("Set") { controller.startTimer() }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+        Button("Set Timer") { controller.startTimer() }
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(!controller.canStartTimer)
-            .accessibilityLabel("Set timer")
             .accessibilityIdentifier("fan.setTimer")
     }
 
@@ -118,9 +114,15 @@ struct BathroomFanControls: View {
                 .accessibilityValue(remaining.map(Self.spokenRemaining) ?? "Unavailable")
                 .accessibilityIdentifier("fan.remaining")
                 Spacer(minLength: 0)
-                Button("Clear", role: .destructive) { controller.cancelTimer() }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                // Destructive text, as in a list row (direction G, Colour: destructive `#FF6961`).
+                Button(role: .destructive) { controller.cancelTimer() } label: {
+                    // The frame and shape sit inside the label so the whole 44 pt target takes the tap.
+                    Text("Clear")
+                        .foregroundStyle(HassTokens.Ink.danger)
+                        .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
                     .disabled(!controller.timerAvailable)
                     .accessibilityLabel("Clear timer")
                     .accessibilityIdentifier("fan.clearTimer")

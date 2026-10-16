@@ -27,8 +27,9 @@ enum HumidifierLayout {
     }
 }
 
-/// The humidifier sheet (web `HumidifierModal`): a mist dial with power, and Controls, Schedules and Info tabs.
-/// Scheduled activities are edited on a pushed page inside the sheet, like the web's in-sheet detail page.
+/// The humidifier sheet (web `HumidifierModal`): a mist dial with power, and Controls, Schedules and Info tabs in the
+/// bottom section bar (direction G, Sheets). Scheduled activities are edited on a pushed page inside the sheet, like
+/// the web's in-sheet detail page.
 public struct HumidifierSheet: View {
     @State private var controller: HumidifierController
     @State private var schedules: HumidifierScheduleController
@@ -86,6 +87,8 @@ public struct HumidifierSheet: View {
                 .accessibilityIdentifier(twoColumns ? "humidifier.layout.twoColumn" : "humidifier.layout.singleColumn")
             }
             .background { WindowMetricsReader(metrics: $window) }
+            .modalTabBar(HumidifierTab.allCases, label: "Humidifier sections", title: \.title, selection: $tab,
+                         identifier: "humidifier.tabs")
             .navigationDestination(item: $editing) { rule in
                 HumidifierActivityEditor(schedules: schedules, rule: rule, isNew: !schedules.rules.contains { $0.id == rule.id }) {
                     editing = nil
@@ -98,11 +101,6 @@ public struct HumidifierSheet: View {
 
     private var tabColumn: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-            Picker("Humidifier sections", selection: $tab) {
-                ForEach(HumidifierTab.allCases) { Text($0.title).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("humidifier.tabs")
             switch tab {
             case .controls: HumidifierControlsTab(controller: controller)
             case .schedules:
@@ -133,12 +131,16 @@ struct HumidifierHero: View {
                 if case let .single(value) = targets { controller.setLevel(Int(value.rounded())) }
             }
             .accessibilityIdentifier("humidifier.mistDial")
+            // A grey capsule under the dial (mockup n4 humidifier); the sheet's controls stay the focus.
             Button { controller.togglePower() } label: {
                 Label(controller.powerOn ? "Turn Off" : "Turn On", systemImage: "power")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(HassTokens.Ink.primary)
                     .frame(minWidth: 140)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(controller.powerOn ? RoomDeviceStyle.powerOff : RoomDeviceStyle.powerOn)
+            .buttonStyle(.bordered)
+            .buttonBorderShape(.capsule)
+            .tint(HassTokens.Ink.primary) // A neutral grey capsule: the accent tint would make it read as the primary action.
             .controlSize(.large)
             .disabled(!controller.canTogglePower)
             .accessibilityIdentifier("humidifier.power")
@@ -168,23 +170,16 @@ struct HumidifierControlsTab: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
             DeviceSection(title: "Mode") {
-                DeviceTileGrid(maxColumns: 3) {
-                    ForEach(HumidifierMode.allCases, id: \.self) { mode in
-                        choice(mode.title, icon: mode.icon, selected: controller.mode == mode, disabled: controller.isBlocked,
-                               id: "humidifier.mode.\(mode.title)") { controller.setMode(mode) }
-                    }
-                }
+                SegmentedChoice(label: "Mode", options: HumidifierMode.allCases, title: \.title, selection: controller.mode,
+                                identifier: "humidifier.mode") { controller.setMode($0) }
+                    .disabled(controller.isBlocked)
             }
 
             DeviceSection(title: "Mist Output", footnote: "Use the dial for exact levels, or choose a quick preset.") {
-                DeviceTileGrid {
-                    ForEach(HumidifierConfig.mistPresets) { preset in
-                        choice(preset.title, subtitle: "Level \(preset.value)", icon: preset.icon,
-                               selected: controller.powerOn && controller.mistLevel == preset.value,
-                               disabled: controller.isBlocked || controller.isSleep,
-                               id: "humidifier.mist.\(preset.title)") { controller.setLevel(preset.value) }
-                    }
-                }
+                SegmentedChoice(label: "Mist output", options: HumidifierConfig.mistPresets, title: \.title,
+                                selection: controller.powerOn ? HumidifierConfig.mistPresets.first(where: { $0.value == controller.mistLevel }) : nil,
+                                identifier: "humidifier.mist") { controller.setLevel($0.value) }
+                    .disabled(controller.isBlocked || controller.isSleep)
             }
 
             if controller.mode == .targetHumidity {
@@ -208,13 +203,10 @@ struct HumidifierControlsTab: View {
             }
 
             DeviceSection(title: "Warm Mist") {
-                DeviceTileGrid {
-                    ForEach(HumidifierConfig.warmLevels) { level in
-                        choice(level.title, icon: level.icon, selected: controller.warmLevel == level.value,
-                               disabled: controller.isBlocked || controller.isSleep,
-                               id: "humidifier.warm.\(level.title)") { controller.setWarmLevel(level.value) }
-                    }
-                }
+                SegmentedChoice(label: "Warm mist", options: HumidifierConfig.warmLevels, title: \.title,
+                                selection: HumidifierConfig.warmLevels.first(where: { $0.value == controller.warmLevel }),
+                                identifier: "humidifier.warm") { controller.setWarmLevel($0.value) }
+                    .disabled(controller.isBlocked || controller.isSleep)
             }
 
             if controller.powerOn {
@@ -228,9 +220,12 @@ struct HumidifierControlsTab: View {
                     .accessibilityIdentifier("humidifier.timer")
                     if let remaining = controller.timerRemaining, remaining > 0 {
                         Button(role: .destructive) { controller.setTimerMinutes(0) } label: {
-                            Label("Cancel timer · \(HumidifierController.formatSeconds(remaining)) remaining", systemImage: "xmark")
+                            Label("Cancel Timer · \(HumidifierController.formatSeconds(remaining)) Remaining", systemImage: "xmark")
+                                .foregroundStyle(HassTokens.Ink.danger)
+                                .frame(minHeight: HassTokens.minTarget)
+                                .contentShape(.rect)
                         }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.plain)
                         .accessibilityIdentifier("humidifier.cancelTimer")
                     }
                 }
@@ -246,14 +241,6 @@ struct HumidifierControlsTab: View {
                 }
             }
         }
-    }
-
-    private func choice(_ title: String, subtitle: String? = nil, icon: String, selected: Bool, disabled: Bool, id: String,
-                        action: @escaping () -> Void) -> some View {
-        RemoteGlassTile(title: title, subtitle: subtitle, symbol: SymbolMap.symbol(for: icon), tint: RoomDeviceStyle.mode,
-                        isActive: selected && !disabled, isDisabled: disabled, semantics: .selection(isSelected: selected),
-                        action: action)
-            .accessibilityIdentifier(id)
     }
 }
 
@@ -279,7 +266,7 @@ struct HumidifierInfoTab: View {
     }
 }
 
-/// A labelled reading with a tone dot (web `StatusPill`).
+/// A labelled reading with a tone glyph (web `StatusPill`), on the sheet's cell colour (direction G, Layers: Sheets).
 struct DeviceStatusPill: View {
     var item: HumidifierController.InfoItem
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -302,7 +289,7 @@ struct DeviceStatusPill: View {
         }
         .padding(HassTokens.Spacing.m)
         .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
+        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(item.title)
         .accessibilityValue(item.value)
@@ -311,10 +298,10 @@ struct DeviceStatusPill: View {
 
     static func color(_ tone: HumidifierController.InfoItem.Tone) -> Color {
         switch tone {
-        case .ok: .green
-        case .active: Color(RoomDeviceStyle.humidifierTint)
-        case .warning: .orange
-        case .danger: .red
+        case .ok: ColorFamily.occupancy.glyph
+        case .active: ColorFamily.water.glyph
+        case .warning: HassTokens.Ink.warning
+        case .danger: HassTokens.Ink.danger
         case .neutral, .unavailable: HassTokens.Ink.secondary
         }
     }

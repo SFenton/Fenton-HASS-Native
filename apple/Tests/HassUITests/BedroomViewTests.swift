@@ -571,8 +571,11 @@ struct HostedBedroomTests {
         normal.close()
         let large = await show(components, typeSize: .accessibility5)
         large.close()
-        let tabs = await show(BedroomTabPicker(label: "Tabs", tabs: WakeLightSheet.Tab.allCases, title: \.title,
-                                               selection: .constant(.alarms), identifier: "t"), typeSize: .accessibility5)
-        tabs.close()
+        // The short-choice control is segmented, and a menu at accessibility sizes.
+        for typeSize in [DynamicTypeSize.large, .accessibility5] {
+            let choice = await show(SegmentedChoice(label: "Kind", options: WakeLight.Kind.allCases, title: \.label,
+                                                    selection: .weekly, identifier: "k") { _ in }, typeSize: typeSize)
+            choice.close()
+        }
     }
 }
