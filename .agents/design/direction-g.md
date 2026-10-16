@@ -63,7 +63,7 @@ Pages are always dark-styled because they sit on the dimmed photo, the way Apple
   - On tiles fill with the family colour (a slight top highlight) and white ink, with subtitles at 92% white. Every fill passes 4.5:1 with white.
   - Lights keep the warm lit tile. Power uses bright yellow with dark ink.
   - Red is never a family: alerts are a red glyph and red state on any tile.
-  - **Thermostats and bed sides keep a family when off** (owner, 2026-10-15; mockup fc-families): heating and cooling fill as above. An idle or off thermostat draws the off face with the Heating glyph when its HVAC mode is `heat`, else the Cooling glyph. An idle or off bed side draws the Heating glyph, or the Cooling glyph when its level is below zero. Never grey, except an unavailable bed side. One rule: `HassDesign/ThermostatTileFace`.
+  - **Thermostats and bed sides keep a family when off** (owner, 2026-10-15; mockup fc-families): heating and cooling fill as above. An idle or off thermostat draws the off face with the Heating glyph when its HVAC mode is `heat`, else the Cooling glyph. A bed side that is on fills whatever its level (owner, 2026-10-16: "Beds are on right now but still no colors"): Heating at or above zero, Cooling below; an off side draws the off face with that family's glyph. Bed cards read the side's level and power through `BedSideController`, never the climate entity, whose state says `heat` whatever the pod does. Never grey, except an unavailable bed side. One rule: `HassDesign/ThermostatTileFace`.
 
 | Family | Members | Glyph on dark | On-tile fill |
 |---|---|---|---|
