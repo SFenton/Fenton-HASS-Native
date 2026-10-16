@@ -13,8 +13,7 @@ import UIKit
 /// - iPads are not presence devices by default (``isPresenceDevice``): one left at home and tied to a person would
 ///   mark them home while they are away. A non-presence device never reports location.
 ///
-/// Not started by the app yet (plan Phase 2 wires it after the shared registration lands); only the debug gallery
-/// and tests drive it.
+/// The app's `LocationCoordinator` starts it on phones once the shared `mobile_app` registration exists.
 @MainActor
 @Observable
 public final class LocationReporter {
@@ -32,6 +31,8 @@ public final class LocationReporter {
     public private(set) var lastError: MobileAppWebhookError?
     /// Whether this device reports location at all.
     public let isPresenceDevice: Bool
+    /// Called after each permission change, running or not, so the owner can start reporting once allowed.
+    @ObservationIgnored public var onPermissionChange: (@MainActor (LocationPermission) -> Void)?
 
     @ObservationIgnored private let platform: any LocationPlatform
     @ObservationIgnored private let client: MobileAppWebhookClient
@@ -138,6 +139,7 @@ public final class LocationReporter {
         case .permissionChanged(let new):
             let old = permission
             permission = new
+            onPermissionChange?(new)
             guard isRunning else { return }
             if !new.isAuthorized {
                 await stop()

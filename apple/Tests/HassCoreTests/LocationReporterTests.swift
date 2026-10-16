@@ -3,35 +3,6 @@ import Foundation
 import HassTestSupport
 import Testing
 
-/// A scripted ``LocationPlatform``: records what the reporter asked for and hands out queued fixes.
-@MainActor
-final class FakeLocationPlatform: LocationPlatform {
-    var permission: LocationPermission
-    var onEvent: (@MainActor (LocationPlatformEvent) -> Void)?
-    var fixes: [LocationFix] = []
-    var calls: [String] = []
-    var monitored: [PlannedRegion] = []
-
-    init(_ permission: LocationPermission) { self.permission = permission }
-
-    func requestWhenInUse() { calls.append("whenInUse") }
-    func requestAlways() { calls.append("always") }
-    func currentFix() async throws -> LocationFix {
-        guard !fixes.isEmpty else { throw LocationPlatformError.unavailable }
-        return fixes.removeFirst()
-    }
-    func startSignificantChanges() { calls.append("startSignificant") }
-    func stopSignificantChanges() { calls.append("stopSignificant") }
-    func monitor(_ regions: [PlannedRegion]) async {
-        calls.append("monitor \(regions.count)")
-        monitored = regions
-    }
-    func stopMonitoring() async {
-        calls.append("stopMonitoring")
-        monitored = []
-    }
-}
-
 let zonesJSON = """
 [{"entity_id":"zone.home","attributes":{"latitude":47.6,"longitude":-122.3,"radius":40,"friendly_name":"Home"}},
  {"entity_id":"zone.work","attributes":{"latitude":47.645,"longitude":-122.3,"radius":150,"friendly_name":"Work"}}]
