@@ -3,6 +3,7 @@ import CoreImage
 import Foundation
 import QuartzCore
 import HassCore
+import HassTelemetry
 import Observation
 #if canImport(WebRTC) && canImport(UIKit)
 import WebRTC
@@ -50,6 +51,7 @@ final class CameraLiveModel {
     /// KVO on the HLS item and player. (Combine's `publisher(for:).values` delivered only the initial
     /// values here, so a playing stream never reported its first frame.)
     @ObservationIgnored private var hlsObservations: [NSKeyValueObservation] = []
+    @ObservationIgnored private var census: ResourceCensus.Registration?
 
     // MARK: - Init
 
@@ -61,6 +63,20 @@ final class CameraLiveModel {
         self.camera = camera
         self.opener = opener
         state = CameraStreamState(modes: modes)
+        census = ResourceCensus.shared.register { [weak self] in self?.liveResources ?? [:] }
+    }
+
+    /// What this model holds right now (`ResourceCensus`): players, the attempt task and KVO observations.
+    var liveResources: [String: Int] {
+        var players = hlsPlayer == nil ? 0 : 1
+        #if canImport(WebRTC) && canImport(UIKit)
+        players += webRTCPeer == nil ? 0 : 1
+        #endif
+        return [
+            "Camera.players": players,
+            "Camera.attempts": attempt == nil ? 0 : 1,
+            "Camera.observations": hlsObservations.count,
+        ]
     }
 
     /// WebRTC then HLS on iOS. macOS (hosted tests) has no player views, so no live modes.
@@ -263,7 +279,13 @@ final class CameraLiveModel {
     private func tearDownPlayers() {
         hlsObservations.forEach { $0.invalidate() }
         hlsObservations = []
-        hlsPlayer?.pause()
+        if let player = hlsPlayer {
+            // An emptied player releases its item, video output and AVFoundation's observers; dropping it alone left
+            // notification observers and timebases behind on every restart (`.agents/patterns/resume-lifecycle.md`).
+            player.pause()
+            if let output = hlsVideoOutput { player.currentItem?.remove(output) }
+            player.replaceCurrentItem(with: nil)
+        }
         hlsPlayer = nil
         hlsVideoOutput = nil
         #if canImport(WebRTC) && canImport(UIKit)

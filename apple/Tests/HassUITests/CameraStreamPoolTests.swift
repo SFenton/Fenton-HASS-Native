@@ -235,4 +235,51 @@ struct CameraStreamPoolTests {
         model.firstFrame(.webRTC)
         #expect(model.state.phase == .live)
     }
+
+    // MARK: - Resume cycles
+
+    @Test func manyBackgroundAndForegroundCyclesLeaveTheFirstLaunchSet() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams)
+        let model = pool.appear(front, connection: connection)
+        _ = pool.appear(driveway, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 && streams.opens["garage_camera"] == 1 }
+        goLive(model)
+        let launch = pool.liveResources
+        let launchModel = model.liveResources
+        for cycle in 2...7 {
+            pool.enterBackground()
+            #expect(pool.liveResources["CameraPool.running"] == 0, "Nothing streams in the background")
+            pool.enterForeground()
+            await waitUntil { streams.opens["front_door"] == cycle && pool.liveResources["CameraPool.resumeTask"] == 0 }
+            goLive(model)
+        }
+        #expect(pool.liveResources == launch, "A resume registers nothing the next background does not take away")
+        #expect(model.liveResources == launchModel)
+        #expect(streams.opens["front_door"] == 7, "One restart per resume")
+    }
+
+    @Test func aPoolHoldsItsAppObserversOnceAcrossResumes() {
+        // macOS has no UIKit scene notifications; the ready notification is always observed.
+        let pool = CameraStreamPool(modes: [.hls], observesApp: true)
+        let held = pool.liveResources["CameraPool.observers"] ?? 0
+        #expect(held >= 1)
+        for _ in 0..<5 {
+            pool.enterBackground()
+            pool.enterForeground()
+        }
+        #expect(pool.liveResources["CameraPool.observers"] == held, "Resuming adds no observers")
+    }
+
+    @Test func restartingAModelDropsTheOldAttempt() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams)
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        for _ in 0..<5 { model.start(connection: connection) }
+        #expect(model.liveResources["Camera.attempts"] == 1, "One attempt task, however many starts")
+        model.stop()
+        #expect(model.liveResources["Camera.attempts"] == 0)
+        #expect(model.liveResources["Camera.players"] == 0)
+    }
 }
