@@ -42,6 +42,7 @@ final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = self
         if let location { Task { await location.resume() } }
         #if DEBUG
+        DebugSystemSettings.applyIfRequested()
         PushPreview.scheduleIfRequested()
         if let command = PushPreview.command() {
             Task {

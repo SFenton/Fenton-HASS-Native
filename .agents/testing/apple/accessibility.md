@@ -13,6 +13,27 @@
 - A single passing run of a flaky audit is not certification; a source-identical rerun must pass too.
 - iPhone Duo: `XCUIDevice` cannot fold or rotate the Duo. Set the pose in Device Hub before the run; the journey audits the pose it finds.
 
+## System accessibility settings
+
+- **Reduce Motion** (HIG Accessibility, Motion): every implicit animation that moves, scales or resizes goes through `.motionSafeAnimation(_:reduced:value:)` (`HassDesign/MotionSafeAnimation.swift`), never a bare `.animation(_:value:)`. With Reduce Motion on it applies `reduced` (nothing by default; pass a short `.easeInOut` only for an opacity cross-fade). Transitions that slide switch to `.opacity`; `withAnimation` blocks guard on the environment value (`reduceMotion ? nil : …`). A pressed state that scales dims instead. The arc spinner is the one exception: it keeps turning at half speed so it never reads as frozen (owner, 2026-10-14). `ContentGate`'s `withAnimation` blocks are opacity-only under Reduce Motion (its 4 pt rise is dropped), so they stay.
+- **Journey launch options.** `FentonHomeApp.SystemSetting` (`reduceMotion`, `reduceTransparency`, `increaseContrast`, `boldText`) with `SystemSetting.environment(_:)` or `FentonHomeApp.allSystemSettings`, passed as the launch environment (`launchSignedIn(environment:)`, `launchGallery(_:environment:)`). UIKit's `-UIAccessibilityReduceMotionEnabled YES` family does **not** reach SwiftUI's environment or the system materials (probed on the iOS 27.1 simulator, 2026-10-15: all four stayed off), so the debug app sets the simulator's own settings from `FENTON_SYSTEM_SETTINGS` through `libAccessibility` (`Apps/iOS/DebugSystemSettings.swift`, Debug builds only; the same private-symbol route as `_AXSSetAutomationEnabled`). All four take effect.
+- **The settings belong to the simulator, not the app.** Every journey launch states them (`makeApp()` sends `none`), so the next launch always starts clean, and journeys that turn settings on restore them in `tearDown`. A crashed run can leave them on; the next journey launch clears them. Other lanes' runs on the same pool simulator see them only until their next launch.
+- `SystemSettingsJourneyTests` proves the options took effect against the `system-accessibility` gallery page (`FENTON_GALLERY=system-accessibility`), which prints what the app's environment reports. Run it first when a settings-dependent journey fails.
+- Reduce Transparency and Increase Contrast also turn `HeaderEdgeFade` into a hard edge and make `Module` opaque; Bold Text widens text, so a clip that appears only there is an AX finding like any other.
+
+## Full-app sweep (`AccessibilitySweepJourneyTests`)
+
+Signed in against the house, read-only (every step opens a page or sheet; nothing is toggled). One test per page so `-only-testing` runs a page alone: the four tab roots (Home, Security, Climate, Chores), Quick Links, Account, the Master Bedroom room page, the Lights chip sheet, Climate Advanced Controls, the Security System sheet, the first Media device's remote, the Humidifier room device sheet, Stephen's Bed sheet, Food and Vacuums. Each runs `FentonHomeApp.audit` (contrast plus the AX5 relaunch). The four tab roots run again under all four system settings (`…UnderSystemSettings`), and check VoiceOver reading order.
+
+```bash
+tools/ios_uitest.sh --env <temp.env> --only iphone -only-testing:FentonHomeUITests/AccessibilitySweepJourneyTests   # also --only duo, --only ipad
+TEST_RUNNER_FENTON_UITEST_ORIENTATION=landscape tools/ios_uitest.sh … --only ipad …                                   # iPad landscape
+```
+
+- **Reading order** (`assertReadingOrder`): the stops are read from one `app.snapshot()` in document order (what VoiceOver swipes through): labelled static texts and one stop per control, tab bar left out. The page title must come before any content (navigation bar buttons such as Profile may come first), and the content after it must not jump back up the page by more than 40 pt, nor run right to left along a row. A stop inside the previous stop's frame is part of the same component. The order is attached to the result (`reading-order-<title>`). A strict row-major rule failed on correct pages (an hour's label then its temperature, a card's own texts), which is why only a clear jump back up counts.
+- A label over 128 characters crashes a string-subscript query (`app.navigationBars.buttons[label]`): the Climate Advanced Controls rows are that long. The audit helpers match labels through `XCUIElementQuery.matching(label:)` (a predicate).
+- An element-less contrast issue is accepted only when every labelled static text and button fully on screen measures at least 4.5:1 rendered in a capture from the same run (`allVisibleTextMeasures`); the note is logged.
+
 ## Accepted audit issues
 
 `FentonHomeApp.audit` collects every issue in one run and accepts only these, all on system-drawn elements the app does not style:

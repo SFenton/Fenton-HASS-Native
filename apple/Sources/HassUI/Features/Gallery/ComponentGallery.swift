@@ -27,6 +27,7 @@ public struct ComponentGallery: View {
         case weather
         case directionG = "direction-g"
         case location
+        case systemAccessibility = "system-accessibility"
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -90,6 +91,7 @@ public struct ComponentGallery: View {
                     case .inventory: InventoryGallery()
                     case .performance: PerformanceGallery()
                     case .weather: WeatherGallery()
+                    case .systemAccessibility: SystemAccessibilityGallery()
                     case .rooms, .vacation, .food, .chores, .location: EmptyView()
                     }
                 }
