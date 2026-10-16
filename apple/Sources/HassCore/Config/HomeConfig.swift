@@ -36,7 +36,8 @@ public enum HomeConfig {
         public var entityId: String
         public var tone: ChipTone
         public var sheet: ChipSheet
-        /// A text helper whose color tints the icon (Air Quality, web `colorEntityId`).
+        /// A text helper holding the chip's colour (Climate: the temperature colour; Air Quality: the AQI colour, which
+        /// the web draws on the icon; web `colorEntityId`). See `ChipWebColor`.
         public var colorEntityId: String? = nil
         public var id: String { entityId }
     }
@@ -45,7 +46,8 @@ public enum HomeConfig {
     public static let statusChips: [StatusChip] = [
         .init(title: "Lights", icon: "mdi:lightbulb-group", entityId: "light.lights", tone: .light, sheet: .lights),
         .init(title: "Security", icon: "mdi:shield-outline", entityId: SecurityConfig.alarmEntityId, tone: .security, sheet: .security),
-        .init(title: "Climate", icon: "mdi:thermometer", entityId: "input_text.all_climate_range", tone: .climate, sheet: .climate),
+        .init(title: "Climate", icon: "mdi:thermometer", entityId: "input_text.all_climate_range", tone: .climate, sheet: .climate,
+              colorEntityId: ChipWebColor.allClimateColorEntityId),
         .init(title: "Occupancy", icon: "mdi:motion-sensor", entityId: "binary_sensor.occupancy_sensors", tone: .presence, sheet: .occupancy),
         .init(title: "Contact Sensors", icon: "mdi:door", entityId: SecurityConfig.contactSensorsEntityId, tone: .contact, sheet: .contacts),
         .init(title: "Air Quality", icon: "mdi:blur", entityId: "input_text.all_aqi_range", tone: .air, sheet: .airQuality,

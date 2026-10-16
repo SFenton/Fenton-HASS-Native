@@ -41,6 +41,10 @@ public struct RoomChipDisplay: Equatable, Sendable {
     public var icon: String
     public var isActive: Bool
     public var opensSheet: Bool
+    /// A contact chip's house state (``ContactChipState``); nil on any other chip.
+    public var contact: ContactChipState? = nil
+    /// The colour Home Assistant gives a Climate or Air Quality chip (``ChipWebColor``); nil on any other chip.
+    public var webColor: RoomColor? = nil
 }
 
 /// What a card's sheet shows (web `RoomSourceModal` + `renderRoomReusableSheet`, `DashboardViewPage.tsx:1272`).
@@ -209,6 +213,8 @@ public final class RoomController {
         var summary: String
         var icon = card.icon
         let active: Bool
+        var contact: ContactChipState?
+        var webColor: RoomColor?
         switch card.kind {
         case .occupancy:
             summary = RoomFormat.occupancy(entity)
@@ -220,14 +226,26 @@ public final class RoomController {
             if !open && card.title.hasSuffix("s") { summary = "All Closed" }
             if open { icon = "mdi:door-open" }
             active = RoomFormat.isActive(entity)
+            contact = ContactChipState.current(isOpen: RoomFormat.isUnavailable(entity) ? nil : open) { self.entity($0) }
         case .air:
             summary = RoomFormat.airSummary(aqi: self.entity(RoomFormat.aqiEntityId(forPM25: card.entityId)), pm25: entity)
             active = RoomFormat.isActive(entity)
+            webColor = ChipWebColor.airColorEntityId(forPM25: card.entityId).map {
+                ChipWebColor.airQuality(colorText: self.entity($0)?.state)
+            }
+        case .climate:
+            summary = RoomFormat.compact(entity)
+            active = RoomFormat.isActive(entity)
+            // A room's range helper has a matching colour helper; other climate cards (beds) keep the family colour.
+            if let colorId = ChipWebColor.climateColorEntityId(forRange: card.entityId) {
+                webColor = ChipWebColor.climate(colorText: self.entity(colorId)?.state, rangeText: entity?.state)
+            }
         default:
             summary = RoomFormat.compact(entity)
             active = RoomFormat.isActive(entity)
         }
-        return RoomChipDisplay(title: card.title, summary: summary, icon: icon, isActive: active, opensSheet: card.sheet != nil)
+        return RoomChipDisplay(title: card.title, summary: summary, icon: icon, isActive: active, opensSheet: card.sheet != nil,
+                               contact: contact, webColor: webColor)
     }
 
     // MARK: Sheets
