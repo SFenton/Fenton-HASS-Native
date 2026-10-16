@@ -13,6 +13,7 @@ struct WeatherCardContent: View {
 
     @Environment(EntityStore.self) private var entities
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.weatherCardIsNarrow) private var isNarrow
     @State private var isPresented = false
     @State private var didAutoOpen = false
     /// The hero glyph grows with Dynamic Type.
@@ -160,7 +161,7 @@ struct WeatherCardContent: View {
         let feed = forecasts.hourly
         if feed.showsPlaceholders {
             WeatherPagedCarousel(
-                count: 24, compactPerPage: 6, regularPerPage: 9, label: WeatherCopy.text("carousel.forecast"), identifier: "home.weather"
+                count: 24, compactPerPage: 6, regularPerPage: isNarrow ? 6 : 9, label: WeatherCopy.text("carousel.forecast"), identifier: "home.weather"
             ) { _ in WeatherCardHourPlaceholder() }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Loading 24-hour weather forecast")
@@ -172,7 +173,7 @@ struct WeatherCardContent: View {
                 .accessibilityIdentifier("home.weather.hourlyMessage")
         } else {
             WeatherPagedCarousel(
-                count: feed.forecasts.count, compactPerPage: 6, regularPerPage: 9, label: WeatherCopy.text("carousel.forecast"), identifier: "home.weather"
+                count: feed.forecasts.count, compactPerPage: 6, regularPerPage: isNarrow ? 6 : 9, label: WeatherCopy.text("carousel.forecast"), identifier: "home.weather"
             ) { index in
                 WeatherCardHour(forecast: feed.forecasts[index], index: index, current: current)
             }

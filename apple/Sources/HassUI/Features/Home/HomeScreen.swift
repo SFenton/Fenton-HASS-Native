@@ -52,6 +52,9 @@ extension HomeScreen {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
                     StatusRail { sheet = .chip($0) }
                     WeatherSummaryCard()
+                        // Half a window wide: its hourly row pages by the compact count (nine hours in 400 pt
+                        // truncated their labels on the unfolded Duo, 2026-10-15).
+                        .environment(\.weatherCardIsNarrow, true)
                         .padding(.horizontal, HassTokens.Spacing.l)
                 }
                 .frame(width: columns.leadingWidth, alignment: .topLeading)
