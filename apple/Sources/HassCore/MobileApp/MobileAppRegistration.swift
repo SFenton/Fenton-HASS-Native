@@ -1,7 +1,8 @@
 import Foundation
 
 /// One `mobile_app` registration: the webhook Home Assistant issued to this phone for one user on one server.
-public struct PushRegistration: Codable, Equatable, Sendable {
+/// Push, location and sensors all send through it (``MobileAppRegistrar``).
+public struct MobileAppRegistration: Codable, Equatable, Sendable {
     /// The server registered with.
     public var server: HassServer
     /// The Home Assistant user the registration belongs to.
@@ -17,5 +18,8 @@ public struct PushRegistration: Codable, Equatable, Sendable {
     }
 
     /// `POST` target for webhook commands.
-    public var webhookURL: URL { server.url("/api/webhook/\(webhookID)") }
+    public var webhookURL: URL { webhook.url }
+
+    /// The webhook location and sensor commands go to.
+    public var webhook: MobileAppWebhook { MobileAppWebhook(server: server, webhookID: webhookID) }
 }

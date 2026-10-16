@@ -288,7 +288,17 @@ final class WeatherJourneyTests: XCTestCase {
         let uv = element("weather.highlight.uv", in: app)
         reveal(uv, in: app)
         XCTAssertGreaterThan(feels.frame.width, app.windows.firstMatch.frame.width * 0.6, "Tiles should reflow to a single column")
-        try audit(app, presenter: app.buttons["home.weather.card"])
+        // Audited alone, AX5 reports partial Dynamic Type on texts that do grow ('Now', the briefing's bullet, the
+        // hourly subhead, iPhone 2026-10-15), so the AX5 page is the evidence in `testSheetAudit` and
+        // `testSheetHighlightsAudit`, measured against the default size (Festival's dynamic-type-grows waiver).
+    }
+
+    /// The sheet scrolled to its highlights at the default size, with the AX5 page as the Dynamic Type evidence.
+    func testSheetHighlightsAudit() throws {
+        let app = launch(open: true)
+        XCTAssertTrue(element("weather.hero.temperature", in: app).waitForExistence(timeout: 15))
+        reveal(element("weather.highlight.uv", in: app), in: app)
+        try audit(app, presenter: app.buttons["home.weather.card"], ax5Page: { self.launchSettled(open: true, arguments: FentonHomeApp.ax5) })
     }
 
     /// Night and storm scenes keep text legible.

@@ -19,13 +19,14 @@ struct ClimateSheetRequest: Identifiable, Hashable {
 }
 
 /// The Climate page (web `ThermostatPage`, `ha-sfenton-react-dash@9ac2a46:src/pages/DashboardViewPage.tsx:7397`).
-/// Spec: `.agents/pages/climate/spec.md`. Always full width; the advanced controls open in a sheet.
+/// Spec: `.agents/pages/climate/spec.md`; direction G mockup n3. Whole Home's dial on a module with the Thermostat
+/// Hub's pop-up menus under it, any notices, open doors and windows, then the three Advanced Controls rows that open
+/// the sheet on their tab.
 struct ClimatePage: View {
     @State private var controller: ClimateController
     @State private var sheet: ClimateSheetRequest?
     /// Shown above the sheet's content (the gallery's last-call line).
     private let sheetAccessory: AnyView?
-    @ScaledMetric(relativeTo: .subheadline) private var minEntryWidth: CGFloat = 240
     @ScaledMetric(relativeTo: .subheadline) private var minContactWidth: CGFloat = 160
 
     init(controller: ClimateController, initialSheet: ClimateSheetRequest? = nil, sheetAccessory: AnyView? = nil) {
@@ -39,35 +40,41 @@ struct ClimatePage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
                 wholeHome(lookup)
-                if ClimateLogic.showsIntegrationWarning(lookup) {
-                    ClimateNotice(text: ClimateConfig.Copy.integrationOffWarning, symbol: "exclamationmark.triangle", tint: ClimateStyle.heat)
-                        .accessibilityIdentifier("climate.integrationWarning")
-                }
                 let open = ClimateLogic.openContactSensors(lookup)
                 if !open.isEmpty {
-                    ClimateSection(title: "Open Contact Sensors") {
-                        DynamicGridLayout(minCellWidth: minContactWidth, maxColumns: 4) {
+                    section("Open Contact Sensors") {
+                        DynamicGridLayout(minCellWidth: minContactWidth, maxColumns: 4, equalRowHeights: true) {
                             ForEach(open) { sensor in
-                                RemoteGlassTile(
+                                GlassTile(
                                     title: sensor.title,
                                     subtitle: ClimateLogic.contactState(controller.entity(sensor.entityId)),
                                     symbol: ClimateStyle.symbol(sensor.isWindow ? "mdi:window-open" : "mdi:door-open"),
-                                    tint: ClimateStyle.contact, isActive: true, isDisabled: false, semantics: .state
-                                ) {}
-                                .accessibilityIdentifier("climate.contact.\(sensor.entityId)")
+                                    family: .contact,
+                                    isActive: true,
+                                    kind: .state
+                                )
+                                .tileIdentifier("climate.contact.\(sensor.entityId)")
                             }
                         }
+                        .equalHeightTiles()
                     }
                 }
-                DynamicGridLayout(minCellWidth: minEntryWidth, maxColumns: 3, spacing: HassTokens.Spacing.l) {
-                    ForEach(ClimateConfig.Tab.allCases) { tab in
-                        ClimateSection(title: tab.entryTitle, description: tab.description) {
-                            ClimateOpenerTile(title: tab.entryTitle, icon: tab.icon) { sheet = ClimateSheetRequest(tab: tab) }
-                                .accessibilityIdentifier("climate.entry.\(tab.rawValue)")
+                section("Advanced Controls") {
+                    ModuleList {
+                        ForEach(ClimateConfig.Tab.allCases) { tab in
+                            Button { sheet = ClimateSheetRequest(tab: tab) } label: {
+                                ModuleRow(tab.entryTitle, subtitle: tab.description, symbol: ClimateStyle.symbol(tab.icon), showsChevron: true)
+                            }
+                            .buttonStyle(ModuleRowButtonStyle())
+                            .accessibilityLabel(tab.entryTitle)
+                            .accessibilityHint(tab.description)
+                            .accessibilityIdentifier("climate.entry.\(tab.rawValue)")
                         }
                     }
                 }
             }
+            .frame(maxWidth: 720)
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, HassTokens.Spacing.l)
             .padding(.vertical, HassTokens.Spacing.m)
         }
@@ -79,37 +86,49 @@ struct ClimatePage: View {
         }
         .sheet(item: $sheet) { request in
             ClimateSheet(controller: controller, request: request)
-                // Bottom edge: at the top a wrapped debug line covered the sheet's Back and Done on iPad.
+                // Bottom edge: at the top a wrapped debug line covered the sheet's Back and Close on iPad.
                 .safeAreaInset(edge: .bottom) { sheetAccessory }
                 .hassSheet(.page)
         }
     }
 
-    /// Whole Home: the dial (eco-away thermostat while away, `hvac_action` always from the global one), the hub
-    /// pill and the away notice.
+    /// A titled section on the wallpaper.
+    private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.s + 2) {
+            RoomSectionHeader(title: title)
+            content()
+        }
+    }
+
+    /// Whole Home: the dial on a module (eco-away thermostat while away, `hvac_action` always from the global one),
+    /// the hub's rows and the notices.
     @ViewBuilder
     private func wholeHome(_ lookup: EntityLookup) -> some View {
         let dialEntityId = ClimateLogic.wholeHomeDialEntityId(lookup)
-        ClimateSection(title: "Whole Home") {
-            ClimateThermostatDial(
-                entityId: dialEntityId,
-                title: "Whole Home",
-                action: ClimateLogic.hvacAction(lookup(ClimateConfig.globalThermostatEntityId)),
-                caller: controller.caller,
-                commitEntityIds: { targets in Self.wholeHomeCommitIds(dialEntityId: dialEntityId, targets: targets) }
-            )
-            .frame(maxWidth: .infinity)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("climate.wholeHome")
+        section("Whole Home") {
             VStack(spacing: HassTokens.Spacing.m) {
-                ThermostatHubPill(controller: controller)
+                ClimateThermostatDial(
+                    entityId: dialEntityId,
+                    title: "Whole Home",
+                    action: ClimateLogic.hvacAction(lookup(ClimateConfig.globalThermostatEntityId)),
+                    caller: controller.caller,
+                    commitEntityIds: { targets in Self.wholeHomeCommitIds(dialEntityId: dialEntityId, targets: targets) }
+                )
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, HassTokens.Spacing.l)
+                .module()
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("climate.wholeHome")
+                ClimateHubList(controller: controller)
                 if let notice = ClimateLogic.awayNotice(climateEntityId: ClimateConfig.globalThermostatEntityId, useEffectiveMode: true, lookup) {
                     ClimateNotice(text: notice, symbol: "house")
                         .accessibilityIdentifier("climate.awayNotice")
                 }
+                if ClimateLogic.showsIntegrationWarning(lookup) {
+                    ClimateNotice(text: ClimateConfig.Copy.integrationOffWarning, symbol: "exclamationmark.triangle", isWarning: true)
+                        .accessibilityIdentifier("climate.integrationWarning")
+                }
             }
-            .frame(maxWidth: 640)
-            .frame(maxWidth: .infinity)
         }
     }
 

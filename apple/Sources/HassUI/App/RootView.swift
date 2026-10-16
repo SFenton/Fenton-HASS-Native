@@ -4,13 +4,15 @@ import SwiftUI
 
 /// The app's root: sign-in or the main tabs, plus scene-phase handling.
 public struct RootView: View {
-    @State private var session: AppSession
+    /// Owned by the app delegate: SwiftUI re-runs this initializer whenever the scene rebuilds, so a session made
+    /// here (even through `State(initialValue:)`) would start a new connection each time.
+    private let session: AppSession
     @Environment(\.scenePhase) private var scenePhase
 
     /// Creates the root.
-    /// - Parameter push: The app delegate's push coordinator; previews and tests use an inert one.
-    public init(push: PushCoordinator = .inert()) {
-        _session = State(initialValue: AppSession(push: push))
+    /// - Parameter session: The app's one session.
+    public init(session: AppSession) {
+        self.session = session
     }
 
     public var body: some View {
@@ -28,6 +30,8 @@ public struct RootView: View {
                         .environment(connection.store)
                         .environment(session)
                         .environment(session.push)
+                        .environment(session.location)
+                        .locationReporting(session.location)
                         .environment(session.backdrop)
                         .task { await session.backdrop?.refresh() }
                         .readsWindowHinge()

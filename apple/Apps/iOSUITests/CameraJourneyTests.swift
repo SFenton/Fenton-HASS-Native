@@ -6,11 +6,14 @@ final class CameraJourneyTests: JourneyTestCase {
     static let cameras = [("front_door", "Front Door"), ("garage_camera", "Driveway"),
                           ("upper_deck", "Upper Deck"), ("lower_deck", "Lower Deck")]
 
-    /// The Home tile for a camera, scrolled into view.
+    /// The Home tile for a camera, scrolled into view with its middle clear of the floating tab bar, so a tap near the
+    /// tile's leading edge lands on the tile, not the bar's Home tab (the taller G weather card pushed the lower
+    /// tiles behind the bar, 2026-10-15).
     private func tile(_ app: XCUIApplication, _ streamId: String) -> XCUIElement {
         let tile = app.buttons["home.camera.\(streamId)"]
         XCTAssertTrue(tile.waitForExistence(timeout: 10))
-        for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
+        let clearBottom = app.windows.firstMatch.frame.maxY - 120
+        for _ in 0..<5 where !tile.isHittable || tile.frame.midY > clearBottom { app.swipeUp() }
         return tile
     }
 

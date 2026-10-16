@@ -6,6 +6,7 @@
 |---|---|---|
 | [dynamic-grid.md](dynamic-grid.md) | `HassDesign/DynamicGridLayout.swift` | `src/components/core/DynamicGrid.tsx` |
 | [entity-tile.md](entity-tile.md) | `HassDesign/GlassTile.swift` | `src/components/core/GlassTile.tsx` |
+| [module-list.md](module-list.md) | `HassDesign/ModuleList.swift` | none (direction G inset list) |
 | [status-rail.md](status-rail.md) | `HassUI/Features/Home/StatusRail.swift` | `src/components/hass/StatusRail.tsx` |
 | [room-overview-sheet.md](room-overview-sheet.md) | `HassUI/Common/RoomOverview/RoomOverviewSheet.swift` | `src/pages/AtAGlancePage.tsx` (`LightsSheet`, `OccupancySheet`, `ContactSheet`, …) |
 | [modal-sheet.md](modal-sheet.md) | `HassDesign/HassModal.swift` (`HassModal`, `SheetCloseItem`, `hassSheet()`), `HassUI/Common/ModalTabBar.swift` | `src/components/core/ModalSheet.tsx`, `ModalTabNav.tsx` |

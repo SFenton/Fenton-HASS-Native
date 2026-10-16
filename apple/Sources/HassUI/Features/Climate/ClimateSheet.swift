@@ -46,8 +46,9 @@ enum ClimateRoute: Hashable {
     }
 }
 
-/// "Advanced Controls": Rooms, Automation and Tracking tabs with detail pages pushed on a
-/// `NavigationStack` (Back returns to the tab, like the web's in-sheet back). Pattern: modal-sheet.
+/// "Advanced Controls": Rooms, Automation and Tracking tabs with detail pages pushed on a `NavigationStack` (Back
+/// returns to the tab, like the web's in-sheet back). Direction G: dark system forms (the sheet's ground and cells)
+/// with the tabs on a glass segmented control at the bottom. Pattern: modal-sheet.
 struct ClimateSheet: View {
     var controller: ClimateController
     @State private var tab: ClimateConfig.Tab
@@ -62,24 +63,26 @@ struct ClimateSheet: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            ClimateSheetScroll {
-                ModalTabBar(tabs: ClimateConfig.Tab.allCases, label: "Thermostat sections", title: \.title,
-                            selection: $tab, identifier: "climate.sheet.tabs")
+            Group {
                 switch tab {
-                case .rooms: ClimateRoomsTab(controller: controller) { path.append($0) }
-                case .automation: ClimateAutomationTab(controller: controller) { path.append($0) }
-                case .tracking: ClimateTrackingTab(controller: controller) { path.append($0) }
+                case .rooms: ClimateRoomsTab(controller: controller)
+                case .automation: ClimateAutomationTab(controller: controller)
+                case .tracking: ClimateTrackingTab(controller: controller)
                 }
             }
             .accessibilityIdentifier("climate.sheet.\(tab.rawValue)")
             .modalChrome()
-            .climateSheetTitle(ClimateConfig.sheetTitle)
+            .modalTabBar(ClimateConfig.Tab.allCases, label: "Thermostat sections", title: \.title,
+                         selection: $tab, identifier: "climate.sheet.tabs")
+            .navigationTitle(ClimateConfig.sheetTitle)
+            .inlineNavigationTitle()
             .toolbar { closeButton }
             .navigationDestination(for: ClimateRoute.self) { route in
-                ClimateSheetScroll { detail(route) }
+                detail(route)
                     .accessibilityIdentifier("climate.detail")
                     .modalChrome()
-                    .climateSheetTitle(route.title)
+                    .navigationTitle(route.title)
+                    .inlineNavigationTitle()
                     .toolbar { closeButton }
             }
         }
@@ -102,85 +105,117 @@ struct ClimateSheet: View {
     }
 }
 
-extension View {
-    /// The sheet's title as a wrapping heading at the top of the content instead of an inline bar title, which
-    /// truncated "Advanced Controls" and "Eco Mode Critical Tracking" beside Back and Done on iPhone
-    /// and can't grow with Dynamic Type. `navigationTitle` still names the page for Back and VoiceOver.
-    /// HIG: Navigation bars, Typography (Dynamic Type).
-    @ViewBuilder
-    func climateSheetTitle(_ title: String) -> some View {
-        #if os(iOS)
-        if #available(iOS 18, *) {
-            navigationTitle(title)
-                .inlineNavigationTitle()
-                .toolbar(removing: .title)
-                .safeAreaInset(edge: .top, spacing: 0) { ClimateSheetHeading(title: title) }
-        } else {
-            navigationTitle(title).inlineNavigationTitle()
-        }
-        #else
-        navigationTitle(title)
-        #endif
-    }
-}
+// MARK: - Form pieces
 
-
-/// The page heading ``View/climateSheetTitle(_:)`` draws.
-struct ClimateSheetHeading: View {
-    var title: String
-
-    var body: some View {
-        Text(title)
-            .font(.title3.weight(.bold))
-            .foregroundStyle(HassTokens.Ink.primary)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: 720, alignment: .leading)
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, HassTokens.Spacing.l)
-            .padding(.vertical, HassTokens.Spacing.s)
-            .accessibilityAddTraits(.isHeader)
-            .accessibilityIdentifier("climate.sheetHeading")
-    }
-}
-
-/// The sheet's scrolling column, capped at a readable width on iPad (HIG: Layout).
-struct ClimateSheetScroll<Content: View>: View {
+/// The sheet's form, capped at a readable width on iPad (HIG: Layout).
+struct ClimateForm<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) { content }
-                .frame(maxWidth: 720)
-                .frame(maxWidth: .infinity)
-                .padding(HassTokens.Spacing.l)
+        Form { content }
+            .formStyle(.grouped)
+            .frame(maxWidth: 720)
+            .frame(maxWidth: .infinity)
+    }
+}
+
+/// A row's glyph and title, with an optional second line (a state, or what the row opens).
+struct ClimateRowLabel: View {
+    var title: String
+    var subtitle: String?
+    var icon: String
+
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .foregroundStyle(HassTokens.Ink.primary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(HassTokens.Surface.secondaryInSheet)
+                        .monospacedDigit()
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: ClimateStyle.symbol(icon))
+                .foregroundStyle(HassTokens.Surface.secondaryInSheet)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+/// A switch or input_boolean as a system switch, sending `homeassistant.toggle` (web `ThermostatToggleSetting`).
+/// What it does goes under it in the section footer, and VoiceOver reads it as the hint.
+struct ClimateToggleRow: View {
+    var controller: ClimateController
+    var entityId: String
+    var title: String
+    var icon: String
+    var detail: String?
+
+    var body: some View {
+        Toggle(isOn: Binding(get: { controller.isOn(entityId) }, set: { _ in controller.toggle(entityId) })) {
+            ClimateRowLabel(title: title, icon: icon)
+        }
+        .disabled(controller.isUnavailable(entityId))
+        .accessibilityLabel(title)
+        .accessibilityHint(detail ?? "")
+        .accessibilityIdentifier("climate.toggle.\(entityId)")
+    }
+}
+
+/// A section's toggle with its description as the footer.
+struct ClimateToggleSection: View {
+    var controller: ClimateController
+    var entityId: String
+    var title: String
+    var icon: String
+    var detail: String
+    var header: String?
+
+    var body: some View {
+        Section {
+            ClimateToggleRow(controller: controller, entityId: entityId, title: title, icon: icon, detail: detail)
+        } header: {
+            if let header { FormHeader(header) }
+        } footer: {
+            FormFooter(detail)
         }
     }
 }
 
 // MARK: - Rooms
 
-/// Every room: temperature, occupancy and a disclosure to its detail (web `ThermostatRoomsRoot`).
+/// Every room: occupancy under its name, its temperature trailing, and a disclosure to its detail
+/// (web `ThermostatRoomsRoot`).
 struct ClimateRoomsTab: View {
     var controller: ClimateController
-    var open: (ClimateRoute) -> Void
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 150
 
     var body: some View {
         let lookup = controller.lookup
-        ClimateSection(title: "Rooms", description: ClimateConfig.Tab.rooms.description) {
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 2) {
+        ClimateForm {
+            Section {
                 ForEach(ClimateConfig.rooms) { room in
                     let occupied = ClimateLogic.isOccupied(lookup(room.occupancyEntityId))
-                    GlassTile(
-                        title: room.title,
-                        subtitle: ClimateLogic.roomSubtitle(room, lookup),
-                        symbol: ClimateStyle.symbol(occupied ? "mdi:thermometer-check" : "mdi:thermometer-off"),
-                        tint: ClimateStyle.control,
-                        isActive: occupied,
-                        kind: .navigate
-                    ) { open(.room(room.key)) }
+                    NavigationLink(value: ClimateRoute.room(room.key)) {
+                        LabeledContent {
+                            Text(ClimateLogic.roomTemperature(room, lookup))
+                                .foregroundStyle(HassTokens.Ink.primary)
+                                .monospacedDigit()
+                        } label: {
+                            ClimateRowLabel(title: room.title, subtitle: ClimateLogic.roomOccupancy(room, lookup),
+                                            icon: occupied ? "mdi:thermometer-check" : "mdi:thermometer-off")
+                        }
+                    }
+                    // On the link itself, not a wrapping element, so the identifier and state stay on one element.
+                    .accessibilityLabel(room.title)
+                    .accessibilityValue(ClimateLogic.roomSubtitle(room, lookup))
                     .accessibilityIdentifier("climate.room.\(room.key)")
                 }
+            } footer: {
+                FormFooter(ClimateConfig.Tab.rooms.description)
             }
         }
     }
@@ -190,33 +225,50 @@ struct ClimateRoomsTab: View {
 struct ClimateRoomDetail: View {
     var controller: ClimateController
     var room: ClimateConfig.Room
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
     var body: some View {
-        ClimateThermostatDial(entityId: room.climateEntityId, title: room.title, size: .modal, caller: controller.caller)
-            .frame(maxWidth: .infinity)
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("climate.roomDial")
-        ClimateSection(title: room.ventSectionTitle) {
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 3) {
-                ForEach(Array(room.ventEntityIds.enumerated()), id: \.element) { index, ventId in
-                    let vent = controller.entity(ventId)
-                    RemoteGlassTile(
-                        title: room.ventTitle(at: index),
-                        subtitle: ClimateLogic.ventState(vent),
-                        symbol: ClimateStyle.symbol("mdi:fan"),
-                        tint: ClimateStyle.ventOpen,
-                        isActive: vent?.state == "open",
-                        isDisabled: vent?.isUnavailable ?? true,
-                        semantics: .state
-                    ) {}
-                    .accessibilityIdentifier("climate.vent.\(ventId)")
+        ClimateForm {
+            Section {
+                ClimateThermostatDial(entityId: room.climateEntityId, title: room.title, size: .modal, caller: controller.caller)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("climate.roomDial")
+            }
+            .listRowBackground(Color.clear)
+            if let notice = ClimateLogic.awayNotice(climateEntityId: room.climateEntityId, useEffectiveMode: false, controller.lookup) {
+                Section {
+                    Label(notice, systemImage: "house")
+                        .foregroundStyle(HassTokens.Ink.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("climate.roomAwayNotice")
                 }
             }
-        }
-        if let notice = ClimateLogic.awayNotice(climateEntityId: room.climateEntityId, useEffectiveMode: false, controller.lookup) {
-            ClimateNotice(text: notice, symbol: "house")
-                .accessibilityIdentifier("climate.roomAwayNotice")
+            Section {
+                ForEach(Array(room.ventEntityIds.enumerated()), id: \.element) { index, ventId in
+                    let vent = controller.entity(ventId)
+                    let title = room.ventTitle(at: index)
+                    let state = ClimateLogic.ventState(vent)
+                    LabeledContent {
+                        Text(state).foregroundStyle(HassTokens.Ink.primary)
+                    } label: {
+                        Label {
+                            Text(title).foregroundStyle(HassTokens.Ink.primary)
+                        } icon: {
+                            Image(systemName: ClimateStyle.symbol("mdi:fan"))
+                                .foregroundStyle(vent?.state == "open" ? ClimateStyle.cool : HassTokens.Surface.secondaryInSheet)
+                                // Unavailable dims the glyph only; the text keeps full strength.
+                                .opacity(vent?.isUnavailable ?? true ? 0.5 : 1)
+                        }
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(title)
+                    .accessibilityValue(state)
+                    .accessibilityIdentifier("climate.vent.\(ventId)")
+                }
+            } header: {
+                FormHeader(room.ventSectionTitle)
+            }
         }
     }
 }
@@ -226,75 +278,59 @@ struct ClimateRoomDetail: View {
 /// Automatic Thermostat, Eco Mode and Predictive Comfort (web `ThermostatAutomationRoot`).
 struct ClimateAutomationTab: View {
     var controller: ClimateController
-    var open: (ClimateRoute) -> Void
 
     var body: some View {
-        ClimateSection(title: "Automatic Thermostat") {
-            ClimateControlGroup(description: ClimateConfig.Copy.integration) {
-                ClimateToggleTile(controller: controller, entityId: ClimateConfig.integrationEntityId, title: "Automatic Thermostat", icon: "mdi:thermostat")
-            }
-        }
-        ClimateSection(title: "Eco Mode") {
-            ClimateControlGroup(description: ClimateConfig.Copy.ecoMode) {
-                ClimateToggleTile(controller: controller, entityId: ClimateConfig.ecoModeEntityId, title: "Eco Mode", icon: "mdi:leaf")
-            }
-            ForEach(ClimateConfig.EcoOption.allCases) { option in
-                let options = ClimateLogic.selectOptions(controller.entity(option.entityId))
-                ClimateControlGroup(description: option.openerDescription) {
-                    ClimateOpenerTile(
-                        title: option.title,
-                        subtitle: ClimateLogic.selectOption(controller.shown(option.entityId) ?? ""),
-                        icon: option.icon,
-                        isDisabled: options.isEmpty
-                    ) { open(.eco(option)) }
+        let predictiveId = ClimateConfig.predictiveComfortEntityId
+        let predictiveOn = controller.isOn(predictiveId)
+        let predictive = ClimateLogic.predictiveSubtitle(controller.lookup, shownState: controller.shown(predictiveId))
+        ClimateForm {
+            ClimateToggleSection(controller: controller, entityId: ClimateConfig.integrationEntityId,
+                                 title: "Automatic Thermostat", icon: "mdi:thermostat", detail: ClimateConfig.Copy.integration)
+            Section {
+                ClimateToggleRow(controller: controller, entityId: ClimateConfig.ecoModeEntityId, title: "Eco Mode",
+                                 icon: "mdi:leaf", detail: ClimateConfig.Copy.ecoMode)
+                ForEach(ClimateConfig.EcoOption.allCases) { option in
+                    let options = ClimateLogic.selectOptions(controller.entity(option.entityId))
+                    let value = ClimateLogic.selectOption(controller.shown(option.entityId) ?? "")
+                    NavigationLink(value: ClimateRoute.eco(option)) {
+                        LabeledContent {
+                            Text(value).foregroundStyle(HassTokens.Surface.secondaryInSheet)
+                        } label: {
+                            ClimateRowLabel(title: option.title, icon: option.icon)
+                        }
+                    }
+                    .disabled(options.isEmpty)
+                    .accessibilityLabel(option.title)
+                    .accessibilityValue(value)
+                    .accessibilityHint(option.openerDescription)
                     .accessibilityIdentifier("climate.eco.\(option.rawValue)")
                 }
+            } header: {
+                FormHeader("Eco Mode")
+            } footer: {
+                FormFooter(ClimateConfig.Copy.ecoMode)
             }
-        }
-        ClimateSection(title: "Predictive Comfort") {
-            ClimateControlGroup(description: ClimateConfig.Copy.predictiveComfort) {
-                PredictiveComfortTile(controller: controller) { open(.predictive) }
-            }
-        }
-    }
-}
-
-/// Off: tap turns Predictive Comfort on. On: tap opens its detail and a trailing power button turns it off
-/// (web `PredictiveComfortSetting`).
-struct PredictiveComfortTile: View {
-    var controller: ClimateController
-    var open: () -> Void
-
-    var body: some View {
-        let id = ClimateConfig.predictiveComfortEntityId
-        let isOn = controller.isOn(id)
-        let disabled = controller.isUnavailable(id)
-        let subtitle = ClimateLogic.predictiveSubtitle(controller.lookup, shownState: controller.shown(id))
-        let symbol = ClimateStyle.symbol("mdi:home-thermometer-outline")
-        if isOn {
-            HStack(spacing: HassTokens.Spacing.s) {
-                GlassTile(title: "Predictive Comfort", subtitle: subtitle, symbol: symbol, tint: ClimateStyle.control,
-                          isActive: true, isUnavailable: disabled, kind: .navigate, action: open)
-                    .accessibilityHint("Opens Predictive Comfort controls.")
-                    .accessibilityIdentifier("climate.predictive")
-                Button { controller.setSwitch(id, on: false) } label: {
-                    Image(systemName: "power")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(HassTokens.Ink.primary)
-                        .frame(width: HassTokens.minTarget + 8, height: HassTokens.minTarget + 8)
-                        .background(.regularMaterial, in: Circle())
-                        .contentShape(Circle())
+            Section {
+                Toggle(isOn: Binding(get: { predictiveOn }, set: { controller.setSwitch(predictiveId, on: $0) })) {
+                    ClimateRowLabel(title: "Predictive Comfort", subtitle: predictive, icon: "mdi:home-thermometer-outline")
                 }
-                .buttonStyle(.plain)
-                .disabled(disabled)
-                .accessibilityLabel("Turn off Predictive Comfort")
-                .accessibilityIdentifier("climate.predictive.power")
-            }
-        } else {
-            GlassTile(title: "Predictive Comfort", subtitle: subtitle, symbol: symbol, tint: ClimateStyle.control,
-                      isActive: false, isUnavailable: disabled, kind: .toggle) { controller.setSwitch(id, on: true) }
-                .disabled(disabled)
+                .disabled(controller.isUnavailable(predictiveId))
+                // The switch reads on or off itself; the label keeps the recommendation ("On · Pre-Cool").
+                .accessibilityLabel("Predictive Comfort, \(predictive)")
+                .accessibilityHint(ClimateConfig.Copy.predictiveComfort)
                 .accessibilityIdentifier("climate.predictive")
+                if predictiveOn {
+                    NavigationLink(value: ClimateRoute.predictive) {
+                        Text("Current Prediction").foregroundStyle(HassTokens.Ink.primary)
+                    }
+                    .accessibilityHint("Opens Predictive Comfort controls.")
+                    .accessibilityIdentifier("climate.predictive.open")
+                }
+            } header: {
+                FormHeader("Predictive Comfort")
+            } footer: {
+                FormFooter(ClimateConfig.Copy.predictiveComfort)
+            }
         }
     }
 }
@@ -302,158 +338,196 @@ struct PredictiveComfortTile: View {
 /// Predictive Comfort's switches, Current Prediction metrics and reasons (web `PredictiveComfortModalContent`).
 struct PredictiveComfortDetail: View {
     var controller: ClimateController
-    @ScaledMetric(relativeTo: .subheadline) private var minControlWidth: CGFloat = 240
-    @ScaledMetric(relativeTo: .subheadline) private var minMetricWidth: CGFloat = 130
 
     var body: some View {
         let sensor = controller.entity(ClimateConfig.predictiveSensorEntityId)
-        // The web shows the recommendation as the sheet subtitle.
-        Text("Recommendation: \(ClimateLogic.predictiveState(ClimateLogic.predictiveRecommendation(controller.lookup)))")
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(HassTokens.Ink.secondary)
-            .accessibilityIdentifier("climate.predictive.recommendation")
-        ClimateSection(title: "Controls") {
-            DynamicGridLayout(minCellWidth: minControlWidth, maxColumns: 3) {
-                ClimateControlGroup(description: ClimateConfig.Copy.predictiveAutoAdjust) {
-                    ClimateToggleTile(controller: controller, entityId: ClimateConfig.predictiveAutoAdjustEntityId, title: "Auto Setpoint Adjustments", icon: "mdi:thermostat-auto")
-                }
-                ClimateControlGroup(description: ClimateConfig.Copy.predictiveHvacModeChanges) {
-                    ClimateToggleTile(controller: controller, entityId: ClimateConfig.predictiveHvacModeChangesEntityId, title: "HVAC Mode Changes", icon: "mdi:hvac")
-                }
-                ClimateControlGroup(description: ClimateConfig.Copy.predictiveAllowAway) {
-                    ClimateToggleTile(controller: controller, entityId: ClimateConfig.predictiveAllowAwayEntityId, title: "Predictive Comfort While Away", icon: "mdi:home-export-outline")
-                }
+        let bullets = ClimateLogic.predictiveReasonBullets(sensor)
+        ClimateForm {
+            Section {
+                // The web shows the recommendation as the sheet subtitle.
+                Text("Recommendation: \(ClimateLogic.predictiveState(ClimateLogic.predictiveRecommendation(controller.lookup)))")
+                    .font(.headline)
+                    .foregroundStyle(HassTokens.Ink.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("climate.predictive.recommendation")
             }
-        }
-        ClimateSection(title: "Current Prediction") {
-            DynamicGridLayout(minCellWidth: minMetricWidth, maxColumns: 3) {
+            Section {
+                ClimateToggleRow(controller: controller, entityId: ClimateConfig.predictiveAutoAdjustEntityId,
+                                 title: "Auto Setpoint Adjustments", icon: "mdi:thermostat-auto",
+                                 detail: ClimateConfig.Copy.predictiveAutoAdjust)
+                ClimateToggleRow(controller: controller, entityId: ClimateConfig.predictiveHvacModeChangesEntityId,
+                                 title: "HVAC Mode Changes", icon: "mdi:hvac",
+                                 detail: ClimateConfig.Copy.predictiveHvacModeChanges)
+                ClimateToggleRow(controller: controller, entityId: ClimateConfig.predictiveAllowAwayEntityId,
+                                 title: "Predictive Comfort While Away", icon: "mdi:home-export-outline",
+                                 detail: ClimateConfig.Copy.predictiveAllowAway)
+            } header: {
+                FormHeader("Controls")
+            }
+            Section {
                 ForEach(ClimateLogic.predictiveMetrics(sensor)) { metric in
-                    VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
-                        Text(metric.label)
-                            .font(.footnote)
-                            .foregroundStyle(HassTokens.Ink.secondary)
+                    LabeledContent {
                         Text(metric.value)
-                            .font(.headline)
                             .foregroundStyle(HassTokens.Ink.primary)
                             .monospacedDigit()
                             .fixedSize(horizontal: false, vertical: true)
+                    } label: {
+                        Text(metric.label).foregroundStyle(HassTokens.Ink.primary)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(HassTokens.Spacing.m)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
                     .accessibilityElement(children: .combine)
                     .accessibilityIdentifier("climate.metric.\(metric.label)")
                 }
+            } header: {
+                FormHeader("Current Prediction")
             }
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                Text("Why this prediction?")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .accessibilityAddTraits(.isHeader)
-                ForEach(ClimateLogic.predictiveReasonBullets(sensor), id: \.self) { bullet in
-                    HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s) {
-                        Text("•").accessibilityHidden(true)
-                        Text(bullet).fixedSize(horizontal: false, vertical: true)
+            if !bullets.isEmpty {
+                Section {
+                    VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                        ForEach(bullets, id: \.self) { bullet in
+                            Text(bullet)
+                                .foregroundStyle(HassTokens.Ink.primary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                     }
-                    .font(.subheadline)
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityElement(children: .combine)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("climate.predictive.reasons")
+                } header: {
+                    FormHeader("Why This Prediction")
                 }
             }
-            .padding(HassTokens.Spacing.m)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("climate.predictive.reasons")
         }
     }
 }
 
-/// An Eco Mode select's choices, each with its description (web `ThermostatOptionDetailPage`).
+/// An Eco Mode select's choices, each with its description, the current one checked (web
+/// `ThermostatOptionDetailPage`). HIG: Lists (a checkmark marks the single choice).
 struct EcoOptionDetail: View {
     var controller: ClimateController
     var option: ClimateConfig.EcoOption
 
     var body: some View {
         let options = ClimateLogic.selectOptions(controller.entity(option.entityId))
-        if options.isEmpty {
-            ClimateNotice(text: option.unavailableMessage, symbol: "exclamationmark.triangle")
-        } else {
-            ClimateDescription(text: option.pageDescription)
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-                ForEach(options) { choice in
-                    let isSelected = controller.shown(option.entityId) == choice.value
-                    VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                        if let description = choice.description { ClimateDescription(text: description) }
-                        RemoteGlassTile(
-                            title: choice.label, subtitle: nil, symbol: ClimateStyle.symbol(choice.icon ?? option.icon),
-                            tint: ClimateStyle.control, isActive: isSelected, isDisabled: false,
-                            semantics: .selection(isSelected: isSelected)
-                        ) { controller.select(option.entityId, option: choice.value) }
+        ClimateForm {
+            if options.isEmpty {
+                Section { InlineAlert(option.unavailableMessage) }
+                    .listRowBackground(Color.clear)
+            } else {
+                Section {
+                    ForEach(options) { choice in
+                        let isSelected = controller.shown(option.entityId) == choice.value
+                        Button {
+                            controller.select(option.entityId, option: choice.value)
+                        } label: {
+                            HStack(spacing: HassTokens.Spacing.m) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(choice.label).foregroundStyle(HassTokens.Ink.primary)
+                                    if let description = choice.description {
+                                        Text(description)
+                                            .font(.footnote)
+                                            .foregroundStyle(HassTokens.Surface.secondaryInSheet)
+                                    }
+                                }
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                Image(systemName: "checkmark")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(Color(rgb: HassTokens.Palette.tintText))
+                                    .opacity(isSelected ? 1 : 0)
+                                    .accessibilityHidden(true)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        // Reads the choice and what it does ("Use Eco Away Targets, Use the wider away…").
+                        .accessibilityLabel([choice.label, choice.description].compactMap { $0 }.joined(separator: ", "))
+                        .accessibilityAddTraits(isSelected ? .isSelected : [])
                         .accessibilityIdentifier("climate.option.\(choice.value)")
                     }
+                } footer: {
+                    FormFooter(option.pageDescription)
                 }
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("\(option.title) options")
         }
     }
 }
 
 // MARK: - Tracking
 
-/// Track Selected Rooms and the three room-rule openers (web `ThermostatTrackingRoot`).
+/// Track Selected Rooms and the three room-rule openers, each with what it does under it
+/// (web `ThermostatTrackingRoot`).
 struct ClimateTrackingTab: View {
     var controller: ClimateController
-    var open: (ClimateRoute) -> Void
 
     var body: some View {
         let summary = controller.trackingSummary
-        ClimateSection(title: "Room Tracking", description: ClimateConfig.Tab.tracking.description) {
-            ClimateControlGroup(description: ClimateConfig.Copy.trackSelected) {
-                ClimateToggleTile(controller: controller, entityId: ClimateConfig.trackSelectedEntityId, title: "Track Selected Rooms", icon: "mdi:home-thermometer")
-            }
-        }
-        ClimateSection(title: "Room Rules") {
+        ClimateForm {
+            ClimateToggleSection(controller: controller, entityId: ClimateConfig.trackSelectedEntityId,
+                                 title: "Track Selected Rooms", icon: "mdi:home-thermometer",
+                                 detail: ClimateConfig.Copy.trackSelected, header: "Room Tracking")
             ForEach(ClimateConfig.TrackingPage.allCases) { page in
-                ClimateControlGroup(description: page.openerDescription) {
-                    ClimateOpenerTile(title: page.title, subtitle: summary.subtitle(page), icon: page.icon,
-                                      isDisabled: !summary.isEnabled(page)) { open(.tracking(page)) }
-                        .accessibilityIdentifier("climate.tracking.\(page.rawValue)")
+                Section {
+                    NavigationLink(value: ClimateRoute.tracking(page)) {
+                        ClimateRowLabel(title: page.title, subtitle: summary.subtitle(page), icon: page.icon)
+                    }
+                    // Disabled, not unavailable: VoiceOver reads the subtitle ("Enable Track Selected Rooms first")
+                    // and "dimmed".
+                    .disabled(!summary.isEnabled(page))
+                    .accessibilityLabel(page.title)
+                    .accessibilityValue(summary.subtitle(page))
+                    .accessibilityIdentifier("climate.tracking.\(page.rawValue)")
+                } header: {
+                    if page == ClimateConfig.TrackingPage.allCases.first { FormHeader("Room Rules") }
+                } footer: {
+                    FormFooter(page.openerDescription)
                 }
             }
         }
     }
 }
 
-/// A two-column checkbox grid of one room switch per room (web `ThermostatTrackingDetailPage`).
+/// One room switch per room, checked while on (web `ThermostatTrackingDetailPage`).
 struct TrackingRoomsDetail: View {
     var controller: ClimateController
     var page: ClimateConfig.TrackingPage
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 150
 
     var body: some View {
         let summary = controller.trackingSummary
-        if !summary.isEnabled(page) {
-            ClimateNotice(
-                text: page == .selectedRooms ? ClimateConfig.Copy.selectedRoomsDisabled : ClimateConfig.Copy.criticalDisabled,
-                symbol: "exclamationmark.triangle")
-        } else {
-            ClimateDescription(text: page.pageDescription)
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 2) {
-                ForEach(ClimateLogic.rooms(for: page, state: controller.shown)) { room in
-                    let id = page.entityId(for: room)
-                    let isOn = controller.isOn(id)
-                    RemoteGlassTile(
-                        title: room.title, subtitle: nil, symbol: isOn ? "checkmark.circle.fill" : "circle",
-                        tint: ClimateStyle.control, isActive: isOn, isDisabled: controller.isUnavailable(id),
-                        semantics: .toggle(isOn: isOn)
-                    ) { controller.toggle(id) }
-                    .accessibilityIdentifier("climate.track.\(page.rawValue).\(room.key)")
+        ClimateForm {
+            if !summary.isEnabled(page) {
+                Section {
+                    InlineAlert(page == .selectedRooms ? ClimateConfig.Copy.selectedRoomsDisabled : ClimateConfig.Copy.criticalDisabled)
+                }
+                .listRowBackground(Color.clear)
+            } else {
+                Section {
+                    ForEach(ClimateLogic.rooms(for: page, state: controller.shown)) { room in
+                        let id = page.entityId(for: room)
+                        let isOn = controller.isOn(id)
+                        Button {
+                            controller.toggle(id)
+                        } label: {
+                            HStack(spacing: HassTokens.Spacing.m) {
+                                Text(room.title)
+                                    .foregroundStyle(HassTokens.Ink.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                                    .font(.title3)
+                                    .foregroundStyle(isOn ? Color(rgb: HassTokens.Palette.tintText) : HassTokens.Surface.secondaryInSheet)
+                                    .opacity(controller.isUnavailable(id) ? 0.5 : 1)
+                                    .accessibilityHidden(true)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .disabled(controller.isUnavailable(id))
+                        .accessibilityLabel(room.title)
+                        .accessibilityValue(isOn ? "On" : "Off")
+                        .accessibilityAddTraits(isOn ? .isSelected : [])
+                        .accessibilityIdentifier("climate.track.\(page.rawValue).\(room.key)")
+                    }
+                } footer: {
+                    FormFooter(page.pageDescription)
                 }
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("\(page.title) rooms")
         }
     }
 }

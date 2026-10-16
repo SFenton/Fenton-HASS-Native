@@ -230,8 +230,10 @@ enum CameraSnapshotFeedback: Equatable {
     }
 }
 
-/// One camera control: a glass circle over its label, the glyph tinted while on (direction G mockup n2 camera:
-/// glass Snapshot, Audio and Record; HIG: Liquid Glass belongs to controls, Buttons: labels under icons).
+/// One camera control: a circle over its label, the glyph tinted while on (direction G mockup n2 camera: Snapshot,
+/// Audio and Record circles; HIG Buttons: labels under icons). The circle is the sheet's cell colour, not Liquid
+/// Glass: these controls sit on the sheet ground under the video, not over it, and glass is for the navigation
+/// layer (HIG: Materials).
 struct CameraControlButton: View {
     var title: String
     var symbol: String
@@ -255,7 +257,11 @@ struct CameraControlButton: View {
                     .contentTransition(.symbolEffect(.replace))
                     .foregroundStyle(isActive ? tint : HassTokens.Ink.primary)
                     .frame(width: max(circle, HassTokens.minTarget), height: max(circle, HassTokens.minTarget))
-                    .navigationGlass(in: Circle())
+                    .background {
+                        Circle()
+                            .fill(HassTokens.Surface.sheetCell)
+                            .overlay { if isActive { Circle().fill(tint.opacity(0.22)) } }
+                    }
                 Text(title)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(HassTokens.Ink.primary)

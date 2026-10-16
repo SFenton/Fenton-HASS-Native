@@ -42,7 +42,7 @@ struct ClimateViewTests {
     @Test func pageRendersWithNothingLoaded() {
         let climate = controller(states: [])
         #expect(render(ClimatePage(controller: climate), controller: climate) != nil)
-        #expect(render(ThermostatHubPill(controller: climate), controller: climate) != nil)
+        #expect(render(ClimateHubList(controller: climate), controller: climate) != nil)
     }
 
     @Test func galleryRenders() {
@@ -83,18 +83,17 @@ struct ClimateViewTests {
     @Test func emptySelectShowsTheUnavailableNotice() {
         let climate = controller(states: [EntityState(entityId: ClimateConfig.ecoCriticalEntityId, state: "unknown")])
         #expect(render(VStack { EcoOptionDetail(controller: climate, option: .critical) }, controller: climate) != nil)
-        #expect(render(VStack { ClimateAutomationTab(controller: climate) { _ in } }, controller: climate) != nil)
-        #expect(render(VStack { PredictiveComfortTile(controller: climate) {} }, controller: climate) != nil)
+        #expect(render(NavigationStack { ClimateAutomationTab(controller: climate) }, controller: climate) != nil)
     }
 
-    @Test func hubMenusRenderEnabledAndEmpty() {
+    @Test func hubPickersRenderEnabledAndEmpty() {
         let climate = controller()
         let hub = climate.entity(ClimateConfig.hubEntityId)
-        let menu = HubMenu(symbol: "power", label: "Thermostat Hub Mode", value: "Heat", options: ClimateLogic.hvacModeOptions(hub),
-                           selected: "heat") { _ in }
+        let menu = HubPicker(label: "Thermostat Hub Mode", value: "Heat", options: ClimateLogic.hvacModeOptions(hub),
+                             selected: "heat") { _ in }
         #expect(render(menu, controller: climate) != nil)
         #expect(render(menu, controller: climate, typeSize: .accessibility5) != nil)
-        #expect(render(HubMenu(symbol: "power", label: "Mode", value: "Heat", options: [], selected: nil) { _ in }, controller: climate) != nil)
+        #expect(render(HubPicker(label: "Mode", value: "Heat", options: [], selected: nil) { _ in }, controller: climate) != nil)
     }
 
     // MARK: Rules
