@@ -89,6 +89,23 @@ final class RoomsJourneyTests: XCTestCase {
         XCTAssertTrue(element("remote.power", in: app).waitForExistence(timeout: 5), "Remote opens the media remote sheet")
     }
 
+    /// The room rail's chips keep their text at 4.5:1 as rendered in their colours (Climate and Air Quality follow Home
+    /// Assistant's colours, Occupancy fills when detected, Window reads the house), each named with its state.
+    func testLivingRoomChipsReadOnTheirColours() throws {
+        let app = launch(room: "living-room", clean: true)
+        for title in ["Lights", "Climate", "Occupancy", "Window", "Air Quality"] {
+            let chip = element("room.chip.\(title)", in: app)
+            XCTAssertTrue(chip.waitForExistence(timeout: 10), title)
+            XCTAssertTrue(chip.label.hasPrefix("\(title), "), chip.label)
+            assertTarget(chip)
+            if chip.frame.maxX <= app.windows.firstMatch.frame.maxX,
+               let capture = RenderedContrast.Capture.screen(), let ratio = RenderedContrast.ratio(of: chip.frame, in: capture) {
+                XCTAssertGreaterThanOrEqual(ratio, 4.5, "\(title) chip measured \(ratio):1")
+            }
+        }
+        keepScreenshot(app, "room-chips-\(FentonHomeApp.family)")
+    }
+
     /// Towel racks send an explicit turn_on, then turn_off, never toggle.
     func testTowelRackSendsExplicitPower() {
         let app = launch(room: "guest-bathroom")

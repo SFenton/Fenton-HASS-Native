@@ -47,7 +47,7 @@ struct SecurityViewTests {
         let caller = Caller()
         let store = SecurityFixtures.store()
         for tile in SecurityPage.doorTiles + SecurityConfig.vehicleTiles {
-            let view = SecurityDoorRow(tile: tile, caller: caller, canSend: true).environment(store).frame(width: 370)
+            let view = SecurityDoorTile(tile: tile, caller: caller, canSend: true).environment(store).frame(width: 170)
             #expect(ImageRenderer(content: view).cgImage != nil)
         }
         #expect(SecurityPage.doorTiles.map(\.kind) == [.lock, .garageDoor, .garageDoor])
@@ -68,44 +68,46 @@ struct SecurityViewTests {
         }
     }
 
-    /// Lock capsules: secure, open (orange), moving (tint), jammed (red), unavailable.
-    @Test func lockCapsuleStyles() {
-        #expect(DoorCapsuleStyle.lock("locked") == .secure)
-        #expect(DoorCapsuleStyle.lock("unlocked") == .open)
-        #expect(DoorCapsuleStyle.lock("open") == .open)
-        #expect(DoorCapsuleStyle.lock("locking") == .moving)
-        #expect(DoorCapsuleStyle.lock("unlocking") == .moving)
-        #expect(DoorCapsuleStyle.lock("jammed") == .error)
-        #expect(DoorCapsuleStyle.lock("unavailable") == .unavailable)
-        #expect(DoorCapsuleStyle.lock(nil) == .unavailable)
-        #expect(LockRow.capsuleSymbol("locked") == "lock.fill")
-        #expect(LockRow.capsuleSymbol("unlocked") == "lock.open.fill")
-        #expect(LockRow.capsuleSymbol("jammed") == "exclamationmark.triangle.fill")
+    /// Lock tiles fill (the contact family) unless locked, and go red when jammed.
+    @Test func lockTilesFillUnlessLocked() {
+        #expect(!LockTile.isActive("locked"))
+        for state in ["unlocked", "open", "locking", "unlocking", "jammed"] { #expect(LockTile.isActive(state), "\(state)") }
+        #expect(!LockTile.isActive("unavailable") && !LockTile.isActive(nil))
+        #expect(LockTile.symbol(for: .lock, state: "locked") == "lock")
+        #expect(LockTile.symbol(for: .lock, state: "unlocked") == "lock.open")
+        #expect(LockTile.symbol(for: .lock, state: "unavailable") == "lock")
+        #expect(LockTile.symbol(for: .vehicle, state: "unlocked") == "car")
     }
 
-    /// Garage capsules follow the command: Sending with a spinner, the door's own movement, then Error on a failure.
-    @Test func garageCapsuleStylesFollowTheCommand() async {
+    /// Lock tiles render in each state, in a grid cell's width.
+    @Test func lockTilesRenderInEveryState() {
+        let tile = SecurityConfig.controlTiles.first { $0.kind == .lock }!
+        for state in ["locked", "unlocked", "locking", "jammed", "unavailable"] {
+            let view = LockTile(tile: tile, state: EntityState(entityId: tile.entityId, state: state)) { _ in }.frame(width: 170)
+            #expect(ImageRenderer(content: view).cgImage != nil, "\(state)")
+        }
+        #expect(ImageRenderer(content: LockTile(tile: tile, state: nil) { _ in }.frame(width: 170)).cgImage != nil)
+    }
+
+    /// The garage tile follows the command: Sending, the door's own movement, then Error on a failure.
+    @Test func garageTileFollowsTheCommand() async {
         let caller = Caller()
         let garage = GarageDoorController(entityId: SecurityConfig.leftGarageDoorEntityId, liveState: "closed", caller: caller,
                                           scheduler: TaskRevertScheduler())
-        #expect(DoorCapsuleStyle.garage(garage) == .secure)
-        #expect(GarageDoorRow.hint(for: garage) == "Opens the door")
+        #expect(GarageDoorTile.hint(for: garage) == "Opens the door")
         garage.send()
-        #expect(DoorCapsuleStyle.garage(garage) == .sending)
+        #expect(GarageDoorTile.subtitle(for: garage) == "Sending Open…")
         await garage.waitForCall()
         garage.liveDidChange("opening")
-        #expect(DoorCapsuleStyle.garage(garage) == .moving)
-        #expect(GarageDoorRow.symbol(for: garage) == "door.garage.open")
+        #expect(GarageDoorTile.symbol(for: garage) == "door.garage.open")
         garage.liveDidChange("open")
-        #expect(DoorCapsuleStyle.garage(garage) == .open)
-        #expect(GarageDoorRow.hint(for: garage) == "Closes the door")
+        #expect(GarageDoorTile.hint(for: garage) == "Closes the door")
         garage.send()
         garage.connectionDidChange(canSend: false)
-        #expect(DoorCapsuleStyle.garage(garage) == .error)
+        #expect(GarageDoorTile.subtitle(for: garage) == "Error")
         garage.liveDidChange("unavailable")
-        #expect(DoorCapsuleStyle.garage(garage) == .unavailable)
-        #expect(GarageDoorRow.hint(for: garage) == "")
-        #expect(GarageDoorRow.symbol(for: garage) == "door.garage.closed")
+        #expect(GarageDoorTile.hint(for: garage) == "")
+        #expect(GarageDoorTile.symbol(for: garage) == "door.garage.closed")
     }
 
     @Test func garageSubtitlesAndTones() async {
