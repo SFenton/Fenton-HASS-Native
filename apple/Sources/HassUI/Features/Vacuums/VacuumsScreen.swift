@@ -13,8 +13,10 @@ struct VacuumsScreen: View {
     }
 }
 
-/// Robot Vacuums and Auto-Clean. One column on phones, folded or portrait; where a split is allowed (unfolded
-/// Duo and iPad in landscape) Robot Vacuums leads and Auto-Clean sits beside it.
+/// Robot Vacuums and Auto-Clean on the wallpaper (direction G, mockup n6-vacuums): a one-line summary under the large
+/// title, the robots as `.cleaning` tiles, and Auto-Clean as an inset list of switches. One column on phones, folded or
+/// portrait; where a split is allowed (unfolded Duo and iPad in landscape) Robot Vacuums leads and Auto-Clean sits
+/// beside it.
 struct VacuumsPage<Sheet: View>: View {
     @State private var autoClean: VacuumAutoCleanController
     @State private var open: VacuumConfig?
@@ -41,18 +43,18 @@ struct VacuumsPage<Sheet: View>: View {
             Group {
                 if split {
                     HStack(alignment: .top, spacing: 0) {
-                        ScrollView { vacuumsSection.padding(HassTokens.Spacing.l) }
-                            .frame(width: SplitPolicy.dividerX(width: proxy.size.width, hingeMidX: nil))
-                        Divider()
-                        ScrollView { autoCleanSection.padding(HassTokens.Spacing.l) }
+                        ScrollView { robotsColumn.padding([.horizontal, .bottom], HassTokens.Spacing.l) }
+                        .frame(width: SplitPolicy.dividerX(width: proxy.size.width, hingeMidX: nil))
+                        Divider().overlay(HassTokens.Surface.separator)
+                        ScrollView { autoCleanSection.padding([.horizontal, .bottom], HassTokens.Spacing.l) }
                     }
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-                            vacuumsSection
+                            robotsColumn
                             autoCleanSection
                         }
-                        .padding(HassTokens.Spacing.l)
+                        .padding([.horizontal, .bottom], HassTokens.Spacing.l)
                     }
                 }
             }
@@ -65,44 +67,141 @@ struct VacuumsPage<Sheet: View>: View {
         }
     }
 
+    /// The summary line and Robot Vacuums: the page's first column.
+    private var robotsColumn: some View {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
+            summary
+            vacuumsSection
+        }
+    }
+
+    // MARK: - Summary
+
+    /// "1 Cleaning · 1 Needs Attention" under the large title (mockup n6-vacuums), or nothing when no robot reports.
+    @ViewBuilder
+    private var summary: some View {
+        if let line = VacuumPageFormat.summary(states: Vacuums.all.map { store.entity($0.entityId).state?.state }) {
+            Text(line)
+                .font(.subheadline)
+                .monospacedDigit()
+                .foregroundStyle(HassTokens.Ink.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("vacuums.summary")
+        }
+    }
+
+    // MARK: - Robot Vacuums
+
     private var vacuumsSection: some View {
-        VacuumSection("Robot Vacuums") {
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 3) {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+            PageSectionHeader("Robot Vacuums")
+            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 3, equalRowHeights: true) {
                 ForEach(Vacuums.all) { vacuum in
-                    let state = store.entity(vacuum.entityId).state
-                    let visual = VacuumVisual.state(state?.state)
+                    let tile = VacuumPageFormat.tile(
+                        state: store.entity(vacuum.entityId).state?.state,
+                        battery: store.entity(vacuum.batteryEntityId).state?.state,
+                        error: store.entity(vacuum.errorEntityId).state?.state
+                    )
                     GlassTile(
                         title: vacuum.title,
-                        subtitle: VacuumFormat.tileSubtitle(state: state?.state, battery: store.entity(vacuum.batteryEntityId).state?.state),
-                        symbol: VacuumStyle.symbol(visual.icon),
-                        tint: VacuumStyle.color(visual.tone == .neutral ? .active : visual.tone),
-                        isActive: visual.tone != .unavailable && visual.tone != .neutral,
-                        kind: .navigate
+                        subtitle: tile.subtitle,
+                        symbol: VacuumStyle.symbol(tile.icon),
+                        family: .cleaning,
+                        isActive: tile.isActive,
+                        isError: tile.isError,
+                        kind: .navigate,
+                        progress: tile.progress
                     ) { open = vacuum }
                     .accessibilityHint("Opens the vacuum controls and map.")
                     .accessibilityIdentifier("vacuums.tile.\(vacuum.vacuumMapId)")
                 }
             }
+            .equalHeightTiles()
         }
     }
 
+    // MARK: - Auto-Clean
+
     private var autoCleanSection: some View {
-        VacuumSection("Auto-Clean") {
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 3) {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+            PageSectionHeader("Auto-Clean")
+            ModuleList {
                 ForEach(Vacuums.autoCleanControls) { control in
-                    let display = autoClean.display(control)
-                    GlassTile(
-                        title: control.title,
-                        subtitle: display.subtitle,
-                        symbol: VacuumStyle.symbol(control.icon),
-                        tint: VacuumStyle.autoClean,
-                        isActive: display.isEnabled,
-                        isUnavailable: display.isUnavailable,
-                        kind: .toggle
-                    ) { autoClean.toggle(control) }
-                    .accessibilityIdentifier("vacuums.autoClean.\(control.entityId)")
+                    autoCleanRow(control)
                 }
             }
         }
+    }
+
+    /// One automation as a switch row: "Main Floor", "Enabled" or "Paused".
+    private func autoCleanRow(_ control: Vacuums.AutoCleanControl) -> some View {
+        let display = autoClean.display(control)
+        return ModuleRow(
+            control.title,
+            subtitle: display.subtitle,
+            symbol: "clock.arrow.circlepath",
+            glyph: ColorFamily.cleaning.glyph,
+            // Unavailable rows dim only the glyph; their text keeps full contrast.
+            glyphOpacity: display.isUnavailable ? 0.4 : 1
+        ) {
+            Toggle(control.title, isOn: Binding(
+                get: { autoClean.display(control).isEnabled },
+                set: { _ in autoClean.toggle(control) }
+            ))
+            .labelsHidden()
+            .disabled(display.isUnavailable)
+            .accessibilityHint("Turns automatic cleaning on or off.")
+            .accessibilityIdentifier("vacuums.autoClean.\(control.entityId)")
+        }
+    }
+}
+
+// MARK: - Format
+
+/// What the Vacuums page says about its robots, kept apart from the generic page so tests can call it.
+enum VacuumPageFormat {
+    /// The page summary from the robots' states: counts of cleaning, returning and errored robots ("Needs
+    /// Attention"), "All Docked" when every robot is docked, or nil when there is nothing to say.
+    static func summary(states: [String?]) -> String? {
+        let normalized = states.map { $0?.trimmingCharacters(in: .whitespaces).lowercased() ?? "" }
+        let parts = [("cleaning", "Cleaning"), ("returning", "Returning"), ("error", "Needs Attention")].compactMap { state, label in
+            let count = normalized.count(where: { $0 == state })
+            return count > 0 ? "\(count) \(label)" : nil
+        }
+        if !parts.isEmpty { return parts.joined(separator: " · ") }
+        if !normalized.isEmpty, normalized.allSatisfy({ $0 == "docked" }) { return "All Docked" }
+        return nil
+    }
+
+    /// What a robot's tile draws.
+    struct TileFace: Equatable {
+        var subtitle: String
+        var icon: String
+        var isActive: Bool
+        var isError: Bool
+        /// The battery band while cleaning; nil otherwise.
+        var progress: Double?
+    }
+
+    /// A robot's tile: filled while it works (cleaning, returning, paused), off when docked or idle, and the error
+    /// face with the reported issue appended ("Error • 23% • Wheel Stuck").
+    static func tile(state: String?, battery: String?, error: String?) -> TileFace {
+        let visual = VacuumVisual.state(state)
+        let isError = visual.tone == .danger
+        var subtitle = VacuumFormat.tileSubtitle(state: state, battery: battery)
+        let issue = VacuumStatusResolver.nativeIssue(error)
+        if isError, issue.status == .present, let code = issue.code, !code.isEmpty {
+            subtitle += " • \(StateText.titleCase(code))"
+        }
+        let isCleaning = state?.trimmingCharacters(in: .whitespaces).lowercased() == "cleaning"
+        let level = battery.flatMap { Double($0.trimmingCharacters(in: .whitespaces)) }.map { min(max($0 / 100, 0), 1) }
+        return TileFace(
+            subtitle: subtitle,
+            icon: visual.icon,
+            isActive: [.active, .returning, .warning].contains(visual.tone),
+            isError: isError,
+            progress: isCleaning ? level : nil
+        )
     }
 }

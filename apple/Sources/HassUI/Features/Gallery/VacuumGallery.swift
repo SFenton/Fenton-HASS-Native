@@ -96,7 +96,7 @@ enum VacuumFixtures {
                 entity(vacuum.statusFlagEntityId, scenario == .resumable ? "resumable" : "none"),
                 entity(vacuum.passesEntityId, "1", options(["1", "2", "3"])),
                 entity("select.\(m)_mode", "vacuum_and_mop", options(["vacuum", "mop", "vacuum_and_mop"])),
-                entity("select.\(m)_fan", "medium", options(["low", "medium", "high", "max"])),
+                entity("select.\(m)_fan", "medium", options(["low", "medium", "high", "max", "turbo"])),
                 entity("select.\(m)_water", "medium", options(["low", "medium", "high"])),
                 entity("binary_sensor.\(m)_mop_attachment", "on"),
                 entity("button.\(m)_trigger_auto_empty_dock", "unknown"),

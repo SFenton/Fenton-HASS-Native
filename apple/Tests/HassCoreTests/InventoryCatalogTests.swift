@@ -188,18 +188,18 @@ struct InventoryCatalogTests {
     // MARK: Copy
 
     @Test func expiryInfoLabelsAndTones() {
-        #expect(InventoryCatalog.expiryInfo(nil, calendar: calendar) == ExpiryInfo(label: "No expiration date", tone: nil))
-        #expect(InventoryCatalog.expiryInfo("soon", calendar: calendar) == ExpiryInfo(label: "No expiration date", tone: nil))
-        #expect(InventoryCatalog.expiryInfo("2026-10-10", calendar: calendar) == ExpiryInfo(label: "Expired on 10/10/2026", tone: .expired))
-        #expect(InventoryCatalog.expiryInfo("2026-10-11", calendar: calendar) == ExpiryInfo(label: "Expires on 10/11/2026", tone: .soon))
-        #expect(InventoryCatalog.expiryInfo("2026-10-17", calendar: calendar) == ExpiryInfo(label: "Expires on 10/17/2026", tone: .soon))
-        #expect(InventoryCatalog.expiryInfo("2026-10-18", calendar: calendar) == ExpiryInfo(label: "Expires on 10/18/2026", tone: nil))
+        #expect(InventoryCatalog.expiryInfo(nil, calendar: calendar) == ExpiryInfo(label: "No Expiration Date", tone: nil))
+        #expect(InventoryCatalog.expiryInfo("soon", calendar: calendar) == ExpiryInfo(label: "No Expiration Date", tone: nil))
+        #expect(InventoryCatalog.expiryInfo("2026-10-10", calendar: calendar) == ExpiryInfo(label: "Expired Oct 10, 2026", tone: .expired))
+        #expect(InventoryCatalog.expiryInfo("2026-10-11", calendar: calendar) == ExpiryInfo(label: "Expires Oct 11, 2026", tone: .soon))
+        #expect(InventoryCatalog.expiryInfo("2026-10-17", calendar: calendar) == ExpiryInfo(label: "Expires Oct 17, 2026", tone: .soon))
+        #expect(InventoryCatalog.expiryInfo("2026-10-18", calendar: calendar) == ExpiryInfo(label: "Expires Oct 18, 2026", tone: nil))
     }
 
     @Test func rowSubtitle() {
-        let expiry = ExpiryInfo(label: "Expires on 10/20/2026", tone: nil)
-        #expect(InventoryCatalog.rowSubtitle(expiry, quantity: 3, batchCount: 1) == "Quantity 3 · Expires on 10/20/2026")
-        #expect(InventoryCatalog.rowSubtitle(expiry, quantity: nil, batchCount: 1) == "Expires on 10/20/2026")
+        let expiry = ExpiryInfo(label: "Expires Oct 20, 2026", tone: nil)
+        #expect(InventoryCatalog.rowSubtitle(expiry, quantity: 3, batchCount: 1) == "Quantity 3 · Expires Oct 20, 2026")
+        #expect(InventoryCatalog.rowSubtitle(expiry, quantity: nil, batchCount: 1) == "Expires Oct 20, 2026")
         #expect(InventoryCatalog.rowSubtitle(expiry, quantity: 2.5, batchCount: 2) == "Quantity 2.5 · Multiple Expiration Dates")
         #expect(InventoryCatalog.multipleDatesLabel == "Multiple Expiration Dates")
     }
@@ -215,9 +215,9 @@ struct InventoryCatalogTests {
     @Test func batchQualifier() {
         #expect(InventoryCatalog.batchQualifier(batch(expiry: "2026-10-20"), multipleBatches: false, calendar: calendar) == "")
         #expect(InventoryCatalog.batchQualifier(batch(prepared: true), multipleBatches: false, calendar: calendar) == " prepared")
-        #expect(InventoryCatalog.batchQualifier(batch(expiry: "2026-10-20"), multipleBatches: true, calendar: calendar) == " expiring 10/20/2026")
+        #expect(InventoryCatalog.batchQualifier(batch(expiry: "2026-10-20"), multipleBatches: true, calendar: calendar) == " expiring Oct 20, 2026")
         #expect(InventoryCatalog.batchQualifier(batch(expiry: "2026-10-20", prepared: true), multipleBatches: true, calendar: calendar)
-            == " expiring 10/20/2026 prepared")
+            == " expiring Oct 20, 2026 prepared")
         #expect(InventoryCatalog.batchQualifier(batch(), multipleBatches: true, calendar: calendar) == " without an expiration date")
         #expect(InventoryCatalog.batchQualifier(batch(prepared: true), multipleBatches: true, calendar: calendar)
             == " without an expiration date prepared")

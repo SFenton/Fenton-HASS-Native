@@ -63,8 +63,8 @@ public struct RecipeCard: Sendable, Hashable, Identifiable {
         self.cookable = cookable
     }
 
-    /// The card's subtitle, e.g. `4/6 ingredients` (web `RecipeCard.tsx`).
-    public var coverageText: String { "\(matchedRequired)/\(requiredTotal) ingredients" }
+    /// The card's subtitle, e.g. `4 of 6 Ingredients` (web `RecipeCard.tsx`, in Title Case: direction G, Copy).
+    public var coverageText: String { "\(matchedRequired) of \(requiredTotal) Ingredients" }
 
     /// The smaller image first, falling back to the full one.
     public var cardImageURL: URL? { thumbnailURL ?? imageURL }

@@ -79,6 +79,9 @@ final class InventoryJourneyTests: JourneyTestCase {
         let beans = row(app, "Black Beans")
         XCTAssertTrue(beans.buttons["Edit Black Beans"].exists)
         XCTAssertFalse(beans.buttons["Delete Black Beans"].exists, "Multi-batch rows delete from the editor")
+        // Direction G: every editable row carries the cart and a chevron that opens the editor (mockup n6-inventory).
+        XCTAssertTrue(row(app, "Honey").buttons["Edit Honey"].exists)
+        XCTAssertFalse(row(app, "Honey").buttons["inventory.row.delete"].exists, "Rows delete from their swipe action")
     }
 
     /// Cart asks for a quantity, then sends EverShelf's shopping service and the to-do list item.
@@ -96,13 +99,20 @@ final class InventoryJourneyTests: JourneyTestCase {
         XCTAssertTrue(lastCall(app).contains("todo.add_item"), lastCall(app))
     }
 
-    /// A single item deletes after a confirmation.
+    /// A single item deletes from its trailing swipe action after a confirmation (direction G rows show only the cart
+    /// and the chevron).
     func testDeleteSingleItemConfirms() {
         let app = launch()
-        let delete = row(app, "Honey").buttons["inventory.row.delete"]
-        XCTAssertTrue(delete.waitForExistence(timeout: 10))
-        delete.tap()
-        let confirm = app.buttons["Delete"].firstMatch
+        let honey = row(app, "Honey")
+        XCTAssertTrue(honey.waitForExistence(timeout: 10))
+        honey.swipeLeft()
+        let swipeDelete = app.buttons["Delete"].firstMatch
+        XCTAssertTrue(swipeDelete.waitForExistence(timeout: 5))
+        swipeDelete.tap()
+        XCTAssertTrue(app.staticTexts["Delete Honey from the pantry?"].waitForExistence(timeout: 5))
+        // The dialog's Delete is the last one: the row's swipe button can still be in the tree under it.
+        let deletes = app.buttons.matching(NSPredicate(format: "label == %@", "Delete"))
+        let confirm = deletes.element(boundBy: max(deletes.count - 1, 0))
         XCTAssertTrue(confirm.waitForExistence(timeout: 5))
         confirm.tap()
         XCTAssertTrue(app.staticTexts["Honey"].waitForNonExistence(timeout: 5))

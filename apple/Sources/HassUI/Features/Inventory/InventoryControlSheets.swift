@@ -49,7 +49,8 @@ struct InventorySortSheet: View {
     }
 }
 
-/// Filter Inventory (web `InventoryFilterSheet`) on the shared ``FilterSheet``.
+/// Filter Inventory (web `InventoryFilterSheet`; mockup n6-inventory-filter) on the shared ``FilterSheet``: a "Show"
+/// checkmark list of the filters, each with what it keeps, and how many cards the chosen one shows under the title.
 struct InventoryFilterSheet: View {
     var model: InventoryListModel
     @State private var mode: InventoryFilterMode
@@ -62,6 +63,7 @@ struct InventoryFilterSheet: View {
     var body: some View {
         FilterSheet(
             title: "Filter Inventory",
+            subtitle: model.filterSummary(mode),
             canApply: mode != model.filterMode,
             canReset: mode != .all,
             onApply: { model.filterMode = mode },
@@ -69,8 +71,9 @@ struct InventoryFilterSheet: View {
             // Seven options don't fit the medium detent.
             detents: [.large]
         ) {
-            // No "Filter Items" header: it repeated the sheet title, and the audit reported it clipped.
-            Section {
+            // "Show" rather than the web's "Filter Items", which repeated the sheet title. FilterSection's header wraps at
+            // AX sizes (the old custom header was reported clipped).
+            FilterSection("Show") {
                 ForEach(InventoryFilterMode.allCases) { option in
                     FilterOptionRow(title: option.title, subtitle: option.subtitle, isSelected: mode == option) { mode = option }
                         .accessibilityIdentifier("inventory.filter.\(option.rawValue)")

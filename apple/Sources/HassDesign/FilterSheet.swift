@@ -7,6 +7,8 @@ import SwiftUI
 /// restores defaults in `onReset`. Cancel (or a swipe down) drops the draft.
 public struct FilterSheet<Content: View>: View {
     public var title: String
+    /// A one-line state under the title, such as "2 Filters On" (``SwiftUICore/View/sheetSubtitle(_:)``).
+    public var subtitle: String?
     /// Apply is enabled only when the draft differs from what is applied.
     public var canApply: Bool
     /// Reset is shown only when the draft differs from the defaults.
@@ -21,9 +23,10 @@ public struct FilterSheet<Content: View>: View {
     @Environment(\.dismiss) private var dismiss
 
     /// Creates a sheet.
-    public init(title: String, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void, onReset: @escaping () -> Void,
-                detents: Set<PresentationDetent>? = nil, @ViewBuilder content: @escaping () -> Content) {
+    public init(title: String, subtitle: String? = nil, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void,
+                onReset: @escaping () -> Void, detents: Set<PresentationDetent>? = nil, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
+        self.subtitle = subtitle
         self.canApply = canApply
         self.canReset = canReset
         self.onApply = onApply
@@ -36,22 +39,19 @@ public struct FilterSheet<Content: View>: View {
         NavigationStack {
             Form {
                 content()
-                // Shown only when there is something to reset: a disabled row fails the contrast audit.
+                // Shown only when there is something to reset: a disabled row fails the contrast audit. A list row in
+                // the action tint, as in the mockups (n5 Filter Recipes; direction G, Sheets: "Reset is a list row").
                 if canReset {
                     Section {
-                        // A bordered button whose bezel hugs its wrapping title, not a full Form row: the row's
-                        // fixed height (74 pt on iPad) left the element growing only 1.26x at AX5, and the system
-                        // Form button clipped its title. Primary ink keeps 4.5:1 in both modes.
                         Button(action: onReset) {
+                            // The label wraps and the row grows at AX5: the system Form button clipped its title.
                             Text("Reset to Defaults")
+                                .foregroundStyle(HassTokens.Ink.action)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity)
+                                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                                .contentShape(Rectangle())
                         }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                        .tint(HassTokens.Ink.primary)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets())
+                        .buttonStyle(.plain)
                         .accessibilityIdentifier("filterSheet.reset")
                     }
                 }
@@ -60,18 +60,13 @@ public struct FilterSheet<Content: View>: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
+            .sheetSubtitle(subtitle)
+            // An edit sheet (direction G, Sheets): circle x Cancel leading drops the draft, the filled check applies it.
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .accessibilityIdentifier("filterSheet.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Apply") {
-                        onApply()
-                        dismiss()
-                    }
-                    .disabled(!canApply)
-                    .accessibilityIdentifier("filterSheet.apply")
+                SheetCancelItem(identifier: "filterSheet.cancel") { dismiss() }
+                SheetConfirmItem("Apply", isEnabled: canApply, identifier: "filterSheet.apply") {
+                    onApply()
+                    dismiss()
                 }
             }
         }
@@ -81,13 +76,15 @@ public struct FilterSheet<Content: View>: View {
         .presentationDragIndicator(.visible)
         #if os(iOS)
         // Opaque, not glass: at the medium detent the page's floating buttons otherwise show through and fail contrast.
+        // In the dark sheet this is G's `#1C1C1E` ground under `#2C2C2E` rows.
         .presentationBackground(Color(.systemGroupedBackground))
         #endif
     }
 }
 
 /// A titled `Form` section for a filter sheet. Use it instead of `Section("…")`: the system header's
-/// secondary label measured 3.1:1 on the sheet's grouped background, so the header uses primary ink.
+/// secondary label measured 3.1:1 on the sheet's grouped background. Direction G's sheet header over an inset list is
+/// 15 Semibold secondary (`.agents/design/direction-g.md`, Type), drawn in ``FormHeader``'s readable secondary ink.
 public struct FilterSection<Content: View>: View {
     public var title: String
     @ViewBuilder public var content: () -> Content
@@ -102,12 +99,10 @@ public struct FilterSection<Content: View>: View {
         Section {
             content()
         } header: {
-            Text(title)
+            FormHeader(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(HassTokens.Ink.primary)
                 .textCase(nil)
                 .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
         }
     }
 }
@@ -133,17 +128,18 @@ public struct FilterOptionRow: View {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
                     Text(title).foregroundStyle(HassTokens.Ink.primary)
                     if let subtitle {
-                        // Primary ink: the 72% secondary ink measured 4.2:1 on the iPad sheet's grouped rows.
+                        // Secondary ink (direction G, Colour). It measured 4.2:1 on a light iPad sheet's rows; sheets are
+                        // dark now, where it is about 8:1 on the `#2C2C2E` row.
                         Text(subtitle)
                             .font(.footnote)
-                            .foregroundStyle(HassTokens.Ink.primary)
+                            .foregroundStyle(HassTokens.Ink.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "checkmark")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.tint)
+                    .foregroundStyle(HassTokens.Ink.action)
                     .opacity(isSelected ? 1 : 0)
                     .accessibilityHidden(true)
             }

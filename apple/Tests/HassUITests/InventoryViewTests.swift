@@ -1,5 +1,6 @@
 import Foundation
 @testable import HassCore
+import HassDesign
 @testable import HassUI
 import SwiftUI
 import Testing
@@ -59,6 +60,54 @@ struct InventoryViewTests {
         #expect(prepared.confirmTitle == "Change")
         #expect(prepared.message.contains("from 1 to"))
         #expect(prepared.id.hasPrefix("prepared-"))
+    }
+
+    // MARK: - Direction G copy and editor save
+
+    @Test func pageSummaryCountsCardsAndExpiringSoon() async {
+        let (_, models) = models()
+        let pantry = models.model(for: .pantry)
+        #expect(pantry.pageSummary == nil, "Nothing before rows load")
+        await pantry.load()
+        #expect(pantry.pageSummary == FoodConfig.summary(items: 4, expiring: 0))
+        let fridge = models.model(for: .fridge)
+        await fridge.load()
+        // Whole Milk (3 days) and Chicken Soup (4 days) expire within the week; Eggs (18 days) don't.
+        #expect(fridge.pageSummary == FoodConfig.summary(items: 3, expiring: 2))
+        #expect(pantry.filterSummary(.all) == "4 of 4 Items")
+        #expect(pantry.filterSummary(.expired) == "1 of 4 Items")
+        pantry.searchQuery = "rice"
+        #expect(pantry.pageSummary == nil, "Search results are not the page's stock")
+    }
+
+    @Test func editorSummarizesAndSavesEveryChangedBatch() async throws {
+        let (server, models) = models()
+        let model = models.model(for: .pantry)
+        await model.load()
+        let editor = InventoryEditorModel(item: try #require(model.displayItem(id: "black beans")), list: model)
+        #expect(editor.summary == "Quantity 3 · In the Pantry")
+        let batches = editor.batches
+        #expect(batches.count == 2)
+        #expect(editor.header(batches[0]).hasSuffix(" · In the Pantry"))
+        #expect(editor.header(batches[0]).hasPrefix("Expires "))
+        #expect(editor.changedBatches.isEmpty)
+
+        editor.setQuantity(1, for: batches[0])
+        editor.setQuantity(2, for: batches[1])
+        #expect(editor.changedBatches.map(\.key) == batches.map(\.key))
+        editor.resetChanges()
+        #expect(editor.changedBatches.isEmpty)
+
+        editor.setQuantity(1, for: batches[0])
+        editor.setQuantity(2, for: batches[1])
+        await editor.saveChanges()
+        #expect(editor.error == nil)
+        #expect(editor.isFinished)
+        #expect(server.calls.contains { $0.hasPrefix("evershelf.delete_inventory") }, "First batch lowered")
+        #expect(server.calls.contains { $0.hasPrefix("evershelf.add_scanned_item") }, "Second batch raised")
+
+        let honey = InventoryEditorModel(item: try #require(model.displayItem(id: "honey")), list: model)
+        #expect(honey.header(try #require(honey.batches.first)) == "In the Pantry", "One batch: the place alone")
     }
 
     // MARK: - Camera
@@ -130,7 +179,14 @@ struct InventoryViewTests {
         let soup = try #require(model.displayItem(id: "chicken soup"))
         model.setRowError("Unable to delete item", for: soup.id)
         #expect(rendered(List { InventoryRow(item: soup, model: model, onEdit: {}, onShop: {}, onDelete: {}) }, dynamicType: .accessibility5))
-        #expect(InventoryTone.color(.soon) != InventoryTone.color(.expired))
+        #expect(InventoryTone.color(.soon) == HassTokens.Ink.warning)
+        #expect(InventoryTone.color(.expired) == HassTokens.Ink.error)
+        let beans = try #require(model.displayItem(id: "black beans"))
+        #expect(rendered(List { InventoryRow(item: beans, model: model, isFirst: true, isLast: false, onEdit: {}, onShop: {}, onDelete: {}) }))
+        #expect(rendered(InventoryEmptyState(title: "No Items Found", description: "Scan an item to add it to your pantry.", isError: false) {},
+                         dynamicType: .accessibility5))
+        #expect(rendered(CameraStatusPill(text: "Looking for a Barcode")))
+        #expect(rendered(ScanProductHeader(name: "Greek Yogurt", barcode: "0123456789012")))
     }
 
     @Test func sheetsRender() async throws {

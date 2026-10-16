@@ -3,16 +3,21 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// Draws a Valetudo map (pattern: `.agents/patterns/valetudo-map.md`; web `ValetudoMapCard.tsx`).
+/// Draws a Valetudo map (pattern: `.agents/patterns/valetudo-map.md`; web `ValetudoMapCard.tsx`) in direction G's look:
+/// flat neutral rooms on a dark card, selected rooms white with black numbered badges, skipped rooms hatched
+/// (`.agents/design/direction-g.md`, Controls: Vacuum map).
 ///
 /// Floor, segments and walls are rasterised once per map into a one-pixel-per-cell image that the canvas scales
-/// with nearest-neighbour sampling, so pan and zoom only redraw vectors and icons. Rotation, the room focus crop
-/// and the viewport come from ``MapGeometry``.
+/// with nearest-neighbour sampling, so pan and zoom only redraw vectors and icons. Each selectable room also gets a
+/// mask once, which marks it selected or skipped without rasterising again. Rotation, the room focus crop and the
+/// viewport come from ``MapGeometry``.
 struct ValetudoMapCanvas: View {
     var scene: ValetudoMapScene
     var viewport: MapViewport = .initial
-    /// Selected rooms and their cleaning order, drawn as numbered badges.
+    /// Selected rooms and their cleaning order: drawn white with numbered badges.
     var roomOrders: [String: Int] = [:]
+    /// Rooms the coordinator skips on automatic cleans: drawn hatched.
+    var skippedRooms: Set<String> = []
     /// The area to outline.
     var area: MapGridRect?
     /// Draw corner handles on the area.
@@ -20,13 +25,14 @@ struct ValetudoMapCanvas: View {
 
     var body: some View {
         Canvas { context, size in
-            scene.draw(in: &context, size: size, viewport: viewport, roomOrders: roomOrders, area: area, showsHandles: showsHandles)
+            scene.draw(in: &context, size: size, viewport: viewport, roomOrders: roomOrders, skippedRooms: skippedRooms,
+                       area: area, showsHandles: showsHandles)
         }
         .accessibilityHidden(true)
     }
 }
 
-/// A decoded map prepared for drawing: geometry, focus, rooms and the cell image.
+/// A decoded map prepared for drawing: geometry, focus, rooms, the cell image and the room masks.
 struct ValetudoMapScene {
     let map: ValetudoMap
     let provenance: ValetudoMapProvenance
@@ -38,6 +44,17 @@ struct ValetudoMapScene {
     let interactionGeometry: MapStageGeometry
     let rooms: [ValetudoMap.SelectableRoom]
     let cells: CGImage?
+    /// One mask per drawn selectable room, keyed by its zone's entity id.
+    let masks: [String: RoomMask]
+
+    /// A room's cells as an opaque image in the selected colour, and where it sits on the stage.
+    struct RoomMask {
+        var image: CGImage
+        /// The image's frame in stage cells.
+        var rect: CGRect
+        /// The room's bounds in grid cells, to test whether its name fits.
+        var gridBounds: CGRect
+    }
 
     init(map: ValetudoMap, vacuum: VacuumConfig, provenance: ValetudoMapProvenance) {
         self.map = map
@@ -49,6 +66,12 @@ struct ValetudoMapScene {
         interactionGeometry = MapStageGeometry(map: map, mapScale: vacuum.mapScale, bounds: focused ? focus.interactionBounds : nil)
         rooms = vacuum.mapRoomSelection ? map.selectableRooms(vacuum.zones) : []
         cells = Self.rasterise(map, geometry: geometry, focus: focused ? focus : nil)
+        var masks: [String: RoomMask] = [:]
+        for room in rooms {
+            if focused, !(room.segmentId.map(focus.acceptedSegmentIds.contains) ?? false) { continue }
+            if let mask = Self.mask(room, geometry: geometry) { masks[room.entityId] = mask }
+        }
+        self.masks = masks
     }
 
     /// Width over height, for the frame.
@@ -65,9 +88,47 @@ struct ValetudoMapScene {
         return ValetudoMap.room(at: (grid.x, grid.y), in: rooms)
     }
 
+    // MARK: - Palette
+
+    /// Direction G's map colours (mockup n6 `data-map`): a cool neutral ramp of rooms on a `#262628` card.
+    enum Palette {
+        /// The card and everything outside the rooms.
+        static let ground = MapRGBA(38, 38, 40)
+        /// Walls: the dark seams between rooms.
+        static let wall = MapRGBA(30, 31, 34)
+        /// Floor that belongs to no room.
+        static let floor = MapRGBA(58, 63, 70)
+        /// Room fills, cycled in layer order so neighbours differ slightly.
+        static let rooms: [MapRGBA] = [
+            MapRGBA(80, 86, 95), MapRGBA(90, 97, 107), MapRGBA(69, 75, 84), MapRGBA(86, 93, 102), MapRGBA(75, 81, 89),
+            MapRGBA(64, 70, 78), MapRGBA(94, 101, 111), MapRGBA(77, 83, 92), MapRGBA(87, 94, 104), MapRGBA(71, 77, 85),
+        ]
+        /// A selected room.
+        static let selected = MapRGBA(237, 239, 242)
+        /// Stripes over a skipped room.
+        static let hatch = MapRGBA(20, 21, 24, 0.75)
+        /// Room names on a neutral room, and on a selected one.
+        static let label = MapRGBA(255, 255, 255, 0.92)
+        static let labelOnSelected = MapRGBA(28, 28, 30)
+        /// Travelled and predicted paths.
+        static let path = MapRGBA(138, 144, 153, 0.9)
+        static let predictedPath = MapRGBA(138, 144, 153, 0.45)
+        /// The robot: a white disc with a dark ring and centre, on a soft halo; grey once reported from memory.
+        static let robot = MapRGBA(255, 255, 255)
+        static let reportedRobot = MapRGBA(138, 144, 153)
+        static let robotInk = MapRGBA(28, 28, 30)
+        static let robotHalo = MapRGBA(255, 255, 255, 0.22)
+        /// The dock.
+        static let dock = MapRGBA(201, 205, 211)
+
+        /// The fill for the segment at `index` among segments.
+        static func room(_ index: Int) -> MapRGBA { rooms[index % rooms.count] }
+    }
+
     // MARK: - Raster
 
-    /// One premultiplied RGBA pixel per cell, alpha-blended in layer order (`renderValetudoMap` layer pass).
+    /// One premultiplied RGBA pixel per cell, alpha-blended in layer order (`renderValetudoMap` layer pass), in the
+    /// flat G palette (no material texture).
     static func rasterise(_ map: ValetudoMap, geometry: MapStageGeometry, focus: ValetudoMapFocus?) -> CGImage? {
         let width = Int(geometry.width.rounded(.up)), height = Int(geometry.height.rounded(.up))
         guard width > 0, height > 0, width * height < 16_000_000 else { return nil }
@@ -85,20 +146,41 @@ struct ValetudoMapScene {
         var segmentIndex = 0
         for layer in map.layers where !layer.pixels.isEmpty {
             let isSegment = layer.type == "segment"
-            let color = layer.type == "wall" ? ValetudoMapStyle.wall : ValetudoMapStyle.segment(segmentIndex)
+            let color = layer.type == "wall" ? Palette.wall : isSegment ? Palette.room(segmentIndex) : Palette.floor
             if isSegment { segmentIndex += 1 }
             if let focus, isSegment, !(layer.segmentId.map(focus.acceptedSegmentIds.contains) ?? false) { continue }
-            let material = isSegment ? layer.material : nil
             var index = 0
             while index + 1 < layer.pixels.count {
                 let sx = Int(layer.pixels[index]), sy = Int(layer.pixels[index + 1])
                 index += 2
                 if let walls = focus?.renderWallCells, layer.type == "wall", !walls.contains(ValetudoMap.cellKey(sx, sy)) { continue }
                 blend(sx - minX, sy - minY, color)
-                if let accent = ValetudoMapStyle.accent(material, x: sx, y: sy) { blend(sx - minX, sy - minY, ValetudoMapStyle.color(accent)) }
             }
         }
-        let bytes = buffer.map { UInt8(max(0, min(255, ($0 * 255).rounded()))) }
+        return image(width: width, height: height, bytes: buffer.map { UInt8(max(0, min(255, ($0 * 255).rounded()))) })
+    }
+
+    /// A room's mask: its cells, opaque, in ``Palette/selected``, cropped to the room's bounds.
+    static func mask(_ room: ValetudoMap.SelectableRoom, geometry: MapStageGeometry) -> RoomMask? {
+        let points = room.cells.map { (x: $0 / 100_000, y: $0 % 100_000) }
+        guard let minX = points.map(\.x).min(), let maxX = points.map(\.x).max(),
+              let minY = points.map(\.y).min(), let maxY = points.map(\.y).max() else { return nil }
+        let width = maxX - minX + 1, height = maxY - minY + 1
+        guard width * height < 4_000_000 else { return nil }
+        let color = Palette.selected
+        let pixel: [UInt8] = [color.red, color.green, color.blue].map { UInt8(($0 * 255).rounded()) } + [255]
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        for point in points {
+            let index = ((point.y - minY) * width + (point.x - minX)) * 4
+            bytes.replaceSubrange(index..<(index + 4), with: pixel)
+        }
+        guard let image = image(width: width, height: height, bytes: bytes) else { return nil }
+        let rect = CGRect(x: CGFloat(minX - Int(geometry.minGridX)), y: CGFloat(minY - Int(geometry.minGridY)),
+                          width: CGFloat(width), height: CGFloat(height))
+        return RoomMask(image: image, rect: rect, gridBounds: CGRect(x: minX, y: minY, width: width, height: height))
+    }
+
+    private static func image(width: Int, height: Int, bytes: [UInt8]) -> CGImage? {
         guard let provider = CGDataProvider(data: Data(bytes) as CFData) else { return nil }
         return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
                        space: CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB(),
@@ -109,8 +191,8 @@ struct ValetudoMapScene {
     // MARK: - Drawing
 
     func draw(in context: inout GraphicsContext, size: CGSize, viewport: MapViewport, roomOrders: [String: Int],
-              area: MapGridRect?, showsHandles: Bool) {
-        context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Self.color(ValetudoMapStyle.background)))
+              skippedRooms: Set<String> = [], area: MapGridRect?, showsHandles: Bool) {
+        context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Self.color(Palette.ground)))
         let m = matrix(size: size, viewport: viewport)
         let scale = max(m.scale, 0.01)
         var stage = context
@@ -120,10 +202,34 @@ struct ValetudoMapScene {
             stage.draw(Image(decorative: cells, scale: 1).interpolation(.none),
                        in: CGRect(x: 0, y: 0, width: CGFloat(cells.width), height: CGFloat(cells.height)))
         }
+        for (entityId, mask) in masks where roomOrders[entityId] != nil {
+            stage.draw(Image(decorative: mask.image, scale: 1).interpolation(.none), in: mask.rect)
+        }
+        for (entityId, mask) in masks where skippedRooms.contains(entityId) {
+            drawHatch(mask, in: stage, scale: scale)
+        }
         drawVectors(in: &stage, scale: scale)
         drawIcons(in: &context, matrix: m)
         if let area { drawArea(area, in: &context, matrix: m, handles: showsHandles) }
-        drawBadges(in: &context, matrix: m, orders: roomOrders)
+        drawNames(in: &context, matrix: m, orders: roomOrders)
+    }
+
+    /// 45° stripes over a room, clipped to its cells (mockup n6-vacuum-autoclean).
+    private func drawHatch(_ mask: RoomMask, in stage: GraphicsContext, scale: Double) {
+        var hatch = stage
+        hatch.clipToLayer { layer in
+            layer.draw(Image(decorative: mask.image, scale: 1).interpolation(.none), in: mask.rect)
+        }
+        let r = mask.rect
+        let step = 7 / scale
+        var stripes = Path()
+        var offset = -r.height
+        while offset < r.width {
+            stripes.move(to: CGPoint(x: r.minX + offset, y: r.maxY))
+            stripes.addLine(to: CGPoint(x: r.minX + offset + r.height, y: r.minY))
+            offset += step
+        }
+        hatch.stroke(stripes, with: .color(Self.color(Palette.hatch)), lineWidth: 2.4 / scale)
     }
 
     private func local(_ x: Double, _ y: Double) -> CGPoint {
@@ -147,9 +253,9 @@ struct ValetudoMapScene {
     private func drawVectors(in stage: inout GraphicsContext, scale: Double) {
         for entity in map.entities where entity.type == "path" || entity.type == "predicted_path" {
             guard let line = path(entity, closed: false) else { continue }
-            let color = entity.type == "path" ? ValetudoMapStyle.path : ValetudoMapStyle.predictedPath
+            let color = entity.type == "path" ? Palette.path : Palette.predictedPath
             stage.stroke(line, with: .color(Self.color(color)),
-                         style: StrokeStyle(lineWidth: max(0.25, 2 / scale), lineCap: .round, lineJoin: .round))
+                         style: StrokeStyle(lineWidth: max(0.25, 2.2 / scale), lineCap: .round, lineJoin: .round))
         }
         for entity in map.entities {
             guard let style = ValetudoMapStyle.entityStyle(entity.type), style.shape != .point,
@@ -182,29 +288,35 @@ struct ValetudoMapScene {
         for entity in map.entities {
             guard let at = framePoint(entity, m) else { continue }
             if entity.type == "charger_location" {
-                Self.icon("bolt.fill", at: at, size: 22, color: ValetudoMapStyle.dock, halo: ValetudoMapStyle.dockHalo, in: &context)
+                let dock = Path(roundedRect: CGRect(x: at.x - 5, y: at.y - 10, width: 10, height: 20), cornerRadius: 3.5)
+                context.fill(dock, with: .color(Self.color(Palette.dock)))
+                context.stroke(dock, with: .color(Self.color(Palette.wall)), lineWidth: 1.2)
             } else if entity.type == "robot_position" {
-                let reported = provenance == .reported
-                let obstacle = ValetudoMapStyle.entityStyle("obstacle")
-                Self.icon("circle.circle.fill", at: at, size: 22, color: reported ? obstacle?.stroke ?? ValetudoMapStyle.liveRobot : ValetudoMapStyle.liveRobot,
-                          halo: reported ? obstacle?.halo ?? ValetudoMapStyle.halo : ValetudoMapStyle.halo,
-                          rotation: rotation + (entity.angle ?? 0) - 90, in: &context)
+                drawRobot(at: at, reported: provenance == .reported, in: &context)
             }
         }
     }
 
+    /// The robot: a white disc with a dark ring and centre on a soft halo (grey once reported from memory).
+    private func drawRobot(at point: CGPoint, reported: Bool, in context: inout GraphicsContext) {
+        func circle(_ radius: CGFloat) -> Path {
+            Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
+        }
+        context.fill(circle(15), with: .color(Self.color(Palette.robotHalo)))
+        context.fill(circle(9), with: .color(Self.color(reported ? Palette.reportedRobot : Palette.robot)))
+        context.stroke(circle(9), with: .color(Self.color(Palette.robotInk)), lineWidth: 2.2)
+        context.fill(circle(3), with: .color(Self.color(Palette.robotInk)))
+    }
+
     private static func icon(_ symbol: String, at point: CGPoint, size: CGFloat, color: MapRGBA, halo: MapRGBA,
-                             rotation: Double = 0, in context: inout GraphicsContext) {
+                             in context: inout GraphicsContext) {
         let radius = size * 0.62
         let circle = Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2))
         context.fill(circle, with: .color(self.color(halo)))
         context.stroke(circle, with: .color(self.color(ValetudoMapStyle.ring)), lineWidth: max(1.5, size * 0.08))
         var resolved = context.resolve(Image(systemName: symbol))
         resolved.shading = .color(self.color(color))
-        var icon = context
-        icon.translateBy(x: point.x, y: point.y)
-        icon.rotate(by: .degrees(rotation))
-        icon.draw(resolved, in: CGRect(x: -size / 2, y: -size / 2, width: size, height: size))
+        context.draw(resolved, in: CGRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size))
     }
 
     private func corners(_ rect: MapGridRect, _ m: Affine) -> [CGPoint] {
@@ -219,25 +331,58 @@ struct ValetudoMapScene {
         var outline = Path()
         outline.addLines(points)
         outline.closeSubpath()
-        context.fill(outline, with: .color(Color(red: 0.31, green: 0.76, blue: 0.97).opacity(0.22)))
-        context.stroke(outline, with: .color(Color(red: 0.51, green: 0.83, blue: 0.98)), lineWidth: 2)
+        context.fill(outline, with: .color(HassTokens.Ink.action.opacity(0.22)))
+        context.stroke(outline, with: .color(HassTokens.Ink.action), lineWidth: 2)
         guard handles else { return }
         for point in points {
             let handle = Path(ellipseIn: CGRect(x: point.x - 8, y: point.y - 8, width: 16, height: 16))
             context.fill(handle, with: .color(.white))
-            context.stroke(handle, with: .color(Color(red: 0.0, green: 0.42, blue: 0.82)), lineWidth: 2)
+            context.stroke(handle, with: .color(HassTokens.Ink.actionFill), lineWidth: 2)
         }
     }
 
-    private func drawBadges(in context: inout GraphicsContext, matrix m: Affine, orders: [String: Int]) {
+    /// Room names, and over each selected room its order badge, centred on the room. A name is left out where it
+    /// would not fit inside its room on screen (the mockup leaves small rooms unnamed).
+    private func drawNames(in context: inout GraphicsContext, matrix m: Affine, orders: [String: Int]) {
+        let badge: CGFloat = 22, gap: CGFloat = 3
         for room in rooms {
-            guard let order = orders[room.entityId] else { continue }
-            let p = MapGeometry.framePoint(geometry, matrix: m, gridPoint: .init(x: room.centroid.x, y: room.centroid.y))
-            let rect = CGRect(x: p.x - 13, y: p.y - 13, width: 26, height: 26)
-            context.fill(Path(ellipseIn: rect), with: .color(VacuumStyle.primaryFill))
-            context.stroke(Path(ellipseIn: rect), with: .color(.white), lineWidth: 2)
-            context.draw(Text("\(order)").font(.caption.weight(.bold)).foregroundStyle(.white), at: CGPoint(x: p.x, y: p.y))
+            guard let mask = masks[room.entityId] else { continue }
+            let order = orders[room.entityId]
+            let center = MapGeometry.framePoint(geometry, matrix: m, gridPoint: .init(x: room.centroid.x + 0.5, y: room.centroid.y + 0.5))
+            let p = CGPoint(x: center.x, y: center.y)
+            let box = frameSize(mask.gridBounds, m)
+            let ink = order == nil ? Palette.label : Palette.labelOnSelected
+            let name = context.resolve(Text(room.title).font(.caption2.weight(.semibold)).foregroundStyle(Self.color(ink)))
+            let measured = name.measure(in: CGSize(width: 400, height: 100))
+            let fits = measured.width + 8 <= box.width && measured.height + (order == nil ? 4 : badge + gap + 4) <= box.height
+            switch (order, fits) {
+            case let (order?, true):
+                drawBadge(order, at: CGPoint(x: p.x, y: p.y - (measured.height + gap) / 2), size: badge, in: &context)
+                context.draw(name, at: CGPoint(x: p.x, y: p.y + (badge + gap) / 2), anchor: .center)
+            case let (order?, false):
+                drawBadge(order, at: p, size: badge, in: &context)
+            case (nil, true):
+                context.draw(name, at: p, anchor: .center)
+            case (nil, false):
+                break
+            }
         }
+    }
+
+    /// A grid rectangle's size on screen (the bounds of its rotated corners).
+    private func frameSize(_ rect: CGRect, _ m: Affine) -> CGSize {
+        let points = [CGPoint(x: rect.minX, y: rect.minY), CGPoint(x: rect.maxX, y: rect.minY),
+                      CGPoint(x: rect.minX, y: rect.maxY), CGPoint(x: rect.maxX, y: rect.maxY)].map {
+            MapGeometry.framePoint(geometry, matrix: m, gridPoint: .init(x: $0.x, y: $0.y))
+        }
+        let xs = points.map(\.x), ys = points.map(\.y)
+        return CGSize(width: (xs.max() ?? 0) - (xs.min() ?? 0), height: (ys.max() ?? 0) - (ys.min() ?? 0))
+    }
+
+    private func drawBadge(_ order: Int, at point: CGPoint, size: CGFloat, in context: inout GraphicsContext) {
+        let rect = CGRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size)
+        context.fill(Path(ellipseIn: rect), with: .color(Self.color(Palette.labelOnSelected)))
+        context.draw(Text("\(order)").font(.caption.weight(.bold)).foregroundStyle(.white), at: point)
     }
 
     static func color(_ rgba: MapRGBA) -> Color {

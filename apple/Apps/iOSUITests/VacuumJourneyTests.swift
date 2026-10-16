@@ -30,7 +30,7 @@ final class VacuumJourneyTests: XCTestCase {
         app.launch()
         let anchor = vacuum == nil ? element("vacuums.tile.\(Self.mainFloor)", in: app) : element("vacuum.tabs", in: app)
         XCTAssertTrue(anchor.waitForExistence(timeout: 30), "Vacuums did not open")
-        // On phones the tab picker sits below the map and status, so the sheet's Close button proves it has presented.
+        // The section bar floats at the bottom of the sheet during the presentation; the Close button proves it settled.
         let settled = vacuum == nil ? anchor : app.navigationBars.buttons["Close"].firstMatch
         XCTAssertTrue(settled.wait(for: \.isHittable, toEqual: true, timeout: 10), "Still presenting")
         sleep(1) // Mid-animation frames fail contrast and clipping.
@@ -92,26 +92,28 @@ final class VacuumJourneyTests: XCTestCase {
         }
     }
 
-    /// Drags the tab picker to the top of the sheet, as a reader would, so the tab's content is on screen.
+    /// Drags the section's content up to the top of the sheet, as a reader would, so it is on screen. The section bar
+    /// floats at the bottom (direction G), so the content's top edge is the mark.
     private func scrollToTabContent(in app: XCUIApplication) {
-        let picker = element("vacuum.tabs", in: app)
-        guard picker.exists, element("vacuum.layout.singleColumn", in: app).exists else { return }
-        // Never start a drag at the bottom edge: that is the Home gesture and backgrounds the app.
-        if !picker.isHittable { reveal(picker, in: app) }
+        let content = element("vacuum.tabContent", in: app)
+        guard content.exists, element("vacuum.layout.singleColumn", in: app).exists else { return }
         let window = app.windows.firstMatch.frame
         let top = window.minY + window.height * 0.18
-        guard picker.frame.minY > top + 40 else { return }
         let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: -window.minX, dy: -window.minY))
-        let x = FentonHomeApp.family == .iPhoneDuo ? min(picker.frame.midX, window.maxX - 96) : picker.frame.midX
-        let from = origin.withOffset(CGVector(dx: x, dy: picker.frame.minY - 8))
-        from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: top - picker.frame.minY)),
-                   withVelocity: .slow, thenHoldForDuration: 0.4)
+        // Start low in the sheet, clear of the map and above the section bar (never at the bottom edge: that is the
+        // Home gesture and backgrounds the app), near the leading edge, clear of the Duo's hinge.
+        let from = origin.withOffset(CGVector(dx: window.minX + 40, dy: window.minY + window.height * 0.7))
+        for _ in 0..<6 where content.frame.minY > top + 40 {
+            let distance = min(content.frame.minY - top, window.height * 0.45)
+            from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: -distance)),
+                       withVelocity: .slow, thenHoldForDuration: 0.4)
+        }
         // Let the scroll settle: a frame captured mid-deceleration samples text at stale positions.
-        var last = picker.frame
+        var last = content.frame
         for _ in 0..<10 {
             usleep(500_000)
-            let now = picker.frame
+            let now = content.frame
             if now == last { break }
             last = now
         }
@@ -122,21 +124,11 @@ final class VacuumJourneyTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(element.frame.height, 43, element.label, file: file, line: line)
     }
 
-    /// Picks a tab from the segmented control, or from its menu at accessibility sizes.
+    /// Picks a section from the bottom section bar, or from its menu at accessibility sizes. The bar floats over the
+    /// sheet, so it is always on screen.
     private func tab(_ title: String, in app: XCUIApplication) {
         let picker = element("vacuum.tabs", in: app)
-        reveal(picker, in: app, down: picker.exists && picker.frame.minY > app.windows.firstMatch.frame.midY)
-        // A picker scrolled up under the navigation bar is "hittable" but taps land on the bar: pull it below.
-        let window = app.windows.firstMatch.frame
-        let barBottom = app.navigationBars.allElementsBoundByIndex.map(\.frame).filter { $0.intersects(window) }.map(\.maxY).max()
-            ?? window.minY
-        if picker.frame.minY < barBottom + 8 {
-            let origin = app.windows.firstMatch.coordinate(withNormalizedOffset: .zero)
-                .withOffset(CGVector(dx: -window.minX, dy: -window.minY))
-            let from = origin.withOffset(CGVector(dx: picker.frame.midX, dy: window.midY))
-            from.press(forDuration: 0.05, thenDragTo: from.withOffset(CGVector(dx: 0, dy: barBottom + 80 - picker.frame.minY)),
-                       withVelocity: .slow, thenHoldForDuration: 0.4)
-        }
+        XCTAssertTrue(picker.waitForExistence(timeout: 10), "No section bar")
         let segment = picker.buttons[title].firstMatch
         if segment.exists {
             segment.tap()
@@ -156,19 +148,22 @@ final class VacuumJourneyTests: XCTestCase {
 
     // MARK: - Page
 
-    /// Tiles name each robot and its state; the pause tile is a switch; tapping a robot opens its sheet.
+    /// Tiles name each robot and its state; Auto-Clean rows are switches; tapping a robot opens its sheet.
     func testPageTilesAndAutoClean() {
         let app = launch()
         let tile = element("vacuums.tile.\(Self.mainFloor)", in: app)
         XCTAssertTrue(tile.label.contains("Main Floor"), tile.label)
         assertTarget(tile)
-        let pause = element("vacuums.autoClean.switch.main_floor_vacuum_coordinator_pause", in: app)
-        reveal(pause, in: app)
-        XCTAssertEqual(pause.value as? String, "On", "GlassTile toggles read On/Off (entity-tile pattern)")
+        XCTAssertTrue(element("vacuums.summary", in: app).exists, "The summary line under the large title")
+        let row = element("vacuums.autoClean.switch.main_floor_vacuum_coordinator_pause", in: app)
+        reveal(row, in: app)
+        // A list-row switch (direction G): the identifier is on the Toggle; iOS 18 and later nest the switch itself.
+        let pause = row.switches.firstMatch.exists ? row.switches.firstMatch : row
+        XCTAssertEqual(pause.value as? String, "1", "Main Floor Auto-Clean is enabled")
         pause.tap()
         expectCall("switch.turn_on entity_id=switch.main_floor_vacuum_coordinator_pause", in: app)
-        let paused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Off"), object: pause)
-        XCTAssertEqual(XCTWaiter().wait(for: [paused], timeout: 10), .completed, "Pause tile value is \(pause.value ?? "nil")")
+        let paused = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "0"), object: pause)
+        XCTAssertEqual(XCTWaiter().wait(for: [paused], timeout: 10), .completed, "Auto-Clean switch value is \(pause.value ?? "nil")")
 
         reveal(tile, in: app, down: false)
         tile.tap()
@@ -225,30 +220,39 @@ final class VacuumJourneyTests: XCTestCase {
         expectCall("vacuum.pause entity_id=vacuum.valetudo_exaltedsneakydeer", in: app)
     }
 
-    /// Settings are menus with values; picking one sends select_option.
+    /// Mode (three options) is a segmented control; Fan (five in the gallery) is a pop-up menu. Picking either sends
+    /// select_option (direction G, Controls: Choosing one option).
     func testPowerSettings() {
         let app = launch(Self.musicRoom)
         let mode = element("vacuum.setting.Mode", in: app)
         reveal(mode, in: app)
-        assertTarget(mode)
-        // A menu picker reads its name and value together ("Mode, Vacuum And Mop").
-        let reading = "\(mode.label) \(mode.value as? String ?? "")"
-        XCTAssertTrue(reading.hasPrefix("Mode") && reading.contains("Vacuum") && reading.contains("Mop"), reading)
-        mode.tap()
-        let vacuum = app.buttons["Vacuum"].firstMatch
-        XCTAssertTrue(vacuum.waitForExistence(timeout: 5), "The Mode menu did not open")
-        // Only the value is the menu's source, so the row stays on screen while the menu is open (owner report:
-        // the whole row used to vanish).
-        XCTAssertTrue(element("vacuum.setting.Mode", in: app).exists)
-        keepScreenshot(app, "vacuums-setting-menu")
+        let vacuum = mode.buttons["Vacuum"].firstMatch
+        XCTAssertTrue(vacuum.exists, "Mode is segmented")
         vacuum.tap()
         expectCall("select.select_option entity_id=select.\(Self.musicRoom)_mode option=vacuum", in: app)
+
+        let fan = element("vacuum.setting.Fan", in: app)
+        reveal(fan, in: app)
+        assertTarget(fan)
+        // A menu picker reads its name and value together ("Fan, Medium").
+        let reading = "\(fan.label) \(fan.value as? String ?? "")"
+        XCTAssertTrue(reading.contains("Fan") && reading.contains("Medium"), reading)
+        fan.tap()
+        let turbo = app.buttons["Turbo"].firstMatch
+        XCTAssertTrue(turbo.waitForExistence(timeout: 5), "The Fan menu did not open")
+        // Only the value is the menu's source, so the row stays on screen while the menu is open (owner report:
+        // the whole row used to vanish).
+        XCTAssertTrue(element("vacuum.setting.Fan", in: app).exists)
+        keepScreenshot(app, "vacuums-setting-menu")
+        turbo.tap()
+        expectCall("select.select_option entity_id=select.\(Self.musicRoom)_fan option=turbo", in: app)
     }
 
     /// The area editor draws a default area for VoiceOver users and Use This Area returns to Controls.
     func testAreaEditor() {
         let app = launch(Self.mainFloor)
-        let area = app.buttons["vacuum.target.area"]
+        // Rooms / Area is a segmented control (direction G).
+        let area = element("vacuum.target", in: app).buttons["Area"].firstMatch
         reveal(area, in: app, down: true)
         area.tap()
         // The fixture has rooms selected, so Area asks before clearing them.
@@ -299,7 +303,9 @@ final class VacuumJourneyTests: XCTestCase {
         cancel.tap()
         expectCall("vacuum.stop entity_id=vacuum.valetudo_exaltedsneakydeer", in: app)
         app = launch(Self.musicRoom, scenario: "unavailable")
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS[c] %@", "last reported")).firstMatch.waitForExistence(timeout: 10))
+        // An inline alert ("Warning: Last Reported Map: …"), one combined element.
+        let notice = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS[c] %@", "last reported")).firstMatch
+        XCTAssertTrue(notice.waitForExistence(timeout: 10))
     }
 
     /// The Main Floor dock: Clean Mop Dock and Dry Mops send their scripts; the report opens room details.

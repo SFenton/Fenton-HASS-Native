@@ -86,11 +86,10 @@ struct RecipesScreen: View {
             ContentUnavailableView {
                 Label("Unable to Load Recipes", systemImage: "exclamationmark.triangle")
             } actions: {
-                Button { collection.reload() } label: {
-                    Text("Retry").frame(minWidth: 88, minHeight: HassTokens.minTarget)
-                }
-                    .buttonStyle(.borderedProminent)
-                    .tint(FoodStyle.action)
+                // The page's one primary action while nothing loaded (direction G, Controls: Primary buttons), as wide
+                // as its label.
+                PrimaryButton("Retry") { collection.reload() }
+                    .fixedSize(horizontal: true, vertical: false)
                     .accessibilityIdentifier("recipes.retry")
             }
             // A container keeps the Retry button's own identifier (an outer identifier overrides children's).
@@ -174,10 +173,22 @@ struct RecipeGrid: View {
         return accessibilitySize ? metrics.columns : max(2, metrics.columns)
     }
 
+    /// The line under the large title that names the order: "Sorted by Ingredients Available".
+    static func sortSummary(_ sort: RecipeSort) -> String {
+        sort == .alphabetical ? "Sorted Alphabetically" : "Sorted by \(sort.title)"
+    }
+
     var body: some View {
         let count = Self.columnCount(width: width, accessibilitySize: dynamicTypeSize.isAccessibilitySize)
         let columns = Array(repeating: GridItem(.flexible(), spacing: HassTokens.Spacing.m, alignment: .top), count: count)
         ScrollView {
+            // The order under the large title (mockup n6 Recipes: "Sorted by Ingredients Available").
+            Text(Self.sortSummary(collection.sort))
+                .foregroundStyle(HassTokens.Ink.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, HassTokens.Spacing.l)
+                .accessibilityIdentifier("recipes.sortedBy")
             LazyVGrid(columns: columns, alignment: .leading, spacing: HassTokens.Spacing.m) {
                 ForEach(collection.items, id: \.dedupeKey) { recipe in
                     ImageCard(
@@ -186,8 +197,8 @@ struct RecipeGrid: View {
                     ) { onOpen(recipe) }
                     .overlay {
                         if recipe.id == selectedId {
-                            RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous)
-                                .strokeBorder(Color.accentColor, lineWidth: 3)
+                            RoundedRectangle(cornerRadius: ImageCard.cornerRadius, style: .continuous)
+                                .strokeBorder(HassTokens.Ink.action, lineWidth: 3)
                         }
                     }
                     .accessibilityAddTraits(recipe.id == selectedId ? .isSelected : [])
@@ -211,6 +222,7 @@ struct RecipeGrid: View {
                 Text("Unable to load more recipes.").foregroundStyle(HassTokens.Ink.secondary)
                 Button("Retry") { collection.retryNextPage() }
                     .buttonStyle(.bordered)
+                    .tint(HassTokens.Ink.action)
                     .frame(minHeight: HassTokens.minTarget)
                     .accessibilityIdentifier("recipes.nextPage.retry")
             }
@@ -264,7 +276,9 @@ struct RecipeSortSheet: View {
     }
 }
 
-/// Filter Recipes (web `RecipeFilterSheet`).
+/// Filter Recipes (web `RecipeFilterSheet`), in direction G's sheet form (mockup n5 Filter Recipes): inset sections
+/// under 15 Semibold secondary headers, the expiry horizon as a segmented control under its toggle, and footers that
+/// explain each section.
 struct RecipeFilterSheet: View {
     @State private var draft: RecipeFilters
     var current: RecipeFilters
@@ -279,36 +293,27 @@ struct RecipeFilterSheet: View {
     }
 
     var body: some View {
-        FilterSheet(title: "Filter Recipes", canApply: draft != current, canReset: draft != .defaults,
+        FilterSheet(title: "Filter Recipes", subtitle: draft.activeSummary, canApply: draft != current, canReset: draft != .defaults,
                     onApply: { onApply(draft) }, onReset: { draft = .defaults }) {
             Section {
                 PercentSliderRow("Minimum Ingredients Available", value: $draft.minimumCoverage, identifier: "recipes.filter.coverage")
             } header: {
-                // Styled like FilterSection's header (the system header measured 3.1:1 on the sheet).
-                Text("Ingredient Coverage")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .textCase(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
+                RecipeSectionHeader("Ingredient Coverage")
             } footer: {
-                FormFooter("Only show recipes where at least this percentage of required ingredients is currently available.")
+                FormFooter("Only show recipes where at least this percentage of required ingredients is available.")
             }
-            FilterSection("Expiring Ingredients") {
+            Section {
                 Toggle(isOn: $draft.expiringOnly) {
-                    Label("Use expiring ingredients only", systemImage: "clock")
+                    Label("Expiring Ingredients Only", systemImage: "clock")
                 }
                 .frame(minHeight: HassTokens.minTarget)
                 .accessibilityIdentifier("recipes.filter.expiringOnly")
-                ForEach(RecipeFilters.horizons, id: \.self) { days in
-                    let horizon = RecipeFilters.horizon(days)
-                    FilterOptionRow(title: horizon.title, subtitle: horizon.subtitle, isSelected: draft.expiringWithinDays == days) {
-                        draft.expiringWithinDays = days
-                    }
+                RecipeHorizonPicker(days: $draft.expiringWithinDays)
                     .disabled(!draft.expiringOnly)
-                    .opacity(draft.expiringOnly ? 1 : 0.5)
-                    .accessibilityIdentifier("recipes.filter.days\(days)")
-                }
+            } header: {
+                RecipeSectionHeader("Expiring Ingredients")
+            } footer: {
+                FormFooter(RecipeFilters.horizon(draft.expiringWithinDays).subtitle)
             }
             Section {
                 PercentSliderRow("Availability Weight", value: $draft.availabilityWeight, identifier: "recipes.filter.availabilityWeight")
@@ -316,21 +321,44 @@ struct RecipeFilterSheet: View {
                 PercentSliderRow("Expiry Weight", value: $draft.expiryWeight, identifier: "recipes.filter.expiryWeight")
                     .disabled(sortedAlphabetically)
             } header: {
-                // Styled like FilterSection's header (the system header measured 3.1:1 on the sheet).
-                Text("Ranking Strength")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .textCase(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader)
+                RecipeSectionHeader("Ranking Strength")
             } footer: {
-                Text(sortedAlphabetically
+                FormFooter(sortedAlphabetically
                     ? "Weights are unavailable while recipes are sorted alphabetically."
                     : "Tune how strongly available and expiring ingredients influence ranked recipe results.")
-                    .foregroundStyle(HassTokens.Ink.secondary)
             }
         }
         .hassSheet()
+    }
+}
+
+/// The expiry horizon (7, 30 or 90 days): a segmented control, as direction G picks for two to four short options
+/// (Controls: Choosing one option). At accessibility text sizes, where segments cannot grow, it is a pop-up menu that
+/// names the choice (as ``ModalTabBar`` does).
+private struct RecipeHorizonPicker: View {
+    @Binding var days: Int
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        let picker = Picker("Expiring Within", selection: $days) {
+            ForEach(RecipeFilters.horizons, id: \.self) { option in
+                Text(RecipeFilters.horizon(option).title).tag(option)
+            }
+        }
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                picker
+                    .pickerStyle(.menu)
+                    .frame(minHeight: HassTokens.minTarget)
+            } else {
+                picker
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(minHeight: HassTokens.minTarget)
+            }
+        }
+        // The system control dims itself while its toggle is off.
+        .accessibilityIdentifier("recipes.filter.horizon")
     }
 }
 
