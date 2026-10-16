@@ -7,14 +7,31 @@ extension HassConnection {
     /// Sends a websocket command once and returns HAKit's raw result. It never retries across reconnects, so a
     /// mutation is never applied twice. Every one-off command (service responses, schedules, todo lists, the
     /// service catalog, signed paths) goes through here rather than its own continuation bridge.
-    func sendCommand(_ command: String, data: [String: any Sendable]) async throws -> HAData {
+    ///
+    /// HAKit drops a command that was in flight when the socket closed, or queued across a reset, **without calling
+    /// its completion** (`HARequestController.resetActive`), so the await below would never return. Pass a
+    /// `timeout` for any command that something is waiting on (the camera streams after a background).
+    /// - Parameters:
+    ///   - command: The websocket command type.
+    ///   - data: Its fields.
+    ///   - timeout: Fails with ``CommandTimeout`` if no answer comes in this time; nil waits as long as HAKit does.
+    func sendCommand(_ command: String, data: [String: any Sendable], timeout: Duration? = nil) async throws -> HAData {
         let request = HARequest(type: .webSocket(command), data: data, shouldRetry: false)
+        let answered = SingleUse()
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HAData, Error>) in
-            connection.send(request) { result in
+            let pending = connection.send(request) { result in
+                guard answered.claim() else { return }
                 switch result {
                 case let .success(value): continuation.resume(returning: value)
                 case let .failure(error): continuation.resume(throwing: error)
                 }
+            }
+            guard let timeout else { return }
+            Task {
+                try? await Task.sleep(for: timeout)
+                guard answered.claim() else { return }
+                pending.cancel()
+                continuation.resume(throwing: CommandTimeout(command: command))
             }
         }
     }

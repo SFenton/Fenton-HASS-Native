@@ -21,6 +21,10 @@ public final class HassConnection {
         case rejected
     }
 
+    /// Posted (on the main actor, object: the connection) each time the socket becomes ready for commands, including
+    /// after a reconnect. Camera streams that gave up while the socket was down restart on it.
+    public static let didBecomeReadyNotification = Notification.Name("HassConnection.didBecomeReady")
+
     // MARK: - Public state
 
     /// Current status.
@@ -46,7 +50,7 @@ public final class HassConnection {
     /// The HAKit entities last applied, so each delivery converts only what changed.
     @ObservationIgnored private var lastDelivered: [String: HAEntity] = [:]
     /// The app wants the socket open (between ``connect(subscribingToStates:)`` and ``disconnect()``).
-    @ObservationIgnored private var wantsConnection = false
+    @ObservationIgnored var wantsConnection = false
     @ObservationIgnored private var routeTask: Task<Void, Never>?
 
     /// How long live updates are batched before the disk snapshot is rewritten.
@@ -234,7 +238,8 @@ public final class HassConnection {
     /// - Parameter entityId: The camera entity.
     /// - Returns: The tokenized playlist path, e.g. `/api/hls/<token>/master_playlist.m3u8`.
     public func cameraStreamPath(entityId: String) async throws -> String {
-        try await requestString("camera/stream", data: ["entity_id": entityId, "format": "hls"], field: "url")
+        try await requestString("camera/stream", data: ["entity_id": entityId, "format": "hls"], field: "url",
+                                timeout: Self.streamCommandTimeout)
     }
 
     /// Signs a server path so a client without the auth header (a raw websocket) can open it (`auth/sign_path`).
@@ -243,8 +248,13 @@ public final class HassConnection {
     ///   - expires: Seconds the signature stays valid; it is only checked when the path is opened.
     /// - Returns: The path with its `authSig` query.
     public func signPath(_ path: String, expires: Int = 30) async throws -> String {
-        try await requestString("auth/sign_path", data: ["path": path, "expires": expires], field: "path")
+        try await requestString("auth/sign_path", data: ["path": path, "expires": expires], field: "path",
+                                timeout: Self.streamCommandTimeout)
     }
+
+    /// How long a camera's stream commands may go unanswered. HAKit silently drops a command caught by a socket
+    /// reset, so without this a camera started across a reconnect waited forever (owner report 2026-10-16).
+    static let streamCommandTimeout: Duration = .seconds(10)
 
     /// Error for a websocket command whose result lacks the expected field.
     public struct UnexpectedResponse: Error, Equatable {
@@ -255,8 +265,8 @@ public final class HassConnection {
     // MARK: - Private
 
     /// Sends a websocket command once (no retry across reconnects) and returns one string field of its result.
-    private func requestString(_ command: String, data: [String: any Sendable], field: String) async throws -> String {
-        guard case let .dictionary(values) = try await sendCommand(command, data: data), let value = values[field] as? String else {
+    private func requestString(_ command: String, data: [String: any Sendable], field: String, timeout: Duration? = nil) async throws -> String {
+        guard case let .dictionary(values) = try await sendCommand(command, data: data, timeout: timeout), let value = values[field] as? String else {
             throw UnexpectedResponse(command: command)
         }
         return value
@@ -325,7 +335,7 @@ public final class HassConnection {
         }
     }
 
-    private func refreshStatus() {
+    func refreshStatus() {
         let next: Status
         switch connection.state {
         case .connecting, .authenticating: next = .connecting
@@ -340,7 +350,13 @@ public final class HassConnection {
                 route?.reset()
             }
         }
-        if status != next { status = next }
+        guard status != next else { return }
+        let previous = status
+        status = next
+        PushTrace.shared.record("connection: \(previous) -> \(next)")
+        if case .connected = next {
+            NotificationCenter.default.post(name: Self.didBecomeReadyNotification, object: self)
+        }
     }
 }
 

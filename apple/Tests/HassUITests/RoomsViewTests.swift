@@ -120,6 +120,14 @@ struct RoomsViewTests {
         #expect(face("Stephen's Bed", in: "master-bedroom", states: [off]) == RoomTileFace(family: .cooling, isActive: false))
     }
 
+    @Test func roomClimateAndAirChipsAlwaysFill() {
+        #expect(RoomChip.isFilled(.climate, isActive: false))
+        #expect(RoomChip.isFilled(.air, isActive: false))
+        #expect(!RoomChip.isFilled(.light, isActive: false))
+        #expect(RoomChip.isFilled(.presence, isActive: true))
+        #expect(!RoomChip.isFilled(.contact, isActive: false))
+    }
+
     @Test func ventsFillOnlyWhileOpen() {
         let open = EntityState(entityId: "cover.living_room_vents", state: "open")
         #expect(face("Vents", in: "living-room", states: [open]) == RoomTileFace(family: .vents, isActive: true))

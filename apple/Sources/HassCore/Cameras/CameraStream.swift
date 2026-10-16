@@ -198,6 +198,11 @@ public struct CameraStreamRetention: Equatable, Sendable {
         !isBackground && (viewers[id, default: 0] > 0 || retained.contains(id))
     }
 
+    /// Every camera whose stream should be running now: shown or retained, and the app is in the foreground.
+    public var wanted: Set<String> {
+        isBackground ? [] : Set(viewers.keys).union(retained)
+    }
+
     /// A view showing `id` appeared.
     /// - Parameters:
     ///   - id: The camera.
@@ -233,7 +238,8 @@ public struct CameraStreamRetention: Equatable, Sendable {
         return running
     }
 
-    /// The app returned: shown and retained streams restart.
+    /// The app returned: shown and retained streams restart (the pool starts them once the connection is
+    /// confirmed alive, since a stream requested from a dead socket never gets its answer).
     /// - Returns: The cameras to start.
     public mutating func enterForeground() -> Set<String> {
         isBackground = false
