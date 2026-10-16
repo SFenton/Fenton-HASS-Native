@@ -4,28 +4,23 @@ import Observation
 
 /// Native notifications for the signed-in session (`.agents/platforms/apple/push.md`).
 ///
-/// Owns the session's ``PushRegistrar``, the APNs token, and what a notification tap or button does. The app
-/// delegate forwards system callbacks here; the shell observes ``pendingRequest`` and opens the page
-/// (``ShellNavigator/open(_:)``). Home Assistant stays the source of truth: a button fires
-/// `mobile_app_notification_action` and the automation decides what happens.
+/// Asks for notification permission, hands the APNs token to the session's shared `mobile_app` registration
+/// (``mobileApp``), and decides what a notification tap or button does. The app delegate forwards system callbacks
+/// here; the shell observes ``pendingRequest`` and opens the page (``ShellNavigator/open(_:)``). Home Assistant
+/// stays the source of truth: a button fires `mobile_app_notification_action` and the automation decides what
+/// happens.
 @MainActor
 @Observable
 public final class PushCoordinator {
     /// The page a notification asked to open, until the shell opens it.
     public private(set) var pendingRequest: PushNavigationRequest?
 
+    /// The session's `mobile_app` registration, which location and sensors share.
+    @ObservationIgnored public let mobileApp: MobileAppCoordinator
+
     @ObservationIgnored private let platform: PushPlatform
-    @ObservationIgnored private let store: any PushRegistrationStore
-    @ObservationIgnored private let transport: any FeedbackHTTPTransport
-    @ObservationIgnored private let isEnabled: Bool
     @ObservationIgnored private var server: HassServer?
-    @ObservationIgnored private var registrar: PushRegistrar?
-    @ObservationIgnored private var userID: String?
-    @ObservationIgnored private var userName: String?
-    @ObservationIgnored private var token: String?
     @ObservationIgnored private var requestID = 0
-    /// The running registration sync, so a token arriving mid-sync waits for it instead of racing it.
-    @ObservationIgnored private var syncTask: Task<Void, Never>?
 
     /// Creates a coordinator.
     /// - Parameters:
@@ -34,17 +29,15 @@ public final class PushCoordinator {
     ///   - transport: HTTP to Home Assistant.
     ///   - isEnabled: Register and ask for permission. Off for UI journeys signed in with a test token, so they
     ///     neither prompt nor add `mobile_app` devices to the real server.
-    public init(platform: PushPlatform, store: any PushRegistrationStore = KeychainPushRegistrationStore(),
+    public init(platform: PushPlatform, store: any MobileAppRegistrationStore = KeychainMobileAppRegistrationStore(),
                 transport: any FeedbackHTTPTransport = URLSessionFeedbackTransport(), isEnabled: Bool = true) {
         self.platform = platform
-        self.store = store
-        self.transport = transport
-        self.isEnabled = isEnabled
+        mobileApp = MobileAppCoordinator(device: platform.device, store: store, transport: transport, isEnabled: isEnabled)
     }
 
     /// A coordinator that never registers or prompts.
     public static func inert() -> PushCoordinator {
-        PushCoordinator(platform: .inert, store: InMemoryPushRegistrationStore(), isEnabled: false)
+        PushCoordinator(platform: .inert, store: InMemoryMobileAppRegistrationStore(), isEnabled: false)
     }
 
     // MARK: - Session
@@ -55,9 +48,7 @@ public final class PushCoordinator {
     ///   - accessToken: Valid access tokens for it.
     func sessionStarted(server: HassServer, accessToken: @escaping @Sendable () async throws -> String) {
         self.server = server
-        userID = nil
-        let client = HomeAssistantPushClient(server: server, accessToken: accessToken, transport: transport)
-        registrar = PushRegistrar(server: server, client: client, store: store, device: platform.device())
+        mobileApp.sessionStarted(server: server, accessToken: accessToken)
     }
 
     /// The websocket is up and the user is known: ask for permission (first time only), register for remote
@@ -66,38 +57,22 @@ public final class PushCoordinator {
     ///   - userID: The signed-in Home Assistant user.
     ///   - userName: Their display name, which names a phone the system reports only as "iPhone".
     public func didConnect(userID: String, userName: String? = nil) async {
-        guard isEnabled, registrar != nil, self.userID != userID else { return }
-        self.userID = userID
-        self.userName = userName
+        guard mobileApp.begin(userID: userID, userName: userName) else { return }
         if await platform.requestAuthorization() { platform.registerForRemoteNotifications() }
-        await sync()
+        await mobileApp.sync()
     }
 
     /// The system issued an APNs token.
     public func didRegister(deviceToken: Data) async {
-        let hex = PushToken.hex(deviceToken)
-        guard hex != token else { return }
-        token = hex
-        await sync()
+        guard mobileApp.setPushToken(PushToken.hex(deviceToken)) else { return }
+        await mobileApp.sync()
     }
 
     /// Signing out: clear Home Assistant's push details for this phone (before the refresh token is revoked).
     func sessionEnded() async {
-        let registrar = registrar
-        self.registrar = nil
         server = nil
-        userID = nil
         pendingRequest = nil
-        await registrar?.signOut()
-    }
-
-    private func sync() async {
-        await syncTask?.value
-        guard isEnabled, let registrar, let userID else { return }
-        let token = token, userName = userName
-        let task = Task { _ = try? await registrar.sync(userID: userID, userName: userName, token: token) }
-        syncTask = task
-        await task.value
+        await mobileApp.sessionEnded()
     }
 
     // MARK: - Notifications
@@ -118,7 +93,7 @@ public final class PushCoordinator {
             if let uri = action.uri {
                 open(link: uri)
             } else {
-                try? await registrar?.fireAction(PushActionEvent(action: id, tag: payload.tag, replyText: replyText))
+                try? await mobileApp.fireAction(PushActionEvent(action: id, tag: payload.tag, replyText: replyText))
             }
         }
     }

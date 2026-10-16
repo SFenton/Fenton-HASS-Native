@@ -1,6 +1,7 @@
 import Foundation
 
-/// Talks to Home Assistant for push: the Fenton Push config, `mobile_app` registration and its webhook.
+/// Talks to Home Assistant for the Fenton Push config and the shared `mobile_app` registration (``MobileAppRegistrar``):
+/// register, `update_registration`, and notification button events on its webhook.
 ///
 /// Plain REST like ``HomeAssistantFeedbackClient``, over the same injectable ``FeedbackHTTPTransport`` seam:
 /// registration is a one-off HTTP exchange, not state, so it stays off the websocket. Webhook calls carry no
@@ -27,7 +28,8 @@ public struct HomeAssistantPushClient: Sendable {
     static let registrationsPath = "/api/mobile_app/registrations"
 
     /// Reads the integration's config.
-    /// - Returns: The config, or nil when the integration is not installed (404).
+    /// - Returns: The config, or nil when the integration is not installed (404); the phone then registers without
+    ///   push details.
     public func config() async throws -> PushConfig? {
         let (data, response) = try await send(try await authorized("GET", Self.configPath))
         if response.statusCode == 404 { return nil }
@@ -37,7 +39,7 @@ public struct HomeAssistantPushClient: Sendable {
 
     /// Registers this phone with `mobile_app` as the token's user.
     /// - Returns: The new webhook id.
-    public func register(_ device: PushDevice, appData: PushAppData) async throws -> String {
+    public func register(_ device: MobileAppDevice, appData: PushAppData) async throws -> String {
         var request = try await authorized("POST", Self.registrationsPath)
         request.httpBody = try JSONSerialization.data(withJSONObject: device.registrationBody(appData: appData), options: [.sortedKeys])
         let (data, response) = try await send(request)
@@ -47,18 +49,18 @@ public struct HomeAssistantPushClient: Sendable {
     }
 
     /// Sends `update_registration` (launch, token change, and ``PushAppData/cleared`` on sign-out).
-    public func updateRegistration(_ registration: PushRegistration, device: PushDevice, appData: PushAppData) async throws {
+    public func updateRegistration(_ registration: MobileAppRegistration, device: MobileAppDevice, appData: PushAppData) async throws {
         try await webhook(registration, body: device.updateBody(appData: appData))
     }
 
     /// Fires `mobile_app_notification_action` for a notification button (contract v1, rule 4).
-    public func fireAction(_ registration: PushRegistration, event: PushActionEvent) async throws {
+    public func fireAction(_ registration: MobileAppRegistration, event: PushActionEvent) async throws {
         try await webhook(registration, body: event.webhookBody)
     }
 
     // MARK: - HTTP
 
-    private func webhook(_ registration: PushRegistration, body: [String: Any]) async throws {
+    private func webhook(_ registration: MobileAppRegistration, body: [String: Any]) async throws {
         var request = URLRequest(url: registration.webhookURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

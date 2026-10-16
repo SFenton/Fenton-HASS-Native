@@ -1,3 +1,4 @@
+import HassCore
 import HassUI
 import SwiftUI
 import UIKit
@@ -9,22 +10,37 @@ struct FentonHomeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(push: appDelegate.push)
+            RootView(session: appDelegate.session)
         }
     }
 }
 
 /// Supplies supported orientations (iPhone stays portrait in Info.plist, iPad keeps all four, and a device with a
 /// hinge, iPhone Duo, rotates folded or unfolded; owner, 2026-10-10) and forwards push callbacks to
-/// ``PushCoordinator`` (`.agents/platforms/apple/push.md`).
+/// ``PushCoordinator`` (`.agents/platforms/apple/push.md`); creates location reporting at launch
+/// (`.agents/platforms/apple/location.md`).
 final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
-    /// The app's push coordinator; the root view's session uses this one so system callbacks reach it.
-    let push = PushCoordinator(platform: .system, isEnabled: PushLaunchPolicy.isEnabled())
+    /// The app's push coordinator; the root view's session uses this one so system callbacks reach it. Journeys
+    /// that don't register keep their webhooks in memory, so a test sign-out never touches a real registration.
+    let push = PushLaunchPolicy.isEnabled()
+        ? PushCoordinator(platform: .system)
+        : PushCoordinator(platform: .system, store: InMemoryMobileAppRegistrationStore(), isEnabled: false)
+
+    /// Location reporting on phones (shadow mode); nil on iPad. Created with the delegate, before launch finishes,
+    /// so a relaunch for a zone event reopens the zone monitor.
+    private(set) lazy var location: LocationCoordinator? =
+        LocationLaunchPolicy.isEnabled(isPresenceDevice: LocationReporter.deviceIsPresenceDevice)
+            ? LocationCoordinator.system(mobileApp: push.mobileApp) : nil
+
+    /// The app's one session (sign-in, connection, route). Made once here: `FentonHomeApp.body` and `RootView.init`
+    /// run again whenever SwiftUI rebuilds the scene.
+    @MainActor lazy var session = AppSession(push: push, location: location)
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // Set before launch finishes, so a tap that launched the app is delivered.
         UNUserNotificationCenter.current().delegate = self
+        if let location { Task { await location.resume() } }
         #if DEBUG
         PushPreview.scheduleIfRequested()
         if let command = PushPreview.command() {
