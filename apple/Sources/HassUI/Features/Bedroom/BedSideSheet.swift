@@ -645,11 +645,13 @@ public struct BedSideTile: View {
     }
 
     public var body: some View {
+        let face = BedroomStyle.face(action: controller.action, level: controller.displayedTarget,
+                                    isAvailable: controller.sideAvailable)
         EverySecond { now in
             GlassTile(title: controller.config.title, subtitle: controller.tileSubtitle(now: now), symbol: "bed.double",
-                      family: BedroomStyle.family(action: controller.action),
+                      family: face.family,
                       // Fills only while heating or cooling, like the room page's climate tiles.
-                      isActive: BedroomStyle.family(action: controller.action) != .neutral && !controller.scope.readOnly,
+                      isActive: face.isActive && !controller.scope.readOnly,
                       kind: .navigate, action: action)
         }
         .accessibilityIdentifier("tile.bed.\(controller.config.id)")

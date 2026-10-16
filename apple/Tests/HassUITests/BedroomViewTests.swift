@@ -83,6 +83,29 @@ struct BedroomViewTests {
         #expect(BedDial.configuration(flash.bed(.right)).actionText == "Hot Flash")
     }
 
+    @Test func bedTilesKeepTheirFamilyWhenIdleOrOff() async {
+        let (devices, _) = devices(.default)
+        func face(_ side: BedSide) -> ThermostatTileFace {
+            let bed = devices.bed(side)
+            return BedroomStyle.face(action: bed.action, level: bed.displayedTarget, isAvailable: bed.sideAvailable)
+        }
+        // Left at +3 heats and right at -3 cools: both fill.
+        #expect(face(.left) == ThermostatTileFace(family: .heating, isActive: true))
+        #expect(face(.right) == ThermostatTileFace(family: .cooling, isActive: true))
+        // Off keeps the level's family on the dark face: Heating at +3, Cooling at -3.
+        devices.bed(.left).setPower(on: false)
+        devices.bed(.right).setPower(on: false)
+        await devices.bed(.left).waitForCalls()
+        await devices.bed(.right).waitForCalls()
+        #expect(face(.left) == ThermostatTileFace(family: .heating, isActive: false))
+        #expect(face(.right) == ThermostatTileFace(family: .cooling, isActive: false))
+        // An unavailable side stays grey.
+        let (offline, _) = self.devices(.unavailable)
+        let bed = offline.bed(.right)
+        #expect(BedroomStyle.face(action: bed.action, level: bed.displayedTarget, isAvailable: bed.sideAvailable)
+            == ThermostatTileFace(family: .neutral, isActive: false))
+    }
+
     @Test func galleryRecorderAnswersLikeHomeAssistant() async throws {
         let (devices, recorder) = devices(.ringing)
         let bed = devices.bed(.left)

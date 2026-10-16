@@ -8,14 +8,10 @@ enum BedroomStyle {
     /// Stop and Delete fills: a deep red that keeps white labels at about 6:1 (system red gives 3.6:1 and fails the audit).
     static let danger = Color(red: 0.76, green: 0.12, blue: 0.12)
 
-    /// A bed side's colour family for its action, as the dial draws it (direction G, Colour families: Heating and
-    /// Cooling); idle and off are neutral, matching the room page's climate tiles.
-    static func family(action: String) -> ColorFamily {
-        switch action {
-        case "heating": .heating
-        case "cooling": .cooling
-        default: .neutral
-        }
+    /// A bed side's tile face (direction G, Colour families: Heating and Cooling): filled while heating or cooling,
+    /// and idle or off keep the family glyph on the dark face (Cooling when the level is below zero).
+    static func face(action: String, level: Double?, isAvailable: Bool) -> ThermostatTileFace {
+        ThermostatTileFace.bedSide(action: action, level: level, isAvailable: isAvailable)
     }
 
     /// A card on the sheet's cell colour (direction G, Layers: Sheets).
