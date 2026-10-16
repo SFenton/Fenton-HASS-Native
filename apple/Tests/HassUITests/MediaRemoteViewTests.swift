@@ -81,7 +81,7 @@ struct MediaRemoteViewTests {
         #expect(DirectionalPad.diameter(scaled: 76, maxWidth: nil) == 76)
         #expect(DirectionalPad.diameter(scaled: 200, maxWidth: nil) == 104)
         #expect(DirectionalPad.diameter(scaled: 30, maxWidth: nil) == 64)
-        #expect(DirectionalPad.diameter(scaled: 104, maxWidth: 296) == (296 - 24) / 3)
+        #expect(DirectionalPad.diameter(scaled: 104, maxWidth: 296) == CGFloat(296 - 24) / 3)
         #expect(DirectionalPad.diameter(scaled: 104, maxWidth: 100) == 44)
     }
 
