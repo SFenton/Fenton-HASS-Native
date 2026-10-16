@@ -173,6 +173,21 @@ struct CameraStreamRetentionTests {
         #expect(retention.enterForeground() == ["front", "drive", "deck"])
         #expect(retention.shouldRun("drive"))
     }
+
+    @Test func wantedStreamsAreTheShownAndRetainedOnesWhileInTheForeground() {
+        var retention = CameraStreamRetention()
+        #expect(retention.wanted.isEmpty)
+        _ = retention.appear("front", isRunning: false)
+        _ = retention.appear("drive", isRunning: false)
+        _ = retention.disappear("drive")
+        #expect(retention.wanted == ["front", "drive"])
+        retention.failed("drive")
+        #expect(retention.wanted == ["front"], "A failed stream nobody shows is not wanted")
+        _ = retention.enterBackground()
+        #expect(retention.wanted.isEmpty, "Nothing is wanted behind a backgrounded app")
+        #expect(retention.enterForeground() == ["front"])
+        #expect(retention.wanted == ["front"])
+    }
 }
 
 struct CameraConfigTests {
