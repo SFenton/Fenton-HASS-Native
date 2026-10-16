@@ -131,8 +131,9 @@ final class HomePagesJourneyTests: XCTestCase {
 
     func testMusicRoomRemoteSharesTheSourceWithThePage() {
         let app = launch("media-page", ["FENTON_GALLERY_REMOTE": "music-room-remote", "FENTON_GALLERY_TAB": "devices"],
-                         waitFor: "remote.power")
+                         waitFor: "remote.device.TV")
         XCTAssertTrue(app.navigationBars["Music Room Remote"].exists)
+        XCTAssertTrue(app.segmentedControls["remote.tabs"].buttons["Devices"].isSelected, "The remote opens on Devices")
     }
 
     func testMediaAuditsAndScreenshots() throws {
@@ -147,7 +148,7 @@ final class HomePagesJourneyTests: XCTestCase {
         tap("customLights.mode.Seahawks", in: app)
         expectCall("input_select.select_option entity_id=input_select.front_yard_custom_lights option=Seahawks", in: app)
         XCTAssertFalse(element("customLights.resetAll", in: app).waitForExistence(timeout: 3), "Lights show only in Custom mode")
-        tap("customLights.manual", in: app)
+        flip("customLights.manual", in: app)
         expectCall("input_boolean.turn_off entity_id=input_boolean.manually_control_front_yard_lights", in: app)
         XCTAssertFalse(element("customLights.mode", in: app).waitForExistence(timeout: 3), "Mode hides without manual control")
     }

@@ -232,8 +232,13 @@ final class FoodJourneyTests: XCTestCase {
         // Filter.
         element("fab.filter", in: app).tap()
         XCTAssertTrue(app.navigationBars["Filter Recipes"].waitForExistence(timeout: 5))
-        XCTAssertFalse(element("recipes.filter.days30", in: app).isEnabled, "horizons wait for the toggle")
+        XCTAssertFalse(element("recipes.filter.horizon", in: app).isEnabled, "the horizon waits for the toggle")
         element("recipes.filter.expiringOnly", in: app).switches.firstMatch.tap()
+        let horizon = element("recipes.filter.horizon", in: app)
+        XCTAssertTrue(horizon.wait(for: \.isEnabled, toEqual: true, timeout: 5), "the toggle enables the horizon")
+        horizon.buttons["30 Days"].tap()
+        XCTAssertTrue(app.staticTexts["Use ingredients expiring within the next month."].waitForExistence(timeout: 5),
+                      "the footer explains the chosen horizon")
         sleep(1)
         keepScreenshot(app, "food-recipes-filter-\(device)")
         try audit(app, presenter: element("fab.filter", in: app)) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }

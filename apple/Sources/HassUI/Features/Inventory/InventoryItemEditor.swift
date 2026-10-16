@@ -2,11 +2,13 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// The item editor (web `InventoryItemDetailsModal`): one section per batch with quantity, expiration date,
-/// prepared food and delete, each saved on its own.
+/// The item editor (web `InventoryItemDetailsModal`; direction G mockup n6-item-editor): one group per batch with
+/// quantity, expiration date, prepared food and delete, under a header naming its expiry and place.
 ///
-/// `.sheet` presents it modally (iPhone, folded and portrait layouts); `.pane` draws it in the trailing half of
-/// a split window with its own header and Close button. Saves and deletes block closing until they finish.
+/// `.sheet` is an edit sheet (direction G, Sheets): circle x Cancel drops the drafts, the filled check saves every
+/// changed batch, and Reset Changes is a list row. `.pane` draws it in the trailing half of a split window with its own
+/// header, Close, and Save Changes as a list row. Prepared food and delete still apply at once, as on the web. Saves
+/// and deletes block closing until they finish.
 struct InventoryItemEditor: View {
     enum Style { case sheet, pane }
 
@@ -16,6 +18,8 @@ struct InventoryItemEditor: View {
 
     @State private var prompt: EditorPrompt?
     @State private var promptText = ""
+    /// Save is walking the changed batches; the editor closes when it finishes, not after the first batch.
+    @State private var isSavingAll = false
 
     var body: some View {
         Group {
@@ -26,13 +30,17 @@ struct InventoryItemEditor: View {
                         .modalChrome()
                         .navigationTitle(model.title)
                         .inlineNavigationTitle()
+                        // "Quantity 3 · In the Pantry" (iOS 26; the title alone before).
+                        .sheetSubtitle(model.summary)
                         .toolbar {
-                            ToolbarItem(placement: .confirmationAction) { closeButton }
+                            SheetCancelItem(identifier: "inventory.editor.close", isEnabled: !model.dismissalBlocked && !isSavingAll) { onClose() }
+                            SheetConfirmItem("Save", isEnabled: canSave, isBusy: isSaving, busyTitle: "Saving",
+                                             identifier: "inventory.editor.save") { saveAll() }
                         }
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(model.dismissalBlocked ? .hidden : .visible)
-                .interactiveDismissDisabled(model.dismissalBlocked)
+                .interactiveDismissDisabled(model.dismissalBlocked || isSavingAll)
             case .pane:
                 // Its own header rather than a nested NavigationStack, which took over the window's navigation
                 // bar (the page title disappeared and Close moved to the window's bar).
@@ -43,7 +51,8 @@ struct InventoryItemEditor: View {
                             .foregroundStyle(HassTokens.Ink.primary)
                             .accessibilityAddTraits(.isHeader)
                         Spacer(minLength: 0)
-                        closeButton
+                        SheetCloseButton(identifier: "inventory.editor.close", action: onClose)
+                            .disabled(model.dismissalBlocked || isSavingAll)
                     }
                     .padding(.horizontal, HassTokens.Spacing.l)
                     .frame(minHeight: 56)
@@ -53,9 +62,7 @@ struct InventoryItemEditor: View {
                 .overlay(alignment: .leading) { Divider().ignoresSafeArea() }
             }
         }
-        // The app accent reads 2.5:1 as button text (Reset, Save); the floating actions' teal reads 5.8:1.
-        .tint(FloatingActionBar.tint)
-        .onChange(of: model.isFinished) { _, finished in if finished { onClose() } }
+        .onChange(of: model.isFinished) { _, finished in if finished, !isSavingAll { onClose() } }
         .alert(prompt?.title ?? "", isPresented: promptShown, presenting: prompt) { prompt in
             TextField("Quantity", text: $promptText)
                 .numericEntryField()
@@ -71,21 +78,41 @@ struct InventoryItemEditor: View {
         Form {
             if let error = model.error {
                 Section {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .foregroundStyle(InventoryTone.color(.expired))
+                    InlineAlert(error, severity: .error)
                         .accessibilityIdentifier("inventory.editor.error")
                 }
             }
             ForEach(model.batches) { batch in
-                BatchSection(model: model, batch: batch) { prompt = $0; promptText = "1" }
+                BatchSection(model: model, batch: batch, showsPreparedNote: batch.id == model.batches.first?.id) {
+                    prompt = $0
+                    promptText = "1"
+                }
+            }
+            if !model.changedBatches.isEmpty {
+                ChangesSection(model: model, showsSave: style == .pane, isSaving: isSaving, canSave: canSave) { saveAll() }
             }
         }
         .accessibilityIdentifier("inventory.editor")
     }
 
-    private var closeButton: some View {
-        SheetCloseButton(identifier: "inventory.editor.close", action: onClose)
-            .disabled(model.dismissalBlocked)
+    // MARK: - Save
+
+    /// Some batch has a draft and nothing is in flight.
+    private var canSave: Bool { !model.changedBatches.isEmpty && model.busy == nil && !isSavingAll }
+
+    private var isSaving: Bool {
+        if isSavingAll { return true }
+        if case .save = model.busy { return true }
+        return false
+    }
+
+    private func saveAll() {
+        isSavingAll = true
+        Task {
+            await model.saveChanges()
+            isSavingAll = false
+            if model.isFinished, model.error == nil { onClose() }
+        }
     }
 
     // MARK: - Prompts
@@ -96,10 +123,45 @@ struct InventoryItemEditor: View {
 }
 
 extension InventoryEditorModel {
-    /// The item name plus the batch's qualifier (`Black Beans expiring 10/14/2026`), as the web's
+    /// The item name plus the batch's qualifier (`Black Beans expiring Oct 14, 2026`), as the web's
     /// `${title}${qualifier}` in control labels and prompts.
     func batchName(_ batch: InventoryBatch) -> String {
         title + qualifier(batch)
+    }
+
+    /// The sheet's subtitle (mockup n6-item-editor): `Quantity 3 · In the Pantry`, without the place when the batches
+    /// sit in different places.
+    var summary: String {
+        let quantity = "Quantity \(InventoryFormat.quantity(batches.reduce(0) { $0 + $1.quantity }))"
+        let places = Set(batches.map(\.locationPhrase))
+        guard places.count == 1, let place = places.first else { return quantity }
+        return "\(quantity) · In the \(place.capitalized)"
+    }
+
+    /// A batch's group header: `Expires Jun 9, 2027 · In the Pantry` with several batches, the place alone with one
+    /// (the sheet title already names the item).
+    func header(_ batch: InventoryBatch) -> String {
+        multipleBatches ? "\(heading(batch)) · \(locationLine(batch))" : locationLine(batch)
+    }
+
+    /// Batches with a quantity or expiry draft.
+    var changedBatches: [InventoryBatch] { batches.filter(hasChanges) }
+
+    /// Saves every changed batch in turn (the edit sheet's one Save), stopping at the first error. Each batch runs the
+    /// same calls its own Save made before direction G; ``isFinished`` is set by the first that succeeds.
+    func saveChanges() async {
+        for batch in changedBatches {
+            await save(batch)
+            if error != nil { return }
+        }
+    }
+
+    /// Under the editor's first group and the Add Item review's details (mockups n6-item-editor, n6-scan-review).
+    static let preparedFoodNote = "Prepared Food marks an item that does not need classification."
+
+    /// Puts every batch's drafts back (Reset Changes).
+    func resetChanges() {
+        for batch in changedBatches { reset(batch) }
     }
 }
 
@@ -175,10 +237,13 @@ enum EditorPrompt: Identifiable {
     }
 }
 
-/// One batch: heading, location, quantity stepper, expiration date, prepared toggle, hint, Reset and Save.
+/// One batch (mockup n6-item-editor): a header with its expiry and place, then Quantity, Expiration Date, Expires,
+/// Prepared Food and a red Delete row; the footer carries what saving would change.
 private struct BatchSection: View {
     @Bindable var model: InventoryEditorModel
     var batch: InventoryBatch
+    /// The first group explains Prepared Food in its footer.
+    var showsPreparedNote: Bool
     var ask: (EditorPrompt) -> Void
 
     var body: some View {
@@ -186,21 +251,6 @@ private struct BatchSection: View {
         let disabled = model.isDisabled(batch)
         let quantity = model.quantity(batch)
         Section {
-            // The batch's heading is the section's first row: as a custom section header the audit reported its
-            // text clipped at large sizes.
-            VStack(alignment: .leading, spacing: 2) {
-                Text(model.heading(batch))
-                    .font(.headline)
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .accessibilityAddTraits(.isHeader)
-                Text(model.locationLine(batch))
-                    .font(.subheadline)
-                    .foregroundStyle(HassTokens.Ink.secondary)
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("inventory.editor.batch")
-
             Stepper(value: quantityBinding, in: model.minimumQuantity(batch)...InventoryCatalog.maxQuantity, step: 1) {
                 LabeledContent("Quantity", value: InventoryFormat.quantity(quantity))
             }
@@ -232,55 +282,38 @@ private struct BatchSection: View {
             .accessibilityLabel("Prepared food, \(qualifier)")
             .accessibilityIdentifier("inventory.editor.prepared")
 
-            if let hint = model.hint(batch) {
-                Text(hint)
-                    .font(.footnote)
-                    .foregroundStyle(HassTokens.Ink.secondary)
-                    .accessibilityIdentifier("inventory.editor.hint")
-            }
-
-            if model.hasChanges(batch) {
-                HStack {
-                    Button("Reset") { model.reset(batch) }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Reset \(qualifier)")
-                        .accessibilityIdentifier("inventory.editor.reset")
-                    Spacer()
-                    Button {
-                        Task { await model.save(batch) }
-                    } label: {
-                        if case .save(batch.key) = model.busy {
-                            ArcSpinner(.inline)
-                        } else {
-                            Text("Save").bold()
-                        }
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel(model.busy == .save(batch.key) ? "Saving \(qualifier)" : "Save \(qualifier)")
-                    .accessibilityIdentifier("inventory.editor.save")
-                }
-                .disabled(disabled)
-                .frame(minHeight: HassTokens.minTarget)
-            }
-
             Button(role: .destructive) {
                 Task { if let prompt = await EditorPrompt.delete(batch, in: model) { ask(prompt) } }
             } label: {
-                // Icon and text rather than a Label: the Label's title was reported clipped at large sizes.
+                // Text and a trailing glyph rather than a Label: the Label's title was reported clipped at large sizes.
                 HStack(spacing: HassTokens.Spacing.m) {
-                    Image(systemName: "trash").accessibilityHidden(true)
                     Text("Delete").fixedSize(horizontal: false, vertical: true)
                     Spacer(minLength: 0)
                     if case .delete(batch.key) = model.busy {
                         ArcSpinner(.inline, label: "Deleting")
+                    } else {
+                        Image(systemName: "trash").accessibilityHidden(true)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .foregroundStyle(InventoryTone.color(.expired))
+                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                .foregroundStyle(HassTokens.Ink.danger)
+                .contentShape(Rectangle())
             }
             .disabled(disabled)
             .accessibilityLabel(model.busy == .delete(batch.key) ? "Deleting \(qualifier)" : "Delete \(qualifier)")
             .accessibilityIdentifier("inventory.editor.delete")
+        } header: {
+            FormHeader(model.header(batch))
+                .textCase(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("inventory.editor.batch")
+        } footer: {
+            let notes = [model.hint(batch), showsPreparedNote ? InventoryEditorModel.preparedFoodNote : nil].compactMap { $0 }
+            if !notes.isEmpty {
+                FormFooter(notes.joined(separator: "\n"))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier(model.hint(batch) == nil ? "inventory.editor.note" : "inventory.editor.hint")
+            }
         }
     }
 
@@ -312,5 +345,47 @@ private struct BatchSection: View {
                 Task { if let prompt = await EditorPrompt.prepared(batch, in: model) { ask(prompt) } }
             }
         )
+    }
+}
+
+/// Reset Changes, a list row in the action tint (direction G, Sheets: "Reset is a list row"), shown while any batch has a
+/// draft; the split pane adds Save Changes, since it has no toolbar for the sheet's check.
+private struct ChangesSection: View {
+    var model: InventoryEditorModel
+    var showsSave: Bool
+    var isSaving: Bool
+    var canSave: Bool
+    var onSave: () -> Void
+
+    var body: some View {
+        Section {
+            if showsSave {
+                Button(action: onSave) {
+                    HStack(spacing: HassTokens.Spacing.s) {
+                        Text("Save Changes").bold().fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        if isSaving { ArcSpinner(.inline, label: "Saving") }
+                    }
+                    .foregroundStyle(HassTokens.Ink.action)
+                    .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSave)
+                .accessibilityLabel(isSaving ? "Saving \(model.title)" : "Save \(model.title)")
+                .accessibilityIdentifier("inventory.editor.save")
+            }
+            Button { model.resetChanges() } label: {
+                Text("Reset Changes")
+                    .foregroundStyle(HassTokens.Ink.action)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(model.busy != nil || isSaving)
+            .accessibilityLabel("Reset Changes to \(model.title)")
+            .accessibilityIdentifier("inventory.editor.reset")
+        }
     }
 }

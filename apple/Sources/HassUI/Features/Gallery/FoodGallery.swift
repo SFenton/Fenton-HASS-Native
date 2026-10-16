@@ -5,7 +5,7 @@ import Observation
 import SwiftUI
 
 /// Gallery page for the Food pages: the hub, Recipes grid and recipe detail on fixture data, with a recording
-/// recipe service so journeys never touch the house.
+/// recipe service so journeys never touch the house. Dark, on the house backdrop, like the signed-in app.
 ///
 /// - `FENTON_GALLERY_ROUTE=hub|recipes` opens that page (default `hub`).
 /// - `FENTON_GALLERY_FOOD_MODE=error|empty|slow` makes the service fail, return nothing, or stay loading.
@@ -55,8 +55,14 @@ struct FoodGallery: View {
                 Section { lastCall }
             }
             .navigationTitle("Food")
+            // The house backdrop and dark scheme the signed-in shell gives every page (direction G, as
+            // `VacationGallery` does): on the system's white ground G's modules and white titles fail contrast. Pushed
+            // Food pages get theirs from `pageChrome()` in `FoodNavigation`.
+            .scrollContentBackground(.hidden)
+            .pageBackdrop()
             .foodNavigation(service: service)
         }
+        .preferredColorScheme(.dark)
         .environment(store)
         // The hub's space tiles open the Inventory lane's pages on its fixture server.
         .environment(\.inventoryModels, inventoryModels)

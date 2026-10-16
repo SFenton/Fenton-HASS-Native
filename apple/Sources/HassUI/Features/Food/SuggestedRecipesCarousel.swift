@@ -5,7 +5,12 @@ import SwiftUI
 /// The hub's Suggested Recipes: five swipeable pages of compact recipe cards (web `SuggestedRecipeCarousel` +
 /// `CardCarousel`). Columns follow the width like the web (min 2, cards up to 220 pt, max 10); three rows
 /// on narrow windows and two on wide ones. Empty slots keep their place while loading.
+///
+/// Direction G (mockup n6 Food & Recipes): the section's 20 Bold header carries "Page 1 of 5" at its trailing edge,
+/// which follows the scroll position, and page dots sit under the cards.
 struct SuggestedRecipesCarousel: View {
+    /// The section header.
+    var title = "Suggested Recipes"
     let model: SuggestedRecipesModel
     /// Clip pages to the carousel's own width. Set it when the carousel shares a row with other content (the
     /// hub's split columns): unclipped, the next page drew under the neighboring column.
@@ -34,23 +39,31 @@ struct SuggestedRecipesCarousel: View {
     private var pageSize: Int { layout.columns * layout.rows }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-            switch model.phase {
-            case .failed:
-                ContentUnavailableView(
-                    "Suggestions Unavailable", systemImage: "fork.knife",
-                    description: Text("Suggested recipes are temporarily unavailable.")
-                )
-                .accessibilityIdentifier("food.suggestions.error")
-            default:
-                pages
-                if pageCount > 1 { pageControl }
+        FoodSection(title, detail: pageDetail) {
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                switch model.phase {
+                case .failed:
+                    ContentUnavailableView(
+                        "Suggestions Unavailable", systemImage: "fork.knife",
+                        description: Text("Suggested recipes are temporarily unavailable.")
+                    )
+                    .accessibilityIdentifier("food.suggestions.error")
+                default:
+                    pages
+                    if pageCount > 1 { pageControl }
+                }
             }
+            .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
         }
-        .onGeometryChange(for: CGFloat.self, of: \.size.width) { width = $0 }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Suggested recipes")
         .accessibilityIdentifier("food.suggestions")
+    }
+
+    /// "Page 2 of 5" beside the header while there is more than one page.
+    private var pageDetail: String? {
+        guard model.phase != .failed, pageCount > 1 else { return nil }
+        return "Page \((page ?? 0) + 1) of \(pageCount)"
     }
 
     /// Pages that hold cards (always five while loading, so the frame does not jump).
@@ -86,13 +99,14 @@ struct SuggestedRecipesCarousel: View {
                     let recipe = model.items[position]
                     ImageCard(
                         title: recipe.title, imageURL: recipe.cardImageURL, fallbackImageURL: recipe.imageURL,
-                        placeholderSymbol: "fork.knife", accessibilityHint: "Opens recipe details", reservedTitleLines: 2
+                        placeholderSymbol: "fork.knife", accessibilityHint: "Opens recipe details"
                     ) { onOpen(recipe) }
                     .accessibilityIdentifier("food.suggestion.\(recipe.id)")
                 } else if model.phase != .ready {
-                    RoundedRectangle(cornerRadius: HassTokens.Radius.media, style: .continuous)
-                        .fill(Color.secondary.opacity(0.12))
-                        .aspectRatio(0.95, contentMode: .fit)
+                    // An empty module in the card's place, so the page keeps its height while loading.
+                    Color.clear
+                        .aspectRatio(ImageCard.aspectRatio, contentMode: .fit)
+                        .module(cornerRadius: ImageCard.cornerRadius)
                         .accessibilityHidden(true)
                 }
             }

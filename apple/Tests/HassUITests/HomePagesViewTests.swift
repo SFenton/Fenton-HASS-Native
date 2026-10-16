@@ -103,6 +103,15 @@ struct HomePagesViewTests {
         #expect(BrightnessTile.hint(percent: 40, isUnavailable: true, opensDetails: true).isEmpty)
     }
 
+    /// The custom light sheet's subtitle under its title.
+    @Test func customLightSubtitle() {
+        let light = CustomLightsConfig.lights[0].entityId
+        #expect(CustomLightSheet.subtitle(nil) == "Unavailable")
+        #expect(CustomLightSheet.subtitle(EntityState(entityId: light, state: "unavailable")) == "Unavailable")
+        #expect(CustomLightSheet.subtitle(EntityState(entityId: light, state: "off")) == "Off")
+        #expect(CustomLightSheet.subtitle(EntityState(entityId: light, state: "on", attributes: ["brightness": .number(204)])) == "On · 80%")
+    }
+
     @Test func pickedColorsConvertToRGB() {
         #expect(CustomLightsConfig.RGB(color: Color(red: 1, green: 0, blue: 0)) == CustomLightsConfig.RGB(255, 0, 0))
         #expect(CustomLightsConfig.RGB(color: Color(rgb: .init(12, 200, 99))) == CustomLightsConfig.RGB(12, 200, 99))
@@ -120,7 +129,7 @@ struct HomePagesViewTests {
 
     @MainActor
     @Test func pillRendersOnPagesAndGroupedLists() {
-        for surface in [StatusPill.Surface.page, .groupedList] {
+        for surface in [StatusPill.Surface.page, .groupedList, .module] {
             let pill = StatusPill(label: "Battery", value: "18%", symbol: "battery.25percent", tone: .warning, surface: surface)
                 .frame(width: 200)
             #expect(ImageRenderer(content: pill).cgImage != nil)

@@ -15,12 +15,12 @@ struct GuestPresenceSection: View {
         let anyGuests = HomeConfig.guestToggles.contains { store.entity($0.entityId).state?.state == "on" }
         if anyGuests {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                Text("Guests Staying Over")
-                    .font(.title3.weight(.semibold))
-                    .accessibilityAddTraits(.isHeader)
+                RoomSectionHeader(title: "Guests Staying Over")
                 Text("Guest mode skips some away automations. Review security, climate, and auto-clean controls before leaving.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    // Fixed ink: it sits on the dark wallpaper, whatever the scheme.
+                    .foregroundStyle(HassTokens.Ink.onDarkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 ControlTileGrid {
                     ForEach(HomeConfig.guestToggles) { toggle in
                         let state = store.entity(toggle.entityId).state
@@ -28,7 +28,7 @@ struct GuestPresenceSection: View {
                             title: toggle.title,
                             subtitle: state?.state == "on" ? "Guests staying" : "No guests",
                             symbol: SymbolMap.symbol(for: toggle.icon),
-                            tint: HassTokens.Tint.presence,
+                            family: .occupancy,
                             isActive: state?.state == "on",
                             isUnavailable: state?.isUnavailable ?? true
                         ) {

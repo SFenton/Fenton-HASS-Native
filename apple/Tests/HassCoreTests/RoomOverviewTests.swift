@@ -49,6 +49,27 @@ struct RoomOverviewTests {
         #expect(RoomOverview.sheetTitle(.airQuality, read: read) == "Air Quality")
     }
 
+    @Test func sheetNamesAndSubtitles() {
+        let none: RoomOverview.Read = { _ in nil }
+        #expect(RoomOverview.sheetName(.lights) == "Lights")
+        #expect(RoomOverview.sheetName(.contacts) == "Contact Sensors")
+        #expect(RoomOverview.sheetSubtitle(.lights, read: none) == "All Off")
+        #expect(RoomOverview.sheetSubtitle(.occupancy, read: none) == "All Clear")
+        #expect(RoomOverview.sheetSubtitle(.contacts, read: none) == "All Closed")
+        #expect(RoomOverview.sheetSubtitle(.climate, read: none) == nil)
+        #expect(RoomOverview.sheetSubtitle(.airQuality, read: none) == nil)
+
+        let lights = states([("light.kitchen_table_light", "on"), ("light.gym_light", "on")])
+        #expect(RoomOverview.sheetSubtitle(.lights, read: lights) == "2 of \(RoomOverview.lightEntityIds.count) On")
+
+        let office = group(.occupancy, "Office")
+        let occupied = states(office.items.prefix(1).map { ($0.entityId, "on") })
+        #expect(RoomOverview.sheetSubtitle(.occupancy, read: occupied) == "1 Room Occupied")
+
+        let open = states([(RoomOverview.contactEntityIds[0], "on"), (RoomOverview.contactEntityIds[1], "on")])
+        #expect(RoomOverview.sheetSubtitle(.contacts, read: open) == "2 Open")
+    }
+
     @Test func lightsSplitOnThenOff() {
         let read = states([("light.kitchen_table_light", "on"), ("light.theater_room", "on")])
         let sections = RoomOverview.sections(.lights, read: read)

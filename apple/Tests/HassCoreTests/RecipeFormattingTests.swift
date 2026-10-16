@@ -46,10 +46,10 @@ struct RecipeFormattingTests {
 
     @Test func inventoryAndQuantity() {
         #expect(RecipeFormatting.inventoryLabel(ingredient(state: .staple)) == "Staple")
-        #expect(RecipeFormatting.inventoryLabel(ingredient(state: .missing)) == "Missing from inventory")
-        #expect(RecipeFormatting.inventoryLabel(ingredient(state: .uncertain)) == "Inventory match uncertain")
-        #expect(RecipeFormatting.inventoryLabel(ingredient(state: .inStock, relation: "Normalized_Name")) == "Exact inventory match")
-        #expect(RecipeFormatting.inventoryLabel(ingredient(state: .inStock, relation: "category")) == "In inventory")
+        #expect(RecipeFormatting.inventoryLabel(ingredient(state: .missing)) == "Missing from Inventory")
+        #expect(RecipeFormatting.inventoryLabel(ingredient(state: .uncertain)) == "Inventory Match Uncertain")
+        #expect(RecipeFormatting.inventoryLabel(ingredient(state: .inStock, relation: "Normalized_Name")) == "Exact Inventory Match")
+        #expect(RecipeFormatting.inventoryLabel(ingredient(state: .inStock, relation: "category")) == "In Inventory")
         #expect(RecipeFormatting.isOnHand(ingredient(state: .staple)))
         #expect(!RecipeFormatting.isOnHand(ingredient(state: .uncertain)))
         #expect(RecipeFormatting.isOnHand(ingredient(state: .missing, override: .have)))
@@ -77,10 +77,10 @@ struct RecipeFormattingTests {
         let row = ingredient(displayName: "Garlic", sourceText: "4 cloves garlic, minced", quantity: 4, unit: "cloves", state: .inStock,
                              override: .missing, optional: true, product: "Garlic Bulb", sufficiency: .insufficient, closest: "Garlic")
         #expect(RecipeFormatting.chips(detail, row) == [
-            "In inventory", "Optional", "Product: Garlic Bulb", "Your override: missing", "Inventory quantity may be insufficient",
+            "In Inventory", "Optional", "Product: Garlic Bulb", "Your override: missing", "Inventory quantity may be insufficient",
         ])
         #expect(RecipeFormatting.accessibilityDetails(detail, row).hasSuffix("Source: garlic, minced. Matched as Garlic"))
-        #expect(RecipeFormatting.chips(detail, ingredient(override: .have)) == ["Missing from inventory", "Your override: have it"])
+        #expect(RecipeFormatting.chips(detail, ingredient(override: .have)) == ["Missing from Inventory", "Your override: have it"])
     }
 
     @Test func sectionsGroupAndCollectOrphans() {

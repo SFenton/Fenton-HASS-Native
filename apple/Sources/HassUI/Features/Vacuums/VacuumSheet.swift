@@ -2,9 +2,11 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// The vacuum sheet (pattern: `.agents/patterns/vacuum-sheet.md`; web `VacuumModal`).
+/// The vacuum sheet (pattern: `.agents/patterns/vacuum-sheet.md`; web `VacuumModal`; direction G mockups
+/// n6-vacuum-*).
 ///
-/// Map and status lead, the tab panel follows. Where a split is allowed (iPad and unfolded iPhone Duo in
+/// Map and status lead, the section's panel follows, and the sections sit in the bottom glass section bar
+/// (``ModalTabBar``, symbols only at five sections). Where a split is allowed (iPad and unfolded iPhone Duo in
 /// landscape) and the sheet is wide enough, the map and status take a leading column and the tabs scroll in the
 /// trailing one; everywhere else it is one scrolling column. The area editor and the cleaning report push onto
 /// the sheet's navigation stack.
@@ -92,6 +94,7 @@ public struct VacuumSheet: View {
             .modalChrome()
             .navigationTitle("\(controller.vacuum.title) Robot Vacuum")
             .inlineNavigationTitle()
+            .modifier(VacuumSheetChrome(controller: controller, content: content))
             .toolbar { SheetCloseItem { dismiss() } }
             .navigationDestination(for: Route.self) { route in
                 switch route {
@@ -112,7 +115,7 @@ public struct VacuumSheet: View {
     // MARK: - Columns
 
     private var mapColumn: some View {
-        VacuumMapPanel(controller: controller, mapState: mapState, pictureURL: pictureURL,
+        VacuumMapPanel(controller: controller, mapState: mapState, content: content, pictureURL: pictureURL,
                        areaVisible: controller.areaSelection != nil) { contract in
             path.append(.report(VacuumOutcomeContractBox(contract)))
         }
@@ -174,7 +177,33 @@ final class VacuumSheetContent {
     }
 }
 
-/// The tab control and the displayed tab's content (web `VacuumModalTabContent`'s right pane).
+/// The state line under the title and the bottom section bar. A modifier of its own, so a battery tick or a section
+/// change redraws only the bar and the subtitle, never the map canvas.
+struct VacuumSheetChrome: ViewModifier {
+    var controller: VacuumController
+    var content: VacuumSheetContent
+
+    func body(content root: Content) -> some View {
+        let tabs = controller.tabs(in: content.swap.displayed.mode)
+        let symbol: ((VacuumTab) -> String)? = VacuumTabSymbols.usesSymbols(tabs) ? { VacuumTabSymbols.symbol(for: $0) } : nil
+        // Always applied, even at one section: a conditional bar would rebuild the sheet's root (and the map) when a
+        // clean starts or ends. Every configured vacuum has Controls plus Auto-Clean or Info.
+        root
+            .sheetSubtitle(Self.subtitle(state: controller.statusState, battery: controller.batteryLabel))
+            .modalTabBar(tabs, label: "\(controller.vacuum.title) sections", title: \.title, symbol: symbol,
+                         selection: Binding(get: { content.selection(in: tabs) }, set: { content.requestedTab = $0 }),
+                         identifier: "vacuum.tabs")
+    }
+
+    /// "Docked · 100%", or the state alone while the battery is unknown (mockup n6-vacuum-sheet).
+    static func subtitle(state: String, battery: String) -> String {
+        let label = VacuumFormat.state(state)
+        return battery == "Unknown" ? label : "\(label) · \(battery)"
+    }
+}
+
+/// The displayed section's content (web `VacuumModalTabContent`'s right pane); the section bar is
+/// ``VacuumSheetChrome``.
 struct VacuumTabColumn: View {
     var controller: VacuumController
     var mapState: VacuumMapState
@@ -184,36 +213,31 @@ struct VacuumTabColumn: View {
     var barInset: CGFloat
     var onEditArea: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// The tab control's top edge in the scroll view.
-    @State private var pickerTop: CGFloat = .infinity
+    /// The panel's top edge in the scroll view.
+    @State private var panelTop: CGFloat = .infinity
 
     var body: some View {
         let shown = content.swap.displayed
-        let tabs = controller.tabs(in: shown.mode)
         let target = VacuumSheetContent.key(requested: content.requestedTab, controller: controller)
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-            if tabs.count > 1 {
-                VacuumTabPicker(tabs: tabs, title: controller.vacuum.title,
-                                selection: Binding(get: { content.selection(in: tabs) }, set: { content.requestedTab = $0 }))
-                    .id(VacuumSheetLayout.tabTopID)
-                    .onGeometryChange(for: CGFloat.self) { proxy in
-                        proxy.frame(in: .named(VacuumSheetLayout.tabScrollSpace)).minY
-                    } action: { pickerTop = $0 }
+        panel(shown)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .opacity(content.swap.isHidden ? 0 : 1)
+            .allowsHitTesting(!content.swap.isHidden)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("vacuum.tabContent")
+            .id(VacuumSheetLayout.tabTopID)
+            .onGeometryChange(for: CGFloat.self) { proxy in
+                proxy.frame(in: .named(VacuumSheetLayout.tabScrollSpace)).minY
+            } action: { panelTop = $0 }
+            .onChange(of: target) { _, next in
+                if next.tab != content.requestedTab { content.requestedTab = next.tab }
+                content.swap.show(next, reduceMotion: reduceMotion)
             }
-            panel(shown)
-                .opacity(content.swap.isHidden ? 0 : 1)
-                .allowsHitTesting(!content.swap.isHidden)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onChange(of: target) { _, next in
-            if next.tab != content.requestedTab { content.requestedTab = next.tab }
-            content.swap.show(next, reduceMotion: reduceMotion)
-        }
-        .onChange(of: content.scrollResets) { _, _ in
-            // Only when the tab control has scrolled under the bar or off the top, so a new tab would open mid-content;
-            // scrolling on every tab change jumped the sheet (owner report 2026-10-13).
-            if pickerTop < barInset { reader.scrollTo(VacuumSheetLayout.tabTopID, anchor: .top) }
-        }
+            .onChange(of: content.scrollResets) { _, _ in
+                // Only when the panel's top has scrolled under the bar or off the top, so a new section would open
+                // mid-content; scrolling on every change jumped the sheet (owner report 2026-10-13).
+                if panelTop < barInset { reader.scrollTo(VacuumSheetLayout.tabTopID, anchor: .top) }
+            }
     }
 
     @ViewBuilder private func panel(_ shown: VacuumSheetContent.Key) -> some View {

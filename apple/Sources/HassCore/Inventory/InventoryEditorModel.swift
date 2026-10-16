@@ -91,9 +91,10 @@ public final class InventoryEditorModel {
         multipleBatches ? InventoryCatalog.expiryInfo(batch.expiryDate.isEmpty ? nil : batch.expiryDate, calendar: list.calendar).label : title
     }
 
-    /// `In the fridge`, plus `· Prepared`.
+    /// `In the Fridge`, plus `· Prepared` (Title Case: direction G, Copy).
     public func locationLine(_ batch: InventoryBatch) -> String {
-        batch.preparedFood ? "In the \(batch.locationPhrase) · Prepared" : "In the \(batch.locationPhrase)"
+        let place = "In the \(batch.locationPhrase.capitalized)"
+        return batch.preparedFood ? "\(place) · Prepared" : place
     }
 
     /// The draft quantity.

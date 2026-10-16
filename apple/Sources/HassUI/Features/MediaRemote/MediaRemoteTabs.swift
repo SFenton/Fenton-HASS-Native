@@ -9,12 +9,12 @@ import SwiftUI
 struct RemoteAppsTab: View {
     var controller: MediaRemoteController
     var imageServer: HassServer?
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 120
+    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 100
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            RemoteSectionHeader(title: controller.config.appSectionTitle)
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
+            RoomSectionHeader(title: controller.config.appSectionTitle, inSheet: true)
+            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
                 ForEach(controller.config.apps) { app in
                     AppTile(app: app, display: controller.display(app), imageURL: imageURL(app)) { controller.tap(app) }
                 }
@@ -29,38 +29,53 @@ struct RemoteAppsTab: View {
     }
 }
 
-/// One app tile.
+/// One app tile (direction G, n4 remote apps and room Quick App Launch): the artwork on a rounded square, the app's
+/// name under it, and "Playing" with a media-pink ring while it runs. Unavailable dims only the artwork, so the
+/// name keeps its contrast.
 struct AppTile: View {
     var app: MediaRemoteApp
     var display: MediaRemoteController.AppDisplay
     var imageURL: URL?
     var action: () -> Void
+    @Environment(\.tileSurface) private var surface
 
-    private let shape = RoundedRectangle(cornerRadius: 14, style: .continuous)
+    private let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous)
 
     var body: some View {
         Button(action: action) {
-            ZStack {
-                shape.fill(app.whiteBackground ? Color.white : RemoteStyle.buttonFill)
-                if let imageURL {
-                    CachedImage(url: imageURL) { fallback }
-                } else {
-                    fallback
+            VStack(spacing: HassTokens.Spacing.xs) {
+                ZStack {
+                    ground
+                    if let imageURL {
+                        CachedImage(url: imageURL) { fallback }
+                    } else {
+                        fallback
+                    }
+                }
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: 168)
+                .clipShape(shape)
+                .overlay {
+                    shape.strokeBorder(display.isActive ? ColorFamily.media.glyph : HassTokens.Surface.separator,
+                                       lineWidth: display.isActive ? 3 : 1)
+                }
+                .opacity(display.isUnavailable ? 0.4 : 1)
+                Text(app.title)
+                    .font(.subheadline)
+                    .foregroundStyle(HassTokens.Ink.onDark)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                if display.isActive {
+                    Text("Playing")
+                        .font(.footnote)
+                        .foregroundStyle(secondaryInk)
                 }
             }
-            .aspectRatio(1, contentMode: .fit)
-            .frame(maxWidth: 168)
-            .clipShape(shape)
-            .overlay {
-                shape.strokeBorder(display.isActive ? HassTokens.Ink.primary : Color.primary.opacity(0.14),
-                                   lineWidth: display.isActive ? 3 : 1)
-            }
-            .contentShape(shape)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(display.isUnavailable)
-        .opacity(display.isUnavailable ? 0.4 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(app.title)
         .accessibilityAddTraits(.isButton)
@@ -68,49 +83,117 @@ struct AppTile: View {
         .accessibilityIdentifier("remote.app.\(app.title)")
     }
 
-    private var fallback: some View {
-        VStack(spacing: HassTokens.Spacing.s) {
-            Image(systemName: SymbolMap.symbol(for: app.icon ?? "mdi:play-box"))
-                .font(.largeTitle)
-            Text(app.title)
-                .font(.subheadline.weight(.bold))
-                .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.6)
+    /// The square behind the artwork: the sheet's cell colour in the remote, the module on a room page.
+    @ViewBuilder
+    private var ground: some View {
+        if app.whiteBackground {
+            Color.white
+        } else if surface == .sheet {
+            HassTokens.Surface.sheetCell
+        } else {
+            // The module material, opaque with Reduce Transparency; the tile's own shape clips it.
+            Color.clear.module(cornerRadius: 0)
         }
-        .foregroundStyle(app.whiteBackground ? Color.black : HassTokens.Ink.primary)
-        .padding(HassTokens.Spacing.s)
+    }
+
+    private var secondaryInk: Color {
+        surface == .sheet ? HassTokens.Surface.secondaryInSheet : HassTokens.Surface.secondaryOnModule
+    }
+
+    private var fallback: some View {
+        Image(systemName: SymbolMap.symbol(for: app.icon ?? "mdi:play-box"))
+            .font(.largeTitle)
+            .foregroundStyle(app.whiteBackground ? Color.black : display.isActive ? ColorFamily.media.glyph : ColorFamily.media.offGlyph)
+            .accessibilityHidden(true)
     }
 }
 
 // MARK: - Devices
 
-/// Device tiles in the shared grid (web `DeviceButton` in a `DynamicGrid`, 2–4 columns).
+/// The remote's devices as an inset grouped list (direction G: switches only in list rows; one option of several
+/// is a checkmark row). Toggles and toggling commands are switches, a source choice is a checkmark row, and a
+/// device that only reports a state is a plain row (web `DeviceButton` in a `DynamicGrid`).
 struct RemoteDevicesTab: View {
     var controller: MediaRemoteController
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            RemoteSectionHeader(title: "Devices")
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
+        List {
+            Section {
                 ForEach(controller.config.devices) { device in
-                    let display = controller.display(device)
-                    RemoteGlassTile(
-                        title: device.title,
-                        subtitle: display.subtitle,
-                        symbol: SymbolMap.symbol(for: device.icon),
-                        tint: device.entityId.hasPrefix("input_boolean.") ? HassTokens.Tint.presence : RemoteStyle.media,
-                        isActive: display.isActive && !display.isUnavailable,
-                        isDisabled: display.isDisabled,
-                        semantics: display.semantics
-                    ) {
-                        controller.tap(device)
-                    }
-                    .accessibilityIdentifier("remote.device.\(device.title)")
+                    RemoteDeviceRow(device: device, display: controller.display(device)) { controller.tap(device) }
                 }
+            } header: {
+                FormHeader("Devices")
             }
         }
-        .accessibilityElement(children: .contain)
+    }
+}
+
+/// One device row: its glyph in the media family colour while on, its name and state, and a switch, a checkmark
+/// or nothing for its semantics.
+struct RemoteDeviceRow: View {
+    var device: MediaRemoteDevice
+    var display: MediaRemoteController.DeviceDisplay
+    var action: () -> Void
+
+    var body: some View {
+        Group {
+            switch display.semantics {
+            case let .toggle(isOn):
+                toggle(isOn)
+            case .command:
+                // Every command device toggles its device (`media_player.toggle`, the PC's on/off pair).
+                toggle(display.isActive)
+            case let .selection(isSelected):
+                Button(action: action) {
+                    HStack(spacing: HassTokens.Spacing.m) {
+                        label
+                        Spacer(minLength: HassTokens.Spacing.s)
+                        Image(systemName: "checkmark")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(HassTokens.Ink.action)
+                            .opacity(isSelected ? 1 : 0)
+                            .accessibilityHidden(true)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(device.title)
+                .accessibilityValue(display.subtitle)
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                // Outside the combined element, so VoiceOver and XCUITest read it as dimmed (see GlassTile).
+                .disabled(display.isDisabled)
+            case .state:
+                label
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(device.title)
+                    .accessibilityValue(display.subtitle)
+            }
+        }
+        .frame(minHeight: HassTokens.minTarget)
+        .accessibilityIdentifier("remote.device.\(device.title)")
+    }
+
+    private func toggle(_ isOn: Bool) -> some View {
+        Toggle(isOn: Binding(get: { isOn }, set: { _ in action() })) { label }
+            .disabled(display.isDisabled)
+    }
+
+    private var label: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(device.title)
+                    .foregroundStyle(HassTokens.Ink.primary)
+                Text(display.subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(HassTokens.Ink.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: SymbolMap.symbol(for: device.icon))
+                .foregroundStyle(display.isActive && !display.isUnavailable ? ColorFamily.media.glyph : ColorFamily.media.offGlyph)
+                .accessibilityHidden(true)
+        }
     }
 }
 
@@ -150,116 +233,136 @@ struct RemoteGlassTile: View {
 
 // MARK: - Hue Sync
 
-/// Sync Box power and light sync, sync mode, intensity and brightness, and HDMI input (web `HueSyncTab`).
+/// Sync Box power and light sync, sync mode, intensity and brightness, and HDMI input (web `HueSyncTab`), as an
+/// inset grouped list (direction G, n4 remote Hue Sync): switches in rows, segmented controls for the short mode
+/// and intensity choices, and a checkmark list for the inputs.
+///
+/// Departure from the web: tapping the selected sync mode again while not syncing no longer restarts syncing (a
+/// segmented control does not report a tap on its selected segment). Light Sync starts it.
 struct HueSyncTab: View {
     var controller: MediaRemoteController
     var hue: HueSyncConfig
-    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
-    @ScaledMetric(relativeTo: .title2) private var scaledModeDiameter: CGFloat = 60
     @State private var brightness = SliderDraft()
+    @Environment(\.dynamicTypeSize) private var typeSize
 
-    static let help = "Light sync turns on the Sync Box and starts entertainment syncing. Choosing a sync mode does the same in that mode. Presence lighting pauses, then resumes when syncing stops."
+    static let help = "Light Sync turns on the Sync Box and starts syncing. Choosing a mode does the same. Presence lighting pauses until syncing stops."
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-            section("Power and Sync") {
-                grid {
-                    toggleTile("Sync Box Power", entityId: hue.powerEntityId, symbol: "power", tint: RemoteStyle.media,
-                               offProjections: [hue.lightSyncEntityId])
-                    toggleTile("Light Sync", entityId: hue.lightSyncEntityId, symbol: "lightbulb.2", tint: HassTokens.Tint.light,
-                               onProjections: [hue.powerEntityId])
-                }
-                Text(Self.help)
-                    .font(.footnote)
-                    .foregroundStyle(HassTokens.Ink.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        List {
+            Section {
+                toggleRow("Sync Box Power", entityId: hue.powerEntityId, symbol: "power", offProjections: [hue.lightSyncEntityId])
+                toggleRow("Light Sync", entityId: hue.lightSyncEntityId, symbol: "lightbulb.2", onProjections: [hue.powerEntityId])
+            } header: {
+                FormHeader("Power and Sync")
+            } footer: {
+                FormFooter(Self.help)
             }
-            section("Sync Mode") { syncModes }
-            section("Intensity") {
+            Section {
+                let mode = controller.hueSelect(hue.syncModeEntityId)
+                choice("Sync Mode", select: mode, options: MediaRemoteState.orderedSyncModes(mode.options),
+                       identifier: "remote.hue.mode") { controller.selectSyncMode(hue, mode: $0) }
+            } header: {
+                FormHeader("Sync Mode")
+            }
+            Section {
                 let intensity = controller.hueSelect(hue.intensityEntityId)
-                grid {
-                    ForEach(intensity.options, id: \.self) { option in
-                        RemoteGlassTile(title: StateText.titleCase(option), symbol: "gauge.with.dots.needle.50percent",
-                                        tint: HassTokens.Tint.light, isActive: intensity.selected == option,
-                                        isDisabled: intensity.isUnavailable, semantics: .selection(isSelected: intensity.selected == option)) {
-                            controller.selectHue(hue.intensityEntityId, option: option)
-                        }
-                        .accessibilityIdentifier("remote.hue.intensity.\(option)")
-                    }
+                choice("Intensity", select: intensity, options: intensity.options, identifier: "remote.hue.intensity") {
+                    controller.selectHue(hue.intensityEntityId, option: $0)
                 }
                 brightnessField
+            } header: {
+                FormHeader("Intensity")
             }
-            section("HDMI Input") {
-                grid {
-                    ForEach(controller.hdmiInputs(hue)) { input in
-                        RemoteGlassTile(title: input.option, subtitle: input.subtitle, symbol: input.isDisconnected ? "tv.slash" : "tv",
-                                        tint: HassTokens.Tint.presence, isActive: input.isSelected && !input.isDisconnected,
-                                        isDisabled: input.isDisabled, semantics: .selection(isSelected: input.isSelected)) {
-                            controller.selectHue(hue.hdmiInputEntityId, option: input.option)
-                        }
-                        .accessibilityIdentifier("remote.hue.hdmi.\(input.option)")
-                    }
-                }
+            Section {
+                ForEach(controller.hdmiInputs(hue)) { input in hdmiRow(input) }
+            } header: {
+                FormHeader("HDMI Input")
             }
         }
     }
 
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            RemoteSectionHeader(title: title)
-            content()
-        }
-        .accessibilityElement(children: .contain)
-    }
-
-    private func grid<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 2) { content() }
-    }
-
-    private func toggleTile(_ title: String, entityId: String, symbol: String, tint: Color,
-                            offProjections: [String] = [], onProjections: [String] = []) -> some View {
+    private func toggleRow(_ title: String, entityId: String, symbol: String,
+                           offProjections: [String] = [], onProjections: [String] = []) -> some View {
         let toggle = controller.hueToggle(entityId)
-        return RemoteGlassTile(title: title, subtitle: toggle.subtitle, symbol: symbol, tint: tint, isActive: toggle.isOn,
-                               isDisabled: toggle.isUnavailable, semantics: .toggle(isOn: toggle.isOn)) {
+        return Toggle(isOn: Binding(get: { toggle.isOn }, set: { _ in
             controller.toggleHue(entityId, offProjections: offProjections, onProjections: onProjections)
+        })) {
+            Label {
+                Text(title).foregroundStyle(HassTokens.Ink.primary)
+            } icon: {
+                Image(systemName: symbol)
+                    .foregroundStyle(toggle.isOn ? ColorFamily.lights.glyph : ColorFamily.lights.offGlyph)
+                    .accessibilityHidden(true)
+            }
         }
+        .disabled(toggle.isUnavailable)
+        .frame(minHeight: HassTokens.minTarget)
         .accessibilityIdentifier("remote.hue.\(title)")
     }
 
-    private var syncModes: some View {
-        let mode = controller.hueSelect(hue.syncModeEntityId)
-        let diameter = min(max(scaledModeDiameter, HassTokens.minTarget), 96)
-        return HStack(alignment: .top, spacing: 0) {
-            ForEach(MediaRemoteState.orderedSyncModes(mode.options), id: \.self) { option in
-                let selected = mode.selected == option
-                Button {
-                    controller.selectSyncMode(hue, mode: option)
-                } label: {
-                    VStack(spacing: HassTokens.Spacing.s) {
-                        Image(systemName: SymbolMap.symbol(for: MediaRemoteState.syncModeIcon(option)))
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(selected ? Color.black : HassTokens.Ink.primary)
-                            .frame(width: diameter, height: diameter)
-                            .background(selected ? HassTokens.Tint.light : RemoteStyle.buttonFill, in: Circle())
-                        Text(StateText.titleCase(option))
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(HassTokens.Ink.primary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .contentShape(Rectangle())
+    /// A short choice as a segmented control; "Unavailable" while the select reports no options.
+    @ViewBuilder
+    private func choice(_ title: String, select: MediaRemoteController.SelectDisplay, options: [String], identifier: String,
+                        choose: @escaping (String) -> Void) -> some View {
+        if options.isEmpty {
+            Text("Unavailable")
+                .foregroundStyle(HassTokens.Ink.secondary)
+                .frame(minHeight: HassTokens.minTarget)
+                .accessibilityLabel(title)
+                .accessibilityValue("Unavailable")
+                .accessibilityIdentifier(identifier)
+        } else {
+            let picker = Picker(title, selection: Binding(get: { select.selected }, set: { choose($0) })) {
+                ForEach(options, id: \.self) { option in
+                    Text(StateText.titleCase(option)).tag(option)
                 }
-                .buttonStyle(.plain)
-                .disabled(mode.isUnavailable)
-                .opacity(mode.isUnavailable ? 0.4 : 1)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(StateText.titleCase(option))
-                .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-                .accessibilityIdentifier("remote.hue.mode.\(option)")
-                .frame(maxWidth: .infinity)
             }
+            // Segments can't grow with Dynamic Type: a menu naming the choice at accessibility sizes (as ModalTabBar).
+            Group {
+                if typeSize.isAccessibilitySize {
+                    picker.pickerStyle(.menu).frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                } else {
+                    picker.pickerStyle(.segmented).labelsHidden().controlSize(.large)
+                }
+            }
+            .disabled(select.isUnavailable)
+            .accessibilityIdentifier(identifier)
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Sync Mode")
+    }
+
+    private func hdmiRow(_ input: MediaRemoteController.HdmiInputDisplay) -> some View {
+        Button {
+            controller.selectHue(hue.hdmiInputEntityId, option: input.option)
+        } label: {
+            HStack(spacing: HassTokens.Spacing.m) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(input.option).foregroundStyle(HassTokens.Ink.primary)
+                        Text(input.subtitle).font(.subheadline).foregroundStyle(HassTokens.Ink.secondary)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: input.isDisconnected ? "tv.slash" : "tv")
+                        .foregroundStyle(input.isSelected && !input.isDisconnected ? ColorFamily.media.glyph : ColorFamily.media.offGlyph)
+                        .accessibilityHidden(true)
+                }
+                Spacer(minLength: HassTokens.Spacing.s)
+                Image(systemName: "checkmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(HassTokens.Ink.action)
+                    .opacity(input.isSelected ? 1 : 0)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .frame(minHeight: HassTokens.minTarget)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(input.option)
+        .accessibilityValue(input.subtitle)
+        .accessibilityAddTraits(input.isSelected ? [.isButton, .isSelected] : .isButton)
+        // Outside the combined element, so an unplugged port reads as dimmed (see GlassTile).
+        .disabled(input.isDisabled)
+        .accessibilityIdentifier("remote.hue.hdmi.\(input.option)")
     }
 
     private var brightnessField: some View {
@@ -269,9 +372,9 @@ struct HueSyncTab: View {
         let commit: (Double) -> Void = { controller.setHueBrightness(hue.brightnessEntityId, value: $0) }
         return VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
             HStack {
-                Text("Brightness").font(.subheadline.weight(.semibold))
+                Text("Brightness")
                 Spacer()
-                Text(valueText).font(.subheadline).monospacedDigit()
+                Text(valueText).monospacedDigit().foregroundStyle(HassTokens.Ink.secondary)
             }
             .foregroundStyle(HassTokens.Ink.primary)
             .accessibilityHidden(true)

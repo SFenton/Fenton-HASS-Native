@@ -1,11 +1,6 @@
 import HassCore
 import HassDesign
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#else
-import AppKit
-#endif
 
 // MARK: - Colors
 
@@ -17,41 +12,34 @@ enum AwayTint {
     static let pending = Color(red: 0.12, green: 0.53, blue: 0.90)
     /// Solo Trip (web `SOLO_TRIP_COLOR` 91,141,239).
     static let soloTrip = Color(red: 0.36, green: 0.55, blue: 0.94)
-    /// Prominent action buttons: white text measures 5.6:1.
-    static let action = Color(red: 0.0, green: 0.40, blue: 0.80)
-    /// Bordered action button text: 4.5:1 on its light wash (0.40/0.80 measured 4.1:1 on iPad), and a lighter blue on dark backgrounds.
-    static let actionText = dynamic(light: (0.0, 0.35, 0.72), dark: (0.45, 0.70, 1.0))
-
-    private static func dynamic(light: (Double, Double, Double), dark: (Double, Double, Double)) -> Color {
-        #if canImport(UIKit)
-        Color(uiColor: UIColor { traits in
-            let c = traits.userInterfaceStyle == .dark ? dark : light
-            return UIColor(red: c.0, green: c.1, blue: c.2, alpha: 1)
-        })
-        #else
-        Color(nsColor: NSColor(name: nil) { appearance in
-            let c = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
-            return NSColor(red: c.0, green: c.1, blue: c.2, alpha: 1)
-        })
-        #endif
-    }
+    /// A checked pre-vacation task: the system green the mockups use for done (n5-vacation-mode).
+    static let checked = Color.green
 }
 
 // MARK: - Section
 
-/// A titled block of a page (web `section` + `SectionHeader` + `Description`).
+/// A titled block of a page (web `section` + `SectionHeader` + `Description`). Direction G's header: 20 Bold on the
+/// wallpaper, and 15 Semibold secondary inside a sheet over its inset list (`.agents/design/direction-g.md`, Type).
+/// Vacation opens in the Account and Quick Links sheets, so the sheet style is the usual one.
 struct AwaySection<Content: View>: View {
     var title: String?
     var description: String?
     @ViewBuilder var content: Content
+    @Environment(\.tileSurface) private var surface
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
+        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             if let title {
-                Text(title)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .accessibilityAddTraits(.isHeader)
+                Group {
+                    if surface == .sheet {
+                        FormHeader(title)
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, HassTokens.Spacing.l)
+                    } else {
+                        PageSectionHeader(title)
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
             }
             if let description {
                 Text(description)
@@ -86,7 +74,8 @@ struct SoloTripNoticeBox: View {
     }
 }
 
-/// A full-width action button (web `FieldActionButton`).
+/// A full-width action button (web `FieldActionButton`). The prominent one is the screen's ``PrimaryButtonStyle``
+/// capsule (`#0071E3`, white label); the rest are bordered in the action tint, or G's red when destructive.
 struct AwayActionButton: View {
     var title: String
     var role: ButtonRole?
@@ -97,18 +86,18 @@ struct AwayActionButton: View {
     var body: some View {
         Group {
             if prominent {
-                // The light app accent measured 2.5:1 under white text; this blue keeps 4.5:1 in both appearances.
-                Button(role: role, action: action) { label }.buttonStyle(.borderedProminent).tint(role == .destructive ? nil : AwayTint.action)
+                Button(role: role, action: action) { Text(title) }
+                    .buttonStyle(PrimaryButtonStyle())
             } else {
-                Button(role: role, action: action) { label }.buttonStyle(.bordered).tint(role == .destructive ? nil : AwayTint.actionText)
+                Button(role: role, action: action) {
+                    Text(title).frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .tint(role == .destructive ? HassTokens.Ink.danger : HassTokens.Ink.action)
             }
         }
-        .controlSize(.large)
         .accessibilityIdentifier(identifier)
-    }
-
-    private var label: some View {
-        Text(title).frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
     }
 }
 

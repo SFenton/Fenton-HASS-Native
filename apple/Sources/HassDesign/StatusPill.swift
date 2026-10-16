@@ -15,6 +15,9 @@ public struct StatusPill: View {
         /// A grouped list in a sheet: a solid row fill. A material over the sheet's glass smeared the
         /// content behind it.
         case groupedList
+        /// A cell inside a direction G module on the wallpaper (``SwiftUICore/View/module(_:cornerRadius:)``), which
+        /// draws the ground: no fill of its own.
+        case module
     }
 
     public var label: String
@@ -66,6 +69,7 @@ public struct StatusPill: View {
     private var fill: AnyShapeStyle {
         switch surface {
         case .page: AnyShapeStyle(.regularMaterial)
+        case .module: AnyShapeStyle(Color.clear)
         case .groupedList:
             #if os(iOS)
             AnyShapeStyle(Color(uiColor: .secondarySystemGroupedBackground))

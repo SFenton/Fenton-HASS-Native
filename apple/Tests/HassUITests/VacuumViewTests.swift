@@ -127,6 +127,80 @@ struct VacuumViewTests {
         }
     }
 
+    // MARK: Direction G
+
+    /// What picking Rooms or Area in the target control leads to (the web's target buttons).
+    @Test func cleanTargetOutcomes() {
+        #expect(VacuumCleanTarget.current(areaDrawn: false) == .rooms)
+        #expect(VacuumCleanTarget.current(areaDrawn: true) == .area)
+        #expect(VacuumCleanTarget.outcome(picking: .rooms, areaDrawn: false, roomsSelected: true, mapReady: true) == .openRooms)
+        #expect(VacuumCleanTarget.outcome(picking: .rooms, areaDrawn: true, roomsSelected: false, mapReady: true) == .confirmRooms,
+                "Leaving a drawn area asks first")
+        #expect(VacuumCleanTarget.outcome(picking: .area, areaDrawn: false, roomsSelected: false, mapReady: true) == .openAreaEditor)
+        #expect(VacuumCleanTarget.outcome(picking: .area, areaDrawn: false, roomsSelected: true, mapReady: true) == .confirmArea,
+                "Selected rooms are cleared only after confirming")
+        #expect(VacuumCleanTarget.outcome(picking: .area, areaDrawn: true, roomsSelected: true, mapReady: true) == .openAreaEditor)
+        #expect(VacuumCleanTarget.outcome(picking: .area, areaDrawn: false, roomsSelected: false, mapReady: false) == .none)
+    }
+
+    @Test func sheetSubtitleJoinsStateAndBattery() {
+        #expect(VacuumSheetChrome.subtitle(state: "docked", battery: "100%") == "Docked · 100%")
+        #expect(VacuumSheetChrome.subtitle(state: "cleaning", battery: "Unknown") == "Cleaning")
+    }
+
+    @Test func pageSummaryCountsWhatNeedsAttention() {
+        #expect(VacuumPageFormat.summary(states: ["cleaning", "docked", "error"]) == "1 Cleaning · 1 Needs Attention")
+        #expect(VacuumPageFormat.summary(states: ["returning", "cleaning", "cleaning"]) == "2 Cleaning · 1 Returning")
+        #expect(VacuumPageFormat.summary(states: ["docked", "docked"]) == "All Docked")
+        #expect(VacuumPageFormat.summary(states: ["docked", "idle"]) == nil)
+        #expect(VacuumPageFormat.summary(states: []) == nil)
+    }
+
+    @Test func robotTilesFollowTheState() {
+        let cleaning = VacuumPageFormat.tile(state: "cleaning", battery: "64", error: "No error")
+        #expect(cleaning.isActive && !cleaning.isError)
+        #expect(cleaning.progress == 0.64)
+        let docked = VacuumPageFormat.tile(state: "docked", battery: "100", error: "No error")
+        #expect(!docked.isActive && docked.progress == nil, "Docked is off")
+        let error = VacuumPageFormat.tile(state: "error", battery: "23", error: "Wheel stuck")
+        #expect(error.isError && !error.isActive)
+        #expect(error.subtitle == "Error • 23% • Wheel Stuck")
+        let unknownIssue = VacuumPageFormat.tile(state: "error", battery: "23", error: "unavailable")
+        #expect(unknownIssue.subtitle == "Error • 23%")
+    }
+
+    @Test func batteryGlyphsFollowTheLevel() {
+        #expect(VacuumStatusSummary.batterySymbol("100%") == "battery.100percent")
+        #expect(VacuumStatusSummary.batterySymbol("64%") == "battery.75percent")
+        #expect(VacuumStatusSummary.batterySymbol("20%") == "battery.25percent")
+        #expect(VacuumStatusSummary.batterySymbol("Unknown") == "battery.0percent")
+    }
+
+    /// Two to four options are segments; five (the gallery's fan) or an accessibility size make a pop-up menu.
+    @Test func settingsChooseSegmentsOrAMenu() throws {
+        let controller = VacuumController(vacuum: Vacuums.mainFloor, store: VacuumFixtures.store(), caller: RecordingCaller(),
+                                          scheduler: ManualRevertScheduler())
+        let settings = Dictionary(uniqueKeysWithValues: controller.powerSettings.map { ($0.title, $0) })
+        let mode = try #require(settings["Mode"])
+        let fan = try #require(settings["Fan"])
+        #expect(VacuumSettingRow.usesSegments(mode, accessibilitySize: false))
+        #expect(!VacuumSettingRow.usesSegments(mode, accessibilitySize: true))
+        #expect(!VacuumSettingRow.usesSegments(fan, accessibilitySize: false))
+        let passes = try #require(controller.passesSetting)
+        #expect(VacuumSettingRow.segmentsFitBesideTitle(passes), "1x, 2x and 3x sit beside the title")
+        #expect(!VacuumSettingRow.segmentsFitBesideTitle(mode))
+    }
+
+    @Test func fiveSectionsUseSymbols() {
+        #expect(VacuumTabSymbols.usesSymbols(VacuumTab.allCases))
+        #expect(!VacuumTabSymbols.usesSymbols([.controls, .autoClean, .info]))
+        for tab in VacuumTab.allCases {
+            #if canImport(AppKit)
+            #expect(NSImage(systemSymbolName: VacuumTabSymbols.symbol(for: tab), accessibilityDescription: nil) != nil, "\(tab)")
+            #endif
+        }
+    }
+
     // MARK: Gallery fixtures
 
     @Test func fixtureEchoMovesTheRobot() throws {

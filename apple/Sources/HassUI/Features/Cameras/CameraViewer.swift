@@ -230,7 +230,10 @@ enum CameraSnapshotFeedback: Equatable {
     }
 }
 
-/// One camera control: an icon over its label in a rounded tile, tinted while on.
+/// One camera control: a circle over its label, the glyph tinted while on (direction G mockup n2 camera: Snapshot,
+/// Audio and Record circles; HIG Buttons: labels under icons). The circle is the sheet's cell colour, not Liquid
+/// Glass: these controls sit on the sheet ground under the video, not over it, and glass is for the navigation
+/// layer (HIG: Materials).
 struct CameraControlButton: View {
     var title: String
     var symbol: String
@@ -242,10 +245,8 @@ struct CameraControlButton: View {
     var isToggle = false
     var identifier: String
     var action: () -> Void
-    @ScaledMetric(relativeTo: .subheadline) private var minHeight: CGFloat = 76
+    @ScaledMetric(relativeTo: .title2) private var circle: CGFloat = 56
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    private let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
 
     var body: some View {
         Button(action: action) {
@@ -254,16 +255,21 @@ struct CameraControlButton: View {
                     .font(.title2)
                     .symbolEffect(.pulse, options: .repeating, isActive: pulses && !reduceMotion)
                     .contentTransition(.symbolEffect(.replace))
+                    .foregroundStyle(isActive ? tint : HassTokens.Ink.primary)
+                    .frame(width: max(circle, HassTokens.minTarget), height: max(circle, HassTokens.minTarget))
+                    .background {
+                        Circle()
+                            .fill(HassTokens.Surface.sheetCell)
+                            .overlay { if isActive { Circle().fill(tint.opacity(0.22)) } }
+                    }
                 Text(title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(HassTokens.Ink.primary)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(isActive ? tint : HassTokens.Ink.primary)
-            .padding(HassTokens.Spacing.m)
-            .frame(maxWidth: .infinity, minHeight: max(minHeight, HassTokens.minTarget))
-            .background(isActive ? AnyShapeStyle(tint.opacity(0.18)) : AnyShapeStyle(.fill.tertiary), in: shape)
-            .contentShape(shape)
+            .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
+            .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)

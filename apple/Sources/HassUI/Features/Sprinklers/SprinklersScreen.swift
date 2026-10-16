@@ -28,10 +28,7 @@ public struct SprinklersScreen: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-                Text("Controllers")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(HassTokens.Ink.primary)
-                    .accessibilityAddTraits(.isHeader)
+                RoomSectionHeader(title: "Controllers")
                 DynamicGridLayout(minCellWidth: minCardWidth, maxColumns: 2, spacing: HassTokens.Spacing.xl) {
                     ForEach(controllers) { controller in
                         SprinklerControllerCard(controller: controller) { open = controller }
@@ -52,7 +49,8 @@ public struct SprinklersScreen: View {
     }
 }
 
-/// A controller's card: low battery warning, the tile that opens the sheet, and four status pills.
+/// A controller's card (direction G, n4 sprinklers): a low battery warning above it, then one module holding the
+/// controller's row, which opens its sheet, and its battery, next and last watering, and hub status.
 struct SprinklerControllerCard: View {
     var controller: SprinklerController
     var open: () -> Void
@@ -63,22 +61,50 @@ struct SprinklerControllerCard: View {
         let snapshot = controller.snapshot
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
             if snapshot.batteryLow, let percent = snapshot.batteryPercent {
-                InlineAlert("Battery \(SprinklerFormat.number(percent))%", symbol: "battery.25percent")
+                InlineAlert("\(controller.config.title) Battery \(SprinklerFormat.number(percent))%", symbol: "battery.25percent")
             }
-            // The tile opens the sheet even while the controller is offline: its status lives there.
-            GlassTile(title: controller.config.title, subtitle: format.subtitle(snapshot), symbol: SprinklerStyle.symbol,
-                      tint: SprinklerStyle.water, isActive: controller.isWatering, kind: .navigate, action: open)
-                .accessibilityIdentifier("sprinklers.controller.\(controller.id)")
-            DynamicGridLayout(minCellWidth: minPillWidth, maxColumns: 4, spacing: HassTokens.Spacing.s) {
-                StatusPill(label: "Battery", value: format.battery(snapshot), symbol: "battery.100percent",
-                           tone: snapshot.batteryLow ? .warning : .neutral)
-                StatusPill(label: "Next watering", value: format.nextStart(snapshot), symbol: "calendar.badge.clock")
-                StatusPill(label: "Last watering", value: format.lastStart(snapshot.lastRun), symbol: "clock.arrow.circlepath")
-                StatusPill(label: "Hub", value: snapshot.hubConnected ? "Connected" : "Unavailable",
-                           symbol: "antenna.radiowaves.left.and.right", tone: snapshot.hubConnected ? .ok : .unavailable)
+            // Dense while the battery pill is orange (direction G, Layers: warm text on the thicker module).
+            ModuleList(snapshot.batteryLow ? .dense : .thin) {
+                // The row opens the sheet even while the controller is offline: its status lives there.
+                SprinklerControllerRow(title: controller.config.title, subtitle: format.subtitle(snapshot),
+                                       isWatering: controller.isWatering, action: open)
+                    .accessibilityIdentifier("sprinklers.controller.\(controller.id)")
+                DynamicGridLayout(minCellWidth: minPillWidth, maxColumns: 2, spacing: 0) {
+                    StatusPill(label: "Battery", value: format.battery(snapshot), symbol: "battery.100percent",
+                               tone: snapshot.batteryLow ? .warning : .neutral, surface: .module)
+                    StatusPill(label: "Next Watering", value: format.nextStart(snapshot), symbol: "calendar.badge.clock", surface: .module)
+                    StatusPill(label: "Last Watering", value: format.lastStart(snapshot.lastRun), symbol: "clock.arrow.circlepath",
+                               surface: .module)
+                    StatusPill(label: "Hub", value: snapshot.hubConnected ? "Connected" : "Unavailable",
+                               symbol: "antenna.radiowaves.left.and.right", tone: snapshot.hubConnected ? .ok : .unavailable,
+                               surface: .module)
+                }
             }
         }
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// The controller's row at the top of its card: its glyph, name and status, with a chevron because it opens the
+/// controller's sheet. While watering, the glyph and status take the water colour.
+struct SprinklerControllerRow: View {
+    var title: String
+    var subtitle: String
+    var isWatering: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ModuleRow(title, subtitle: subtitle, symbol: SprinklerStyle.symbol,
+                      glyph: isWatering ? ColorFamily.water.glyph : ColorFamily.water.offGlyph,
+                      subtitleInk: isWatering ? ColorFamily.water.glyph : nil, showsChevron: true)
+        }
+        .buttonStyle(ModuleRowButtonStyle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityValue(subtitle)
+        .accessibilityHint("Opens the controller.")
+        .accessibilityAddTraits(.isButton)
     }
 }
 
@@ -86,7 +112,6 @@ struct SprinklerControllerCard: View {
 
 enum SprinklerStyle {
     static let symbol = "sprinkler.and.droplets"
-    /// Water tint for active zones and the controller tile.
-    static let water = HassTokens.Tint.water
+    /// The water family's glyph colour (direction G): active zones, chosen days and the controller row.
+    static let water = ColorFamily.water.glyph
 }
-

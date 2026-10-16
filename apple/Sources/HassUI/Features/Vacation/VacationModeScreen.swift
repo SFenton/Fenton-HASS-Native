@@ -66,9 +66,14 @@ struct VacationModeScreen: View {
         }
     }
 
+    /// The checklist as one inset list, its header counting what is done ("Pre-Vacation Checklist · 3 of 5",
+    /// mockup n5-vacation-mode).
     private var checklistSection: some View {
-        AwaySection(title: Vacation.Copy.checklistTitle) {
-            VStack(spacing: HassTokens.Spacing.s) {
+        // A closure, not `controller.isChecked`: the main-actor method reference would lose its isolation.
+        let done = Vacation.checklist.count(where: { controller.isChecked($0) })
+        return AwaySection(title: "\(Vacation.Copy.checklistTitle) · \(done) of \(Vacation.checklist.count)") {
+            // A module on the wallpaper, the sheet's cell colour in the Account and Quick Links sheets.
+            ModuleList {
                 ForEach(Array(Vacation.checklist.enumerated()), id: \.element.id) { index, item in
                     VacationChecklistRow(
                         title: item.title,
@@ -117,7 +122,9 @@ struct VacationModeScreen: View {
 
 // MARK: - Checklist row
 
-/// One pre-vacation task (web `CheckboxRow`): a checkbox with the task title.
+/// One pre-vacation task (web `CheckboxRow`): a row of the checklist's ``ModuleList`` with a circle that turns into a
+/// green check, as in Reminders (mockup n5-vacation-mode). The title starts 16 + 24 + 14 pt in, where the list insets
+/// its hairlines.
 struct VacationChecklistRow: View {
     var title: String
     var isChecked: Bool
@@ -126,25 +133,26 @@ struct VacationChecklistRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: HassTokens.Spacing.m) {
+            HStack(alignment: .firstTextBaseline, spacing: ModuleRowMetrics.gap) {
+                // Only the glyph dims while unavailable; the title keeps its contrast (direction G, tiles).
                 Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(isChecked ? AwayTint.vacation : HassTokens.Ink.secondary)
+                    .font(.body)
+                    .imageScale(.large)
+                    .foregroundStyle(isChecked ? AwayTint.checked : HassTokens.Ink.secondary)
+                    .opacity(isUnavailable ? 0.5 : 1)
                 Text(title)
                     .font(.body)
                     .foregroundStyle(HassTokens.Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, HassTokens.Spacing.m)
-            .padding(.vertical, HassTokens.Spacing.s)
-            .frame(minHeight: HassTokens.minTarget)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
+            .padding(.horizontal, HassTokens.Spacing.l)
+            .padding(.vertical, HassTokens.Spacing.m)
+            .frame(minHeight: 52)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(isUnavailable)
-        .opacity(isUnavailable ? 0.5 : 1)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityValue(isUnavailable ? "Unavailable" : isChecked ? "Checked" : "Not checked")
@@ -206,7 +214,8 @@ struct VacationConfirmationSheet: View {
             .modalChrome()
             .navigationTitle(Vacation.Copy.confirmTitle)
             .inlineNavigationTitle()
-            .toolbar { SheetCloseItem(identifier: "vacation.confirm.cancel") { controller.cancelConfirmation() } }
+            // A create sheet (direction G, Sheets): circle x Cancel leading drops the dates; the primary button confirms.
+            .toolbar { SheetCancelItem(identifier: "vacation.confirm.cancel") { controller.cancelConfirmation() } }
         }
         .hassSheet()
     }

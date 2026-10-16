@@ -58,11 +58,11 @@ public enum RecipeFormatting {
     public static func inventoryLabel(_ ingredient: RecipeDetail.Ingredient) -> String {
         switch ingredient.inventoryState {
         case .staple: return "Staple"
-        case .missing: return "Missing from inventory"
-        case .uncertain: return "Inventory match uncertain"
+        case .missing: return "Missing from Inventory"
+        case .uncertain: return "Inventory Match Uncertain"
         case .inStock:
             let relation = ingredient.inventoryRelation?.lowercased() ?? ""
-            return relation == "exact" || relation == "normalized_name" ? "Exact inventory match" : "In inventory"
+            return relation == "exact" || relation == "normalized_name" ? "Exact Inventory Match" : "In Inventory"
         }
     }
 

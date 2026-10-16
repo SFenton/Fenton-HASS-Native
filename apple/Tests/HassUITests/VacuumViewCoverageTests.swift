@@ -197,11 +197,13 @@ struct VacuumSheetInteractionTests {
     @Test func locateAndCleanSendTheWebServices() async {
         let rig = SheetRig()
         defer { rig.host.close() }
-        #expect(rig.host.buttonCount == 9)
+        // Locate, report, Selected Rooms, Clean and the Fan menu (five options). The Rooms/Area target, passes, Mode
+        // and Water are segmented controls, which register no button.
+        #expect(rig.host.buttonCount == 5, "\(rig.host.frames())")
         rig.host.tap(0)
         await rig.settle()
         #expect(rig.log.calls == ["vacuum.locate \(mainId)"])
-        rig.host.tap(5)
+        rig.host.tap(3)
         await rig.settle()
         #expect(rig.log.calls.last == "script.main_floor_vacuum_clean_selected_segments")
         #expect(rig.controller.state == "cleaning", "The tap shows cleaning at once")
@@ -212,11 +214,11 @@ struct VacuumSheetInteractionTests {
         let rig = SheetRig()
         defer { rig.host.close() }
         rig.log.fails = true
-        rig.host.tap(5)
+        rig.host.tap(3)
         await rig.settle()
         #expect(rig.controller.cleanError == "Home Assistant rejected the cleaning request.")
         #expect(rig.controller.state == "docked", "The optimistic cleaning state is rolled back")
-        #expect(rig.host.buttonCount == 9, "Clean is enabled again")
+        #expect(rig.host.buttonCount == 5, "Clean is enabled again")
     }
 
     @Test func runtimeActionsPerStateSendTheirCommands() async {
@@ -266,41 +268,22 @@ struct VacuumSheetInteractionTests {
         #expect(rig.controller.tabs.contains(.controls))
     }
 
-    @Test func theRoomsTargetOpensTheRoomsTab() async {
+    // The Rooms/Area target is a segmented control the Mac host cannot click by position; what each pick leads to
+    // is covered by `VacuumViewTests.cleanTargetOutcomes`, and the journey's `testAreaEditor` taps it on iOS.
+    @Test func theSelectedRoomsOpenTheRoomsTab() async {
         let rig = SheetRig()
         defer { rig.host.close() }
-        rig.host.tap(2)
+        rig.host.tap(2) // Selected Rooms
         #expect(rig.host.buttonCount == 13, "Locate, report and the eleven rooms: \(rig.host.frames())")
-    }
-
-    @Test func theAreaTargetOpensTheEditorWhenNoRoomsAreSelected() async {
-        let rig = SheetRig { store in
-            for zone in Vacuums.mainFloor.zones { store.put(zone.entityId, "off") }
-        }
-        defer { rig.host.close() }
-        #expect(rig.controller.selectedZones.isEmpty)
-        let before = rig.host.frames()
-        rig.host.tap(3)
-        #expect(rig.log.calls.isEmpty)
-        #expect(rig.host.frames() != before, "The area editor replaced the controls")
-    }
-
-    @Test func switchingToAreaWithRoomsSelectedAsksFirst() async {
-        let rig = SheetRig()
-        defer { rig.host.close() }
-        #expect(rig.controller.selectedZones.count == 2)
-        rig.host.tap(3)
-        #expect(rig.log.calls.isEmpty, "The dialog is pending, nothing was cleared yet")
-        #expect(rig.controller.selectedZones.count == 2)
     }
 
     @Test func areaSetupEditsClearsAndStartsAnAreaClean() async {
         let area = VacuumRigs.area(Vacuums.mainFloor)
         let rig = SheetRig(area: area)
         defer { rig.host.close() }
-        // Locate, report, Rooms, Area, Edit Area, Clear Area, passes, Start Area Clean, three power settings.
-        #expect(rig.host.buttonCount == 11, "\(rig.host.frames())")
-        rig.host.tap(7) // Start Area Clean
+        // Locate, report, Edit Area, Clear Area, Start Area Clean and the Fan menu.
+        #expect(rig.host.buttonCount == 6, "\(rig.host.frames())")
+        rig.host.tap(4) // Start Area Clean
         await rig.settle()
         #expect(rig.log.calls.last == "script.main_floor_vacuum_clean_zone")
         let data = rig.log.datas.last ?? [:]
@@ -311,9 +294,9 @@ struct VacuumSheetInteractionTests {
     @Test func clearAreaDiscardsTheSelection() async {
         let rig = SheetRig(area: VacuumRigs.area(Vacuums.mainFloor))
         defer { rig.host.close() }
-        rig.host.tap(5) // Clear Area
+        rig.host.tap(3) // Clear Area
         #expect(rig.controller.areaSelection == nil)
-        #expect(rig.host.buttonCount == 9, "Back to the room setup")
+        #expect(rig.host.buttonCount == 5, "Back to the room setup")
     }
 
     @Test func areaSetupWithoutTheAreaScriptDisablesStarting() {
@@ -321,7 +304,7 @@ struct VacuumSheetInteractionTests {
         let rig = SheetRig(services: services, area: VacuumRigs.area(Vacuums.mainFloor))
         defer { rig.host.close() }
         #expect(!rig.controller.areaServiceReady)
-        #expect(rig.host.buttonCount == 10, "Start Area Clean drops out: \(rig.host.frames())")
+        #expect(rig.host.buttonCount == 5, "Start Area Clean drops out: \(rig.host.frames())")
     }
 
     @Test func roomButtonsToggleRoomsAndKeepTheirOrder() async {
@@ -471,7 +454,7 @@ struct VacuumSheetInteractionTests {
         let size = CGSize(width: 1210, height: 834)
         let rig = SheetRig(size: size, window: WindowMetrics(size: size, isRegularWidth: true))
         defer { rig.host.close() }
-        #expect(rig.host.buttonCount == 9)
+        #expect(rig.host.buttonCount == 5)
         // Narrow and tall: the setting rows' value menus are narrow too, but only 24 pt tall on the Mac host.
         let locate = rig.host.frames().firstIndex { $0.width < 100 && $0.height > 30 }
         #expect(locate != nil, "Locate keeps its place on the map: \(rig.host.frames())")
@@ -836,7 +819,7 @@ struct ValetudoMapDrawingTests {
         let size = CGSize(width: 360, height: 360 / rich.aspectRatio)
         let before = try #require(pixels(ValetudoMapCanvas(scene: plain), size: size))
         let after = try #require(pixels(ValetudoMapCanvas(scene: rich), size: size))
-        #expect(before != after, "Entities and material accents are drawn")
+        #expect(before != after, "Entities are drawn (direction G draws rooms flat, without material accents)")
         // The same map reported from memory keeps only the robot and the dock.
         let reported = ValetudoMapScene(map: enriched(vacuum).reportedOnly(), vacuum: vacuum, provenance: .reported)
         let reportedPixels = try #require(pixels(ValetudoMapCanvas(scene: reported), size: size))
@@ -847,6 +830,9 @@ struct ValetudoMapDrawingTests {
                                        roomOrders: Dictionary(uniqueKeysWithValues: rich.rooms.enumerated().map { ($1.entityId, $0 + 1) }),
                                        area: area, showsHandles: true)
         #expect(try #require(pixels(zoomed, size: size)) != after)
+        // A room the coordinator skips is hatched.
+        let skipped = ValetudoMapCanvas(scene: plain, skippedRooms: Set(plain.rooms.prefix(1).map(\.entityId)))
+        #expect(try #require(pixels(skipped, size: size)) != before, "A skipped room is hatched")
     }
 
     @Test func aMapTooLargeToRasteriseHasNoCellImageButStillHasAFrame() {
