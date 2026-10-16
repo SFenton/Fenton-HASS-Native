@@ -1,4 +1,5 @@
 import HassCore
+import HassTelemetry
 import Observation
 import SwiftUI
 #if canImport(UIKit)
@@ -31,7 +32,9 @@ final class CameraStreamPool {
     @ObservationIgnored private let modes: [CameraStreamMode]
     @ObservationIgnored private let opener: CameraStreamOpener?
     @ObservationIgnored private let prepareConnection: @MainActor (HassConnection) async -> Void
-    @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    // Read in `deinit`, which is nonisolated; only the main actor writes it.
+    @ObservationIgnored nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
+    @ObservationIgnored private var census: ResourceCensus.Registration?
     /// The foreground restart while it waits for the connection; nil when none is pending.
     @ObservationIgnored private var resumeTask: Task<Void, Never>?
     /// Waits before each automatic retry of a stream that failed every mode; the stream stays on its snapshot
@@ -60,6 +63,7 @@ final class CameraStreamPool {
         self.retryDelays = retryDelays
         self.prepareConnection = prepareConnection
         retention = CameraStreamRetention(retainsShownStreams: retainsShownStreams)
+        census = ResourceCensus.shared.register { [weak self] in self?.liveResources ?? [:] }
         guard observesApp else { return }
         let center = NotificationCenter.default
         #if canImport(UIKit)
@@ -75,6 +79,21 @@ final class CameraStreamPool {
         observers.append(center.addObserver(forName: HassConnection.didBecomeReadyNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.connectionBecameReady() }
         })
+    }
+
+    /// What the pool holds right now (`ResourceCensus`).
+    var liveResources: [String: Int] {
+        [
+            "CameraPool.observers": observers.count,
+            "CameraPool.resumeTask": resumeTask == nil ? 0 : 1,
+            "CameraPool.models": models.count,
+            "CameraPool.running": models.values.filter(\.isRunning).count,
+        ]
+    }
+
+    deinit {
+        // Block observers stay registered until removed; dropping the tokens would leave them behind.
+        for observer in observers { NotificationCenter.default.removeObserver(observer) }
     }
 
     // MARK: - Models

@@ -42,6 +42,11 @@ public struct RootView: View {
             }
         }
         .observesDeviceSignals()
+        #if DEBUG
+        .overlay(alignment: .topLeading) {
+            if ResourceCensusProbe.isEnabled { ResourceCensusProbe() }
+        }
+        #endif
         // The user's appearance for sheets: the shell and the galleries force dark for their pages, which hides it
         // from their own environment (`SystemAppearance`).
         .publishesSystemAppearance()

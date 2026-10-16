@@ -46,13 +46,14 @@ enum SecuritySheet: Identifiable, Hashable {
 
 /// The page body, shared by ``SecurityScreen`` and the debug gallery (which passes a recording caller and no
 /// cameras, so journeys never reach the house). Direction G mockup n3: the status chips, the alarm card, the Doors
-/// list, guests, cameras and the car.
+/// tiles, guests, cameras and the car.
 struct SecurityPage: View {
     var caller: any HassServiceCalling
     var canSend: Bool
     var showsCameras: Bool
     var showsVehicle: Bool
     @State private var sheet: SecuritySheet?
+    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
     /// The Security and Contact Sensors chips (`SECURITY_STATUS_CHIPS`).
     static let chips = HomeConfig.statusChips.filter { [.security, .contacts].contains($0.sheet) }
@@ -101,15 +102,17 @@ struct SecurityPage: View {
         }
     }
 
-    /// A titled inset list of lock and garage rows.
+    /// A titled grid of lock and garage door tiles (owner, 2026-10-16: doors as tiles, not rows). Tiles in the grid share
+    /// one height, set by the tallest, and reflow to one column at accessibility sizes.
     private func doorSection(_ title: String, tiles: [SecurityConfig.Tile]) -> some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s + 2) {
             RoomSectionHeader(title: title)
-            ModuleList {
+            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
                 ForEach(tiles) { tile in
-                    SecurityDoorRow(tile: tile, caller: caller, canSend: canSend)
+                    SecurityDoorTile(tile: tile, caller: caller, canSend: canSend)
                 }
             }
+            .equalHeightTiles()
         }
         .padding(.horizontal, HassTokens.Spacing.l)
     }

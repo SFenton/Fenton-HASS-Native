@@ -1,7 +1,7 @@
 import XCTest
 
 /// The Security page in the debug gallery (fixture state, recording service caller; nothing reaches the house):
-/// the alarm card and its modes with the disarm confirmation, door row semantics, lock and garage door commands, the
+/// the alarm card and its modes with the disarm confirmation, door tile semantics, lock and garage door commands, the
 /// mode sheet the Security chip opens, audits and screenshots on iPhone, iPhone Duo and iPad. One signed-in journey
 /// opens the real tab read-only (`.agents/pages/security/ios.md`).
 final class SecurityJourneyTests: JourneyTestCase {
@@ -80,9 +80,9 @@ final class SecurityJourneyTests: JourneyTestCase {
         sleep(1) // Mid-animation frames fail contrast and clipping.
     }
 
-    // MARK: - Rows
+    // MARK: - Door tiles
 
-    /// The alarm card names the mode; every door row is a named 44 pt+ button whose value is its state.
+    /// The alarm card names the mode; every door tile is a named 44 pt+ button whose value is its state.
     func testRowsNameTheirState() {
         let app = launch()
         XCTAssertEqual(alarm(in: app).label, "Security System")
@@ -197,6 +197,31 @@ final class SecurityJourneyTests: JourneyTestCase {
         app.buttons["Close"].firstMatch.tap()
     }
 
+    // MARK: - Contact Sensors chip
+
+    /// The Contact Sensors chip tells the house apart (owner, 2026-10-16): all closed, open with someone home, open while
+    /// away, open while the system is armed. Each state is a distinct chip whose text keeps 4.5:1 as rendered, and the
+    /// page passes the audit at default and AX5 size.
+    private func checkContactChip(_ scenario: String, reads summary: String) throws {
+        let environment = ["FENTON_GALLERY_SCENARIO": scenario, "FENTON_GALLERY_CLEAN": "1"]
+        let app = launch(environment: environment)
+        let chip = app.buttons["security.chip.contacts"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 10))
+        XCTAssertEqual(chip.label, "Contact Sensors, \(summary)", scenario)
+        assertTarget(chip)
+        sleep(1) // The colour cross-fade settles before it is measured.
+        if let capture = RenderedContrast.Capture.screen(), let ratio = RenderedContrast.ratio(of: chip.frame, in: capture) {
+            XCTAssertGreaterThanOrEqual(ratio, 4.5, "\(scenario) chip text measured \(ratio):1")
+        }
+        keepScreenshot(app, "security-contact-\(scenario)-\(layout)")
+        try FentonHomeApp.audit(app) { self.launch(arguments: FentonHomeApp.ax5, environment: environment) }
+    }
+
+    func testContactChipAllClosed() throws { try checkContactChip("standard", reads: "All Closed") }
+    func testContactChipOpenAtHome() throws { try checkContactChip("openHome", reads: "1 Open") }
+    func testContactChipOpenWhileAway() throws { try checkContactChip("openAway", reads: "1 Open") }
+    func testContactChipOpenWhileArmed() throws { try checkContactChip("openArmed", reads: "1 Open") }
+
     // MARK: - Audits
 
     func testPagePassesAccessibilityAudit() throws {
@@ -204,7 +229,7 @@ final class SecurityJourneyTests: JourneyTestCase {
         try FentonHomeApp.audit(app) { self.launch(arguments: FentonHomeApp.ax5) }
     }
 
-    /// Unavailable rows and modes are disabled and say so, and their text keeps 4.5:1: only the glyphs dim (the
+    /// Unavailable tiles and modes are disabled and say so, and their text keeps 4.5:1: only the glyphs dim (the
     /// signed-in tab shows this before states arrive).
     func testUnavailablePagePassesAccessibilityAudit() throws {
         let unavailable = ["FENTON_GALLERY_SCENARIO": "unavailable"]
