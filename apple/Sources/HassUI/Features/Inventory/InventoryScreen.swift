@@ -19,6 +19,12 @@ struct InventoryScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var presentation: InventoryPresentation
     @State private var searchExpanded = false
+    /// The list column's width, to keep its rows to a readable measure on wide windows.
+    @State private var listWidth: CGFloat = 0
+
+    /// The widest the rows run (HIG Layout: readable content width). On an iPad in portrait the list is the whole window
+    /// and its rows put the name and the cart a thousand points apart; the margins center a 720 pt measure instead.
+    static let readableWidth: CGFloat = 720
 
     /// - Parameter presentation: what the page starts out presenting (tests and previews).
     init(model: InventoryListModel, models: InventoryModels, launch: InventoryLaunch? = nil, presentation: InventoryPresentation = InventoryPresentation()) {
@@ -36,11 +42,19 @@ struct InventoryScreen: View {
         HStack(spacing: 0) {
             // The page identifier and the floating actions belong to the list column: on the whole row the
             // identifier replaced the editor pane's identifiers, and the bar covered the pane.
-            list
-                .frame(maxWidth: .infinity)
-                .scrollTelemetry("Inventory · \(space.rawValue)")
-                .accessibilityIdentifier("inventory.\(space.rawValue)")
-                .floatingActionBar(showsFloatingActions ? floatingActions : [], search: showsFloatingActions ? floatingSearch : nil)
+            // The page waits for its first rows like the web (`EverShelfInventoryPanel.tsx:2013`): the spinner fades in, stays,
+            // fades out and the list fades in. The floating actions are inside, so they arrive with the rows.
+            ContentGate(
+                page: "Inventory · \(space.rawValue)", isReady: model.phase == .content, timing: .page, reloadTiming: .results,
+                label: "Loading \(space.title)"
+            ) {
+                list
+                    .frame(maxWidth: .infinity)
+                    .scrollTelemetry("Inventory · \(space.rawValue)")
+                    .accessibilityIdentifier("inventory.\(space.rawValue)")
+                    .floatingActionBar(showsFloatingActions ? floatingActions : [], search: showsFloatingActions ? floatingSearch : nil)
+            }
+            .frame(maxWidth: .infinity)
             if canSplit, let editing {
                 InventoryItemEditor(model: editing, style: .pane) { presentation.editing = nil }
                     .frame(maxWidth: .infinity)
@@ -93,10 +107,8 @@ struct InventoryScreen: View {
     @ViewBuilder
     private var list: some View {
         if model.phase == .loading {
-            ProgressView("Loading \(space.title)")
-                .progressViewStyle(.arc)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityIdentifier("inventory.loading")
+            // The gate's spinner stands in until the rows arrive.
+            Color.clear
         } else if let empty = model.emptyState {
             // Centred on the page (mockup n6-inventory-empty), and still scrolling once AX sizes make it taller.
             GeometryReader { geometry in
@@ -109,36 +121,19 @@ struct InventoryScreen: View {
                 .refreshable { _ = try? await model.refresh() }
             }
         } else {
-            let items = model.visibleItems
             // G: ModuleList. A `List` rather than a stack on a module: rows keep their swipe actions (delete, add to
-            // groceries), which need a `List` before iOS 27. Each row draws its share of the dense module.
+            // groceries), which need a `List` before iOS 27. Each row draws its share of its section's dense module.
             List {
-                Section {
-                    ForEach(items) { item in
-                        InventoryRow(
-                            item: item,
-                            model: model,
-                            selected: canSplit && editing?.itemId == item.id,
-                            isFirst: item.id == items.first?.id,
-                            isLast: item.id == items.last?.id,
-                            onEdit: { presentation.open(item, in: model) },
-                            onShop: { presentation.ask(.shopping(item)) },
-                            onDelete: { presentation.requestDelete(item, in: model) }
-                        )
-                    }
-                } header: {
-                    // "41 Items • 3 Expiring Soon" under the large title (mockup n6-inventory).
-                    if let summary = model.pageSummary {
-                        Text(summary)
-                            .font(.subheadline)
-                            .foregroundStyle(HassTokens.Ink.secondary)
-                            .textCase(nil)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityIdentifier("inventory.summary")
-                    }
+                if let summary = model.pageSummary { summaryRow(summary) }
+                ForEach(InventorySections.make(model.visibleItems, sort: model.sortMode, calendar: model.calendar)) { section in
+                    sectionView(section)
                 }
             }
             .groupedListStyle()
+            // Tight between the summary line and the first module; the section headers carry their own space.
+            .compactListSections()
+            .contentMargins(.horizontal, max(0, (listWidth - Self.readableWidth) / 2), for: .scrollContent)
+            .onGeometryChange(for: CGFloat.self, of: \.size.width) { listWidth = $0 }
             // G rows: 64 pt with a subtitle (mockup `.row.n6-inv`).
             .environment(\.defaultMinListRowHeight, 64)
             .overlay(alignment: .top) {
@@ -152,6 +147,46 @@ struct InventoryScreen: View {
             }
             .refreshable { _ = try? await model.refresh() }
         }
+    }
+
+    /// "41 Items • 3 Expiring Soon" under the large title (mockup n6-inventory), aligned with the rows' text.
+    private func summaryRow(_ summary: String) -> some View {
+        Section {
+            Text(summary)
+                .font(.subheadline)
+                .foregroundStyle(HassTokens.Ink.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 0, leading: HassTokens.Spacing.l, bottom: 0, trailing: HassTokens.Spacing.l))
+                .accessibilityIdentifier("inventory.summary")
+        }
+    }
+
+    /// One group of rows, under its status header when the page is sorted by expiration (a page sorted by title is one list).
+    private func sectionView(_ section: InventorySection) -> some View {
+        Section {
+            ForEach(section.items) { item in
+                InventoryRow(
+                    item: item,
+                    model: model,
+                    selected: canSplit && editing?.itemId == item.id,
+                    isFirst: item.id == section.items.first?.id,
+                    isLast: item.id == section.items.last?.id,
+                    onEdit: { presentation.open(item, in: model) },
+                    onShop: { presentation.ask(.shopping(item)) },
+                    onDelete: { presentation.requestDelete(item, in: model) }
+                )
+            }
+        } header: {
+            if let title = section.title { sectionHeader(title, count: section.items.count, id: section.id) }
+        }
+    }
+
+    private func sectionHeader(_ title: String, count: Int, id: String) -> some View {
+        PageSectionHeader(title, detail: String(count))
+            .textCase(nil)
+            .accessibilityIdentifier("inventory.section.\(id)")
     }
 
     // MARK: - Floating actions
@@ -282,6 +317,15 @@ extension View {
         listStyle(.insetGrouped)
         #else
         listStyle(.inset)
+        #endif
+    }
+
+    /// Tight space between list sections (iOS; the macOS host that runs hosted tests has no such control).
+    func compactListSections() -> some View {
+        #if os(iOS)
+        listSectionSpacing(.compact)
+        #else
+        self
         #endif
     }
 
