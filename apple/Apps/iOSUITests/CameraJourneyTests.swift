@@ -259,6 +259,27 @@ final class CameraJourneyTests: JourneyTestCase {
         for stream in streams { XCTAssertEqual(tile(app, stream).value as? String, "Live", "Home's \(stream) tile kept its stream") }
     }
 
+    /// A live stream whose frames stop goes back to its snapshot and comes back by itself (web `FRAME_STALL_MS`). The
+    /// debug fault `FENTON_CAMERA_FREEZE_ONCE` stops the Front Door's frame count after it first goes live, as a camera
+    /// that stops sending does; the watchdog takes the stream down after about 8 s (the tile reads Snapshot and drops its
+    /// live dot) and the pool's retry brings it back live. The other tiles are never touched.
+    func testAStalledStreamFallsBackToItsSnapshotAndComesBack() throws {
+        let app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_CAMERA_MODE": "webrtc", "FENTON_CAMERA_FREEZE_ONCE": "front_door"])
+        let front = tile(app, "front_door")
+        waitForValue(front, "Live", timeout: 45)
+        var sawSnapshot = false
+        let deadline = Date().addingTimeInterval(40)
+        while Date() < deadline, !sawSnapshot {
+            sawSnapshot = (front.value as? String) == "Snapshot"
+            if !sawSnapshot { usleep(250_000) }
+        }
+        XCTAssertTrue(sawSnapshot, "The frozen stream stayed '\(front.value as? String ?? "")' instead of falling back to its snapshot")
+        waitForValue(front, "Live", timeout: 60)
+        for stream in ["garage_camera", "upper_deck", "lower_deck"] {
+            XCTAssertEqual(tile(app, stream).value as? String, "Live", "\(stream) was not affected")
+        }
+    }
+
     /// The viewer, left open across a long background, is live again on return.
     func testViewerResumesAfterALongBackground() throws {
         let app = try FentonHomeApp.launchSignedIn()

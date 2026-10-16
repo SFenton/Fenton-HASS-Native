@@ -40,6 +40,9 @@ final class CameraStreamPool {
     /// Waits before each automatic retry of a stream that failed every mode; the stream stays on its snapshot
     /// after the last one (web `stream-manager.js`: 2 s doubling, five attempts).
     @ObservationIgnored private let retryDelays: [Duration]
+    @ObservationIgnored private let stallAfter: Duration
+    @ObservationIgnored private let stallCheckInterval: Duration
+    @ObservationIgnored private let frameCounter: (@MainActor (CameraLiveModel) -> Int?)?
     /// Pending automatic retries by camera id, and how many each camera has used since it last went live.
     @ObservationIgnored private var retryTasks: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var retryAttempts: [String: Int] = [:]
@@ -52,15 +55,23 @@ final class CameraStreamPool {
     ///   - opener: Replaces how each mode opens its stream (tests).
     ///   - retryDelays: Waits before each automatic retry of a wanted stream that failed every mode; empty turns
     ///     automatic retries off.
+    ///   - stallAfter: How long a live stream's frame count may stay put before the stream is restarted.
+    ///   - stallCheckInterval: How often the frame count is read.
+    ///   - frameCounter: Replaces how frames are counted (tests).
     ///   - prepareConnection: Runs when the app returns, before streams restart; the default makes the websocket
     ///     answer, reconnecting it if it is dead.
     init(modes: [CameraStreamMode] = CameraLiveModel.defaultModes, retainsShownStreams: Bool = true, observesApp: Bool = true,
          opener: CameraStreamOpener? = nil,
          retryDelays: [Duration] = CameraStreamPool.defaultRetryDelays,
+         stallAfter: Duration = FrameStallDetector.defaultStallAfter, stallCheckInterval: Duration = .seconds(1),
+         frameCounter: (@MainActor (CameraLiveModel) -> Int?)? = nil,
          prepareConnection: @escaping @MainActor (HassConnection) async -> Void = { _ = await $0.ensureLive() }) {
         self.modes = modes
         self.opener = opener
         self.retryDelays = retryDelays
+        self.stallAfter = stallAfter
+        self.stallCheckInterval = stallCheckInterval
+        self.frameCounter = frameCounter
         self.prepareConnection = prepareConnection
         retention = CameraStreamRetention(retainsShownStreams: retainsShownStreams)
         census = ResourceCensus.shared.register { [weak self] in self?.liveResources ?? [:] }
@@ -104,9 +115,11 @@ final class CameraStreamPool {
     /// invalidates a view. Views observe the returned model's own state.
     func model(for camera: HomeConfig.Camera) -> CameraLiveModel {
         if let model = models[camera.id] { return model }
-        let model = CameraLiveModel(camera: camera, modes: modes, opener: opener)
+        let model = CameraLiveModel(camera: camera, modes: modes, opener: opener, stallAfter: stallAfter,
+                                   stallCheckInterval: stallCheckInterval, frameCounter: frameCounter)
         model.onExhausted = { [weak self] in self?.exhausted(camera) }
         model.onLive = { [weak self] in self?.retryAttempts[camera.id] = nil }
+        model.onStalled = { [weak self] in self?.scheduleRetry(camera) }
         model.onMuteChange = { [weak self] in self?.updateAudio() }
         models[camera.id] = model
         return model
@@ -195,7 +208,14 @@ final class CameraStreamPool {
     /// the next launch. Web parity: `stream-manager.js` reconnects with backoff, `RtcPilotCamera.tsx` retries.
     private func exhausted(_ camera: HomeConfig.Camera) {
         retention.failed(camera.id)
-        guard !modes.isEmpty, retention.wanted.contains(camera.id) else { return }
+        guard !modes.isEmpty else { return }
+        scheduleRetry(camera)
+    }
+
+    /// Restarts a camera after a growing wait while a view (or the session's retention) wants it: used for streams that
+    /// failed every mode and for live streams whose frames stopped (``CameraLiveModel/onStalled``).
+    private func scheduleRetry(_ camera: HomeConfig.Camera) {
+        guard retention.wanted.contains(camera.id) else { return }
         let attempt = retryAttempts[camera.id, default: 0]
         guard attempt < retryDelays.count else {
             CameraTrace.record("\(camera.rtcStreamId) gave up after \(attempt) retries")
@@ -215,7 +235,7 @@ final class CameraStreamPool {
     private func retryFailed(_ camera: HomeConfig.Camera) {
         retryTasks[camera.id] = nil
         guard resumeTask == nil, let connection, let model = models[camera.id],
-              model.state.phase == .failed, retention.shouldRun(camera.id) else { return }
+              !model.isRunning, retention.shouldRun(camera.id) else { return }
         CameraTrace.record("\(camera.rtcStreamId) retrying")
         retention.retry(camera.id)
         model.start(connection: connection)
