@@ -297,7 +297,12 @@ enum FentonHomeApp {
                 scroller.swipeUp()
             }
             func grew(_ label: String, _ height: CGFloat) -> Bool? {
-                largeHeights[label].map { $0 >= height * 1.35 }
+                // Text already 60 pt tall at AX5 is bigger than the largest standard text (AX5 body is about 53 pt): a
+                // display numeral drawn to fit its dial (the thermostat's 72, 91 → 71 pt in iPad landscape, 2026-10-16)
+                // needs no further growth.
+                // Only a bare number: a paragraph is that tall just by wrapping.
+                let numeral = Double(label) != nil
+                return largeHeights[label].map { $0 >= height * 1.35 || (numeral && $0 >= 60) }
             }
             // A live value (humidity, temperature) can change between launches; then the page decides:
             // the sampled texts together are 1.35x taller and none shrank. Measured together because a
@@ -457,19 +462,26 @@ enum FentonHomeApp {
         guard let root = try? app.snapshot() else { return ["no snapshot"] }
         let window = app.windows.firstMatch.frame
         var low: [String] = []
-        func walk(_ node: XCUIElementSnapshot) {
+        // The visible frames of the scroll views around a node: text outside one is scrolled out of view (a carousel's
+        // next page, whose cards still sit inside the window) and is sampled against whatever covers it.
+        func walk(_ node: XCUIElementSnapshot, clips: [CGRect]) {
             // System bars (the tab bar, the folded Duo's rail) are not the app's text. A frame taller than a text line
             // holds a photo (a recipe card, a camera tile): its median surface says nothing about the caption on it,
             // so only text-sized frames are measured.
             if node.elementType == .tabBar || node.elementType == .toolbar { return }
             if [.staticText, .button].contains(node.elementType), !node.label.isEmpty,
                !node.frame.isEmpty, node.frame.height <= 60, window.insetBy(dx: -1, dy: -1).contains(node.frame),
-               let ratio = RenderedContrast.ratio(of: node.frame, in: capture), ratio < minimum {
+               clips.allSatisfy({ $0.insetBy(dx: -1, dy: -1).contains(node.frame) }),
+               let ratio = RenderedContrast.ratio(of: node.frame, in: capture),
+               // Under 1.5:1 nothing is drawn at the frame (the existing rule for text hidden behind a bar or a sheet).
+               ratio < minimum, ratio >= 1.5 {
                 low.append(String(format: "'%@' %.1f at %@", node.label, ratio, "\(node.frame)"))
             }
-            node.children.forEach(walk)
+            var inner = clips
+            if [.scrollView, .collectionView, .table].contains(node.elementType), !node.frame.isEmpty { inner.append(node.frame) }
+            node.children.forEach { walk($0, clips: inner) }
         }
-        walk(root)
+        walk(root, clips: [])
         return low
     }
 

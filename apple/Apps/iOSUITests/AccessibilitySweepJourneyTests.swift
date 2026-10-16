@@ -86,7 +86,8 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
     /// Waits for a sheet to finish presenting: its Close button reachable.
     private func waitForSheet(in app: XCUIApplication) {
         let close = app.buttons["Close"].firstMatch
-        XCTAssertTrue(close.waitForExistence(timeout: 10), "Sheet did not open")
+        if !close.waitForExistence(timeout: 10) { keepScreenshot(app, "sheet-did-not-open-\(layout)") }
+        XCTAssertTrue(close.exists, "Sheet did not open")
         XCTAssertTrue(close.wait(for: \.isHittable, toEqual: true, timeout: 10), "Sheet still presenting")
     }
 
