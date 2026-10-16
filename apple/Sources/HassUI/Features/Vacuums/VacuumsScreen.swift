@@ -96,7 +96,7 @@ struct VacuumsPage<Sheet: View>: View {
     private var vacuumsSection: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             PageSectionHeader("Robot Vacuums")
-            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 3, equalRowHeights: true) {
+            DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 6, equalRowHeights: true) {
                 ForEach(Vacuums.all) { vacuum in
                     let tile = VacuumPageFormat.tile(
                         state: store.entity(vacuum.entityId).state?.state,

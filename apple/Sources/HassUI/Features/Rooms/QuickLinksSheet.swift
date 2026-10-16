@@ -22,19 +22,21 @@ struct QuickLinksButton: View {
 }
 
 extension View {
-    /// Adds the Quick Links toolbar button and sheet; a chosen page pushes through ``HomeRouteDestination`` once the
-    /// sheet has gone, so the push never races the dismissal.
+    /// Adds the Quick Links toolbar button or floating circle and the sheet; a chosen page pushes through
+    /// ``HomeRouteDestination`` once the sheet has gone, so the push never races the dismissal.
     /// - Parameters:
     ///   - caller: Service caller for the Security System and room-visit actions.
-    ///   - showsButton: Show the toolbar button (false where Quick Links is the trailing tab).
-    func quickLinks(caller: (any HassServiceCalling)?, showsButton: Bool = true) -> some View {
-        modifier(QuickLinksPresenter(caller: caller, showsButton: showsButton))
+    ///   - showsButton: Show the toolbar button (false where Quick Links is the trailing tab or the floating circle).
+    ///   - showsFloatingButton: Show the floating circle bottom trailing (regular width).
+    func quickLinks(caller: (any HassServiceCalling)?, showsButton: Bool = true, showsFloatingButton: Bool = false) -> some View {
+        modifier(QuickLinksPresenter(caller: caller, showsButton: showsButton, showsFloatingButton: showsFloatingButton))
     }
 }
 
 private struct QuickLinksPresenter: ViewModifier {
     var caller: (any HassServiceCalling)?
     var showsButton: Bool
+    var showsFloatingButton: Bool
     @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
     @Environment(\.shellSection) private var section
     @State private var localIsPresented = false
@@ -51,15 +53,24 @@ private struct QuickLinksPresenter: ViewModifier {
         )
     }
 
+    private func open() {
+        if let navigator, section != nil { navigator.openQuickLinks() } else { localIsPresented = true }
+    }
+
     func body(content: Content) -> some View {
         content
             .toolbar {
                 if showsButton {
-                    ToolbarItem(placement: .primaryAction) {
-                        QuickLinksButton {
-                            if let navigator, section != nil { navigator.openQuickLinks() } else { localIsPresented = true }
-                        }
-                    }
+                    ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: open) }
+                }
+            }
+            // A bottom inset, not an overlay: scroll content gets room to scroll clear of the circle, which sits
+            // above the home indicator and inside the side safe areas (the unfolded Duo's trailing bar).
+            .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
+                if showsFloatingButton {
+                    FloatingQuickLinksButton(action: open)
+                        .padding(.trailing, HassTokens.Spacing.l)
+                        .padding(.bottom, HassTokens.Spacing.s)
                 }
             }
             .sheet(isPresented: isPresented, onDismiss: {
@@ -93,7 +104,7 @@ struct QuickLinksSheet: View {
                 }
                 .toolbar { SheetCloseItem(identifier: "quickLinks.close") { dismiss() } }
         }
-        .hassSheet()
+        .hassSheet(.page)
         .accessibilityIdentifier("quickLinks.sheet")
     }
 

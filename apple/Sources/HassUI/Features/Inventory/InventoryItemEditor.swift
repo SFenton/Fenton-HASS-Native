@@ -38,7 +38,8 @@ struct InventoryItemEditor: View {
                                              identifier: "inventory.editor.save") { saveAll() }
                         }
                 }
-                .presentationDetents([.large])
+                .hassSheet(.form)
+                // After `hassSheet`, which shows the grabber: the editor hides it while a save blocks dismissal.
                 .presentationDragIndicator(model.dismissalBlocked ? .hidden : .visible)
                 .interactiveDismissDisabled(model.dismissalBlocked || isSavingAll)
             case .pane:

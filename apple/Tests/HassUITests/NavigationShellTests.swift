@@ -159,13 +159,14 @@ struct ShellChromeTests {
         #expect(!CompactTabLayout.resolve(supportsTrailingTab: false).hasQuickLinksTab)
     }
 
-    @Test func menuButtonOnlyUnderTheFlyoutAndQuickLinksButtonWhereThereIsNoCircle() {
+    @Test func menuButtonOnlyUnderTheFlyoutQuickLinksButtonWhereThereIsNoCircleAndFloatingCircleInRegularWidth() {
         #expect(ShellChrome.resolve(style: .tabBar, layout: .sectionsWithQuickLinks)
             == ShellChrome(showsMenuButton: false, showsQuickLinksButton: false))
         #expect(ShellChrome.resolve(style: .tabBar, layout: .sectionsOnly)
             == ShellChrome(showsMenuButton: false, showsQuickLinksButton: true))
         #expect(ShellChrome.resolve(style: .flyout, layout: .sectionsWithQuickLinks)
-            == ShellChrome(showsMenuButton: true, showsQuickLinksButton: true))
+            == ShellChrome(showsMenuButton: true, showsQuickLinksButton: false, showsFloatingQuickLinks: true))
+        #expect(!ShellChrome.resolve(style: .tabBar, layout: .sectionsOnly).showsFloatingQuickLinks)
     }
 
     @Test func quickLinksTabSitsOverTheSelectedSection() {

@@ -2,13 +2,8 @@ import SwiftUI
 
 // MARK: - Window hinge
 
-extension EnvironmentValues {
-    /// The iPhone Duo hinge in window coordinates: the active fold while the inner display is partly
-    /// folded, else the hinge the system reports while it lies flat. Nil on devices without one and on
-    /// the folded Duo's outer display. On-demand splits put their divider here (FestivalNativeApps
-    /// `DeviceLayout.splitHinge`; owner rule for this app, 2026-10-10: "on the hinge on the Duo").
-    @Entry var windowHinge: CGRect?
-}
+// `EnvironmentValues.windowHinge` lives in HassDesign (`WindowHingeEnvironment.swift`) so the shared grid and
+// chip rail read it too; this file publishes it.
 
 extension View {
     /// Reads the window's hinge from a full-window probe and publishes it as

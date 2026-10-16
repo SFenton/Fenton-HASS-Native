@@ -142,8 +142,9 @@ struct TodoSheetSizing: ViewModifier {
             content
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+                .hassSheetSizing(.form)
         } else {
-            content.hassSheet()
+            content.hassSheet(.form)
         }
     }
 }

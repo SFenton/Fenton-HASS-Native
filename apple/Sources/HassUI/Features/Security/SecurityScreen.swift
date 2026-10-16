@@ -91,10 +91,10 @@ struct SecurityPage: View {
             switch sheet {
             case .system:
                 SecuritySystemSheet(caller: caller)
-                    .hassSheet()
+                    .hassSheet(.page)
             case .contacts:
                 RoomOverviewSheet(kind: .contacts)
-                    .hassSheet()
+                    .hassSheet(.page)
             case let .camera(camera):
                 CameraViewer(camera: camera)
             }

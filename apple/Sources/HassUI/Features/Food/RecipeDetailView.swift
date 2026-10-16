@@ -17,7 +17,7 @@ struct RecipeDetailSheet: View {
                 .modalChrome()
                 .toolbar { SheetCloseItem(identifier: "recipe.done") { dismiss() } }
         }
-        .hassSheet()
+        .hassSheet(.page)
     }
 }
 

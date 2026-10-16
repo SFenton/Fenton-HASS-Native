@@ -186,7 +186,8 @@ enum NavigationFlyoutMetrics {
 
 extension View {
     /// Adds a section root's shell toolbar items: the Open Navigation menu button (leading, when the window
-    /// shows the flyout), Quick Links (when it is not the trailing tab) and the profile button (trailing-most).
+    /// shows the flyout), Quick Links (a toolbar button, or the floating circle in regular width; not when it is the
+    /// trailing tab) and the profile button (trailing-most).
     func sectionRootChrome() -> some View { modifier(SectionRootChrome()) }
 }
 
@@ -240,7 +241,8 @@ private struct SectionRootChrome: ViewModifier {
                     ProfileButton(name: navigator?.profileName) { profileIsPresented.wrappedValue = true }
                 }
             }
-            .quickLinks(caller: callerOverride ?? connection, showsButton: chrome.showsQuickLinksButton)
+            .quickLinks(caller: callerOverride ?? connection, showsButton: chrome.showsQuickLinksButton,
+                        showsFloatingButton: chrome.showsFloatingQuickLinks)
             .accountSheet(isPresented: profileIsPresented)
             .onChange(of: navigator?.focusReturnToken) { _, _ in buttonFocused = true }
     }

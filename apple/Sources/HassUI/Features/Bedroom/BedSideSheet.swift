@@ -239,7 +239,7 @@ struct BedTemperatureScopeSheet: View {
             .inlineNavigationTitle()
             .toolbar { SheetCloseItem(identifier: "bed.scope.cancel") { controller.dismissScope() } }
         }
-        .hassSheet()
+        .hassSheet(.form)
     }
 
     private func choice(_ title: String, detail: String, symbol: String, id: String, action: @escaping () -> Void) -> some View {

@@ -80,7 +80,7 @@ SF Pro only.
 
 - **iPhone and Duo folded:** a floating glass tab bar with Home, Security, Climate and Chores. Chores carries the overdue badge. Quick Links is a separate glass circle that trails the tab bar, and it presents the Quick Links sheet. Profile is a 44pt avatar circle top-trailing on tab roots; it opens the Account sheet, which holds People at Home, Your Summary, Settings with all sub-pages pushed inside it, and Sign Out.
 - **Pushed pages** (Food, Media, Sprinklers, Custom Lights, room pages, chore lists): a glass Back circle with its top edge at y=54, left 16, and the large title with padding-top 104. The tab bar stays unless the page has its own bottom toolbar (Recipes and inventory use search, sort and filter).
-- **iPad:** an overlay glass flyout (Open Navigation button top-leading) that lists the four tabs and then Quick Links. Grids use 4 columns, chips wrap, and Quick Links is a floating button.
+- **iPad:** an overlay glass flyout (Open Navigation button top-leading) that lists the four tabs and then Quick Links. Grids reach at least 4 columns in portrait and keep growing (4 is a floor, not a cap), chips wrap, and Quick Links is a floating 56 pt glass circle bottom trailing.
 - **Duo unfolded:** each half is its own column and nothing straddles the hinge. Column counts are even. The tab bar is centred in the left half, and the chip row stops 24pt short of the hinge.
 - **macOS:** a sidebar with the four tabs, Quick Links in the toolbar, Settings in the app menu and a Settings window (⌘,). Every toolbar item is also a menu command. Sheets get a Close button in the content area, and the thermostat and remote open as panels.
 
@@ -96,7 +96,7 @@ SF Pro only.
 
 | Control | Rule |
 |---|---|
-| Status chips (Home, room pages, Security) | Capsules with glyph, title and one-line state, coloured as on the web (see Colour families). Neutral when nothing is active. They scroll horizontally. |
+| Status chips (Home, room pages, Security) | Capsules with glyph, title and one-line state, coloured as on the web (see Colour families). Neutral when nothing is active. They scroll horizontally in compact width and wrap in regular width (`ChipRail`). |
 | Tiles | 2 columns on iPhone, 22pt radius, equal heights within a grid (the tallest name, such as "Master Bedroom Closet" on two lines, sets the row). Off is dark with the glyph in its family colour. On fills with the family colour and white ink; lights use the warm lit tile. Errors use a red glyph and red state text. A chevron appears only when the tile opens something. |
 | **Light dragger** (signature) | Tap a light tile to toggle it. Press and drag sideways to set brightness: the bright band follows the finger, a "30%" bubble floats beside it, there is a haptic tick every 10%, and the tile lifts while dragging. A room's lights stack as full-width slabs that work the same way. The light detail adds a 168pt brightness slab, White and Color modes, a colour-temperature track with presets, and a colour wheel. |
 | **Thermostat dial** (signature) | main's `ThermostatDial` exactly: a 22pt round-capped 270° track, heat arc orange to the heat setpoint, cool arc teal from the cool setpoint, white knobs, a dark dot for the current temperature, "Heating", a Thin numeral with a raised °F, and the range line. The bed and humidifier dials reuse its geometry. |
