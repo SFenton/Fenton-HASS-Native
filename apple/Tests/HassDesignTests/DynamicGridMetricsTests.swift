@@ -41,11 +41,63 @@ struct DynamicGridMetricsTests {
         }
     }
 
+    // MARK: Even columns across a hinge
+
+    @Test func evenRoundingDropsOddCountsToTheEvenBelow() {
+        #expect([1, 2, 3, 4, 5, 6, 7].map(DynamicGridMetrics.evenRounded) == [1, 2, 2, 4, 4, 6, 6])
+        #expect(DynamicGridMetrics.evenRounded(0) == 1)
+    }
+
+    @Test func hingeGridsRoundOddFitsDownAndShareTheLeftoverWidth() {
+        // 5 fit at 802 pt (150 min, 12 spacing); across a hinge that becomes 4 wider tracks.
+        let plain = DynamicGridMetrics(width: 802, minCellWidth: 150, maxColumns: 6, spacing: 12)
+        let hinge = DynamicGridMetrics(width: 802, minCellWidth: 150, maxColumns: 6, spacing: 12, evenColumns: true)
+        #expect(plain.columns == 5)
+        #expect(hinge.columns == 4)
+        #expect(hinge.cellWidth == 191.5)
+    }
+
+    @Test func hingeGridsLeaveEvenAndSingleCountsAlone() {
+        #expect(DynamicGridMetrics(width: 520, minCellWidth: 160, maxColumns: 4, spacing: 12, evenColumns: true).columns == 2)
+        #expect(DynamicGridMetrics(width: 1000, minCellWidth: 160, maxColumns: 4, spacing: 12, evenColumns: true).columns == 4)
+        #expect(DynamicGridMetrics(width: 100, minCellWidth: 160, maxColumns: 4, spacing: 12, evenColumns: true).columns == 1)
+        // The cap counts first: three allowed columns across a hinge is two.
+        #expect(DynamicGridMetrics(width: 1000, minCellWidth: 160, maxColumns: 3, spacing: 12, evenColumns: true).columns == 2)
+    }
+
+    /// A tile floor of four columns at iPad Pro 11 portrait (content about 802 pt) for the standard 150 pt tile.
+    @Test func standardTilesReachFourColumnsAtIPadPortrait() {
+        for width in [CGFloat(802), 744] {
+            #expect(DynamicGridMetrics(width: width, minCellWidth: 150, maxColumns: 6, spacing: HassTokensForTests.m).columns >= 4)
+        }
+        // And still two on a phone.
+        #expect(DynamicGridMetrics(width: 358, minCellWidth: 150, maxColumns: 6, spacing: HassTokensForTests.m).columns == 2)
+    }
+
     @MainActor @Test func unboundedWidthDoesNotTrapInLayout() {
         #expect(DynamicGridMetrics(width: .infinity, minCellWidth: 150, maxColumns: 4, spacing: 12).columns == 4)
         let grid = DynamicGridLayout { ForEach(0..<5, id: \.self) { Text("Tile \($0)") } }
         let probed = HStack { grid.frame(maxWidth: .infinity) }.fixedSize(horizontal: true, vertical: false)
         #expect(ImageRenderer(content: probed).cgImage != nil)
+    }
+}
+
+private enum HassTokensForTests { static let m: CGFloat = 12 }
+
+/// The layout reads the window's hinge from the environment.
+@MainActor
+struct DynamicGridHingeTests {
+    private func height(hinge: CGRect?) -> CGFloat {
+        let grid = DynamicGridLayout(minCellWidth: 150, maxColumns: 6, spacing: 12) {
+            ForEach(0..<5, id: \.self) { _ in Color.red.frame(height: 40) }
+        }
+        return UIHostingSizing.measure(grid.environment(\.windowHinge, hinge), width: 802)
+    }
+
+    /// Five tiles fit one row at 802 pt; across a hinge the grid takes four tracks, so the fifth wraps.
+    @Test func gridWrapsToEvenColumnsOnlyWithAHinge() {
+        #expect(abs(height(hinge: nil) - 40) < 0.5)
+        #expect(abs(height(hinge: CGRect(x: 455, y: 0, width: 41, height: 669)) - (40 + 12 + 40)) < 0.5)
     }
 }
 

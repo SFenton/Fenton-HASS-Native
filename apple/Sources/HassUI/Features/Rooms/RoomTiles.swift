@@ -10,16 +10,11 @@ struct RoomStatusRail: View {
     var onOpen: (RoomCard) -> Void
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: HassTokens.Spacing.s) {
-                ForEach(controller.page.overviewCards) { card in
-                    RoomChip(controller: controller, card: card) { onOpen(card) }
-                }
+        ChipRail {
+            ForEach(controller.page.overviewCards) { card in
+                RoomChip(controller: controller, card: card) { onOpen(card) }
             }
-            .padding(.horizontal, HassTokens.Spacing.l)
         }
-        // Clipped like the Home rail so chips never scroll under the folded Duo's trailing toolbar rail.
-        .clipped()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(controller.page.title) status")
     }

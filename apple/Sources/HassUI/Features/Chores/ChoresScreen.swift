@@ -57,8 +57,9 @@ struct AdminTodoScreen: View {
     }
 }
 
-/// Quick links to the Chores sub-pages with their open counts (web `ChoresIntro`, a bounded 2–3 column grid; direction G
-/// mockup n5-chores: dark tiles with the open count top-trailing, Groceries across the last row).
+/// Quick links to the Chores sub-pages with their open counts (web `ChoresIntro`, 2–3 columns). The grid grows to four
+/// on iPad and stops there: four links fill four tracks and a wide Groceries closes the second row. Direction G mockup
+/// n5-chores: dark tiles with the open count top-trailing, Groceries across the last row.
 struct ChoreQuickLinks: View {
     @Environment(ChoresModel.self) private var model
     @Environment(EntityStore.self) private var store
@@ -66,7 +67,7 @@ struct ChoreQuickLinks: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             PageSectionHeader("Quick Links")
-            DynamicGridLayout(minCellWidth: 150, maxColumns: 3, equalRowHeights: true) {
+            DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
                 ForEach(Self.links) { link in
                     let title = link.title(viewer: model.viewer)
                     let subtitle = link.subtitle { store.entity($0).state }
@@ -80,7 +81,7 @@ struct ChoreQuickLinks: View {
                     .accessibilityValue(subtitle)
                     .accessibilityAddTraits(.isButton)
                     .accessibilityIdentifier("chores.link.\(link.id)")
-                    // Five links: Groceries closes the grid across two tracks, in two or three columns alike.
+                    // Five links: Groceries closes the grid across two tracks, in two, three or four columns alike.
                     .gridSpan(link.countsGroceries ? 2 : 1)
                 }
             }
