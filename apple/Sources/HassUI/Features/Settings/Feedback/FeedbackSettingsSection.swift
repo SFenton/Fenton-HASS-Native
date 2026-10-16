@@ -25,7 +25,7 @@ struct FeedbackSettingsSection: View {
 }
 
 extension View {
-    /// Presents the feedback form for `kind` through ``SwiftUI/View/hassSheet(_:)`` (full height on iPhone, a form sheet on iPad), deleting staged media however it closes.
+    /// Presents the feedback form for `kind` through ``SwiftUI/View/hassSheet(_:height:appearance:fitKey:)`` (as tall as the form needs, capped at large; a form sheet on iPad), deleting staged media however it closes.
     func feedbackFormSheet(item kind: Binding<FeedbackKind?>) -> some View {
         sheet(item: kind, onDismiss: FeedbackFormModel.purgeStagedMedia) { kind in
             FeedbackFormHost(kind: kind)

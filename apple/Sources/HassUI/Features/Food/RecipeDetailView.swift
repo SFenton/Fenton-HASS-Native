@@ -17,7 +17,7 @@ struct RecipeDetailSheet: View {
                 .modalChrome()
                 .toolbar { SheetCloseItem(identifier: "recipe.done") { dismiss() } }
         }
-        .hassSheet(.page)
+        .hassSheet(.page, height: .full) // Recipe detail stays full screen
     }
 }
 
@@ -107,7 +107,7 @@ struct RecipeDetailContent: View {
         .scrollTelemetry("Recipe Detail")
         .accessibilityIdentifier("recipe.scroll")
         .modalTabBar(RecipeDetailModel.Tab.allCases, label: "Recipe sections", title: \.title,
-                     selection: $model.tab, identifier: "recipe.tabs")
+                     symbol: \.symbol, selection: $model.tab, identifier: "recipe.tabs")
     }
 }
 

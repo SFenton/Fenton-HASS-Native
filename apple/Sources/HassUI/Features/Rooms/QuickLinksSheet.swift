@@ -104,7 +104,7 @@ struct QuickLinksSheet: View {
                 }
                 .toolbar { SheetCloseItem(identifier: "quickLinks.close") { dismiss() } }
         }
-        .hassSheet(.page)
+        .hassSheet(.page, height: .full) // Navigates to rooms and detail pages
         .accessibilityIdentifier("quickLinks.sheet")
     }
 

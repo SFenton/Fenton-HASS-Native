@@ -328,7 +328,6 @@ struct RecipeFilterSheet: View {
                     : "Tune how strongly available and expiring ingredients influence ranked recipe results.")
             }
         }
-        .hassSheet(.form)
     }
 }
 

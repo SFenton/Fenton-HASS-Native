@@ -136,6 +136,6 @@ private struct AccountSettingsPage: View {
 extension View {
     /// Presents the Account sheet (direction G: the profile avatar opens it on every tab root).
     func accountSheet(isPresented: Binding<Bool>) -> some View {
-        sheet(isPresented: isPresented) { AccountSheet().hassSheet(.form) }
+        sheet(isPresented: isPresented) { AccountSheet().hassSheet(.form, height: .full) }
     }
 }

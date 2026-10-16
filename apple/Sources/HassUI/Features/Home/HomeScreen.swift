@@ -34,7 +34,8 @@ struct HomeScreen: View {
             switch sheet {
             case let .chip(kind):
                 chipSheet(kind)
-                    .hassSheet(.page)
+                    // A room overview navigates to a room's devices; the security system sheet is one page.
+                    .hassSheet(.page, height: kind.overview == nil ? .fitted : .full)
             case let .camera(camera):
                 CameraViewer(camera: camera)
             }

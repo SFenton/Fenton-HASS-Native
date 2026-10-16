@@ -81,7 +81,7 @@ struct BedroomGallery: View {
             .safeAreaInset(edge: .top) {
                 if !GalleryEnvironment.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
             }
-            .hassSheet(.page)
+            .hassSheet(.page, height: .full) // Section tab bar
         }
     }
 

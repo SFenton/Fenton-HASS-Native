@@ -42,7 +42,7 @@ struct DirectionGGallery: View {
         .navigationTitle("Direction G")
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showsSheet) {
-            DirectionGGallerySheet().hassSheet()
+            DirectionGGallerySheet().hassSheet(height: .full)
         }
     }
 
@@ -173,6 +173,14 @@ private struct DirectionGGallerySheet: View {
     enum Section: String, CaseIterable, Identifiable {
         case controls = "Controls", families = "Families", apps = "Apps", settings = "Settings"
         var id: Self { self }
+        var symbol: String {
+            switch self {
+            case .controls: "appletvremote.gen4"
+            case .families: "circle.hexagongrid"
+            case .apps: "play.rectangle"
+            case .settings: "gearshape"
+            }
+        }
     }
 
     /// `-directionGSheetSection Families` picks the first section, so a journey audits each one at launch.
@@ -195,7 +203,8 @@ private struct DirectionGGallerySheet: View {
                 }
                 .padding(HassTokens.Spacing.l)
             }
-            .modalTabBar(Section.allCases, label: "TV sections", title: \.rawValue, selection: $section,
+            .modalTabBar(Section.allCases, label: "TV sections", title: \.rawValue,
+                         symbol: { $0.symbol }, selection: $section,
                          identifier: "g.sheet.tabs")
         }
     }

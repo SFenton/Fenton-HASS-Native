@@ -66,7 +66,7 @@ struct CameraViewer: View {
         }
         // A page sheet on iPad, so landscape has room for the video beside the controls. Dark in either system
         // appearance: it frames live video (`.agents/design/direction-g.md`, Layers: Sheets).
-        .hassSheet(.page, appearance: .dark)
+        .hassSheet(.page, height: .full, appearance: .dark) // Live video
         // Cameras reopen muted, like the web's pooled cards.
         .onDisappear { pool.model(for: camera).setMuted(true) }
     }
