@@ -3,7 +3,8 @@ import HassDesign
 import SwiftUI
 
 /// The Account sheet behind the profile avatar (`.agents/design/direction-g.md`, Navigation): who is signed in,
-/// Settings with every sub-page pushed inside the sheet, and Sign Out behind an alert.
+/// Location on phones (``LocationAccountSection``), Settings with every sub-page pushed inside the sheet, and Sign
+/// Out behind an alert.
 ///
 /// Direction G puts People at Home and Your Summary here too; the app has not ported them yet (the web's Daily
 /// Report), so the sheet shows what exists. HIG: [Sheets](https://developer.apple.com/design/human-interface-guidelines/sheets)
@@ -12,15 +13,21 @@ import SwiftUI
 struct AccountSheet: View {
     @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
     @Environment(AppSession.self) private var session: AppSession?
+    /// Nil on iPad and in launches that don't report location, which hides the Location section.
+    @Environment(LocationCoordinator.self) private var location: LocationCoordinator?
     @Environment(\.dismiss) private var dismiss
     @State private var openTopic: HouseholdSettingsPage?
     @State private var confirmsSignOut = false
+    @State private var showsLocationPermission = false
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     AccountHeader(name: navigator?.profileName)
+                }
+                if let location {
+                    LocationAccountSection(location: location, showsPermission: $showsLocationPermission)
                 }
                 Section {
                     NavigationLink {
@@ -40,6 +47,11 @@ struct AccountSheet: View {
                 }
             }
             .modalChrome()
+            .sheet(isPresented: $showsLocationPermission) {
+                if let location {
+                    LocationPermissionSheet(location: location) { showsLocationPermission = false }
+                }
+            }
             .navigationTitle("Account")
             .inlineNavigationTitle()
             .toolbar { SheetCloseItem(identifier: "account.close") { dismiss() } }
@@ -65,13 +77,24 @@ struct AccountSheet: View {
 /// The signed-in person at the top of the Account sheet: the avatar and their name.
 private struct AccountHeader: View {
     var name: String?
+    @Environment(\.dynamicTypeSize) private var typeSize
+    /// The avatar grows with its initials, so they never truncate at accessibility sizes (it was a fixed 56 pt).
+    @ScaledMetric(relativeTo: .title2) private var diameter: CGFloat = 56
+
+    /// Side by side, or the name under the avatar at accessibility sizes so it keeps the sheet's width.
+    private var layout: AnyLayout {
+        typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
+            : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.m))
+    }
 
     var body: some View {
-        HStack(spacing: HassTokens.Spacing.m) {
+        layout {
             Text(ProfileButton.initials(name) ?? "")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(.white)
-                .frame(width: 56, height: 56)
+                .lineLimit(1)
+                .frame(width: diameter, height: diameter)
                 .background(HassTokens.Ink.actionFill, in: Circle())
                 .overlay { if ProfileButton.initials(name) == nil { Image(systemName: "person.fill").foregroundStyle(.white) } }
                 .accessibilityHidden(true)

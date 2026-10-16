@@ -17,7 +17,7 @@ private final class PlatformProbe {
 
     var platform: PushPlatform {
         PushPlatform(
-            device: { PushDevice(marketingVersion: "1", build: "2", name: "Test", model: "iPhone18,1", osVersion: "27.2",
+            device: { MobileAppDevice(marketingVersion: "1", build: "2", name: "Test", model: "iPhone18,1", osVersion: "27.2",
                                  deviceID: "v", apnsEnvironment: .sandbox) },
             requestAuthorization: { await MainActor.run { self.authorizationRequests += 1; return self.authorizationAnswer } },
             registerForRemoteNotifications: { self.remoteRegistrations += 1 },
@@ -45,7 +45,7 @@ struct PushCoordinatorTests {
     @Test func registersOnConnectAndUpdatesOnToken() async throws {
         let probe = PlatformProbe()
         let transport = StubHTTPTransport([(200, configJSON), (201, #"{"webhook_id":"w1"}"#), (200, configJSON), (200, "{}")])
-        let store = InMemoryPushRegistrationStore()
+        let store = InMemoryMobileAppRegistrationStore()
         let push = PushCoordinator(platform: probe.platform, store: store, transport: transport)
         // Before a session there is nothing to register with.
         await push.didConnect(userID: "u1")
@@ -74,7 +74,7 @@ struct PushCoordinatorTests {
         let probe = PlatformProbe()
         probe.authorizationAnswer = false
         let transport = StubHTTPTransport([(200, configJSON), (201, #"{"webhook_id":"w1"}"#)])
-        let push = PushCoordinator(platform: probe.platform, store: InMemoryPushRegistrationStore(), transport: transport)
+        let push = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), transport: transport)
         push.sessionStarted(server: server) { "token" }
         await push.didConnect(userID: "u1")
         #expect(probe.remoteRegistrations == 0)
@@ -85,7 +85,7 @@ struct PushCoordinatorTests {
     @Test func disabledNeverPromptsOrRegisters() async {
         let probe = PlatformProbe()
         let transport = StubHTTPTransport([])
-        let push = PushCoordinator(platform: probe.platform, store: InMemoryPushRegistrationStore(), transport: transport, isEnabled: false)
+        let push = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), transport: transport, isEnabled: false)
         push.sessionStarted(server: server) { "token" }
         await push.didConnect(userID: "u1")
         await push.didRegister(deviceToken: Data([1]))
@@ -98,8 +98,8 @@ struct PushCoordinatorTests {
     }
 
     @Test func sessionEndClearsAppDataAndForgetsTheSession() async throws {
-        let saved = PushRegistration(server: server, userID: "u1", webhookID: "w1")
-        let store = InMemoryPushRegistrationStore([saved], active: saved)
+        let saved = MobileAppRegistration(server: server, userID: "u1", webhookID: "w1")
+        let store = InMemoryMobileAppRegistrationStore([saved], active: saved)
         let transport = StubHTTPTransport([(200, "{}")])
         let push = PushCoordinator(platform: PlatformProbe().platform, store: store, transport: transport)
         push.sessionStarted(server: server) { "token" }
@@ -116,7 +116,7 @@ struct PushCoordinatorTests {
 
     @Test func tapsAndLinkButtonsOpenPages() async throws {
         let probe = PlatformProbe()
-        let push = PushCoordinator(platform: probe.platform, store: InMemoryPushRegistrationStore(), transport: StubHTTPTransport([]))
+        let push = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), transport: StubHTTPTransport([]))
         push.sessionStarted(server: server) { "token" }
         let info = userInfo([
             "tag": "door", "url": "/sfenton-react-dash/home?path=security#camera-front-door",
@@ -152,15 +152,15 @@ struct PushCoordinatorTests {
 
     @Test func homeAssistantLinksNeedASession() {
         let probe = PlatformProbe()
-        let push = PushCoordinator(platform: probe.platform, store: InMemoryPushRegistrationStore(), transport: StubHTTPTransport([]))
+        let push = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), transport: StubHTTPTransport([]))
         push.open(link: "/config/integrations")
         #expect(probe.opened.isEmpty)
     }
 
     @Test func buttonsFireTheNotificationActionEvent() async throws {
-        let saved = PushRegistration(server: server, userID: "u1", webhookID: "w1")
+        let saved = MobileAppRegistration(server: server, userID: "u1", webhookID: "w1")
         let transport = StubHTTPTransport([(200, "")])
-        let push = PushCoordinator(platform: PlatformProbe().platform, store: InMemoryPushRegistrationStore([saved], active: saved),
+        let push = PushCoordinator(platform: PlatformProbe().platform, store: InMemoryMobileAppRegistrationStore([saved], active: saved),
                                    transport: transport)
         push.sessionStarted(server: server) { "token" }
         await push.handle(.action("REPLY", replyText: "On my way"),
@@ -176,7 +176,7 @@ struct PushCoordinatorTests {
         let probe = PlatformProbe()
         probe.delivered = [DeliveredNotification(identifier: "a", tag: "door"), DeliveredNotification(identifier: "b", tag: "garage"),
                            DeliveredNotification(identifier: "c", tag: "door"), DeliveredNotification(identifier: "d", tag: nil)]
-        let push = PushCoordinator(platform: probe.platform, store: InMemoryPushRegistrationStore(), transport: StubHTTPTransport([]))
+        let push = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), transport: StubHTTPTransport([]))
         #expect(await push.handleBackground(userInfo: ["aps": ["content-available": 1],
                                                         "fenton": ["v": 1, "command": "clear_notification", "tag": "door"]]))
         #expect(await push.handleBackground(userInfo: ["fenton": ["command": "clear_notification", "tag": "none"]]))

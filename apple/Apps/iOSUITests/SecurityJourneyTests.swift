@@ -4,21 +4,7 @@ import XCTest
 /// tile semantics, lock and garage door commands, the alarm mode sheet with its disarm confirmation, audits and
 /// screenshots on iPhone, iPhone Duo and iPad. One signed-in journey opens the real tab read-only
 /// (`.agents/pages/security/ios.md`).
-@MainActor
-final class SecurityJourneyTests: XCTestCase {
-    override func setUp() {
-        continueAfterFailure = false
-        if FentonHomeApp.family == .iPad, ProcessInfo.processInfo.environment["FENTON_UITEST_ORIENTATION"] == "landscape" {
-            XCUIDevice.shared.orientation = .landscapeLeft
-        }
-    }
-
-    override func tearDown() {
-        MainActor.assumeIsolated {
-            if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
-        }
-    }
-
+final class SecurityJourneyTests: JourneyTestCase {
     private enum Tile {
         static let alarm = "security.tile.alarm_control_panel.aqara_hub_m3_0056_security_system_2"
         static let frontDoor = "security.tile.lock.aqara_smart_lock_u400"
@@ -63,11 +49,6 @@ final class SecurityJourneyTests: XCTestCase {
             start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -200)))
         }
         XCTAssertTrue(element.isHittable, "\(element) never came into view")
-    }
-
-    private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertGreaterThanOrEqual(element.frame.width, 43, element.label, file: file, line: line)
-        XCTAssertGreaterThanOrEqual(element.frame.height, 43, element.label, file: file, line: line)
     }
 
     private func openSystemSheet(_ app: XCUIApplication) {
@@ -187,6 +168,21 @@ final class SecurityJourneyTests: XCTestCase {
         try FentonHomeApp.audit(app) { self.launch(arguments: FentonHomeApp.ax5) }
     }
 
+    /// Unavailable tiles are disabled and say so, and their text keeps 4.5:1: only the glyph, material and border dim
+    /// (the signed-in tab shows this before states arrive).
+    func testUnavailablePagePassesAccessibilityAudit() throws {
+        let unavailable = ["FENTON_GALLERY_SCENARIO": "unavailable"]
+        let app = launch(environment: unavailable)
+        for id in [Tile.alarm, Tile.frontDoor, Tile.left, Tile.right] {
+            let element = tile(id, in: app)
+            reveal(element, in: app)
+            XCTAssertEqual(element.value as? String, "Unavailable", id)
+            XCTAssertFalse(element.isEnabled, "\(id) is disabled")
+        }
+        try FentonHomeApp.audit(app) { self.launch(arguments: FentonHomeApp.ax5, environment: unavailable) }
+        keepScreenshot(app, "security-unavailable-\(layout)")
+    }
+
     func testSystemSheetPassesAccessibilityAudit() throws {
         let app = launch()
         openSystemSheet(app)
@@ -234,11 +230,7 @@ final class SecurityJourneyTests: XCTestCase {
     }
 
     private func showSecurityTab(_ app: XCUIApplication) {
-        let tab = app.tabBars.buttons["Security"].exists
-            ? app.tabBars.buttons["Security"]
-            : app.buttons.matching(NSPredicate(format: "label == 'Security' AND identifier == 'shield'")).firstMatch
-        XCTAssertTrue(tab.waitForExistence(timeout: 10), "Security tab not found")
-        tab.tap()
+        openSection("security", title: "Security", in: app)
         XCTAssertTrue(app.buttons[Tile.alarm].waitForExistence(timeout: 10), "Security page did not appear")
     }
 
