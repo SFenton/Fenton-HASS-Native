@@ -30,3 +30,4 @@
 | [image-cache.md](image-cache.md) | `HassDesign/Images/ImagePipeline.swift`, `CachedImage.swift` | browser HTTP cache (`decoding="async"` images) |
 | [telemetry.md](telemetry.md) | `HassTelemetry/`, `HassUI/Diagnostics/` | none (native only) |
 | [weather.md](weather.md) | `HassUI/Features/Home/Weather/WeatherSummaryCard.swift`, `WeatherSheet.swift`, `WeatherPagedCarousel.swift`; logic in `HassCore/Weather` | `src/components/hass/WeatherSummary.tsx`, `useWeatherForecasts.ts`, `weatherPresentation.ts`, `weatherDayBriefing.ts` |
+| [camera-streams.md](camera-streams.md) | `HassUI/Features/Cameras/CameraStreamPool.swift`, `CameraLiveModel.swift`; logic in `HassCore/Cameras/CameraStream.swift` | `SFenton/WebRTC` `www/stream-manager.js`, `rtcStreamRetention.ts` |

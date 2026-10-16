@@ -186,6 +186,36 @@ final class CameraJourneyTests: JourneyTestCase {
         waitForLive(video)
     }
 
+    /// Home's tiles come back live after a background long enough for the app's websocket to be torn down
+    /// (`ConnectionLifecycle.backgroundGrace` is 30 s): owner report 2026-10-16, "cameras are not reconnecting on
+    /// backgrounding and re-opening". Every tile is live before, and every tile is live again after, with the
+    /// snapshot (never a blank) in between.
+    func testHomeTilesResumeAfterALongBackground() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        let streams = Self.cameras.map(\.0)
+        for stream in streams { waitForValue(tile(app, stream), "Live", timeout: 45) }
+        XCUIDevice.shared.press(.home)
+        sleep(60)
+        app.activate()
+        for stream in streams {
+            let element = tile(app, stream)
+            XCTAssertTrue(element.exists, "\(stream) tile is still on Home")
+            waitForValue(element, "Live", timeout: 60)
+        }
+    }
+
+    /// The viewer, left open across a long background, is live again on return.
+    func testViewerResumesAfterALongBackground() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        let video = openCamera(app)
+        waitForLive(video)
+        XCUIDevice.shared.press(.home)
+        sleep(60)
+        app.activate()
+        XCTAssertTrue(video.waitForExistence(timeout: 5))
+        waitForLive(video, timeout: 60)
+    }
+
     func testViewerPassesAccessibilityAudit() throws {
         let app = try FentonHomeApp.launchSignedIn()
         waitForLive(openCamera(app))

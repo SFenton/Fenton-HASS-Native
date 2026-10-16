@@ -8,6 +8,7 @@
 | Connected | HAKit's `caches.states()` (`subscribe_entities`) delivers the full set on every change. `HassConnection.receive` diffs it against the previous delivery by `last_updated` and state, converts only changed entities, and `EntityStore.apply(_:removing:freshness:)` updates only their boxes (converting every entity per event cost whole frames while scrolling) |
 | Background | The connection stays up for a grace period (`ConnectionLifecycle.backgroundGrace`, 30 s) so a quick app switch costs nothing, then disconnects. The snapshot is saved on entering background |
 | Foreground | Reconnect; HAKit resubscribes and the store diffs the fresh full state in place. Views keep their identity and scroll position |
+| Camera streams | Suspended on background (snapshot back over the player), restarted on return only after `HassConnection.ensureLive` shows the socket answers; see below |
 | Signed out | Disconnect, clear the store and delete the snapshot |
 | At home | `LocalServerRoute` moves the websocket (and HAKit's REST calls) to Home Assistant's home network address. HAKit re-reads `connectionInfo` on every `connect()` and swaps the socket only when the URL changed, so the subscription, store and views stay put |
 
@@ -16,6 +17,15 @@ Rules:
 - The snapshot is written with `.completeUntilFirstUserAuthentication` protection, debounced (10 s) and encoded off the main thread while live updates stream; entering background saves synchronously.
 - Optimistic UI goes through `OptimisticActions` ([optimistic-actions](../../patterns/optimistic-actions.md)): the intent shows until the matching live state arrives, the call fails, or the revert time passes.
 - Pages that load asynchronously wait behind a [content gate](../../patterns/content-gate.md); a gate that starts ready never shows a spinner.
+
+## Camera streams
+
+HAKit loses commands across a socket reset, and the old restart ran straight from `willEnterForeground` (before the app was active and before the socket was back). Evidence, simulator, 2026-10-16: after 60 s in the background the trace read `pool foreground, connection disconnected`, then `open webRTC` for all four cameras and never `opened`: `auth/sign_path` had been requested on a socket that was being replaced, HAKit dropped it without calling its completion (`HARequestControllerImpl.resetActive` removes `shouldRetry: false` requests), and `sendCommand` awaited forever. The tiles stayed on the snapshot; Home's tiles also sat on a black frame reading "Live" between background and restart because a stopped model kept its live phase.
+
+- **Commands that something waits on take a timeout.** `HassConnection.sendCommand(_:data:timeout:)` fails with `CommandTimeout` and cancels the request; `signPath` and `cameraStreamPath` use `streamCommandTimeout` (10 s).
+- **`awaitConnected(timeout:)`** polls `status` until `.connected` (or `.rejected`/timeout). `ensureLive(timeout:pingTimeout:)` adds a `ping` command (3 s) and, if it goes unanswered, `reconnect()` (disconnect then connect, as `applyRoute` does; the subscription, store and views stay). HAKit itself only pings once a minute, so after a suspension it can report `.connected` over a dead socket.
+- **`HassConnection.didBecomeReadyNotification`** posts every time `status` becomes `.connected`, including reconnects. The camera pool restarts wanted streams that are not running or failed on it.
+- **Rule:** nothing that asks Home Assistant for something must be started from `willEnterForeground` or assumed to survive a reconnect without `ensureLive`, a timeout, or a restart on `didBecomeReadyNotification`. Details and tests: [camera-streams](../../patterns/camera-streams.md).
 
 ## Home network address (`LocalServerRoute`)
 
