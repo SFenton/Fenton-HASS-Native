@@ -5,7 +5,7 @@
   },
   "swift": {
     "sourceRoots": ["apple/Sources/**/*.swift"],
-    "logic": ["apple/Sources/HassCore/**/*.swift"],
+    "logic": ["apple/Sources/HassCore/**/*.swift", "apple/Sources/HassTelemetry/**/*.swift"],
     "ux": ["apple/Sources/HassDesign/**/*.swift", "apple/Sources/HassUI/**/*.swift"],
     "exclude": []
   }

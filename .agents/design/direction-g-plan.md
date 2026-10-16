@@ -146,7 +146,6 @@ Still open:
 - **Light sheets:** iPad landscape, iOS 17–25 fallbacks and a real Control Center toggle on a device are unverified.
 - **Vacuums:** two element-less contrast issues on iPhone are unattributed (`.agents/testing/apple/accessibility.md`, Open findings).
 - **Tests:** a full `swift test` run fails `ValetudoMapDrawingTests/entitiesAndMaterialsChangeTheDrawing` and `OnDemandSplitHostedTests` (3), on clean main too; they pass alone (order-dependent hosted state).
-- **Coverage:** `tools/apple_coverage.sh` errors on classification entries for files such as Feedback, LitTile and Telemetry, so there is no repo-wide gate number.
 - **macOS:** deferred until a Mac target exists (decision 8).
 
 ## Dependencies on wave-2 threads
