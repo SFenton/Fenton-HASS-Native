@@ -60,6 +60,27 @@ struct RoomsTests {
         #expect(ranked.count == 16)
     }
 
+    /// The grid re-ranks as Home Assistant's counters change: a visit counted by the script reaches the store through the
+    /// websocket, and the next read puts that room first. Equal counts keep the configured order. The counters live in
+    /// Home Assistant, so a cold launch from the disk snapshot ranks the same way.
+    @Test func theGridReRanksAsVisitCountersChange() {
+        let store = EntityStore()
+        func counter(_ path: String, _ count: Int) -> EntityState {
+            EntityState(entityId: RoomNavigation.item(for: path)!.accessCounterEntityId, state: String(count))
+        }
+        func ranked(_ store: EntityStore) -> [String] { RoomNavigation.ranked { store.entity($0).state?.state }.map(\.path) }
+        #expect(ranked(store) == RoomNavigation.items.map(\.path), "No counters: configured order")
+        store.replaceAll([counter("gym", 4), counter("office", 4), counter("kitchen", 1)])
+        #expect(Array(ranked(store).prefix(3)) == ["gym", "office", "kitchen"])
+        store.apply([counter("kitchen", 5)])
+        #expect(Array(ranked(store).prefix(3)) == ["kitchen", "gym", "office"])
+        store.apply([counter("office", 6)])
+        #expect(Array(ranked(store).prefix(3)) == ["office", "kitchen", "gym"])
+        let restored = EntityStore()
+        restored.replaceAll(Array(store.allValues.values), freshness: .snapshot(savedAt: Date()))
+        #expect(ranked(restored) == ranked(store))
+    }
+
     @Test func unreadableCountersCountAsZero() {
         #expect(RoomNavigation.accessCount(nil) == 0)
         #expect(RoomNavigation.accessCount("unavailable") == 0)

@@ -19,9 +19,9 @@ struct ClimateSheetRequest: Identifiable, Hashable {
 }
 
 /// The Climate page (web `ThermostatPage`, `ha-sfenton-react-dash@9ac2a46:src/pages/DashboardViewPage.tsx:7397`).
-/// Spec: `.agents/pages/climate/spec.md`; direction G mockup n3. Whole Home's dial on a module with the Thermostat
-/// Hub's pop-up menus under it, any notices, open doors and windows, then the three Advanced Controls rows that open
-/// the sheet on their tab.
+/// Spec: `.agents/pages/climate/spec.md`; direction G mockup n3. Whole Home's dial straight on the wallpaper (no card,
+/// owner 2026-10-16) with the compact Thermostat Hub pill under it, any notices, open doors and windows, then the three
+/// Advanced Controls rows that open the sheet on their tab.
 struct ClimatePage: View {
     @State private var controller: ClimateController
     @State private var sheet: ClimateSheetRequest?
@@ -100,8 +100,8 @@ struct ClimatePage: View {
         }
     }
 
-    /// Whole Home: the dial on a module (eco-away thermostat while away, `hvac_action` always from the global one),
-    /// the hub's rows and the notices.
+    /// Whole Home: the dial on the wallpaper (eco-away thermostat while away, `hvac_action` always from the global
+    /// one), the hub pill and the notices.
     @ViewBuilder
     private func wholeHome(_ lookup: EntityLookup) -> some View {
         let dialEntityId = ClimateLogic.wholeHomeDialEntityId(lookup)
@@ -115,11 +115,9 @@ struct ClimatePage: View {
                     commitEntityIds: { targets in Self.wholeHomeCommitIds(dialEntityId: dialEntityId, targets: targets) }
                 )
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, HassTokens.Spacing.l)
-                .module()
                 .accessibilityElement(children: .contain)
                 .accessibilityIdentifier("climate.wholeHome")
-                ClimateHubList(controller: controller)
+                ThermostatHubPill(controller: controller)
                 if let notice = ClimateLogic.awayNotice(climateEntityId: ClimateConfig.globalThermostatEntityId, useEffectiveMode: true, lookup) {
                     ClimateNotice(text: notice, symbol: "house")
                         .accessibilityIdentifier("climate.awayNotice")
@@ -129,6 +127,8 @@ struct ClimatePage: View {
                         .accessibilityIdentifier("climate.integrationWarning")
                 }
             }
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
         }
     }
 

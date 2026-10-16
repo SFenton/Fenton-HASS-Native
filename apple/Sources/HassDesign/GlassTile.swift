@@ -14,6 +14,9 @@ public struct GlassTile<Accessory: View>: View {
     public var tint: Color
     /// The device's colour family (direction G). Nil keeps the tinted face until the caller picks one.
     public var family: ColorFamily?
+    /// A solid fill the caller owns (`0xRRGGBB`, a room's ``RoomPalette`` colour): the tile draws white ink and a filled
+    /// white glyph on it, on or off.
+    public var fillRGB: UInt32?
     public var isActive: Bool
     public var isUnavailable: Bool
     /// Draws the error face: a red glyph and red state ("Didn't Respond") on a dense ground.
@@ -43,6 +46,7 @@ public struct GlassTile<Accessory: View>: View {
         symbol: String,
         tint: Color? = nil,
         family: ColorFamily? = nil,
+        fillRGB: UInt32? = nil,
         isActive: Bool,
         isUnavailable: Bool = false,
         isError: Bool = false,
@@ -58,6 +62,7 @@ public struct GlassTile<Accessory: View>: View {
         self.symbol = symbol
         self.tint = tint ?? family?.glyph ?? .accentColor
         self.family = family
+        self.fillRGB = fillRGB
         self.isActive = isActive
         self.isUnavailable = isUnavailable
         self.isError = isError
@@ -88,6 +93,7 @@ public struct GlassTile<Accessory: View>: View {
             symbol: symbol,
             tint: tint,
             family: family,
+            fillRGB: fillRGB,
             isActive: isActive,
             isUnavailable: isUnavailable && kind != .state,
             isError: isError,
@@ -163,6 +169,7 @@ public extension GlassTile where Accessory == EmptyView {
         symbol: String,
         tint: Color? = nil,
         family: ColorFamily? = nil,
+        fillRGB: UInt32? = nil,
         isActive: Bool,
         isUnavailable: Bool = false,
         isError: Bool = false,
@@ -172,7 +179,7 @@ public extension GlassTile where Accessory == EmptyView {
         progressTint: Color? = nil,
         action: @escaping () -> Void = {}
     ) {
-        self.init(title: title, subtitle: subtitle, symbol: symbol, tint: tint, family: family, isActive: isActive,
+        self.init(title: title, subtitle: subtitle, symbol: symbol, tint: tint, family: family, fillRGB: fillRGB, isActive: isActive,
                   isUnavailable: isUnavailable, isError: isError, kind: kind, wash: wash, progress: progress,
                   progressTint: progressTint, action: action) { EmptyView() }
     }
@@ -205,6 +212,8 @@ public struct GlassTileFace: View {
     var symbol: String
     var tint: Color
     var family: ColorFamily?
+    /// A solid fill the caller owns (``RoomPalette``); wins over ``family``.
+    var fillRGB: UInt32?
     var isActive: Bool
     var isUnavailable: Bool
     var isError = false
@@ -220,13 +229,14 @@ public struct GlassTileFace: View {
 
     /// Creates a tile face.
     public init(title: String, subtitle: String? = nil, symbol: String, tint: Color, family: ColorFamily? = nil,
-                isActive: Bool, isUnavailable: Bool = false, isError: Bool = false, showsChevron: Bool = false,
+                fillRGB: UInt32? = nil, isActive: Bool, isUnavailable: Bool = false, isError: Bool = false, showsChevron: Bool = false,
                 level: Double? = nil, levelTint: Color? = nil, wash: Color? = nil, trailingInset: CGFloat = 0) {
         self.title = title
         self.subtitle = subtitle
         self.symbol = symbol
         self.tint = tint
         self.family = family
+        self.fillRGB = fillRGB
         self.isActive = isActive
         self.isUnavailable = isUnavailable
         self.isError = isError
@@ -242,38 +252,75 @@ public struct GlassTileFace: View {
     @Environment(\.tileSurface) private var surface
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.tileLayout) private var preferredLayout
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Light only for a tile in a sheet under the light scheme: pages are always dark.
     private var appearance: TileAppearance { .resolve(surface: surface, scheme: scheme) }
 
     private var style: TileFaceStyle {
-        .resolve(family: family, isActive: isActive, isError: isError, isUnavailable: isUnavailable)
+        .resolve(family: family, isActive: isActive, isError: isError, isUnavailable: isUnavailable, solidFill: fillRGB)
     }
+
+    /// The arrangement drawn (``TileLayout``): the environment's, with a row turned into a bottom-anchored stack at
+    /// accessibility text sizes.
+    private var layout: TileLayout { preferredLayout.resolved(accessibilitySize: typeSize.isAccessibilitySize) }
 
     public var body: some View {
         let style = style
         let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-            HStack {
-                // Decorative: the title names the tile. Symbols carry built-in labels ("Humidifier"), which the audit
-                // then flagged as clipped text on iPad (glyph wider than its frame).
-                Image(systemName: symbol)
-                    .font(.title3)
-                    .symbolVariant(isActive ? .fill : .none)
-                    .foregroundStyle(glyphColor(style))
-                    // Unavailable dims the glyph and the tinted stroke only. The title and "Unavailable" keep 4.5:1
-                    // and the ground stays full strength, so wallpaper never shows through behind white text: a
-                    // whole-face fade left the text at 2.4:1 (signed-in Security tab before states arrived, 2026-10-14).
-                    .opacity(isUnavailable ? 0.5 : 1)
-                    .accessibilityHidden(true)
-                Spacer(minLength: 0)
+        let layout = layout
+        content(style, layout)
+            // The chevron is vertically centred on the tile in every arrangement (owner, 2026-10-16), so the text
+            // keeps clear of it instead of running under.
+            .padding(.trailing, showsChevron ? Self.chevronReserve : 0)
+            .padding(.trailing, trailingInset)
+            // Text wraps and the tile grows at large Dynamic Type instead of truncating. In an equal-height grid the face
+            // also fills the row height it is offered.
+            .frame(maxWidth: .infinity, minHeight: layout.minHeight, maxHeight: fillsHeight ? .infinity : nil,
+                   alignment: layout == .stackedTop || layout == .anchoredBottom ? .topLeading : .leading)
+            .padding(HassTokens.Spacing.m)
+            .background { ground(style).clipShape(shape) }
+            .overlay(alignment: .trailing) {
                 if showsChevron {
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(secondaryInk(style).opacity(0.8))
+                        .padding(.trailing, HassTokens.Spacing.m)
                         .accessibilityHidden(true)
                 }
             }
+            .overlay {
+                if style == .tinted {
+                    shape.strokeBorder(tintGlyph.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
+                        .opacity(isUnavailable ? 0.5 : 1)
+                }
+            }
+            .contentShape(shape)
+    }
+
+    /// Width the text keeps clear for the centred chevron: its glyph plus the gap before it.
+    static let chevronReserve: CGFloat = 20
+
+    // MARK: Layouts
+
+    /// The glyph: decorative, because the title names the tile. Symbols carry built-in labels ("Humidifier"), which the
+    /// audit then flagged as clipped text on iPad (glyph wider than its frame).
+    private func glyph(_ style: TileFaceStyle, layout: TileLayout) -> some View {
+        Image(systemName: symbol)
+            .font(layout == .row ? .title2 : .title3)
+            // Filled for an active tile and for a coloured navigation tile; an off tile keeps the outline.
+            .symbolVariant(isActive || style.isColored ? .fill : .none)
+            .foregroundStyle(glyphColor(style))
+            // Unavailable dims the glyph and the tinted stroke only. The title and "Unavailable" keep 4.5:1
+            // and the ground stays full strength, so wallpaper never shows through behind white text: a
+            // whole-face fade left the text at 2.4:1 (signed-in Security tab before states arrived, 2026-10-14).
+            .opacity(isUnavailable ? 0.5 : 1)
+            .accessibilityHidden(true)
+    }
+
+    private func text(_ style: TileFaceStyle, spacing: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: spacing) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(primaryInk(style))
@@ -288,20 +335,38 @@ public struct GlassTileFace: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.trailing, trailingInset)
-        // Text wraps and the tile grows at large Dynamic Type instead of truncating. In an equal-height grid the face
-        // also fills the row height it is offered.
-        .frame(maxWidth: .infinity, minHeight: 88, maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)
-        .padding(HassTokens.Spacing.m)
-        .background { ground(style).clipShape(shape) }
-        .overlay {
-            if style == .tinted {
-                shape.strokeBorder(tintGlyph.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
-                    .opacity(isUnavailable ? 0.5 : 1)
+    }
+
+    @ViewBuilder
+    private func content(_ style: TileFaceStyle, _ layout: TileLayout) -> some View {
+        switch layout {
+        case .row:
+            HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
+                glyph(style, layout: layout)
+                    .frame(width: Self.rowGlyphWidth)
+                text(style, spacing: 2)
+            }
+        case .anchoredBottom:
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                glyph(style, layout: layout)
+                Spacer(minLength: HassTokens.Spacing.s)
+                text(style, spacing: 2)
+            }
+        case .centeredStack:
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+                glyph(style, layout: layout)
+                text(style, spacing: 2)
+            }
+        case .stackedTop:
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                glyph(style, layout: layout)
+                text(style, spacing: HassTokens.Spacing.s)
             }
         }
-        .contentShape(shape)
     }
+
+    /// The row layout's glyph column: wide enough for the widest symbol so every title starts at the same x.
+    static let rowGlyphWidth: CGFloat = 30
 
     // MARK: Ink
 
@@ -329,6 +394,7 @@ public struct GlassTileFace: View {
         case .off: isEnabled ? (family.map { Color(rgb: $0.offGlyphRGB(appearance.scheme)) } ?? muted) : muted
         case .lit: LitTile.glyph
         case let .filled(family): family.ink
+        case .colored: RoomPalette.ink
         case .tinted: isEnabled ? tintGlyph : muted
         case .error: Color(rgb: appearance.errorRGB)
         }
@@ -338,6 +404,7 @@ public struct GlassTileFace: View {
         switch style {
         case .lit: LitTile.ink
         case let .filled(family): family.ink
+        case .colored: RoomPalette.ink
         default: appearance == .light ? HassTokens.Ink.primary : .white
         }
     }
@@ -346,6 +413,7 @@ public struct GlassTileFace: View {
         switch style {
         case .lit: LitTile.secondaryInk
         case let .filled(family): family.secondaryInk
+        case .colored: RoomPalette.ink
         case .error: Color(rgb: appearance.errorRGB)
         // A state wash lifts the dark ground toward its colour, and over a bright sky the 68% ink fell to 4.3:1
         // (folded Duo Quick Links: Armed Home and the food tile, 2026-10-14). On a light cell the wash is faint
@@ -376,6 +444,9 @@ public struct GlassTileFace: View {
                         .overlay { if let levelTint { levelTint.opacity(LitTile.bulbTint) } }
                 }
             }
+        case let .colored(rgb):
+            // Flat, with no top highlight: the white ink is measured against the fill itself (4.7:1 or better).
+            Color(rgb: rgb)
         case let .filled(family):
             ZStack(alignment: .leading) {
                 if family == .power {
