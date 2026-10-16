@@ -151,7 +151,8 @@ public final class SheetFitModel {
 
     /// Records the page's safe-area insets: the navigation bar above it and the home indicator and a pinned tab bar
     /// below it. A scroller laid out below the header (iPad's form sheet) reports no inset for the bar.
-    public func setSafeInsets(top: CGFloat, bottom: CGFloat) {
+    public func setSafeInsets(top: CGFloat, bottom: CGFloat, from page: UUID) {
+        guard owner == nil || owner == page else { return }
         safeTop = top
         safeBottom = bottom
         recompute()
@@ -222,7 +223,7 @@ private struct SheetFitReporter: ViewModifier {
                         .onGeometryChange(for: [CGFloat].self) {
                             [$0.safeAreaInsets.top.rounded(), $0.safeAreaInsets.bottom.rounded()]
                         } action: { insets in
-                            fit.setSafeInsets(top: insets[0], bottom: insets[1])
+                            fit.setSafeInsets(top: insets[0], bottom: insets[1], from: page)
                         }
                         .accessibilityHidden(true)
                 }

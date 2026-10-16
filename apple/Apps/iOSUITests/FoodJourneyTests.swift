@@ -269,7 +269,9 @@ final class FoodJourneyTests: XCTestCase {
         for _ in 0..<6 where !(alphabetical.exists && alphabetical.isHittable) { sheet.swipeUp() }
         alphabetical.tap()
         if reveal == "Sort By" {
-            for _ in 0..<6 { sheet.swipeDown() }
+            // Only while the header is off screen: a swipe down on a sheet already at the top drags it closed, which a
+            // fitted sheet (content-height detent) reaches at the default text size.
+            for _ in 0..<6 where !app.staticTexts["Sort By"].isHittable { sheet.swipeDown() }
             sleep(1)
         } else {
             scroll(to: reveal, in: app, sheet: sheet)
