@@ -113,6 +113,30 @@ The fifth lane is the largest; if it runs long it splits into Chores and Vacatio
 - Light-appearance sheets.
 - A full-app pass of the contrast audit, Dynamic Type at AX5, VoiceOver order and Reduce Motion.
 
+#### Phase 4 spec (2026-10-15)
+
+Stephen, 2026-10-15: "continue Phase 4 ... when done commit and merge." Three lanes in parallel, each its own branch and PR, reviewed by the planner before merge. Mockups: n1-ipad-home, n1-ipad-nav, n1-duo-unfolded and fc-families in the owner's gallery.
+
+**Decisions taken (change any of them):**
+1. **Grids:** columns still grow with width (`DynamicGridLayout`, web UX contract), and a full-width tile grid reaches at least 4 columns at iPad portrait width. That settles direction-g.md ("4 columns") against ipados.md ("no fixed ceilings"): 4 is a floor on iPad, not a cap. Caps of 3 on tile grids go. On a window with a hinge (unfolded Duo) the count rounds down to an even number so no tile straddles the hinge.
+2. **Chips:** they scroll in compact width and wrap (`FlowLayout`) in regular width. With a hinge, the rail stops 24pt short of it.
+3. **Quick Links on iPad and the unfolded Duo** is a floating 56pt glass circle bottom-trailing on section roots (n1-ipad-home), replacing the toolbar button; the flyout row stays.
+4. **Sheets on iPad:** every sheet names its size. Viewing and control sheets with tile grids, dials or maps use `.page`; lists, editors and prompts use `.form`. Sheets that bypass `.hassSheet` adopt it.
+5. **Home on the unfolded Duo in landscape** splits into two columns on the hinge (n1-duo-unfolded): chips and weather leading, cameras and guests trailing. iPad landscape stays one column (n1-ipad-home).
+6. **Light-appearance sheets:** sheets follow the system appearance; pages stay dark on the wallpaper. The sheet tokens (`Surface.sheetGround`, `sheetCell`, `secondaryInSheet`, `separator`) become light/dark pairs, and tiles and module lists inside sheets get light faces (white cell, dark ink; family fills and the lit tile are unchanged). Sheets drawn over a photo or always dark by design (Weather, Login, Location permission, the camera viewer) stay dark.
+7. **Off glyphs keep their family** (fc-families): an idle or off bed side draws the Heating glyph (Cooling when its level is below zero); an idle or off thermostat card draws Heating in heat mode and Cooling otherwise. Before this they fell back to neutral grey.
+8. **macOS:** out of scope. There is no Mac target (`project.yml`), so the macOS items wait until one is added.
+
+**Lanes:**
+
+| Lane | Owns | Work |
+|---|---|---|
+| iPad and Duo layout | `HassDesign/DynamicGridLayout*`, `HassDesign/FlowLayout`, `HassUI/App/Shell/*`, `Features/Home/StatusRail`, `Features/Home/HomeScreen`, `Features/Rooms/QuickLinksSheet` (button), grid caps and `.hassSheet` sizes in feature files | Decisions 1–5; `dynamic-grid.md`, `ipados.md`, `duo.md` updated |
+| Light sheets | `HassDesign/HassTokens`, `HassModal`, `GlassTile`, `ModuleList`, `PrimaryButton*`, and sheet colours in feature files | Decision 6; journeys gain a light-appearance pass for sheets; contrast audit passes in both |
+| Accessibility pass | `Features/Bedroom/BedroomComponents`, `Features/Rooms/RoomSupport` (tile faces), Reduce Motion fixes, `Apps/iOSUITests/*` additions | Decision 7; every `withAnimation` / `.animation` honours Reduce Motion (motion, not opacity); journey launch options for Reduce Motion, Reduce Transparency and Increase Contrast; an AX5 + audit sweep over every tab root and main sheet on iPhone, Duo and iPad; fixes for what it finds |
+
+Feature files are shared between lanes for one-line edits (a grid cap, a sheet size, a colour token); whichever lane merges second resolves.
+
 ## Dependencies on wave-2 threads
 
 | Thread | Why G waits for it |
