@@ -38,6 +38,9 @@ struct RoomsGallery: View {
             .environment(store)
             .environment(\.roomServiceCaller, caller)
             .environment(\.householdViewer, .stephen)
+            // Pages are dark-styled (white ink): on the simulator's light appearance the room titles drew black
+            // on the navy ground in screenshots.
+            .preferredColorScheme(.dark)
     }
 
     private var list: some View {
@@ -117,8 +120,15 @@ enum RoomsFixtures {
         add("light.living_room", "on", ["brightness": .number(180), "supported_color_modes": .array([.string("brightness")])])
         add("binary_sensor.living_room_occupancy_sensors", "on")
         add("binary_sensor.living_room_window_contact_sensor_contact", "on")
-        add("climate.sleepypod_eight_pod_left_side", "heat_cool", ["hvac_action": .string("heating")])
-        add("climate.sleepypod_eight_pod_right_side", "off", ["hvac_action": .string("off")])
+        // The live pods sit in heat mode. One heats (filled); one has nothing running, so it draws its off face with
+        // the Heating glyph (`ThermostatTileFace`). The bedroom fixtures' own attributes stay.
+        func setPod(_ id: String, state: String, action: String) {
+            var attributes = byId[id]?.attributes ?? [:]
+            attributes["hvac_action"] = .string(action)
+            byId[id] = EntityState(entityId: id, state: state, attributes: attributes)
+        }
+        setPod("climate.sleepypod_eight_pod_left_side", state: "heat", action: "heating")
+        setPod("climate.sleepypod_eight_pod_right_side", state: "heat", action: "idle")
         add(RoomsConfig.WakeLight.statusEntityId, "6:45 AM")
         add(RoomsConfig.dishwasherProgramEntityId, "Eco 50°C")
 
