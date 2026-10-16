@@ -35,6 +35,27 @@ struct LocationPermissionViewTests {
         }
     }
 
+    @Test func whileUsingAfterTheAlwaysAlertSendsToSettings() async {
+        // iOS shows the Always alert once; after Keep Only While Using the screen must not trap people.
+        let copy = LocationPermissionCopy(stage: .whenInUse, canAskForAlways: false)
+        #expect(copy.title == "Notice When You Leave")
+        #expect(copy.action == .openSettings && copy.actionTitle == "Open Settings")
+        #expect(!copy.isPreAlert, "Close is back")
+        #expect(!copy.showsPoints && copy.footnote == nil)
+        #expect(copy.message.hasSuffix("choose Always in Settings."))
+        // Other stages ignore it.
+        #expect(LocationPermissionCopy(stage: .notDetermined, canAskForAlways: false) == LocationPermissionCopy(stage: .notDetermined))
+        for size in [Self.phone, Self.tablet] {
+            let hosted = HostedView(
+                LocationPermissionView(permission: LocationPermission(authorization: .whenInUse), canAskForAlways: false,
+                                       onRequestPermission: {}, onClose: {}),
+                size: size, typeSize: .accessibility5
+            )
+            await hosted.settle()
+            #expect(hosted.fingerprint != 0)
+        }
+    }
+
     @Test func titlesAreTitleCaseAndDistinct() {
         let titles = LocationPermission.Stage.allCases.map { LocationPermissionCopy(stage: $0).title }
         #expect(titles == ["Know When You're Home", "Notice When You Leave", "Home and Away Are On", "Location Is Off",

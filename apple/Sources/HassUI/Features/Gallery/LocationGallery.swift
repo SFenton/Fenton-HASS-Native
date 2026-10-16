@@ -9,14 +9,21 @@ import SwiftUI
 /// steps; Open Settings and Close are recorded on the `Last action` line.
 ///
 /// Environment (optional): `FENTON_GALLERY_LOCATION=not-determined|when-in-use|always|denied|reduced-accuracy`
-/// (default `not-determined`).
+/// (default `not-determined`), or `when-in-use-asked`: While Using after the Always alert was shown once.
 struct LocationGallery: View {
     @State private var permission: LocationPermission
+    @State private var canAskForAlways: Bool
     @State private var lastAction = "none"
 
+    /// The extra gallery stage: While Using after iOS showed its one Always alert.
+    static let askedStage = "when-in-use-asked"
+
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
-        let stage = environment["FENTON_GALLERY_LOCATION"].flatMap(LocationPermission.Stage.init(rawValue:)) ?? .notDetermined
+        let requested = environment["FENTON_GALLERY_LOCATION"]
+        let asked = requested == Self.askedStage
+        let stage = asked ? .whenInUse : requested.flatMap(LocationPermission.Stage.init(rawValue:)) ?? .notDetermined
         _permission = State(initialValue: Self.permission(for: stage))
+        _canAskForAlways = State(initialValue: !asked)
     }
 
     var body: some View {
@@ -28,6 +35,7 @@ struct LocationGallery: View {
             .sheet(isPresented: .constant(true)) {
                 LocationPermissionView(
                     permission: permission,
+                    canAskForAlways: canAskForAlways,
                     onRequestPermission: { answer() },
                     onOpenSettings: { lastAction = "open settings" },
                     onClose: { lastAction = "close" }

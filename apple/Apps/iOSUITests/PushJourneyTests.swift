@@ -12,7 +12,7 @@ import XCTest
 /// folder the journeys skip.
 final class PushJourneyTests: JourneyTestCase {
     private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-    /// The permission alert was answered in this run (each run installs the app afresh, which resets it).
+    /// Permission was answered in this run (by the alert, or by a banner where the simulator kept the answer).
     private static var answeredPermission = false
 
     // MARK: - Journeys
@@ -31,7 +31,7 @@ final class PushJourneyTests: JourneyTestCase {
     }
 
     func testButtonsComeFromThePayloadAndALinkButtonOpensItsPage() throws {
-        let app = try launch(preview: "actions")
+        let app = try launch(preview: "actions", banner: "Garage Door")
         let banner = notification("Garage Door")
         XCTAssertTrue(banner.waitForExistence(timeout: 240), "The banner did not appear")
         banner.press(forDuration: 1.2)
@@ -47,7 +47,7 @@ final class PushJourneyTests: JourneyTestCase {
     }
 
     func testTheCameraSnapshotIsAttached() throws {
-        let app = try launch(preview: "camera")
+        let app = try launch(preview: "camera", banner: "Doorbell")
         let banner = notification("Doorbell")
         XCTAssertTrue(banner.waitForExistence(timeout: 240), "The banner did not appear")
         attach("push-camera-\(layout)")
@@ -60,7 +60,7 @@ final class PushJourneyTests: JourneyTestCase {
     }
 
     func testClearNotificationRemovesTheTaggedNotification() throws {
-        let app = try launch(preview: "banner")
+        let app = try launch(preview: "banner", banner: "Front Door")
         XCTAssertTrue(notification("Front Door").waitForExistence(timeout: 240), "The banner did not appear")
         // Let it move to Notification Center, then run the house's clear_notification for its tag.
         XCTAssertTrue(notification("Front Door").waitForNonExistence(timeout: 15))
@@ -77,8 +77,11 @@ final class PushJourneyTests: JourneyTestCase {
     // MARK: - Helpers
 
     /// Signs in with push on and answers the permission prompt, which appears once per install.
-    /// - Parameter preview: A fixture the app shows as a local notification a few seconds after launch.
-    private func launch(preview: String? = nil) throws -> XCUIApplication {
+    /// - Parameters:
+    ///   - preview: A fixture the app shows as a local notification a few seconds after launch.
+    ///   - banner: The preview's title. Where the simulator already stored the permission (a reinstall keeps it), no
+    ///     alert ever comes, so the wait also ends when this banner shows; waiting out the alert would miss it.
+    private func launch(preview: String? = nil, banner: String? = nil) throws -> XCUIApplication {
         guard captureFolder != nil else { throw XCTSkip("Set TEST_RUNNER_FENTON_CAPTURE_DIR and run tools/push_sim.sh") }
         var environment = ["FENTON_PUSH": "1"]
         if let preview {
@@ -86,12 +89,21 @@ final class PushJourneyTests: JourneyTestCase {
             environment["FENTON_PUSH_PREVIEW_DELAY"] = "8"
         }
         let app = try FentonHomeApp.launchSignedIn(environment: environment)
-        // After a boot the iOS 27 simulator can take minutes to show the alert; until it is answered, pushes are
-        // refused ("Source is not authorized"). Wait once per run.
+        // After a boot the iOS 27 simulator can take minutes to show the alert, or to answer with a stored
+        // permission; until then, pushes are refused ("Source is not authorized"). Wait once per run.
         let allow = springboard.alerts.buttons["Allow"]
-        if allow.waitForExistence(timeout: Self.answeredPermission ? 5 : 300) {
-            allow.tap()
-            Self.answeredPermission = true
+        let deadline = Date().addingTimeInterval(Self.answeredPermission ? 5 : 300)
+        while Date() < deadline {
+            if allow.exists {
+                allow.tap()
+                Self.answeredPermission = true
+                break
+            }
+            if let banner, notification(banner).exists {
+                Self.answeredPermission = true
+                break
+            }
+            usleep(500_000)
         }
         return app
     }
