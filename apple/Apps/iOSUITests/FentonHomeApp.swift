@@ -410,7 +410,8 @@ enum FentonHomeApp {
             if isUnderSectionBar(element, in: app) { return true }
             // The system's navigation subtitle ("Playing", "3 of 12 On") is drawn by UIKit in the secondary label colour:
             // 3.3:1 on a light sheet, as in Apple's own sheets. The app cannot restyle it; the dark sheets pass.
-            if element.elementType == .staticText, app.navigationBars.staticTexts[element.label].exists { return true }
+            if element.elementType == .staticText,
+               app.navigationBars.staticTexts.matching(NSPredicate(format: "label == %@", element.label)).firstMatch.exists { return true }
             return element.elementType == .button && app.navigationBars.buttons[element.label].exists
         case .dynamicType, .textClipped:
             // Toolbar buttons are system-drawn and offer the Large Content Viewer instead of scaling.
@@ -461,7 +462,8 @@ enum FentonHomeApp {
     private static func isUnderSectionBar(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         let frame = element.frame
         return app.segmentedControls.allElementsBoundByIndex.contains { bar in
-            bar.frame.intersects(frame) && !bar.descendants(matching: element.elementType)[element.label].exists
+            bar.frame.intersects(frame)
+                && !bar.descendants(matching: element.elementType).matching(NSPredicate(format: "label == %@", element.label)).firstMatch.exists
         }
     }
 

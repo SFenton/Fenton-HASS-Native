@@ -243,6 +243,21 @@ final class LightSheetsJourneyTests: JourneyTestCase {
         }
     }
 
+    /// The vacuum sheet: the controls, and the rooms (selected rooms are the label's opposite on a white cell).
+    func testVacuumSheetPassesAuditInLight() throws {
+        for tab in ["controls", "zones"] {
+            try auditLight("vacuum-\(tab)") { arguments in
+                let app = self.gallery("vacuums", environment: [
+                    "FENTON_GALLERY_VACUUM": "valetudo_exaltedsneakydeer", "FENTON_GALLERY_TAB": tab,
+                    "FENTON_GALLERY_SCENARIO": "docked", "FENTON_GALLERY_CLEAN": "1",
+                ], arguments: arguments)
+                self.waitReady("vacuum.tabs", in: app, what: "vacuum sheet")
+                XCTAssertTrue(app.navigationBars.buttons["Close"].firstMatch.wait(for: \.isHittable, toEqual: true, timeout: 10))
+                return app
+            }
+        }
+    }
+
     /// Quick Links: the room grid tiles in a sheet.
     func testQuickLinksPassesAuditInLight() throws {
         try auditLight("quick-links") { arguments in
