@@ -138,7 +138,7 @@ public enum ClimateConfig {
 
     /// Section descriptions (`THERMOSTAT_SECTION_DESCRIPTIONS`, `DashboardViewPage.tsx:2977`).
     public enum Copy {
-        public static let ecoMode = "Eco Mode reduces heating and cooling in inactive rooms. Use the options below to choose critical-temperature protection and what happens when everyone is away."
+        public static let ecoMode = "Eco Mode reduces heating and cooling in inactive rooms. Use the options above to choose critical-temperature protection and what happens when everyone is away."
         public static let forceCritical = "Choose unselected rooms that should still be monitored for unsafe temperatures."
         public static let integration = "Turn Home Assistant's automatic thermostat control on or off."
         public static let predictiveComfort = "Predictive Comfort uses forecast and indoor conditions to recommend earlier changes. Open it to review the recommendation and choose which automatic changes are allowed."
