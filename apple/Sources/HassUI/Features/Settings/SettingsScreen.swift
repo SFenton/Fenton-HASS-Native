@@ -42,6 +42,8 @@ struct SettingsScreen: View {
                     }
                     .accessibilityIdentifier("settings.todo")
                 }
+            }
+            Section {
                 ForEach(HouseholdSettingsPage.allCases) { page in
                     Button {
                         openTopic = page
@@ -53,6 +55,10 @@ struct SettingsScreen: View {
                     .accessibilityAddTraits(openTopic == page ? .isSelected : [])
                     .accessibilityIdentifier("settings.topic.\(page.rawValue)")
                 }
+            } header: {
+                SettingsSectionHeader("Household")
+            }
+            Section {
                 Button { showsHomeAssistant = true } label: {
                     SettingsLinkRow(
                         title: HomeAssistantSettingsView.linkTitle,
@@ -63,6 +69,8 @@ struct SettingsScreen: View {
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("settings.homeAssistant")
                 .accessibilityHint("Opens server, account and sign-out options.")
+            } footer: {
+                FormFooter("Server, account and Home Assistant's own settings pages.")
             }
             Section {
                 NavigationLink {
@@ -82,8 +90,9 @@ struct SettingsScreen: View {
     }
 }
 
-/// One settings topic: icon, bold title and a wrapping subtitle, like the web's `SettingsLink`
-/// (`DashboardViewPage.tsx` `SettingsLink`), with the platform disclosure chevron.
+/// One settings topic: icon, title and a wrapping subtitle, like the web's `SettingsLink`
+/// (`DashboardViewPage.tsx` `SettingsLink`), with the platform disclosure chevron. Direction G rows (mockup n1
+/// settings): a grey glyph, a 17 pt Regular title and a 15 pt secondary subtitle.
 struct SettingsLinkRow: View {
     var title: String
     var subtitle: String
@@ -94,14 +103,14 @@ struct SettingsLinkRow: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
+        HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
             // At accessibility sizes the icon sits above the text, so the text keeps the row's width (beside
             // it, the Vacation row grew to 749 pt on the folded iPhone Duo at AX5, 2026-10-11).
             if !typeSize.isAccessibilitySize { icon }
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+            VStack(alignment: .leading, spacing: 2) {
                 if typeSize.isAccessibilitySize { icon }
                 Text(title)
-                    .font(.headline)
+                    .font(.body)
                     .foregroundStyle(HassTokens.Ink.primary)
                     // Wraps instead of truncating in the half-width split pane at large sizes (iPad
                     // landscape audit, 2026-10-11: "Home Assistant Settings" may be clipped).
@@ -128,7 +137,7 @@ struct SettingsLinkRow: View {
     private var icon: some View {
         Image(systemName: symbol)
             .font(.title3)
-            .foregroundStyle(.tint)
+            .foregroundStyle(HassTokens.Ink.secondary)
             .frame(minWidth: 28)
             .accessibilityHidden(true)
     }

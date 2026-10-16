@@ -52,6 +52,28 @@ public enum RoomOverview {
         }
     }
 
+    /// The sheet's name, without the web's count (direction G puts the count in ``sheetSubtitle(_:read:)``).
+    public static func sheetName(_ kind: RoomOverviewKind) -> String {
+        kind == .lights ? "Lights" : sheetTitle(kind) { _ in nil }
+    }
+
+    /// The one-line state under the sheet's name (`.agents/design/direction-g.md`, Sheets; mockup n2): "3 of 12 On",
+    /// "2 Rooms Occupied", "2 Open". Nil where the sheet's tiles already carry the figures (Climate, Air Quality).
+    public static func sheetSubtitle(_ kind: RoomOverviewKind, read: Read) -> String? {
+        switch kind {
+        case .lights:
+            let on = activeLightCount(read: read)
+            return on == 0 ? "All Off" : "\(on) of \(lightEntityIds.count) On"
+        case .occupancy:
+            let rooms = groups(.occupancy).count(where: { occupiedCount($0, read: read) > 0 })
+            return rooms == 0 ? "All Clear" : "\(rooms) \(rooms == 1 ? "Room" : "Rooms") Occupied"
+        case .contacts:
+            return contactCountSummary(openContactCount(read: read))
+        case .climate, .airQuality:
+            return nil
+        }
+    }
+
     /// The overview's sections: Lights and Occupancy split rooms by state (active first, empty sections dropped);
     /// the rest list every room under "Rooms" (web `GroupedRoomOverview`, `RoomsHeader`).
     public static func sections(_ kind: RoomOverviewKind, read: Read) -> [RoomOverviewSection] {

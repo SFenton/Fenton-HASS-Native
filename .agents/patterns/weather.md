@@ -20,7 +20,7 @@ Web source: `ha-sfenton-react-dash@f5a7bf9` `src/components/hass/WeatherSummary.
 
 ## Accessibility rules
 
-- The card's header is the one button ("Open seven-day weather forecast. Rain, 72°F"); the rest of the card also opens the sheet by tap, but only the header is a button for assistive technology. Hours, the Today row and the page indicator are separate elements.
+- The card's header is the one button ("Open seven-day weather forecast. Rain, 72°F"); the rest of the card also opens the sheet by tap, but only the header is a button for assistive technology. Hours, today's high and low and the page indicator are separate elements.
 - Hours, days and tiles speak the web's aria-labels (`7 PM Rain 62°F`, `Mon precipitation 0.1 in 40%`, `Wind 9 mph; Gusts 14 mph; From west-southwest, 250 degrees`). Charts and gauges are hidden; their tile speaks the series.
 - Mode buttons are labelled "Conditions", "Precipitation", "Wind" with an `isSelected` trait; the web's label ("Conditions conditions") reads awkwardly with a selected state.
 - Text colours are `HassTokens.Ink.onDark` / `onDarkSecondary` over gradients whose lightest stop is at least 5.6:1 against white (checked by `WeatherViewTests.backdropsAreDarkEnoughForWhiteText`).

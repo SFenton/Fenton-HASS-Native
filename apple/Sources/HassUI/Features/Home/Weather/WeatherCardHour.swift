@@ -2,7 +2,8 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// One hour in the Home card's carousel: time, glyph and temperature (web hero hourly item).
+/// One hour in the Home card's carousel: time, glyph and temperature (web hero hourly item; direction G mockup n1
+/// home sets the weights).
 struct WeatherCardHour: View {
     var forecast: WeatherForecast
     var index: Int
@@ -11,15 +12,15 @@ struct WeatherCardHour: View {
     var body: some View {
         VStack(spacing: HassTokens.Spacing.xs) {
             Text(WeatherFormat.hourLabel(forecast.datetime, index: index))
-                .font(.caption2.weight(.heavy))
+                .font(.footnote.weight(.semibold))
                 .multilineTextAlignment(.center)
             WeatherGlyph(condition: forecast.condition, size: 22)
             Text(WeatherFormat.degree(forecast.temperature))
-                .font(.caption.weight(.bold))
+                .font(.body.weight(.medium))
                 .monospacedDigit()
         }
         .foregroundStyle(HassTokens.Ink.onDark)
-        .frame(maxWidth: .infinity, minHeight: 62)
+        .frame(maxWidth: .infinity, minHeight: 72)
         .padding(.vertical, HassTokens.Spacing.xs)
         .contentShape(.rect)
         .accessibilityElement(children: .ignore)

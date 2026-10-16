@@ -209,7 +209,8 @@ private extension QuickLink.Action {
     }
 }
 
-/// One Quick Links tile (web `QuickLinkTile`): a disclosure tile, tinted by the alarm state for Security System.
+/// One Quick Links tile (web `QuickLinkTile`): a dark disclosure tile with its glyph in the page's colour family
+/// (direction G mockup n1 quick links); Security System's glyph follows the alarm mode.
 struct QuickLinkTile: View {
     var link: QuickLink
     var action: () -> Void = {}
@@ -224,14 +225,27 @@ struct QuickLinkTile: View {
         }
     }
 
+    /// The colour family a link's glyph takes (`.agents/design/direction-g.md`, Colour families). Rooms and Food have
+    /// none; Security System follows the alarm mode, and is neutral while redacted so screenshots don't show it.
+    static func family(_ link: QuickLink, alarmState: String?) -> ColorFamily {
+        switch link.id {
+        case "security-system": ScreenshotPrivacy.isRedacting ? ColorFamily.neutral : ColorFamily.security(alarmState: alarmState) ?? .neutral
+        case "vacuums": .cleaning
+        case "media": .media
+        case "custom-lights": .lights
+        case "sprinklers": .water
+        default: .neutral
+        }
+    }
+
     var body: some View {
         let state = link.entityId.flatMap { store.entity($0).state }
         let security = link.id == "security-system" ? QuickLinks.securityAppearance(state?.state) : nil
-        let subtitle = Self.subtitle(link, store: store)
-        let wash: Color? = security.map { $0.color.color.opacity(0.5) } ?? link.backgroundColor?.color
-        GlassTile(title: link.title, subtitle: subtitle, symbol: SymbolMap.symbol(for: security?.icon ?? link.icon),
-                  tint: link.tone.color, isActive: true, kind: .navigate,
-                  wash: ScreenshotPrivacy.isRedacting && security != nil ? nil : wash, action: action)
+        // A navigation tile is never "on": the off face keeps the tile dark with its glyph in the family colour.
+        GlassTile(title: link.title, subtitle: Self.subtitle(link, store: store),
+                  // Redacted screenshots keep the plain shield, so the glyph can't give the alarm mode away.
+                  symbol: SymbolMap.symbol(for: ScreenshotPrivacy.isRedacting ? link.icon : security?.icon ?? link.icon),
+                  family: Self.family(link, alarmState: state?.state), isActive: false, kind: .navigate, action: action)
     }
 }
 
@@ -273,8 +287,9 @@ struct RoomNavigationGrid: View {
     var body: some View {
         DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
             ForEach(RoomNavigation.ranked { store.entity($0).state?.state }) { item in
-                GlassTile(title: item.title, symbol: SymbolMap.symbol(for: item.icon), tint: item.color.color,
-                          isActive: true, kind: .navigate, wash: item.color.color.opacity(0.45)) { open(item) }
+                // Rooms have no colour of their own (direction G, Colour families).
+                GlassTile(title: item.title, symbol: SymbolMap.symbol(for: item.icon), family: .neutral,
+                          isActive: false, kind: .navigate) { open(item) }
                     .accessibilityHint("Opens the \(item.title) page")
                     .accessibilityIdentifier("rooms.\(item.path)")
             }

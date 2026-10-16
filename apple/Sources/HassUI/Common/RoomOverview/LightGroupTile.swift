@@ -38,7 +38,7 @@ struct LightGroupTile: View {
                 title: title,
                 subtitle: state.map { $0.isUnavailable ? "Unavailable" : (on ? "On" : "Off") },
                 symbol: "lightbulb",
-                tint: HassTokens.Tint.light,
+                family: .lights,
                 isActive: on,
                 isUnavailable: unavailable
             ) {

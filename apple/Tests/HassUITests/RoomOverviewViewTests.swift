@@ -71,4 +71,28 @@ struct RoomOverviewViewTests {
         #expect(RoomOverviewStyle.contactSymbol(window: false, open: false) == SymbolMap.symbol(for: "mdi:door"))
         for kind in RoomOverviewKind.allCases { _ = RoomOverviewStyle.tint(kind) }
     }
+
+    /// Direction G faces: lights, occupancy and doors fill while active; climate and air quality always stay dark.
+    @Test func onlyStatefulKindsFill() {
+        for kind in [RoomOverviewKind.lights, .occupancy, .contacts] {
+            #expect(RoomOverviewStyle.isFilled(kind, active: true))
+            #expect(!RoomOverviewStyle.isFilled(kind, active: false))
+        }
+        for kind in [RoomOverviewKind.climate, .airQuality] {
+            #expect(!RoomOverviewStyle.isFilled(kind, active: true))
+        }
+    }
+
+    /// Quick Links glyphs take their page's colour family, and Security System follows the alarm mode.
+    @Test func quickLinkFamilies() {
+        func link(_ id: String) -> QuickLink { QuickLinks.items.first { $0.id == id }! }
+        #expect(QuickLinkTile.family(link("rooms"), alarmState: nil) == .neutral)
+        #expect(QuickLinkTile.family(link("food"), alarmState: nil) == .neutral)
+        #expect(QuickLinkTile.family(link("vacuums"), alarmState: nil) == .cleaning)
+        #expect(QuickLinkTile.family(link("media"), alarmState: nil) == .media)
+        #expect(QuickLinkTile.family(link("custom-lights"), alarmState: nil) == .lights)
+        #expect(QuickLinkTile.family(link("sprinklers"), alarmState: nil) == .water)
+        #expect(QuickLinkTile.family(link("security-system"), alarmState: "armed_home") == .securityHome)
+        #expect(QuickLinkTile.family(link("security-system"), alarmState: "arming") == .neutral)
+    }
 }

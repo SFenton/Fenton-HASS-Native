@@ -24,8 +24,11 @@ struct RoomOverviewSheet: View {
                     .frame(maxWidth: .infinity)
             }
             .modalChrome()
-            .navigationTitle(RoomOverview.sheetTitle(kind, read: read))
+            // Direction G: the name centred, its state in the subtitle ("Lights", "3 of 12 On"). Before iOS 26, which
+            // has no navigation subtitle, the title keeps the web's count.
+            .navigationTitle(Self.title(kind, read: read))
             .inlineNavigationTitle()
+            .sheetSubtitle(RoomOverview.sheetSubtitle(kind, read: read))
             .navigationDestination(for: RoomGroup.self) { group in
                 RoomGroupDetailPage(kind: kind, group: group) { dismiss() }
                     .modalChrome()
@@ -38,4 +41,9 @@ struct RoomOverviewSheet: View {
     }
 
     private func read(_ id: String) -> EntityState? { store.entity(id).state }
+
+    /// The sheet's title: its name where the subtitle carries the state, else the web's title with its count.
+    static func title(_ kind: RoomOverviewKind, read: RoomOverview.Read) -> String {
+        SheetSubtitle.isShown ? RoomOverview.sheetName(kind) : RoomOverview.sheetTitle(kind, read: read)
+    }
 }

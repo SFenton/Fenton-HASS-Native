@@ -2,7 +2,9 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// One room card in an overview: the room's state, washed with its color while active, opening its detail page.
+/// One room card in an overview: the room's state, opening its detail page. Direction G faces
+/// (``RoomOverviewStyle/isFilled(_:active:)``): a room with lights on is the lit tile, an occupied room or one with a
+/// door open fills with its family colour, and the rest stay dark with the family glyph.
 struct RoomOverviewTile: View {
     var kind: RoomOverviewKind
     var group: RoomGroup
@@ -16,10 +18,9 @@ struct RoomOverviewTile: View {
             title: group.room,
             subtitle: redact ? "Hidden" : RoomOverview.cardSubtitle(kind, group, read: read),
             symbol: symbol(active: active && !redact),
-            tint: RoomOverviewStyle.tint(kind),
-            isActive: active && !redact,
+            family: RoomOverviewStyle.family(kind),
+            isActive: RoomOverviewStyle.isFilled(kind, active: active && !redact),
             kind: .navigate,
-            wash: active && !redact ? RoomOverview.cardColor(kind, group, read: read).color.opacity(0.45) : nil,
             action: action
         )
         .accessibilityHint("Opens \(RoomOverview.detailTitle(kind, group))")
