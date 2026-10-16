@@ -73,4 +73,6 @@ Add a row here and in `isSystemDrawn` together, with the evidence.
 
 ## Open findings
 
-None yet.
+- **Vacuums, live, iPhone at default settings (2026-10-15):** two element-less "Contrast failed" issues on the signed-in Vacuums page. Every text, button and tab item on it measures 5.5:1 or better rendered; the page passes under Reduce Transparency alone and Increase Contrast alone, and in the gallery (docked and unavailable scenarios). Not attributed to an element, so it is cleared only by the evidence waiver above. Next step: find the element (a diagnostic build that colours candidates, or Xcode's Accessibility Inspector on the live page).
+- **Camera tiles, Security, folded Duo (2026-10-16):** the audit's element-less contrast issues there may be the clock burned into the camera snapshot, which the app does not draw. Unconfirmed; the same waiver clears them.
+- **Not run:** unfolded Duo (the pose cannot be set from here), iPad Reduce Transparency/Increase Contrast on the sheets, and any iOS 17 to 25 fallback.
