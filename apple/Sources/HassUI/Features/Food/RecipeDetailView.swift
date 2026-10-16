@@ -399,7 +399,6 @@ struct GroceryAction: View {
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(model.groceryDisabledReason != nil)
-                .accessibilityHint(model.groceryDisabledReason == nil ? Self.explanation : "")
                 .accessibilityIdentifier("recipe.grocery.add")
                 if let reason = model.groceryDisabledReason {
                     Text(reason).font(.footnote).foregroundStyle(HassTokens.Ink.secondary)

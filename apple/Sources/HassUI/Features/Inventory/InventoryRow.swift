@@ -109,7 +109,6 @@ struct InventoryRow: View {
                 .foregroundStyle(HassTokens.Surface.secondaryOnModule)
                 .padding(.trailing, HassTokens.Spacing.xs)
                 .accessibilityHidden(true)
-                .accessibilityIdentifier("inventory.row.quantity")
         }
     }
 

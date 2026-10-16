@@ -65,6 +65,19 @@ public struct ContentGate<Content: View>: View {
         .task(id: Input(isReady: isReady, settled: model.tracker.isSettled)) {
             await model.advance(isReady: isReady, reduceMotion: reduceMotion)
         }
+        .onChange(of: phase) { old, new in
+            // The content was hidden from VoiceOver while it loaded: tell it the layout changed so focus lands on the page.
+            if new == .idle, old != .idle { Self.announceLayoutChange() }
+        }
+    }
+}
+
+extension ContentGate {
+    /// Posts `layoutChanged` once hidden content appears.
+    static func announceLayoutChange() {
+        #if os(iOS)
+        UIAccessibility.post(notification: .layoutChanged, argument: nil)
+        #endif
     }
 }
 
