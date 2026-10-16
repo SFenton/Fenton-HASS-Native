@@ -18,6 +18,10 @@ Rules:
 - Optimistic UI goes through `OptimisticActions` ([optimistic-actions](../../patterns/optimistic-actions.md)): the intent shows until the matching live state arrives, the call fails, or the revert time passes.
 - Pages that load asynchronously wait behind a [content gate](../../patterns/content-gate.md); a gate that starts ready never shows a spinner.
 
+## Resume rule
+
+Every resume-time registration is idempotent and torn down on background (or released with its owner): `connect()` twice is one states subscription, `didEnterBackground()` twice is one pending disconnect, a block observer is removed in `deinit`. The scene phase can change dozens of times a day on a phone that stays alive (location and push relaunches keep the process), so anything a resume adds and a background doesn't take away becomes steady cost. Owner report 2026-10-16: scrolling got worse after every background and foreground. How to add and check a registration, the heap method for system objects and what the investigation found: [resume-lifecycle](../../patterns/resume-lifecycle.md). Gauges: `HassConnection.liveResources`, `ConnectionLifecycle.liveResources`; tests `HassCoreTests/ResumeLifecycleTests.swift`, journey `ResumeCyclesJourneyTests`.
+
 ## Camera streams
 
 HAKit loses commands across a socket reset, and the old restart ran straight from `willEnterForeground` (before the app was active and before the socket was back). Evidence, simulator, 2026-10-16: after 60 s in the background the trace read `pool foreground, connection disconnected`, then `open webRTC` for all four cameras and never `opened`: `auth/sign_path` had been requested on a socket that was being replaced, HAKit dropped it without calling its completion (`HARequestControllerImpl.resetActive` removes `shouldRetry: false` requests), and `sendCommand` awaited forever. The tiles stayed on the snapshot; Home's tiles also sat on a black frame reading "Live" between background and restart because a stopped model kept its live phase.
