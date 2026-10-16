@@ -66,6 +66,15 @@ enum RenderedContrast {
         return rect
     }
 
+    /// The WCAG relative luminance (0 black, 1 white) of the pixel under a screen point, or nil when the point is
+    /// off the capture. For asserting that a sheet is light or dark.
+    static func luminance(at point: CGPoint, in capture: Capture) -> Double? {
+        let x = Int(point.x * capture.scale), y = Int(point.y * capture.scale)
+        guard x >= 0, y >= 0, x < capture.width, y < capture.height else { return nil }
+        let i = (y * capture.width + x) * 4
+        return luminance(capture.pixels[i], capture.pixels[i + 1], capture.pixels[i + 2])
+    }
+
     /// WCAG contrast of the text against its surface inside `frame` (screen points), or nil when the
     /// frame is empty or off the capture (then there is no evidence and the issue stays open).
     static func ratio(of frame: CGRect, in capture: Capture) -> Double? {

@@ -101,6 +101,8 @@ public struct HassModal<Content: View>: View {
                 #endif
                 .toolbar { SheetCloseItem(identifier: closeIdentifier) { onClose?() ?? dismiss() } }
         }
+        // Sheets follow the system appearance while pages stay dark (``SystemAppearance``).
+        .followsSystemAppearance()
     }
 }
 
@@ -123,15 +125,19 @@ public extension View {
     }
 
     /// Presents this modal at full height on iPhone with a visible grabber (owner, 2026-10-13: "All modals
-    /// (security system, cameras, etc.) need to open to full height on iPhone"), the one sheet sizing API.
+    /// (security system, cameras, etc.) need to open to full height on iPhone"), the one sheet sizing API. It also
+    /// draws the sheet in the system appearance, light or dark, while the pages behind stay dark
+    /// (``SwiftUICore/View/followsSystemAppearance()``).
     ///
     /// Every sheet names its iPad size (plan Phase 4, decision 4; HIG: Sheets, "Prefer page or form sheet styles in an
     /// iPadOS app"): `.page` for viewing and control sheets with tile grids, dials, maps or a second column, `.form`
     /// for lists, editors and prompts. The default is `.form`, so a sheet that forgets still gets a narrow, readable
     /// sheet rather than the system's full-screen-ish default; choose `.page` explicitly when the content has columns.
-    /// - Parameter width: The iPad sheet size: a form sheet or a page sheet. No effect on iPhone.
-    func hassSheet(_ width: HassSheetWidth = .form) -> some View {
-        modifier(HassSheetPresentation(width: width))
+    /// - Parameters:
+    ///   - width: The iPad sheet size: a form sheet or a page sheet. No effect on iPhone.
+    ///   - appearance: Follow the system (default), or stay dark for a sheet drawn over a photo or gradient (Weather).
+    func hassSheet(_ width: HassSheetWidth = .form, appearance: HassSheetAppearance = .system) -> some View {
+        modifier(HassSheetPresentation(width: width, appearance: appearance))
     }
 
     /// Only the iPad sheet size, for sheets that keep their own detents (a short prompt that opens at the medium
@@ -150,12 +156,22 @@ public enum HassSheetWidth: Sendable, Equatable {
     case page
 }
 
-/// Implementation of ``SwiftUI/View/hassSheet(_:)``.
+/// How a ``SwiftUI/View/hassSheet(_:appearance:)`` modal chooses light or dark.
+public enum HassSheetAppearance: Sendable {
+    /// The user's system appearance (``SystemAppearance``): light or dark.
+    case system
+    /// Always dark: a sheet whose backdrop is a photo or gradient (Weather).
+    case dark
+}
+
+/// Implementation of ``SwiftUI/View/hassSheet(_:appearance:)``.
 private struct HassSheetPresentation: ViewModifier {
     var width: HassSheetWidth
+    var appearance: HassSheetAppearance
 
     func body(content: Content) -> some View {
         content
+            .modifier(SheetAppearanceModifier(appearance: appearance))
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .hassSheetSizing(width)
@@ -179,6 +195,20 @@ private struct HassSheetSizing: ViewModifier {
             content
         }
         #endif
+    }
+}
+
+/// Applies a sheet's appearance: the system's, or dark. The shell forces dark for the pages behind, so a system sheet
+/// states the user's appearance explicitly (``SystemAppearance``).
+private struct SheetAppearanceModifier: ViewModifier {
+    var appearance: HassSheetAppearance
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        switch appearance {
+        case .system: content.followsSystemAppearance()
+        case .dark: content.preferredColorScheme(.dark)
+        }
     }
 }
 

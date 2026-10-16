@@ -432,7 +432,7 @@ struct EcoOptionDetail: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 Image(systemName: "checkmark")
                                     .font(.body.weight(.semibold))
-                                    .foregroundStyle(Color(rgb: HassTokens.Palette.tintText))
+                                    .foregroundStyle(HassTokens.Ink.action)
                                     .opacity(isSelected ? 1 : 0)
                                     .accessibilityHidden(true)
                             }
@@ -512,7 +512,7 @@ struct TrackingRoomsDetail: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                 Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
                                     .font(.title3)
-                                    .foregroundStyle(isOn ? Color(rgb: HassTokens.Palette.tintText) : HassTokens.Surface.secondaryInSheet)
+                                    .foregroundStyle(isOn ? HassTokens.Ink.action : HassTokens.Surface.secondaryInSheet)
                                     .opacity(controller.isUnavailable(id) ? 0.5 : 1)
                                     .accessibilityHidden(true)
                             }

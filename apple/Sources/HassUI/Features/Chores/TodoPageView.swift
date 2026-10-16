@@ -140,6 +140,7 @@ struct TodoSheetSizing: ViewModifier {
     func body(content: Content) -> some View {
         if isShortPrompt && !typeSize.isAccessibilitySize {
             content
+                .followsSystemAppearance()
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .hassSheetSizing(.form)

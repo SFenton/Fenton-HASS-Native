@@ -13,8 +13,9 @@ enum RemoteStyle {
     static let media = Color(red: 0.36, green: 0.42, blue: 0.95)
     /// Power icon while the device is on (direction G red, web `red`).
     static let powerOn = HassTokens.Ink.danger
-    /// Power icon while the device is off (web `green`).
-    static let powerOff = Color.green
+    /// Power icon while the device is off (web `green`): system green on dark, a deeper green on a light sheet (system
+    /// green is 2.3:1 on white).
+    static let powerOff = HassTokens.Ink.success
 
     /// The SF Symbol for a button's MDI icon.
     static func symbol(_ mdi: String) -> String { SymbolMap.symbol(for: mdi) }
@@ -110,7 +111,7 @@ struct RemoteButtonIcon: View {
         switch tone {
         case .active: RemoteStyle.powerOn
         case .inactive: RemoteStyle.powerOff
-        case nil: .white
+        case nil: HassTokens.Ink.primary
         }
     }
 }
@@ -361,7 +362,7 @@ struct RemoteControlsTab: View {
             HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
                 Text(config.volumeTitle)
                     .font(.headline)
-                    .foregroundStyle(HassTokens.Ink.onDark)
+                    .foregroundStyle(HassTokens.Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityHidden(true)

@@ -42,6 +42,9 @@ public struct RootView: View {
             }
         }
         .observesDeviceSignals()
+        // The user's appearance for sheets: the shell and the galleries force dark for their pages, which hides it
+        // from their own environment (`SystemAppearance`).
+        .publishesSystemAppearance()
         .task {
             // Telemetry (`.agents/patterns/telemetry.md`): MetricKit's daily reports, and the image cache kept
             // under its disk budget.

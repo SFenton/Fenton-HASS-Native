@@ -70,6 +70,8 @@ public struct FilterSheet<Content: View>: View {
                 }
             }
         }
+        // The system appearance while the pages behind stay dark (``SystemAppearance``).
+        .followsSystemAppearance()
         // Full height like every modal (owner, 2026-10-13; `.agents/patterns/modal-sheet.md`); half a sheet also
         // clipped rows at the sheet's edge at AX5.
         .presentationDetents(detents ?? [.large])

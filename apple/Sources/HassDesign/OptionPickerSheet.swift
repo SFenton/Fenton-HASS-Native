@@ -81,6 +81,8 @@ public struct OptionPickerSheet: View {
             .toolbar { SheetCloseItem { dismiss() } }
         }
         .tint(HassTokens.Ink.action)
+        // The system appearance while the pages behind stay dark (``SystemAppearance``).
+        .followsSystemAppearance()
         #if os(iOS)
         // Opaque at every detent: the medium detent's glass let a page's colored tiles show through the rows
         // and fail text contrast (HIG: Sheets; Accessibility, Color and effects).

@@ -17,10 +17,11 @@ public struct PrimaryButtonStyle: ButtonStyle {
         PrimaryButtonBody(configuration: configuration, colors: Self.colors(family))
     }
 
-    /// The fill and label colours: the tint with white, or a family's glyph colour with dark text.
+    /// The fill and label colours: the tint with white, or a family's glyph colour with dark text. Both are fixed, in
+    /// light and dark sheets alike (the family's dark-appearance glyph, not its light-sheet variant).
     static func colors(_ family: ColorFamily?) -> (fill: Color, label: Color) {
         guard let family else { return (HassTokens.Ink.actionFill, .white) }
-        return (family.glyph, Color(rgb: HassTokens.Palette.sheetGround))
+        return (Color(rgb: family.spec.glyph), Color(rgb: HassTokens.Palette.sheetGround))
     }
 }
 
