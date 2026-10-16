@@ -17,7 +17,7 @@ public enum SystemAppearance {
     /// The scheme sheets draw in.
     /// - Parameters:
     ///   - override: ``overrideKey``'s value, if any.
-    ///   - system: The window scene's own scheme, or nil when it cannot be read yet.
+    ///   - system: The display's own scheme, or nil when it cannot be read yet.
     /// - Returns: The override when it is `light` or `dark`, else the system scheme, else dark (the shell's own).
     public static func resolve(override: String?, system: ColorScheme?) -> ColorScheme {
         switch override?.lowercased() {
