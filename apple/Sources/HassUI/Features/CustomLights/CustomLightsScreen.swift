@@ -35,16 +35,14 @@ public struct CustomLightsScreen: View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
                 RoomSectionHeader(title: CustomLightsConfig.frontYardTitle)
-                VStack(alignment: .leading, spacing: 0) {
+                ModuleList {
                     ManualControlRow(isOn: manualOn, isUnavailable: manual?.isUnavailable ?? true) {
                         send(CustomLightsConfig.setManualControl(on: $0))
                     }
                     if manualOn {
-                        Divider().padding(.leading, HassTokens.Spacing.l)
                         LightingModeButton(mode: mode, swatch: swatch(mode)) { picker = true }
                     }
                 }
-                .module()
                 if showsLights {
                     DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
                         ForEach(CustomLightsConfig.lights) { light in
@@ -106,55 +104,34 @@ public struct CustomLightsScreen: View {
 
 // MARK: - Front yard rows
 
-/// The manual control switch, the first row of the Front Yard module (direction G: switches only in list rows).
+/// The manual control switch, the first row of the Front Yard list (direction G: switches only in list rows).
 struct ManualControlRow: View {
+    static let title = "Manually Control Front Yard Lights"
     var isOn: Bool
     var isUnavailable: Bool
     var set: (Bool) -> Void
 
     var body: some View {
-        Toggle(isOn: Binding(get: { isOn }, set: set)) {
-            Label {
-                Text("Manually Control Front Yard Lights")
-                    .foregroundStyle(HassTokens.Ink.onDark)
-                    .fixedSize(horizontal: false, vertical: true)
-            } icon: {
-                Image(systemName: "lightbulb.2")
-                    .foregroundStyle(isOn ? ColorFamily.lights.glyph : ColorFamily.lights.offGlyph)
-                    .accessibilityHidden(true)
-            }
+        ModuleRow(Self.title, symbol: "lightbulb.2", glyph: isOn ? ColorFamily.lights.glyph : ColorFamily.lights.offGlyph,
+                  glyphOpacity: isUnavailable ? 0.5 : 1) {
+            Toggle(Self.title, isOn: Binding(get: { isOn }, set: set))
+                .labelsHidden()
+                .disabled(isUnavailable)
+                .accessibilityIdentifier("customLights.manual")
         }
-        .disabled(isUnavailable)
-        .padding(.horizontal, HassTokens.Spacing.l)
-        .padding(.vertical, HassTokens.Spacing.s)
-        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-        .accessibilityIdentifier("customLights.manual")
     }
 }
 
-/// The Lighting Mode row: palette icon, the mode's swatch and name in the tint, and the pop-up chevrons
+/// The Lighting Mode row: palette icon, then the mode's swatch and name in the tint with the pop-up chevrons
 /// (web `modeSelect`). It opens the lighting modes.
 struct LightingModeButton: View {
     var mode: String
     var swatch: [CustomLightsConfig.RGB]
     var action: () -> Void
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Button(action: action) {
-            // The value moves under the title at accessibility sizes, where one row has no room for both.
-            let layout = typeSize.isAccessibilitySize
-                ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.xs))
-                : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.m))
-            layout {
-                HStack(spacing: HassTokens.Spacing.m) {
-                    Image(systemName: "paintpalette")
-                        .foregroundStyle(HassTokens.Surface.secondaryOnModule)
-                    Text(CustomLightsConfig.lightingModeTitle)
-                        .foregroundStyle(HassTokens.Ink.onDark)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: HassTokens.Spacing.s)
+            ModuleRow(CustomLightsConfig.lightingModeTitle, symbol: "paintpalette") {
                 HStack(spacing: HassTokens.Spacing.s) {
                     GradientSwatch(colors: swatch.map(Color.init(rgb:)))
                     Text(mode)
@@ -165,12 +142,8 @@ struct LightingModeButton: View {
                         .foregroundStyle(HassTokens.Ink.action)
                 }
             }
-            .padding(.horizontal, HassTokens.Spacing.l)
-            .padding(.vertical, HassTokens.Spacing.s)
-            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ModuleRowButtonStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(CustomLightsConfig.lightingModeTitle)
         .accessibilityValue(mode)

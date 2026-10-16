@@ -67,7 +67,8 @@ struct CustomLightSheet: View {
 
     /// The color, Reset to Warm White and Apply to All Lights, as rows of one inset group on the sheet.
     private func colorSection(rgb: CustomLightsConfig.RGB?, unavailable: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+        // On the sheet's #2C2C2E cell (modalChrome sets the tile surface); hairlines start at the row margin.
+        ModuleList(hasGlyphs: false) {
             ColorPicker(selection: colorBinding(rgb), supportsOpacity: false) {
                 Label("Color", systemImage: "paintpalette")
                     .foregroundStyle(HassTokens.Ink.primary)
@@ -76,18 +77,15 @@ struct CustomLightSheet: View {
             .frame(minHeight: 52)
             .disabled(unavailable)
             .accessibilityIdentifier("customLight.color")
-            Divider().padding(.leading, HassTokens.Spacing.l)
             actionRow("Reset to Warm White", symbol: "arrow.counterclockwise", id: "customLight.reset") {
                 caller.fire(CustomLightsConfig.reset(light.entityId))
             }
             .disabled(unavailable)
-            Divider().padding(.leading, HassTokens.Spacing.l)
             actionRow("Apply to All Lights", symbol: "lightbulb.2", id: "customLight.applyAll") {
                 if let rgb { caller.fire(CustomLightsConfig.setColor(rgb, on: CustomLightsConfig.groupEntityId)) }
             }
             .disabled(unavailable || rgb == nil)
         }
-        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.module, style: .continuous))
     }
 
     /// A row that runs an action, its title in the tint (direction G: Reset is a list row, not a grey button).

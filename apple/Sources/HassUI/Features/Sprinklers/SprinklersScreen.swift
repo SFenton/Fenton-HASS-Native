@@ -63,12 +63,12 @@ struct SprinklerControllerCard: View {
             if snapshot.batteryLow, let percent = snapshot.batteryPercent {
                 InlineAlert("\(controller.config.title) Battery \(SprinklerFormat.number(percent))%", symbol: "battery.25percent")
             }
-            VStack(alignment: .leading, spacing: 0) {
+            // Dense while the battery pill is orange (direction G, Layers: warm text on the thicker module).
+            ModuleList(snapshot.batteryLow ? .dense : .thin) {
                 // The row opens the sheet even while the controller is offline: its status lives there.
                 SprinklerControllerRow(title: controller.config.title, subtitle: format.subtitle(snapshot),
                                        isWatering: controller.isWatering, action: open)
                     .accessibilityIdentifier("sprinklers.controller.\(controller.id)")
-                Divider()
                 DynamicGridLayout(minCellWidth: minPillWidth, maxColumns: 2, spacing: 0) {
                     StatusPill(label: "Battery", value: format.battery(snapshot), symbol: "battery.100percent",
                                tone: snapshot.batteryLow ? .warning : .neutral, surface: .module)
@@ -80,7 +80,6 @@ struct SprinklerControllerCard: View {
                                surface: .module)
                 }
             }
-            .module()
         }
         .accessibilityElement(children: .contain)
     }
@@ -96,31 +95,11 @@ struct SprinklerControllerRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: HassTokens.Spacing.m) {
-                Image(systemName: SprinklerStyle.symbol)
-                    .font(.title3)
-                    .foregroundStyle(isWatering ? ColorFamily.water.glyph : ColorFamily.water.offGlyph)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(HassTokens.Ink.onDark)
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(isWatering ? ColorFamily.water.glyph : HassTokens.Surface.secondaryOnModule)
-                }
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(HassTokens.Surface.secondaryOnModule)
-                    .accessibilityHidden(true)
-            }
-            .padding(HassTokens.Spacing.l)
-            .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
-            .contentShape(Rectangle())
+            ModuleRow(title, subtitle: subtitle, symbol: SprinklerStyle.symbol,
+                      glyph: isWatering ? ColorFamily.water.glyph : ColorFamily.water.offGlyph,
+                      subtitleInk: isWatering ? ColorFamily.water.glyph : nil, showsChevron: true)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ModuleRowButtonStyle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
         .accessibilityValue(subtitle)

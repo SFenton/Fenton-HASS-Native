@@ -7,4 +7,4 @@
 - A row that does something is a `Button` around the row with `ModuleRowButtonStyle` (pressed highlight; disabled text never fades). Give the button the label, value and hint; hide a decorative accessory from VoiceOver.
 - Unavailable rows dim only the glyph (`glyphOpacity: 0.5`), like tiles.
 - Sheets use the system `Form` where they can. A sheet that can't be a `Form` (a map, a bottom section bar) can use the list: under `modalChrome()` (`tileSurface == .sheet`) it draws on the sheet cell colour instead of a module.
-- Users: Security's Doors and Mach-E lists, Climate's Thermostat Hub and Advanced Controls.
+- Users: Security's Doors and Mach-E lists, Climate's Thermostat Hub and Advanced Controls, Custom Lights' Front Yard list and light sheet colour group, Sprinklers' controller cards.
