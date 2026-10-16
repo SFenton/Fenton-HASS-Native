@@ -44,9 +44,11 @@ struct MainTabView: View {
         .background { HouseBackdrop() }
         // The window's full size, which the page backdrop photo fills on every page (``HouseBackdrop``).
         .background {
-            Color.clear
-                .ignoresSafeArea()
-                .onGeometryChange(for: CGSize.self) { $0.size } action: { canvas = $0 }
+            // Measured inside the safe area and grown by its insets: an `ignoresSafeArea()` here measured the
+            // safe-area rect (402 x 778 on an iPhone 18 Pro) and left the wallpaper ending above the tab bar.
+            Color.clear.onGeometryChange(for: CGSize.self) {
+                BackdropCanvas.size(container: $0.size, insets: $0.safeAreaInsets)
+            } action: { canvas = $0 }
         }
         // The status bar's height, for where the inline navigation bar ends (``headerEdgeCap``).
         .background {

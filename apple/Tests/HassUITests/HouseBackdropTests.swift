@@ -104,6 +104,38 @@ struct HouseBackdropTests {
         #expect(!FileManager.default.fileExists(atPath: old.path))
     }
 
+    /// The wallpaper filled only the safe-area rect (402 x 778 on an iPhone 18 Pro), leaving the bottom 96 pt plain
+    /// (owner, 2026-10-16). The canvas is the measured view plus every inset.
+    @Test func canvasIsTheWholeWindowNotTheSafeAreaRect() {
+        let phone = BackdropCanvas.size(container: CGSize(width: 402, height: 778),
+                                        insets: EdgeInsets(top: 62, leading: 0, bottom: 34, trailing: 0))
+        #expect(phone == CGSize(width: 402, height: 874))
+        let landscape = BackdropCanvas.size(container: CGSize(width: 1100, height: 760),
+                                            insets: EdgeInsets(top: 24, leading: 20, bottom: 20, trailing: 20))
+        #expect(landscape == CGSize(width: 1140, height: 804))
+    }
+
+    @Test func canvasWithoutInsetsIsTheContainerAndNegativeInsetsAreIgnored() {
+        #expect(BackdropCanvas.size(container: CGSize(width: 820, height: 1180), insets: EdgeInsets()) == CGSize(width: 820, height: 1180))
+        let odd = BackdropCanvas.size(container: CGSize(width: 100, height: 200),
+                                      insets: EdgeInsets(top: -5, leading: -5, bottom: 10, trailing: 0))
+        #expect(odd == CGSize(width: 100, height: 210))
+    }
+
+    #if DEBUG
+    /// The UI journeys' fixture photo stays far brighter than the plain base color under the densest scrim.
+    @Test func fixturePhotoIsBrighterThanTheBase() throws {
+        let photo = try #require(HouseBackdropStore.fixturePhoto())
+        #expect(photo.width == 480 && photo.height == 320)
+        let render = try #require(HouseBackdropStore.render(photo))
+        let data = try #require(render.dataProvider?.data as Data?)
+        let densest = 1 - 0.64
+        let brightest = Double(data.prefix(3).max() ?? 0) / 255 * densest
+        let base = 35.0 / 255 // the base color's brightest channel before any scrim
+        #expect(brightest > base * 1.5)
+    }
+    #endif
+
     @Test func scrimFollowsDirectionG() {
         // 0.44 → 0.40 (28%) → 0.42 (50%) → 0.52 → 0.64, darkest at the bottom behind the tab bar.
         let stops = HouseBackdropStyle.scrimStops
