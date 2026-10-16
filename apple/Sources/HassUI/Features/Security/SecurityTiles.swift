@@ -27,8 +27,8 @@ extension SecurityConfig {
 // MARK: - Garage door tile
 
 /// A garage door tile driven by ``GarageDoorController`` (web `GarageDoorTile.tsx`): the garage room cards draw it.
-/// The Security page shows the same door as a row (``GarageDoorRow``). Direction G: the contact family, filled while
-/// the door is open or moving, and the red error face after a failed command.
+/// The Security page's Doors section shows the same tile (``SecurityDoorTile``). Direction G: the contact family,
+/// filled while the door is open or moving, and the red error face after a failed command.
 struct GarageDoorTile: View {
     var tile: SecurityConfig.Tile
     var liveState: String?
@@ -49,7 +49,7 @@ struct GarageDoorTile: View {
         GlassTile(
             title: tile.title,
             subtitle: Self.subtitle(for: controller),
-            symbol: GarageDoorRow.symbol(for: controller),
+            symbol: Self.symbol(for: controller),
             family: .contact,
             isActive: !unavailable && controller.displayState != "closed",
             isUnavailable: unavailable,
@@ -58,8 +58,19 @@ struct GarageDoorTile: View {
         ) {
             controller.send()
         }
-        .accessibilityHint(GarageDoorRow.hint(for: controller))
+        .accessibilityHint(Self.hint(for: controller))
         .garageDoorFeedback(controller, title: tile.title, liveState: liveState, canSend: canSend)
+    }
+
+    /// The door's glyph: closed, or open while open or moving.
+    static func symbol(for controller: GarageDoorController) -> String {
+        SymbolMap.symbol(for: controller.displayState == "closed" || !controller.isAvailable ? "mdi:garage" : "mdi:garage-open")
+    }
+
+    /// What a tap does, from the live state.
+    static func hint(for controller: GarageDoorController) -> String {
+        guard controller.isAvailable else { return "" }
+        return GarageDoorController.command(for: controller.liveState)?.opens == true ? "Opens the door" : "Closes the door"
     }
 
     /// "Sending Open…" / "Sending Close…" while sending, "Error" after a failure, else the shown state.
@@ -82,7 +93,7 @@ struct GarageDoorTile: View {
 
 extension View {
     /// Feeds a garage door's live state and connection into its controller, and announces its feedback to VoiceOver
-    /// without moving focus (web `announcement`). Shared by ``GarageDoorTile`` and ``GarageDoorRow``.
+    /// without moving focus (web `announcement`). 
     func garageDoorFeedback(_ controller: GarageDoorController, title: String, liveState: String?, canSend: Bool) -> some View {
         modifier(GarageDoorFeedback(controller: controller, title: title, liveState: liveState, canSend: canSend))
     }
