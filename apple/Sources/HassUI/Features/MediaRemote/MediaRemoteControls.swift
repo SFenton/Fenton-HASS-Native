@@ -48,15 +48,17 @@ struct RoundButtonStyle: ButtonStyle {
         var diameter: CGFloat
         var fill: Color
         @Environment(\.isEnabled) private var isEnabled
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
         var body: some View {
+            // Pressed shrinks the key; with Reduce Motion it dims instead (opacity is allowed).
             configuration.label
                 .frame(width: diameter, height: diameter)
                 .background(fill, in: Circle())
                 .contentShape(Circle())
-                .scaleEffect(configuration.isPressed ? 0.94 : 1)
-                .opacity(isEnabled ? 1 : 0.4)
-                .animation(.snappy(duration: 0.12), value: configuration.isPressed)
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.94 : 1)
+                .opacity(isEnabled ? (configuration.isPressed && reduceMotion ? 0.7 : 1) : 0.4)
+                .motionSafeAnimation(.snappy(duration: 0.12), reduced: .easeInOut(duration: 0.1), value: configuration.isPressed)
         }
     }
 }
@@ -328,7 +330,7 @@ struct RemoteControlsTab: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Playback")
         }
-        .animation(.default, value: keyboard.isOpen)
+        .motionSafeAnimation(.default, value: keyboard.isOpen)
         .onChange(of: keyboard.isOpen) { _, open in fieldFocused = open }
         // Opened from the pad while another section showed (two columns): focus once the field is here.
         .onAppear { if keyboard.isOpen { fieldFocused = true } }

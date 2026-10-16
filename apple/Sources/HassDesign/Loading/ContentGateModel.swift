@@ -117,6 +117,8 @@ public final class ContentGateModel {
         withAnimation(.easeIn(duration: Timing.spinnerEnter.seconds)) { spinnerShown = true }
     }
 
+    /// Fades the content in. Only opacity animates here: `ContentGate` drops its 4 pt rise when Reduce Motion is on,
+    /// so these `withAnimation` blocks are cross-fades then, which Reduce Motion allows.
     private func enter(reduceMotion: Bool) async {
         withAnimation(.easeOut(duration: Timing.contentEnter.seconds)) {
             phase = .entering

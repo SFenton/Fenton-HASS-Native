@@ -69,7 +69,7 @@ struct RecipesScreen: View {
             if !collection.searchText.isEmpty { searchExpanded = true }
         }
         .onChange(of: collection.announcement) { _, text in announce(text) }
-        .animation(.snappy, value: split && detail != nil)
+        .motionSafeAnimation(.snappy, reduced: .easeInOut(duration: 0.2), value: split && detail != nil)
     }
 
     // MARK: - Results

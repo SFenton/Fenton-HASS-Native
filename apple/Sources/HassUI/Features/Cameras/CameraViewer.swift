@@ -254,7 +254,7 @@ struct CameraControlButton: View {
                 Image(systemName: symbol)
                     .font(.title2)
                     .symbolEffect(.pulse, options: .repeating, isActive: pulses && !reduceMotion)
-                    .contentTransition(.symbolEffect(.replace))
+                    .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
                     .foregroundStyle(isActive ? tint : HassTokens.Ink.primary)
                     .frame(width: max(circle, HassTokens.minTarget), height: max(circle, HassTokens.minTarget))
                     .background {
