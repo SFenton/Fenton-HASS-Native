@@ -30,16 +30,19 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
     ///   - name: The page, for screenshot names.
     ///   - settings: System settings to run under.
     ///   - rootTitle: A tab root's navigation title, which turns on the reading-order check.
+    ///   - appearance: The sheets' appearance, `light` or `dark`. Sheets follow the system appearance and a simulator
+    ///     pool member can be left in either, so every sweep pins it: the runner's (`--appearance`), else light.
     ///   - open: Navigates from a fresh signed-in launch to the page.
-    private func sweep(_ name: String, settings: [Setting] = [], rootTitle: String? = nil,
+    private func sweep(_ name: String, settings: [Setting] = [], rootTitle: String? = nil, appearance: String? = nil,
                        open: @escaping (XCUIApplication) throws -> Void) throws {
         Self.usedSettings = !settings.isEmpty
-        let environment = Setting.environment(settings)
+        let shown = appearance ?? ProcessInfo.processInfo.environment["FENTON_APPEARANCE"] ?? "light"
+        let environment = Setting.environment(settings).merging(["FENTON_APPEARANCE": shown]) { _, new in new }
         let app = try FentonHomeApp.launchSignedIn(environment: environment)
         try open(app)
         sleep(1) // Mid-animation frames fail contrast and clipping.
         if let rootTitle { try assertReadingOrder(app, title: rootTitle) }
-        keepScreenshot(app, "sweep-\(name)-\(layout)")
+        keepScreenshot(app, "sweep-\(name)-\(shown)-\(layout)")
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5, environment: environment)
             try open(large)
@@ -161,6 +164,23 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
     func testHomeChipSheet() throws {
         try sweep("home-chip-sheet") {
             $0.buttons["home.chip.lights"].tap()
+            self.waitForSheet(in: $0)
+        }
+    }
+
+    /// The same sheets drawn dark (the runner can flip the whole sweep with `--appearance dark`).
+    func testHomeChipSheetDark() throws {
+        try sweep("home-chip-sheet", appearance: "dark") {
+            $0.buttons["home.chip.lights"].tap()
+            self.waitForSheet(in: $0)
+        }
+    }
+
+    func testBedSheetDark() throws {
+        try sweep("bed", appearance: "dark") {
+            self.openMasterBedroom(in: $0)
+            self.tap("room.card.Stephen's Bed", in: $0)
+            XCTAssertTrue(self.element("bed.dial", in: $0).waitForExistence(timeout: 15), "Bed sheet did not open")
             self.waitForSheet(in: $0)
         }
     }
