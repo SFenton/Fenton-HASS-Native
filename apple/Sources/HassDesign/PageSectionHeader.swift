@@ -30,8 +30,10 @@ public struct PageSectionHeader: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
             if let detail {
+                // Sits straight on the wallpaper, which is always dark-styled: 72% label ink measured 4.1:1 there
+                // (Food "Page 1 of 5", iPhone, 2026-10-15), so use the always-dark secondary at 85%.
                 Text(detail)
-                    .foregroundStyle(HassTokens.Ink.secondary)
+                    .foregroundStyle(HassTokens.Ink.onDarkSecondary)
                     .monospacedDigit()
                     .fixedSize(horizontal: false, vertical: true)
             }
