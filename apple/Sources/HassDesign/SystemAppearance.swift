@@ -130,11 +130,18 @@ private struct SceneAppearanceProbe: UIViewRepresentable {
     final class ProbeView: UIView {
         var onChange: (ColorScheme) -> Void = { _ in }
         private var registration: (any UITraitChangeRegistration)?
-        private var activation: (any NSObjectProtocol)?
+        // Read in `deinit`, which is nonisolated; only the main thread writes it.
+        nonisolated(unsafe) private var activation: (any NSObjectProtocol)?
+
+        deinit {
+            if let activation { NotificationCenter.default.removeObserver(activation) }
+        }
 
         override func didMoveToWindow() {
             super.didMoveToWindow()
             registration = nil
+            // A block observer stays registered until removed; dropping the token alone would add one per move.
+            if let activation { NotificationCenter.default.removeObserver(activation) }
             activation = nil
             guard let scene = window?.windowScene else { return }
             report()
