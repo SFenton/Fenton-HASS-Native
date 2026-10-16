@@ -218,9 +218,18 @@ final class CameraJourneyTests: JourneyTestCase {
         openSection("security", title: "Security", in: app)
         for (stream, title) in Self.cameras { assertSquare(securityTile(app, stream), "Security \(title)") }
         openSection("home", title: "Home", in: app)
-        let video = openCamera(app)
-        let shape = video.frame
-        XCTAssertEqual(shape.width / shape.height, 4.0 / 3.0, accuracy: 0.05, "The viewer keeps the camera's own 4:3, got \(shape.size)")
+        _ = openCamera(app)
+        XCTAssertTrue(app.buttons["camera.control.snapshot"].wait(for: \.isHittable, toEqual: true, timeout: 10))
+        sleep(1) // Measure after the page sheet settles, not mid-presentation.
+        // The video element itself reports no frame (a clear overlay), so measure what it pushes down: in the stacked
+        // layout the controls start one section gap below a 4:3 picture as wide as the controls.
+        let stack = app.descendants(matching: .any)["camera.layout.stacked"]
+        if stack.exists {
+            let controls = app.descendants(matching: .any)["Front Door camera controls"].firstMatch
+            let expected = controls.frame.width * 3 / 4 + 24
+            XCTAssertEqual(controls.frame.minY - stack.frame.minY, expected, accuracy: 4,
+                           "The viewer keeps the camera's own 4:3 (controls \(controls.frame), page \(stack.frame))")
+        }
         keepScreenshot(app, "camera-viewer-aspect-\(layout)")
     }
 
