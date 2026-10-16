@@ -73,7 +73,7 @@ struct InventoryCalendarTests {
 
     @Test func formats() {
         let date = InventoryFixtures.date(2026, 3, 7)
-        #expect(calendar.displayDate(date) == "03/07/2026")
+        #expect(calendar.displayDate(date) == "Mar 7, 2026")
         #expect(calendar.isoString(date) == "2026-03-07")
     }
 

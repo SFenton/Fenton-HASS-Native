@@ -26,7 +26,7 @@ struct RecipeParsingTests {
         #expect(card.thumbnailURL?.absoluteString == "https://img.example/t.jpg")
         #expect(card.imageURL == nil, "only http(s) images")
         #expect(card.cardImageURL == card.thumbnailURL)
-        #expect(card.coverageText == "6/6 ingredients")
+        #expect(card.coverageText == "6 of 6 Ingredients")
         #expect(card.source == "Unknown source")
     }
 

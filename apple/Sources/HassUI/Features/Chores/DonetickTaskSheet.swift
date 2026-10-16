@@ -51,18 +51,15 @@ struct DonetickTaskSheet: View {
                 }
             }
             .modalChrome()
-            .navigationTitle(mode.editTarget == nil ? "Create Task" : "Edit Task")
+            .navigationTitle(mode.editTarget == nil ? "New Task" : "Edit Task")
             .inlineNavigationTitle()
+            .sheetSubtitle("Donetick")
+            // An edit sheet (direction G, Sheets; mockup n5-new-task): circle x Cancel, filled check Create or Save.
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .disabled(busy != nil)
-                        .accessibilityIdentifier("task.cancel")
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(confirmTitle) { Task { await save() } }
-                        .disabled(!canSave)
-                        .accessibilityIdentifier("task.save")
+                SheetCancelItem(identifier: "task.cancel", isEnabled: busy == nil) { dismiss() }
+                SheetConfirmItem(mode.editTarget == nil ? "Create" : "Save", isEnabled: canSave, isBusy: busy == .saving,
+                                 busyTitle: mode.editTarget == nil ? "Creating" : "Saving", identifier: "task.save") {
+                    Task { await save() }
                 }
             }
             .confirmationDialog("Delete \(taskName)?", isPresented: $confirmsDelete, titleVisibility: .visible) {
@@ -72,15 +69,6 @@ struct DonetickTaskSheet: View {
         }
         .interactiveDismissDisabled(busy != nil)
         .task { await load() }
-    }
-
-    private var confirmTitle: String {
-        switch (mode.editTarget == nil, busy) {
-        case (true, .saving): "Creating…"
-        case (true, _): "Create"
-        case (false, .saving): "Saving…"
-        case (false, _): "Save"
-        }
     }
 
     private var canSave: Bool { loaded && busy == nil && !form.trimmedName.isEmpty }
@@ -156,35 +144,30 @@ struct DonetickTaskFormFields: View {
     @FocusState private var repeatFocused: Bool
 
     var body: some View {
+        // Grouped as in the mockups (n5-new-task): what, who, when, then vacation.
         Form {
             if let error {
                 Section {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
-                        .symbolRenderingMode(.multicolor)
-                        .foregroundStyle(HassTokens.Ink.primary)
+                    InlineAlert(error, severity: .error)
                         .accessibilityIdentifier("task.error")
                 }
             }
             Section {
                 TextField("Task Name", text: $form.name)
                     .accessibilityIdentifier("task.name")
+                TextField("Description", text: $form.description, axis: .vertical)
+                    .lineLimit(3...8)
+                    .accessibilityIdentifier("task.description")
+            }
+            Section {
                 Picker("Assignee", selection: $form.assignee) {
                     ForEach(form.assignees(viewer: viewer)) { Text($0.label).tag($0.value) }
                 }
                 .accessibilityIdentifier("task.assignee")
-            }
-            Section {
-                Toggle("Hide While On Vacation", isOn: $form.hideOnVacation)
-                    .accessibilityIdentifier("task.hideOnVacation")
-            } footer: {
-                FormFooter("This task will not show up in your chores lists while Vacation Mode is active.")
-            }
-            Section {
-                TextField("Description", text: $form.description, axis: .vertical)
-                    .lineLimit(3...8)
-                    .accessibilityIdentifier("task.description")
-            } header: {
-                FormHeader("Description")
+                Picker("Priority", selection: $form.priority) {
+                    ForEach(DonetickTaskForm.priorities) { Text($0.label).tag($0.value) }
+                }
+                .accessibilityIdentifier("task.priority")
             }
             Section {
                 Toggle("Due Date", isOn: DonetickDueBinding.hasDate($form))
@@ -199,17 +182,11 @@ struct DonetickTaskFormFields: View {
                     DatePicker("Time", selection: DonetickDueBinding.time($form), displayedComponents: .hourAndMinute)
                         .accessibilityIdentifier("task.dueTime")
                 }
-            } header: {
-                FormHeader("Due")
-            }
-            Section {
-                Picker("Priority", selection: $form.priority) {
-                    ForEach(DonetickTaskForm.priorities) { Text($0.label).tag($0.value) }
-                }
-                .accessibilityIdentifier("task.priority")
-                Picker("Recurrence", selection: Binding(get: { form.recurrence }, set: { form.setRecurrence($0) })) {
+                // A pop-up menu anchored over the row (direction G, Controls: "Choosing one option").
+                Picker("Repeat", selection: Binding(get: { form.recurrence }, set: { form.setRecurrence($0) })) {
                     ForEach(DonetickTaskForm.recurrences(editing: editing)) { Text($0.label).tag($0.value) }
                 }
+                .pickerStyle(.menu)
                 .accessibilityIdentifier("task.recurrence")
             }
             if form.showsCustomInterval {
@@ -238,7 +215,7 @@ struct DonetickTaskFormFields: View {
                             HStack {
                                 Text(day.label).foregroundStyle(HassTokens.Ink.primary)
                                 Spacer()
-                                if selected { Image(systemName: "checkmark").foregroundStyle(.tint) }
+                                if selected { Image(systemName: "checkmark").foregroundStyle(HassTokens.Ink.action) }
                             }
                             .contentShape(Rectangle())
                         }
@@ -250,9 +227,16 @@ struct DonetickTaskFormFields: View {
                     FormHeader("Days of Week")
                 }
             }
+            Section {
+                Toggle("Hide While On Vacation", isOn: $form.hideOnVacation)
+                    .accessibilityIdentifier("task.hideOnVacation")
+            } footer: {
+                FormFooter("This task will not show up in your chores lists while Vacation Mode is on.")
+            }
             if let onDelete {
                 Section {
                     Button("Delete Task", role: .destructive, action: onDelete)
+                        .foregroundStyle(HassTokens.Ink.danger)
                         .accessibilityIdentifier("task.delete")
                 }
             }

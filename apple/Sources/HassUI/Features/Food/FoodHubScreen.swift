@@ -63,82 +63,68 @@ struct FoodHubScreen: View {
 
     @ViewBuilder
     private var recipeSections: some View {
-        FoodSection("Suggested Recipes") {
-            SuggestedRecipesCarousel(model: models.suggestions, clipsPages: split) { open($0) }
-        }
-        GlassTile(title: "All Recipes", symbol: FoodSymbols.symbol(for: "mdi:book-open-page-variant"),
-                  tint: Self.tint(FoodConfig.allRecipesTint), isActive: true, kind: .navigate) { pushed = .recipes }
-            .accessibilityIdentifier("food.allRecipes")
+        // The carousel draws its own header: "Page 1 of 5" follows its scroll position.
+        SuggestedRecipesCarousel(title: "Suggested Recipes", model: models.suggestions, clipsPages: split) { open($0) }
+        FoodLinkRow(
+            title: "All Recipes", symbol: FoodSymbols.symbol(for: "mdi:book-open-page-variant"), identifier: "food.allRecipes"
+        ) { pushed = .recipes }
     }
 
     @ViewBuilder
     private var inventorySections: some View {
         let state: (String) -> EntityState? = { store?.entity($0).state }
         FoodSection("All Food") {
-            DynamicGridLayout(minCellWidth: 150, maxColumns: 4) {
-                GlassTile(
-                    title: "All Food", subtitle: FoodConfig.allFoodSubtitle(state: state),
-                    symbol: FoodSymbols.symbol(for: "mdi:food-variant"), tint: Self.tint(FoodConfig.allFoodTint),
-                    isActive: true, kind: .navigate
-                ) { pushed = .inventory(.allFood) }
-                .accessibilityIdentifier("food.allFood")
-            }
+            FoodLinkRow(
+                title: "All Food", subtitle: FoodConfig.allFoodSubtitle(state: state),
+                symbol: FoodSymbols.symbol(for: "mdi:food-variant"), identifier: "food.allFood"
+            ) { pushed = .inventory(.allFood) }
         }
         FoodSection("Food Spaces") {
-            DynamicGridLayout(minCellWidth: 150, maxColumns: 4) {
+            // Dark G tiles with neutral glyphs: storage spaces are places, which have no colour of their own
+            // (direction G, Colour). Off faces, so the glyph stays an outline and nothing reads as "on".
+            DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
                 ForEach(FoodConfig.spaces) { space in
                     GlassTile(
                         title: space.title, subtitle: FoodConfig.spaceSubtitle(space, state: state),
-                        symbol: FoodSymbols.symbol(for: space.icon), tint: Self.tint((space.red, space.green, space.blue)),
-                        isActive: true, kind: .navigate
+                        symbol: FoodSymbols.symbol(for: space.icon), family: .neutral,
+                        isActive: false, kind: .navigate
                     ) {
                         if let inventory = FoodInventoryScreen.space(forLocation: space.location) { pushed = .inventory(inventory) }
                     }
                     .accessibilityIdentifier("food.space.\(space.location)")
                 }
             }
+            .equalHeightTiles()
         }
     }
 
     private func open(_ recipe: RecipeCard) {
         openDetail = models.detailModel(for: recipe)
     }
-
-    static func tint(_ rgb: (red: Double, green: Double, blue: Double)) -> Color {
-        Color(red: rgb.red / 255, green: rgb.green / 255, blue: rgb.blue / 255)
-    }
 }
 
 // MARK: - Pieces
 
-/// A titled section on the Food pages (web `SectionHeader`).
+/// A titled section on the Food pages (web `SectionHeader`): a ``PageSectionHeader`` over its content, with an
+/// optional trailing detail in secondary ink ("Page 1 of 5" on Suggested Recipes).
 struct FoodSection<Content: View>: View {
     var title: String
+    var detail: String?
     @ViewBuilder var content: Content
 
-    init(_ title: String, @ViewBuilder content: () -> Content) {
+    init(_ title: String, detail: String? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
+        self.detail = detail
         self.content = content()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
-            Text(title)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(HassTokens.Ink.primary)
-                .accessibilityAddTraits(.isHeader)
+            PageSectionHeader(title, detail: detail)
             content
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-}
-
-/// Colors the Food pages share.
-enum FoodStyle {
-    /// Fill for prominent buttons. White on the app accent (#42A9FE) is 2.5:1 and fails the contrast audit;
-    /// this darker blue keeps the same hue at about 5.8:1. Fold into a shared `HassTokens` action tint once
-    /// other pages need one.
-    static let action = Color(red: 0.04, green: 0.39, blue: 0.78)
 }
 
 /// SF Symbols for the Food pages' MDI icons.

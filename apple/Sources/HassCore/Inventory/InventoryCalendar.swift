@@ -67,10 +67,11 @@ public struct InventoryCalendar: Sendable {
 
     // MARK: - Formatting
 
-    /// `MM/DD/YYYY`, as the web shows dates on rows (`formatDisplayDate`).
+    /// `Oct 16, 2026`: the abbreviated date Apple's apps show in rows (direction G mockups n6; the web's
+    /// `formatDisplayDate` reads `10/16/2026`). The app's copy is English, so the format is fixed to it.
     public func displayDate(_ date: Date) -> String {
-        let parts = calendar.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%02d/%02d/%04d", parts.month ?? 0, parts.day ?? 0, parts.year ?? 0)
+        date.formatted(Date.FormatStyle(date: .abbreviated, time: .omitted, locale: Locale(identifier: "en_US"),
+                                        calendar: calendar, timeZone: calendar.timeZone))
     }
 
     /// `YYYY-MM-DD` for a local date (`dateInputValue`).

@@ -38,6 +38,9 @@ struct ChoresGallery: View {
                     TodoPageScreen(page: page)
                 }
             }
+            // The house backdrop and header fade the app's section stack gives its root (direction G): on the system's
+            // ground G's translucent rows measured 3.1:1.
+            .pageChrome()
             .safeAreaInset(edge: .bottom) {
                 // FENTON_GALLERY_CLEAN=1 (screenshots) leaves the debug line out.
                 if !GalleryEnvironment.isClean {
@@ -50,6 +53,7 @@ struct ChoresGallery: View {
         }
         .environment(store)
         .environment(model)
+        .preferredColorScheme(.dark)
     }
 }
 

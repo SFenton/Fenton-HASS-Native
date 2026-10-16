@@ -18,3 +18,4 @@ Web source: `ha-sfenton-react-dash@9ac2a46:src/components/hass/ValetudoMapCard.t
 - `ValetudoMapScene` rasterises floor, segments and walls once into one pixel per cell, scaled with nearest-neighbour sampling, so pan and zoom only redraw vectors and icons.
 - Focus crops a shared map to a vacuum's rooms (Music Room, Theater Room) and keeps walls only near them; area drawing is limited to the interaction bounds.
 - A reported (unavailable) map drops paths and the live robot style.
+- Direction G draws the map flat on `#262628` (`ValetudoMapScene.Palette`; no material accents): neutral rooms, selected rooms white with black numbered badges (`roomOrders`), rooms skipped by Auto-Clean hatched (`skippedRooms`). Each room's mask is built once with the cells, so selection never rasterises again.

@@ -2,19 +2,26 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// One inventory card (web `PantryRow`): name, `Quantity · Expires on …`, and its actions.
+/// One inventory card (web `PantryRow`; direction G mockup n6-inventory): name, `Quantity · Expires …`, a round
+/// add-to-groceries button and, when the card opens the item editor, a chevron.
 ///
-/// Single-batch items get cart, edit and delete buttons; multi-batch items get cart and a disclosure that
-/// opens the editor, and the whole row opens it too. Swipe actions repeat delete and add-to-groceries.
+/// Rows sit on the page's dense module (they carry orange and red expiry text). The whole row opens the editor;
+/// swipe actions delete (single-batch items) and add to groceries. Multi-batch items delete from the editor.
 struct InventoryRow: View {
     var item: InventoryDisplayItem
     var model: InventoryListModel
     var selected = false
+    /// The row is the first on its module (top corners rounded).
+    var isFirst = true
+    /// The row is the last on its module (bottom corners rounded).
+    var isLast = true
     var onEdit: () -> Void
     var onShop: () -> Void
     var onDelete: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var buttonSize: CGFloat = 44
+    /// The grey circle behind the cart glyph (mockup `.n6-rbtn`: 34 pt); the button's hit area stays 44 pt.
+    @ScaledMetric(relativeTo: .body) private var circleSize: CGFloat = 34
 
     var body: some View {
         let batches = model.batches(for: item).count
@@ -22,23 +29,29 @@ struct InventoryRow: View {
         let expiry = InventoryCatalog.expiryInfo(item.soonestExpiry(model.calendar), calendar: model.calendar)
         let subtitle = InventoryCatalog.rowSubtitle(expiry, quantity: item.shownQuantity, batchCount: batches)
         let deletable = model.deletableRows(of: item) != nil
+        // Multi-batch cards always open the editor; a single batch needs row ids to edit.
+        let opensEditor = multiBatch || deletable
         let tone = multiBatch ? nil : expiry.tone
 
         ViewThatFits(in: .horizontal) {
             HStack(spacing: HassTokens.Spacing.s) {
                 copy(subtitle: subtitle, tone: tone)
                 Spacer(minLength: HassTokens.Spacing.s)
-                actions(multiBatch: multiBatch, deletable: deletable)
+                actions(opensEditor: opensEditor, multiBatch: multiBatch)
             }
             // AX sizes: actions wrap under the text instead of squeezing it.
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
                 copy(subtitle: subtitle, tone: tone)
-                actions(multiBatch: multiBatch, deletable: deletable)
+                actions(opensEditor: opensEditor, multiBatch: multiBatch)
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture { if multiBatch { onEdit() } }
-        .listRowBackground(selected ? Color.accentColor.opacity(0.14) : nil)
+        .onTapGesture { if opensEditor { onEdit() } }
+        // The trailing inset is small so the chevron's 44 pt target ends near the module's edge (mockup).
+        .listRowInsets(EdgeInsets(top: HassTokens.Spacing.s, leading: HassTokens.Spacing.l,
+                                  bottom: HassTokens.Spacing.s, trailing: HassTokens.Spacing.xs))
+        .listRowBackground(InventoryRowBackground(isFirst: isFirst, isLast: isLast, selected: selected))
+        .listRowSeparatorTint(HassTokens.Surface.separator)
         .swipeActions(edge: .trailing) {
             if deletable && !multiBatch {
                 Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
@@ -54,10 +67,11 @@ struct InventoryRow: View {
 
     // MARK: - Parts
 
+    /// Title 17 Regular, subtitle 15 in secondary, orange (soon) or red (expired) with a leading glyph.
     private func copy(subtitle: String, tone: ExpiryInfo.Tone?) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(item.name)
-                .font(.body.weight(.semibold))
+                .font(.body)
                 .foregroundStyle(HassTokens.Ink.primary)
                 .fixedSize(horizontal: false, vertical: true)
                 .privacySensitive()
@@ -90,21 +104,27 @@ struct InventoryRow: View {
         return parts.joined(separator: ", ")
     }
 
-    @ViewBuilder
-    private func actions(multiBatch: Bool, deletable: Bool) -> some View {
-        HStack(spacing: HassTokens.Spacing.xs) {
+    private func actions(opensEditor: Bool, multiBatch: Bool) -> some View {
+        HStack(spacing: 0) {
             shoppingButton
-            if multiBatch {
-                iconButton("chevron.right", label: "Edit \(item.name)", id: "edit", action: onEdit)
-                    .accessibilityHint("Opens each expiration batch")
-            } else {
-                iconButton("pencil", label: "Edit \(item.name)", id: "edit", action: onEdit)
-                    .disabled(!deletable)
-                deleteButton(deletable: deletable)
+            if opensEditor {
+                // The visible chevron; the whole row opens the editor too. VoiceOver reaches the editor here.
+                Button(action: onEdit) {
+                    Image(systemName: "chevron.forward")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+                        .frame(width: buttonSize, height: buttonSize)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Edit \(item.name)")
+                .accessibilityHint(multiBatch ? "Opens each expiration batch" : "Opens the item editor")
+                .accessibilityIdentifier("inventory.row.edit")
             }
         }
     }
 
+    /// A 34 pt grey circle with the cart glyph (mockup `.n6-rbtn`), an arc while adding, a check once added.
     private var shoppingButton: some View {
         let state = model.shopping[item.id, default: .idle]
         let label = switch state {
@@ -114,12 +134,16 @@ struct InventoryRow: View {
         }
         return Button(action: onShop) {
             ZStack {
+                Circle()
+                    .fill(.fill.tertiary)
+                    .frame(width: circleSize, height: circleSize)
                 switch state {
-                case .idle: Image(systemName: "cart.badge.plus")
-                case .adding: ArcSpinner(.compact, label: "Adding to Groceries")
+                case .idle: Image(systemName: "cart.badge.plus").foregroundStyle(HassTokens.Ink.primary)
+                case .adding: ArcSpinner(.compact, label: "Adding to Groceries").foregroundStyle(HassTokens.Ink.primary)
                 case .added: Image(systemName: "checkmark").foregroundStyle(InventoryTone.success)
                 }
             }
+            .font(.subheadline.weight(.medium))
             .frame(width: buttonSize, height: buttonSize)
             .contentShape(Rectangle())
         }
@@ -128,43 +152,37 @@ struct InventoryRow: View {
         .accessibilityLabel(label)
         .accessibilityIdentifier("inventory.row.cart")
     }
+}
 
-    private func deleteButton(deletable: Bool) -> some View {
-        let deleting = model.deleting.contains(item.id)
-        return Button(action: onDelete) {
-            ZStack {
-                if deleting { ArcSpinner(.compact, label: "Deleting") } else { Image(systemName: "trash") }
+/// A row's share of the page's dense module: the module tint (opaque with Reduce Transparency), rounded at the top of
+/// the first row and the bottom of the last, with the split pane's selection washed over it.
+private struct InventoryRowBackground: View {
+    var isFirst: Bool
+    var isLast: Bool
+    var selected: Bool
+
+    var body: some View {
+        let radius = HassTokens.Radius.module
+        Color.clear
+            .module(.dense, cornerRadius: 0)
+            .overlay {
+                if selected { HassTokens.Ink.action.opacity(0.18) }
             }
-            .frame(width: buttonSize, height: buttonSize)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.borderless)
-        .foregroundStyle(InventoryTone.color(.expired))
-        .disabled(deleting || !deletable)
-        .accessibilityLabel(deleting ? "Deleting \(item.name)" : "Delete \(item.name)")
-        .accessibilityIdentifier("inventory.row.delete")
-    }
-
-    private func iconButton(_ symbol: String, label: String, id: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .frame(width: buttonSize, height: buttonSize)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.borderless)
-        .accessibilityLabel(label)
-        .accessibilityIdentifier("inventory.row.\(id)")
+            .clipShape(UnevenRoundedRectangle(
+                topLeadingRadius: isFirst ? radius : 0, bottomLeadingRadius: isLast ? radius : 0,
+                bottomTrailingRadius: isLast ? radius : 0, topTrailingRadius: isFirst ? radius : 0, style: .continuous
+            ))
     }
 }
 
-/// Expiry tone colors that hold 4.5:1 on grouped list rows in light and dark mode (system red and orange
-/// measure about 4:1 and 2.5:1 on white). An icon carries the tone too, so color isn't the only cue.
+/// Expiry tone colours: G's orange `#FFB340` (soon) and red `#FF6961` (expired) on dark, from ``HassTokens/Ink``, which
+/// keep 4.5:1 on the dense module and in sheets. A glyph carries the tone too, so colour isn't the only cue.
 enum InventoryTone {
     static func color(_ tone: ExpiryInfo.Tone?) -> Color {
         switch tone {
-        case .expired: dynamic(light: (0.70, 0.11, 0.09), dark: (1.0, 0.54, 0.50))
-        case .soon: dynamic(light: (0.54, 0.29, 0.0), dark: (1.0, 0.72, 0.30))
-        case nil: HassTokens.Ink.secondary
+        case .expired: HassTokens.Ink.error
+        case .soon: HassTokens.Ink.warning
+        case nil: HassTokens.Surface.secondaryOnModule
         }
     }
 
