@@ -1,4 +1,5 @@
 import Foundation
+import HassTelemetry
 
 /// Maps app scene phases to connection actions so reopening the app never reloads it.
 ///
@@ -10,11 +11,16 @@ public final class ConnectionLifecycle {
 
     private let connection: HassConnection
     private var disconnectTask: Task<Void, Never>?
+    private var census: ResourceCensus.Registration?
 
     /// Creates a lifecycle controller for a connection.
     public init(connection: HassConnection) {
         self.connection = connection
+        census = ResourceCensus.shared.register { [weak self] in self?.liveResources ?? [:] }
     }
+
+    /// What the lifecycle holds right now (`ResourceCensus`).
+    var liveResources: [String: Int] { ["Lifecycle.pendingDisconnect": disconnectTask == nil ? 0 : 1] }
 
     /// The app became active: cancel any pending disconnect and make sure we're connected.
     public func didBecomeActive() {
