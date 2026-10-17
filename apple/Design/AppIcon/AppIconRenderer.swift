@@ -52,7 +52,7 @@ struct AppIconRenderer {
     /// The art at `side` × `side` pixels, flattened to opaque sRGB.
     @MainActor
     static func render(_ choice: AppIconChoice, _ appearance: AppIconArtwork.Appearance, side: Int) throws -> CGImage {
-        let artwork = AppIconArtwork(tint: choice.tint, tintOpacity: AppIconChoice.tintOpacity, ring: choice.ring,
+        let artwork = AppIconArtwork(tint: choice.tint, tintOpacity: AppIconChoice.tintOpacity,
                                      glyph: choice.glyph, appearance: appearance)
             .frame(width: CGFloat(side), height: CGFloat(side))
         let renderer = ImageRenderer(content: artwork)

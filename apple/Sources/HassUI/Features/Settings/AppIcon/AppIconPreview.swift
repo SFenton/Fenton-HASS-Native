@@ -13,7 +13,7 @@ struct AppIconPreview: View {
     static let cornerFraction: CGFloat = 0.2237
 
     var body: some View {
-        AppIconArtwork(tint: choice.tint, tintOpacity: AppIconChoice.tintOpacity, ring: choice.ring, glyph: choice.glyph)
+        AppIconArtwork(tint: choice.tint, tintOpacity: AppIconChoice.tintOpacity, glyph: choice.glyph)
             .frame(width: side, height: side)
             .clipShape(.rect(cornerRadius: side * Self.cornerFraction, style: .continuous))
             .overlay {

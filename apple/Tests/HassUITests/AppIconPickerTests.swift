@@ -128,7 +128,7 @@ struct AppIconPickerModelTests {
 struct AppIconArtworkTests {
     /// The pixels of `AppIconArtwork` at `side` × `side`.
     static func render(_ choice: AppIconChoice, _ appearance: AppIconArtwork.Appearance, side: Int) -> Pixels? {
-        let art = AppIconArtwork(tint: choice.tint, tintOpacity: AppIconChoice.tintOpacity, ring: choice.ring,
+        let art = AppIconArtwork(tint: choice.tint, tintOpacity: AppIconChoice.tintOpacity,
                                  glyph: choice.glyph, appearance: appearance)
             .frame(width: CGFloat(side), height: CGFloat(side))
         let renderer = ImageRenderer(content: art)
@@ -158,10 +158,10 @@ struct AppIconArtworkTests {
         }
     }
 
-    /// The pixel at a glyph coordinate (100-unit box, 74% of the 72% tile that starts at 14%).
+    /// The pixel at a glyph coordinate (100-unit box, 80% of the icon's width, centred).
     static func glyphPoint(_ x: Double, _ y: Double, side: Int) -> (Int, Int) {
-        let s = Double(side), tile = s * 0.72, box = tile * 0.74
-        let origin = s * 0.14 + tile / 2 - box / 2
+        let s = Double(side), box = s * 0.80
+        let origin = (s - box) / 2
         return (Int(origin + x * box / 100), Int(origin + y * box / 100))
     }
 
@@ -171,20 +171,44 @@ struct AppIconArtworkTests {
     }
 
     @Test(arguments: AppIconChoice.allCases)
-    func theHouseHeartAndRingAreDrawnInThePairsColours(_ choice: AppIconChoice) throws {
+    func theHouseAndHeartAreDrawnInThePairsColourAndTheRingIsTheGlassAroundThem(_ choice: AppIconChoice) throws {
         let side = 512
         let pixels = try #require(Self.render(choice, .standard, side: side))
         // The house wall (above the window, left of the heart): the glyph colour.
         let wall = Self.glyphPoint(50, 52, side: side)
         #expect(Self.near(pixels.rgb(x: wall.0, y: wall.1), choice.glyph), "\(choice) house")
-        // The window pane is cut out: the glass tile shows through, not the glyph.
-        let pane = Self.glyphPoint(30, 63, side: side)
-        #expect(!Self.near(pixels.rgb(x: pane.0, y: pane.1), choice.glyph), "\(choice) window")
-        // The heart's centre: the glyph colour again; just outside its edge on the house wall side: the ring.
+        // The window pane is cut out: the glass shows through, not the glyph.
+        let pane = Self.glyphPoint(42, 76, side: side)
+        let glass = pixels.rgb(x: pane.0, y: pane.1)
+        #expect(!Self.near(glass, choice.glyph, tolerance: 40), "\(choice) window")
+        // The heart's centre: the glyph colour again.
         let heart = Self.glyphPoint(55 + 0.40 * 50, 60 + 0.40 * 45, side: side)
         #expect(Self.near(pixels.rgb(x: heart.0, y: heart.1), choice.glyph), "\(choice) heart")
-        let ring = Self.glyphPoint(55 + 0.40 * 8 - 1.6, 60 + 0.40 * 40, side: side)
-        #expect(Self.near(pixels.rgb(x: ring.0, y: ring.1), choice.ring, tolerance: 6), "\(choice) ring")
+        // The ring cuts the heart out of the house and is the glass itself (the colour of the window pane beside it).
+        let ring = Self.glyphPoint(55 + 0.40 * 8 - 1.6, 72, side: side)
+        let ringPixel = pixels.rgb(x: ring.0, y: ring.1)
+        #expect(!Self.near(ringPixel, choice.glyph, tolerance: 40), "\(choice) ring is not glyph")
+        #expect(abs(ringPixel.0 - glass.0) <= 8 && abs(ringPixel.1 - glass.1) <= 8 && abs(ringPixel.2 - glass.2) <= 8,
+                "\(choice) ring \(ringPixel) matches the glass \(glass)")
+    }
+
+    @Test func theGlassFillsTheWholeSquareWithNoFrameOrInsetTile() throws {
+        // Owner correction, 2026-10-17: no inset tile and no visible outer frame. The colour a hair inside the edge
+        // equals the colour a tenth in, and the corners are the tint (iOS masks them), not the dusk glow.
+        let side = 512
+        for choice in AppIconChoice.allCases {
+            let pixels = try #require(Self.render(choice, .standard, side: side))
+            for y in [side / 4, side / 2, side * 3 / 4] {
+                let edge = pixels.rgb(x: 3, y: y), inner = pixels.rgb(x: side / 10, y: y)
+                #expect(abs(edge.0 - inner.0) <= 6 && abs(edge.1 - inner.1) <= 6 && abs(edge.2 - inner.2) <= 6,
+                        "\(choice) edge \(edge) vs inner \(inner) at y=\(y): no frame")
+            }
+            let corner = pixels.rgb(x: 2, y: side - 3)
+            let tint = (Int((choice.tint >> 16) & 0xFF), Int((choice.tint >> 8) & 0xFF), Int(choice.tint & 0xFF))
+            // Tint at 86% over the glow: within the glow's reach (14% of at most 255) of the tint.
+            #expect(abs(corner.0 - tint.0) <= 60 && abs(corner.1 - tint.1) <= 60 && abs(corner.2 - tint.2) <= 60,
+                    "\(choice) corner \(corner) is the tint \(tint)")
+        }
     }
 
     @Test func fullBleedWithNoRoundedOuterCorners() throws {
@@ -195,6 +219,30 @@ struct AppIconArtworkTests {
             let alpha = pixels.bytes[(y * side + x) * 4 + 3]
             #expect(alpha == 255, "corner \(x),\(y) is opaque")
         }
+    }
+
+    @Test(arguments: AppIconChoice.allCases)
+    func theGlyphIsEightyPercentWideAndClearsTheIconMask(_ choice: AppIconChoice) throws {
+        // The glyph's extents (roof eaves at the sides, the heart ring bottom right) must sit well inside the iOS corner
+        // mask, a continuous rounded rectangle of about 22.4% of the side.
+        let side = 512
+        let pixels = try #require(Self.render(choice, .standard, side: side))
+        let inset = Double(side) * 0.03
+        let mask = CGPath(roundedRect: CGRect(x: 0, y: 0, width: side, height: side).insetBy(dx: inset, dy: inset),
+                          cornerWidth: Double(side) * 0.2237, cornerHeight: Double(side) * 0.2237, transform: nil)
+        var minX = side, maxX = 0, minY = side, maxY = 0
+        var outside = 0
+        for y in 0..<side {
+            for x in 0..<side where Self.near(pixels.rgb(x: x, y: y), choice.glyph, tolerance: 2) {
+                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+                if !mask.contains(CGPoint(x: x, y: y)) { outside += 1 }
+            }
+        }
+        #expect(outside == 0, "\(choice): \(outside) glyph pixels outside the mask inset by 3%")
+        let width = Double(maxX - minX) / Double(side)
+        #expect(width > 0.62 && width < 0.80, "\(choice) glyph spans \(width) of the width")
+        #expect(Double(minX) / Double(side) > 0.12 && Double(maxX) / Double(side) < 0.90, "\(choice) side margins")
+        #expect(Double(minY) / Double(side) > 0.15 && Double(maxY) / Double(side) < 0.90, "\(choice) top and bottom margins")
     }
 
     @Test func darkIsDeeperThanStandardAndTintedIsGrey() throws {

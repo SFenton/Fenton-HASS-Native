@@ -1,16 +1,22 @@
 import SwiftUI
 
-/// The app icon's art: a dusk-glow square with an inset tinted-glass tile holding a house and a heart (owner mockups
-/// of 2026-10-17, `Pairs.dc.html`; 100-unit glyph coordinates).
+/// The app icon's art: full-bleed tinted glass over a dusk glow, with a house and a heart on it (owner mockups of
+/// 2026-10-17, `Pairs.dc.html`, corrected the same day: the inset tile and its frame were mockup presentation, so the
+/// glass covers the whole square, "B · Full-Bleed" in each pair's colours; 100-unit glyph coordinates).
 ///
 /// This one view is the source of truth: `tools/render_app_icons.sh` renders the asset catalog's 1024 pt PNGs from it,
 /// and the Settings → App Icon picker draws it as the preview, so the two cannot drift. It is full-bleed and square: iOS
-/// applies the corner mask, so the art draws no rounded outer corners (HIG App icons: provide unmasked layers). Callers
-/// that show it as a tile clip it themselves.
+/// applies the corner mask and Liquid Glass adds its own edge, so the art draws no rounded corners and no hairline (HIG App
+/// icons: provide unmasked layers). Callers that show it as a tile clip it themselves.
+///
+/// Layers, bottom to top: the dusk glow (a 165 degree gradient and two radial glows, so a faint warmth shows through),
+/// the pair's tint across the whole square, a top light, the house (a four-pane window cut out) and the heart on a ring.
+/// The glyph is 80% of the icon's width, centred (owner, 2026-10-17); the ring is the glass itself, the house with the
+/// ring's outline cut out of it, so it matches the glass around it wherever the glow shifts the colour.
 ///
 /// Three appearances follow HIG App icons, "Appearances" (default, dark and tinted Home Screen icons): the standard art; a
-/// dark one, the same art with a deeper glow so it sits well on a dark Home Screen ("base dark on light ... no excessive
-/// brightness"); and a tinted one, a greyscale of the same elements that the system colours with the user's tint.
+/// dark one, the same art with a deeper tint over a darker glow ("base dark on light ... no excessive brightness"); and a
+/// tinted one, a greyscale of the same elements that the system colours with the user's tint.
 public struct AppIconArtwork: View {
     /// The Home Screen appearance being drawn.
     public enum Appearance: Sendable {
@@ -24,7 +30,6 @@ public struct AppIconArtwork: View {
 
     private let tint: UInt32
     private let tintOpacity: Double
-    private let ring: UInt32
     private let glyph: UInt32
     private let appearance: Appearance
 
@@ -32,13 +37,11 @@ public struct AppIconArtwork: View {
     /// - Parameters:
     ///   - tint: The glass tile's tint, `0xRRGGBB`.
     ///   - tintOpacity: Its opacity over the glow.
-    ///   - ring: The heart's surrounding ring colour, `0xRRGGBB`.
     ///   - glyph: The house and heart colour, `0xRRGGBB`.
     ///   - appearance: Which Home Screen appearance to draw.
-    public init(tint: UInt32, tintOpacity: Double = 0.82, ring: UInt32, glyph: UInt32, appearance: Appearance = .standard) {
+    public init(tint: UInt32, tintOpacity: Double = 0.86, glyph: UInt32, appearance: Appearance = .standard) {
         self.tint = tint
         self.tintOpacity = tintOpacity
-        self.ring = ring
         self.glyph = glyph
         self.appearance = appearance
     }
@@ -55,33 +58,36 @@ public struct AppIconArtwork: View {
 
     private func draw(in context: inout GraphicsContext, side s: CGFloat) {
         let colors = palette
-        drawBackground(in: &context, colors: colors, side: s)
+        drawGround(in: &context, colors: colors, side: s)
 
-        // The glass tile: left and top 14%, 72% wide, corners 24% of its width.
-        let tile = CGRect(x: s * 0.14, y: s * 0.14, width: s * 0.72, height: s * 0.72)
-        let radius = tile.width * 0.24
-        let shape = Path(roundedRect: tile, cornerRadius: radius, style: .continuous)
-        context.fill(shape, with: .color(colors.tile.opacity(colors.tileOpacity)))
-        // The top light: white at 16% fading to nothing by 48% of the height.
-        context.fill(shape, with: .linearGradient(
-            Gradient(stops: [.init(color: .white.opacity(0.16), location: 0), .init(color: .white.opacity(0), location: 0.48)]),
-            startPoint: CGPoint(x: 0, y: tile.minY), endPoint: CGPoint(x: 0, y: tile.maxY)))
-        // The inner hairline: a 1.5/180 ring just inside the edge.
-        let hairline = s * 1.5 / 180
-        context.stroke(
-            Path(roundedRect: tile.insetBy(dx: hairline / 2, dy: hairline / 2), cornerRadius: radius - hairline / 2, style: .continuous),
-            with: .color(.white.opacity(0.22)), lineWidth: hairline)
-
-        // The glyph: 74% of the tile, centred, in 100-unit coordinates.
-        let box = tile.width * 0.74
+        // The glyph: 80% of the icon's width, centred, in 100-unit coordinates.
+        let box = s * Self.glyphFraction
         let unit = box / 100
-        let place = CGAffineTransform(translationX: tile.midX - box / 2, y: tile.midY - box / 2).scaledBy(x: unit, y: unit)
-        context.fill(Self.house.applying(place), with: .color(colors.glyph), style: FillStyle(eoFill: true))
-        // The heart sits at (55, 60) at 0.40 scale, over a ring of the same shape stroked 16 units wide.
+        let place = CGAffineTransform(translationX: (s - box) / 2, y: (s - box) / 2).scaledBy(x: unit, y: unit)
+        // The heart sits at (55, 60) at 0.40 scale, inside a ring of the same shape stroked 16 units wide. The ring is the
+        // glass itself: the house is drawn with the ring's outline cut out of it, so the ring is whatever colour the glass
+        // has there (glow, tint and light) and no second layer of tint is stacked on it.
         let heart = Self.heart.applying(CGAffineTransform(translationX: 55, y: 60).scaledBy(x: 0.40, y: 0.40).concatenating(place))
-        context.fill(heart, with: .color(colors.ring))
-        context.stroke(heart, with: .color(colors.ring), style: StrokeStyle(lineWidth: 16 * 0.40 * unit, lineJoin: .round))
+        let ring = heart.strokedPath(StrokeStyle(lineWidth: 16 * 0.40 * unit, lineJoin: .round)).union(heart)
+        context.drawLayer { layer in
+            layer.clip(to: ring, options: .inverse)
+            layer.fill(Self.house.applying(place), with: .color(colors.glyph), style: FillStyle(eoFill: true))
+        }
         context.fill(heart, with: .color(colors.glyph))
+    }
+
+    /// The glyph's width as a fraction of the icon's (owner, 2026-10-17).
+    static let glyphFraction: CGFloat = 0.80
+
+    /// The glass: the dusk glow, the tint over the whole square and the top light.
+    private func drawGround(in context: inout GraphicsContext, colors: Palette, side s: CGFloat) {
+        drawBackground(in: &context, colors: colors, side: s)
+        let square = Path(CGRect(x: 0, y: 0, width: s, height: s))
+        context.fill(square, with: .color(colors.tile.opacity(colors.tileOpacity)))
+        // The top light: white at 18% fading to nothing by 46% of the height.
+        context.fill(square, with: .linearGradient(
+            Gradient(stops: [.init(color: .white.opacity(0.18), location: 0), .init(color: .white.opacity(0), location: 0.46)]),
+            startPoint: .zero, endPoint: CGPoint(x: 0, y: s)))
     }
 
     /// The dusk glow: a 165° diagonal gradient with an amber glow low right and a paler one low left.
@@ -120,7 +126,6 @@ public struct AppIconArtwork: View {
         var glows: [Glow]
         var tile: Color
         var tileOpacity: Double
-        var ring: Color
         var glyph: Color
     }
 
@@ -132,7 +137,7 @@ public struct AppIconArtwork: View {
                              .init(color: Color(rgb: 0x7A5E3A), location: 1)],
                 glows: [Glow(x: 0.74, y: 0.80, reach: 0.42, color: Color(.sRGB, red: 1, green: 184 / 255, blue: 102 / 255, opacity: 0.55)),
                         Glow(x: 0.22, y: 0.72, reach: 0.36, color: Color(.sRGB, red: 1, green: 214 / 255, blue: 150 / 255, opacity: 0.32))],
-                tile: Color(rgb: tint), tileOpacity: tintOpacity, ring: Color(rgb: ring), glyph: Color(rgb: glyph))
+                tile: Color(rgb: tint), tileOpacity: tintOpacity, glyph: Color(rgb: glyph))
         case .dark:
             // The same art one stop deeper: a near-black dusk with the glows held back, so the glass tile still reads.
             Palette(
@@ -140,16 +145,16 @@ public struct AppIconArtwork: View {
                              .init(color: Color(rgb: 0x33271A), location: 1)],
                 glows: [Glow(x: 0.74, y: 0.80, reach: 0.42, color: Color(.sRGB, red: 1, green: 184 / 255, blue: 102 / 255, opacity: 0.26)),
                         Glow(x: 0.22, y: 0.72, reach: 0.36, color: Color(.sRGB, red: 1, green: 214 / 255, blue: 150 / 255, opacity: 0.14))],
-                tile: Color(rgb: tint), tileOpacity: tintOpacity, ring: Color(rgb: ring), glyph: Color(rgb: glyph))
+                tile: Color(rgb: tint), tileOpacity: 0.92, glyph: Color(rgb: glyph))
         case .tinted:
             // Greyscale for the system's tint: dark ground, mid-grey glass, near-white glyph (the system maps luminance to
-            // the tint, so the glyph is the brightest thing and the ring the darkest).
+            // the tint, so the glyph is the brightest thing).
             Palette(
                 background: [.init(color: Color(rgb: 0x2A2A2C), location: 0), .init(color: Color(rgb: 0x161617), location: 0.48),
                              .init(color: Color(rgb: 0x3A3A3C), location: 1)],
                 glows: [Glow(x: 0.74, y: 0.80, reach: 0.42, color: Color(.sRGB, white: 0.55, opacity: 0.40)),
                         Glow(x: 0.22, y: 0.72, reach: 0.36, color: Color(.sRGB, white: 0.7, opacity: 0.2))],
-                tile: Color(.sRGB, white: 0.16), tileOpacity: 0.82, ring: Color(.sRGB, white: 0.2), glyph: Color(.sRGB, white: 0.96))
+                tile: Color(.sRGB, white: 0.16), tileOpacity: 0.82, glyph: Color(.sRGB, white: 0.96))
         }
     }
 
