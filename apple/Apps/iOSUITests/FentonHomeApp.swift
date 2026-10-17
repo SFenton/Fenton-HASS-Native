@@ -323,7 +323,9 @@ enum FentonHomeApp {
             // grouped section header's frame carries fixed padding (Server: 40.3 → 52 pt at AX5 while
             // its glyphs triple), so it can miss 1.35x alone.
             let compared = sample.compactMap { label, height in largeHeights[label].map { (height, $0) } }
-            let pageGrew = !compared.isEmpty && compared.allSatisfy { $0.1 >= $0.0 }
+            // "None shrank" allows half a point: the same fixed-size text measures 52.0 and 51.99 in two launches
+            // (folded Duo, FloatingActions page, 2026-10-17: every pair printed 52.0 → 52.0 and the check failed).
+            let pageGrew = !compared.isEmpty && compared.allSatisfy { $0.1 >= $0.0 - 0.5 }
                 && compared.map(\.1).reduce(0, +) >= 1.35 * compared.map(\.0).reduce(0, +)
             var missed = false
             var inconclusive: [String] = []

@@ -174,12 +174,14 @@ final class FeedbackJourneyTests: JourneyTestCase {
         if keep.exists && keep.isHittable {
             keep.tap()
         } else {
-            // iOS 27 anchors the dialog as a popover without Keep Editing; an outside tap keeps editing. Tap just
-            // above the popover (below it near the top): the window's middle fell on the popover in iPad landscape
-            // and kept it open (2026-10-15).
+            // iOS 27 anchors the dialog as a popover without Keep Editing; an outside tap keeps editing. Tap the middle
+            // of the larger free band above or below the popover: the window's middle fell on the popover in iPad
+            // landscape and kept it open (2026-10-15), and a tap 40 pt above a popover that starts at 88 pt lands in the
+            // status bar on iPhone, which ignores it (2026-10-17).
             let popover = app.popovers.firstMatch.exists ? app.popovers.firstMatch.frame : discard.frame
             let window = app.windows.firstMatch.frame
-            let y = popover.minY > 80 ? popover.minY - 40 : min(popover.maxY + 40, window.maxY - 20)
+            let below = window.maxY - popover.maxY, above = popover.minY - window.minY
+            let y = below >= above ? popover.maxY + min(below / 2, 240) : popover.minY - min(above / 2, 240)
             app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: popover.midX, dy: y)).tap()
         }
         XCTAssertTrue(discard.waitForNonExistence(timeout: 5))

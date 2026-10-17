@@ -34,7 +34,7 @@ final class ClimateJourneyTests: XCTestCase {
     @discardableResult
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let window = app.windows.firstMatch
-        for _ in 0..<14 {
+        for attempt in 0..<30 {
             // Scroll inside the sheet when one is up: an iPad sheet doesn't cover the window, and a drag on the
             // dimmed area outside it scrolls nothing.
             // Sheet pages are forms (collection views); the page is a scroll view.
@@ -51,7 +51,10 @@ final class ClimateJourneyTests: XCTestCase {
             let top = frame.minY + Swift.min(frame.height * 0.18, 160)
             let bottom = frame.maxY - frame.height * 0.08
             if element.exists, element.isHittable, element.frame.maxY <= bottom, element.frame.minY >= top { break }
-            let above = element.exists && element.frame.minY < top
+            // A row that is not in the tree yet is searched for downwards first, then upwards: a lazy Form drops the rows
+            // that scrolled away, so on the folded Duo's short screen the row can be above the end the page was left at
+            // (Predictive Comfort While Away, above the reasons; 2026-10-17).
+            let above = element.exists ? element.frame.minY < top : attempt >= 8
             let start = area.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: above ? 0.35 : 0.7))
             // Slow drag with a hold so the scroll doesn't coast: a tap during momentum only stops the scroll.
             start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: (above ? 1 : -1) * frame.height * 0.2)),
