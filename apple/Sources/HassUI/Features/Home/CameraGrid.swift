@@ -3,9 +3,13 @@ import HassDesign
 import ImageIO
 import SwiftUI
 
-/// Home cameras (web `CameraTile` grid: `columns={2} maxCellWidth={280} maxColumns={4}`), 2×2 on iPhone
-/// (`.agents/design/direction-g.md`, Controls: Cameras).
+/// The camera cards on Home and Security (web `CameraTile` grid: `columns={2} maxCellWidth={280} maxColumns={4}`),
+/// 2×2 on iPhone (`.agents/design/direction-g.md`, Controls: Cameras). Both pages show this one grid, and every
+/// card on it shows the camera's shared stream from ``CameraStreamPool``.
 struct CameraGrid: View {
+    /// Prefix of each tile's accessibility identifier (`<prefix>.<go2rtc stream id>`), so a journey can tell Home's
+    /// tiles from Security's while both pages show the same shared streams.
+    var idPrefix = "home.camera"
     var onOpen: (HomeConfig.Camera) -> Void
     @Environment(\.cameraStreamPool) private var poolOverride
 
@@ -21,7 +25,7 @@ struct CameraGrid: View {
                     .accessibilityLabel("\(camera.title) camera")
                     .accessibilityValue(CameraTile.statusText((poolOverride ?? .shared).model(for: camera).state))
                     .accessibilityHint("Opens the camera")
-                    .accessibilityIdentifier("home.camera.\(camera.rtcStreamId)")
+                    .accessibilityIdentifier("\(idPrefix).\(camera.rtcStreamId)")
                 }
             }
         }
@@ -33,13 +37,20 @@ struct CameraGrid: View {
 /// "avoid covering camera views"). VoiceOver still reads whether the tile is live (``statusText(_:)``).
 struct CameraTile: View {
     var camera: HomeConfig.Camera
+    @Environment(\.cameraStreamPool) private var poolOverride
+
+    /// Width over height of a card: 1 : 0.78, nearly square, as the web's tile (`ha-sfenton-react-dash@f5a7bf9`
+    /// `src/components/hass/CameraTile.module.css:2`, `aspect-ratio: 1 / 0.78`). The video and the snapshot fill
+    /// and crop to it, centred (`RtcPilotCamera.tsx:89`, `object-fit: cover`); the viewer keeps each camera's own
+    /// aspect ratio.
+    static let aspectRatio: CGFloat = 1 / 0.78
 
     private let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
 
     var body: some View {
-        // The cell sets the 16:9 frame and the video fills it, so wide cameras can't widen the tile.
+        // The cell sets the frame and the video fills it, so wide cameras can't widen the tile.
         Color.clear
-            .aspectRatio(16.0 / 9.0, contentMode: .fit)
+            .aspectRatio(Self.aspectRatio, contentMode: .fit)
             .overlay { CameraLiveView(camera: camera, style: .tile) }
             .clipShape(shape)
             // Hit-test only the tile's own frame: the fill-scaled Driveway (10:3) image is wider than its cell,
@@ -47,8 +58,17 @@ struct CameraTile: View {
             .contentShape(shape)
             .overlay(alignment: .bottomLeading) {
                 // Wraps at large Dynamic Type instead of truncating.
-                label { Text(camera.title).fixedSize(horizontal: false, vertical: true) }
-                    .padding(HassTokens.Spacing.s)
+                label {
+                    HStack(spacing: HassTokens.Spacing.xs) {
+                        // The live dot (web label: "Live"): there while the stream shows frames, gone while it
+                        // reconnects. VoiceOver reads the state from the tile's value, so the dot is decorative.
+                        if (poolOverride ?? .shared).model(for: camera).state.phase == .live {
+                            Circle().fill(.red).frame(width: 8, height: 8).accessibilityHidden(true)
+                        }
+                        Text(camera.title).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .padding(HassTokens.Spacing.s)
             }
     }
 
