@@ -44,11 +44,13 @@ struct BedroomFlowTests {
         #expect(call.hasPrefix("Last call:") && call != "Last call: None", "saving sent a service call: \(call)")
     }
 
-    @Test func aWakingWakeLightOffersToStopTheEpisode() async throws {
+    @Test func aWakingWakeLightCanBeStopped() async throws {
         let driver = await open(sheet: "wake-light", scenario: "waking")
         defer { driver.close() }
         let stop = try #require(await driver.waitFor("wake.stop"))
         #expect(stop.isEnabled && stop.spoken == "Stop Wake-Light Episode")
+        #expect(await driver.press("wake.stop") { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.hasPrefix("Last call: wake_light.command") == true },
+                "stopping the episode sends the wake-light command")
         let idle = await open(sheet: "wake-light")
         defer { idle.close() }
         let nodes = await idle.wait { $0.contains { $0.identifier == "wake.add" } }
@@ -56,14 +58,51 @@ struct BedroomFlowTests {
     }
 
     @Test(arguments: ["stephens-bed", "stephs-bed"])
-    func aBedSideShowsItsDialAndPowerButton(bed: String) async throws {
+    func aBedSideTurnsOffAfterAskingAndBackOnWithoutAsking(bed: String) async throws {
         let driver = await open(sheet: bed)
         defer { driver.close() }
         let nodes = await driver.wait { $0.contains { $0.identifier == "bed.power" } }
         #expect(nodes.contains { $0.identifier == "bed.dial" }, "the temperature tab shows the dial")
         let power = try #require(nodes.first { $0.identifier == "bed.power" })
-        #expect(power.isEnabled)
-        #expect(power.spoken.hasPrefix("Turn "), "the button names what it does: \(power.spoken)")
+        #expect(power.isEnabled && power.spoken.hasPrefix("Turn "), "\(power.spoken)")
+        let turningOff = power.spoken == "Turn Off"
+        if turningOff {
+            // An on bed asks first; nothing is sent until the dialog is answered.
+            #expect(await driver.press("bed.power") { $0.contains { $0.spoken == "Turn Off" && $0.identifier != "bed.power" } }, "turning a running bed off asks first")
+            #expect(await driver.text("gallery.lastCall") == "Last call: None")
+            let confirm = try #require(await driver.nodes().first { $0.spoken == "Turn Off" && $0.identifier != "bed.power" })
+            #expect(await driver.press(confirm) { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value != "Last call: None" })
+        } else {
+            #expect(await driver.press("bed.power") { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value != "Last call: None" },
+                    "turning an idle bed on sends at once")
+        }
+    }
+
+    @Test func aWakeAlarmOpensInTheEditorFromItsRow() async throws {
+        let driver = await open(sheet: "wake-light")
+        defer { driver.close() }
+        _ = await driver.waitFor("wake.add")
+        let alarm = try #require(await driver.nodes().first { $0.identifier.hasPrefix("wake.alarm.") && !$0.identifier.hasSuffix(".enabled") && !$0.identifier.hasSuffix(".link") && !$0.identifier.hasSuffix(".open") })
+        #expect(await driver.press(alarm.identifier) { $0.contains { $0.identifier == "wake.editor.name" } }, "tapping an alarm row opens its editor")
+        let name = try #require(await driver.waitFor("wake.editor.name"))
+        #expect(!name.value.isEmpty, "the editor loads the alarm's name")
+        let nodes = await driver.nodes()
+        #expect(nodes.contains { $0.identifier == "wake.editor.delete" }, "an existing alarm can be deleted")
+        #expect(nodes.first { $0.identifier == "wake.editor.save" }?.isEnabled == false, "an unchanged alarm has nothing to save")
+        #expect(await driver.press("wake.editor.delete") { $0.contains { $0.spoken == "Delete Alarm" } }, "Delete asks before it removes")
+    }
+
+    @Test func theWakeAlarmEditorSwitchesBetweenWeeklyAndOneTime() async throws {
+        let driver = await open(sheet: "wake-light")
+        defer { driver.close() }
+        #expect(await driver.press("wake.add") { $0.contains { $0.identifier == "wake.editor.save" } }, "Add opens the editor")
+        let segments = await driver.nodes().filter { $0.role == "AXRadioButton" }
+        #expect(segments.count >= 2, "the editor offers the alarm types as segments: \(segments.map(\.spoken))")
+        let once = try #require(segments.first { $0.spoken.lowercased().contains("one") || $0.title.lowercased().contains("one") })
+        #expect(await driver.press(once) { $0.contains { $0.identifier == "wake.editor.date" } }, "a one-time alarm asks for a date")
+        #expect(!(await driver.nodes()).contains { $0.identifier.hasPrefix("wake.editor.day.") }, "and not for weekdays")
+        let weekly = try #require(await driver.nodes().first { $0.role == "AXRadioButton" && !($0.spoken.lowercased().contains("one") || $0.title.lowercased().contains("one")) })
+        #expect(await driver.press(weekly) { $0.contains { $0.identifier.hasPrefix("wake.editor.day.") } }, "a weekly one asks for its days")
     }
 
     @Test func aBedSideAddsAnAlarmThroughItsEditor() async throws {

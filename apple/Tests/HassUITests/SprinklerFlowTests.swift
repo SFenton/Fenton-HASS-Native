@@ -52,6 +52,29 @@ struct SprinklerFlowTests {
         #expect(nodes.first { $0.identifier == "sprinkler.smartWatering" }?.value == "1")
     }
 
+    @Test func settingsSwitchesSendTheirServicesAndFlipOptimistically() async throws {
+        let driver = await open()
+        defer { driver.close() }
+        func value(_ id: String, _ expected: String) -> ([AXWindow.Node]) -> Bool {
+            { $0.contains { $0.identifier == id && $0.value == expected } }
+        }
+        // Rain delay starts off and smart watering on: each press shows the new value at once and sends its service.
+        #expect(await driver.press("sprinkler.rainDelay", until: value("sprinkler.rainDelay", "1")), "the switch shows the new value at once")
+        let afterRain = await lastCall(driver, "switch.turn_on")
+        #expect(afterRain.contains(Self.front.rainDelayEntityId), "\(afterRain)")
+        #expect(await driver.press("sprinkler.smartWatering", until: value("sprinkler.smartWatering", "0")))
+        let afterSmart = await lastCall(driver, "switch.turn_off")
+        #expect(afterSmart.contains(Self.front.smartWateringEntityId), "\(afterSmart)")
+    }
+
+    @Test func aWateringControllerCanBeStopped() async throws {
+        let driver = await open(Self.back)
+        defer { driver.close() }
+        let overview = await driver.wait { $0.contains { $0.identifier == "sprinkler.stop" } }
+        #expect(overview.first { $0.identifier == "sprinkler.stop" }?.isEnabled == true)
+        #expect(await driver.press("sprinkler.stop") { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.contains("bhyve.stop_watering") == true })
+    }
+
     @Test func aWateringControllerOffersToStopAndBlocksStartingAnotherZone() async throws {
         let driver = await open(Self.back)
         defer { driver.close() }
@@ -59,7 +82,7 @@ struct SprinklerFlowTests {
         #expect(overview.first { $0.identifier == "sprinkler.stop" }?.isEnabled == true)
         #expect(overview.contains { $0.identifier == "sprinkler.zone.1" && $0.spoken.contains("Watering") }, "the running zone reads Watering")
         // Another zone can't start while this one waters: Water now explains why and its Start button is off.
-        #expect(await driver.press("sprinkler.zone.0"))
+        #expect(await driver.press("sprinkler.zone.0") { $0.contains { $0.identifier == "sprinkler.waterBlocked" } })
         let blocked = try #require(await driver.waitFor("sprinkler.waterBlocked"))
         #expect(blocked.value.contains("Another zone is watering"))
         #expect(await driver.node("sprinkler.startWatering")?.isEnabled == false)
@@ -68,7 +91,7 @@ struct SprinklerFlowTests {
     @Test func waterNowStartsAZoneForTheChosenRunTime() async throws {
         let driver = await open()
         defer { driver.close() }
-        #expect(await driver.press("sprinkler.zone.0"))
+        #expect(await driver.press("sprinkler.zone.0") { $0.contains { $0.identifier == "sprinkler.startWatering" } })
         let start = try #require(await driver.waitFor("sprinkler.startWatering"))
         #expect(start.isEnabled)
         #expect(await driver.node("sprinkler.runTime") != nil)

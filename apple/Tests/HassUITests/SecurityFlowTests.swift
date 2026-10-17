@@ -32,18 +32,18 @@ struct SecurityFlowTests {
         let arming = SecurityConfig.modeButtons.filter { !$0.needsConfirmation && $0.state != "armed_home" }
         #expect(!arming.isEmpty)
         for mode in arming {
-            #expect(await driver.press("security.mode.\(mode.state)"), "\(mode.state)")
-            let call = await lastCall(driver) { $0.contains("alarm_control_panel") }
-            #expect(call.contains("alarm_control_panel"), "\(mode.state): \(call)")
+            let before = await driver.text("gallery.lastCall")
+            #expect(await driver.press("security.mode.\(mode.state)") { nodes in
+                nodes.last { $0.identifier == "gallery.lastCall" }.map { $0.value.contains("alarm_control_panel") && $0.value != before } == true
+            }, "\(mode.state)")
         }
     }
 
     @Test func disarmingAsksFirstAndSendsNothingUntilTheAlertIsAnswered() async throws {
         let driver = await open()
         defer { driver.close() }
-        #expect(await driver.press("security.mode.disarmed"))
-        let alert = await driver.wait { $0.contains { $0.identifier == "security.disarm.confirm" } }
-        #expect(alert.contains { $0.identifier == "security.disarm.confirm" }, "disarming confirms first")
+        #expect(await driver.press("security.mode.disarmed") { $0.contains { $0.identifier == "security.disarm.confirm" } },
+                "disarming confirms first")
         #expect(await lastCall(driver) { _ in true } == "Last call: None", "nothing was sent before the alert was answered")
     }
 

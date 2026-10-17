@@ -128,7 +128,7 @@ final class AXWindow {
 
     /// The first element whose accessibility identifier is `identifier`.
     func node(_ identifier: String) async -> Node? {
-        await nodes(stopWhen: { $0.identifier == identifier }).last { $0.identifier == identifier }
+        await nodes().first { $0.identifier == identifier }
     }
 
     /// The first element whose label or title is exactly `text`, optionally of `role` (for example `AXButton`).
@@ -195,6 +195,35 @@ final class AXWindow {
 
     // MARK: Acting
 
+    /// Runs the main run loop briefly (a plain function, so the async click may call it).
+    private static func pump(_ seconds: TimeInterval) { RunLoop.main.run(until: Date().addingTimeInterval(seconds)) }
+
+    /// The window, its sheets and the sheets and alerts on those, the topmost first.
+    private func windowsFrontToBack() -> [NSWindow] {
+        var windows: [NSWindow] = []
+        func collect(_ window: NSWindow) {
+            window.sheets.forEach(collect)
+            windows.append(window)
+        }
+        collect(hosted.window)
+        return windows
+    }
+
+    /// Makes every view class in the hierarchy accept the click that arrives while its window is not key (what a click
+    /// does to an inactive window). Replaces `acceptsFirstMouse(for:)` on each class up the chain.
+    private static func acceptFirstMouse(in view: NSView) {
+        let selector = #selector(NSView.acceptsFirstMouse(for:))
+        let accept: @convention(block) (AnyObject, NSEvent?) -> Bool = { _, _ in true }
+        var current: AnyClass? = Swift.type(of: view)
+        while let cls = current, cls != NSObject.self {
+            if class_getInstanceMethod(cls, selector) != nil {
+                class_replaceMethod(cls, selector, imp_implementationWithBlock(accept), "B@:@")
+            }
+            current = class_getSuperclass(cls)
+        }
+        view.subviews.forEach(acceptFirstMouse)
+    }
+
     /// Clicks the centre of `frame` (screen coordinates, top-left origin, as accessibility reports them) with real
     /// mouse events sent to the window under that point, the sheet first. Returns whether a window took them.
     private func click(at frame: CGRect, along fraction: CGFloat = 0) async -> Bool {
@@ -203,10 +232,12 @@ final class AXWindow {
         // `fraction` of the way along the frame on a retry.
         let x = fraction == 0 ? frame.minX + min(12, frame.width / 2) : frame.minX + frame.width * fraction
         let screenPoint = CGPoint(x: x, y: screen.frame.maxY - frame.midY)
-        let candidates = (hosted.window.sheets + [hosted.window]).filter { $0.frame.contains(screenPoint) }
-        guard let target = candidates.first else { return false }
+        guard let target = windowsFrontToBack().first(where: { $0.frame.contains(screenPoint) }) else { return false }
         let location = target.convertPoint(fromScreen: screenPoint)
-        target.makeKey()
+        // The host is often not the active application (another one has the front, or the screen is locked), and an
+        // inactive window swallows its first click unless its views accept first mouse: say they do.
+        if let content = target.contentView { Self.acceptFirstMouse(in: content) }
+        target.makeKeyAndOrderFront(nil)
         func event(_ type: NSEvent.EventType) -> NSEvent? {
             NSEvent.mouseEvent(
                 with: type, location: location, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
@@ -240,6 +271,39 @@ final class AXWindow {
         return current
     }
 
+    /// Drags across the element along its vertical centre, from `start` to `end` (0 is its leading edge, 1 its trailing
+    /// edge), in `steps` moves: the gesture of a slider or a dimmer tile.
+    @discardableResult
+    func drag(_ node: Node?, from start: CGFloat, to end: CGFloat, steps: Int = 8) async -> Bool {
+        guard let node, !node.frame.isEmpty, let screen = NSScreen.screens.first else { return false }
+        func point(_ fraction: CGFloat) -> CGPoint {
+            CGPoint(x: node.frame.minX + node.frame.width * fraction, y: screen.frame.maxY - node.frame.midY)
+        }
+        guard let target = windowsFrontToBack().first(where: { $0.frame.contains(point(start)) }) else { return false }
+        if let content = target.contentView { Self.acceptFirstMouse(in: content) }
+        func send(_ type: NSEvent.EventType, _ fraction: CGFloat) {
+            let location = target.convertPoint(fromScreen: point(fraction))
+            guard let event = NSEvent.mouseEvent(
+                with: type, location: location, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                windowNumber: target.windowNumber, context: nil, eventNumber: 0, clickCount: type == .mouseMoved ? 0 : 1,
+                pressure: type == .leftMouseUp ? 0 : 1
+            ) else { return }
+            target.sendEvent(event)
+        }
+        target.makeKeyAndOrderFront(nil)
+        send(.mouseMoved, start)
+        await hosted.settle(0.05)
+        send(.leftMouseDown, start)
+        await hosted.settle(0.05)
+        for step in 1...steps {
+            send(.leftMouseDragged, start + (end - start) * CGFloat(step) / CGFloat(steps))
+            await hosted.settle(0.05)
+        }
+        send(.leftMouseUp, end)
+        await hosted.settle(0.25)
+        return true
+    }
+
     /// Presses the element, as a tap does. Returns whether the press was accepted.
     @discardableResult
     func press(_ node: Node?, along fraction: CGFloat = 0) async -> Bool {
@@ -251,12 +315,25 @@ final class AXWindow {
     }
 
     /// Presses `identifier` until `condition` holds over the window's elements, at most `attempts` times: a synthesised
-    /// click now and then lands between two glyphs of a label and does nothing.
-    func press(_ identifier: String, attempts: Int = 3, until condition: ([Node]) -> Bool) async -> Bool {
+    /// click now and then lands between two glyphs of a label, or is lost while the machine is busy, and does nothing.
+    func press(_ identifier: String, attempts: Int = 4, until condition: ([Node]) -> Bool) async -> Bool {
         for attempt in 0..<attempts {
-            guard await press(await waitFor(identifier), along: [0, 0.5, 0.3, 0.7][attempt % 4]) else { return false }
-            let nodes = await wait(timeout: 6, condition)
-            if condition(nodes) { return true }
+            guard let node = await waitFor(identifier) else { return false }
+            if await press(node, until: condition, attempts: 1, firstAt: [0, 0.5, 0.3, 0.7][attempt % 4]) { return true }
+        }
+        return false
+    }
+
+    /// Presses a found element until `condition` holds (an element with no identifier of its own, such as a tab).
+    func press(_ node: Node, attempts: Int = 4, until condition: ([Node]) -> Bool) async -> Bool {
+        await press(node, until: condition, attempts: attempts, firstAt: 0)
+    }
+
+    private func press(_ node: Node, until condition: ([Node]) -> Bool, attempts: Int, firstAt: CGFloat) async -> Bool {
+        for attempt in 0..<attempts {
+            let fraction = attempt == 0 ? firstAt : [0.5, 0.3, 0.7][attempt % 3]
+            guard await press(node, along: fraction) else { return false }
+            if condition(await wait(timeout: 8, condition)) { return true }
         }
         return false
     }
@@ -282,11 +359,21 @@ final class AXWindow {
     func pressEach(prefixes: [String], inSheet: Bool = false, descend: Int = 0, skipping: (String) -> Bool = { _ in false },
                    lastCall id: String = "gallery.lastCall") async -> [PressOutcome] {
         let roles: Set<String> = ["AXButton", "AXCheckBox", "AXRadioButton"]
-        var seen = Set<String>()
-        let identifiers = await nodes(sheetOnly: inSheet).filter { node in
-            !node.identifier.isEmpty && prefixes.contains { node.identifier.hasPrefix($0) } && roles.contains(node.role) && node.isEnabled
-                && !skipping(node.identifier)
-        }.map(\.identifier).filter { seen.insert($0).inserted }
+        func pressable() async -> [String] {
+            var seen = Set<String>()
+            return await nodes(sheetOnly: inSheet).filter { node in
+                !node.identifier.isEmpty && prefixes.contains { node.identifier.hasPrefix($0) } && roles.contains(node.role) && node.isEnabled
+                    && !skipping(node.identifier)
+            }.map(\.identifier).filter { seen.insert($0).inserted }
+        }
+        // A page or sheet can take a while to appear when the machine is busy.
+        var identifiers = await pressable()
+        var waited: TimeInterval = 0
+        while identifiers.isEmpty, waited < 15 {
+            await hosted.settle(0.3)
+            waited += 0.4
+            identifiers = await pressable()
+        }
         var outcomes: [PressOutcome] = []
         var before = await text(id)
         defer { SweepWatchdog.shared.mark("sweep finished", armed: false) }

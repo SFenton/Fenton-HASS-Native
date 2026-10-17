@@ -32,12 +32,12 @@ struct ChoresFlowTests {
         let driver = await open("groceries")
         defer { driver.close() }
         _ = await driver.waitFor("todo.page.groceries")
-        #expect(await driver.press("fab.add"))
+        #expect(await driver.press("fab.add") { $0.contains { $0.identifier == "grocery.item" } })
         _ = try #require(await driver.waitFor("grocery.item"))
         let add = try #require(await driver.node("grocery.add"))
         #expect(!add.isEnabled, "Add waits for a name")
         #expect(await driver.type("Bananas", into: "grocery.item") { $0.contains { $0.identifier == "grocery.add" && $0.isEnabled } })
-        #expect(await driver.press("grocery.add"))
+        #expect(await driver.press("grocery.add") { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.contains("add_item") == true })
         let call = await lastCall(driver) { $0.contains("add_item") }
         #expect(call.contains("todo.add_item") && call.contains("Bananas"), "\(call)")
         let closed = await driver.wait { !$0.contains { $0.identifier == "grocery.item" } }
@@ -57,9 +57,9 @@ struct ChoresFlowTests {
     @Test func anAdminTaskIsAddedFromItsSheet() async throws {
         let driver = await open("to-do")
         defer { driver.close() }
-        #expect(await driver.press("fab.add"))
+        #expect(await driver.press("fab.add") { $0.contains { $0.identifier == "adminTodo.task" } })
         #expect(await driver.type("Fix the porch light", into: "adminTodo.task") { $0.contains { $0.identifier == "adminTodo.add" && $0.isEnabled } })
-        #expect(await driver.press("adminTodo.add"))
+        #expect(await driver.press("adminTodo.add") { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.contains("add_item") == true })
         let added = await lastCall(driver) { $0.contains("add_item") }
         #expect(added.contains("Fix the porch light"), "\(added)")
     }
@@ -84,7 +84,7 @@ struct ChoresFlowTests {
         let driver = await open("stephens-chores")
         defer { driver.close() }
         _ = await driver.waitFor("todo.page.stephens-chores")
-        #expect(await driver.press("fab.add"))
+        #expect(await driver.press("fab.add") { $0.contains { $0.identifier == "task.name" } })
         let name = try #require(await driver.waitFor("task.name"))
         #expect(await driver.node("task.save")?.isEnabled == false, "a task needs a name")
         for id in ["task.description", "task.assignee", "task.priority", "task.recurrence", "task.hasDueDate", "task.hideOnVacation"] {
@@ -92,7 +92,7 @@ struct ChoresFlowTests {
         }
         _ = name
         #expect(await driver.type("Wipe the counters", into: "task.name") { $0.contains { $0.identifier == "task.save" && $0.isEnabled } })
-        #expect(await driver.press("task.save"))
+        #expect(await driver.press("task.save") { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.contains("donetick") == true })
         let call = await lastCall(driver) { $0.contains("create_task") || $0.contains("donetick") }
         #expect(call.contains("donetick"), "\(call)")
     }
