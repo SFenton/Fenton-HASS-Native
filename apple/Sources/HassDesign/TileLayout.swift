@@ -60,3 +60,17 @@ public extension View {
     /// Draws tiles inside with `layout`; the gallery uses it to compare arrangements.
     func tileLayout(_ layout: TileLayout) -> some View { environment(\.tileLayout, layout) }
 }
+
+// MARK: - Title reserve
+
+public extension EnvironmentValues {
+    /// How many lines of title a tile keeps room for (``TileMetrics/minContentHeight(layout:titleLines:glyphHeight:titleLineHeight:)``);
+    /// 0 sizes a tile to its content. The Rooms grid asks for two (owner, 2026-10-16: "room for two lines of text").
+    @Entry var tileTitleLines: Int = 0
+}
+
+public extension View {
+    /// Keeps room in every tile inside for `lines` lines of title at the current Dynamic Type size, so a one-line name
+    /// sits on the bottom line of an anchored tile and a two-line name fills both lines, with equal tile heights.
+    func tileTitleLines(_ lines: Int) -> some View { environment(\.tileTitleLines, lines) }
+}

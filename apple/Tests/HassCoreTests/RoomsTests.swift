@@ -136,6 +136,10 @@ struct RoomsTests {
         #expect(RoomFormat.compact(EntityState(entityId: "binary_sensor.motion", state: "off")) == "Clear")
         #expect(RoomFormat.compact(EntityState(entityId: "light.kitchen", state: "on")) == "On")
         #expect(RoomFormat.compact(EntityState(entityId: "sensor.temp", state: "71.2")) == "71.2")
+        // A status word is title-cased; a time, a range and a unit are left alone.
+        #expect(RoomFormat.compact(EntityState(entityId: "sensor.master_bedroom_wake_light", state: "scheduled")) == "Scheduled")
+        #expect(RoomFormat.compact(EntityState(entityId: "sensor.master_bedroom_wake_light", state: "6:45 AM")) == "6:45 AM")
+        #expect(RoomFormat.compact(EntityState(entityId: "input_text.all_aqi_range", state: "21-34")) == "21-34")
         #expect(RoomFormat.compact(EntityState(entityId: "vacuum.x", state: "returning")) == "Returning")
     }
 

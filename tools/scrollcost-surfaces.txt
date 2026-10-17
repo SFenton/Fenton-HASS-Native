@@ -24,6 +24,17 @@ Vacuum sheet: zones|FENTON_GALLERY=vacuums FENTON_GALLERY_VACUUM=valetudo_exalte
 Humidifier sheet|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=controls FENTON_GALLERY_CLEAN=1
 Humidifier schedules|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=schedules FENTON_GALLERY_CLEAN=1
 
+# Tile finish proposals (`--section finish`; `--section all` skips it): the same tile-heavy pages with each finish
+# (`FENTON_TILE_FINISH`, Debug builds; `.agents/design/direction-g.md`, Tile finish).
+[finish]
+Grid solid|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=solid
+Grid A tintedGlass|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass
+Grid B frostedModule|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=frostedModule
+Grid C webPort|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=webPort
+Grid A without sheen|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=sheen
+Grid A without rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=rim
+Grid A without sheen or rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=sheen,rim
+
 [live]
 Live Home|LIVE=1 FENTON_SCROLLCOST_OPEN=home
 Live Security|LIVE=1 FENTON_SCROLLCOST_OPEN=security

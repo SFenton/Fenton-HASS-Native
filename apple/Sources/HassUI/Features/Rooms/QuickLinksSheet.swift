@@ -108,18 +108,24 @@ struct QuickLinksDetailView: View {
     }
 }
 
-/// The Quick Links tiles in two columns (web `DynamicGrid columns={2}`).
+/// The Quick Links tiles in two columns (web `DynamicGrid columns={2}`), all one size: the tallest tile (a two-line title
+/// over a two-line state) sets the height of every row (owner, 2026-10-16: "Quick Links now have different tile sizes
+/// (prefer consistency of what we had before)"). The arrangement is the Rooms grid's, glyph top-leading and text on the
+/// bottom, because a row has no width for "12 Items • 2 Expiring Soon" beside a glyph and a chevron.
 struct QuickLinksGrid: View {
     var onNavigate: (QuickLink) -> Void
     @Environment(EntityStore.self) private var store
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
     var body: some View {
-        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 2) {
+        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 2, equalRowHeights: true) {
             ForEach(QuickLinks.visible { store.entity($0).state?.state }) { link in
                 tile(link)
             }
         }
+        .equalHeightTiles()
+        .tileLayout(.anchoredBottom)
+        .tileTitleLines(2)
     }
 
     private func tile(_ link: QuickLink) -> some View {
@@ -138,8 +144,8 @@ private extension QuickLink.Action {
     }
 }
 
-/// One Quick Links tile (web `QuickLinkTile`): a dark disclosure tile with its glyph in the page's colour family
-/// (direction G mockup n1 quick links); Security System's glyph follows the alarm mode.
+/// One Quick Links tile (web `QuickLinkTile`): a solid colour per link with a filled white glyph and white text
+/// (``QuickLinkPalette``); Security System's colour and glyph follow the alarm mode.
 struct QuickLinkTile: View {
     var link: QuickLink
     var action: () -> Void = {}
@@ -154,27 +160,21 @@ struct QuickLinkTile: View {
         }
     }
 
-    /// The colour family a link's glyph takes (`.agents/design/direction-g.md`, Colour families). Rooms and Food have
-    /// none; Security System follows the alarm mode, and is neutral while redacted so screenshots don't show it.
-    static func family(_ link: QuickLink, alarmState: String?) -> ColorFamily {
-        switch link.id {
-        case "security-system": ScreenshotPrivacy.isRedacting ? ColorFamily.neutral : ColorFamily.security(alarmState: alarmState) ?? .neutral
-        case "vacuums": .cleaning
-        case "media": .media
-        case "custom-lights": .lights
-        case "sprinklers": .water
-        default: .neutral
-        }
+    /// The fill a link takes (`.agents/design/direction-g.md`, Colour: Quick Links tiles). Security System follows the alarm
+    /// mode, and is a neutral slate while redacted so screenshots don't show it.
+    static func fill(_ link: QuickLink, alarmState: String?) -> UInt32? {
+        QuickLinkPalette.fill(forLink: link.id, alarmState: alarmState, isRedacted: ScreenshotPrivacy.isRedacting)
     }
 
     var body: some View {
         let state = link.entityId.flatMap { store.entity($0).state }
         let security = link.id == "security-system" ? QuickLinks.securityAppearance(state?.state) : nil
-        // A navigation tile is never "on": the off face keeps the tile dark with its glyph in the family colour.
+        // A navigation tile is never "on": a solid fill with a filled white glyph, like a room (owner, 2026-10-16).
         GlassTile(title: link.title, subtitle: Self.subtitle(link, store: store),
                   // Redacted screenshots keep the plain shield, so the glyph can't give the alarm mode away.
                   symbol: SymbolMap.symbol(for: ScreenshotPrivacy.isRedacting ? link.icon : security?.icon ?? link.icon),
-                  family: Self.family(link, alarmState: state?.state), isActive: false, kind: .navigate, action: action)
+                  family: .neutral, fillRGB: Self.fill(link, alarmState: state?.state), isActive: false, kind: .navigate,
+                  action: action)
     }
 }
 
@@ -215,7 +215,7 @@ struct RoomNavigationGrid: View {
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
     var body: some View {
-        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
+        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
             ForEach(RoomNavigation.ranked { store.entity($0).state?.state }) { item in
                 // A solid fill per room with a filled white glyph (direction G, Colour: Room tiles; owner, 2026-10-16).
                 GlassTile(title: item.title, symbol: SymbolMap.symbol(for: item.icon), family: .neutral,
@@ -224,6 +224,11 @@ struct RoomNavigationGrid: View {
                     .accessibilityIdentifier("rooms.\(item.path)")
             }
         }
+        // Glyph top-leading, the name on the bottom line, room for two lines at this text size and one height for every
+        // tile (owner, 2026-10-16: "Rooms should have taller tiles with room for two lines of text").
+        .equalHeightTiles()
+        .tileLayout(.anchoredBottom)
+        .tileTitleLines(2)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Rooms")
     }
