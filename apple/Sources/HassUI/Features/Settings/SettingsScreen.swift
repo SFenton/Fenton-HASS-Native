@@ -20,6 +20,7 @@ struct SettingsScreen: View {
     @State private var feedbackForm: FeedbackKind?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
     @Environment(\.tileSurface) private var surface
+    @Environment(\.appIconPlatform) private var appIconPlatform
 
     /// Creates the list.
     /// - Parameter openTopic: The topic open beside or above the list; constant nil for a static render.
@@ -78,6 +79,7 @@ struct SettingsScreen: View {
                         .foregroundStyle(surface == .page ? HassTokens.Ink.onDarkSecondary : HassTokens.Ink.secondary)
                 }
                 Section {
+                    AppIconSettingsRow(platform: appIconPlatform)
                     NavigationLink(value: SettingsRoute.performance) {
                         SettingsLinkRow(title: "Performance", subtitle: "Scrolling, loading and image cache measurements on this device.",
                                         symbol: "gauge.with.dots.needle.67percent", showsChevron: false)
@@ -105,6 +107,8 @@ struct SettingsLinkRow: View {
     var symbol: String
     /// Off inside a `NavigationLink`, which draws its own chevron.
     var showsChevron = true
+    /// An app icon whose small preview replaces the symbol (the App Icon row); nil draws the symbol.
+    var appIcon: AppIconChoice?
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -140,12 +144,18 @@ struct SettingsLinkRow: View {
         .accessibilityElement(children: .combine)
     }
 
+    @ViewBuilder
     private var icon: some View {
-        Image(systemName: symbol)
-            .font(.title3)
-            .foregroundStyle(HassTokens.Ink.secondary)
-            .frame(width: 34)
-            .accessibilityHidden(true)
+        if let appIcon {
+            AppIconPreview(choice: appIcon, side: 30)
+                .frame(width: 34)
+        } else {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(HassTokens.Ink.secondary)
+                .frame(width: 34)
+                .accessibilityHidden(true)
+        }
     }
 }
 
