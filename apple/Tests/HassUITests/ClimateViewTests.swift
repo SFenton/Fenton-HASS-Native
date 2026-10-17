@@ -42,7 +42,26 @@ struct ClimateViewTests {
     @Test func pageRendersWithNothingLoaded() {
         let climate = controller(states: [])
         #expect(render(ClimatePage(controller: climate), controller: climate) != nil)
-        #expect(render(ClimateHubList(controller: climate), controller: climate) != nil)
+        #expect(render(ThermostatHubPill(controller: climate), controller: climate) != nil)
+    }
+
+    /// Advanced Controls' rooms are the same colour tiles as the Rooms grid: every climate room is a room with a
+    /// palette fill and a grid glyph, and opening one pushes its route.
+    @Test func everyClimateRoomIsARoomTile() {
+        for room in ClimateConfig.rooms {
+            let path = room.key.replacingOccurrences(of: "_", with: "-")
+            #expect(RoomPalette.fill(forKey: room.key) != nil, "\(room.title)")
+            #expect(RoomNavigation.item(for: path)?.title == room.title)
+        }
+        var opened: [String] = []
+        let tab = ClimateRoomsTab(controller: controller()) { opened.append($0) }
+        tab.onOpen("living_room")
+        #expect(opened == ["living_room"])
+        let climate = controller()
+        for size in [Self.phone, Self.tablet] {
+            #expect(render(ClimateRoomsTab(controller: climate), controller: climate, size: size) != nil)
+        }
+        #expect(render(ClimateRoomsTab(controller: climate), controller: climate, typeSize: .accessibility5) != nil)
     }
 
     @Test func galleryRenders() {
