@@ -245,7 +245,6 @@ struct RoomsViewTests {
         #expect(render(QuickLinksDetailView(detail: .rooms, caller: caller) { _ in }, size: Self.phone) != nil)
         #expect(render(QuickLinksDetailView(detail: .securitySystem, caller: caller) { _ in }, size: Self.phone) != nil)
         #expect(render(QuickLinksSheet(caller: caller) { _ in }, size: Self.phone) != nil)
-        #expect(render(QuickLinksTab(caller: caller), size: Self.phone) != nil)
 
         var opened: [String] = []
         let grid = RoomNavigationGrid(caller: caller) { opened.append($0) }

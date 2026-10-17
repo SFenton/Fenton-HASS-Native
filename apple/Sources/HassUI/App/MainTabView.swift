@@ -22,13 +22,7 @@ struct MainTabView: View {
         ShellNavigationStyle.resolve(isRegularWidth: horizontalSizeClass == .regular)
     }
 
-    private var layout: CompactTabLayout {
-        if #available(iOS 26.0, macOS 26.0, *) { return .resolve(supportsTrailingTab: true) }
-        return .resolve(supportsTrailingTab: false)
-    }
-
-    private var chrome: ShellChrome { .resolve(style: style, layout: layout) }
-
+    private var chrome: ShellChrome { .resolve(style: style) }
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -73,49 +67,26 @@ struct MainTabView: View {
         }
         .onChange(of: style) { _, newStyle in
             if newStyle == .tabBar, !chrome.showsMenuButton { navigator.dismissFlyout() }
-            if newStyle == .flyout { navigator.closeQuickLinks() }
         }
         // Again once connected: a lookup before the socket is up fails, and the cached name stays meanwhile.
         .task(id: isConnected) { await loadProfileName() }
     }
 
-    /// The root tab view: iOS 26 and later use the `Tab` API with the trailing Quick Links circle in compact width.
-    @ViewBuilder
+    /// The root tab view: one `TabView` for every system, the glass floating bar on iOS 26 and the standard bar before
+    /// it. Five tabs (owner, 2026-10-16): Quick Links is a header button now, not a trailing tab.
     private var tabs: some View {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            let navigator = navigator
-            let selection = Binding<RootTab>(get: { navigator.rootTab }, set: { navigator.rootTab = $0 })
-            TabView(selection: selection) {
-                ForEach(AppSection.allCases) { section in
-                    Tab(section.title, systemImage: section.symbol, value: RootTab.section(section)) {
-                        sectionStack(for: section)
-                    }
+        @Bindable var navigator = navigator
+        return TabView(selection: $navigator.selection) {
+            ForEach(AppSection.allCases) { section in
+                sectionStack(for: section)
+                    .tabItem { Label(section.title, systemImage: section.symbol) }
                     .badge(NavigationMenu.badge(for: section, overdue: navigator.overdueChores) ?? 0)
-                }
-                // The trailing tab: its own Quick Links page. Direction G draws it as a circle that presents the
-                // sheet, but iOS 26 draws a role tab inside the bar unless its page is searchable, and selects it
-                // even when the selection binding refuses (measured 2026-10-14), so it stays a page here. Under the
-                // flyout the bar is hidden and Quick Links is a flyout row and a toolbar button that present the sheet.
-                if layout.hasQuickLinksTab {
-                    Tab(QuickLinks.title, systemImage: QuickLinksButton.symbol, value: RootTab.quickLinks, role: .search) {
-                        QuickLinksTab(caller: connection)
-                    }
-                }
-            }
-        } else {
-            @Bindable var navigator = navigator
-            TabView(selection: $navigator.selection) {
-                ForEach(AppSection.allCases) { section in
-                    sectionStack(for: section)
-                        .tabItem { Label(section.title, systemImage: section.symbol) }
-                        .badge(NavigationMenu.badge(for: section, overdue: navigator.overdueChores) ?? 0)
-                        .tag(section)
-                }
+                    .tag(section)
             }
         }
     }
 
-    /// A section's stack. Sections with list/detail pages use ``OnDemandSplitStack``; the rest push full width.
+    /// A section's stack. Every section pushes full width; Settings pushes its topics on the same path.
     @ViewBuilder
     private func sectionStack(for section: AppSection) -> some View {
         NavigationStack(path: navigator.path(for: section)) {
@@ -126,13 +97,17 @@ struct MainTabView: View {
                 case .security: SecurityScreen()
                 case .climate: ClimateScreen()
                 case .chores: ChoresScreen()
+                case .settings: SettingsTabRoot()
                 }
             }
             .sectionRootChrome()
             .pageChrome()
-            // Pages a notification opens (``ShellNavigator/open(_:)``), as Quick Links pushes them.
+            // Pages a notification opens (``ShellNavigator/open(_:)``) or Quick Links chooses.
             .navigationDestination(for: HomeRoute.self) { HomeRouteDestination(route: $0).pageChrome() }
+            .navigationDestination(for: HouseholdSettingsPage.self) { HouseholdSettingsDestination(page: $0).pageChrome() }
+            .navigationDestination(for: SettingsRoute.self) { SettingsRouteDestination(route: $0).pageChrome() }
         }
+        .shellSheets(caller: connection)
         .environment(\.shellSection, section)
     }
 
@@ -163,6 +138,9 @@ struct MainTabView: View {
     private func loadProfileName() async {
         guard let connection, let user = try? await connection.currentUser() else { return }
         if navigator.profileName != user.name { navigator.profileName = user.name }
+        // Who is viewing, for the Profile badge and sheet (Your Summary) before the Chores tab has ever been opened;
+        // the Chores model reads and writes the same key.
+        UserDefaults.standard.set(user.id, forKey: ChoresModel.viewerDefaultsKey)
         await push?.didConnect(userID: user.id, userName: user.name)
         location?.offerPermissionIfNeeded()
     }
@@ -176,10 +154,11 @@ extension View {
     func pageChrome() -> some View { modifier(PageChrome()) }
 }
 
-/// Implementation of ``SwiftUI/View/pageChrome()``. Inside a sheet (the Account sheet's Settings pages) a page
-/// takes the sheet's chrome instead: wallpaper is never drawn in sheets (direction G, Layers).
+/// Implementation of ``SwiftUI/View/pageChrome()``. Inside a sheet a page takes the sheet's chrome instead: wallpaper
+/// is never drawn in sheets (direction G, Layers), and the header buttons belong to pages, not sheets.
 private struct PageChrome: ViewModifier {
     @Environment(\.shellNavigationStyle) private var style
+    @Environment(\.shellChrome) private var chrome
     @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
     @Environment(\.tileSurface) private var surface
 
@@ -199,6 +178,8 @@ private struct PageChrome: ViewModifier {
         // out of SwiftUI's reach.
         content
             .headerEdgeFade()
+            .shellHeaderButtons()
+            .toolbarTitleDisplayMode(chrome.titleInHeader ? .inlineLarge : .automatic)
             .scrollContentBackground(.hidden)
             .pageBackdrop()
             .accessibilityHidden(while: isFlyoutOpen)
@@ -207,6 +188,7 @@ private struct PageChrome: ViewModifier {
         #else
         content
             .headerEdgeFade()
+            .shellHeaderButtons()
             .scrollContentBackground(.hidden)
             .pageBackdrop()
             .accessibilityHidden(while: isFlyoutOpen)

@@ -8,14 +8,14 @@ import Testing
 @MainActor
 struct NavigationShellTests {
     @Test func sectionsMatchTheWebPrimaryNavInOrder() {
-        // Direction G: four tabs; Settings lives in the Account sheet.
-        #expect(AppSection.allCases.map(\.title) == ["Home", "Security", "Climate", "Chores"])
-        #expect(AppSection.allCases.map(\.mdiIcon) == ["mdi:home", "mdi:shield", "mdi:thermostat", "mdi:clipboard-list"])
+        // Owner, 2026-10-16: Settings is the last tab, like the web's.
+        #expect(AppSection.allCases.map(\.title) == ["Home", "Security", "Climate", "Chores", "Settings"])
+        #expect(AppSection.allCases.map(\.mdiIcon) == ["mdi:home", "mdi:shield", "mdi:thermostat", "mdi:clipboard-list", "mdi:cog"])
         #expect(Set(AppSection.allCases.map(\.navigationIdentifier)).count == AppSection.allCases.count)
     }
 
-    @Test func flyoutListsTheFourSections() {
-        #expect(NavigationMenu.primary == [.home, .security, .climate, .chores])
+    @Test func flyoutListsTheFiveSections() {
+        #expect(NavigationMenu.primary == [.home, .security, .climate, .chores, .settings])
         #expect(NavigationMenu.primary == AppSection.allCases)
     }
 
@@ -150,47 +150,42 @@ struct SplitGeometryTests {
     }
 }
 
-/// The compact tab bar layout, shell chrome placement, Quick Links tab selection and the profile button.
+/// Shell chrome placement, the header buttons' sheets and the profile button.
 @MainActor
 struct ShellChromeTests {
-    @Test func iOS26CompactBarAddsTheQuickLinksCircle() {
-        #expect(CompactTabLayout.resolve(supportsTrailingTab: true) == .sectionsWithQuickLinks)
-        #expect(CompactTabLayout.resolve(supportsTrailingTab: true).hasQuickLinksTab)
-        #expect(!CompactTabLayout.resolve(supportsTrailingTab: false).hasQuickLinksTab)
+    @Test func menuButtonOnlyUnderTheFlyoutAndTheTitleSharesTheHeaderWithoutIt() {
+        // Quick Links and Profile are header buttons on every page; only the menu button and the title placement vary.
+        #expect(ShellChrome.resolve(style: .tabBar) == ShellChrome(showsMenuButton: false, titleInHeader: true))
+        #expect(ShellChrome.resolve(style: .flyout) == ShellChrome(showsMenuButton: true, titleInHeader: false))
     }
 
-    @Test func menuButtonOnlyUnderTheFlyoutQuickLinksButtonWhereThereIsNoCircleAndFloatingCircleInRegularWidth() {
-        #expect(ShellChrome.resolve(style: .tabBar, layout: .sectionsWithQuickLinks)
-            == ShellChrome(showsMenuButton: false, showsQuickLinksButton: false))
-        #expect(ShellChrome.resolve(style: .tabBar, layout: .sectionsOnly)
-            == ShellChrome(showsMenuButton: false, showsQuickLinksButton: true))
-        #expect(ShellChrome.resolve(style: .flyout, layout: .sectionsWithQuickLinks)
-            == ShellChrome(showsMenuButton: true, showsQuickLinksButton: false, showsFloatingQuickLinks: true))
-        #expect(!ShellChrome.resolve(style: .tabBar, layout: .sectionsOnly).showsFloatingQuickLinks)
-    }
-
-    @Test func quickLinksTabSitsOverTheSelectedSection() {
+    @Test func headerButtonsPresentTheirSheetsOverTheSelectedSection() {
         let navigator = ShellNavigator(selection: .climate)
-        navigator.paths[.climate] = NavigationPath(["room"])
-        navigator.rootTab = .quickLinks
-        #expect(navigator.isQuickLinksActive)
-        #expect(navigator.selection == .climate)
-        // Returning to the section under Quick Links keeps its stack.
-        navigator.select(.climate)
-        #expect(!navigator.isQuickLinksActive)
-        #expect(navigator.paths[.climate]?.count == 1)
-        navigator.rootTab = .quickLinks
-        navigator.closeQuickLinks()
-        #expect(navigator.rootTab == .section(.climate))
-    }
-
-    @Test func flyoutAndToolbarPresentTheQuickLinksSheetOverTheSelectedSection() {
-        let navigator = ShellNavigator(selection: .home)
         navigator.openFlyout()
         navigator.openQuickLinks()
-        #expect(navigator.quickLinksSection == .home)
+        #expect(navigator.quickLinksSection == .climate)
         #expect(!navigator.isFlyoutOpen)
-        #expect(navigator.rootTab == .section(.home))
+        navigator.quickLinksSection = nil
+        navigator.openAccount()
+        #expect(navigator.accountSection == .climate)
+        #expect(navigator.quickLinksSection == nil)
+    }
+
+    @Test func settingsIsTheLastTabAndTheFlyoutListsTheSameFive() {
+        #expect(AppSection.allCases.last == .settings)
+        #expect(NavigationMenu.primary == AppSection.allCases)
+        #expect(AppSection.settings.navigationIdentifier == "nav.settings")
+    }
+
+    @Test func settingsTopicsPushOnTheSettingsPath() {
+        let navigator = ShellNavigator(selection: .settings)
+        #expect(navigator.isAtRoot(.settings))
+        navigator.paths[.settings, default: NavigationPath()].append(HouseholdSettingsPage.guests)
+        #expect(!navigator.isAtRoot(.settings), "a pushed topic leaves the leading edge to the system back swipe")
+        navigator.edgeSwipeEnded(startX: 4, translation: CGSize(width: 80, height: 5))
+        #expect(!navigator.isFlyoutOpen)
+        navigator.select(.settings)
+        #expect(navigator.isAtRoot(.settings), "choosing the current tab pops it to its root")
     }
 
     @Test func profileNamePersistsBetweenLaunches() {
@@ -211,6 +206,14 @@ struct ShellChromeTests {
     @Test func profileButtonRendersWithAndWithoutAName() {
         #expect(ImageRenderer(content: ProfileButton(name: "Stephen Fenton") {}).cgImage != nil)
         #expect(ImageRenderer(content: ProfileButton(name: nil) {}).cgImage != nil)
+        #expect(ImageRenderer(content: ProfileButton(name: "Stephen Fenton", attentionCount: 12) {}).cgImage != nil)
+    }
+
+    @Test func profileButtonSpeaksWhoAndWhatNeedsAttention() {
+        #expect(ProfileButton.accessibilityValue(name: "Stephen Fenton", attentionCount: 0) == "Stephen Fenton")
+        #expect(ProfileButton.accessibilityValue(name: "Stephen Fenton", attentionCount: 1) == "Stephen Fenton, 1 item needs attention")
+        #expect(ProfileButton.accessibilityValue(name: nil, attentionCount: 7) == "7 items need attention")
+        #expect(ProfileButton.accessibilityValue(name: nil, attentionCount: 0) == "")
     }
 
     @Test func activeChipsFillWithTheirFamilyAndIdleOnesStayNeutral() {
