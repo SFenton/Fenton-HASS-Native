@@ -254,9 +254,20 @@ public struct GlassTileFace: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.tileLayout) private var preferredLayout
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.tileTitleLines) private var reservedTitleLines
+    @Environment(\.tileFinish) private var preferredFinish
+    @Environment(\.colorSchemeContrast) private var contrast
+    @ScaledMetric(relativeTo: .subheadline) private var titleLineHeight = TileMetrics.titleLineHeight
+    @ScaledMetric(relativeTo: .title3) private var glyphHeight = TileMetrics.glyphHeight
 
     /// Light only for a tile in a sheet under the light scheme: pages are always dark.
     private var appearance: TileAppearance { .resolve(surface: surface, scheme: scheme) }
+
+    /// The finish drawn: the environment's, or the solid one when the person asked for less transparency or more contrast
+    /// (HIG, Accessibility), which keeps every ground opaque.
+    private var finish: TileFinish {
+        TileFinish.effective(preferredFinish, reduceTransparency: reduceTransparency, increasedContrast: contrast == .increased)
+    }
 
     private var style: TileFaceStyle {
         .resolve(family: family, isActive: isActive, isError: isError, isUnavailable: isUnavailable, solidFill: fillRGB)
@@ -268,7 +279,7 @@ public struct GlassTileFace: View {
 
     public var body: some View {
         let style = style
-        let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: finish.tokens(on: surface).cornerRadius, style: .continuous)
         let layout = layout
         content(style, layout)
             // The chevron is vertically centred on the tile in every arrangement (owner, 2026-10-16), so the text
@@ -277,7 +288,7 @@ public struct GlassTileFace: View {
             .padding(.trailing, trailingInset)
             // Text wraps and the tile grows at large Dynamic Type instead of truncating. In an equal-height grid the face
             // also fills the row height it is offered.
-            .frame(maxWidth: .infinity, minHeight: layout.minHeight, maxHeight: fillsHeight ? .infinity : nil,
+            .frame(maxWidth: .infinity, minHeight: minContentHeight(layout), maxHeight: fillsHeight ? .infinity : nil,
                    alignment: layout == .stackedTop || layout == .anchoredBottom ? .topLeading : .leading)
             .padding(HassTokens.Spacing.m)
             .background { ground(style).clipShape(shape) }
@@ -291,12 +302,23 @@ public struct GlassTileFace: View {
                 }
             }
             .overlay {
+                if finish != .solid {
+                    FrostedRim(finish: finish, style: style, surface: surface, appearance: appearance)
+                }
+            }
+            .overlay {
                 if style == .tinted {
                     shape.strokeBorder(tintGlyph.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
                         .opacity(isUnavailable ? 0.5 : 1)
                 }
             }
             .contentShape(shape)
+    }
+
+    /// The content height the tile keeps: the layout's minimum, or room for the reserved title lines at this text size.
+    private func minContentHeight(_ layout: TileLayout) -> CGFloat {
+        TileMetrics.minContentHeight(layout: layout, titleLines: reservedTitleLines, glyphHeight: glyphHeight,
+                                     titleLineHeight: titleLineHeight)
     }
 
     /// Width the text keeps clear for the centred chevron: its glyph plus the gap before it.
@@ -306,7 +328,44 @@ public struct GlassTileFace: View {
 
     /// The glyph: decorative, because the title names the tile. Symbols carry built-in labels ("Humidifier"), which the
     /// audit then flagged as clipped text on iPad (glyph wider than its frame).
+    @ViewBuilder
     private func glyph(_ style: TileFaceStyle, layout: TileLayout) -> some View {
+        if finish.usesGlyphDisc {
+            discGlyph(style)
+        } else {
+            plainGlyph(style, layout: layout)
+        }
+    }
+
+    /// Finish B: the glyph sits on a disc that carries the family colour, so the tile itself can stay one neutral module.
+    private func discGlyph(_ style: TileFaceStyle) -> some View {
+        let fill: Color = switch style {
+        case let .filled(family): family.fill ?? Color(rgb: family.spec.glyph)
+        case let .colored(rgb): Color(rgb: rgb)
+        case .lit: LitTile.bandBottom
+        case .error: Color(rgb: appearance.errorRGB).opacity(0.2)
+        case .off, .tinted: Color.black.opacity(appearance == .light ? TileFinish.offDiscShade.light : TileFinish.offDiscShade.dark)
+        }
+        let ink: Color = switch style {
+        case let .filled(family): family.ink
+        case .colored: RoomPalette.ink
+        case .lit: LitTile.glyph
+        default: glyphColor(style)
+        }
+        return Image(systemName: symbol)
+            .font(.body)
+            .symbolVariant(isActive || style.isColored ? .fill : .none)
+            .foregroundStyle(ink)
+            .frame(width: Self.discDiameter, height: Self.discDiameter)
+            .background(fill, in: Circle())
+            .opacity(isUnavailable ? 0.5 : 1)
+            .accessibilityHidden(true)
+    }
+
+    /// The glyph disc's diameter under finish B: 34 pt, which also fixes the row layout's glyph column.
+    static let discDiameter: CGFloat = 34
+
+    private func plainGlyph(_ style: TileFaceStyle, layout: TileLayout) -> some View {
         Image(systemName: symbol)
             .font(layout == .row ? .title2 : .title3)
             // Filled for an active tile and for a coloured navigation tile; an off tile keeps the outline.
@@ -335,6 +394,7 @@ public struct GlassTileFace: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .modifier(FinishTextShadow(finish: finish, surface: surface))
     }
 
     @ViewBuilder
@@ -343,13 +403,15 @@ public struct GlassTileFace: View {
         case .row:
             HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
                 glyph(style, layout: layout)
-                    .frame(width: Self.rowGlyphWidth)
+                    .frame(width: finish.usesGlyphDisc ? Self.discDiameter : Self.rowGlyphWidth)
                 text(style, spacing: 2)
             }
         case .anchoredBottom:
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+            // No stack spacing: the spacer's minimum is the whole gap, so the height reserved for the glyph, the gap and
+            // the title lines (``TileMetrics``) is the height drawn.
+            VStack(alignment: .leading, spacing: 0) {
                 glyph(style, layout: layout)
-                Spacer(minLength: HassTokens.Spacing.s)
+                Spacer(minLength: TileMetrics.glyphGap)
                 text(style, spacing: 2)
             }
         case .centeredStack:
@@ -391,7 +453,10 @@ public struct GlassTileFace: View {
 
     private func glyphColor(_ style: TileFaceStyle) -> Color {
         switch style {
-        case .off: isEnabled ? (family.map { Color(rgb: $0.offGlyphRGB(appearance.scheme)) } ?? muted) : muted
+        case .off:
+            isEnabled ? (family.map { family in
+                finish == .solid ? family.offGlyph : Color(rgb: family.offGlyphRGB(appearance.scheme, keep: finish.offGlyphKeep))
+            } ?? muted) : muted
         case .lit: LitTile.glyph
         case let .filled(family): family.ink
         case .colored: RoomPalette.ink
@@ -400,8 +465,14 @@ public struct GlassTileFace: View {
         }
     }
 
+    /// The style whose inks the text takes: finish B keeps the module neutral, so its text is the off face's (white, or the
+    /// label colour in a light sheet) whatever the state; an error keeps its red.
+    private func inkStyle(_ style: TileFaceStyle) -> TileFaceStyle {
+        finish.usesGlyphDisc && style != .error ? .off : style
+    }
+
     private func primaryInk(_ style: TileFaceStyle) -> Color {
-        switch style {
+        switch inkStyle(style) {
         case .lit: LitTile.ink
         case let .filled(family): family.ink
         case .colored: RoomPalette.ink
@@ -410,7 +481,7 @@ public struct GlassTileFace: View {
     }
 
     private func secondaryInk(_ style: TileFaceStyle) -> Color {
-        switch style {
+        switch inkStyle(style) {
         case .lit: LitTile.secondaryInk
         case let .filled(family): family.secondaryInk
         case .colored: RoomPalette.ink
@@ -420,7 +491,10 @@ public struct GlassTileFace: View {
         // (``TileAppearance/washOpacity``) and the label colour at 72% holds 4.5:1 over it.
         default:
             if appearance == .light { wash != nil ? HassTokens.Ink.secondary : HassTokens.Surface.secondaryInSheet }
-            else { wash != nil ? HassTokens.Surface.secondaryOnWash : HassTokens.Surface.secondaryOnModule }
+            else if wash != nil { HassTokens.Surface.secondaryOnWash }
+            // A frosted ground is a little lighter than the thin module, so its state text takes the denser wallpaper ink.
+            else if finish != .solid, surface == .page { HassTokens.Surface.secondaryOnWallpaper }
+            else { HassTokens.Surface.secondaryOnModule }
         }
     }
 
@@ -428,6 +502,16 @@ public struct GlassTileFace: View {
 
     @ViewBuilder
     private func ground(_ style: TileFaceStyle) -> some View {
+        if finish == .solid {
+            solidGround(style)
+        } else {
+            FrostedGround(finish: finish, style: style, surface: surface, appearance: appearance, tint: tint, wash: wash,
+                          level: level, levelTint: levelTint)
+        }
+    }
+
+    @ViewBuilder
+    private func solidGround(_ style: TileFaceStyle) -> some View {
         switch style {
         case .off, .tinted, .error:
             ZStack(alignment: .leading) {

@@ -17,6 +17,10 @@ struct DirectionGGallery: View {
     private let lowerFirst = UserDefaults.standard.string(forKey: "directionGOrder") == "lower"
     /// `-directionGOrder layouts` shows only the tile layout comparison, so a journey measures it unscrolled.
     private let layoutsOnly = UserDefaults.standard.string(forKey: "directionGOrder") == "layouts"
+    /// `-directionGOrder finish` shows only the tile finish comparison, so a journey audits and a capture sees it unscrolled.
+    private let finishOnly = UserDefaults.standard.string(forKey: "directionGOrder") == "finish"
+    /// `-directionGFinish webPort` limits the finish comparison to one proposal (`solid`, `tintedGlass`, `frostedModule`, `webPort`).
+    private let onlyFinish = UserDefaults.standard.string(forKey: "directionGFinish").flatMap(TileFinish.init(rawValue:))
     /// `-directionGLayout row` limits the comparison to one arrangement, so all six sample tiles fit on screen.
     private let onlyLayout = UserDefaults.standard.string(forKey: "directionGLayout").flatMap(TileLayout.init(rawValue:))
 
@@ -28,7 +32,9 @@ struct DirectionGGallery: View {
                         .padding(HassTokens.Spacing.m)
                         .module()
                 }
-                if layoutsOnly {
+                if finishOnly {
+                    finishes
+                } else if layoutsOnly {
                     layouts
                 } else if lowerFirst {
                     lower
@@ -39,6 +45,7 @@ struct DirectionGGallery: View {
                     chips
                     tiles
                     layouts
+                    finishes
                     lower
                 }
             }
@@ -147,6 +154,22 @@ struct DirectionGGallery: View {
         }
     }
 
+    /// The three frosted proposals beside the shipped solid finish, on the same tiles (``TileFinish``): off, on in a family
+    /// colour, lit, dark ink on a bright fill, an error, a room and a long name. Proposals only; the owner picks.
+    private var finishes: some View {
+        section("Tile Finish") {
+            ForEach(TileFinish.allCases.filter { onlyFinish == nil || $0 == onlyFinish }) { finish in
+                VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                    Text(finish.title).font(.headline).accessibilityAddTraits(.isHeader)
+                    Text(finish.summary)
+                        .font(.footnote)
+                        .foregroundStyle(.white)
+                    FinishSampleGrid(finish: finish)
+                }
+            }
+        }
+    }
+
     private func layoutTile(_ layout: TileLayout, _ title: String, _ subtitle: String, _ symbol: String,
                             _ family: ColorFamily, _ active: Bool) -> some View {
         GlassTile(title: title, subtitle: subtitle, symbol: symbol, family: family, isActive: active) {
@@ -210,21 +233,55 @@ struct DirectionGGallery: View {
     }
 }
 
+/// The tiles every finish is judged on: off, on in a family colour, lit, bright with dark ink, an error, a room, a long name
+/// and a coloured navigation tile, drawn with one ``TileFinish``. On a page they sit on the wallpaper; in a sheet, on the cell.
+private struct FinishSampleGrid: View {
+    var finish: TileFinish
+
+    var body: some View {
+        DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
+            sample("Office Lamp", "Off", "lamp.desk", .lights, false)
+            sample("Table Lamp", "60%", "lamp.table", .lights, true)
+            sample("Living Room Purifier", "Auto · 42%", "air.purifier", .air, true)
+            sample("Bath Fan", "Off", "fan", .air, false)
+            sample("Towel Rack", "On", "powerplug", .power, true)
+            sample("Thermostat", "Heating to 68°", "thermometer.medium", .heating, true)
+            GlassTile(title: "Garage Door", subtitle: "Didn't Respond", symbol: "door.garage.closed", family: .contact,
+                      isActive: false, isError: true)
+                .tileIdentifier("g.finish.\(finish.rawValue).Garage Door")
+            GlassTile(title: "Kitchen", symbol: "stove", family: .neutral, fillRGB: RoomPalette.fill(forRoom: "kitchen"),
+                      isActive: false, kind: .navigate)
+                .tileIdentifier("g.finish.\(finish.rawValue).Kitchen")
+        }
+        .equalHeightTiles()
+        .tileFinish(finish)
+    }
+
+    private func sample(_ title: String, _ subtitle: String, _ symbol: String, _ family: ColorFamily, _ active: Bool) -> some View {
+        GlassTile(title: title, subtitle: subtitle, symbol: symbol, family: family, isActive: active)
+            .tileIdentifier("g.finish.\(finish.rawValue).\(title)")
+    }
+}
+
 /// A sheet with tiles on the sheet surface and the bottom glass section bar. Launch with `FENTON_APPEARANCE=light` to
 /// draw it in the light appearance (`SystemAppearance`); the page behind stays dark.
 private struct DirectionGGallerySheet: View {
     enum Section: String, CaseIterable, Identifiable {
-        case controls = "Controls", families = "Families", apps = "Apps", settings = "Settings"
+        case controls = "Controls", families = "Families", finish = "Finish", apps = "Apps", settings = "Settings"
         var id: Self { self }
         var symbol: String {
             switch self {
             case .controls: "appletvremote.gen4"
             case .families: "circle.hexagongrid"
+            case .finish: "sparkles.rectangle.stack"
             case .apps: "play.rectangle"
             case .settings: "gearshape"
             }
         }
     }
+
+    /// `-directionGFinish webPort` limits the sheet's finish comparison to one proposal.
+    private let onlyFinish = UserDefaults.standard.string(forKey: "directionGFinish").flatMap(TileFinish.init(rawValue:))
 
     /// `-directionGSheetSection Families` picks the first section, so a journey audits each one at launch.
     @State private var section = Section(rawValue: UserDefaults.standard.string(forKey: "directionGSheetSection") ?? "") ?? .controls
@@ -236,6 +293,7 @@ private struct DirectionGGallerySheet: View {
                     switch section {
                     case .controls: controls
                     case .families: families
+                    case .finish: finishes
                     case .apps:
                         DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
                             GlassTile(title: "Netflix", symbol: "play.rectangle", family: .media, isActive: false, kind: .command)
@@ -278,6 +336,16 @@ private struct DirectionGGallerySheet: View {
             }
         }
         .equalHeightTiles()
+    }
+
+    /// The tile finish proposals on the sheet's cells (`-directionGFinish <raw>` limits them to one).
+    private var finishes: some View {
+        ForEach(TileFinish.allCases.filter { onlyFinish == nil || $0 == onlyFinish }) { finish in
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                Text(finish.title).font(.headline).accessibilityAddTraits(.isHeader)
+                FinishSampleGrid(finish: finish)
+            }
+        }
     }
 
     /// An inset list with a chevron row, a value row and a plain row, on the sheet's cell.

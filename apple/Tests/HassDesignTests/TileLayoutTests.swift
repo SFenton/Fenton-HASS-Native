@@ -61,4 +61,40 @@ struct TileLayoutTests {
             #expect(ImageRenderer(content: face).cgImage != nil)
         }
     }
+
+    // MARK: Title reserve
+
+    @Test func noReserveKeepsTheLayoutMinimum() {
+        for layout in TileLayout.allCases {
+            #expect(TileMetrics.minContentHeight(layout: layout, titleLines: 0) == layout.minHeight)
+        }
+        #expect(EnvironmentValues().tileTitleLines == 0)
+    }
+
+    @Test func twoReservedLinesFitTheGlyphTheGapAndBothLines() {
+        let height = TileMetrics.minContentHeight(layout: .anchoredBottom, titleLines: 2)
+        #expect(height == TileMetrics.glyphHeight + TileMetrics.glyphGap + 2 * TileMetrics.titleLineHeight)
+        #expect(height >= TileLayout.anchoredBottom.minHeight)
+        // A taller tile than the shipped row, which is what the Rooms grid asked for.
+        #expect(height + 2 * HassTokens.Spacing.m > TileLayout.row.minHeight + 2 * HassTokens.Spacing.m)
+    }
+
+    @Test func theReserveGrowsWithTextAndNeverShrinksBelowTheLayout() {
+        let small = TileMetrics.minContentHeight(layout: .anchoredBottom, titleLines: 2, glyphHeight: 24, titleLineHeight: 20)
+        let accessible = TileMetrics.minContentHeight(layout: .anchoredBottom, titleLines: 2, glyphHeight: 48, titleLineHeight: 40)
+        #expect(accessible > small)
+        #expect(TileMetrics.minContentHeight(layout: .anchoredBottom, titleLines: 1, glyphHeight: 10, titleLineHeight: 5)
+            == TileLayout.anchoredBottom.minHeight)
+        #expect(TileMetrics.minContentHeight(layout: .row, titleLines: 3) == 60)
+    }
+
+    @Test func aReservingGridRenders() {
+        let face = GlassTileFace(title: "Kitchen", symbol: "stove", tint: .gray, family: .neutral, fillRGB: 0x547F12,
+                                 isActive: false, showsChevron: true)
+            .tileLayout(.anchoredBottom)
+            .tileTitleLines(2)
+            .frame(width: 170, height: 100)
+        #expect(ImageRenderer(content: face).cgImage != nil)
+        #expect(ImageRenderer(content: face.environment(\.dynamicTypeSize, .accessibility5)).cgImage != nil)
+    }
 }

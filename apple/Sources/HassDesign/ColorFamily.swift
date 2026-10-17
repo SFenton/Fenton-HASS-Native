@@ -125,10 +125,12 @@ public enum ColorFamily: String, CaseIterable, Sendable {
 
     /// The off glyph for an appearance: the glyph mixed 72% with grey (system grey on dark, `#6C6C70` on light so the
     /// mix keeps 3:1 on white), so the kind of device stays visible without reading as on.
-    public func offGlyphRGB(_ scheme: ColorScheme) -> UInt32 {
+    /// - Parameter keep: How much of the family colour the mix keeps (0.72 shipped). The frosted finishes keep more
+    ///   (``TileFinish/offGlyphKeep``) because their off ground is a little lighter.
+    public func offGlyphRGB(_ scheme: ColorScheme, keep: Double = 0.72) -> UInt32 {
         scheme == .light
-            ? Self.mix(glyphLightRGB, Self.offGreyLight, 0.72)
-            : Self.mix(spec.glyph, Self.offGreyDark, 0.72)
+            ? Self.mix(glyphLightRGB, Self.offGreyLight, keep)
+            : Self.mix(spec.glyph, Self.offGreyDark, keep)
     }
 
     private static let offGreyDark: UInt32 = 0x8E8E93
