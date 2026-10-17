@@ -57,17 +57,21 @@ struct LiveActivityGallery: View {
     private var actions: ActivityActions {
         ActivityActions(
             control: { _, job, control, label in
-                AnyView(Button {
-                    lastAction = "\(control.id) \(job.id)"
-                    state = state.stopping(job.id)
-                } label: { label }.buttonStyle(.plain))
+                AnyView(Button(action: { press(control, on: job) }) { label }.buttonStyle(.plain))
             },
             focus: { _, job, label in
-                AnyView(Button {
-                    lastAction = "focus \(job)"
-                    state = state.focusing(job)
-                } label: { label }.buttonStyle(.plain))
+                AnyView(Button(action: { focus(job) }) { label }.buttonStyle(.plain))
             })
+    }
+
+    private func press(_ control: ActivityControl, on job: ActivityJob) {
+        lastAction = "\(control.id) \(job.id)"
+        state = state.stopping(job.id)
+    }
+
+    private func focus(_ job: String) {
+        lastAction = "focus \(job)"
+        state = state.focusing(job)
     }
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {

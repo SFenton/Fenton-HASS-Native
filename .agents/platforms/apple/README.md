@@ -10,4 +10,5 @@
 | [build-and-run.md](build-and-run.md) | XcodeGen, SwiftPM tests, simulators |
 | [capacity.md](capacity.md) | Machine-wide simulator, device and build slots (`tools/devcap.py`) |
 | [location.md](location.md) | Location and device sensors through `mobile_app` |
-| [live-activities.md](live-activities.md) | Live Activities spec: the Home activity, the Fenton Push job engine, push-to-start and update tokens |
+| [live-activities.md](live-activities.md) | Live Activities spec: the Home activity, the Fenton Push job engine, push-to-start and update tokens; §0 holds Phase 1's verified facts and device checks |
+| [live-activities-ha-automations.md](live-activities-ha-automations.md) | The Home Assistant automations Phase 1 proposes (not applied): start, update, end and the activity's buttons |
