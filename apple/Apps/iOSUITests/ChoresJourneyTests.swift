@@ -98,7 +98,13 @@ final class ChoresJourneyTests: JourneyTestCase {
         sleep(1)
         XCTAssertEqual(groceries.frame.minX, heading.frame.minX, accuracy: 1.5, "The tiles start inside the headings' edge")
         // The row's edit button sits 4 pt inside the module's trailing edge.
-        XCTAssertEqual(groceries.frame.maxX, edit.frame.maxX + 4, accuracy: 2, "The tiles end inside the modules' edge")
+        // The grid's rightmost tile (Groceries spans the row on a phone, but not in four columns on iPad).
+        let tiles = ["stephens-chores", "stephs-chores", "unassigned-chores", "home-improvement-chores", "groceries"]
+            .map { element("chores.link.\($0)", in: app) }
+        let trailing = tiles.map(\.frame.maxX).max() ?? 0
+        let leading = tiles.map(\.frame.minX).min() ?? 0
+        XCTAssertEqual(leading, heading.frame.minX, accuracy: 1.5, "The leftmost tile starts at the headings' edge")
+        XCTAssertEqual(trailing, edit.frame.maxX + 4, accuracy: 2, "The rightmost tile ends at the modules' edge")
         keepScreenshot(app, screenshotName("chores-alignment"))
     }
 
