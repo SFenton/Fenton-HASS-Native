@@ -294,6 +294,14 @@ struct AppIconFlowTests {
         let row = try #require(await driver.waitFor("settings.appIcon"), "the App Icon row")
         #expect(row.spoken.contains("App Icon") && row.spoken.contains("Teal + Mint"), "row reads: \(row.spoken)")
         #expect(row.frame.height >= 43, "44 pt target")
+        // Its own Appearance section: after Vacation, before the household topics and the diagnostic Performance row.
+        let list = await driver.nodes()
+        let vacation = try #require(list.first { $0.identifier == "settings.vacation" })
+        let topic = try #require(list.first { $0.identifier.hasPrefix("settings.topic.") })
+        let performance = try #require(list.first { $0.identifier == "settings.performance" })
+        #expect(vacation.frame.minY < row.frame.minY && row.frame.minY < topic.frame.minY, "Appearance sits above the household topics")
+        #expect(row.frame.minY < performance.frame.minY, "and well before Performance")
+        #expect(list.contains { $0.spoken == "Appearance" }, "under an Appearance header")
         #expect(await driver.press("settings.appIcon") { $0.contains { $0.identifier == "appIcon.choice.navySky" } })
         let nodes = await driver.nodes()
         for choice in AppIconChoice.allCases {
@@ -347,6 +355,7 @@ struct AppIconFlowTests {
         defer { driver.close() }
         #expect(await driver.waitFor("settings.vacation") != nil, "the list is up")
         #expect(await driver.node("settings.appIcon") == nil)
+        #expect(!(await driver.shows("Appearance")), "The empty section has no header either")
     }
 }
 #endif

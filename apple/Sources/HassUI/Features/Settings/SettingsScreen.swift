@@ -48,6 +48,10 @@ struct SettingsScreen: View {
                         .accessibilityIdentifier("settings.todo")
                     }
                 }
+                // Appearance sits with the first sections, above the household topics and well before the diagnostic
+                // Performance and Feedback sections (owner follow-up, 2026-10-17). The section is empty, and so is its
+                // header, where the system cannot switch icons.
+                AppIconSettingsSection()
                 Section {
                     ForEach(HouseholdSettingsPage.allCases) { page in
                         Button {
@@ -78,7 +82,6 @@ struct SettingsScreen: View {
                         .foregroundStyle(surface == .page ? HassTokens.Ink.onDarkSecondary : HassTokens.Ink.secondary)
                 }
                 Section {
-                    AppIconSettingsRow()
                     NavigationLink(value: SettingsRoute.performance) {
                         SettingsLinkRow(title: "Performance", subtitle: "Scrolling, loading and image cache measurements on this device.",
                                         symbol: "gauge.with.dots.needle.67percent", showsChevron: false)
