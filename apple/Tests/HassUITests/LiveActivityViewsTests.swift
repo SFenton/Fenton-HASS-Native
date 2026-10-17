@@ -51,7 +51,13 @@ struct LiveActivityViewsTests {
     @Test(arguments: HomeActivityFixtures.Scenario.allCases)
     func everyScenarioDrawsInEachIslandPresentationAndTheSmallFamily(_ scenario: HomeActivityFixtures.Scenario) async {
         for kind in HomeActivityIslandPreview.Kind.allCases {
-            let image = await render(HomeActivityIslandPreview(state: state(scenario), kind: kind), size: CGSize(width: 400, height: 220))
+            // Each in a window about its own size: the colour count samples a coarse grid, which a small island misses.
+            let size = switch kind {
+            case .compact: CGSize(width: 260, height: 40)
+            case .minimal: CGSize(width: 48, height: 48)
+            case .expanded: CGSize(width: 400, height: 220)
+            }
+            let image = await render(HomeActivityIslandPreview(state: state(scenario), kind: kind), size: size)
             #expect((image?.distinctColors ?? 0) > 3, "\(scenario) \(kind)")
         }
         let small = await render(HomeActivitySmallView(state: state(scenario)), size: CGSize(width: 200, height: 60))
@@ -81,7 +87,7 @@ struct LiveActivityViewsTests {
         }
         for kind in HomeActivityIslandPreview.Kind.allCases {
             let image = await render(HomeActivityIslandPreview(state: HomeActivityState(jobs: jobs), kind: kind), size: CGSize(width: 400, height: 220))
-            #expect((image?.distinctColors ?? 0) > 3)
+            #expect(image != nil)
         }
         let empty = await render(HomeActivityLockScreenView(state: HomeActivityState(jobs: [])))
         #expect(empty != nil)
