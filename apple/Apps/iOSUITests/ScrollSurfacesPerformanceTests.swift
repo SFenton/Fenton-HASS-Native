@@ -18,7 +18,7 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
     // MARK: - Budgets
 
     /// What a surface may cost. Set from the post-fix numbers (iPhone 17 Pro simulator, optimized build, 2026-10-16):
-    /// fixtures p95 turn 3.1 to 3.7 ms and worst 8 to 12 ms; live pages p95 1.5 to 2.0 ms, worst 6 to 11 ms.
+    /// fixtures p95 turn 3.1 to 3.7 ms and worst 8 to 12 ms; live pages p95 1.6 to 2.4 ms, worst 6 to 9.4 ms.
     enum Budget {
         /// The 95th percentile of the main thread's CPU time per run-loop turn while scrolling, in ms (a 120 Hz frame is 8.3).
         static let fixtureP95 = 6.0

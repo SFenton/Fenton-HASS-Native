@@ -31,15 +31,18 @@ The app measures itself (`HassUI/Diagnostics/ScrollCostProbe.swift`, `HassTeleme
 
 | Live page, scrolling 8 s | main-thread p95 turn | longest turn | turns over 8 ms | live-update time on main |
 |---|---|---|---|---|
-| Climate | 6.1 → 1.8 ms | 85 → 9.6 ms | 26 → 0 | 398 → 0.8 ms |
-| Recipes | 2.9 → 1.5 ms | 71 → 9.3 ms | 26 → 0 | 406 → 1.0 ms |
-| Media | 3.0 → 1.6 ms | 144 → 5.9 ms | 25 → 0 | 442 → 0.4 ms |
-| Theater Room | 3.1 → 1.8 ms | 91 → 8.1 ms | 19 → 0 | 276 → 0.4 ms |
-| Chores | 3.0 → 1.8 ms | 50 → 7.3 ms | 26 → 0 | 346 → 0.5 ms |
-| Living Room | 3.2 → 1.9 ms | 32 → 7.7 ms | 22 → 0 | 269 → 0.5 ms |
-| Master Bedroom | 2.9 → 2.0 ms | 30 → 11 ms | 20 → 0 | 261 → 0.9 ms |
-| Food hub | 2.3 → 1.7 ms | 29 → 8.6 ms | 19 → 0 | 279 → 0.4 ms |
-| Pantry | 2.8 → 1.9 ms | 37 → 8.5 ms | 20 → 0 | 261 → 0.4 ms |
+| Climate | 6.1 → 1.8 ms | 85 → 8.4 ms | 26 → 0 | 398 → 0.2 ms |
+| Recipes | 2.9 → 1.6 ms | 71 → 7.7 ms | 26 → 0 | 406 → 0.2 ms |
+| Media | 3.0 → 1.8 ms | 144 → 7.9 ms | 25 → 0 | 442 → 0.3 ms |
+| Theater Room | 3.1 → 1.8 ms | 91 → 6.9 ms | 19 → 0 | 276 → 0.2 ms |
+| Chores | 3.0 → 1.6 ms | 50 → 6.8 ms | 26 → 0 | 346 → 0.6 ms |
+| Living Room | 3.2 → 2.1 ms | 32 → 8.4 ms | 22 → 0 | 269 → 0.3 ms |
+| Master Bedroom | 2.9 → 2.0 ms | 30 → 8.3 ms | 20 → 0 | 261 → 0.9 ms |
+| Food hub | 2.3 → 1.8 ms | 29 → 6.5 ms | 19 → 0 | 279 → 0.2 ms |
+| Pantry | 2.8 → 1.7 ms | 37 → 6.2 ms | 20 → 0 | 261 → 0.2 ms |
+| Home, Security (after only) | 2.4, 2.3 ms | 9.3, 9.4 ms | 0, 0 | 0.2, 0.3 ms |
+
+Before: `main` at 5ca163e with the probe added; after: the branch merged with `main`. Home and Security fit one 874 pt screen before `main` made the camera cards taller, so they have no before.
 
 A page standing still (fixtures plus live updates): main-thread CPU in 8 s 439 → 3 ms (Living Room), 616 → 6 (Grid), 1562 → 5 (Climate), 787 → 7 (Chores); the 95th-percentile turn 18 to 49 ms → 0.05 ms. The updates' work did not vanish, it moved: process CPU is about the same (0.85 s in 8 s), on another core.
 
