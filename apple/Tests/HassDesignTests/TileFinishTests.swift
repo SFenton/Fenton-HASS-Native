@@ -53,6 +53,26 @@ struct TileFinishTests {
         }
     }
 
+    @Test func flattenedLayersCompositeLikeTheirStack() {
+        let stack: [(rgb: UInt32, opacity: Double)] = [(0x1C1C1E, 0.66), (0x076C91, 0.78)]
+        let (r, g, b, a) = FinishColor.premultiplied(stack)
+        // The expected alpha of two layers: 1 - (1 - 0.66)(1 - 0.78).
+        #expect(abs(a - (1 - 0.34 * 0.22)) < 1e-9)
+        // Over a backdrop, the flattened colour (r/a, g/a, b/a at alpha a) gives the stack's pixels.
+        let backdrop = 0.46
+        func layered(_ channel: (UInt32) -> Double) -> Double {
+            var v = backdrop
+            for layer in stack { v = channel(layer.rgb) * layer.opacity + v * (1 - layer.opacity) }
+            return v
+        }
+        let flat = (r / a) * a + backdrop * (1 - a)
+        #expect(abs(flat - layered { Double(($0 >> 16) & 0xFF) / 255 }) < 1e-9)
+        #expect(abs((g / a) * a + backdrop * (1 - a) - layered { Double(($0 >> 8) & 0xFF) / 255 }) < 1e-9)
+        #expect(abs((b / a) * a + backdrop * (1 - a) - layered { Double($0 & 0xFF) / 255 }) < 1e-9)
+        #expect(FinishColor.premultiplied([]).3 == 0)
+        #expect(TileFinish.omitted.isEmpty, "A normal launch leaves no layer out")
+    }
+
     // MARK: Rendering
 
     @Test(arguments: TileFinish.allCases, [TileSurface.page, .sheet])

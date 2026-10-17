@@ -38,7 +38,7 @@ struct FrostedGround: View {
                 }
             case let .colored(rgb):
                 if finish.usesGlyphDisc { neutral(dense: false, tokens: tokens); edge(Self.edgeColor(forFill: rgb), tokens) }
-                else { tinted(Color(rgb: rgb), tokens) }
+                else { tinted(rgb, tokens) }
             case let .filled(family):
                 if finish.usesGlyphDisc {
                     neutral(dense: false, tokens: tokens)
@@ -46,7 +46,7 @@ struct FrostedGround: View {
                 } else if family.spec.darkInk {
                     LinearGradient(colors: [LitTile.powerTop, family.fill ?? .yellow], startPoint: .top, endPoint: .bottom)
                 } else {
-                    tinted(family.fill ?? .clear, tokens)
+                    tinted(family.spec.fill ?? 0, tokens)
                 }
                 if let level, level > 0 {
                     if family.spec.darkInk {
@@ -77,20 +77,19 @@ struct FrostedGround: View {
                 // An error keeps the dense module, so its red state text holds 4.5:1 over the lit windows.
                 Color(rgb: HassTokens.Palette.moduleDense).opacity(0.78)
             } else {
-                Color(rgb: HassTokens.Palette.moduleThin).opacity(tokens.underlay)
-                Color.white.opacity(tokens.offVeil)
+                // The underlay and the veil as one colour: the same pixels as two layers, one layer fewer per tile.
+                FinishColor.flatten([(HassTokens.Palette.moduleThin, tokens.underlay), (0xFFFFFF, tokens.offVeil)])
             }
         }
     }
 
     /// A white-ink fill: the family colour over the dark underlay at the finish's opacity (opaque in a sheet).
     @ViewBuilder
-    private func tinted(_ fill: Color, _ tokens: TileFinish.Tokens) -> some View {
+    private func tinted(_ fill: UInt32, _ tokens: TileFinish.Tokens) -> some View {
         if surface == .page, tokens.fillOpacity < 1 {
-            Color(rgb: HassTokens.Palette.moduleThin).opacity(tokens.fillUnderlay)
-            fill.opacity(tokens.fillOpacity)
+            FinishColor.flatten([(HassTokens.Palette.moduleThin, tokens.fillUnderlay), (fill, tokens.fillOpacity)])
         } else {
-            fill
+            Color(rgb: fill)
         }
     }
 
@@ -109,7 +108,7 @@ struct FrostedGround: View {
     private func sheen(_ tokens: TileFinish.Tokens) -> some View {
         // A white cell in a light sheet has nothing for a highlight or a shade to work on: the rim alone finishes it.
         let bareLightCell = surface == .sheet && appearance == .light && (finish.usesGlyphDisc || !style.isFilledOrLit)
-        if !bareLightCell, tokens.sheenTop > 0 || tokens.sheenBottom > 0 {
+        if !bareLightCell, !TileFinish.omitted.contains("sheen"), tokens.sheenTop > 0 || tokens.sheenBottom > 0 {
             LinearGradient(
                 stops: [.init(color: .white.opacity(tokens.sheenTop), location: 0), .init(color: .clear, location: 0.46),
                         .init(color: .black.opacity(tokens.sheenBottom), location: 1)],
@@ -149,7 +148,9 @@ struct FrostedRim: View {
         // the sheet's own separator colour.
         let onLightCell = appearance == .light && (finish.usesGlyphDisc || !style.isFilledOrLit)
         ZStack {
-            if onLightCell {
+            if TileFinish.omitted.contains("rim") {
+                EmptyView()
+            } else if onLightCell {
                 shape.strokeBorder(HassTokens.Surface.separator, lineWidth: 1)
             } else {
                 shape.strokeBorder(
@@ -195,5 +196,29 @@ struct FinishTextShadow: ViewModifier {
         } else {
             content
         }
+    }
+}
+
+/// Colour arithmetic for the frosted grounds.
+enum FinishColor {
+    /// Several translucent `0xRRGGBB` layers, bottom first, flattened into one colour that composites the same way: fewer
+    /// layers per tile (a layer is real cost on a page of 120 tiles, `.agents/testing/apple/performance.md`).
+    static func flatten(_ layers: [(rgb: UInt32, opacity: Double)]) -> Color {
+        let (r, g, b, a) = premultiplied(layers)
+        guard a > 0 else { return .clear }
+        return Color(.sRGB, red: r / a, green: g / a, blue: b / a, opacity: a)
+    }
+
+    /// The layers' premultiplied red, green, blue and combined alpha (`over` compositing, bottom first).
+    static func premultiplied(_ layers: [(rgb: UInt32, opacity: Double)]) -> (Double, Double, Double, Double) {
+        var r = 0.0, g = 0.0, b = 0.0, a = 0.0
+        for layer in layers {
+            let o = max(0, min(1, layer.opacity))
+            r = Double((layer.rgb >> 16) & 0xFF) / 255 * o + r * (1 - o)
+            g = Double((layer.rgb >> 8) & 0xFF) / 255 * o + g * (1 - o)
+            b = Double(layer.rgb & 0xFF) / 255 * o + b * (1 - o)
+            a = o + a * (1 - o)
+        }
+        return (r, g, b, a)
     }
 }

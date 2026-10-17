@@ -8,7 +8,7 @@ public enum RoomFormat {
     // MARK: - Entity states
 
     /// `formatCompactEntityState`: contact sensors read Open/Closed, other binary sensors Active/Clear, lights On/Off,
-    /// sensors and text helpers their raw state, everything else title case. A missing entity reads "Unavailable".
+    /// sensors and text helpers their state with each word's first letter raised, everything else title case. A missing entity reads "Unavailable".
     public static func compact(_ entity: EntityState?) -> String {
         guard let entity else { return "Unavailable" }
         let state = entity.state
@@ -16,7 +16,9 @@ public enum RoomFormat {
         if entity.entityId.hasPrefix("binary_sensor.contact") { return state == "on" ? "Open" : "Closed" }
         if entity.domain == "binary_sensor" { return state == "on" ? "Active" : "Clear" }
         if entity.domain == "light" { return state == "on" ? "On" : "Off" }
-        if entity.domain == "sensor" || entity.domain == "input_text" { return state }
+        // Sensors and text helpers keep their text (a time, a number, a range), with the first letter of each word
+        // raised, so a status word reads "Scheduled" and not the raw "scheduled" (direction-g Copy: Title Case labels, owner
+        // 2026-10-16: the Wake-Light Alarms tile). Numbers, times and ranges have no letter to change.
         return StateText.titleCase(state)
     }
 

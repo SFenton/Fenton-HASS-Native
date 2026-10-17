@@ -36,6 +36,16 @@ public enum TileFinish: String, CaseIterable, Identifiable, Sendable {
         return .solid
     }()
 
+    /// Layers a Debug launch leaves out (`FENTON_TILE_FINISH_OMIT=sheen,rim`), to measure what each costs the scroll
+    /// (performance.md). Always empty in a Release build.
+    static let omitted: Set<String> = {
+        #if DEBUG
+        return Set((ProcessInfo.processInfo.environment["FENTON_TILE_FINISH_OMIT"] ?? "").split(separator: ",").map(String.init))
+        #else
+        return []
+        #endif
+    }()
+
     /// The gallery's name for the finish.
     public var title: String {
         switch self {

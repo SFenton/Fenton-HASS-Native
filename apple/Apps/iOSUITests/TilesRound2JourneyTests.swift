@@ -180,14 +180,12 @@ final class TilesRound2JourneyTests: JourneyTestCase {
         }
         let shipped = try tileFrame("solid")
         for finish in ["tintedGlass", "frostedModule", "webPort"] {
-            XCTAssertEqual(try tileFrame(finish), shipped, "\(finish) under Reduce Transparency is the shipped finish")
+            let proposal = try tileFrame(finish)
+            XCTAssertEqual(proposal.count, shipped.count)
+            // The same fill to within a few levels per channel (the capture's own dithering): a translucent or
+            // frosted ground would be tens of levels away on at least one of the eight samples.
+            let farthest = zip(proposal, shipped).map { abs(Int($0) - Int($1)) }.max() ?? 0
+            XCTAssertLessThanOrEqual(farthest, 4, "\(finish) under Reduce Transparency is the shipped finish")
         }
-    }
-
-    // MARK: Targets
-
-    private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertGreaterThanOrEqual(element.frame.width, 43, element.identifier, file: file, line: line)
-        XCTAssertGreaterThanOrEqual(element.frame.height, 43, element.identifier, file: file, line: line)
     }
 }

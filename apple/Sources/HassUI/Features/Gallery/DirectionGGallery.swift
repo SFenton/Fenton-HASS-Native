@@ -163,7 +163,7 @@ struct DirectionGGallery: View {
                     Text(finish.title).font(.headline).accessibilityAddTraits(.isHeader)
                     Text(finish.summary)
                         .font(.footnote)
-                        .foregroundStyle(HassTokens.Surface.secondaryOnWallpaper)
+                        .foregroundStyle(.white)
                     FinishSampleGrid(finish: finish)
                 }
             }

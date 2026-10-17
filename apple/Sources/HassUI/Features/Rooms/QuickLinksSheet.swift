@@ -144,8 +144,8 @@ private extension QuickLink.Action {
     }
 }
 
-/// One Quick Links tile (web `QuickLinkTile`): a dark disclosure tile with its glyph in the page's colour family
-/// (direction G mockup n1 quick links); Security System's glyph follows the alarm mode.
+/// One Quick Links tile (web `QuickLinkTile`): a solid colour per link with a filled white glyph and white text
+/// (``QuickLinkPalette``); Security System's colour and glyph follow the alarm mode.
 struct QuickLinkTile: View {
     var link: QuickLink
     var action: () -> Void = {}
@@ -215,7 +215,7 @@ struct RoomNavigationGrid: View {
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
 
     var body: some View {
-        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
+        DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
             ForEach(RoomNavigation.ranked { store.entity($0).state?.state }) { item in
                 // A solid fill per room with a filled white glyph (direction G, Colour: Room tiles; owner, 2026-10-16).
                 GlassTile(title: item.title, symbol: SymbolMap.symbol(for: item.icon), family: .neutral,
@@ -224,6 +224,11 @@ struct RoomNavigationGrid: View {
                     .accessibilityIdentifier("rooms.\(item.path)")
             }
         }
+        // Glyph top-leading, the name on the bottom line, room for two lines at this text size and one height for every
+        // tile (owner, 2026-10-16: "Rooms should have taller tiles with room for two lines of text").
+        .equalHeightTiles()
+        .tileLayout(.anchoredBottom)
+        .tileTitleLines(2)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Rooms")
     }
