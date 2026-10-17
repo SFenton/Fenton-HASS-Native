@@ -15,6 +15,10 @@ struct DirectionGGallery: View {
     /// `-directionGOrder lower` puts the modules, spinners and buttons first, so a journey audits them unscrolled
     /// (scrolled, the tiles under the header fade read as failing contrast).
     private let lowerFirst = UserDefaults.standard.string(forKey: "directionGOrder") == "lower"
+    /// `-directionGOrder layouts` shows only the tile layout comparison, so a journey measures it unscrolled.
+    private let layoutsOnly = UserDefaults.standard.string(forKey: "directionGOrder") == "layouts"
+    /// `-directionGLayout row` limits the comparison to one arrangement, so all six sample tiles fit on screen.
+    private let onlyLayout = UserDefaults.standard.string(forKey: "directionGLayout").flatMap(TileLayout.init(rawValue:))
 
     var body: some View {
         ScrollView {
@@ -24,13 +28,17 @@ struct DirectionGGallery: View {
                         .padding(HassTokens.Spacing.m)
                         .module()
                 }
-                if lowerFirst {
+                if layoutsOnly {
+                    layouts
+                } else if lowerFirst {
                     lower
                     chips
                     tiles
+                    layouts
                 } else {
                     chips
                     tiles
+                    layouts
                     lower
                 }
             }
@@ -110,6 +118,41 @@ struct DirectionGGallery: View {
             }
             .equalHeightTiles()
         }
+    }
+
+    /// The four tile arrangements side by side on the same tiles (`TileLayout`), for the owner to compare and override.
+    private var layouts: some View {
+        section("Tile Layouts") {
+            ForEach(TileLayout.allCases.filter { onlyLayout == nil || $0 == onlyLayout }) { layout in
+                VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                    Text(layout.title + (layout == .standard ? " (Shipped)" : ""))
+                        .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
+                    DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
+                        layoutTile(layout, "Office Lamp", "Off", "lamp.desk", .lights, false)
+                        layoutTile(layout, "Living Room Purifier", "Auto · 42%", "air.purifier", .air, true)
+                        layoutTile(layout, "Master Bedroom Closet", "Occupied", "figure.walk", .occupancy, true)
+                        GlassTile(title: "Kitchen", symbol: "stove", family: .neutral, fillRGB: RoomPalette.fill(forRoom: "kitchen"),
+                                  isActive: false, kind: .navigate) { lastAction = "tile Kitchen" }
+                            .accessibilityIdentifier("g.layout.\(layout.rawValue).Kitchen")
+                        GlassTile(title: "Security System", subtitle: "Armed Home", symbol: "shield", family: .securityHome,
+                                  isActive: false, kind: .navigate) { lastAction = "tile Security System" }
+                            .accessibilityIdentifier("g.layout.\(layout.rawValue).Security")
+                        layoutTile(layout, "Towel Rack", "On", "powerplug", .power, true)
+                    }
+                    .equalHeightTiles()
+                    .tileLayout(layout)
+                }
+            }
+        }
+    }
+
+    private func layoutTile(_ layout: TileLayout, _ title: String, _ subtitle: String, _ symbol: String,
+                            _ family: ColorFamily, _ active: Bool) -> some View {
+        GlassTile(title: title, subtitle: subtitle, symbol: symbol, family: family, isActive: active) {
+            lastAction = "tile \(title)"
+        }
+        .accessibilityIdentifier("g.layout.\(layout.rawValue).\(title)")
     }
 
     private func tile(_ title: String, _ subtitle: String, _ symbol: String, _ family: ColorFamily, _ active: Bool) -> some View {

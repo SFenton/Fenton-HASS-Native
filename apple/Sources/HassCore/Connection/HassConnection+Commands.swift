@@ -19,7 +19,7 @@ extension HassConnection {
         let request = HARequest(type: .webSocket(command), data: data, shouldRetry: false)
         let answered = SingleUse()
         return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HAData, Error>) in
-            let pending = connection.send(request) { result in
+            let pending = connection.send(request) { @Sendable result in
                 guard answered.claim() else { return }
                 switch result {
                 case let .success(value): continuation.resume(returning: value)

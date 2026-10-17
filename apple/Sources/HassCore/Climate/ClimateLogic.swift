@@ -162,6 +162,20 @@ public enum ClimateLogic {
     /// A vent cover's state text (web `ClimateCard` → `formatCompactEntityState`).
     public static func ventState(_ entity: EntityState?) -> String { compactState(entity) }
 
+    /// Whether a vent cover is open (or opening): the Vents family fills its tile.
+    public static func isVentOpen(_ entity: EntityState?) -> Bool {
+        guard let state = entity?.state else { return false }
+        return state == "open" || state == "opening"
+    }
+
+    /// A vent tile's state line: `Open · 60%` while open with a reported position, else ``ventState(_:)``
+    /// (`Open`, `Closed`, `Unavailable`). The position is the cover's `current_position`, 0 to 100.
+    public static func ventSubtitle(_ entity: EntityState?) -> String {
+        let state = ventState(entity)
+        guard isVentOpen(entity), let position = number(entity?.attributes["current_position"]) else { return state }
+        return "\(state) · \(Int(position.rounded()))%"
+    }
+
     // MARK: - Tracking
 
     /// Counts and enablement for the Tracking tab (web `useThermostatTrackingSummary`).

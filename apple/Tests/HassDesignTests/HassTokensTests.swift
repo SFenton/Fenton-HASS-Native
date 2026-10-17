@@ -69,6 +69,17 @@ struct HassTokensTests {
         #expect(contrast(old, ground) < contrast(ink, ground))
     }
 
+    /// A titled spinner straight on the wallpaper has no module under its label. The photo's brightest part under the
+    /// scrim (about `#53565F`) gave the system's 60% secondary 3.1:1 live; the wallpaper ink keeps 4.5:1 there.
+    @Test func secondaryInkReadsStraightOnTheWallpaper() {
+        let brightWallpaper: UInt32 = 0x53565F
+        let ink = mix(Palette.secondaryLabel, brightWallpaper, HassTokens.Surface.secondaryOnWallpaperOpacity)
+        #expect(contrast(ink, brightWallpaper) >= 4.5)
+        let system = mix(Palette.secondaryLabel, brightWallpaper, 0.6)
+        #expect(contrast(system, brightWallpaper) < 4.5, "The 60% system secondary is what failed")
+        #expect(HassTokens.Surface.secondaryOnWallpaperOpacity > HassTokens.Surface.secondaryOnModuleOpacity)
+    }
+
     @Test func radiiMatchDirectionG() {
         #expect(HassTokens.Radius.tile == 22)
         #expect(HassTokens.Radius.module == 26)

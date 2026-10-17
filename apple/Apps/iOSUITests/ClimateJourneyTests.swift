@@ -140,6 +140,24 @@ final class ClimateJourneyTests: XCTestCase {
         }
     }
 
+    /// Whole Home is compact (owner, 2026-10-16: "takes up too much space now and I don't want the card background"):
+    /// the dial sits straight on the wallpaper with no card around it, and the hub is one short pill under it.
+    func testWholeHomeIsCompactWithNoCard() throws {
+        let app = launch(clean: true)
+        let home = element("climate.wholeHome", in: app)
+        let hub = element("climate.hub", in: app)
+        XCTAssertTrue(hub.waitForExistence(timeout: 5))
+        XCTAssertLessThan(hub.frame.height, 90, "The hub is one compact row, not two list rows")
+        XCTAssertLessThanOrEqual(hub.frame.minY - home.frame.maxY, 20, "The hub sits right under the dial")
+        keepScreenshot(app, "climate-whole-home-\(FentonHomeApp.family)")
+        // No card: the dial container's corner is the wallpaper, the same as the page margin beside it.
+        let capture = try XCTUnwrap(RenderedContrast.Capture.screen())
+        let inside = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: home.frame.minX + 6, y: home.frame.minY + 6), in: capture))
+        let beside = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: max(2, home.frame.minX - 6), y: home.frame.minY + 6), in: capture))
+        XCTAssertLessThan(abs(inside.r - beside.r) + abs(inside.g - beside.g) + abs(inside.b - beside.b), 30,
+                          "The dial has no card background: \(inside) vs \(beside)")
+    }
+
     /// Away on vacation: the notice reads Vacation Mode, Automatic Thermostat's warning shows, nothing is open.
     func testAwayScenarioShowsTheNoticeAndWarning() {
         let app = launch(scenario: "away")
@@ -201,23 +219,45 @@ final class ClimateJourneyTests: XCTestCase {
         XCTAssertTrue(element("climate.wholeHome", in: app).waitForExistence(timeout: 5))
     }
 
+    /// The Rooms tab is a grid of the same colour room tiles as the Rooms grid: a button each, a solid fill, a filled white
+    /// glyph and a vertically centred chevron (owner, 2026-10-16: "standardise on room tiles across the app").
+    func testRoomsTabShowsColourRoomTiles() throws {
+        let app = launch(open: "rooms")
+        sleep(1)
+        keepScreenshot(app, "climate-rooms-tab-\(FentonHomeApp.family)")
+        let capture = try XCTUnwrap(RenderedContrast.Capture.screen())
+        let expected: [String: UInt32] = ["living_room": 0x8A6F44, "office": 0x007E94, "master_bedroom": 0x3E3EB7]
+        for (key, fill) in expected {
+            let tile = element("climate.room.\(key)", in: app)
+            XCTAssertTrue(tile.waitForExistence(timeout: 5), key)
+            XCTAssertEqual(tile.elementType, .button, "A room tile opens its room")
+            XCTAssertGreaterThanOrEqual(tile.frame.height, 43)
+            guard tile.isHittable else { continue }
+            let frame = tile.frame
+            let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture))
+            XCTAssertTrue(TileGeometry.matches(sample, fill), "\(key) is \(sample), expected \(String(fill, radix: 16))")
+            let chevron = try XCTUnwrap(TileGeometry.chevron(in: frame, capture: capture), "\(key): no chevron")
+            XCTAssertEqual(chevron.midY, frame.midY, accuracy: 3, "\(key) chevron is vertically centred")
+        }
+    }
+
     /// A room shows its subtitle, opens its dial, vents and Back returns to Rooms.
     func testRoomDetailShowsDialAndVents() {
         let app = launch(open: "rooms")
         let living = element("climate.room.living_room", in: app)
         XCTAssertTrue(living.waitForExistence(timeout: 5))
         XCTAssertEqual(living.label, "Living Room")
-        XCTAssertEqual(value(living), "70.9°F · Occupied")
+        XCTAssertEqual(value(living), "70.9°F\nOccupied")
         living.tap()
         XCTAssertTrue(heading("Living Room", in: app).waitForExistence(timeout: 5))
         let dial = element("climate.roomDial", in: app)
         XCTAssertTrue(dial.waitForExistence(timeout: 5))
         XCTAssertEqual(dial.descendants(matching: .any)["thermostatDial.handle.low"].firstMatch.label, "Living Room heat to")
-        let vent = element("climate.vent.cover.living_room_vent_2_vent", in: app)
-        XCTAssertTrue(vent.exists)
+        let vent = reveal(element("climate.vent.cover.living_room_vent_2_vent", in: app), in: app)
         XCTAssertNotEqual(vent.elementType, .button, "Vents are read-only")
         XCTAssertEqual(vent.label, "Vent 2")
-        XCTAssertEqual(value(vent), "Open")
+        XCTAssertEqual(value(vent), "Open · 50%", "A vent tile shows how far it is open")
+        XCTAssertEqual(value(element("climate.vent.cover.living_room_vent_1_vent", in: app)), "Open · 100%")
         XCTAssertTrue(header("Living Room Vents", in: app).exists)
         back(app)
         XCTAssertTrue(element("climate.sheet.rooms", in: app).waitForExistence(timeout: 5))
@@ -329,7 +369,7 @@ final class ClimateJourneyTests: XCTestCase {
         }
         reveal(element("climate.entry.rooms", in: app), in: app).tap()
         XCTAssertTrue(element("climate.sheet.rooms", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(value(reveal(element("climate.room.office", in: app), in: app)).contains("°F · "))
+        XCTAssertTrue(value(reveal(element("climate.room.office", in: app), in: app)).contains("°F\n"))
     }
 
     private func openClimateTab(_ app: XCUIApplication) {

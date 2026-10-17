@@ -55,8 +55,13 @@ struct RoomSheetBody: View {
         case .allContacts:
             RoomAllContacts(controller: controller)
         case let .items(items):
+            // A vents card draws the Vents face (filled while open, "Open · 50%") with the one rule Advanced Controls and
+            // the overview detail use: `ClimateLogic.isVentOpen` and `ventSubtitle`.
+            let isVent = card.kind == .vent
+            let format: (EntityState?) -> String = { isVent ? ClimateLogic.ventSubtitle($0) : RoomFormat.compact($0) }
+            let isActive: (EntityState?) -> Bool = { isVent ? ClimateLogic.isVentOpen($0) : RoomFormat.isActive($0) }
             RoomEntityGrid(title: nil, items: items.map { RoomEntityItem($0.title, $0.entityId, icon: $0.icon) },
-                           controller: controller, format: RoomFormat.compact, isActive: RoomFormat.isActive,
+                           controller: controller, format: format, isActive: isActive,
                            family: RoomTileFace.family(card.kind, icon: card.icon))
         case .device:
             // Wired device sheets (bathroom fan, air quality, humidifier, grill, vacuum) open on their own through

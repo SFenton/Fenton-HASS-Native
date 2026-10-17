@@ -7,6 +7,14 @@ import CoreGraphics
 /// follows the same rules as the on-demand split (regular width, wider than tall, each half at least 360 pt). Unlike
 /// the split it applies only where a hinge divides the window: iPad landscape stays one column (n1-ipad-home).
 enum HomeColumns {
+    /// The container to resolve columns from, given the measured view's frame in window coordinates: the frame without its
+    /// vertical position. Home scrolls, so its frame moves up the window on every frame of a scroll; resolving from the
+    /// moving frame wrote state per frame and re-evaluated the page each time (`.agents/testing/apple/performance.md`).
+    /// The columns read the horizontal position and the size only (``SplitPolicy/geometry(container:isRegularWidth:hinge:)``).
+    static func container(from frame: CGRect) -> CGRect {
+        CGRect(x: frame.minX, y: 0, width: frame.width, height: frame.height)
+    }
+
     /// The column widths when Home splits on a hinge, else nil (one column).
     /// - Parameters:
     ///   - container: The space Home's content is offered, in window coordinates.

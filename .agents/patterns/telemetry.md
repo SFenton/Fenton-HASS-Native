@@ -11,6 +11,7 @@
   - While it scrolls, a 120 Hz display link times each frame. A frame later than half a budget counts as a hitch, and the page's hitch ratio (ms per s) is recorded.
   - A new page must add the modifier; it is one line.
   - `CADisableMinimumFrameDurationOnPhone` is set, so ProMotion iPhones scroll at 120 Hz.
+- **Scroll cost:** `MainThreadCostMeter` (HassTelemetry) reads the process' CPU instructions and, per main run-loop turn, the main thread's CPU time; `ScrollCostProbe` (HassUI) drives the front scroll view by itself and reports it. Both are inert unless `FENTON_SCROLLCOST=1`, in any build, and need no test to drive the app. `tools/ios_scrollcost.sh` runs it over every page and sheet; a turn over 8 ms is a dropped frame at 120 Hz. Details, numbers and budgets: [performance](../testing/apple/performance.md). `EntityUpdate` now times only the main-thread part of a live delivery (applying the changed entities); the diff runs on `HassConnection.deltaQueue`.
 - **MetricKit:** `MetricKitCollector` keeps daily metric and diagnostic payloads (scroll hitch ratio, hangs) under `Caches/MetricKit`. It only runs on physical devices.
 - **Seeing it:**
   - Settings → Performance (`PerformanceScreen`) shows scrolling per page, page loading, live updates, actions and images.

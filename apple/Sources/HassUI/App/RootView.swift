@@ -47,6 +47,10 @@ public struct RootView: View {
             if ResourceCensusProbe.isEnabled { ResourceCensusProbe() }
         }
         #endif
+        // Scroll cost runs (`FENTON_SCROLLCOST=1`, any build): an invisible element a test or `tools/ios_perf.sh` drives.
+        .overlay(alignment: .topTrailing) {
+            if ScrollCostProbe.isEnabled { ScrollCostProbe() }
+        }
         // The user's appearance for sheets: the shell and the galleries force dark for their pages, which hides it
         // from their own environment (`SystemAppearance`).
         .publishesSystemAppearance()
