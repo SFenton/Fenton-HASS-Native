@@ -190,6 +190,22 @@ struct ClimateLogicTests {
         #expect(ClimateLogic.ventState(EntityState(entityId: "cover.x", state: "open")) == "Open")
     }
 
+    @Test func ventTilesShowTheirOpenPosition() {
+        func vent(_ state: String, position: Double? = nil) -> EntityState {
+            EntityState(entityId: "cover.x", state: state, attributes: position.map { ["current_position": .number($0)] } ?? [:])
+        }
+        #expect(ClimateLogic.ventSubtitle(vent("open", position: 60)) == "Open · 60%")
+        #expect(ClimateLogic.ventSubtitle(vent("open", position: 100)) == "Open · 100%")
+        #expect(ClimateLogic.ventSubtitle(vent("opening", position: 12.4)) == "Opening · 12%")
+        #expect(ClimateLogic.ventSubtitle(vent("open")) == "Open", "No reported position, no percentage")
+        #expect(ClimateLogic.ventSubtitle(vent("closed", position: 0)) == "Closed")
+        #expect(ClimateLogic.ventSubtitle(vent("unavailable")) == "Unavailable")
+        #expect(ClimateLogic.ventSubtitle(nil) == "Unavailable")
+        #expect(ClimateLogic.isVentOpen(vent("open")) && ClimateLogic.isVentOpen(vent("opening")))
+        #expect(!ClimateLogic.isVentOpen(vent("closed")) && !ClimateLogic.isVentOpen(vent("closing")))
+        #expect(!ClimateLogic.isVentOpen(nil))
+    }
+
     // MARK: Tracking summary
 
     @Test func trackingSummaryCounts() {

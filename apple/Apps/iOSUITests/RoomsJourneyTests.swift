@@ -222,6 +222,34 @@ final class RoomsJourneyTests: XCTestCase {
             || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "script.turn_on")).firstMatch.exists)
     }
 
+    /// The Rooms grid draws each room in its own colour with a filled white glyph and a vertically centred chevron
+    /// (owner, 2026-10-16: "room tiles don't have nice colours, and icons should be filled/white").
+    func testRoomsGridTilesAreColouredWithCentredChevrons() throws {
+        let app = launch(quickLinks: true, clean: true)
+        element("quickLinks.rooms", in: app).tap()
+        XCTAssertTrue(element("rooms.kitchen", in: app).waitForExistence(timeout: 5))
+        sleep(1)
+        keepScreenshot(app, "rooms-grid-\(FentonHomeApp.family)")
+        let capture = try XCTUnwrap(RenderedContrast.Capture.screen())
+        let expected: [String: UInt32] = ["kitchen": 0x547F12, "gym": 0xAF5F00, "garage": 0xA6222C, "living-room": 0x8A6F44]
+        for (room, fill) in expected {
+            let tile = element("rooms.\(room)", in: app)
+            guard tile.exists, tile.isHittable else { continue } // Below the fold on a short window.
+            assertTarget(tile)
+            let frame = tile.frame
+            let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture))
+            XCTAssertTrue(TileGeometry.matches(sample, fill), "\(room) is \(sample), expected \(String(fill, radix: 16))")
+            let chevron = try XCTUnwrap(TileGeometry.chevron(in: frame, capture: capture), "\(room): no chevron")
+            XCTAssertEqual(chevron.midY, frame.midY, accuracy: 3, "\(room) chevron is vertically centred")
+            // A filled white glyph: white ink in the leading 44 pt column, and nothing else but the title beside it.
+            let glyphColumn = CGRect(x: frame.minX + 8, y: frame.minY + 6, width: 36, height: frame.height - 12)
+            // Only near-white differs from every room fill by this much, so a family-coloured glyph would not register.
+            let glyph = try XCTUnwrap(TileGeometry.inkBounds(in: glyphColumn, background: sample, threshold: 400, capture: capture),
+                                      "\(room): no white glyph")
+            XCTAssertGreaterThan(glyph.height, 14, "\(room) glyph is drawn")
+        }
+    }
+
     /// Page links close Quick Links and push their page.
     func testQuickLinksPushAPage() {
         let app = launch(quickLinks: true)

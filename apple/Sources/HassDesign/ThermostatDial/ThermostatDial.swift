@@ -52,6 +52,7 @@ public struct ThermostatDial: View {
     @State private var editor = ThermostatDialEditor()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.tileSurface) private var surface
     @ScaledMetric(relativeTo: .largeTitle) private var primarySize: CGFloat = 76
 
     /// Space outside the ring so a handle's 64 pt target never leaves the view (web modal dial gutter).
@@ -136,6 +137,13 @@ public struct ThermostatDial: View {
         RingArc(from: geometry.fraction(of: from), to: geometry.fraction(of: to))
     }
 
+    /// Supporting text in the readout. A dial drawn straight on the wallpaper (Whole Home, with no card behind it since
+    /// 2026-10-16) sits on the photo at its brightest, where 72% white measured 3.8:1 live ("Idle"); there it is 92%
+    /// white. In a sheet it keeps the adaptive secondary ink.
+    private var secondaryInk: Color {
+        surface == .page ? Color.white.opacity(0.92) : HassTokens.Ink.secondary
+    }
+
     private var trackColor: Color {
         HassTokens.Ink.primary.opacity(contrast == .increased ? 0.38 : 0.16)
     }
@@ -148,7 +156,7 @@ public struct ThermostatDial: View {
         return VStack(spacing: 4) {
             Text(configuration.actionText)
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(HassTokens.Ink.secondary)
+                .foregroundStyle(secondaryInk)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(configuration.primaryText(for: displayed))
                     .font(.system(size: primarySize, weight: .light))
@@ -177,7 +185,7 @@ public struct ThermostatDial: View {
                 }
                 .font(.footnote.weight(.bold))
                 .monospacedDigit()
-                .foregroundStyle(HassTokens.Ink.secondary)
+                .foregroundStyle(secondaryInk)
             }
         }
         .lineLimit(1)

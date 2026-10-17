@@ -54,32 +54,58 @@ struct ClimateNotice: View {
 
 // MARK: - Thermostat Hub
 
-/// The physical thermostat's rows (web `ThermostatHubPill`; mockup n3): the hub with its state, glyph tinted by
-/// `hvac_action`, and its mode as a pop-up menu, then the fan's pop-up menu when the hub reports fan modes.
-struct ClimateHubList: View {
+/// The physical thermostat's pill (web `ThermostatHubPill`; owner, 2026-10-16: Whole Home "takes up too much space now",
+/// so back to the compact pre-Direction-G layout): one thin module with the hub's glyph tinted by `hvac_action`, its
+/// name and state, and the mode and fan as two icon pop-up menus. At accessibility sizes the menus drop under the text
+/// and show their value.
+struct ThermostatHubPill: View {
     var controller: ClimateController
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let entity = controller.entity(ClimateConfig.hubEntityId)
         let action = ClimateLogic.hvacAction(entity)
         let state = ClimateLogic.compactState(entity, state: controller.shown(ClimateController.hubModeKey))
         let fans = ClimateLogic.fanModeOptions(entity)
-        ModuleList {
-            ModuleRow("Thermostat Hub", subtitle: state, symbol: ClimateStyle.symbol("mdi:thermostat"),
-                      glyph: ClimateStyle.tint(action: action)) {
-                HubPicker(label: "Thermostat Hub Mode", value: state, options: ClimateLogic.hvacModeOptions(entity),
+        let stacked = typeSize.isAccessibilitySize
+        let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
+            : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.m))
+        layout {
+            HStack(spacing: HassTokens.Spacing.m) {
+                Image(systemName: ClimateStyle.symbol("mdi:thermostat"))
+                    .font(.title2)
+                    .foregroundStyle(ClimateStyle.tint(action: action) ?? HassTokens.Surface.secondaryOnModule)
+                    .frame(minWidth: 28)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Thermostat Hub")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Text(state)
+                        .font(.footnote)
+                        .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("climate.hub")
+            HStack(spacing: HassTokens.Spacing.xs) {
+                HubPicker(label: "Thermostat Hub Mode", value: state, symbol: stacked ? nil : "power",
+                          options: ClimateLogic.hvacModeOptions(entity),
                           selected: controller.shown(ClimateController.hubModeKey)) { controller.setHubMode($0) }
                     .accessibilityIdentifier("climate.hub.mode")
-            }
-            if !fans.isEmpty {
-                let fan = ClimateLogic.selectOption(controller.shown(ClimateController.hubFanKey) ?? "")
-                ModuleRow("Fan", symbol: ClimateStyle.symbol("mdi:fan")) {
-                    HubPicker(label: "Thermostat Hub Fan", value: fan, options: fans,
-                              selected: controller.shown(ClimateController.hubFanKey)) { controller.setHubFan($0) }
+                if !fans.isEmpty {
+                    let fan = ClimateLogic.selectOption(controller.shown(ClimateController.hubFanKey) ?? "")
+                    HubPicker(label: "Thermostat Hub Fan", value: fan, symbol: stacked ? nil : ClimateStyle.symbol("mdi:fan"),
+                              options: fans, selected: controller.shown(ClimateController.hubFanKey)) { controller.setHubFan($0) }
                         .accessibilityIdentifier("climate.hub.fan")
                 }
             }
         }
+        .padding(.vertical, HassTokens.Spacing.s)
+        .padding(.horizontal, HassTokens.Spacing.m)
+        .module()
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -92,6 +118,8 @@ struct HubPicker: View {
     var label: String
     /// The current choice as shown, read as the control's value.
     var value: String
+    /// Shows this glyph (with the up-down chevron) instead of the value, for the compact Thermostat Hub pill.
+    var symbol: String?
     var options: [ClimateLogic.Option]
     var selected: String?
     var onSelect: (String) -> Void
@@ -107,8 +135,11 @@ struct HubPicker: View {
             .pickerStyle(.inline)
         } label: {
             HStack(spacing: 4) {
-                Text(value)
-                    .font(.body)
+                if let symbol {
+                    Image(systemName: symbol).font(.body.weight(.semibold))
+                } else {
+                    Text(value).font(.body)
+                }
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.footnote.weight(.semibold))
                     .accessibilityHidden(true)
