@@ -235,6 +235,33 @@ struct FeedbackFormFlowTests {
         #expect(!ready.contains { $0.identifier == "feedback.validation" }, "no reason left to show")
     }
 
+    @Test func typingInTheBoxesFillsTheDraftAndSubmitFiles() async throws {
+        let connection = HassConnection(server: .fentonHome, tokens: TokenManager(store: InMemoryTokenStore()), store: EntityStore())
+        let filer = ScriptedFiler()
+        let model = FeedbackFormModel(kind: .bug, services: FeedbackServices(filer: filer))
+        await model.checkAvailability()
+        let driver = AXWindow(
+            FeedbackFormSheet(kind: .bug, model: model).environment(connection).environment(connection.store),
+            size: FeedbackFormSheetTests.phone
+        )
+        defer { driver.close() }
+        #expect(await driver.type("[Bug] Lights flicker", into: "feedback.field.title"))
+        #expect(await driver.type("They flicker when the fan starts", into: "feedback.field.description"))
+        #expect(await driver.type("Open Home", into: "feedback.field.repro"))
+        #expect(await driver.type("Steady light", into: "feedback.field.expected"))
+        let typed = await driver.wait { _ in model.canSubmit }
+        _ = typed
+        #expect(model.title == "[Bug] Lights flicker" && model.descriptionText.hasPrefix("They flicker"))
+        #expect(model.reproSteps == "Open Home" && model.expectedBehavior == "Steady light")
+        #expect(model.canSubmit)
+        // Submit files it through Home Assistant and the Report Sent alert offers Done.
+        #expect(await driver.press("feedback.submit") { _ in !filer.reports.isEmpty })
+        let report = try #require(filer.reports.first)
+        #expect(report.title == "[Bug] Lights flicker" && report.kind == "bug")
+        let alert = await driver.wait { $0.contains { $0.identifier == "feedback.done" } }
+        #expect(alert.contains { $0.identifier == "feedback.view" } && alert.contains { $0.identifier == "feedback.done" })
+    }
+
     @Test func removingAnAttachmentDropsItsTileAndItsCopy() async throws {
         let connection = HassConnection(server: .fentonHome, tokens: TokenManager(store: InMemoryTokenStore()), store: EntityStore())
         let model = FeedbackFormModel(kind: .feature, services: FeedbackServices(filer: ScriptedFiler()))

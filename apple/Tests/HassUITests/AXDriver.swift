@@ -8,10 +8,12 @@ import SwiftUI
 /// its accessibility identifier or label, presses it, types into a field and reads values back.
 ///
 /// SwiftUI builds no accessibility tree until a client asks, and the test host is a command-line tool that
-/// accessibility refuses to talk to until it is a regular application (``enable()``). The queries run off the main
-/// actor, which stays free to serve them while a test awaits. The process must be trusted for accessibility
-/// (``isAvailable``); tests that need it skip when it is not, so the coverage gate on a machine without that
-/// permission reads low rather than passing without them.
+/// accessibility refuses to talk to until it is a regular application (``enable()``). In this process an accessibility
+/// query runs on the calling thread, so reads happen on the main actor; accessibility actions (`AXPress`,
+/// `AXScrollToVisible`) end the host process, so a press is a real mouse event sent to the window instead, and text is
+/// typed by setting a field's value. The process must be trusted for accessibility (``isAvailable``); tests that need
+/// it skip when it is not, so the coverage gate on a machine without that permission reads low rather than passing
+/// without them (`.agents/testing/apple/README.md`, Driving hosted windows).
 @MainActor
 final class AXWindow {
     /// Whether a test can drive windows on this machine.
@@ -44,10 +46,15 @@ final class AXWindow {
 
     private let hosted: HostedWindow
 
-    /// Hosts `view` in a window of `size` that this driver can find by title.
+    private static var slot = 0
+
+    /// Hosts `view` in a window of `size`. Each window gets its own position, which is how its elements are told
+    /// apart from those of other tests' windows (SwiftUI renames a window after its navigation title).
     init(_ view: some View, size: CGSize) {
         Self.enable()
         hosted = HostedWindow(view, size: size)
+        Self.slot += 1
+        hosted.window.setFrameOrigin(CGPoint(x: 20 + CGFloat(Self.slot % 150) * 5, y: 40 + CGFloat(Self.slot % 100) * 4))
     }
 
     var window: HostedWindow { hosted }
@@ -62,7 +69,9 @@ final class AXWindow {
         // The tree is briefly empty while the window relayouts; ask again.
         for _ in 0..<5 {
             let expected = Self.axFrame(of: hosted.window)
-            let found = await Task.detached { Self.walk(pid: pid, expected: expected, limit: limit) }.value
+            // On the main thread: in this process an accessibility query runs on the calling thread, and AppKit builds
+            // the table cells it reads there (off the main thread that trips its auto layout checks).
+            let found = Self.walk(pid: pid, expected: expected, limit: limit)
             if !found.isEmpty { return found }
             await hosted.settle(0.1)
         }
@@ -86,7 +95,7 @@ final class AXWindow {
 
     /// Polls (in settle passes, not seconds) until `condition` holds over the window's elements.
     @discardableResult
-    func wait(timeout: TimeInterval = 6, _ condition: ([Node]) -> Bool) async -> [Node] {
+    func wait(timeout: TimeInterval = 20, _ condition: ([Node]) -> Bool) async -> [Node] {
         var waited: TimeInterval = 0
         var current = await nodes()
         while !condition(current), waited < timeout {
@@ -98,7 +107,7 @@ final class AXWindow {
     }
 
     /// Waits for an element with `identifier` to exist and returns it.
-    func waitFor(_ identifier: String, timeout: TimeInterval = 6) async -> Node? {
+    func waitFor(_ identifier: String, timeout: TimeInterval = 20) async -> Node? {
         await wait(timeout: timeout) { $0.contains { $0.identifier == identifier } }.first { $0.identifier == identifier }
     }
 
@@ -110,7 +119,7 @@ final class AXWindow {
 
     /// A one-line-per-element listing, for a failing test's message.
     func outline() async -> String {
-        await nodes().map { "\($0.role) id=\($0.identifier) label=\($0.spoken) value=\($0.value)" }.joined(separator: "\n")
+        await nodes().map { "\($0.role) id=\($0.identifier) label=\($0.spoken) value=\($0.value) frame=\($0.frame)" }.joined(separator: "\n")
     }
 
     /// The values (or labels) of every element with `identifier`, in tree order.
@@ -120,7 +129,7 @@ final class AXWindow {
 
     /// Waits for the last element with `identifier` to read something that satisfies `matches`, and returns that text
     /// (or the last text seen, so a failing expectation shows it).
-    func text(_ identifier: String, timeout: TimeInterval = 6, where matches: (String) -> Bool) async -> String? {
+    func text(_ identifier: String, timeout: TimeInterval = 20, where matches: (String) -> Bool) async -> String? {
         var last: String?
         await wait(timeout: timeout) { nodes in
             guard let found = nodes.last(where: { $0.identifier == identifier }) else { return false }
@@ -151,18 +160,43 @@ final class AXWindow {
                 pressure: type == .leftMouseDown ? 1 : 0
             )
         }
+        // Without a suspension between them: another test's window taking the key place between the press and the
+        // release would drop the click.
         for type in [NSEvent.EventType.mouseMoved, .leftMouseDown, .leftMouseUp] {
             guard let next = event(type) else { return false }
             target.sendEvent(next)
-            await hosted.settle(0.05)
         }
+        await hosted.settle(0.05)
         return true
+    }
+
+    /// Scrolls the window's content (its sheet's, when one is up) by wheel events until the element is in view and
+    /// clear of the bars: a click outside the window reaches nothing. Returns the element at its new position.
+    private func reveal(_ node: Node) async -> Node {
+        var current = node
+        let target = hosted.window.attachedSheet ?? hosted.window
+        let screenTop = NSScreen.screens.first?.frame.maxY ?? 0
+        for _ in 0..<16 {
+            let bounds = Self.axFrame(of: target)
+            let y = current.frame.midY
+            if y > bounds.minY + 80, y < bounds.maxY - 90 { return current }
+            let pixels: Int32 = y > bounds.midY ? -300 : 300
+            guard let wheel = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: pixels, wheel2: 0, wheel3: 0) else { break }
+            wheel.location = CGPoint(x: target.frame.midX, y: screenTop - target.frame.midY)
+            wheel.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: Int64(target.windowNumber))
+            wheel.setIntegerValueField(.mouseEventWindowUnderMousePointerThatCanHandleThisEvent, value: Int64(target.windowNumber))
+            if let event = NSEvent(cgEvent: wheel) { target.sendEvent(event) }
+            await hosted.settle(0.15)
+            if !current.identifier.isEmpty, let fresh = await self.node(current.identifier) { current = fresh }
+        }
+        return current
     }
 
     /// Presses the element, as a tap does. Returns whether the press was accepted.
     @discardableResult
     func press(_ node: Node?, along fraction: CGFloat = 0) async -> Bool {
-        guard let node else { return false }
+        guard let found = node else { return false }
+        let node = await reveal(found)
         let ok = await click(at: node.frame, along: fraction)
         await hosted.settle(0.25)
         return ok
@@ -173,7 +207,7 @@ final class AXWindow {
     func press(_ identifier: String, attempts: Int = 3, until condition: ([Node]) -> Bool) async -> Bool {
         for attempt in 0..<attempts {
             guard await press(await waitFor(identifier), along: [0, 0.5, 0.3, 0.7][attempt % 4]) else { return false }
-            let nodes = await wait(timeout: 1.2, condition)
+            let nodes = await wait(timeout: 6, condition)
             if condition(nodes) { return true }
         }
         return false

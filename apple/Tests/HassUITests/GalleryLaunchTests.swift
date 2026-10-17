@@ -43,6 +43,23 @@ extension HostedWindow {
     }
 }
 
+extension HostedWindow {
+    /// Scrolls the window's content (its sheet's, when one is up) from top to bottom with wheel events, so the rows a lazy
+    /// list builds only when they come into view are drawn and their code runs.
+    func scrollThrough(steps: Int = 6, pixels: Int32 = -450) async {
+        let target = window.attachedSheet ?? window
+        let screenTop = NSScreen.screens.first?.frame.maxY ?? 0
+        for _ in 0..<steps {
+            guard let wheel = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: pixels, wheel2: 0, wheel3: 0) else { return }
+            wheel.location = CGPoint(x: target.frame.midX, y: screenTop - target.frame.midY)
+            wheel.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: Int64(target.windowNumber))
+            wheel.setIntegerValueField(.mouseEventWindowUnderMousePointerThatCanHandleThisEvent, value: Int64(target.windowNumber))
+            if let event = NSEvent(cgEvent: wheel) { target.sendEvent(event) }
+            await settle(0.1)
+        }
+    }
+}
+
 extension NSBitmapImageRep {
     /// How many different colours a coarse grid of pixels holds: a blank or single-fill window reads one or two.
     var distinctColors: Int {
@@ -89,6 +106,7 @@ struct GalleryLaunchTests {
         let hosted = HostedWindow(ComponentGallery(page: page), size: size)
         defer { hosted.close() }
         await hosted.settle(settle)
+        await hosted.scrollThrough(steps: 4)
         return hosted.snapshot()
     }
 

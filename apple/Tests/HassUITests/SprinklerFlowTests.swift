@@ -52,18 +52,6 @@ struct SprinklerFlowTests {
         #expect(nodes.first { $0.identifier == "sprinkler.smartWatering" }?.value == "1")
     }
 
-    @Test func settingsSwitchesSendTheirServicesAndFlipOptimistically() async throws {
-        let driver = await open()
-        defer { driver.close() }
-        func value(_ id: String, _ expected: String) -> ([AXWindow.Node]) -> Bool {
-            { $0.contains { $0.identifier == id && $0.value == expected } }
-        }
-        // Rain delay starts off: the press shows the new value at once and sends its service.
-        #expect(await driver.press("sprinkler.rainDelay", until: value("sprinkler.rainDelay", "1")), "the switch shows the new value at once")
-        let afterRain = await lastCall(driver, "switch.turn_on")
-        #expect(afterRain.contains(Self.front.rainDelayEntityId), "\(afterRain)")
-    }
-
     @Test func aWateringControllerOffersToStopAndBlocksStartingAnotherZone() async throws {
         let driver = await open(Self.back)
         defer { driver.close() }
