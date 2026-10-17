@@ -22,12 +22,15 @@ public struct FlowLayout: Layout {
 
     public func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var y = bounds.minY
+        let rightToLeft = subviews.layoutDirection == .rightToLeft
         for row in arrange(width: bounds.width, subviews: subviews) {
-            var x = bounds.minX
+            // Every row starts at the leading edge: the left, or the right in a right-to-left layout.
+            var x = rightToLeft ? bounds.maxX : bounds.minX
             for index in row.indices {
                 let size = subviews[index].sizeThatFits(ProposedViewSize(width: bounds.width, height: nil))
-                subviews[index].place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: min(size.width, bounds.width), height: size.height))
-                x += min(size.width, bounds.width) + spacing
+                let width = min(size.width, bounds.width)
+                subviews[index].place(at: CGPoint(x: rightToLeft ? x - width : x, y: y), proposal: ProposedViewSize(width: width, height: size.height))
+                x += rightToLeft ? -(width + spacing) : width + spacing
             }
             y += row.height + spacing
         }

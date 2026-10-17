@@ -33,6 +33,29 @@ struct ChipRailTests {
         #expect(ChipRailMetrics.hostedContentSize(natural: CGSize(width: 910, height: 90), bounds: bounds).height == 64)
     }
 
+    @Test func aShortRowStartsAtTheLeadingEdgeInsteadOfCentred() {
+        let bounds = CGSize(width: 402, height: 64)
+        // Security's two chips fit: the hosted view is the row's width at x = 0, not the scroll view's width (a wider
+        // hosting view centred them, owner 2026-10-17).
+        let short = ChipRailMetrics.hostedContentFrame(natural: CGSize(width: 300, height: 64), bounds: bounds)
+        #expect(short == CGRect(x: 0, y: 0, width: 300, height: 64))
+        // A row wider than the phone fills the content and scrolls.
+        let wide = ChipRailMetrics.hostedContentFrame(natural: CGSize(width: 910, height: 64), bounds: bounds)
+        #expect(wide == CGRect(x: 0, y: 0, width: 910, height: 64))
+    }
+
+    @Test func rightToLeftStartsAtTheTrailingEndOfTheContent() {
+        let bounds = CGSize(width: 402, height: 64)
+        let short = ChipRailMetrics.hostedContentFrame(natural: CGSize(width: 300, height: 64), bounds: bounds, isRightToLeft: true)
+        #expect(short == CGRect(x: 102, y: 0, width: 300, height: 64))
+        let wide = ChipRailMetrics.hostedContentFrame(natural: CGSize(width: 910, height: 64), bounds: bounds, isRightToLeft: true)
+        #expect(wide == CGRect(x: 0, y: 0, width: 910, height: 64))
+        // The wide row's leading end is the far end of a UIScrollView, which counts offsets from the left.
+        #expect(ChipRailMetrics.hostedLeadingOffset(contentWidth: 910, boundsWidth: 402, isRightToLeft: true) == 508)
+        #expect(ChipRailMetrics.hostedLeadingOffset(contentWidth: 402, boundsWidth: 402, isRightToLeft: true) == 0)
+        #expect(ChipRailMetrics.hostedLeadingOffset(contentWidth: 910, boundsWidth: 402, isRightToLeft: false) == 0)
+    }
+
     @Test func noInsetWithoutAHingeOrWhenTheRailDoesNotReachIt() {
         let rail = CGRect(x: 0, y: 100, width: 868, height: 60)
         #expect(ChipRailMetrics.trailingInset(railFrame: rail, hinge: nil) == 0)
