@@ -90,6 +90,26 @@ struct BedroomFlowTests {
         #expect(nodes.contains { $0.identifier == "wake.editor.delete" }, "an existing alarm can be deleted")
         #expect(nodes.first { $0.identifier == "wake.editor.save" }?.isEnabled == false, "an unchanged alarm has nothing to save")
         #expect(await driver.press("wake.editor.delete") { $0.contains { $0.spoken == "Delete Alarm" } }, "Delete asks before it removes")
+        let confirm = try #require(await driver.node(label: "Delete Alarm", role: "AXButton"))
+        #expect(await driver.press(confirm))
+        let call = await lastCall(driver)
+        #expect(call != "no last-call line" && call != "Last call: None", "confirming removed the alarm: \(call)")
+    }
+
+    @Test func aBedAlarmIsDeletedFromItsEditorAfterAConfirmation() async throws {
+        let driver = await open(sheet: "stephens-bed", tab: "alarms")
+        defer { driver.close() }
+        let days = await driver.wait { $0.contains { $0.identifier.hasPrefix("bed.alarms.") && $0.identifier != "bed.alarms.add" } }
+        let day = try #require(days.first { $0.identifier.hasPrefix("bed.alarms.") && $0.identifier != "bed.alarms.add" && $0.role == "AXButton" })
+        #expect(await driver.press(day.identifier) { $0.contains { $0.identifier.hasPrefix("bed.day.alarm.") || $0.identifier == "bed.editor.save" } })
+        if let row = await driver.nodes().first(where: { $0.identifier.hasPrefix("bed.day.alarm.") }) {
+            #expect(await driver.press(row.identifier) { $0.contains { $0.identifier == "bed.editor.delete" } }, "the row opens its editor")
+        }
+        #expect(await driver.press("bed.editor.delete") { $0.contains { $0.spoken == "Delete Alarm" } }, "Delete asks before it removes")
+        let confirm = try #require(await driver.node(label: "Delete Alarm", role: "AXButton"))
+        #expect(await driver.press(confirm))
+        let call = await lastCall(driver)
+        #expect(call != "no last-call line" && call != "Last call: None", "confirming removed the alarm: \(call)")
     }
 
     @Test func theWakeAlarmEditorSwitchesBetweenWeeklyAndOneTime() async throws {

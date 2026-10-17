@@ -96,5 +96,36 @@ struct ChoresFlowTests {
         let call = await lastCall(driver) { $0.contains("create_task") || $0.contains("donetick") }
         #expect(call.contains("donetick"), "\(call)")
     }
+
+    @Test func anAdminTaskIsRenamedFromItsEditSheet() async throws {
+        let driver = await open("to-do")
+        defer { driver.close() }
+        let edit = try #require(await driver.waitFor("todo.edit.a1"))
+        #expect(await driver.press(edit.identifier) { $0.contains { $0.identifier == "renameTodo.name" } }, "the pencil opens the rename sheet")
+        #expect(await driver.node("renameTodo.save")?.isEnabled == false, "an unchanged name cannot be saved")
+        #expect(await driver.type("Port the Chores page, twice", into: "renameTodo.name") { $0.contains { $0.identifier == "renameTodo.reset" } },
+                "a changed name offers a reset")
+        #expect(await driver.press("renameTodo.reset") { nodes in nodes.first { $0.identifier == "renameTodo.name" }?.value == "Port the Chores page" })
+        #expect(await driver.type("Port the Chores page, twice", into: "renameTodo.name") { $0.contains { $0.identifier == "renameTodo.save" && $0.isEnabled } })
+        #expect(await driver.press("renameTodo.save") { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.contains("update_item") == true })
+        let call = await lastCall(driver) { $0.contains("update_item") }
+        #expect(call.contains("todo.update_item"), "\(call)")
+    }
+
+    @Test func aChoreTaskIsDeletedAfterAConfirmation() async throws {
+        let driver = await open("stephens-chores")
+        defer { driver.close() }
+        let edit = try #require(await driver.waitFor("todo.edit.12--fixture"))
+        #expect(await driver.press(edit.identifier) { $0.contains { $0.identifier == "task.delete" } }, "the form offers a delete")
+        #expect(await driver.press("task.delete", attempts: 4) { _ in true })
+        let confirm = await driver.waitFor("task.delete.confirm")
+        if confirm != nil {
+            _ = await driver.press("task.delete.confirm")
+        } else if let button = await driver.node(label: "Delete Task", role: "AXButton") {
+            _ = await driver.press(button)
+        }
+        let call = await lastCall(driver) { $0.contains("remove_item") }
+        #expect(call.contains("todo.remove_item"), "\(call)")
+    }
 }
 #endif

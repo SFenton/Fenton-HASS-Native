@@ -137,4 +137,62 @@ struct SprinklerFlowTests {
         #expect(!removed.contains { $0.identifier == "sprinkler.schedule.time.1" }, "Remove drops it")
     }
 }
+
+/// A service caller whose every call fails, so the pages show what a failed command looks like.
+@MainActor
+final class FailingCaller: HassServiceCalling {
+    struct Refused: LocalizedError { var errorDescription: String? { "Home Assistant refused the command." } }
+    private(set) var attempts = 0
+    func callService(_ domain: String, _ service: String, data: [String: any Sendable]) async throws {
+        attempts += 1
+        throw Refused()
+    }
+}
+
+/// The sprinkler sheet's pages when Home Assistant refuses every command: each shows its message and goes on working.
+@MainActor
+@Suite(.serialized, .enabled(if: AXWindow.isAvailable, "Needs accessibility permission for the test host"))
+struct SprinklerFailureFlowTests {
+    static let phone = CGSize(width: 402, height: 874)
+
+    func open(detail: SprinklerDetail?, caller: FailingCaller) -> AXWindow {
+        let store = EntityStore()
+        store.replaceAll(HomePageFixtures.states, freshness: .live)
+        let controller = SprinklerController(config: SprinklersConfig.frontYard, store: store, caller: caller)
+        return AXWindow(SprinklerControllerSheet(controller: controller, initialDetail: detail), size: Self.phone)
+    }
+
+    static func refusal(_ nodes: [AXWindow.Node]) -> Bool {
+        nodes.contains { $0.spoken.contains("refused") || $0.value.contains("refused") }
+    }
+
+    @Test func theOverviewShowsTheMessageWhenASwitchIsRefused() async throws {
+        let caller = FailingCaller()
+        let driver = open(detail: nil, caller: caller)
+        defer { driver.close() }
+        _ = await driver.waitFor("sprinkler.smartWatering")
+        #expect(await driver.press("sprinkler.smartWatering") { _ in caller.attempts > 0 })
+        #expect(Self.refusal(await driver.wait(Self.refusal)), "the refusal is shown")
+    }
+
+    @Test func waterNowShowsTheMessageWhenStartingIsRefused() async throws {
+        let caller = FailingCaller()
+        let driver = open(detail: .water(zone: 0), caller: caller)
+        defer { driver.close() }
+        _ = await driver.waitFor("sprinkler.startWatering")
+        #expect(await driver.press("sprinkler.startWatering") { _ in caller.attempts > 0 })
+        #expect(Self.refusal(await driver.wait(Self.refusal)), "the refusal is shown")
+    }
+
+    @Test func theScheduleShowsTheMessageWhenApplyingIsRefused() async throws {
+        let caller = FailingCaller()
+        let driver = open(detail: .schedule(zone: 0), caller: caller)
+        defer { driver.close() }
+        _ = await driver.waitFor("sprinkler.schedule.apply")
+        let outcomes = await driver.pressEach(prefixes: ["sprinkler.schedule."], skipping: { $0.contains("apply") || $0.contains("addTime") })
+        #expect(!outcomes.isEmpty, "days and switches can be pressed: \(outcomes)")
+        #expect(await driver.press("sprinkler.schedule.apply") { _ in caller.attempts > 0 })
+        #expect(Self.refusal(await driver.wait(Self.refusal)), "the refusal is shown")
+    }
+}
 #endif
