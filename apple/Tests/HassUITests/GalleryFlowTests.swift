@@ -67,6 +67,20 @@ struct GalleryFlowTests {
         #expect(families.contains { $0.spoken.hasPrefix("Lights") }, "Families lists every colour family")
     }
 
+    // MARK: Live Activity
+
+    @Test func theActivityPagesBetweenJobsAndStopShowsStopping() async throws {
+        let driver = await withLaunch(environment: ["FENTON_GALLERY_SCENARIO": "three"]) { await page(.liveActivity) }
+        defer { driver.close() }
+        func said(_ text: String) -> ([AXWindow.Node]) -> Bool { { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.contains(text) == true } }
+        let next = try #require(await driver.node(label: "Next job"))
+        #expect(await driver.press(next, until: said("focus dishwasher")), "› from the Master Bath Fan wraps to the dishwasher")
+        #expect(await driver.press(try #require(await driver.node(label: "Previous job")), until: said("focus fan.master")))
+        #expect(await driver.press(try #require(await driver.node(label: "Cancel Timer Master Bath Fan")), until: said("cancel_timer fan.master")))
+        let stopping = await driver.wait { $0.contains { $0.spoken.contains("Stopping") } }
+        #expect(stopping.contains { $0.spoken.contains("Stopping") }, "the optimistic state replaces the button")
+    }
+
     // MARK: Floating actions
 
     @Test func theFloatingBarAddsASortsAndFiltersThroughItsSheets() async throws {

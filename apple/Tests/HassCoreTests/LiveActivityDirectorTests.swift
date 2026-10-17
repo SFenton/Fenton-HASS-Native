@@ -36,10 +36,14 @@ struct HomeActivityDirectorTests {
     @Test func aChangeDuringAPassIsFoldedIntoOneMorePass() async {
         let client = FakeLiveActivityClient()
         let director = director(client)
+        client.holdNextCurrent()
         let first = Task { await director.reconcile(entity: LiveActivityFixtures.reader(LiveActivityFixtures.dishwasher())) }
-        #expect(await eventually { director.isReconciling })
+        #expect(await eventually { client.isHoldingCurrent })
+        // Arrives mid-pass: it is folded into one more pass rather than racing the first.
         await director.reconcile(entity: LiveActivityFixtures.reader(LiveActivityFixtures.dishwasher(progress: "80")))
+        client.releaseCurrent()
         await first.value
+        #expect(director.passCount == 2)
         #expect(client.activities.count == 1)
         #expect(client.activities[0].state.jobs[0].status == "Eco 50° · 80%", "the latest entities win")
     }

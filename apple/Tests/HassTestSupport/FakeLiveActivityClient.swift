@@ -24,6 +24,8 @@ public final class FakeLiveActivityClient: LiveActivityClient, @unchecked Sendab
     private var lifecycleSinks: [String: [AsyncStream<LiveActivityLifecycle>.Continuation]] = [:]
     /// Make ``request(attributes:state:staleDate:)`` throw this.
     public var requestError: LiveActivityError?
+    private var gate: CheckedContinuation<Void, Never>?
+    private var holdsNextCurrent = false
 
     /// Creates a fake.
     /// - Parameter enabled: Whether the person allows activities.
@@ -100,7 +102,33 @@ public final class FakeLiveActivityClient: LiveActivityClient, @unchecked Sendab
 
     public var areActivitiesEnabled: Bool { lock.withLock { enabled } }
 
-    public func current() async -> [LiveActivityRecord] { activities }
+    public func current() async -> [LiveActivityRecord] {
+        let hold = lock.withLock { () -> Bool in
+            defer { holdsNextCurrent = false }
+            return holdsNextCurrent
+        }
+        if hold {
+            await withCheckedContinuation { continuation in lock.withLock { gate = continuation } }
+        }
+        return activities
+    }
+
+    /// Makes the next ``current()`` wait until ``releaseCurrent()``, so a test can change things mid-pass.
+    public func holdNextCurrent() {
+        lock.withLock { holdsNextCurrent = true }
+    }
+
+    /// Whether a ``current()`` is waiting.
+    public var isHoldingCurrent: Bool { lock.withLock { gate != nil } }
+
+    /// Lets the waiting ``current()`` return.
+    public func releaseCurrent() {
+        let continuation = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+            defer { gate = nil }
+            return gate
+        }
+        continuation?.resume()
+    }
 
     public func request(attributes: HomeActivityAttributes, state: HomeActivityState, staleDate: Date?) async throws -> LiveActivityRecord {
         if let requestError { throw requestError }

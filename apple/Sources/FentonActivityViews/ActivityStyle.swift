@@ -28,8 +28,11 @@ public struct ActivityStyle: Sendable, Equatable {
     public static let primaryText = Color.white
     /// Supporting text on the row.
     public static let secondaryText = Color.white.opacity(0.78)
+    /// How dark the activity's background tint is. The system material lets a bright wallpaper through, so this is the
+    /// darkest that still looks like glass: text on a row reads even over white (`ActivityStyleTests`).
+    public static let groundOpacity = 0.75
     /// The activity's background tint on the Lock Screen (`activityBackgroundTint`).
-    public static let ground = Color.black.opacity(0.55)
+    public static let ground = Color.black.opacity(groundOpacity)
     /// Destructive text on the dark ground (``HassTokens/Palette/red``).
     public static let destructive = Color(rgb: HassTokens.Palette.red)
 
