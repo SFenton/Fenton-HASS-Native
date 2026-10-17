@@ -77,8 +77,10 @@ struct GalleryFlowTests {
         #expect(await driver.press(next, until: said("focus dishwasher")), "› from the Master Bath Fan wraps to the dishwasher")
         #expect(await driver.press(try #require(await driver.node(label: "Previous job")), until: said("focus fan.master")))
         #expect(await driver.press(try #require(await driver.node(label: "Cancel Timer Master Bath Fan")), until: said("cancel_timer fan.master")))
-        let stopping = await driver.wait { $0.contains { $0.spoken.contains("Stopping") } }
-        #expect(stopping.contains { $0.spoken.contains("Stopping") }, "the optimistic state replaces the button")
+        func isStopping(_ node: AXWindow.Node) -> Bool { [node.label, node.title, node.value].contains { $0.contains("Stopping") } }
+        let stopping = await driver.wait { $0.contains(where: isStopping) }
+        #expect(stopping.contains(where: isStopping), "the optimistic state replaces the button")
+        #expect(!stopping.contains { $0.spoken == "Cancel Timer Master Bath Fan" })
     }
 
     // MARK: Floating actions
