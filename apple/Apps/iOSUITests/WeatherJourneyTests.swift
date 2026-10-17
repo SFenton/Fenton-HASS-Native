@@ -88,7 +88,10 @@ final class WeatherJourneyTests: XCTestCase {
         XCTAssertTrue(now.label.hasSuffix("°F"), now.label)
         if app.buttons["home.weather.next"].exists {
             // Wide layouts page with Previous and Next; hours on other pages leave the tree until paged in.
-            XCTAssertFalse(element("home.weather.hour.23", in: app).exists, "Off-page hours hide behind the paging buttons")
+            // The hosted row takes the new hidden flags a frame after the size class settles, so give it a moment.
+            let offPage = element("home.weather.hour.23", in: app)
+            let hidden = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: offPage)
+            XCTAssertEqual(XCTWaiter().wait(for: [hidden], timeout: 5), .completed, "Off-page hours hide behind the paging buttons: \(app.debugDescription.split(separator: "\n").filter { $0.contains("home.weather") || $0.contains("Scroll") }.prefix(14).joined(separator: " | "))")
         } else {
             XCTAssertTrue(element("home.weather.hour.5", in: app).exists, "Every hour stays in the accessibility tree")
             XCTAssertTrue(element("home.weather.hour.23", in: app).exists)

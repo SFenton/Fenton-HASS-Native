@@ -123,9 +123,13 @@ final class FoodJourneyTests: XCTestCase {
         for _ in 0..<3 where !first.isHittable { app.swipeDown() }
         let section = element("food.suggestions", in: app)
         section.swipeLeft()
-        XCTAssertTrue(waitFor(dots, "value BEGINSWITH %@", "2 of"), "The dots stayed on \(String(describing: dots.value))")
+        XCTAssertTrue(waitFor(dots, "NOT (value BEGINSWITH %@)", "1 of"), "The dots stayed on \(String(describing: dots.value))")
         XCTAssertFalse(element("recipe.tabs", in: app).exists, "Swiping opened a recipe")
-        section.swipeRight()
+        // A fast swipe can carry past a page, so swipe back until the first.
+        for _ in 0..<5 where !((dots.value as? String ?? "").hasPrefix("1 of")) {
+            section.swipeRight()
+            sleep(1)
+        }
         XCTAssertTrue(waitFor(dots, "value BEGINSWITH %@", "1 of"), "The dots stayed on \(String(describing: dots.value))")
     }
 

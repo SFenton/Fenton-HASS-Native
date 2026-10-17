@@ -77,8 +77,10 @@ private struct PagedCells<Cell: View>: View {
     var fallbackViewport: CGFloat?
     var cell: (Int) -> Cell
     @Environment(\.hostedViewportWidth) private var hostedViewport
+    @Environment(\.hostedRevision) private var revision
 
     var body: some View {
+        let _ = revision
         let width = max(1, (hostedViewport ?? fallbackViewport ?? 0) / CGFloat(perPage))
         HStack(alignment: .top, spacing: 0) {
             ForEach(0..<max(0, itemCount), id: \.self) { index in
@@ -92,4 +94,6 @@ extension EnvironmentValues {
     /// The width of the viewport a ``HostedHorizontalScroll`` shows its content through, for content that sizes itself to
     /// whole pages. `nil` outside a paging hosted scroll view.
     @Entry var hostedViewportWidth: CGFloat?
+    /// Changes with every update of a ``HostedHorizontalScroll``, so content built from closures re-runs.
+    @Entry var hostedRevision = 0
 }

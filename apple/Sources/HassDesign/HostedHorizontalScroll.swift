@@ -49,7 +49,7 @@ struct HostedHorizontalScroll<Content: View>: UIViewRepresentable {
         if paging != nil, let width = proposal.width {
             // The cells are as wide as the viewport, so the content's height is known only for the proposed width.
             view.apply(paging: paging)
-            view.update(root(viewportWidth: width))
+            if view.viewportWidth != width { view.update(root(viewportWidth: width)) }
         }
         return CGSize(width: proposal.width ?? view.naturalSize.width, height: view.naturalSize.height)
     }
@@ -65,6 +65,10 @@ struct HostedRoot<Content: View>: View {
     var environment: EnvironmentValues
     /// The viewport the content pages in, for a paging scroll view.
     var viewportWidth: CGFloat?
+    /// Counts the updates the representable received. Content built from a closure (``PagedRow``) cannot be compared, and a
+    /// closure with new captures can compare equal to the old one, so the cells' body was skipped and kept stale values
+    /// (the off-page hours stayed in the accessibility tree on iPad); the revision reaches them through the environment.
+    var revision = 0
     /// Called with the content's natural size whenever it changes.
     var onNaturalSize: (CGSize) -> Void = { _ in }
 
@@ -80,6 +84,7 @@ struct HostedRoot<Content: View>: View {
                 hosted = environment
                 hosted.accessibilityEnabled = accessibilityEnabled
                 hosted.hostedViewportWidth = viewportWidth
+                hosted.hostedRevision = revision
             }
     }
 }
@@ -128,6 +133,7 @@ final class HostedScrollView<Content: View>: UIScrollView, UIScrollViewDelegate 
 
     /// The natural size of a paging row, until the viewport changes or the content reports another.
     private var measuredSize: CGSize?
+    private var revision = 0
 
     /// Takes the paging configuration (or `nil` for a plain scrolling row).
     func apply(paging: HostedPaging?) {
@@ -139,6 +145,9 @@ final class HostedScrollView<Content: View>: UIScrollView, UIScrollViewDelegate 
     }
 
     func update(_ rootView: HostedRoot<Content>) {
+        var rootView = rootView
+        revision &+= 1
+        rootView.revision = revision
         if viewportWidth != rootView.viewportWidth { measuredSize = nil }
         viewportWidth = rootView.viewportWidth
         host.rootView = withResizeHandler(rootView)

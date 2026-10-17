@@ -51,13 +51,16 @@ struct WeatherPagedCarousel<Cell: View>: View {
 
     private func strip(paging: WeatherCarouselPaging) -> some View {
         let current = paging.page(containing: firstVisible)
+        // Read here, not in the cell closure: the closure runs in the hosted view graph, where this view's environment is
+        // not installed and `showsControls` would read the default size class (nothing hidden).
+        let hidesOffPage = showsControls
         // The paging happens in UIKit (`PagedRow`): a swipe on a SwiftUI `ScrollView` nested in the sheet's own scroll view
         // committed its offset through the sheet's view graph on every frame.
         return PagedRow(itemCount: count, perPage: paging.perPage, firstVisible: $firstVisible, animatesPaging: !reduceMotion) { index in
             cell(index)
                 // With previous and next buttons, VoiceOver reads the page on screen and pages with them;
                 // hours on other pages sit clipped under those buttons, where they read as unseen text.
-                .accessibilityHidden(showsControls && paging.page(containing: index) != current)
+                .accessibilityHidden(hidesOffPage && paging.page(containing: index) != current)
         }
         .accessibilityIdentifier("\(identifier).carousel")
     }
