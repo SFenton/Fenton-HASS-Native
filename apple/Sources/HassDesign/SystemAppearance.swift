@@ -1,3 +1,4 @@
+import HassTelemetry
 import SwiftUI
 #if os(iOS)
 import UIKit
@@ -132,6 +133,14 @@ private struct SceneAppearanceProbe: UIViewRepresentable {
         private var registration: (any UITraitChangeRegistration)?
         // Read in `deinit`, which is nonisolated; only the main thread writes it.
         nonisolated(unsafe) private var activation: (any NSObjectProtocol)?
+        private var census: ResourceCensus.Registration?
+
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+            census = ResourceCensus.shared.register { [weak self] in ["Appearance.activationObservers": self?.activation == nil ? 0 : 1] }
+        }
+
+        required init?(coder: NSCoder) { nil }
 
         deinit {
             if let activation { NotificationCenter.default.removeObserver(activation) }

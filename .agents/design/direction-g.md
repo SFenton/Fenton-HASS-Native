@@ -79,6 +79,7 @@ Pages are always dark-styled because they sit on the dimmed photo, the way Apple
 | Cleaning | vacuums, dishwasher, laundry | `#C88CFA` | `#7A3FB0`; progress is a lighter band from the leading edge |
 | Power | plugs, towel rack, chargers | `#FFD60A` | `#FFE45C` → `#FFD60A`, dark ink |
 | Cooking | grill, oven | `#FF8A4C` | `#A8420E` |
+| Food (owner, 2026-10-16: "Food Spaces / All Food should have colours like the web") | Food hub tiles, always filled: Pantry `#855A25`, Fridge and All Recipes `#196B94`, Freezer `#2F4A9E`, Spice Rack `#AA4727`, Cabinet `#6A5F55`, All Food `#4A6B4E` | each a lightened tint of its fill | the web's tile colours (`ha-sfenton-react-dash@9ac2a46:src/constants/everShelfFood.ts:13-18`, `FoodHubPage.tsx:46,60`), nudged until white ink passes 4.5:1 and no two spaces read as one (≥ 30 apart in sRGB). The Freezer indigo sits near Vents and the Spice Rack near Cooking, as the web's own colours do; they never share a page |
 | Security | by mode, as on the web | white on the fill | Home `#1565C0`, Away `#C62828`, Night `#7B1FA2`, Disarmed `#2A732E`, Triggered `#D70015` |
 
 **Status chips follow the web** (owner, 2026-10-16: climate, air quality, occupancy and contact chips brought to web parity; one rule per chip, in `StatusChipAppearance` and `HassCore/Chips`):
@@ -161,7 +162,7 @@ SF Pro only.
 | Switches | Only in list rows. |
 | Primary buttons | At most one per screen: a 50pt capsule filled `#0071E3` with a white label. A sheet about one owner's thing may use that owner's hue with dark text (Sprinklers cyan). There are no white or grey primary buttons. |
 | Lists | Inset grouped, 26pt radius on pages, 52/60pt rows, hairlines inset to the text. Footers carry the web's explanations; on the wallpaper, explanations go inside the card. |
-| Cameras | 2×2 on Home, nothing over the image except a small name label (HIG HomeKit must). The viewer is full-bleed with a live dot and glass Snapshot / Audio / Record. While connecting, the last snapshot stays fully visible with a "Snapshot from 6:51 PM" pill. |
+| Cameras | 2×2 on Home and Security, cards 1 : 0.78 like the web's tile (fill-cropped, centred), nothing over the image except a small name label with a red live dot while the stream shows frames (HIG HomeKit must). The viewer is full-bleed with a live dot and glass Snapshot / Audio / Record. While connecting, or after a live stream stalls, the last snapshot stays fully visible with a pill: "Last live 6:51 PM" once the stream has been live (the snapshot's own time is not known), else "Connecting". |
 | Vacuum map | Flat neutral room shapes. Selected rooms are white with black numbered order badges, and skipped rooms are hatched. While cleaning, the map grows and the controls collapse to one card with Pause and Stop. |
 
 ## Loading and feedback
