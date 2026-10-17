@@ -13,13 +13,10 @@ final class ShellNavigator {
     var selection: AppSection
     /// Each section's push path; a section at its root has an empty path.
     var paths: [AppSection: NavigationPath] = [:]
-    /// The trailing Quick Links tab is showing (``RootTab/quickLinks``); ``selection`` keeps the section under it.
-    private(set) var isQuickLinksActive = false
-    /// The section whose root is presenting the Quick Links sheet (flyout row, toolbar button), or nil. The sheet
+    /// The section whose stack is presenting the Quick Links sheet (header button, flyout row), or nil. The sheet
     /// opens over the selected section so a page it links pushes on that section's stack.
     var quickLinksSection: AppSection?
-    /// The section whose root is presenting the Account sheet (profile avatar, or a notification that opens
-    /// Settings), or nil (``SectionRootChrome``).
+    /// The section whose stack is presenting the Account sheet (the header's Profile button), or nil.
     var accountSection: AppSection?
     /// The flyout is showing.
     private(set) var isFlyoutOpen = false
@@ -49,27 +46,16 @@ final class ShellNavigator {
         )
     }
 
-    /// The root tab view's selection: Quick Links while its trailing tab shows, otherwise the selected section.
-    var rootTab: RootTab {
-        get { isQuickLinksActive ? .quickLinks : .section(selection) }
-        set {
-            switch newValue {
-            case .quickLinks:
-                isQuickLinksActive = true
-            case let .section(section):
-                isQuickLinksActive = false
-                selection = section
-            }
-        }
-    }
-
-    /// Leaves the Quick Links tab for the section under it (the window grew into flyout style).
-    func closeQuickLinks() { isQuickLinksActive = false }
-
     /// Presents the Quick Links sheet over the selected section, closing the flyout.
     func openQuickLinks() {
         isFlyoutOpen = false
         quickLinksSection = selection
+    }
+
+    /// Presents the Account sheet over the selected section, closing the flyout.
+    func openAccount() {
+        isFlyoutOpen = false
+        accountSection = selection
     }
 
     /// Whether a section is showing its root page.
@@ -107,12 +93,7 @@ final class ShellNavigator {
         isFlyoutOpen = false
         switch destination {
         case let .section(section):
-            guard let target = AppSection(section) else {
-                // Settings: the Account sheet over the section on screen (direction G).
-                isQuickLinksActive = false
-                accountSection = selection
-                return
-            }
+            let target = AppSection(section)
             paths[target] = NavigationPath()
             select(target)
         case let .homePage(path):
@@ -120,18 +101,16 @@ final class ShellNavigator {
             if let route = HomeRoute(pushPath: path) { stack.append(route) }
             paths[.home] = stack
             selection = .home
-            isQuickLinksActive = false
         }
     }
 
     /// Chooses a section from the flyout or tab bar. Choosing the current section pops it to its root
     /// (the web's nav links always land on the section root).
     func select(_ section: AppSection) {
-        if section == selection && !isQuickLinksActive {
+        if section == selection {
             paths[section] = NavigationPath()
         }
         selection = section
-        isQuickLinksActive = false
         isFlyoutOpen = false
     }
 }

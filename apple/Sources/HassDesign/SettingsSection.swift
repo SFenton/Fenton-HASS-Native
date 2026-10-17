@@ -6,6 +6,7 @@ public struct SettingsSection<Content: View>: View {
     public var title: String
     public var paragraphs: [String]
     @ViewBuilder public var content: Content
+    @Environment(\.tileSurface) private var surface
 
     /// Creates a section.
     /// - Parameters:
@@ -27,7 +28,9 @@ public struct SettingsSection<Content: View>: View {
             ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in
                 Text(paragraph)
                     .font(.subheadline)
-                    .foregroundStyle(HassTokens.Ink.secondary)
+                    // On the wallpaper (the Settings tab's topic pages) the fixed light ink: the adaptive secondary
+                    // measured 4.1:1 there; in a sheet it keeps the sheet's own ink.
+                    .foregroundStyle(surface == .page ? HassTokens.Ink.onDarkSecondary : HassTokens.Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             content
