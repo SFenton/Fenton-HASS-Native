@@ -229,6 +229,7 @@ public struct HomeActivityIslandPreview: View {
                 .background(RoundedRectangle(cornerRadius: 44, style: .continuous).fill(Color.black))
             }
         }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("liveactivity.island.\(kind.rawValue)")
     }
 }

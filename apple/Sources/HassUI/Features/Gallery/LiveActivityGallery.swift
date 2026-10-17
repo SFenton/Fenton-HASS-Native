@@ -26,10 +26,13 @@ struct LiveActivityGallery: View {
                     GalleryLastCall(text: lastAction, title: "Last action")
                 }
                 section("Lock Screen") {
+                    // The Lock Screen's width on a phone; a tablet shows 425 or 500 pt.
                     HomeActivityLockScreenView(state: state)
+                        .frame(maxWidth: 420)
                         .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(ActivityStyle.ground))
                         .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.black))
                         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("liveactivity.lockscreen")
                 }
                 section("Dynamic Island, compact") { HomeActivityIslandPreview(state: state, kind: .compact) }
@@ -40,6 +43,7 @@ struct LiveActivityGallery: View {
                         .padding(10)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.black))
+                        .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("liveactivity.small")
                 }
             }
