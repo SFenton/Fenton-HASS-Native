@@ -276,8 +276,8 @@ final class ChoresJourneyTests: JourneyTestCase {
         XCTAssertFalse(app.buttons["renameTodo.save"].isEnabled)
         name.tap()
         name.typeText(" now")
-        app.buttons["renameTodo.save"].tap()
-        XCTAssertTrue(name.waitForNonExistence(timeout: 5))
+        // On iPad the first tap can only end editing in the focused field.
+        submit(app.buttons["renameTodo.save"], closing: name)
         XCTAssertEqual(lastCall(in: app), "todo.update_item a1")
         element("todo.item.a2", in: app).tap()
         XCTAssertTrue(element("todo.item.a2", in: app).waitForNonExistence(timeout: 5))
