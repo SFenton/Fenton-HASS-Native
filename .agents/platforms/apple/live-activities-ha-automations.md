@@ -1,6 +1,6 @@
-# Live Activities: proposed Home Assistant automations (Phase 1, not applied)
+# Live Activities: Home Assistant automations (Phase 1, applied)
 
-> **What:** the automations that let Home Assistant start, update and end the Home Live Activity while the app is closed, and answer its buttons, before the `fenton_push` job engine (Phase 2) exists. **Read when:** the owner applies them, or Phase 2 replaces them. Nothing here has been applied: no agent changes `/config` without the owner's approval and a backup of each file first.
+> **What:** the automations that let Home Assistant start, update and end the Home Live Activity while the app is closed, and answer its buttons, before the `fenton_push` job engine (Phase 2) exists. **Read when:** the owner applies them, or Phase 2 replaces them. **Applied 2026-10-17** at the owner's request as `/config/packages/fenton_live_activity.yaml` (a new package file; no existing file changed), with `ha-fenton-push` updated to `386af92` through HACS and Home Assistant restarted. Edit that package, not `automations.yaml`/`scripts.yaml`; validate with `ha core check` and reload automations and scripts. Target today: `notify.mobile_app_stephen_s_iphone_fenton` (the only S+H install).
 
 They use only what is verified in [live-activities.md](live-activities.md) §0: core `mobile_app` routes a `notify` call with `data.live_update: true` and `data.tag` to a **start** (the phone's push-to-start token), an **update** (the activity's token) or, for `clear_notification`, an **end**; `ha-fenton-push` (Phase 1 branch `live-activities-phase1`) turns the `data.fenton_activity` block into the activity's content. Install that integration version first; without it the block is ignored and the post is dropped.
 
