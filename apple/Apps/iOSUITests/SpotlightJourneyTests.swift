@@ -46,11 +46,4 @@ final class SpotlightJourneyTests: JourneyTestCase {
         let app = try launch(opening: "section.removed")
         XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 30), "Home did not appear")
     }
-
-    private func keepScreenshot(_ app: XCUIApplication, _ name: String) {
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = name
-        attachment.lifetime = .keepAlways
-        add(attachment)
-    }
 }
