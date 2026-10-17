@@ -62,7 +62,7 @@ struct GalleryFlowTests {
         #expect(tabs.contains { $0.spoken == "Floor Lamp" }, "on its Controls tab")
         let familiesTab = try #require(await driver.node(label: "Families"))
         #expect(await driver.press(familiesTab) { $0.contains { $0.spoken.hasPrefix("Lights") } })
-        let families = await driver.wait { $0.contains { $0.spoken.hasPrefix("Lights") } }
+        let families = await driver.wait { $0.contains { $0.spoken.hasPrefix("Lights") } && !$0.contains { $0.spoken == "Floor Lamp" } }
         #expect(families.contains { $0.spoken.hasPrefix("Lights") }, "Families lists every colour family")
         #expect(!families.contains { $0.spoken == "Floor Lamp" }, "and drops the controls")
     }
