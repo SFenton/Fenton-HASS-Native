@@ -198,6 +198,11 @@ enum FentonHomeApp {
             // element-less "potentially inaccessible text" (Security disarm alert, iPad, 2026-10-16: 6 issues).
             if issue.element == nil, issue.auditType == .elementDetection, alertUp { continue }
             if issue.auditType == .contrast, issue.element == nil, textUnderFloatingBar { continue }
+            // The bar is Liquid Glass with a soft scroll edge, so a row scrolled under it stays drawn, blurred, behind the
+            // buttons (owner, 2026-10-16: content shows through). The audit sees that blurred text as pixels with no
+            // element, element-less "potentially inaccessible text" (Chores tab and Floating Actions gallery, folded
+            // iPhone Duo, 2026-10-17; the rows are real elements the scroll view still reports).
+            if issue.auditType == .elementDetection, issue.element == nil, textUnderFloatingBar { continue }
             if issue.auditType == .contrast, issue.element == nil, everyTextClears() {
                 let note = "Element-less contrast issue accepted: every labelled text and button on screen measured at least 4.5:1 rendered"
                 print(note)
