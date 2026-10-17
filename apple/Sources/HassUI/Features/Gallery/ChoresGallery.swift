@@ -80,6 +80,11 @@ enum ChoresFixtures {
             "todo.shopping_list": [
                 TodoItem(uid: "g1", summary: "Oat milk"), TodoItem(uid: "g2", summary: "Coffee beans"), TodoItem(uid: "g3", summary: "Lemons"),
             ],
+            // A resident's page reads the `_with_unassigned` views, which hold the same chores here.
+            "todo.stephen_s_due_today_with_unassigned": [task(13, "Run the dishwasher", due: 5 * hour)],
+            "todo.stephen_s_upcoming_with_unassigned": [task(15, "Water the plants", due: 2 * day)],
+            "todo.steph_s_due_today_with_unassigned": [task(21, "Fold laundry", due: 3 * hour)],
+            "todo.steph_s_upcoming_with_unassigned": [task(22, "Book the vet", due: 30 * day)],
             "todo.stephen_s_past_due": [task(11, "Take out the recycling", due: -3 * hour), task(12, "Clean the gutters", due: -9 * day)],
             "todo.stephen_s_due_today": [task(13, "Run the dishwasher", due: 5 * hour)],
             "todo.stephen_s_upcoming": [task(15, "Water the plants", due: 2 * day)],

@@ -88,7 +88,7 @@ struct ChoresViewTests {
         sections = TodoPageLayout.sections(for: page, viewerUserId: nil, store: fixture.store, todos: fixture.model.todos)
         #expect(sections.map(\.isShown) == [false, true, true, false])
         #expect(sections.allSatisfy { $0.isSettled })
-        #expect(sections[1].id == "todo.steph_s_due_today")
+        #expect(sections[1].id == "todo.steph_s_due_today_with_unassigned")
 
         let empty = self.fixture(empty: true)
         let emptySections = TodoPageLayout.sections(for: page, viewerUserId: nil, store: empty.store, todos: empty.model.todos)
@@ -190,17 +190,27 @@ struct ChoresViewTests {
             TodoPageLayout.animationKey(TodoPageLayout.sections(for: page, viewerUserId: nil, store: fixture.store, todos: fixture.model.todos).filter(\.isShown))
         }
         let before = key()
-        let controller = fixture.model.todos.controller(for: "todo.stephen_s_due_today")
+        let controller = fixture.model.todos.controller(for: "todo.stephen_s_due_today_with_unassigned")
         let item = controller.items![0]
         await controller.toggle(item)
         #expect(key() != before, "The row leaves the key as soon as it is checked off")
+    }
+
+    /// The Chores tab badge is the overdue count Profile reads: the viewer's `…_past_due_with_unassigned` list, nothing for
+    /// a viewer who is not a resident.
+    @Test func overdueBadgeReadsTheResidentsPastDueList() {
+        let fixture = fixture()
+        #expect(OverdueChoresBadge.overdue(viewerUserId: ChoresConfig.Resident.stephen.haUserId, store: fixture.store) == 2)
+        #expect(OverdueChoresBadge.overdue(viewerUserId: ChoresConfig.Resident.steph.haUserId, store: fixture.store) == 0)
+        #expect(OverdueChoresBadge.overdue(viewerUserId: "someone-else", store: fixture.store) == nil)
+        #expect(OverdueChoresBadge.overdue(viewerUserId: nil, store: nil) == nil)
     }
 
     @Test func fixtureCanRefuseCheckOffs() async throws {
         let store = EntityStore()
         let service = ChoresFixtureService(store: store, lists: ChoresFixtures.lists(), failsCompletion: true)
         store.replaceAll(service.entityStates())
-        let controller = TodoListController(entityId: "todo.stephen_s_due_today", service: service)
+        let controller = TodoListController(entityId: "todo.stephen_s_due_today_with_unassigned", service: service)
         controller.revertDelay = .seconds(30)
         await controller.load()
         let item = controller.items![0]
@@ -271,7 +281,7 @@ struct ChoresViewTests {
 
     @Test func sheetsRender() {
         let fixture = fixture()
-        let target = DonetickEditTarget(itemUid: "11--fixture", taskId: 11, todoEntityId: "todo.stephen_s_past_due")
+        let target = DonetickEditTarget(itemUid: "11--fixture", taskId: 11, todoEntityId: "todo.stephen_s_past_due_with_unassigned")
         let sheets: [AnyView] = [
             AnyView(DonetickTaskSheet(mode: .create(defaultAssignee: "1"))),
             AnyView(DonetickTaskSheet(mode: .edit(target))),

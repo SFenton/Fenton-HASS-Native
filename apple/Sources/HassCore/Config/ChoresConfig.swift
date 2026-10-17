@@ -135,12 +135,17 @@ public enum ChoresConfig {
 
     // MARK: - Pages
 
-    private static func donetickLists(_ prefix: String) -> [TodoList] {
-        [
-            TodoList(title: "Past Due", entityId: "todo.\(prefix)_past_due", countBucket: .overdue),
-            TodoList(title: "Due Today", entityId: "todo.\(prefix)_due_today", countBucket: .upcoming),
-            TodoList(title: "Upcoming", entityId: "todo.\(prefix)_upcoming", countBucket: .upcoming),
-            TodoList(title: "No Due Date", entityId: "todo.\(prefix)_no_due_date", countBucket: .noDueDate),
+    /// A DoneTick page's four lists. A resident's page reads the `_with_unassigned` views (their own chores plus the ones
+    /// nobody is assigned to), like the Chores tab and the Profile summary, so the three always agree (owner, 2026-10-16:
+    /// "Stephen doesn't show the aroma pad chores", which have no assignee); the web's resident pages read the
+    /// assigned-only lists (`portedDashboard.ts:468`). Unassigned Tasks and Home Tasks have no unassigned view.
+    private static func donetickLists(_ prefix: String, withUnassigned: Bool = false) -> [TodoList] {
+        let suffix = withUnassigned ? "_with_unassigned" : ""
+        return [
+            TodoList(title: "Past Due", entityId: "todo.\(prefix)_past_due\(suffix)", countBucket: .overdue),
+            TodoList(title: "Due Today", entityId: "todo.\(prefix)_due_today\(suffix)", countBucket: .upcoming),
+            TodoList(title: "Upcoming", entityId: "todo.\(prefix)_upcoming\(suffix)", countBucket: .upcoming),
+            TodoList(title: "No Due Date", entityId: "todo.\(prefix)_no_due_date\(suffix)", countBucket: .noDueDate),
         ]
     }
 
@@ -182,7 +187,7 @@ public enum ChoresConfig {
 
     /// Stephen's chores.
     public static let stephensChores = Page(
-        id: "stephens-chores", title: "Stephen's Chores", lists: donetickLists("stephen_s"),
+        id: "stephens-chores", title: "Stephen's Chores", lists: donetickLists("stephen_s", withUnassigned: true),
         emptyTitle: "No Chores Due", emptyDescription: "Stephen has no chores due- nice job!",
         hiddenByVacation: true, isDonetick: true, resident: .stephen,
         addAction: .donetickTask(defaultAssignee: Resident.stephen.donetickAssignee)
@@ -190,7 +195,7 @@ public enum ChoresConfig {
 
     /// Steph's chores.
     public static let stephsChores = Page(
-        id: "stephs-chores", title: "Steph's Chores", lists: donetickLists("steph_s"),
+        id: "stephs-chores", title: "Steph's Chores", lists: donetickLists("steph_s", withUnassigned: true),
         emptyTitle: "No Chores Due", emptyDescription: "Steph has no chores due- nice job!",
         hiddenByVacation: true, isDonetick: true, resident: .steph,
         addAction: .donetickTask(defaultAssignee: Resident.steph.donetickAssignee)
