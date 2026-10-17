@@ -58,8 +58,9 @@ struct WeatherPagedCarousel<Cell: View>: View {
         // committed its offset through the sheet's view graph on every frame.
         return PagedRow(itemCount: count, perPage: paging.perPage, firstVisible: $firstVisible, animatesPaging: !reduceMotion) { index in
             cell(index)
-                // With previous and next buttons, VoiceOver reads the page on screen and pages with them;
-                // hours on other pages sit clipped under those buttons, where they read as unseen text.
+                // With previous and next buttons, VoiceOver should read the page on screen and page with them; hours on
+                // other pages are marked hidden. Inside the hosted row XCUITest still lists them (and the scroll view pages
+                // itself to a focused hour), so this is best effort until VoiceOver is checked on a device.
                 .accessibilityHidden(hidesOffPage && paging.page(containing: index) != current)
         }
         .accessibilityIdentifier("\(identifier).carousel")
