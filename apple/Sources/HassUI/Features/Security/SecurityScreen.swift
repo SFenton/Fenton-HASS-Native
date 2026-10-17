@@ -95,7 +95,7 @@ struct SecurityPage: View {
                     .hassSheet(.page)
             case .contacts:
                 RoomOverviewSheet(kind: .contacts)
-                    .hassSheet(.page)
+                    .hassSheet(.page, height: .full) // Navigates to a room group
             case let .camera(camera):
                 CameraViewer(camera: camera)
             }

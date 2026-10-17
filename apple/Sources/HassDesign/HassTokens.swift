@@ -196,6 +196,11 @@ public enum HassTokens {
         public static let secondaryOnModule = Color(rgb: Palette.secondaryLabel).opacity(secondaryOnModuleOpacity)
         /// Secondary labels on a module under a state wash (``GlassTileFace``), which lifts the ground.
         public static let secondaryOnWash = Color(rgb: Palette.secondaryLabel).opacity(secondaryOnWashOpacity)
+        /// Secondary labels straight on the wallpaper, with no module under them (a titled spinner on a page): the photo's
+        /// brightest part under only the scrim measured 3.1:1 for the system's `.secondary` (60%), so this is 85%.
+        public static let secondaryOnWallpaper = Color(rgb: Palette.secondaryLabel).opacity(secondaryOnWallpaperOpacity)
+        /// ``secondaryOnWallpaper``'s opacity.
+        static let secondaryOnWallpaperOpacity = 0.85
         /// ``secondaryOnModule``'s opacity.
         static let secondaryOnModuleOpacity = 0.68
         /// ``secondaryOnWash``'s opacity.

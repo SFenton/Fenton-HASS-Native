@@ -38,6 +38,8 @@ struct RoomPageContent: View {
     @State private var sheetCard: RoomCard?
     @State private var remote: MediaRemoteController?
     @State private var showsQuickLinks = false
+    /// In the shell the header carries Quick Links on every page; the page keeps its own button only outside it.
+    @Environment(ShellNavigator.self) private var shellNavigator: ShellNavigator?
     @State private var pendingRoute: HomeRoute?
     @State private var route: HomeRoute?
     @State private var deviceModal: RoomDeviceModal?
@@ -94,8 +96,10 @@ struct RoomPageContent: View {
         .accessibilityIdentifier("room.scroll.\(page.id)")
         .navigationTitle(page.title)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                QuickLinksButton { showsQuickLinks = true }
+            if shellNavigator == nil {
+                ToolbarItem(placement: .primaryAction) {
+                    QuickLinksButton { showsQuickLinks = true }
+                }
             }
         }
         .sheet(item: $sheetCard, content: cardSheet)
@@ -135,12 +139,12 @@ struct RoomPageContent: View {
 
     func cardSheet(_ card: RoomCard) -> some View {
         RoomCardSheet(controller: controller, card: card)
-            .hassSheet(.page)
+            .hassSheet(.page, height: .full) // Navigates room to lights to a light
     }
 
     func remoteSheet(_ selection: RemoteSelection) -> some View {
         MediaRemoteSheet(controller: selection.controller, imageServer: imageServer, initialTab: .controls)
-            .hassSheet(.page)
+            .hassSheet(.page, height: .full) // A remote
     }
 
     func deviceSheet(_ modal: RoomDeviceModal) -> some View {

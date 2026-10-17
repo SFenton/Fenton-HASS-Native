@@ -158,7 +158,7 @@ struct PresenceOverridesSheet: View {
                 PresenceOverrideDetail(room: room, controller: controller, done: { dismiss() })
             }
         }
-        .hassSheet(.page)
+        .hassSheet(.page, height: .full) // Pushes a room's override page
     }
 }
 

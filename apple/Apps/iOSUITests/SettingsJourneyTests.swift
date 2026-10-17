@@ -17,7 +17,7 @@ final class SettingsJourneyTests: XCTestCase {
         if FentonHomeApp.family == .iPad { XCUIDevice.shared.orientation = .portrait }
     }
 
-    /// Goes to Settings: the profile avatar's Account sheet (direction G).
+    /// Goes to Settings, the last tab (owner, 2026-10-16).
     private func goToSettings(_ app: XCUIApplication) {
         app.openAccountSettings()
     }
@@ -113,12 +113,22 @@ final class SettingsJourneyTests: XCTestCase {
         XCTAssertTrue(confirmButton(app).waitForNonExistence(timeout: 5), "Sign-out confirmation did not close")
     }
 
+    /// The list scrolled back to its top: scrolled to the Home Assistant row, topics fade under the header and the audit
+    /// reports that faded text as element-less contrast issues it can't attribute.
+    private func scrollToTop(_ app: XCUIApplication) {
+        let top = app.buttons["settings.vacation"]
+        for _ in 0..<12 where !(top.exists && top.isHittable) { app.settingsList.swipeDown(velocity: .fast) }
+        sleep(1)
+    }
+
     func testSettingsTabPassesAccessibilityAudit() throws {
         let app = try FentonHomeApp.launchSignedIn()
         showSettingsTab(app)
+        scrollToTop(app)
         try FentonHomeApp.audit(app) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
             self.showSettingsTab(large)
+            self.scrollToTop(large)
             return large
         }
     }

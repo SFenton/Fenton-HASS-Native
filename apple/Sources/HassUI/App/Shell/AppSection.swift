@@ -5,11 +5,11 @@ import SwiftUI
 // MARK: - Sections
 
 /// The app's root sections, from the web's `PRIMARY_NAV_ROUTES`
-/// (`ha-sfenton-react-dash:src/constants/routes.ts`): Home, Security, Climate, Chores. Settings is not a section:
-/// direction G moves it into the Account sheet behind the profile avatar (`.agents/design/direction-g.md`,
-/// Navigation).
+/// (`ha-sfenton-react-dash:src/constants/routes.ts`): Home, Security, Climate, Chores, Settings. Settings is the last
+/// tab, its own page like the web's (owner, 2026-10-16, reversing the 2026-10-14 decision that put it in the Account
+/// sheet; `.agents/design/direction-g.md`, Navigation).
 enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
-    case home, security, climate, chores
+    case home, security, climate, chores, settings
 
     var id: String { rawValue }
 
@@ -20,6 +20,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .security: "Security"
         case .climate: "Climate"
         case .chores: "Chores"
+        case .settings: "Settings"
         }
     }
 
@@ -33,20 +34,21 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
         case .security: "mdi:shield"
         case .climate: "mdi:thermostat"
         case .chores: "mdi:clipboard-list"
+        case .settings: "mdi:cog"
         }
     }
 
     /// Accessibility identifier for this section's navigation item (tab and flyout row alike).
     var navigationIdentifier: String { "nav.\(rawValue)" }
 
-    /// The section a notification opens; nil for Settings, which lives in the Account sheet (direction G).
-    init?(_ section: PushSection) {
+    /// The section a notification opens.
+    init(_ section: PushSection) {
         switch section {
         case .home: self = .home
         case .security: self = .security
         case .climate: self = .climate
         case .chores: self = .chores
-        case .settings: return nil
+        case .settings: self = .settings
         }
     }
 }
@@ -61,11 +63,10 @@ extension EnvironmentValues {
 
 // MARK: - Menu
 
-/// The flyout's rows (direction G, Navigation: "an overlay glass flyout that lists the four tabs and then Quick
-/// Links").
+/// The flyout's rows (direction G, Navigation: the overlay glass flyout lists the same five as the tab bar).
 enum NavigationMenu {
-    /// The section rows, in order; Quick Links follows them.
-    static let primary: [AppSection] = [.home, .security, .climate, .chores]
+    /// The section rows, in order.
+    static let primary: [AppSection] = AppSection.allCases
 
     /// VoiceOver label for a navigation item. Only Chores carries a badge (web `BADGED_NAV_PATH`), and
     /// the count is spoken after the name like the web's `tabs.overdue` label.
@@ -106,57 +107,25 @@ enum ShellNavigationStyle: Equatable, Sendable {
     }
 }
 
-// MARK: - Compact tab bar
-
-/// A tab in the root tab view: a section, or the trailing Quick Links circle.
-enum RootTab: Hashable, Sendable {
-    case section(AppSection)
-    /// Quick Links (web `GlobalQuickLinksAction`), the tab bar's trailing tab on iOS 26 and later.
-    case quickLinks
-}
-
-/// How the compact (iPhone, folded Duo) tab bar carries Quick Links (direction G, Navigation: "a floating glass
-/// tab bar with Home, Security, Climate and Chores ... Quick Links ... trails the tab bar").
-///
-/// iOS 26 and later show it as the trailing role tab (`Tab(role: .search)`), its own page; direction G's circle that
-/// presents a sheet is a recorded departure (``MainTabView``). Before iOS 26 Quick Links is a toolbar button that
-/// presents the sheet. HIG Tab bars: "A dedicated Search tab may be trailing."
-enum CompactTabLayout: Equatable, Sendable {
-    /// The four sections as tabs; Quick Links is a toolbar button (before iOS 26).
-    case sectionsOnly
-    /// The four sections and the trailing Quick Links tab.
-    case sectionsWithQuickLinks
-
-    /// The layout for the running system.
-    /// - Parameter supportsTrailingTab: The system draws a role tab apart from the bar (iOS 26 and later).
-    static func resolve(supportsTrailingTab: Bool) -> CompactTabLayout {
-        supportsTrailingTab ? .sectionsWithQuickLinks : .sectionsOnly
-    }
-
-    /// Whether Quick Links is the trailing tab rather than a toolbar button.
-    var hasQuickLinksTab: Bool { self == .sectionsWithQuickLinks }
-}
+// MARK: - Chrome
 
 /// Where the shell puts navigation chrome for a window (pure, so it can be unit tested).
+///
+/// Profile and Quick Links are header buttons on every page in every window (owner, 2026-10-16), so only the
+/// leading menu button and where the title sits vary with the window.
 struct ShellChrome: Equatable, Sendable {
     /// Show the leading menu button that opens ``NavigationFlyout``.
     var showsMenuButton: Bool
-    /// Quick Links is a toolbar button on section roots (iOS before 26 in compact width; otherwise it is the trailing
-    /// tab or, in regular width, the floating circle).
-    var showsQuickLinksButton: Bool
-    /// Quick Links is the floating glass circle at the bottom trailing corner of section roots (regular width: iPad and
-    /// the unfolded Duo; direction G mockup n1-ipad-home).
-    var showsFloatingQuickLinks = false
+    /// The page title sits in the header row beside the trailing buttons (``HeaderTitleStyle``): where nothing but
+    /// the trailing buttons shares the row, which is every window without the menu button.
+    var titleInHeader: Bool
 
     /// Resolves the chrome.
-    /// - Parameters:
-    ///   - style: The root navigation style.
-    ///   - layout: The compact tab layout.
-    static func resolve(style: ShellNavigationStyle, layout: CompactTabLayout) -> ShellChrome {
+    /// - Parameter style: The root navigation style.
+    static func resolve(style: ShellNavigationStyle) -> ShellChrome {
         switch style {
-        // iPad: "Quick Links is a floating button" (direction G), and also the flyout's last row.
-        case .flyout: ShellChrome(showsMenuButton: true, showsQuickLinksButton: false, showsFloatingQuickLinks: true)
-        case .tabBar: ShellChrome(showsMenuButton: false, showsQuickLinksButton: !layout.hasQuickLinksTab)
+        case .flyout: ShellChrome(showsMenuButton: true, titleInHeader: false)
+        case .tabBar: ShellChrome(showsMenuButton: false, titleInHeader: true)
         }
     }
 }
