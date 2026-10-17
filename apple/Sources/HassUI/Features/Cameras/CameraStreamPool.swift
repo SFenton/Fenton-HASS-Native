@@ -44,6 +44,10 @@ final class CameraStreamPool {
     @ObservationIgnored private let stallCheckInterval: Duration
     @ObservationIgnored private let frameCounter: (@MainActor (CameraLiveModel) -> Int?)?
     /// Pending automatic retries by camera id, and how many each camera has used since it last went live.
+    /// How long a retained stream keeps running with no view showing it before it is paused (short enough to stop
+    /// decoding behind a page with no camera, long enough that Home to Security, whose tiles share the stream, never does).
+    @ObservationIgnored let pauseAfterHidden: Duration
+    @ObservationIgnored private var pauseTasks: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var retryTasks: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var retryAttempts: [String: Int] = [:]
 
@@ -55,6 +59,7 @@ final class CameraStreamPool {
     ///   - opener: Replaces how each mode opens its stream (tests).
     ///   - retryDelays: Waits before each automatic retry of a wanted stream that failed every mode; empty turns
     ///     automatic retries off.
+    ///   - pauseAfterHidden: How long a retained stream runs with no view showing it before it is paused.
     ///   - stallAfter: How long a live stream's frame count may stay put before the stream is restarted.
     ///   - stallCheckInterval: How often the frame count is read.
     ///   - frameCounter: Replaces how frames are counted (tests).
@@ -63,12 +68,14 @@ final class CameraStreamPool {
     init(modes: [CameraStreamMode] = CameraLiveModel.defaultModes, retainsShownStreams: Bool = true, observesApp: Bool = true,
          opener: CameraStreamOpener? = nil,
          retryDelays: [Duration] = CameraStreamPool.defaultRetryDelays,
+         pauseAfterHidden: Duration = .seconds(4),
          stallAfter: Duration = FrameStallDetector.defaultStallAfter, stallCheckInterval: Duration = .seconds(1),
          frameCounter: (@MainActor (CameraLiveModel) -> Int?)? = nil,
          prepareConnection: @escaping @MainActor (HassConnection) async -> Void = { _ = await $0.ensureLive() }) {
         self.modes = modes
         self.opener = opener
         self.retryDelays = retryDelays
+        self.pauseAfterHidden = pauseAfterHidden
         self.stallAfter = stallAfter
         self.stallCheckInterval = stallCheckInterval
         self.frameCounter = frameCounter
@@ -97,6 +104,7 @@ final class CameraStreamPool {
         [
             "CameraPool.observers": observers.count,
             "CameraPool.resumeTask": resumeTask == nil ? 0 : 1,
+            "CameraPool.pauseTasks": pauseTasks.count,
             "CameraPool.models": models.count,
             "CameraPool.running": models.values.filter(\.isRunning).count,
         ]
@@ -142,6 +150,8 @@ final class CameraStreamPool {
         self.connection = connection
         let model = model(for: camera)
         retryAttempts[camera.id] = nil
+        pauseTasks[camera.id]?.cancel()
+        pauseTasks[camera.id] = nil
         if retention.appear(camera.id, isRunning: model.isRunning) == .start, resumeTask == nil {
             model.start(connection: connection)
         }
@@ -152,6 +162,27 @@ final class CameraStreamPool {
     func disappear(_ camera: HomeConfig.Camera) {
         if retention.disappear(camera.id) == .stop {
             models[camera.id]?.stop()
+        } else if retention.retainsShownStreams, retention.viewers[camera.id] == nil {
+            schedulePause(camera)
+        }
+    }
+
+    /// Pauses a retained stream that no view has shown for ``pauseAfterHidden``: the session stops retaining it, the stream
+    /// stops, and its last live frame stays up. A view showing it again (``appear(_:connection:)``) cancels this or, once
+    /// paused, restarts it.
+    private func schedulePause(_ camera: HomeConfig.Camera) {
+        pauseTasks[camera.id]?.cancel()
+        let delay = pauseAfterHidden
+        pauseTasks[camera.id] = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled, let self else { return }
+            pauseTasks[camera.id] = nil
+            guard retention.viewers[camera.id] == nil, retention.release(camera.id) == .stop,
+                  let model = models[camera.id], model.isRunning else { return }
+            retryTasks[camera.id]?.cancel()
+            retryTasks[camera.id] = nil
+            CameraTrace.record("\(camera.rtcStreamId) paused, no view shows it")
+            await model.pause()
         }
     }
 
@@ -169,6 +200,8 @@ final class CameraStreamPool {
         CameraTrace.record("pool background, \(models.values.filter(\.isRunning).count) running")
         resumeTask?.cancel()
         resumeTask = nil
+        pauseTasks.values.forEach { $0.cancel() }
+        pauseTasks = [:]
         retryTasks.values.forEach { $0.cancel() }
         retryTasks = [:]
         for id in retention.enterBackground() {

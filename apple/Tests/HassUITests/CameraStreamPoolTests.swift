@@ -44,11 +44,11 @@ struct CameraStreamPoolTests {
     private let front = HomeConfig.cameras[0]
     private let driveway = HomeConfig.cameras[1]
 
-    private func makePool(_ streams: FakeStreams, retryDelays: [Duration] = [],
+    private func makePool(_ streams: FakeStreams, retryDelays: [Duration] = [], pauseAfterHidden: Duration = .seconds(60),
                           stallAfter: Duration = .seconds(60)) -> (CameraStreamPool, HassConnection) {
         let pool = CameraStreamPool(
             modes: [.webRTC, .hls], observesApp: false, opener: streams.opener, retryDelays: retryDelays,
-            stallAfter: stallAfter, stallCheckInterval: .milliseconds(10),
+            pauseAfterHidden: pauseAfterHidden, stallAfter: stallAfter, stallCheckInterval: .milliseconds(10),
             frameCounter: { [streams] _ in
                 if streams.advancing { streams.frames += 1 }
                 return streams.frames
@@ -499,5 +499,56 @@ struct CameraStreamPoolTests {
         model.stop()
         #expect(model.liveResources["Camera.attempts"] == 0)
         #expect(model.liveResources["Camera.players"] == 0)
+    }
+
+    // MARK: - Pausing with no view
+
+    @Test func aStreamNoViewShowsIsPausedAndTheNextViewRestartsIt() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams, pauseAfterHidden: .milliseconds(40))
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(model)
+        pool.disappear(front)
+        #expect(model.isRunning, "Still running through the pause delay: Home to Security must not stop it")
+        await waitUntil { !model.isRunning }
+
+        #expect(!model.isRunning, "Paused: nothing decodes behind a page with no camera")
+        #expect(!pool.shouldRun(front), "No longer retained or wanted")
+        #expect(model.state.phase == .connecting, "The snapshot (and the last frame) covers the player")
+        #expect(pool.liveResources["CameraPool.pauseTasks"] == 0)
+
+        _ = pool.appear(front, connection: connection)
+        #expect(model.isRunning, "A view showing it again restarts it at once")
+        await waitUntil { streams.opens["front_door"] == 2 }
+        #expect(streams.opens["front_door"] == 2)
+    }
+
+    @Test func aViewReturningInsideTheDelayKeepsTheStreamRunning() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams, pauseAfterHidden: .milliseconds(150))
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(model)
+        pool.disappear(front) // Home's tile leaves with the tab switch
+        #expect(pool.liveResources["CameraPool.pauseTasks"] == 1)
+        _ = pool.appear(front, connection: connection) // Security's arrives
+        #expect(pool.liveResources["CameraPool.pauseTasks"] == 0, "The pending pause is cancelled")
+        try? await Task.sleep(for: .milliseconds(250))
+        #expect(model.isRunning)
+        #expect(model.state.phase == .live)
+        #expect(streams.opens["front_door"] == 1, "The same stream throughout")
+    }
+
+    @Test func backgroundingCancelsPendingPauses() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams, pauseAfterHidden: .seconds(30))
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(model)
+        pool.disappear(front)
+        #expect(pool.liveResources["CameraPool.pauseTasks"] == 1)
+        pool.enterBackground()
+        #expect(pool.liveResources["CameraPool.pauseTasks"] == 0)
     }
 }

@@ -44,8 +44,16 @@ struct CameraLiveView: View {
             }
             .overlay {
                 if model.state.phase != .live || ScreenshotPrivacy.isRedacting {
-                    CameraSnapshotView(entityId: camera.entityId)
-                        .transition(.opacity)
+                    ZStack {
+                        CameraSnapshotView(entityId: camera.entityId)
+                        // A paused stream keeps its last live frame up while it reconnects.
+                        if let frame = model.pausedFrame, !ScreenshotPrivacy.isRedacting {
+                            Image(decorative: frame, scale: 1)
+                                .resizable()
+                                .aspectRatio(contentMode: style == .tile ? .fill : .fit)
+                        }
+                    }
+                    .transition(.opacity)
                 }
             }
             .clipped()
