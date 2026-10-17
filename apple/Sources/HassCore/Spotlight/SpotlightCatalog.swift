@@ -1,21 +1,5 @@
 import Foundation
 
-/// One page of the app that Spotlight can open: a root section or a room.
-public struct SpotlightEntry: Equatable, Sendable, Identifiable {
-    /// Stable identifier handed back to the app when the result is tapped (`section.climate`, `room.living-room`).
-    public var id: String
-    /// The result's title.
-    public var title: String
-    /// The second line of the result.
-    public var summary: String
-    /// Words that find this page, besides its title.
-    public var keywords: [String]
-    /// The web icon the page uses, which the indexer draws as the result's thumbnail.
-    public var mdiIcon: String
-    /// Where tapping the result goes.
-    public var destination: PushDestination
-}
-
 /// The small set of pages the app puts in Spotlight (`CSSearchableItem`), and the way back from a tapped result.
 ///
 /// Core Spotlight gives an installed app's own pages, not the app icon, extra search words. Every entry carries
@@ -64,18 +48,5 @@ public enum SpotlightCatalog {
         SpotlightEntry(id: "room.\(page.id)", title: page.title, summary: "\(page.title) lights, climate and devices",
                        keywords: [page.title, "room"] + AppBranding.searchTerms, mdiIcon: "mdi:home",
                        destination: .homePage(page.id))
-    }
-}
-
-/// Reads which item a Spotlight tap was for.
-public enum SpotlightLink {
-    /// The `userInfo` key Core Spotlight puts the tapped item's unique identifier under
-    /// (`CSSearchableItemActivityIdentifier`); kept as text so this module needs no Core Spotlight import.
-    public static let userInfoKey = "kCSSearchableItemActivityIdentifier"
-
-    /// The tapped item's identifier.
-    /// - Parameter userInfo: The `NSUserActivity.userInfo` of a `CSSearchableItemActionType` continuation.
-    public static func identifier(in userInfo: [AnyHashable: Any]?) -> String? {
-        userInfo?[userInfoKey] as? String
     }
 }
