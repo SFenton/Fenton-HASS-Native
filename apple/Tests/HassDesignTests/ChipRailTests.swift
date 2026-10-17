@@ -16,6 +16,23 @@ struct ChipRailTests {
         #expect(abs(ChipRailMetrics.trailingInset(railFrame: rail, hinge: hinge) - (868 - (455.3 - 24))) < 0.001)
     }
 
+    @Test func aMeasuredInsetOnlyAppliesWhileThereIsAHinge() {
+        #expect(ChipRailMetrics.appliedInset(measured: 120, hinge: hinge) == 120)
+        // A fold that closed stops measuring, so the last value must not linger.
+        #expect(ChipRailMetrics.appliedInset(measured: 120, hinge: nil) == 0)
+        #expect(ChipRailMetrics.appliedInset(measured: 0, hinge: hinge) == 0)
+    }
+
+    @Test func hostedRowFillsTheScrollViewAndScrollsWhenWider() {
+        let bounds = CGSize(width: 402, height: 64)
+        // Six chips are wider than the phone: the content scrolls.
+        #expect(ChipRailMetrics.hostedContentSize(natural: CGSize(width: 910, height: 64), bounds: bounds) == CGSize(width: 910, height: 64))
+        // Two chips fit: the content is exactly the scroll view, so nothing scrolls and no bounce range appears.
+        #expect(ChipRailMetrics.hostedContentSize(natural: CGSize(width: 300, height: 64), bounds: bounds) == bounds)
+        // The height follows the scroll view, never the natural size, so it cannot scroll sideways-and-up.
+        #expect(ChipRailMetrics.hostedContentSize(natural: CGSize(width: 910, height: 90), bounds: bounds).height == 64)
+    }
+
     @Test func noInsetWithoutAHingeOrWhenTheRailDoesNotReachIt() {
         let rail = CGRect(x: 0, y: 100, width: 868, height: 60)
         #expect(ChipRailMetrics.trailingInset(railFrame: rail, hinge: nil) == 0)

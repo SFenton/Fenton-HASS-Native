@@ -30,4 +30,22 @@ public enum ChipRailMetrics {
         guard let hinge, hinge.height >= hinge.width, hinge.minX > railFrame.minX else { return 0 }
         return max(0, railFrame.maxX - (hinge.minX - gap))
     }
+
+    /// The inset a rail applies: the measured one while the window has a hinge, else none (a window without a hinge
+    /// does not measure, so a value left from a fold that has since closed must not linger).
+    /// - Parameters:
+    ///   - measured: The last ``trailingInset(railFrame:hinge:gap:)`` the rail measured.
+    ///   - hinge: The window's hinge, if any.
+    public static func appliedInset(measured: CGFloat, hinge: CGRect?) -> CGFloat {
+        hinge == nil ? 0 : measured
+    }
+
+    /// The content size of the UIKit scroll view behind a compact rail: at least as wide as the scroll view (so a
+    /// short row still fills it and the chips sit at the leading edge) and as tall as the scroll view.
+    /// - Parameters:
+    ///   - natural: The chips' natural size.
+    ///   - bounds: The scroll view's bounds.
+    public static func hostedContentSize(natural: CGSize, bounds: CGSize) -> CGSize {
+        CGSize(width: max(natural.width, bounds.width), height: bounds.height)
+    }
 }
