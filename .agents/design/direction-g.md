@@ -6,7 +6,7 @@ Mockups of every screen live on the owner's private gallery (https://claude.ai/a
 
 ## The idea
 
-Fenton Home should look like Apple made it, with Apple Home and Apple Weather as the reference. Distinctiveness comes from three places:
+S+H (formerly Fenton Home) should look like Apple made it, with Apple Home and Apple Weather as the reference. Distinctiveness comes from three places:
 - the house wallpaper;
 - a few signature controls: the thermostat dial from main, the light dragger and the remote;
 - putting cameras and climate up front.

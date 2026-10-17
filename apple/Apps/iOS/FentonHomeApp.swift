@@ -34,12 +34,14 @@ final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
 
     /// The app's one session (sign-in, connection, route). Made once here: `FentonHomeApp.body` and `RootView.init`
     /// run again whenever SwiftUI rebuilds the scene.
-    @MainActor lazy var session = AppSession(push: push, location: location)
+    @MainActor lazy var session = AppSession(push: push, location: location, spotlight: CoreSpotlightIndexer())
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // Set before launch finishes, so a tap that launched the app is delivered.
         UNUserNotificationCenter.current().delegate = self
+        // App Shortcuts open pages through the same request a notification's link makes.
+        AppShortcutRouter.install { [push] destination in push.open(destination) }
         if let location { Task { await location.resume() } }
         #if DEBUG
         DebugSystemSettings.applyIfRequested()

@@ -50,14 +50,25 @@ targets:
     info:
       path: Apps/iOS/Info.plist
       properties:
-        CFBundleDisplayName: Home
+        # The public name (owner, 2026-10-17); the bundle id stays com.sfenton.home. `AppBranding` mirrors these.
+        # CFBundleSpokenName is what VoiceOver and Siri say for "S+H"; INAlternativeAppNames lets Siri take the old
+        # and platform names in an App Shortcut phrase (three at most). `.agents/platforms/apple/app-name.md`.
+        CFBundleDisplayName: S+H
+        CFBundleSpokenName: S and H
+        INAlternativeAppNames:
+          - INAlternativeAppName: Home Assistant
+            INAlternativeAppNamePronunciationHint: home assistant
+          - INAlternativeAppName: HASS
+            INAlternativeAppNamePronunciationHint: hass like pass
+          - INAlternativeAppName: Fenton Home
+            INAlternativeAppNamePronunciationHint: fenton home
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSCameraUsageDescription: Scan item barcodes and printed expiration dates to add groceries to your inventory.
         NSPhotoLibraryAddUsageDescription: Save camera snapshots to your photo library.
         # Location reports Home and Away to Home Assistant (`.agents/platforms/apple/location.md`).
-        NSLocationWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away.
-        NSLocationAlwaysAndWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away, even when this app is closed.
+        NSLocationWhenInUseUsageDescription: S+H shares your location with Home Assistant to know when you're home or away.
+        NSLocationAlwaysAndWhenInUseUsageDescription: S+H shares your location with Home Assistant to know when you're home or away, even when the app is closed.
         # Zone crossings and significant location changes relaunch the app in the background; silent pushes run
         # commands such as clear_notification (contract v1, rule 3).
         UIBackgroundModes:
@@ -71,7 +82,7 @@ targets:
         # the public URL through Cloudflare; it finds it by its Bonjour advertisement (LocalServerRoute,
         # `.agents/platforms/apple/connection-lifecycle.md`). NSAllowsLocalNetworking permits HTTP only to local
         # names and addresses; every other host still needs HTTPS.
-        NSLocalNetworkUsageDescription: Home connects to Home Assistant directly on your home network, which is faster than going through the internet.
+        NSLocalNetworkUsageDescription: S+H connects to Home Assistant directly on your home network, which is faster than going through the internet.
         NSBonjourServices:
           - _home-assistant._tcp
         NSAppTransportSecurity:
@@ -108,7 +119,7 @@ targets:
     info:
       path: Apps/NotificationService/Info.plist
       properties:
-        CFBundleDisplayName: Home Notifications
+        CFBundleDisplayName: S+H Notifications
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -139,7 +150,7 @@ targets:
     info:
       path: Apps/NotificationContent/Info.plist
       properties:
-        CFBundleDisplayName: Home Camera Notifications
+        CFBundleDisplayName: S+H Camera Notifications
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -162,7 +173,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.watchkitapp
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.sfenton.home
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Home
+        INFOPLIST_KEY_CFBundleDisplayName: S+H
   FentonHomeUITests:
     type: bundle.ui-testing
     platform: iOS

@@ -27,6 +27,9 @@ public final class AppSession {
     /// Location reporting in shadow mode; nil on iPad and in launches that don't report (``LocationLaunchPolicy``).
     @ObservationIgnored public let location: LocationCoordinator?
 
+    /// The app's pages in system search; filled when a session starts and emptied at sign-out.
+    @ObservationIgnored private let spotlight: any SpotlightIndexing
+
     @ObservationIgnored private let tokenStore: TokenStore
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
 
@@ -37,9 +40,11 @@ public final class AppSession {
     ///   - snapshotCache: The disk snapshot of entity states.
     ///   - push: The app's push coordinator (the app delegate's, so system callbacks reach it).
     ///   - location: The app's location coordinator (the app delegate's, created at launch for zone relaunches).
+    ///   - spotlight: Where the app's pages are indexed; inert unless the app passes ``CoreSpotlightIndexer``.
     public init(tokenStore: TokenStore = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup),
                 snapshotCache: EntitySnapshotCache = .init(), push: PushCoordinator = .inert(),
-                location: LocationCoordinator? = nil) {
+                location: LocationCoordinator? = nil, spotlight: any SpotlightIndexing = InertSpotlightIndexer()) {
+        self.spotlight = spotlight
         self.tokenStore = tokenStore
         self.snapshotCache = snapshotCache
         self.push = push
@@ -88,6 +93,7 @@ public final class AppSession {
         UserDefaults.standard.removeObject(forKey: ChoresModel.viewerDefaultsKey)
         tokens = nil
         backdrop = nil
+        spotlight.removeAll()
         phase = .signedOut
         let push = push
         Task {
@@ -106,6 +112,7 @@ public final class AppSession {
         // Created before the phase changes so the first signed-in frame already has the cached photo.
         backdrop = HouseBackdropStore.session(for: server)
         phase = .signedIn(connection, lifecycle)
+        spotlight.indexPages(SpotlightCatalog.entries)
         lifecycle.didBecomeActive()
     }
 }
