@@ -163,7 +163,7 @@ struct GalleryLaunchTests {
     @Test func performanceGalleryShowsTheScreenTheGateAndTheGrid() async throws {
         let screen = try #require(await draw(.performance))
         var others: [NSBitmapImageRep] = []
-        for mode in ["gate", "grid"] {
+        for mode in ["gate", "grid", "chips"] {
             others.append(try await withLaunch(environment: ["FENTON_GALLERY_PERF": mode]) { try #require(await draw(.performance, settle: 1.2)) })
         }
         #expect(others.allSatisfy { $0.differs(from: screen) })
