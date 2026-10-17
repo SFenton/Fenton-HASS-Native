@@ -153,7 +153,6 @@ Still open:
 - **Unfolded Duo:** landscape is verified (#84); unfolded portrait, the partly folded pose, light sheets and the accessibility sweep were not run there.
 - **Light sheets:** iPad landscape, iOS 17–25 fallbacks and a real Control Center toggle on a device are unverified.
 - **Vacuums:** two element-less contrast issues on iPhone are unattributed (`.agents/testing/apple/accessibility.md`, Open findings).
-- **Coverage:** `tools/apple_coverage.sh` errors on classification entries for files such as Feedback, LitTile and Telemetry, so there is no repo-wide gate number.
 - **macOS:** deferred until a Mac target exists (decision 8).
 
 ## Dependencies on wave-2 threads

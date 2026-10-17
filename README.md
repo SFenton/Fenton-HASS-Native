@@ -15,7 +15,7 @@ xcodegen generate          # writes FentonHome.xcodeproj
 open FentonHome.xcodeproj  # run the FentonHome scheme on an iPhone or iPad simulator
 ```
 
-Gates: `tools/apple_coverage.sh` (95% logic / 90% UX line coverage) and `tools/ios_uitest.sh --env <local env file>` (journeys and accessibility audits on iPhone, iPhone Duo and iPad).
+Gates: `tools/apple_coverage.sh` (95% logic / 95% UX line coverage) and `tools/ios_uitest.sh --env <local env file>` (journeys and accessibility audits on iPhone, iPhone Duo and iPad).
 
 ## Where to start
 
