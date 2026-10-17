@@ -6,12 +6,13 @@ import XCTest
 /// The Reduce Transparency and Increase Contrast fallbacks (a hard edge, no ramp) are `HeaderEdgeFade.ramp`, unchanged and
 /// covered by `HeaderEdgeFadeTests`.
 final class HeaderFadeJourneyTests: JourneyTestCase {
-    private func launch(gallery: String, environment: [String: String] = [:], scroll: String) -> (XCUIApplication, XCUIElement, XCUIElement) {
+    private func launch(gallery: String, environment: [String: String] = [:], arguments: [String] = [], scroll: String) -> (XCUIApplication, XCUIElement, XCUIElement) {
         let app = FentonHomeApp.makeApp()
         app.launchEnvironment["FENTON_GALLERY"] = gallery
         app.launchEnvironment["FENTON_GALLERY_CLEAN"] = "1"
         app.launchEnvironment["FENTON_FADE_PROBE"] = "1"
         app.launchEnvironment.merge(environment) { _, new in new }
+        app.launchArguments += arguments
         app.launch()
         let page = element(scroll, in: app)
         XCTAssertTrue(page.waitForExistence(timeout: 30), "\(gallery) did not open")
@@ -28,8 +29,8 @@ final class HeaderFadeJourneyTests: JourneyTestCase {
         return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: probe)], timeout: timeout) == .completed
     }
 
-    private func check(_ gallery: String, environment: [String: String] = [:], scroll: String) {
-        let (_, page, probe) = launch(gallery: gallery, environment: environment, scroll: scroll)
+    private func check(_ gallery: String, environment: [String: String] = [:], arguments: [String] = [], scroll: String) {
+        let (_, page, probe) = launch(gallery: gallery, environment: environment, arguments: arguments, scroll: scroll)
         XCTAssertEqual(offset(probe), 0, "The fade rests at 0 at the top of \(gallery)")
         page.swipeUp(velocity: .slow)
         XCTAssertTrue(waitFor("41", probe) || offset(probe) > 0,
@@ -40,7 +41,8 @@ final class HeaderFadeJourneyTests: JourneyTestCase {
         XCTAssertTrue(waitFor("0", probe), "The fade returns to rest at the top (\(probe.value as? String ?? "nil"))")
     }
 
-    func testListPageFadeFollowsTheScroll() { check("settings", scroll: "settings.list") }
+    /// At the largest text size, so the list is longer than the screen on an iPad too.
+    func testListPageFadeFollowsTheScroll() { check("settings", arguments: FentonHomeApp.ax5, scroll: "settings.list") }
 
     /// The Weather sheet is a `ScrollView` under `headerEdgeFade` (the Security gallery has no page chrome).
     func testScrollViewPageFadeFollowsTheScroll() {
