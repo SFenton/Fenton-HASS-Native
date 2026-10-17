@@ -217,7 +217,10 @@ struct ClimateRoomsTab: View {
                         .tileIdentifier("climate.room.\(room.key)")
                     }
                 }
+                // The Rooms grid's arrangement: glyph top-leading, name and state on the bottom lines, one height.
                 .equalHeightTiles()
+                .tileLayout(.anchoredBottom)
+                .tileTitleLines(2)
                 FormFooter(ClimateConfig.Tab.rooms.description)
                     .font(.footnote)
             }
