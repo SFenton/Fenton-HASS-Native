@@ -74,7 +74,6 @@ struct NavigationFlyout: View {
                         .accessibilityFocused($headingFocused)
                         .accessibilityIdentifier("nav.flyout.heading")
                     ForEach(NavigationMenu.primary) { row(for: $0) }
-                    quickLinksRow
                 }
                 .padding(HassTokens.Spacing.m)
                 .frame(minHeight: proxy.size.height, alignment: .top)
@@ -88,30 +87,6 @@ struct NavigationFlyout: View {
         .accessibilityIdentifier("nav.flyout")
         .accessibilityAddTraits(.isModal)
         .accessibilityAction(.escape) { navigator.dismissFlyout() }
-    }
-
-    /// Quick Links after the sections: presents its sheet over the selected section.
-    private var quickLinksRow: some View {
-        Button {
-            navigator.openQuickLinks()
-        } label: {
-            HStack(spacing: HassTokens.Spacing.m) {
-                Image(systemName: QuickLinksButton.symbol)
-                    .font(.body.weight(.semibold))
-                    .frame(width: 28)
-                    .accessibilityHidden(true)
-                Text(QuickLinks.title)
-                Spacer(minLength: HassTokens.Spacing.s)
-            }
-            .foregroundStyle(HassTokens.Ink.primary)
-            .padding(.horizontal, HassTokens.Spacing.m)
-            .padding(.vertical, HassTokens.Spacing.s)
-            .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Opens the Quick Links sheet")
-        .accessibilityIdentifier("nav.quickLinks")
     }
 
     private func row(for section: AppSection) -> some View {
@@ -182,123 +157,6 @@ enum NavigationFlyoutMetrics {
     }
 }
 
-// MARK: - Toolbar button and edge swipe
-
-extension View {
-    /// Adds a section root's shell toolbar items: the Open Navigation menu button (leading, when the window
-    /// shows the flyout), Quick Links (a toolbar button, or the floating circle in regular width; not when it is the
-    /// trailing tab) and the profile button (trailing-most).
-    func sectionRootChrome() -> some View { modifier(SectionRootChrome()) }
-}
-
-/// The section root's shell items (``ShellChrome``).
-///
-/// HIG Toolbars: "Trailing: important always-available items"; Profile is the trailing-most item, as in
-/// FestivalNativeApps (`page-tools-and-nav-chrome` R2).
-private struct SectionRootChrome: ViewModifier {
-    @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
-    @Environment(\.shellChrome) private var chrome
-    @Environment(HassConnection.self) private var connection: HassConnection?
-    @Environment(\.roomServiceCaller) private var callerOverride
-    @Environment(\.shellSection) private var section
-    @AccessibilityFocusState private var buttonFocused: Bool
-    @State private var showsProfile = false
-
-    /// In the shell, the navigator says which section's root presents the Account sheet, so a notification can
-    /// open Settings (``ShellNavigator/open(_:)``). Elsewhere it is local.
-    private var profileIsPresented: Binding<Bool> {
-        guard let navigator, let section else { return $showsProfile }
-        return Binding(
-            get: { navigator.accountSection == section },
-            set: { isPresented in
-                if isPresented {
-                    navigator.accountSection = section
-                } else if navigator.accountSection == section {
-                    navigator.accountSection = nil
-                }
-            }
-        )
-    }
-
-    func body(content: Content) -> some View {
-        content
-            .toolbar {
-                if chrome.showsMenuButton {
-                    ToolbarItem(placement: .navigation) {
-                        Button {
-                            navigator?.openFlyout()
-                        } label: {
-                            Label("Open Navigation", systemImage: "line.3.horizontal")
-                        }
-                        .accessibilityIdentifier("nav.open")
-                        .accessibilityFocused($buttonFocused)
-                    }
-                }
-            }
-            // Declared before Quick Links: the bar lays out later toolbars first, so Profile ends up trailing-most.
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    ProfileButton(name: navigator?.profileName) { profileIsPresented.wrappedValue = true }
-                }
-            }
-            .quickLinks(caller: callerOverride ?? connection, showsButton: chrome.showsQuickLinksButton,
-                        showsFloatingButton: chrome.showsFloatingQuickLinks)
-            .accountSheet(isPresented: profileIsPresented)
-            .onChange(of: navigator?.focusReturnToken) { _, _ in buttonFocused = true }
-    }
-}
-
-// MARK: - Profile
-
-/// The profile button at the top trailing edge of every section root (owner, 2026-10-13: "profile goes in top
-/// right"). It shows the signed-in user's initials, or a person symbol until the name is known, and opens the
-/// Account sheet (``AccountSheet``: Settings and Sign Out; direction G). The web's header Profile button opens the
-/// Daily Report, which the app has not ported yet.
-struct ProfileButton: View {
-    /// The signed-in user's display name, when known.
-    var name: String?
-    var action: () -> Void
-
-    /// The monogram's fill (the light-mode action blue, 5.6:1 under white).
-    static let fill = Color(red: 0.0, green: 0.40, blue: 0.80)
-
-    /// Up to two initials from a display name ("Stephen Fenton" → "SF"); nil when it has no letters.
-    static func initials(_ name: String?) -> String? {
-        guard let name else { return nil }
-        let letters = name.split(whereSeparator: \.isWhitespace).prefix(2).compactMap(\.first).map(String.init)
-        let value = letters.joined().uppercased()
-        return value.isEmpty ? nil : value
-    }
-
-    var body: some View {
-        Button(action: action) {
-            if let initials = Self.initials(name) {
-                Text(initials)
-                    .font(.footnote.weight(.semibold))
-                    // A bar item keeps its size; the Large Content Viewer shows it bigger (HIG Toolbars,
-                    // Accessibility), so the initials stop growing past the 30 pt disc.
-                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .frame(width: 30, height: 30)
-                    // Fixed deep blue: white text stays above 5:1 in light and dark mode.
-                    .background(ProfileButton.fill, in: Circle())
-            } else {
-                Image(systemName: "person.crop.circle")
-            }
-        }
-        // The whole 44 pt bar item is the target, not just the 30 pt monogram (HIG Buttons).
-        .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
-        .contentShape(Circle())
-        .accessibilityShowsLargeContentViewer {
-            Label("Profile", systemImage: "person.crop.circle")
-        }
-        .accessibilityLabel("Profile")
-        .accessibilityValue(name ?? "")
-        .accessibilityHint("Opens your account and Settings")
-        .accessibilityIdentifier("nav.profile")
-    }
-}
 
 extension View {
     /// Opens the flyout with a leading-edge swipe while the selected section is at its root (deeper,
@@ -382,5 +240,5 @@ extension EnvironmentValues {
     /// The root navigation style in effect.
     @Entry var shellNavigationStyle: ShellNavigationStyle = .tabBar
     /// Where the shell puts its menu and Quick Links buttons (``ShellChrome``).
-    @Entry var shellChrome = ShellChrome(showsMenuButton: false, showsQuickLinksButton: true)
+    @Entry var shellChrome = ShellChrome(showsMenuButton: false, titleInHeader: true)
 }

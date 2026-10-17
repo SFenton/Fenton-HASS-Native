@@ -12,9 +12,14 @@ final class FeedbackJourneyTests: JourneyTestCase {
         try FentonHomeApp.launchSignedIn(arguments: arguments, environment: ["FENTON_FEEDBACK_FIXTURE": fixture])
     }
 
-    /// Goes to Settings: the profile avatar's Account sheet (direction G).
+    /// Goes to Settings, the last tab (owner, 2026-10-16).
     private func goToSettings(_ app: XCUIApplication) {
         app.openAccountSettings()
+    }
+
+    /// The open form's list: the Settings tab behind the sheet stays in the hierarchy, so `settingsList` would scroll that.
+    private func formList(_ app: XCUIApplication) -> XCUIElement {
+        app.collectionViews.matching(NSPredicate(format: "identifier != 'settings.list'")).firstMatch
     }
 
     /// The feedback row for `kind`, scrolled into view: it ends the Settings list, below the fold.
@@ -42,7 +47,7 @@ final class FeedbackJourneyTests: JourneyTestCase {
     @discardableResult
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, up: Bool = true) -> XCUIElement {
         for _ in 0..<8 where !(element.exists && element.isHittable) {
-            if up { app.settingsList.swipeUp(velocity: .slow) } else { app.settingsList.swipeDown(velocity: .slow) }
+            if up { formList(app).swipeUp(velocity: .slow) } else { formList(app).swipeDown(velocity: .slow) }
         }
         return element
     }
@@ -70,7 +75,7 @@ final class FeedbackJourneyTests: JourneyTestCase {
     /// The form dismisses the keyboard interactively: drag the list down from its middle.
     private func dismissKeyboard(_ app: XCUIApplication) {
         for _ in 0..<3 where app.keyboards.firstMatch.exists {
-            let list = app.settingsList
+            let list = formList(app)
             list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
                 .press(forDuration: 0.05, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)))
             _ = app.keyboards.firstMatch.waitForNonExistence(timeout: 2)
@@ -115,10 +120,9 @@ final class FeedbackJourneyTests: JourneyTestCase {
         // SettingsJourneyTests: scrolled to the end on the short folded Duo, the topics fade under the header and
         // the audit reports that faded text as element-less contrast issues it can't attribute.
         XCTAssertTrue(feedbackRow(app, "feature").exists)
-        // Only while the list is scrolled: Settings is in the Account sheet now, and a swipe down on a list already at
-        // its top dismisses the sheet (folded Duo and iPad, 2026-10-14).
-        let top = app.settingsList.buttons.firstMatch
-        for _ in 0..<4 where !(top.exists && top.isHittable) { app.settingsList.swipeDown(velocity: .fast) }
+        // Back to the top of the Settings list (the tab, not a sheet: a swipe down at the top is harmless now).
+        let top = app.buttons["settings.vacation"]
+        for _ in 0..<8 where !(top.exists && top.isHittable) { app.settingsList.swipeDown(velocity: .fast) }
         try FentonHomeApp.audit(app) {
             let large = try self.launch(arguments: FentonHomeApp.ax5)
             // Same position as the audited page: the AX5 page is only compared with it (an element-less Dynamic

@@ -23,7 +23,7 @@
 
 ## Full-app sweep (`AccessibilitySweepJourneyTests`)
 
-Signed in against the house, read-only (every step opens a page or sheet; nothing is toggled). One test per page so `-only-testing` runs a page alone: the four tab roots (Home, Security, Climate, Chores), Quick Links, Account, the Master Bedroom room page, the Lights chip sheet, Climate Advanced Controls, the Security System sheet, the first Media device's remote, the Air Purifier room device sheet (the live Humidifier was unavailable, and an unavailable tile opens nothing), Stephen's Bed sheet, Food and Vacuums. Each runs `FentonHomeApp.audit` (contrast plus the AX5 relaunch). The four tab roots run again under all four system settings (`…UnderSystemSettings`), and check VoiceOver reading order.
+Signed in against the house, read-only (every step opens a page or sheet; nothing is toggled). One test per page so `-only-testing` runs a page alone: the five tab roots (Home, Security, Climate, Chores, Settings), Quick Links (opened from its header button), Account (the Your Summary profile sheet), the Master Bedroom room page, the Lights chip sheet, Climate Advanced Controls, the Security System sheet, the first Media device's remote, the Air Purifier room device sheet (the live Humidifier was unavailable, and an unavailable tile opens nothing), Stephen's Bed sheet, Food and Vacuums. Each runs `FentonHomeApp.audit` (contrast plus the AX5 relaunch). The five tab roots run again under all four system settings (`…UnderSystemSettings`), and check VoiceOver reading order.
 
 ```bash
 tools/ios_uitest.sh --env <temp.env> --only iphone -only-testing:FentonHomeUITests/AccessibilitySweepJourneyTests   # also --only duo, --only ipad
