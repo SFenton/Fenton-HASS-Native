@@ -25,8 +25,6 @@ final class SweepWatchdog: @unchecked Sendable {
     private var started = false
 
     func mark(_ action: String, armed: Bool = true) {
-        // The last thing pressed survives a crash.
-        try? action.write(toFile: NSTemporaryDirectory() + "sweep-last-press.txt", atomically: false, encoding: .utf8)
         lock.lock()
         current = action
         stamp = Date()
@@ -373,6 +371,12 @@ final class AXWindow {
             await hosted.settle(0.3)
             waited += 0.4
             identifiers = await pressable()
+        }
+        // A launch that opens its sheet straight away (a device, a vacuum, a light) is swept as that sheet.
+        if !inSheet, hosted.window.attachedSheet != nil {
+            let swept = await pressEach(prefixes: prefixes, inSheet: true, descend: descend, skipping: skipping, lastCall: id)
+            await closeSheet()
+            return swept
         }
         var outcomes: [PressOutcome] = []
         var before = await text(id)

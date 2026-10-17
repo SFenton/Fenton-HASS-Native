@@ -42,7 +42,6 @@ struct ControlSweepTests {
         defer { driver.close() }
         _ = await driver.wait { !$0.isEmpty }
         let outcomes = await driver.pressEach(prefixes: prefixes, skipping: Self.endsTheSweep)
-        try? "\(page) \(environment): \(outcomes.map(\.description).joined(separator: "; "))\n".appendLine(to: "/tmp/sweep.log")
         return outcomes
     }
 
@@ -102,7 +101,6 @@ struct ControlSweepTests {
         defer { driver.close() }
         _ = await driver.wait { !$0.isEmpty }
         let outcomes = await driver.pressEach(prefixes: [""], inSheet: true, skipping: Self.endsTheSweep)
-        try? "\(page) \(environment): \(outcomes.map(\.description).joined(separator: "; "))\n".appendLine(to: "/tmp/sweep.log")
         return outcomes
     }
 
@@ -130,7 +128,6 @@ struct ControlSweepTests {
         defer { driver.close() }
         _ = await driver.wait { !$0.isEmpty }
         let outcomes = await driver.pressEach(prefixes: [""], descend: 1, skipping: Self.endsTheSweep)
-        try? "PAGE \(page) \(environment): \(outcomes.count) presses, \(outcomes.compactMap(\.call).count) calls\n".appendLine(to: "/tmp/sweep.log")
         return outcomes
     }
 
@@ -161,19 +158,6 @@ struct ControlSweepTests {
     @Test func climateSheetsSendTheirServices() async throws {
         for tab in ClimateConfig.Tab.allCases {
             _ = await sweep(.climate, ["FENTON_GALLERY_CLIMATE_OPEN": tab.rawValue], prefixes: ["climate."])
-        }
-    }
-}
-
-extension String {
-    func appendLine(to path: String) throws {
-        let url = URL(fileURLWithPath: path)
-        if let handle = try? FileHandle(forWritingTo: url) {
-            handle.seekToEndOfFile()
-            handle.write(Data(utf8))
-            try handle.close()
-        } else {
-            try write(to: url, atomically: false, encoding: .utf8)
         }
     }
 }
