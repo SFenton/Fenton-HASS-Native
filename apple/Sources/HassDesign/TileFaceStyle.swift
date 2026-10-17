@@ -15,6 +15,9 @@ public enum TileFaceStyle: Equatable, Sendable {
     case tinted
     /// Something is wrong (no response, a fault): dark dense ground, red glyph and red state.
     case error
+    /// A navigation tile with its own solid fill (`0xRRGGBB`, ``RoomPalette``): white ink and a filled white glyph
+    /// whether or not the thing it opens is "on".
+    case colored(UInt32)
 
     /// The face for a tile's state.
     /// - Parameters:
@@ -22,8 +25,11 @@ public enum TileFaceStyle: Equatable, Sendable {
     ///   - isActive: Whether the device is on.
     ///   - isError: Whether the tile reports a fault.
     ///   - isUnavailable: Whether the entity is unavailable (drawn off and dimmed).
-    public static func resolve(family: ColorFamily?, isActive: Bool, isError: Bool, isUnavailable: Bool) -> Self {
+    ///   - solidFill: A fill the caller owns (a room's colour); it wins over the family unless the tile is in error or
+    ///     unavailable.
+    public static func resolve(family: ColorFamily?, isActive: Bool, isError: Bool, isUnavailable: Bool, solidFill: UInt32? = nil) -> Self {
         if isError { return .error }
+        if let solidFill, !isUnavailable { return .colored(solidFill) }
         if isUnavailable || !isActive { return .off }
         guard let family else { return .tinted }
         if family == .lights { return .lit }
@@ -35,6 +41,12 @@ public enum TileFaceStyle: Equatable, Sendable {
     public static let progressShade = 0.18
     /// White over the done part of a dark-ink filled face (power).
     public static let progressLighten = 0.25
+
+    /// Whether this is a caller-coloured navigation tile.
+    public var isColored: Bool {
+        if case .colored = self { return true }
+        return false
+    }
 
     /// Whether text on this face is dark (the lit tile and power's yellow).
     public var hasDarkInk: Bool {

@@ -2,8 +2,9 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// One inventory card (web `PantryRow`; direction G mockup n6-inventory): name, `Quantity · Expires …`, a round
-/// add-to-groceries button and, when the card opens the item editor, a chevron.
+/// One inventory card (web `PantryRow`; direction G mockup n6-inventory, redesigned 2026-10-16): the name over its expiry
+/// line, then the stock count (above one) in secondary ink, the add-to-groceries cart in the action tint and, when the
+/// card opens the item editor, a chevron.
 ///
 /// Rows sit on the page's dense module (they carry orange and red expiry text). The whole row opens the editor;
 /// swipe actions delete (single-batch items) and add to groceries. Multi-batch items delete from the editor.
@@ -20,28 +21,29 @@ struct InventoryRow: View {
     var onDelete: () -> Void
 
     @ScaledMetric(relativeTo: .body) private var buttonSize: CGFloat = 44
-    /// The grey circle behind the cart glyph (mockup `.n6-rbtn`: 34 pt); the button's hit area stays 44 pt.
-    @ScaledMetric(relativeTo: .body) private var circleSize: CGFloat = 34
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         let batches = model.batches(for: item).count
         let multiBatch = batches > 1
         let expiry = InventoryCatalog.expiryInfo(item.soonestExpiry(model.calendar), calendar: model.calendar)
-        let subtitle = InventoryCatalog.rowSubtitle(expiry, quantity: item.shownQuantity, batchCount: batches)
+        // The expiry alone: the stock count is the trailing number, so the line never grows long enough to push the
+        // actions under the text (owner design pass, 2026-10-16: "pages look very rough right now").
+        let subtitle = InventoryCatalog.rowSubtitle(expiry, quantity: nil, batchCount: batches)
         let deletable = model.deletableRows(of: item) != nil
         // Multi-batch cards always open the editor; a single batch needs row ids to edit.
         let opensEditor = multiBatch || deletable
         let tone = multiBatch ? nil : expiry.tone
 
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: HassTokens.Spacing.s) {
-                copy(subtitle: subtitle, tone: tone)
-                Spacer(minLength: HassTokens.Spacing.s)
-                actions(opensEditor: opensEditor, multiBatch: multiBatch)
-            }
-            // AX sizes: actions wrap under the text instead of squeezing it.
-            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                copy(subtitle: subtitle, tone: tone)
+        // Only accessibility sizes stack the actions under the text; `ViewThatFits` stacked them on every multi-batch row.
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
+            : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.s))
+        layout {
+            copy(subtitle: subtitle, tone: tone)
+            if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: HassTokens.Spacing.s) }
+            HStack(spacing: HassTokens.Spacing.xs) {
+                quantityLabel
                 actions(opensEditor: opensEditor, multiBatch: multiBatch)
             }
         }
@@ -97,8 +99,23 @@ struct InventoryRow: View {
         .accessibilityLabel(accessibilityText(subtitle: subtitle, tone: tone))
     }
 
+    /// The stock count, in secondary ink at the trailing edge like the counts on Reminders' lists; shown above one, as on
+    /// the web (`itemQuantity`). VoiceOver hears it in the row's own label ("Quantity 3").
+    @ViewBuilder
+    private var quantityLabel: some View {
+        if let quantity = item.shownQuantity {
+            Text(InventoryFormat.quantity(quantity))
+                .font(.body.monospacedDigit())
+                .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+                .padding(.trailing, HassTokens.Spacing.xs)
+                .accessibilityHidden(true)
+        }
+    }
+
     private func accessibilityText(subtitle: String, tone: ExpiryInfo.Tone?) -> String {
-        var parts = [item.name, subtitle]
+        var parts = [item.name]
+        if let quantity = item.shownQuantity { parts.append("Quantity \(InventoryFormat.quantity(quantity))") }
+        parts.append(subtitle)
         if tone == .soon { parts.append("Expiring soon") }
         if let error = model.rowErrors[item.id] { parts.append(error) }
         return parts.joined(separator: ", ")
@@ -124,7 +141,8 @@ struct InventoryRow: View {
         }
     }
 
-    /// A 34 pt grey circle with the cart glyph (mockup `.n6-rbtn`), an arc while adding, a check once added.
+    /// The cart glyph in the action tint (a quiet bare symbol: the grey circle on every row was visual noise), an arc while
+    /// adding, a check once added. The 44 pt target stays.
     private var shoppingButton: some View {
         let state = model.shopping[item.id, default: .idle]
         let label = switch state {
@@ -134,16 +152,13 @@ struct InventoryRow: View {
         }
         return Button(action: onShop) {
             ZStack {
-                Circle()
-                    .fill(.fill.tertiary)
-                    .frame(width: circleSize, height: circleSize)
                 switch state {
-                case .idle: Image(systemName: "cart.badge.plus").foregroundStyle(HassTokens.Ink.primary)
+                case .idle: Image(systemName: "cart.badge.plus").foregroundStyle(HassTokens.Ink.action)
                 case .adding: ArcSpinner(.compact, label: "Adding to Groceries").foregroundStyle(HassTokens.Ink.primary)
                 case .added: Image(systemName: "checkmark").foregroundStyle(InventoryTone.success)
                 }
             }
-            .font(.subheadline.weight(.medium))
+            .font(.body)
             .frame(width: buttonSize, height: buttonSize)
             .contentShape(Rectangle())
         }

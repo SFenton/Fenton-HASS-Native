@@ -64,6 +64,8 @@ struct MainTabView: View {
         // (`.agents/design/direction-g.md`, Layers; plan decision 6).
         .preferredColorScheme(.dark)
         .onAppear { navigator.selection = storedSelection }
+        // A scroll cost launch (`FENTON_SCROLLCOST_OPEN`) starts on the page it measures.
+        .task { if let path = ScrollCostProbe.launchPath { navigator.open(PushDestination(dashboardPath: path)) } }
         .onChange(of: navigator.selection) { _, section in storedSelection = section }
         // A notification's page: also on appear, for a tap that launched the app.
         .onChange(of: push?.pendingRequest, initial: true) { _, request in

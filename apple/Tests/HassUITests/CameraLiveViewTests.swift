@@ -7,6 +7,16 @@ import Testing
 
 @MainActor
 struct CameraLiveViewTests {
+    @Test func theReconnectingPillSaysWhenTheStreamWasLastLive() {
+        let state = CameraStreamState()
+        let text = CameraLiveView.badgeText(state, lastLive: Date(timeIntervalSince1970: 1_700_000_000))
+        #expect(text.hasPrefix("Last live "), "Got \(text)")
+        #expect(CameraLiveView.badgeText(state, lastLive: nil) == "Connecting")
+        var live = state
+        live.firstFrame(.webRTC)
+        #expect(CameraLiveView.badgeText(live, lastLive: Date()) == "Live", "A live stream never shows the pill")
+    }
+
     @Test func badgeAndVoiceOverTextFollowThePhase() {
         var state = CameraStreamState()
         #expect(CameraLiveView.badgeText(state) == "Connecting")

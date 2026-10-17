@@ -6,15 +6,16 @@ Web source: `ha-sfenton-react-dash@9ac2a46` `src/pages/FoodHubPage.tsx`, `src/pa
 
 ## Routes
 
+- Every page waits behind the shared load gate (spinner, then content; web `DashboardPageLoadGate`).
 - `food` "Food & Recipes" (hub) → `recipes` "Recipes", `all-food` and the five space inventories. Every Food detail route goes back to `food`.
 - Entry points: At-a-Glance quick access and the Kitchen page's Food tile (subtitle `FoodConfig.foodSummarySubtitle`).
 
 ## Hub
 
 1. **Suggested Recipes:** paged carousel, 5 pages; columns `clamp(ceil((w + 10) / 230), 2...10)`, rows 3 (2 at ≥ 900 pt). `evershelf.recipe_query {kind: recommendations, limit}`. Placeholders while loading; "Suggested recipes are temporarily unavailable." on failure. A card opens the recipe detail.
-2. **All Recipes** tile → `recipes`.
-3. **All Food** tile, subtitle `{n Items} • {n Expiring Soon}` from `sensor.evershelf_total_items` (fallback: the spaces' sum) and `sensor.evershelf_expiring_soon`.
-4. **Food Spaces:** Pantry, Fridge, Freezer, Spice Rack, Cabinet; each subtitle counts its sensor and the `expiring_list` items at its location expiring within 7 days (`pantry → dispensa`, `fridge → frigo`).
+2. **All Recipes** tile (web blue) → `recipes`.
+3. **All Food** tile (web sage green), subtitle `{n Items} • {n Expiring Soon}` from `sensor.evershelf_total_items` (fallback: the spaces' sum) and `sensor.evershelf_expiring_soon`.
+4. **Food Spaces:** Pantry, Fridge, Freezer, Spice Rack, Cabinet, each in its web tile colour (`everShelfFood.ts:13-18`); each subtitle counts its sensor and the `expiring_list` items at its location expiring within 7 days (`pantry → dispensa`, `fridge → frigo`).
 
 ## Recipes
 
@@ -28,8 +29,8 @@ Web source: `ha-sfenton-react-dash@9ac2a46` `src/pages/FoodHubPage.tsx`, `src/pa
 
 - `recipe_detail {recipe_id}` (`recipe_detail_v1`); errors "Recipe Details Unsupported" / "Unable to Load Recipe". Tabs General, Ingredients, Instructions.
 - **General:** hero, facts (Yield, times, Difficulty, Category only with general metadata, else the Cookidoo notice), Source, Locale, Content Language, Freshness; Devices, Optional Devices, Additional Equipment; Open Source Recipe / Open in Cookidoo.
-- **Ingredients:** grouped sections ("Section n", "Other Ingredients"), status per row (overrides win; uncertain reads as missing), chips, and "Add Missing Ingredients to Groceries": `recipe_grocery_add {recipe_id, selections [{key, position}] ≤ 100, idempotency_key, todo_entity_id: todo.shopping_list}`; disabled reasons and the result sentence port `recipeGroceryState.ts` and `groceryFeedback`. The idempotency key is reused until a definitive answer so a retry replays instead of doubling.
-- **Instructions:** local grouped steps; Cookidoo recipes never show step text and link out instead.
+- **Ingredients:** grouped sections ("Section n", "Other Ingredients"), status per row (overrides win; uncertain reads as missing), chips, and "Add to Grocery List" (the web says "Add Missing Ingredients to Groceries"; owner rename 2026-10-16, with the description "Adds the missing ingredients for this recipe to your shopping list."): `recipe_grocery_add {recipe_id, selections [{key, position}] ≤ 100, idempotency_key, todo_entity_id: todo.shopping_list}`; disabled reasons and the result sentence port `recipeGroceryState.ts` and `groceryFeedback`. The idempotency key is reused until a definitive answer so a retry replays instead of doubling.
+- **Instructions:** local grouped steps, vertically centred in the sheet while they fit (owner, 2026-10-16); Cookidoo recipes never show step text and link out instead.
 
 ## Not ported yet
 
