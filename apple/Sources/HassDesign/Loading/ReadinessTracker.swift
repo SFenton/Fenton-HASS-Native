@@ -49,9 +49,14 @@ private struct ReadinessRequirement: ViewModifier {
     @Environment(\.readinessTracker) private var tracker
 
     func body(content: Content) -> some View {
-        content
-            .onAppear { tracker?.set(id, ready: isReady) }
-            .onChange(of: isReady) { _, ready in tracker?.set(id, ready: ready) }
-            .onDisappear { tracker?.set(id, ready: true) }
+        // Outside a gate there is nothing to tell, so the three handlers are not built (a card grid builds one per photo).
+        if let tracker {
+            content
+                .onAppear { tracker.set(id, ready: isReady) }
+                .onChange(of: isReady) { _, ready in tracker.set(id, ready: ready) }
+                .onDisappear { tracker.set(id, ready: true) }
+        } else {
+            content
+        }
     }
 }
