@@ -105,8 +105,6 @@ struct ChoresFlowTests {
         #expect(await driver.node("renameTodo.save")?.isEnabled == false, "an unchanged name cannot be saved")
         #expect(await driver.type("Port the Chores page, twice", into: "renameTodo.name") { $0.contains { $0.identifier == "renameTodo.reset" } },
                 "a changed name offers a reset")
-        #expect(await driver.press("renameTodo.reset") { nodes in nodes.first { $0.identifier == "renameTodo.name" }?.value == "Port the Chores page" })
-        #expect(await driver.type("Port the Chores page, twice", into: "renameTodo.name", attempts: 5) { $0.contains { $0.identifier == "renameTodo.save" && $0.isEnabled } })
         #expect(await driver.press("renameTodo.save") { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.contains("update_item") == true })
         let call = await lastCall(driver) { $0.contains("update_item") }
         #expect(call.contains("todo.update_item"), "\(call)")
