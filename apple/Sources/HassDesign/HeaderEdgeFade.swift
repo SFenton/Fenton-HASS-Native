@@ -169,7 +169,11 @@ struct HeaderEdgeFadeModifier: ViewModifier {
             .modifier(ScrollOffsetReader(isEnabled: readsScroll) { scrollOffset = $0 })
             .background {
                 #if os(iOS)
-                if readsScroll { UIKitScrollOffset { scrollOffset = $0 }.frame(width: 0, height: 0).accessibilityHidden(true) }
+                if readsScroll {
+                    UIKitScrollOffset { scrollOffset = $0 }
+                        .frame(width: ScrollOffsetProbe.exposesValue ? 2 : 0, height: ScrollOffsetProbe.exposesValue ? 2 : 0)
+                        .accessibilityHidden(!ScrollOffsetProbe.exposesValue)
+                }
                 #endif
             }
             .modifier(HeaderBackgroundHidden())
@@ -275,6 +279,16 @@ final class ScrollOffsetProbe: UIView {
     private var attempts = 0
     private var last: CGFloat?
 
+    /// Debug launches with `FENTON_FADE_PROBE=1` expose the tracked offset as the accessibility value of
+    /// `diagnostics.headerFade`, so a journey can see the fade follow a scroll (`HeaderFadeJourneyTests`).
+    static let exposesValue: Bool = {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["FENTON_FADE_PROBE"] == "1"
+        #else
+        false
+        #endif
+    }()
+
     override func didMoveToWindow() {
         super.didMoveToWindow()
         if window == nil {
@@ -307,6 +321,11 @@ final class ScrollOffsetProbe: UIView {
         let value = HeaderEdgeFade.trackedOffset(contentOffset: scroll.contentOffset.y, topInset: scroll.adjustedContentInset.top)
         guard value != last else { return }
         last = value
+        if Self.exposesValue {
+            isAccessibilityElement = true
+            accessibilityIdentifier = "diagnostics.headerFade"
+            accessibilityValue = String(Int(value))
+        }
         action(value)
     }
 
