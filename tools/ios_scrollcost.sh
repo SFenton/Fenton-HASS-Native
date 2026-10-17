@@ -93,7 +93,7 @@ launch_words() {
   for kv in $envs; do
     if [[ "$kv" == LIVE=1 ]]; then echo "FENTON_HASS_TOKEN=$TOKEN_VALUE"; else echo "$kv"; fi
   done
-  printf '%s\n' "FENTON_SCROLLCOST=1" "FENTON_TELEMETRY=1" "FENTON_SYSTEM_SETTINGS=none"
+  printf '%s\n' "FENTON_SCROLLCOST=1" "FENTON_SCROLLCOST_SECONDS=8" "FENTON_TELEMETRY=1" "FENTON_SYSTEM_SETTINGS=none"
   if [[ -n "$DISABLE" ]]; then echo "FENTON_PERF_DISABLE=$DISABLE"; fi
 }
 
@@ -164,7 +164,7 @@ else
   UDID="$(python3 "$ROOT/tools/devcap.py" pick-sim --name "$DEVICE_NAME" --pool "${FENTON_SIM_POOL:-0}" ${PREFER[@]+"${PREFER[@]}"})"
   echo "$UDID" > "$LAST"
   python3 "$ROOT/tools/devcap.py" run --sim "$UDID" --hold 5400 --shutdown-on-timeout --purpose "scrollcost ($(basename "$ROOT"))" -- \
-    "$0" --inner --udid "$UDID" --app "$APP" --section "$SECTION" --label "$LABEL" ${ONLY:+--only "$ONLY"} \
+    "$ROOT/tools/ios_scrollcost.sh" --inner --udid "$UDID" --app "$APP" --section "$SECTION" --label "$LABEL" ${ONLY:+--only "$ONLY"} \
     ${ENV_FILE:+--env "$ENV_FILE"} ${DISABLE:+--disable "$DISABLE"} ${DELAY:+--delay "$DELAY"}
 fi
 
