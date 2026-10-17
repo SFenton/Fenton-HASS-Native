@@ -180,13 +180,18 @@ struct OtherLightSwatch: View {
                     }
                 }
                 .frame(width: max(diameter, HassTokens.minTarget), height: max(diameter, HassTokens.minTarget))
-                Text(light.title)
-                    .font(.footnote)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                if rgb == nil {
-                    Text(isUnavailable ? "Unavailable" : "Off").font(.footnote)
+                // The names read in secondary ink (0.72), not the sheet's weaker secondary (0.6): beside a red swatch the
+                // "Bollard 2" name measured 4.46:1 rendered on the iPad dark sheet (2026-10-17).
+                Group {
+                    Text(light.title)
+                        .font(.footnote)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if rgb == nil {
+                        Text(isUnavailable ? "Unavailable" : "Off").font(.footnote)
+                    }
                 }
+                .foregroundStyle(HassTokens.Ink.secondary)
             }
             .foregroundStyle(HassTokens.Surface.secondaryInSheet)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
