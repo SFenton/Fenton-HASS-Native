@@ -58,6 +58,9 @@ final class ShellNavigator {
         accountSection = selection
     }
 
+    /// Whether a section is the one on screen.
+    func isShowing(_ section: AppSection) -> Bool { selection == section }
+
     /// Whether a section is showing its root page.
     func isAtRoot(_ section: AppSection) -> Bool {
         paths[section]?.isEmpty ?? true

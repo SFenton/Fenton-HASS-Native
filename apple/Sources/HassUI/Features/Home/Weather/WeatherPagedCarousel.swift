@@ -4,12 +4,12 @@ import SwiftUI
 /// A horizontally paging row of equal-width cells with a page indicator and, on wide layouts, previous and next
 /// buttons (web `useHorizontalScrollControls`, `WeatherScrollControls`, `WeatherCarouselPagination`).
 ///
-/// Each page holds ``WeatherCarouselPaging/perPage`` whole cells; scrolling snaps to pages with
-/// `pagesScrollViewByViewport()`, not `scrollTargetBehavior`, which leaks observation state on every resume
-/// (`.agents/patterns/resume-lifecycle.md`). Every cell stays in the accessibility tree, so VoiceOver reaches each
-/// hour and scrolls the row itself; the page indicator is an adjustable element. Wide layouts (regular horizontal size class)
-/// add 44 pt previous and next buttons, because the web shows them for pointer devices. HIG: Scroll views, Page
-/// controls.
+/// Each page holds ``WeatherCarouselPaging/perPage`` whole cells; scrolling snaps to pages in a UIKit paging scroll view
+/// (`PagedRow`), which moves without touching the sheet's view graph (and has no `scrollTargetBehavior`, which leaks
+/// observation state on every resume, `.agents/patterns/resume-lifecycle.md`). VoiceOver reads the hours on the page on
+/// screen (the scroll view exposes only those, and announces "Page 2 of 3" when it changes) and pages with a three-finger
+/// swipe, the adjustable page indicator or, on wide layouts (regular horizontal size class), 44 pt previous and next
+/// buttons, because the web shows them for pointer devices. HIG: Scroll views, Page controls.
 struct WeatherPagedCarousel<Cell: View>: View {
     var count: Int
     /// Hours per page in a compact and a regular layout at the default text size.
@@ -50,22 +50,13 @@ struct WeatherPagedCarousel<Cell: View>: View {
     }
 
     private func strip(paging: WeatherCarouselPaging) -> some View {
-        let current = paging.page(containing: firstVisible)
-        return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 0) {
-                ForEach(0..<count, id: \.self) { index in
-                    cell(index)
-                        .containerRelativeFrame(.horizontal, count: paging.perPage, spacing: 0)
-                        // With previous and next buttons, VoiceOver reads the page on screen and pages with them;
-                        // hours on other pages sit clipped under those buttons, where they read as unseen text.
-                        .accessibilityHidden(showsControls && paging.page(containing: index) != current)
-                        .id(index)
-                }
-            }
-            .scrollTargetLayout()
-            .pagesScrollViewByViewport()
+        // The paging happens in UIKit (`PagedRow`): a swipe on a SwiftUI `ScrollView` nested in the sheet's own scroll view
+        // committed its offset through the sheet's view graph on every frame.
+        return PagedRow(itemCount: count, perPage: paging.perPage, firstVisible: $firstVisible, animatesPaging: !reduceMotion) { index in
+            // VoiceOver reads the page on screen (the hosted scroll view exposes only that page) and pages with Previous
+            // and Next, the indicator or a three-finger swipe.
+            cell(index)
         }
-        .scrollPosition(id: $firstVisible)
         .accessibilityIdentifier("\(identifier).carousel")
     }
 
@@ -124,7 +115,7 @@ struct WeatherPagedCarousel<Cell: View>: View {
     }
 
     private func go(to target: Int, paging: WeatherCarouselPaging) {
-        let first = paging.firstIndex(ofPage: paging.clamped(target))
-        if reduceMotion { firstVisible = first } else { withAnimation(.smooth) { firstVisible = first } }
+        // The row scrolls across to the page itself (or jumps with Reduce Motion).
+        firstVisible = paging.firstIndex(ofPage: paging.clamped(target))
     }
 }

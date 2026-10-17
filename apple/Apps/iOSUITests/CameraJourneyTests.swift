@@ -259,6 +259,20 @@ final class CameraJourneyTests: JourneyTestCase {
         for stream in streams { XCTAssertEqual(tile(app, stream).value as? String, "Live", "Home's \(stream) tile kept its stream") }
     }
 
+    /// Streams no page shows are paused (perf pass 2: a page with no camera still decoded all four). Behind another tab for
+    /// longer than the pool's 4 s grace they stop, and returning to Home brings every one live again without reopening
+    /// anything. The quick switch to Security above never pauses.
+    func testStreamsPauseBehindAnotherTabAndComeBackWhenHomeIsShownAgain() throws {
+        let app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_CAMERA_MODE": "webrtc"])
+        let streams = Self.cameras.map(\.0)
+        for stream in streams { waitForValue(tile(app, stream), "Live", timeout: 45) }
+        openSection("chores", title: "Chores", in: app)
+        sleep(8)
+        openSection("home", title: "Home", in: app)
+        // Live again, every camera, from the pool's paused state.
+        for stream in streams { waitForValue(tile(app, stream), "Live", timeout: 45) }
+    }
+
     /// A live stream whose frames stop goes back to its snapshot and comes back by itself (web `FRAME_STALL_MS`). The
     /// debug fault `FENTON_CAMERA_FREEZE_ONCE` stops the Front Door's frame count after it first goes live, as a camera
     /// that stops sending does; the watchdog takes the stream down after about 8 s (the tile reads Snapshot and drops its

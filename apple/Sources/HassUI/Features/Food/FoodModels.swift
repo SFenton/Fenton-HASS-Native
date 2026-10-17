@@ -239,8 +239,9 @@ final class RecipeCollectionModel {
 
     /// Call as each card appears; near the end it loads the next page (web infinite scroll).
     func itemAppeared(_ item: RecipeCard) {
-        guard let index = items.lastIndex(where: { $0.dedupeKey == item.dedupeKey }),
-              index >= items.count - Self.prefetchDistance else { return }
+        // Only the last few cards matter, so look at those instead of searching the whole (growing) list for every
+        // card that scrolls into view.
+        guard items.suffix(Self.prefetchDistance).contains(where: { $0.dedupeKey == item.dedupeKey }) else { return }
         loadNextPage()
     }
 

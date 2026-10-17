@@ -1,3 +1,4 @@
+import HassDesign
 import SwiftUI
 
 /// Page math for the hourly carousels: how many hours each page holds and which hours open which page.
@@ -29,20 +30,20 @@ struct WeatherCarouselPaging: Equatable {
         return max(2, Int((Double(base) * factor).rounded()))
     }
 
-    var pageCount: Int { count == 0 ? 1 : Int((Double(count) / Double(perPage)).rounded(.up)) }
+    var pageCount: Int { PagedRowMetrics.pageCount(itemCount: count, perPage: perPage) }
 
     /// Whether more than one page exists, i.e. the carousel scrolls.
     var overflows: Bool { pageCount > 1 }
 
     /// The first item on a page.
-    func firstIndex(ofPage page: Int) -> Int { min(max(0, count - 1), max(0, page) * perPage) }
+    func firstIndex(ofPage page: Int) -> Int { PagedRowMetrics.firstIndex(ofPage: page, itemCount: count, perPage: perPage) }
 
     /// The page showing an item.
-    func page(containing index: Int?) -> Int { max(0, min(pageCount - 1, (index ?? 0) / perPage)) }
+    func page(containing index: Int?) -> Int { PagedRowMetrics.page(containing: index, perPage: perPage, pageCount: pageCount) }
 
     /// The page index clamped to the available pages.
     func clamped(_ page: Int) -> Int { max(0, min(pageCount - 1, page)) }
 
     /// `Page 2 of 4`, for the pagination element's value.
-    func pageDescription(_ page: Int) -> String { "Page \(clamped(page) + 1) of \(pageCount)" }
+    func pageDescription(_ page: Int) -> String { PagedRowMetrics.pageDescription(page, pageCount: pageCount) }
 }

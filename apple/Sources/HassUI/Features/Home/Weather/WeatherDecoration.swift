@@ -6,6 +6,7 @@ import SwiftUI
 struct WeatherDecoration: View {
     var scene: WeatherScene
     var animated: Bool
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         switch scene {
@@ -35,22 +36,25 @@ struct WeatherDecoration: View {
         }
     }
 
-    /// Falling streaks (rain) or flakes (snow); a still frame when motion is reduced.
+    /// Falling streaks (rain) or flakes (snow); a still frame when motion is reduced. The timeline stops while the app is
+    /// not active (nothing is on screen to animate), and every streak is one stroke of one path: they share a colour and a
+    /// width, and thirty-six separate strokes a frame at 24 fps were most of the sheet's idle CPU
+    /// (`.agents/testing/apple/performance.md`).
     private func streaks(count: Int, slant: Double, length: Double, opacity: Double) -> some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 24, paused: !animated)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 24, paused: !animated || scenePhase != .active)) { timeline in
             let phase = animated ? timeline.date.timeIntervalSinceReferenceDate : 0
             Canvas { context, size in
+                var path = Path()
                 for index in 0..<count {
                     let seed = Double(index) * 0.618033988
                     let x = (seed.truncatingRemainder(dividingBy: 1)) * size.width
                     let speed = 0.12 + (Double(index % 5) * 0.03)
                     let progress = ((phase * speed) + seed * 3).truncatingRemainder(dividingBy: 1)
                     let y = progress * (size.height + length) - length
-                    var path = Path()
                     path.move(to: CGPoint(x: x, y: y))
                     path.addLine(to: CGPoint(x: x + length * slant, y: y + length))
-                    context.stroke(path, with: .color(.white.opacity(opacity)), lineWidth: length > 10 ? 1 : 2.5)
                 }
+                context.stroke(path, with: .color(.white.opacity(opacity)), lineWidth: length > 10 ? 1 : 2.5)
             }
         }
     }

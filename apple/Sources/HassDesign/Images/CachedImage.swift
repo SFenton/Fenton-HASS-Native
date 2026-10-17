@@ -63,6 +63,10 @@ public struct CachedImage<Placeholder: View>: View {
                 placeholder
             }
         }
+        // The fade belongs to this subtree. It used to be `withAnimation` around the state write, which put everything
+        // that changed in that update, the card around the photo included, in an animating transaction (a card grid
+        // creating cards as it scrolls spent a sixth of its busiest turns in animatable frames and the opacity transition).
+        .animation(.easeOut(duration: 0.2), value: shownKey)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: Int.self) { proxy in
             ImagePipeline.bucket(Int(max(proxy.size.width, proxy.size.height) * displayScale))
@@ -83,11 +87,8 @@ public struct CachedImage<Placeholder: View>: View {
             let key = ImagePipeline.key(for: url)
             // A first image fades in; a replacement for a different URL cross-fades; a same-size refresh of the
             // image already shown swaps without animation.
-            if image == nil || shownKey != key {
-                withAnimation(.easeOut(duration: 0.2)) { image = next }
-            } else {
-                image = next
-            }
+            // (`shownKey` changes with a first image or a different URL, which is what the body's animation watches.)
+            image = next
             shownKey = key
             failed = false
         }

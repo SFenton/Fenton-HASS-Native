@@ -165,9 +165,11 @@ public enum WebRTCSignal: Equatable, Sendable {
 /// `stream-manager.js`).
 ///
 /// One stream per camera serves every tile and viewer, so opening a camera from its tile shows the frames
-/// the tile is already playing. Once a camera has been shown its stream is retained for the rest of the
-/// session, so later pages and viewers attach to it at once; a failed stream drops its retention so the next
-/// viewer starts fresh. Every stream stops in the background and the retained ones restart on return.
+/// the tile is already playing. A camera that has been shown stays retained while views come and go, so a viewer
+/// opened from a tile and a Home to Security switch attach to it at once; the pool releases it once no view has shown
+/// it for a few seconds (``release(_:)``), because a stream decoding behind a page with no camera costs CPU, heat and
+/// battery for nothing. A failed stream drops its retention so the next viewer starts fresh. Every stream stops in the
+/// background and the retained ones restart on return.
 public struct CameraStreamRetention: Equatable, Sendable {
     /// What the pool should do to a stream after an event.
     public enum Action: Equatable, Sendable {
@@ -217,6 +219,15 @@ public struct CameraStreamRetention: Equatable, Sendable {
     public mutating func disappear(_ id: String) -> Action {
         let remaining = max(viewers[id, default: 0] - 1, 0)
         viewers[id] = remaining == 0 ? nil : remaining
+        return shouldRun(id) ? .none : .stop
+    }
+
+    /// No view has shown `id` for a while: the session stops retaining it, so it is no longer wanted until a view shows it
+    /// again (``appear(_:isRunning:)`` retains it afresh). The pool calls this after its pause delay, so moving between
+    /// Home and Security, whose tiles share one stream, never stops it.
+    /// - Returns: ``Action/stop`` when the stream should stop now, else ``Action/none`` (a view shows it again).
+    public mutating func release(_ id: String) -> Action {
+        retained.remove(id)
         return shouldRun(id) ? .none : .stop
     }
 
