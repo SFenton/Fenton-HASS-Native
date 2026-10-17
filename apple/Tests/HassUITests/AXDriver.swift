@@ -24,6 +24,13 @@ final class SweepWatchdog: @unchecked Sendable {
     private var armed = false
     private var started = false
 
+    /// The main actor is still getting work done (a click, a read of the tree): a busy machine, not a modal loop.
+    func touch() {
+        lock.lock()
+        stamp = Date()
+        lock.unlock()
+    }
+
     func mark(_ action: String, armed: Bool = true) {
         lock.lock()
         current = action
@@ -37,11 +44,11 @@ final class SweepWatchdog: @unchecked Sendable {
                 while true {
                     Thread.sleep(forTimeInterval: 5)
                     lock.lock()
-                    let stuck = armed && Date().timeIntervalSince(stamp) > 90
+                    let stuck = armed && Date().timeIntervalSince(stamp) > 240
                     let action = current
                     lock.unlock()
                     if stuck {
-                        let message = "Test host stuck for 90 s after: \(action). A system panel probably took the main thread; add the control to ControlSweepTests.endsTheSweep.\n"
+                        let message = "Test host stuck for 240 s after: \(action). A system panel probably took the main thread; add the control to ControlSweepTests.endsTheSweep.\n"
                         FileHandle.standardError.write(Data(message.utf8))
                         try? message.write(toFile: NSTemporaryDirectory() + "sweep-hang.txt", atomically: true, encoding: .utf8)
                         // Where the main thread is, for whoever finds the control that did it.
@@ -111,6 +118,7 @@ final class AXWindow {
 
     /// Every element in this window (and its sheets), depth first, up to `limit` elements.
     func nodes(limit: Int = 4000, sheetOnly: Bool = false, stopWhen: ((Node) -> Bool)? = nil) async -> [Node] {
+        SweepWatchdog.shared.touch()
         let pid = ProcessInfo.processInfo.processIdentifier
         // The tree is briefly empty while the window relayouts; ask again.
         for _ in 0..<5 {
@@ -225,6 +233,7 @@ final class AXWindow {
     /// Clicks the centre of `frame` (screen coordinates, top-left origin, as accessibility reports them) with real
     /// mouse events sent to the window under that point, the sheet first. Returns whether a window took them.
     private func click(at frame: CGRect, along fraction: CGFloat = 0) async -> Bool {
+        SweepWatchdog.shared.touch()
         guard !frame.isEmpty, let screen = NSScreen.screens.first else { return false }
         // Text and rows only hit where they draw (a click between two words misses): aim at the leading glyph, or
         // `fraction` of the way along the frame on a retry.
