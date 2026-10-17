@@ -111,6 +111,7 @@ struct MainTabView: View {
         }
         .shellSheets(caller: connection)
         .environment(\.shellSection, section)
+        .environment(\.sectionIsShowing, navigator.isShowing(section))
     }
 
     /// Where the inline navigation bar ends: the status bar plus a compact bar

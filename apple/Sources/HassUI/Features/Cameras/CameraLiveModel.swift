@@ -29,6 +29,9 @@ final class CameraLiveModel {
     private(set) var webRTCPeer: WebRTCCameraPeer?
     #endif
 
+    /// The last live frame of a stream the pool paused, shown over the snapshot until the next first frame.
+    private(set) var pausedFrame: CGImage?
+
     /// Whether the camera's sound is off (the default; web cameras open muted).
     private(set) var isMuted = true
     /// Whether a stream is connecting or playing (``start(connection:)`` ran and ``stop()`` has not).
@@ -168,6 +171,17 @@ final class CameraLiveModel {
         CameraTrace.record("\(camera.rtcStreamId) suspended")
     }
 
+    /// Stops the stream because no view shows it, keeping its last live frame on screen until it is wanted again
+    /// (``CameraStreamPool/pauseAfterHidden``). The frame is converted off the main actor.
+    func pause() async {
+        let source = liveFrameSource()
+        suspend()
+        guard let source else { return }
+        let image = await source.image()
+        // A view may have shown the camera again while the frame converted; then the stream is connecting.
+        if !isRunning { pausedFrame = image }
+    }
+
     // MARK: - Controls
 
     /// Turns the camera's sound on or off (web `toggleCameraStreamMuted`).
@@ -202,6 +216,7 @@ final class CameraLiveModel {
         guard mode == state.mode, state.phase == .connecting else { return }
         CameraTrace.record("\(camera.rtcStreamId) first frame \(mode)")
         state.firstFrame(mode)
+        pausedFrame = nil
         attempt?.cancel()
         attempt = nil
         lastLiveAt = nil

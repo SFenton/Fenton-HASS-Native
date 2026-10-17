@@ -56,6 +56,9 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable, Sendable {
 extension EnvironmentValues {
     /// The root section whose stack this view is in; nil outside the shell (galleries, sheets).
     @Entry var shellSection: AppSection?
+    /// Whether the view's section is the one on screen. The tab bar keeps the other sections' views alive without calling
+    /// their `onDisappear`, so work that should stop behind another tab (camera streams) watches this. True outside the shell.
+    @Entry var sectionIsShowing = true
 }
 
 // MARK: - Menu

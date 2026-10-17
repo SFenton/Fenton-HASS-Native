@@ -48,7 +48,8 @@ struct WeatherSheet: View {
         }
         .foregroundStyle(HassTokens.Ink.onDark)
         .preferredColorScheme(.dark)
-        .presentationBackground { WeatherBackdrop(scene: scene).ignoresSafeArea() }
+        // The sheet's base behind the page: the scrolling page draws the decoration over it, so this one is not animated twice.
+        .presentationBackground { WeatherBackdrop(scene: scene, decorated: false).ignoresSafeArea() }
         .accessibilityIdentifier("weather.sheet")
     }
 

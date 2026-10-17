@@ -112,6 +112,27 @@ final class FoodJourneyTests: XCTestCase {
         expectCall("recipe_detail recipe_id=1", in: app)
     }
 
+    /// Swiping the suggestions pages them: the dots follow, nothing opens, and swiping back returns to the first page.
+    func testSuggestionsPageBySwipe() throws {
+        let app = launch("hub")
+        let first = element("food.suggestion.1", in: app)
+        XCTAssertTrue(first.waitForExistence(timeout: 15), "Suggestions did not load")
+        let dots = element("food.suggestions.pages", in: app)
+        XCTAssertTrue(dots.waitForExistence(timeout: 5))
+        XCTAssertTrue((dots.value as? String ?? "").hasPrefix("1 of"), "\(String(describing: dots.value))")
+        for _ in 0..<3 where !first.isHittable { app.swipeDown() }
+        let section = element("food.suggestions", in: app)
+        section.swipeLeft()
+        XCTAssertTrue(waitFor(dots, "NOT (value BEGINSWITH %@)", "1 of"), "The dots stayed on \(String(describing: dots.value))")
+        XCTAssertFalse(element("recipe.tabs", in: app).exists, "Swiping opened a recipe")
+        // A fast swipe can carry past a page, so swipe back until the first.
+        for _ in 0..<5 where !((dots.value as? String ?? "").hasPrefix("1 of")) {
+            section.swipeRight()
+            sleep(1)
+        }
+        XCTAssertTrue(waitFor(dots, "value BEGINSWITH %@", "1 of"), "The dots stayed on \(String(describing: dots.value))")
+    }
+
     /// The hub's recipe sheet switches tabs (on iPad a live hub sheet ignored taps on the picker, 2026-10-12).
     func testHubSheetSwitchesTabs() {
         let app = launch("hub")
