@@ -76,35 +76,58 @@ def llvm_file_totals(reports: list[Path], root: Path) -> dict[str, tuple[int, in
     return totals
 
 
-def check_coverage(
-    totals: dict[str, tuple[int, int]], root: Path, rules: dict[str, Any], language: str
-) -> list[str]:
-    """Check source-file completeness and separate threshold ratios.
+def module_of(name: str) -> str:
+    """Name the module a source file compiles into: the directory under `Sources`.
 
     Args:
-        totals: Actual per-file (covered, executable) line counts.
+        name: Repository-relative POSIX source path.
+
+    Returns:
+        The module directory (for example `apple/Sources/HassCore`), or the file's parent directory
+        when the path has no `Sources` component.
+    """
+    parts = name.split("/")
+    if "Sources" in parts[:-2]:
+        index = parts.index("Sources")
+        return "/".join(parts[: index + 2])
+    return "/".join(parts[:-1])
+
+
+def file_list(files: set[str]) -> str:
+    """Format paths one per line, indented, for an error or note."""
+    return "".join(f"\n  {name}" for name in sorted(files))
+
+
+def classify(
+    root: Path, rules: dict[str, Any], language: str
+) -> tuple[dict[str, set[str]], set[str], list[str]]:
+    """Sort every production source file into exactly one coverage category.
+
+    Runs before any coverage is measured, so a new module or file that no pattern matches fails the
+    gate by name instead of surfacing later as missing coverage.
+
+    Args:
         root: Repository root.
         rules: Versioned coverage classification and numeric thresholds.
         language: Language section to validate.
 
     Returns:
-        Errors for missing files, category overlap and low measured coverage.
+        The files in each category (`logic`, `ux`), the excluded files and the classification errors.
     """
-    if language not in rules or not isinstance(rules[language], dict):
-        return [f"{language}: no configured coverage categories"]
+    section = rules.get(language)
+    if not isinstance(section, dict):
+        return {}, set(), [f"{language}: no configured coverage categories"]
     errors: list[str] = []
-    exclude_patterns = rules[language].get("exclude", [])
+    exclude_patterns = section.get("exclude", [])
     if not isinstance(exclude_patterns, list) or not all(
         isinstance(pattern, str) for pattern in exclude_patterns
     ):
-        return [f"{language}: invalid coverage exclusion patterns"]
+        return {}, set(), [f"{language}: invalid coverage exclusion patterns"]
     excluded = source_files(root, exclude_patterns)
-    for name in excluded:
-        if name in totals and totals[name][1] > 0:
-            errors.append(f"{language}: executable source cannot be excluded: {name}")
+    categories: dict[str, set[str]] = {}
     classified: set[str] = set()
     for category in ("logic", "ux"):
-        patterns = rules[language].get(category)
+        patterns = section.get(category)
         threshold = rules.get("thresholds", {}).get(category)
         if (
             not isinstance(patterns, list)
@@ -121,43 +144,86 @@ def check_coverage(
             continue
         overlap = classified & files
         if overlap:
-            errors.append(f"{language}.{category}: source classified twice: {sorted(overlap)}")
+            errors.append(f"{language}.{category}: source classified twice:{file_list(overlap)}")
         classified.update(files)
+        categories[category] = files
+    source_roots = section.get("sourceRoots")
+    if (
+        not isinstance(source_roots, list)
+        or not source_roots
+        or not all(isinstance(pattern, str) for pattern in source_roots)
+    ):
+        errors.append(f"{language}: sourceRoots must list the production source patterns")
+        return categories, excluded, errors
+    production = source_files(root, source_roots)
+    if not production:
+        errors.append(f"{language}: sourceRoots matched no production files")
+    unclassified = production - classified - excluded
+    if unclassified:
+        modules = sorted({module_of(name) for name in unclassified})
+        errors.append(
+            f"{language}: {len(unclassified)} production source file(s) are not classified as logic or"
+            f" ux. Add a pattern for each (or its module: {', '.join(modules)}) to \"{language}\" in"
+            f" {RULES.relative_to(ROOT).as_posix()}:{file_list(unclassified)}"
+        )
+    outside_roots = classified - production
+    if outside_roots:
+        errors.append(f"{language}: classified source outside sourceRoots:{file_list(outside_roots)}")
+    return categories, excluded, errors
+
+
+def check_coverage(
+    totals: dict[str, tuple[int, int]], root: Path, rules: dict[str, Any], language: str
+) -> list[str]:
+    """Check source-file completeness and separate threshold ratios.
+
+    A classified file with no LLVM record compiled to no instrumented code: it holds only
+    declarations (protocols, stored properties, cases) or is compiled only for iOS. It counts as zero
+    lines and is listed. A whole module with no record means its test bundle was not exported, which
+    is an error.
+
+    Args:
+        totals: Actual per-file (covered, executable) line counts.
+        root: Repository root.
+        rules: Versioned coverage classification and numeric thresholds.
+        language: Language section to validate.
+
+    Returns:
+        Errors for unclassified files, unmeasured modules, exclusions and low measured coverage.
+    """
+    categories, excluded, errors = classify(root, rules, language)
+    for name in sorted(excluded):
+        if name in totals and totals[name][1] > 0:
+            errors.append(f"{language}: executable source cannot be excluded: {name}")
+    measured_modules = {module_of(name) for name in totals}
+    for category, files in categories.items():
+        threshold = rules["thresholds"][category]
         missing = files - totals.keys()
-        if missing:
-            errors.append(f"{language}.{category}: missing coverage for {sorted(missing)}")
+        unmeasured = {name for name in missing if module_of(name) not in measured_modules}
+        if unmeasured:
+            modules = sorted({module_of(name) for name in unmeasured})
+            errors.append(
+                f"{language}.{category}: no coverage records for module(s) {', '.join(modules)};"
+                " export every test bundle that links them"
+            )
             continue
-        covered = sum(totals[name][0] for name in files)
-        executable = sum(totals[name][1] for name in files)
+        if missing:
+            print(
+                f"{language}.{category}: {len(missing)} file(s) have no LLVM record (declarations only,"
+                f" or compiled only for iOS) and count as 0 lines:{file_list(missing)}"
+            )
+        covered = sum(totals[name][0] for name in files - missing)
+        executable = sum(totals[name][1] for name in files - missing)
         if executable == 0:
             errors.append(f"{language}.{category}: report has zero executable lines")
             continue
         percent = covered * 100 / executable
-        print(f"{language}.{category}: {covered}/{executable} lines = {percent:.2f}% (need {threshold}%)")
+        print(
+            f"{language}.{category}: {covered}/{executable} lines = {percent:.2f}%"
+            f" across {len(files)} files (need {threshold}%)"
+        )
         if covered * 100 < threshold * executable:
             errors.append(f"{language}.{category}: {percent:.2f}% is below {threshold}%")
-    source_roots = rules[language].get("sourceRoots")
-    if source_roots is not None:
-        if (
-            not isinstance(source_roots, list)
-            or not source_roots
-            or not all(isinstance(pattern, str) for pattern in source_roots)
-        ):
-            errors.append(f"{language}: invalid sourceRoots patterns")
-        else:
-            production = source_files(root, source_roots)
-            if not production:
-                errors.append(f"{language}: sourceRoots matched no production files")
-            unclassified = production - classified - excluded
-            if unclassified:
-                errors.append(
-                    f"{language}: unclassified production source: {sorted(unclassified)}"
-                )
-            outside_roots = classified - production
-            if outside_roots:
-                errors.append(
-                    f"{language}: classified source outside sourceRoots: {sorted(outside_roots)}"
-                )
     return errors
 
 
@@ -172,14 +238,26 @@ def main(argv: list[str] | None = None) -> int:
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--language", required=True, choices=("swift",))
-    parser.add_argument("--report", type=Path, action="append", required=True)
+    parser.add_argument("--report", type=Path, action="append")
+    parser.add_argument(
+        "--classify-only",
+        action="store_true",
+        help="only check that every production source file is classified (no report needed)",
+    )
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--rules", type=Path, default=RULES)
     args = parser.parse_args(argv)
+    if not args.classify_only and not args.report:
+        parser.error("--report is required unless --classify-only is given")
     try:
         rules = json.loads(args.rules.read_text(encoding="utf-8"))
-        totals = llvm_file_totals(args.report, args.root)
-        errors = check_coverage(totals, args.root, rules, args.language)
+        if args.classify_only:
+            categories, _, errors = classify(args.root, rules, args.language)
+            for category, files in categories.items():
+                print(f"{args.language}.{category}: {len(files)} source files classified")
+        else:
+            totals = llvm_file_totals(args.report, args.root)
+            errors = check_coverage(totals, args.root, rules, args.language)
     except (OSError, json.JSONDecodeError, ValueError) as error:
         print(f"Coverage gate error: {error}", file=sys.stderr)
         return 2
