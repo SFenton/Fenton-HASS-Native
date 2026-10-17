@@ -30,6 +30,9 @@ public final class AppSession {
     /// The Home Live Activity: tokens for Home Assistant and the foreground start (nil in tests that don't need it).
     @ObservationIgnored public let liveActivities: LiveActivityCoordinator?
 
+    /// The app's pages in system search; filled when a session starts and emptied at sign-out.
+    @ObservationIgnored private let spotlight: any SpotlightIndexing
+
     @ObservationIgnored private let tokenStore: TokenStore
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
 
@@ -41,9 +44,12 @@ public final class AppSession {
     ///   - push: The app's push coordinator (the app delegate's, so system callbacks reach it).
     ///   - location: The app's location coordinator (the app delegate's, created at launch for zone relaunches).
     ///   - liveActivities: The app's Live Activity coordinator (the app delegate's, so its buttons work at launch).
+    ///   - spotlight: Where the app's pages are indexed; inert unless the app passes ``CoreSpotlightIndexer``.
     public init(tokenStore: TokenStore = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup),
                 snapshotCache: EntitySnapshotCache = .init(), push: PushCoordinator = .inert(),
-                location: LocationCoordinator? = nil, liveActivities: LiveActivityCoordinator? = nil) {
+                location: LocationCoordinator? = nil, liveActivities: LiveActivityCoordinator? = nil,
+                spotlight: any SpotlightIndexing = InertSpotlightIndexer()) {
+        self.spotlight = spotlight
         self.tokenStore = tokenStore
         self.snapshotCache = snapshotCache
         self.push = push
@@ -93,6 +99,7 @@ public final class AppSession {
         UserDefaults.standard.removeObject(forKey: ChoresModel.viewerDefaultsKey)
         tokens = nil
         backdrop = nil
+        spotlight.removeAll()
         phase = .signedOut
         let push = push, liveActivities = liveActivities
         Task {
@@ -114,6 +121,7 @@ public final class AppSession {
         // Created before the phase changes so the first signed-in frame already has the cached photo.
         backdrop = HouseBackdropStore.session(for: server)
         phase = .signedIn(connection, lifecycle)
+        spotlight.indexPages(SpotlightCatalog.entries)
         lifecycle.didBecomeActive()
     }
 }

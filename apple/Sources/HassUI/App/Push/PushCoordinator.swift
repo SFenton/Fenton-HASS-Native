@@ -123,6 +123,25 @@ public final class PushCoordinator {
         return true
     }
 
+    /// Opens a page of the app from outside it: a Spotlight result or an App Shortcut. The shell opens it the way it
+    /// opens a notification's page (``pendingRequest``), including a launch the tap itself caused.
+    /// - Parameter destination: The page.
+    public func open(_ destination: PushDestination) {
+        requestID += 1
+        pendingRequest = PushNavigationRequest(id: requestID, destination: destination)
+    }
+
+    /// Opens the page a tapped Spotlight result stands for.
+    /// - Parameter userInfo: The `NSUserActivity` for `CSSearchableItemActionType`.
+    /// - Returns: Whether the result was one of the app's pages.
+    @discardableResult
+    public func open(spotlightUserInfo userInfo: [AnyHashable: Any]?) -> Bool {
+        guard let identifier = SpotlightLink.identifier(in: userInfo),
+              let destination = SpotlightCatalog.destination(forIdentifier: identifier) else { return false }
+        open(destination)
+        return true
+    }
+
     /// Opens a notification link: an app page, Home Assistant's own page, or another site.
     func open(link: String) {
         switch PushLink(link, server: server) {
