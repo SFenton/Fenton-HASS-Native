@@ -33,7 +33,7 @@ public enum AppIconChoice: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// The name VoiceOver reads: "Navy and Sky" (a plus sign is read inconsistently).
-    public var spokenName: String { displayName.replacingOccurrences(of: " + ", with: " and ") }
+    public var spokenName: String { displayName.replacing(" + ", with: " and ") }
 
     /// The value for `UIApplication.setAlternateIconName(_:)`: nil restores the default icon.
     public var alternateIconName: String? {

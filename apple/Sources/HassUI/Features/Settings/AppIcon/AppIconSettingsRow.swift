@@ -6,15 +6,12 @@ import SwiftUI
 /// ``AppIconPickerSheet``. It sits like the other Settings rows (``SettingsLinkRow``) and hides where the system cannot
 /// switch icons.
 struct AppIconSettingsRow: View {
-    @State private var model: AppIconPickerModel
+    @Environment(\.appIconPlatform) private var platform
+    @State private var store = AppIconPickerModelStore()
     @State private var showsPicker = false
 
-    /// Creates the row over the system calls (a fake in tests).
-    init(platform: AppIconPlatform) {
-        _model = State(initialValue: AppIconPickerModel(platform: platform))
-    }
-
     var body: some View {
+        let model = store.model(for: platform)
         if model.isSupported {
             Button { showsPicker = true } label: {
                 SettingsLinkRow(title: Self.title, subtitle: model.selected.displayName, symbol: "app.fill", appIcon: model.selected)

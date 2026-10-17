@@ -20,7 +20,6 @@ struct SettingsScreen: View {
     @State private var feedbackForm: FeedbackKind?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
     @Environment(\.tileSurface) private var surface
-    @Environment(\.appIconPlatform) private var appIconPlatform
 
     /// Creates the list.
     /// - Parameter openTopic: The topic open beside or above the list; constant nil for a static render.
@@ -79,7 +78,7 @@ struct SettingsScreen: View {
                         .foregroundStyle(surface == .page ? HassTokens.Ink.onDarkSecondary : HassTokens.Ink.secondary)
                 }
                 Section {
-                    AppIconSettingsRow(platform: appIconPlatform)
+                    AppIconSettingsRow()
                     NavigationLink(value: SettingsRoute.performance) {
                         SettingsLinkRow(title: "Performance", subtitle: "Scrolling, loading and image cache measurements on this device.",
                                         symbol: "gauge.with.dots.needle.67percent", showsChevron: false)

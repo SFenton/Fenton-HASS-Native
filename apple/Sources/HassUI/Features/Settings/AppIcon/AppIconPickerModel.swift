@@ -25,11 +25,12 @@ final class AppIconPickerModel {
     /// Creates the model over the installed icon.
     init(platform: AppIconPlatform) {
         self.platform = platform
+        isSupported = platform.supportsAlternateIcons()
         selected = AppIconChoice(alternateIconName: platform.currentName())
     }
 
-    /// Whether the app can switch icons on this device.
-    var isSupported: Bool { platform.supportsAlternateIcons() }
+    /// Whether the app can switch icons on this device, read once with the installed icon.
+    let isSupported: Bool
 
     /// Whether `choice` is the installed icon.
     func isSelected(_ choice: AppIconChoice) -> Bool { choice == selected }

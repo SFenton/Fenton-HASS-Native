@@ -98,12 +98,20 @@ struct AppIconPickerModelTests {
         #expect(system.requested.count == 1, "The second tap landed while the first change was in flight")
     }
 
-    @Test func supportFollowsTheSystem() {
+    @Test func supportIsReadOnceFromTheSystem() {
         let system = FakeIconSystem()
-        let model = AppIconPickerModel(platform: system.platform)
-        #expect(model.isSupported)
+        #expect(AppIconPickerModel(platform: system.platform).isSupported)
         system.supports = false
-        #expect(!model.isSupported)
+        #expect(!AppIconPickerModel(platform: system.platform).isSupported)
+    }
+
+    @Test func theStoreBuildsTheModelOnceAndReadsTheSystemOnce() {
+        let system = FakeIconSystem(name: "AppIcon-PlumLilac")
+        let store = AppIconPickerModelStore()
+        let first = store.model(for: system.platform)
+        system.name = "AppIcon-TealMint"
+        #expect(store.model(for: system.platform) === first, "A redraw reuses the model and does not read the icon again")
+        #expect(first.selected == .plumLilac)
     }
 
     @Test func theMacTestHostHasNoAlternateIcons() async throws {
