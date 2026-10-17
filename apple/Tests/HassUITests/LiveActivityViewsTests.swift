@@ -24,7 +24,9 @@ struct LiveActivityViewsTests {
     func render(_ view: some View, size: CGSize = CGSize(width: 360, height: 260)) async -> NSBitmapImageRep? {
         let hosted = HostedWindow(view.frame(width: size.width, height: size.height, alignment: .topLeading).background(Color.black), size: size)
         defer { hosted.close() }
+        // A loaded host can take several passes to draw the first frame: settle until something is on screen.
         await hosted.settle(0.15)
+        for _ in 0..<12 where (hosted.snapshot()?.distinctColors ?? 0) <= 3 { await hosted.settle(0.15) }
         return hosted.snapshot()
     }
 
