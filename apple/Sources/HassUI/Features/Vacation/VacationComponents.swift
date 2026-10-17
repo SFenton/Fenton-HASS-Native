@@ -90,7 +90,12 @@ struct AwayActionButton: View {
                     .buttonStyle(PrimaryButtonStyle())
             } else {
                 Button(role: role, action: action) {
-                    Text(title).frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
+                    // The tint fills the bordered capsule, so the tint as the label's colour measured 4.2:1 on its own
+                    // fill (Keep Current Schedule, Restore Saved Schedule, 2026-10-17). A destructive label stays red
+                    // (it clears 4.5:1); every other label is plain ink on the tinted fill.
+                    Text(title)
+                        .foregroundStyle(role == .destructive ? HassTokens.Ink.danger : HassTokens.Ink.primary)
+                        .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget - 16)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
