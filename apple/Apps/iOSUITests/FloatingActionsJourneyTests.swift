@@ -67,6 +67,32 @@ final class FloatingActionsJourneyTests: JourneyTestCase {
         XCTAssertTrue(app.buttons["fab.sort"].isSelected, "Cancel applied the draft")
     }
 
+    /// At the largest text size the bar reflows (the labelled action on its own full-width row, the circles beneath)
+    /// instead of wrapping a letter per line or running over the page: every button is on screen, at least 44 pt, and
+    /// none overlaps another (folded iPhone Duo capture, 2026-10-16).
+    func testBarReflowsAtTheLargestTextSize() {
+        let app = launch(arguments: FentonHomeApp.ax5)
+        let window = app.windows.firstMatch.frame
+        let buttons = ["add", "sort", "filter", "search"].map { app.buttons["fab.\($0)"] }
+        for button in buttons {
+            XCTAssertTrue(button.exists, button.identifier)
+            XCTAssertGreaterThanOrEqual(button.frame.width, 43, "\(button.identifier) too narrow")
+            XCTAssertGreaterThanOrEqual(button.frame.height, 43, "\(button.identifier) too short")
+            XCTAssertGreaterThanOrEqual(button.frame.minX, window.minX - 0.5, "\(button.identifier) runs off the leading edge")
+            XCTAssertLessThanOrEqual(button.frame.maxX, window.maxX + 0.5, "\(button.identifier) runs off the trailing edge")
+        }
+        for (index, first) in buttons.enumerated() {
+            for second in buttons[(index + 1)...] {
+                XCTAssertFalse(first.frame.insetBy(dx: 1, dy: 1).intersects(second.frame.insetBy(dx: 1, dy: 1)),
+                               "\(first.identifier) overlaps \(second.identifier)")
+            }
+        }
+        // The title wraps by word at most: the capsule is far wider than a single line of its label is tall.
+        let add = app.buttons["fab.add"].frame
+        XCTAssertGreaterThan(add.width, add.height * 1.5, "Add Task wraps into a tall pill")
+        keepScreenshot(app, "floating-actions-ax5-\(FentonHomeApp.family)")
+    }
+
     /// The top of the bar's buttons, in screen points.
     private func barTop(_ app: XCUIApplication) -> CGFloat {
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fab.'")).allElementsBoundByIndex.map(\.frame.minY).min() ?? .greatestFiniteMagnitude

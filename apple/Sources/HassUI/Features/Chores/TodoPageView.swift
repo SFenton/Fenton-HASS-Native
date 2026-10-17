@@ -19,6 +19,8 @@ struct TodoPageView<Header: View>: View {
     @State private var reloadVersion = 0
     /// The task a swipe or menu asked to delete, until the confirmation answers.
     @State private var deletion: TodoDeletion?
+    /// Where the list's plain rows start, for the quick links header to line up with (``AlignedToListMargins``).
+    @State private var rowOrigin: CGFloat?
 
     var body: some View {
         let sections = TodoPageLayout.sections(for: page, viewerUserId: model.viewerUserId, store: store, todos: model.todos)
@@ -29,12 +31,12 @@ struct TodoPageView<Header: View>: View {
             if Header.self != EmptyView.self {
                 // A section header, not a row: a row of several `NavigationLink`s (the Chores quick links) activates
                 // every one of them on any tap, and a button-driven destination hung the page in the debug gallery
-                // (2026-10-16). The header view sits 16 pt inside the list's margins, which the padding takes back so the
-                // content lines up with the modules.
+                // (2026-10-16). The system sets the header in from the list's margin by its own amount; the modifier
+                // measures that against a plain row and takes it back, so the tiles share the modules' edges.
                 Section {} header: {
                     header()
                         .textCase(nil)
-                        .padding(.horizontal, -HassTokens.Spacing.l)
+                        .modifier(AlignedToListMargins(rowOrigin: rowOrigin))
                 }
             }
             if TodoPageLayout.showsEmptyState(sections) {
@@ -52,6 +54,8 @@ struct TodoPageView<Header: View>: View {
             }
         }
         .groupedListStyle()
+        .coordinateSpace(.named(TodoListSpace.name))
+        .environment(\.reportsRowOrigin) { rowOrigin = $0 }
         .environment(\.defaultMinListRowHeight, 1)
         // Chores animate away when completed and back in if the call fails (owner, 2026-10-16). Under Reduce Motion the
         // rows fade instead of sliding (HIG Motion).

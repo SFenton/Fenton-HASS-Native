@@ -83,6 +83,25 @@ final class ChoresJourneyTests: JourneyTestCase {
         XCTAssertTrue(app.navigationBars["Stephen's Chores"].waitForExistence(timeout: 10), "Your Chores did not open Stephen's Chores")
     }
 
+    /// The quick links start and end where the modules below them do, whatever the window: the header they sit in is set in
+    /// by the system, and `AlignedToListMargins` takes that back (owner follow-up, 2026-10-17: the tiles were inset about
+    /// 16 pt more than the Past Due rows).
+    func testQuickLinksAlignWithTheListMargins() {
+        let app = launch()
+        let groceries = element("chores.link.groceries", in: app)
+        XCTAssertTrue(groceries.waitForExistence(timeout: 10))
+        let heading = app.staticTexts["Past Due"].firstMatch
+        XCTAssertTrue(heading.waitForExistence(timeout: 5), "Past Due heading missing")
+        let edit = element("todo.edit.12--fixture", in: app)
+        XCTAssertTrue(edit.waitForExistence(timeout: 5), "Past Due row missing")
+        // Let the measured inset settle.
+        sleep(1)
+        XCTAssertEqual(groceries.frame.minX, heading.frame.minX, accuracy: 1.5, "The tiles start inside the headings' edge")
+        // The row's edit button sits 4 pt inside the module's trailing edge.
+        XCTAssertEqual(groceries.frame.maxX, edit.frame.maxX + 4, accuracy: 2, "The tiles end inside the modules' edge")
+        keepScreenshot(app, screenshotName("chores-alignment"))
+    }
+
     /// Checking a chore off hides it at once and calls Home Assistant.
     func testCheckingOffAChoreHidesIt() {
         let app = launch()
