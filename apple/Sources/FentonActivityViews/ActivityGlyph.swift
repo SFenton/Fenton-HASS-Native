@@ -5,9 +5,12 @@ import SwiftUI
 struct ActivityGlyph: View {
     let job: ActivityJob
     var size: CGFloat = 26
+    /// The glyph grows with the text (capped, so it never crowds the row), like the words beside it.
+    @ScaledMetric(relativeTo: .subheadline) private var textScale = 1
 
     var body: some View {
         let style = ActivityStyle(tint: job.tint)
+        let size = size * min(textScale, 1.8)
         Image(systemName: job.symbol)
             .font(.system(size: size * 0.5, weight: .semibold))
             .foregroundStyle(style.accent)

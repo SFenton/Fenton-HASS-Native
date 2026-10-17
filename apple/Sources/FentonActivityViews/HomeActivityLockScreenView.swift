@@ -34,7 +34,7 @@ public struct HomeActivityLockScreenView: View {
     public var body: some View {
         let rows = state.lockScreenRows(limit: rowLimit)
         VStack(alignment: .leading, spacing: 4) {
-            if !isFullscreen && rows.count == 1 { header }
+            if !isFullscreen && rows.count == 1 && !typeSize.isAccessibilitySize { header }
             ForEach(rows) { job in
                 ActivityJobRow(job: job, isFocused: rows.count > 1 && job.id == state.focusedJob?.id, isCompact: rows.count > 1)
             }

@@ -57,7 +57,7 @@ struct ActivityJobRow: View {
             Text(job.title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(ActivityStyle.primaryText)
-                .lineLimit(1)
+                .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
             if !job.status.isEmpty {
                 Text(job.status)
                     .font(.caption)

@@ -31,9 +31,13 @@ public struct HomeActivityIslandPreview: View {
                 .frame(width: 250, height: 36)
                 .background(Capsule().fill(Color.black))
             case .minimal:
+                // The system draws the real minimal view at about 36 pt; the stand-in is 44 pt so its accessibility
+                // element is a target a person could hit.
                 HomeActivityIsland.Minimal(state: state)
-                    .frame(width: 36, height: 36)
+                    .frame(width: ActivityStyle.minimumHit, height: ActivityStyle.minimumHit)
                     .background(Circle().fill(Color.black))
+                    .contentShape(Circle())
+                    .accessibilityElement(children: .combine)
             case .expanded:
                 VStack(spacing: 6) {
                     HStack(alignment: .top) {

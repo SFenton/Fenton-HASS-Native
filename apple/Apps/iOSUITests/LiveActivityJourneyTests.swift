@@ -78,7 +78,11 @@ final class LiveActivityJourneyTests: JourneyTestCase {
         let app = launch("two")
         let rows = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Dishwasher' AND label CONTAINS 'Eco 50'"))
         XCTAssertGreaterThanOrEqual(rows.count, 1, "the dishwasher row reads its status with its title")
-        XCTAssertTrue(app.staticTexts["Home"].exists || app.otherElements["Home 2 running"].exists, "the header names the activity")
+        let named = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Home, 2 running'"))
+        XCTAssertGreaterThan(named.count, 0, "the activity is named with its count (several jobs show no header)")
+        let single = launch("dishwasher")
+        XCTAssertGreaterThan(single.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Home, 1 running'")).count, 0,
+                             "one job shows the header")
         XCTAssertTrue(app.staticTexts["Master Bath Fan"].exists || app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Master Bath Fan'")).count > 0)
     }
 
