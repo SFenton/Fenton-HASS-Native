@@ -75,6 +75,30 @@ struct ColorFamilyTests {
         #expect(contrast(family.chipGlyphRGB, fill) >= 3, "\(family) glyph")
     }
 
+    /// Distance between two `0xRRGGBB` colours in sRGB.
+    private func distance(_ a: UInt32, _ b: UInt32) -> Double {
+        func channel(_ rgb: UInt32, _ shift: UInt32) -> Double { Double((rgb >> shift) & 0xFF) }
+        return [16, 8, 0].map { pow(channel(a, $0) - channel(b, $0), 2) }.reduce(0, +).squareRoot()
+    }
+
+    @Test func foodTilesAreFilledAndTellTheSpacesApart() throws {
+        // Owner, 2026-10-16: Food Spaces and All Food take the web's colours. Each is a filled family; All Recipes shares the
+        // Fridge's blue, as on the web, and nothing else repeats.
+        let spaces: [ColorFamily] = [.pantry, .fridge, .freezer, .spiceRack, .cabinet, .food]
+        for family in spaces + [.recipes] {
+            let fill = try #require(family.spec.fill, "\(family)")
+            #expect(!family.spec.darkInk, "\(family) takes white ink")
+            #expect(family.chipFillRGB == fill)
+        }
+        #expect(ColorFamily.recipes.spec == ColorFamily.fridge.spec)
+        for (index, first) in spaces.enumerated() {
+            for second in spaces[(index + 1)...] {
+                let a = try #require(first.spec.fill), b = try #require(second.spec.fill)
+                #expect(distance(a, b) >= 30, "\(first) and \(second)")
+            }
+        }
+    }
+
     @Test func alarmStatesPickTheirSecurityFamily() {
         #expect(ColorFamily.security(alarmState: "armed_home") == .securityHome)
         #expect(ColorFamily.security(alarmState: "armed_away") == .securityAway)

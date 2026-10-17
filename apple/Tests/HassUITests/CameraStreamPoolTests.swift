@@ -18,6 +18,9 @@ struct CameraStreamPoolTests {
         var checks = 0
         var gate: CheckedContinuation<Void, Never>?
         var holdsCheck = false
+        /// The fake frame source: the count every live stream reports, and whether it advances on each read.
+        var frames = 0
+        var advancing = true
 
         var opener: CameraStreamOpener {
             { [self] model, _, _, _ in
@@ -41,9 +44,15 @@ struct CameraStreamPoolTests {
     private let front = HomeConfig.cameras[0]
     private let driveway = HomeConfig.cameras[1]
 
-    private func makePool(_ streams: FakeStreams) -> (CameraStreamPool, HassConnection) {
+    private func makePool(_ streams: FakeStreams, retryDelays: [Duration] = [],
+                          stallAfter: Duration = .seconds(60)) -> (CameraStreamPool, HassConnection) {
         let pool = CameraStreamPool(
-            modes: [.webRTC, .hls], observesApp: false, opener: streams.opener,
+            modes: [.webRTC, .hls], observesApp: false, opener: streams.opener, retryDelays: retryDelays,
+            stallAfter: stallAfter, stallCheckInterval: .milliseconds(10),
+            frameCounter: { [streams] _ in
+                if streams.advancing { streams.frames += 1 }
+                return streams.frames
+            },
             prepareConnection: { [streams] connection in await streams.check(connection) }
         )
         let connection = HassConnection(server: .fentonHome, tokens: TokenManager(store: InMemoryTokenStore()), store: EntityStore())
@@ -218,6 +227,215 @@ struct CameraStreamPoolTests {
         pool.connectionBecameReady()
         try? await Task.sleep(for: .milliseconds(100))
         #expect(streams.opens["front_door"] == 2)
+    }
+
+    // MARK: - Sharing across surfaces
+
+    @Test func homeAndSecurityShareOneStreamPerCamera() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams)
+        let home = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(home)
+
+        let security = pool.appear(front, connection: connection) // Security's tile for the same camera
+        #expect(security === home, "One model per camera, whichever page shows it")
+        #expect(security.state.phase == .live, "Security's tile is live on its first read")
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(streams.opens["front_door"] == 1, "No second stream was opened")
+        #expect(pool.model(for: front) === home)
+    }
+
+    @Test func leavingOneSurfaceKeepsTheStreamForTheOther() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams)
+        let model = pool.appear(front, connection: connection) // Home
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(model)
+        _ = pool.appear(front, connection: connection) // Security
+        pool.disappear(front) // Home's tile leaves with the tab switch
+
+        #expect(model.isRunning)
+        #expect(model.state.phase == .live)
+        #expect(pool.shouldRun(front))
+        pool.disappear(front) // Security's too: still retained for the session
+        #expect(model.isRunning)
+        #expect(model.state.phase == .live)
+
+        _ = pool.appear(front, connection: connection) // Back on Home
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(streams.opens["front_door"] == 1, "Returning to a page attaches to the running stream")
+        #expect(model.state.phase == .live)
+    }
+
+    @Test func theViewerOpenedFromEitherPageSharesTheTilesStream() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams)
+        let tile = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(tile)
+        let viewer = pool.appear(front, connection: connection)
+        #expect(viewer === tile)
+        pool.disappear(front) // The viewer closes
+        #expect(tile.isRunning)
+        #expect(streams.opens["front_door"] == 1)
+    }
+
+    // MARK: - Live after returning
+
+    @Test func theLiveStateReturnsAfterAForegroundRestart() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams)
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(model)
+        pool.enterBackground()
+        #expect(model.state.phase == .connecting)
+        pool.enterForeground()
+        await waitUntil { streams.opens["front_door"] == 2 }
+        model.firstFrame(.webRTC)
+        #expect(model.state.phase == .live, "The tile reads Live again once the restarted stream shows a frame")
+    }
+
+    // MARK: - Automatic retries
+
+    @Test func aStreamThatFailedEveryModeIsRetriedWhileAViewWantsIt() async {
+        let streams = FakeStreams()
+        streams.fails = true
+        let (pool, connection) = makePool(streams, retryDelays: [.milliseconds(30), .milliseconds(30)])
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { model.state.phase == .failed }
+        #expect(streams.opens["front_door"] == 2, "WebRTC, then HLS")
+
+        streams.fails = false
+        await waitUntil { streams.opens["front_door"] == 3 }
+        #expect(streams.opens["front_door"] == 3, "Retried with no socket event and no new view")
+        #expect(model.isRunning)
+        model.firstFrame(.webRTC)
+        #expect(model.state.phase == .live)
+    }
+
+    @Test func retriesStopAfterTheLastDelayAndAViewAppearingStartsOver() async {
+        let streams = FakeStreams()
+        streams.fails = true
+        let (pool, connection) = makePool(streams, retryDelays: [.milliseconds(20)])
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 4 } // Two modes, then one retry of two modes.
+        try? await Task.sleep(for: .milliseconds(150))
+        #expect(streams.opens["front_door"] == 4, "One retry, then it waits for a trigger")
+        #expect(model.state.phase == .failed)
+
+        streams.fails = false
+        _ = pool.appear(front, connection: connection) // The next view that shows it tries again.
+        await waitUntil { streams.opens["front_door"] == 5 }
+        #expect(streams.opens["front_door"] == 5)
+    }
+
+    @Test func noRetryForAStreamNobodyShowsOrBehindABackgroundedApp() async {
+        let streams = FakeStreams()
+        streams.fails = true
+        let (pool, connection) = makePool(streams, retryDelays: [.milliseconds(30)])
+        let model = pool.appear(front, connection: connection)
+        pool.disappear(front)
+        await waitUntil { model.state.phase == .failed }
+        try? await Task.sleep(for: .milliseconds(120))
+        #expect(streams.opens["front_door"] == 2, "No view wants a failed stream, so it stays down")
+
+        _ = pool.appear(driveway, connection: connection)
+        await waitUntil { streams.opens["garage_camera"] == 2 }
+        pool.enterBackground()
+        try? await Task.sleep(for: .milliseconds(120))
+        #expect(streams.opens["garage_camera"] == 2, "Retries are cancelled when the app leaves the foreground")
+    }
+
+    // MARK: - Frame stalls
+
+    @Test func aLiveStreamWhoseFramesStopIsTakenDownAndRestartedOnce() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams, retryDelays: [.milliseconds(20)], stallAfter: .milliseconds(80))
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(model)
+        streams.advancing = false // The camera stops sending.
+
+        await waitUntil { model.state.phase != .live }
+        #expect(model.state.phase == .connecting, "Back on the snapshot: the tile's dot goes")
+        #expect(model.lastLiveAt != nil, "The viewer's pill can say when it was last live")
+        #expect(!model.isRunning || streams.opens["front_door"] == 2)
+
+        streams.advancing = true // The restarted stream delivers frames.
+        await waitUntil { streams.opens["front_door"] == 2 }
+        #expect(streams.opens["front_door"] == 2, "Restarted through the pool's retry")
+        goLive(model)
+        #expect(model.lastLiveAt == nil)
+        try? await Task.sleep(for: .milliseconds(250))
+        #expect(streams.opens["front_door"] == 2, "Restarted once, not once per check")
+        #expect(model.state.phase == .live)
+    }
+
+    @Test func framesThatKeepComingNeverRestartAStream() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams, retryDelays: [.milliseconds(20)], stallAfter: .milliseconds(80))
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(model)
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(streams.opens["front_door"] == 1)
+        #expect(model.state.phase == .live)
+    }
+
+    @Test func aBriefPauseUnderTheLimitIsNotAStall() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams, retryDelays: [.milliseconds(20)], stallAfter: .milliseconds(200))
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(model)
+        streams.advancing = false
+        try? await Task.sleep(for: .milliseconds(80))
+        streams.advancing = true
+        try? await Task.sleep(for: .milliseconds(300))
+        #expect(streams.opens["front_door"] == 1)
+        #expect(model.state.phase == .live)
+    }
+
+    @Test func theWatchdogIsPausedInTheBackgroundAndAfterTheStreamStops() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams, retryDelays: [.milliseconds(20)], stallAfter: .milliseconds(60))
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        goLive(model)
+        #expect(model.liveResources["Camera.watchdogs"] == 1)
+
+        streams.advancing = false
+        pool.enterBackground()
+        #expect(model.liveResources["Camera.watchdogs"] == 0, "No watchdog behind a backgrounded app")
+        try? await Task.sleep(for: .milliseconds(250))
+        #expect(streams.opens["front_door"] == 1, "A frozen count in the background restarts nothing")
+        #expect(model.state.phase == .connecting)
+    }
+
+    @Test func theCensusStaysFlatOverRepeatedStallsAndResumes() async {
+        let streams = FakeStreams()
+        let (pool, connection) = makePool(streams, retryDelays: [.milliseconds(10)], stallAfter: .milliseconds(60))
+        let model = pool.appear(front, connection: connection)
+        await waitUntil { streams.opens["front_door"] == 1 }
+        for cycle in 1...4 {
+            goLive(model)
+            #expect(model.liveResources["Camera.watchdogs"] == 1, "Cycle \(cycle)")
+            streams.advancing = false
+            await waitUntil { model.state.phase != .live }
+            streams.advancing = true
+            await waitUntil { streams.opens["front_door"] == cycle + 1 }
+            #expect(streams.opens["front_door"] == cycle + 1)
+            #expect(model.liveResources["Camera.watchdogs"] == 0, "Cycle \(cycle): none while connecting")
+        }
+        goLive(model)
+        pool.enterBackground()
+        pool.enterForeground()
+        await waitUntil { streams.opens["front_door"] == 6 }
+        goLive(model)
+        #expect(model.liveResources["Camera.watchdogs"] == 1)
+        #expect(pool.liveResources["CameraPool.running"] == 1)
     }
 
     // MARK: - Model

@@ -6,7 +6,7 @@ import SwiftUI
 /// While loading, the content is laid out but hidden and a centered spinner fades in (after a short delay, so a
 /// fast load shows no spinner at all). Once `isReady` is true **and** every piece of content that reported itself
 /// (images through ``CachedImage``, anything using ``SwiftUICore/View/contentReadiness(_:isReady:)``) is ready, or
-/// ``ContentGateModel/Timing/childTimeout`` passes, the spinner fades out and the content fades in. A gate created
+/// ``ContentGateModel/Profile/childTimeout`` passes, the spinner fades out and the content fades in. A gate created
 /// with `isReady` already true (data from the disk snapshot or a cache) shows content immediately with no
 /// animation.
 ///
@@ -16,6 +16,7 @@ import SwiftUI
 /// keeps the fade).
 public struct ContentGate<Content: View>: View {
     private var isReady: Bool
+    private var label: String
     private var content: Content
     @State private var model: ContentGateModel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -24,11 +25,19 @@ public struct ContentGate<Content: View>: View {
     /// - Parameters:
     ///   - page: Names the page in telemetry (`ContentReady` signposts).
     ///   - isReady: Whether the page's data is loaded.
+    ///   - timing: The timings of the first load: ``ContentGateModel/Profile/page`` for a page opening cold,
+    ///     ``ContentGateModel/Profile/results`` (the default) for a results region.
+    ///   - reloadTiming: The timings of later loads, once the content has shown (defaults to `timing`).
+    ///   - label: What VoiceOver says for the spinner ("Loading Pantry").
     ///   - content: The page content.
-    public init(page: String, isReady: Bool, @ViewBuilder content: () -> Content) {
+    public init(
+        page: String, isReady: Bool, timing: ContentGateModel.Profile = .results, reloadTiming: ContentGateModel.Profile? = nil,
+        label: String = "Loading", @ViewBuilder content: () -> Content
+    ) {
         self.isReady = isReady
+        self.label = label
         self.content = content()
-        _model = State(initialValue: ContentGateModel(page: page, isReady: isReady))
+        _model = State(initialValue: ContentGateModel(page: page, isReady: isReady, firstLoad: timing, reload: reloadTiming))
     }
 
     private struct Input: Equatable {
@@ -47,7 +56,7 @@ public struct ContentGate<Content: View>: View {
                 .accessibilityHidden(!phase.showsContent)
             // Built only while it shows, so a fast load never runs the arc's timeline at all.
             if !phase.showsContent, model.spinnerShown, phase == .loading {
-                ArcSpinner(.page)
+                ArcSpinner(.page, label: label)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .transition(.opacity)
                     .accessibilityIdentifier("contentGate.spinner")
@@ -56,6 +65,19 @@ public struct ContentGate<Content: View>: View {
         .task(id: Input(isReady: isReady, settled: model.tracker.isSettled)) {
             await model.advance(isReady: isReady, reduceMotion: reduceMotion)
         }
+        .onChange(of: phase) { old, new in
+            // The content was hidden from VoiceOver while it loaded: tell it the layout changed so focus lands on the page.
+            if new == .idle, old != .idle { Self.announceLayoutChange() }
+        }
+    }
+}
+
+extension ContentGate {
+    /// Posts `layoutChanged` once hidden content appears.
+    static func announceLayoutChange() {
+        #if os(iOS)
+        UIAccessibility.post(notification: .layoutChanged, argument: nil)
+        #endif
     }
 }
 
