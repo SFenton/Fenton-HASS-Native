@@ -68,6 +68,11 @@ public struct FloatingActionBar: View {
     @FocusState private var searchFocused: Bool
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The circles' size, growing with the glyph (Dynamic Type) up to one and a half times the base, so the bar's
+    /// buttons grow with the text but never take the screen.
+    @ScaledMetric(relativeTo: .title3) private var scaledSize: CGFloat = FloatingActionBar.size
+
+    private var buttonSize: CGFloat { min(scaledSize, Self.size * Self.maxGrowth) }
 
     /// Creates a bar.
     public init(actions: [FloatingAction], search: FloatingSearch? = nil) {
@@ -76,15 +81,25 @@ public struct FloatingActionBar: View {
     }
 
     public var body: some View {
+        Group {
+            if typeSize.isAccessibilitySize && search?.isExpanded.wrappedValue != true {
+                accessibilityLayout
+            } else {
+                standardLayout
+            }
+        }
+        .padding(.horizontal, HassTokens.Spacing.l)
+        .padding(.bottom, HassTokens.Spacing.s)
+        // Reduce Motion: the search capsule swaps in place without the spring.
+        .animation(reduceMotion ? nil : .snappy, value: search?.isExpanded.wrappedValue)
+    }
+
+    /// One row: the search field fills the leading space, then the other actions.
+    private var standardLayout: some View {
         HStack(spacing: HassTokens.Spacing.s) {
             if let search {
                 if search.isExpanded.wrappedValue {
                     expandedSearch(search)
-                } else if typeSize.isAccessibilitySize {
-                    // At accessibility sizes the prompt would not fit beside the other actions: the magnifier alone,
-                    // still named by the prompt.
-                    circleButton(id: "search", title: search.prompt, symbol: "magnifyingglass",
-                                 isActive: !search.text.wrappedValue.isEmpty) { open(search) }
                 } else {
                     collapsedSearch(search)
                 }
@@ -99,10 +114,29 @@ public struct FloatingActionBar: View {
                 }
             }
         }
-        .padding(.horizontal, HassTokens.Spacing.l)
-        .padding(.bottom, HassTokens.Spacing.s)
-        // Reduce Motion: the search capsule swaps in place without the spring.
-        .animation(reduceMotion ? nil : .snappy, value: search?.isExpanded.wrappedValue)
+    }
+
+    /// At accessibility text sizes one row cannot hold the field, the circles and a labelled capsule: the capsule's label
+    /// wrapped a letter to a line and the glyphs ran over the page (folded iPhone Duo, AX5, 2026-10-16). The labelled
+    /// actions take a full-width row of their own, where the title wraps by word, and the search magnifier and the circles
+    /// sit in a row beneath, trailing, each at least 44 pt and growing with the text (HIG, Accessibility › Dynamic Type:
+    /// reflow rather than truncate; Buttons: keep hit targets large).
+    private var accessibilityLayout: some View {
+        VStack(alignment: .trailing, spacing: HassTokens.Spacing.s) {
+            ForEach(actions.filter(\.showsTitle)) { action in
+                capsuleButton(action, fillsWidth: true)
+            }
+            HStack(spacing: HassTokens.Spacing.s) {
+                Spacer(minLength: 0)
+                if let search {
+                    circleButton(id: "search", title: search.prompt, symbol: "magnifyingglass",
+                                 isActive: !search.text.wrappedValue.isEmpty) { open(search) }
+                }
+                ForEach(actions.filter { !$0.showsTitle }) { action in
+                    circleButton(id: action.id, title: action.title, symbol: action.symbol, isActive: action.isActive, perform: action.action)
+                }
+            }
+        }
     }
 
     private func open(_ search: FloatingSearch) {
@@ -112,13 +146,16 @@ public struct FloatingActionBar: View {
 
     // MARK: Buttons
 
-    private func capsuleButton(_ action: FloatingAction) -> some View {
+    private func capsuleButton(_ action: FloatingAction, fillsWidth: Bool = false) -> some View {
         Button(action: action.action) {
             Label(action.title, systemImage: action.symbol)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(.white)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, HassTokens.Spacing.l + 2)
-                .frame(minHeight: Self.size)
+                .padding(.vertical, fillsWidth ? HassTokens.Spacing.s : 0)
+                .frame(maxWidth: fillsWidth ? .infinity : nil, minHeight: buttonSize)
                 // Liquid Glass in both cases (owner, 2026-10-16): the primary action is blue-tinted glass, a secondary one
                 // clear of tint, so the page shows through the bar.
                 .modifier(BarGlass(tint: action.isProminent ? Self.tint : nil, shape: Capsule()))
@@ -135,7 +172,7 @@ public struct FloatingActionBar: View {
             Image(systemName: symbol)
                 .font(.title3.weight(.medium))
                 .foregroundStyle(isActive ? Self.activeGlyph : .white)
-                .frame(width: Self.size, height: Self.size)
+                .frame(width: buttonSize, height: buttonSize)
                 .modifier(BarGlass(tint: isActive ? Self.activeTint : nil, shape: Circle()))
                 .contentShape(Circle())
         }
@@ -160,7 +197,7 @@ public struct FloatingActionBar: View {
             .font(.body)
             .foregroundStyle(query.isEmpty ? HassTokens.Surface.secondaryOnWash : .white)
             .padding(.horizontal, HassTokens.Spacing.l)
-            .frame(maxWidth: .infinity, minHeight: Self.size)
+            .frame(maxWidth: .infinity, minHeight: buttonSize)
             .modifier(BarGlass(tint: nil, shape: Capsule()))
             .contentShape(Capsule())
         }
@@ -197,13 +234,15 @@ public struct FloatingActionBar: View {
             .accessibilityIdentifier("fab.search.close")
         }
         .padding(.leading, HassTokens.Spacing.l)
-        .frame(minHeight: Self.size)
+        .frame(minHeight: buttonSize)
         .modifier(BarGlass(tint: nil, shape: Capsule(), isInteractive: false))
         .frame(maxWidth: .infinity)
     }
 
     /// Button height: comfortably above the 44 pt minimum, like the web's 56 px FAB and G's 52 pt toolbar circles.
     static let size: CGFloat = 52
+    /// How far the buttons grow with Dynamic Type: 1.5 times the base size.
+    static let maxGrowth: CGFloat = 1.5
 }
 
 /// Liquid Glass behind a bar button (HIG, Materials: "Use Liquid Glass for controls and navigation … floating above
