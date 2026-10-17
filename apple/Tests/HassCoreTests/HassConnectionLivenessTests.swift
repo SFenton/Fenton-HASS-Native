@@ -82,7 +82,8 @@ struct HassConnectionLivenessTests {
         mock.setState(.disconnected(reason: .disconnected), waitForQueue: false)
         await settle(mock)
         mock.setState(.ready(version: "1.0-mock"), waitForQueue: false)
-        await settle(mock)
+        // HAKit calls back on the connection's own queue now, so the state reaches the main queue a hop later.
+        for _ in 0..<100 where count < 2 { try? await Task.sleep(for: .milliseconds(10)) }
         #expect(count == 2, "First connect and the reconnect")
     }
 
