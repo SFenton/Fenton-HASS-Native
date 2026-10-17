@@ -141,8 +141,9 @@ final class ModalSizingJourneyTests: JourneyTestCase {
             sleep(1)
             guard let capture = RenderedContrast.Capture.screen() else { return XCTFail("No capture") }
             let cancel = app.buttons["filterSheet.cancel"].frame
-            // Between Cancel and the title, where rows would show through a material.
-            let x = (cancel.maxX + apply.frame.minX) / 2 - (apply.frame.minX - cancel.maxX) * 0.35
+            // Just right of Cancel, clear of the title (a folded Duo's title starts close), where rows would show
+            // through a material.
+            let x = cancel.maxX + 6
             let y = cancel.midY
             let band = RenderedContrast.luminance(at: CGPoint(x: x, y: y), in: capture)
             let ground = RenderedContrast.luminance(at: CGPoint(x: cancel.minX - 12, y: cancel.maxY + 30), in: capture)
