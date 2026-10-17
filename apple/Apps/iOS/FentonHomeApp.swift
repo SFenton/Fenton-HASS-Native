@@ -1,3 +1,4 @@
+import FentonActivityModel
 import HassCore
 import HassUI
 import SwiftUI
@@ -32,16 +33,26 @@ final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
         LocationLaunchPolicy.isEnabled(isPresenceDevice: LocationReporter.deviceIsPresenceDevice)
             ? LocationCoordinator.system(mobileApp: push.mobileApp) : nil
 
+    /// The Home Live Activity: tokens for Home Assistant, the foreground start, and the activity's buttons
+    /// (`.agents/platforms/apple/live-activities.md`). Created with the delegate so a button pressed on the Lock Screen,
+    /// which launches the app in the background, finds its handler.
+    private(set) lazy var liveActivities = LiveActivityLaunchPolicy.isEnabled()
+        ? LiveActivityCoordinator(client: SystemLiveActivityClient(), mobileApp: push.mobileApp)
+        : LiveActivityCoordinator.inert(mobileApp: push.mobileApp)
+
     /// The app's one session (sign-in, connection, route). Made once here: `FentonHomeApp.body` and `RootView.init`
     /// run again whenever SwiftUI rebuilds the scene.
-    @MainActor lazy var session = AppSession(push: push, location: location)
+    @MainActor lazy var session = AppSession(push: push, location: location, liveActivities: liveActivities)
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // Set before launch finishes, so a tap that launched the app is delivered.
         UNUserNotificationCenter.current().delegate = self
+        // The Live Activity's buttons run in this process, launched in the background: install their handler first.
+        LiveActivityIntentRuntime.install(liveActivities.isEnabled ? liveActivities.intentHandler : nil)
         if let location { Task { await location.resume() } }
         #if DEBUG
+        LiveActivityDebugLaunch.startIfRequested(client: SystemLiveActivityClient())
         DebugSystemSettings.applyIfRequested()
         PushPreview.scheduleIfRequested()
         if let command = PushPreview.command() {

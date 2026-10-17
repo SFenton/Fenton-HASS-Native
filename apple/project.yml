@@ -23,9 +23,15 @@ targets:
     platform: iOS
     sources:
       - path: Apps/iOS
+      # The Live Activity's App Intents, compiled into the app (they run here) and the widget extension (it draws them).
+      - path: Apps/Shared
     dependencies:
       - package: FentonHomeApple
         product: HassUI
+      - package: FentonHomeApple
+        product: FentonActivityModel
+      # The Home Live Activity (Lock Screen, Dynamic Island) draws in this extension.
+      - target: FentonHomeWidgets
       # Finishes Fenton Push notifications: buttons, camera snapshots (`.agents/platforms/apple/push.md`).
       - target: FentonHomeNotificationService
       # The live camera view of an expanded camera notification.
@@ -65,6 +71,14 @@ targets:
           - remote-notification
         UILaunchScreen:
           UIColorName: LaunchBackground
+        # The Home Live Activity (`.agents/platforms/apple/live-activities.md`). NSSupportsLiveActivitiesFrequentUpdates
+        # stays off until Apple throttles the pushes (spec, Engine rules 4).
+        NSSupportsLiveActivities: true
+        # A tap on the activity opens the focused job's page (`fentonhome://liveactivity?url=…`, ActivityDeepLink).
+        CFBundleURLTypes:
+          - CFBundleURLName: com.sfenton.home.liveactivity
+            CFBundleURLSchemes:
+              - fentonhome
         # Lets ProMotion iPhones scroll and animate at 120 Hz; without it the app is capped at 60 Hz.
         CADisableMinimumFrameDurationOnPhone: true
         # At home the app talks to Home Assistant on its home network address (plain HTTP on port 8123) instead of
@@ -149,6 +163,40 @@ targets:
             UNNotificationExtensionCategory: fenton.camera
             UNNotificationExtensionInitialContentSizeRatio: 0.5625
             UNNotificationExtensionDefaultContentHidden: false
+  FentonHomeWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Apps/Widgets
+      - path: Apps/Shared
+    dependencies:
+      # The model and the views only: no HAKit, no networking, no Keychain.
+      - package: FentonHomeApple
+        product: FentonActivityModel
+      - package: FentonHomeApple
+        product: FentonActivityViews
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    entitlements:
+      path: Apps/Widgets/FentonHomeWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sfenton.home
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.Widgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_DEBUG_DYLIB: NO
+        # An extension may only use extension-safe API (HassDesign draws the activity's colours).
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: Apps/Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Home Live Activities
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
   FentonHomeWatch:
     type: application
     platform: watchOS

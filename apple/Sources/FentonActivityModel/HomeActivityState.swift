@@ -138,6 +138,20 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
         return copy
     }
 
+    /// A stale activity (no update before its stale date) says so instead of leaving a countdown that has passed.
+    public func markingUpdating() -> HomeActivityState {
+        var copy = self
+        copy.jobs = jobs.map { job in
+            var job = job
+            if job.phase != .done { job.status = Self.updatingStatus }
+            return job
+        }
+        return copy
+    }
+
+    /// The status of every job in a stale activity.
+    public static let updatingStatus = "Updating…"
+
     // MARK: - Ordering
 
     /// Most urgent first: attention, then the soonest end, then jobs without an end, then finished jobs; ties by title.

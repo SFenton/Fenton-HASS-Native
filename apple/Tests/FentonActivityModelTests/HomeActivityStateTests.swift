@@ -94,6 +94,14 @@ struct HomeActivityStateTests {
         #expect(state.stopping("missing") == state)
     }
 
+    @Test func aStaleActivityReadsUpdatingExceptForFinishedJobs() {
+        let state = ActivityFixtures.state([ActivityFixtures.dishwasher(), ActivityFixtures.dishwasher(phase: .done)])
+        let stale = state.markingUpdating()
+        #expect(stale.jobs[0].status == HomeActivityState.updatingStatus)
+        #expect(stale.jobs[1].status == state.jobs[1].status)
+        #expect(stale.jobs[0].endTs == state.jobs[0].endTs)
+    }
+
     @Test func urgencyPutsAttentionThenSoonestEndThenOpenEndedThenDone() {
         let attention = ActivityJob(id: "a", kind: "x", title: "Zed", status: "", phase: .attention, endTs: 9_999)
         let soon = ActivityJob(id: "s", kind: "x", title: "Soon", status: "", endTs: 100)
