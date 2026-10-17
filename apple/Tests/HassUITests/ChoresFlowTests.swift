@@ -110,6 +110,31 @@ struct ChoresFlowTests {
         #expect(call.contains("todo.update_item"), "\(call)")
     }
 
+    /// A resident's page reads the lists that include unassigned chores, so what the Chores tab, Profile and the badge
+    /// count is listed on the page too (owner, 2026-10-16: the aroma pad chores have no assignee).
+    @Test func aResidentsPageListsItsChoresAndCheckingOneOffTakesItAway() async throws {
+        let driver = await open("stephens-chores")
+        defer { driver.close() }
+        let item = try #require(await driver.waitFor("todo.item.12--fixture"))
+        #expect(item.spoken == "Clean the gutters" && item.value.hasPrefix("Not done"))
+        #expect(await driver.node("todo.edit.12--fixture") != nil, "each chore has its edit button")
+        #expect(await driver.press(item.identifier) { !$0.contains { $0.identifier == "todo.item.12--fixture" } }, "the checked chore leaves the list")
+        let call = await lastCall(driver) { $0.contains("update_item") }
+        #expect(call.contains("todo.update_item 12--fixture"), "\(call)")
+    }
+
+    @Test func aQuickLinkOpensItsPage() async throws {
+        let driver = await withLaunch(environment: [:]) {
+            let driver = AXWindow(NavigationStack { ComponentGallery(page: .chores) }, size: Self.phone)
+            await driver.window.settle(0.8)
+            return driver
+        }
+        defer { driver.close() }
+        let link = try #require(await driver.waitFor("chores.link.stephs-chores"))
+        #expect(link.spoken == "Steph's Chores")
+        #expect(await driver.press(link.identifier) { $0.contains { $0.identifier == "todo.page.stephs-chores" } }, "the tile opens Steph's Chores")
+    }
+
     @Test func aChoreTaskIsDeletedAfterAConfirmation() async throws {
         let driver = await open("stephens-chores")
         defer { driver.close() }

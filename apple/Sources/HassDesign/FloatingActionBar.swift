@@ -237,7 +237,11 @@ private struct BarGlass<S: Shape>: ViewModifier {
     @available(iOS 26.0, macOS 26.0, *)
     private var glass: Glass {
         var glass = Glass.regular
+        // Tinted glass is iOS only: a tint blanks the whole macOS hosted window the unit tests snapshot (every pixel one
+        // colour, measured 2026-10-17 on macOS 27), while the same glass untinted draws; iOS draws it correctly.
+        #if os(iOS)
         if let tint { glass = glass.tint(tint) }
+        #endif
         return isInteractive ? glass.interactive() : glass
     }
     #endif
