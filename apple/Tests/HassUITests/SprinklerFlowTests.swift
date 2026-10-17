@@ -95,5 +95,23 @@ struct SprinklerFlowTests {
         let call = await lastCall(driver, "bhyve.update_program")
         #expect(call.hasPrefix("Last call: bhyve.update_program"), "\(call)")
     }
+
+    @Test func daysAndStartTimesAreEditedBeforeApplying() async throws {
+        let driver = await open(detail: "schedule-0")
+        defer { driver.close() }
+        let nodes = await driver.wait { $0.contains { $0.identifier == "sprinkler.schedule.apply" } }
+        let before = nodes.filter { $0.identifier.hasPrefix("sprinkler.schedule.day.") }.map(\.isSelected)
+        #expect(before.count == 7)
+        // A day button toggles its own selection.
+        let day = "sprinkler.schedule.day.0"
+        let wasSelected = nodes.first { $0.identifier == day }?.isSelected ?? false
+        #expect(await driver.press(day) { $0.contains { $0.identifier == day && $0.isSelected != wasSelected } }, "pressing a day flips it")
+        // A start time is added and removed again.
+        #expect(await driver.press("sprinkler.schedule.addTime") { $0.contains { $0.identifier == "sprinkler.schedule.time.1" } }, "Add Another Start Time adds a row")
+        let remove = try #require(await driver.node(label: "Remove Start Time 2"))
+        #expect(await driver.press(remove))
+        let removed = await driver.wait { !$0.contains { $0.identifier == "sprinkler.schedule.time.1" } }
+        #expect(!removed.contains { $0.identifier == "sprinkler.schedule.time.1" }, "Remove drops it")
+    }
 }
 #endif

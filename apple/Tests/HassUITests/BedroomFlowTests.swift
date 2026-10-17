@@ -76,5 +76,17 @@ struct BedroomFlowTests {
         let call = await lastCall(driver)
         #expect(call != "no last-call line" && call != "Last call: None", "saving sent a service call: \(call)")
     }
+
+    @Test func theWakeAlarmEditorOffersDaysRampsAnEnabledSwitchAndBeds() async throws {
+        let driver = await open(sheet: "wake-light")
+        defer { driver.close() }
+        #expect(await driver.press("wake.add") { $0.contains { $0.identifier == "wake.editor.save" } }, "Add opens the editor")
+        let nodes = await driver.nodes()
+        #expect(nodes.contains { $0.identifier.hasPrefix("wake.editor.day.") }, "a weekly alarm asks for its days")
+        #expect(!nodes.contains { $0.identifier == "wake.editor.date" }, "and not for a date")
+        let outcomes = await driver.pressEach(prefixes: ["wake.editor.day.", "wake.editor.ramp.", "wake.editor.enabled", "wake.editor.bed."],
+                                              inSheet: true)
+        #expect(outcomes.count >= 8, "days, ramps, the enabled switch and the bed toggles can all be pressed: \(outcomes.count)")
+    }
 }
 #endif

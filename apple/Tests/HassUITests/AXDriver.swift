@@ -14,6 +14,52 @@ import SwiftUI
 /// typed by setting a field's value. The process must be trusted for accessibility (``isAvailable``); tests that need
 /// it skip when it is not, so the coverage gate on a machine without that permission reads low rather than passing
 /// without them (`.agents/testing/apple/README.md`, Driving hosted windows).
+/// Ends the test host, with a message, when a sweep stops advancing: a control that raises a system panel (a menu, a
+/// picker, a permission prompt) holds the main thread in a modal loop, and nothing in the test can get it back.
+final class SweepWatchdog: @unchecked Sendable {
+    static let shared = SweepWatchdog()
+    private let lock = NSLock()
+    private var current = ""
+    private var stamp = Date()
+    private var armed = false
+    private var started = false
+
+    func mark(_ action: String, armed: Bool = true) {
+        // The last thing pressed survives a crash.
+        try? action.write(toFile: NSTemporaryDirectory() + "sweep-last-press.txt", atomically: false, encoding: .utf8)
+        lock.lock()
+        current = action
+        stamp = Date()
+        self.armed = armed
+        let start = !started
+        started = true
+        lock.unlock()
+        if start {
+            Thread.detachNewThread { [self] in
+                while true {
+                    Thread.sleep(forTimeInterval: 5)
+                    lock.lock()
+                    let stuck = armed && Date().timeIntervalSince(stamp) > 90
+                    let action = current
+                    lock.unlock()
+                    if stuck {
+                        let message = "Test host stuck for 90 s after: \(action). A system panel probably took the main thread; add the control to ControlSweepTests.endsTheSweep.\n"
+                        FileHandle.standardError.write(Data(message.utf8))
+                        try? message.write(toFile: NSTemporaryDirectory() + "sweep-hang.txt", atomically: true, encoding: .utf8)
+                        // Where the main thread is, for whoever finds the control that did it.
+                        let sample = Process()
+                        sample.executableURL = URL(fileURLWithPath: "/usr/bin/sample")
+                        sample.arguments = ["\(ProcessInfo.processInfo.processIdentifier)", "2", "-file", NSTemporaryDirectory() + "sweep-hang-sample.txt"]
+                        try? sample.run()
+                        sample.waitUntilExit()
+                        _exit(3)
+                    }
+                }
+            }
+        }
+    }
+}
+
 @MainActor
 final class AXWindow {
     /// Whether a test can drive windows on this machine.
@@ -38,6 +84,8 @@ final class AXWindow {
         let label: String
         let value: String
         let isEnabled: Bool
+        /// Whether the element carries the selected trait (a chosen day, a picked tab).
+        let isSelected: Bool
         let frame: CGRect
 
         /// The text a screen reader would speak for the element: its label, else its title.
@@ -227,9 +275,12 @@ final class AXWindow {
         var description: String { "\(identifier) -> \(call ?? "nothing")" }
     }
 
-    /// Presses, one after another, every enabled button, switch and radio button whose identifier starts with `prefix`,
-    /// and records which of them changed the last-call line (a press that opens a page or a sheet sends nothing).
-    func pressEach(prefixes: [String], inSheet: Bool = false, skipping: (String) -> Bool = { _ in false }, lastCall id: String = "gallery.lastCall") async -> [PressOutcome] {
+    /// Presses, one after another, every enabled button, switch and radio button whose identifier starts with one of
+    /// `prefixes` (in the sheet only, when `inSheet`), and records which of them changed the last-call line (a press that
+    /// opens a page or a sheet sends nothing). A sheet a press opens is swept too, `descend` levels deep, then closed;
+    /// an alert a press raises inside a sheet is closed so the sweep goes on.
+    func pressEach(prefixes: [String], inSheet: Bool = false, descend: Int = 0, skipping: (String) -> Bool = { _ in false },
+                   lastCall id: String = "gallery.lastCall") async -> [PressOutcome] {
         let roles: Set<String> = ["AXButton", "AXCheckBox", "AXRadioButton"]
         var seen = Set<String>()
         let identifiers = await nodes(sheetOnly: inSheet).filter { node in
@@ -238,7 +289,12 @@ final class AXWindow {
         }.map(\.identifier).filter { seen.insert($0).inserted }
         var outcomes: [PressOutcome] = []
         var before = await text(id)
+        defer { SweepWatchdog.shared.mark("sweep finished", armed: false) }
         for identifier in identifiers {
+            SweepWatchdog.shared.mark("pressing \(identifier)")
+            let sheetBefore = hosted.window.attachedSheet
+            // A page-level press with a sheet still up would land on the sheet.
+            if !inSheet, sheetBefore != nil { break }
             guard let node = await node(identifier), await press(node) else { continue }
             var after = await text(id)
             if after == before {
@@ -248,8 +304,32 @@ final class AXWindow {
             }
             outcomes.append(PressOutcome(identifier: identifier, call: after != before ? after : nil))
             before = after
+            if inSheet, let sheet = hosted.window.attachedSheet, let alert = sheet.attachedSheet {
+                sheet.endSheet(alert)
+                await hosted.settle(0.4)
+            } else if !inSheet, let sheet = hosted.window.attachedSheet, sheet !== sheetBefore {
+                if descend > 0 {
+                    outcomes += await pressEach(prefixes: [""], inSheet: true, descend: descend - 1, skipping: skipping, lastCall: id)
+                }
+                await closeSheet()
+            }
         }
         return outcomes
+    }
+
+    /// Closes the sheet the window has up the way a person does, by its close or cancel button (ending the sheet from
+    /// outside leaves SwiftUI's presentation state set, so it comes back).
+    func closeSheet() async {
+        guard let open = hosted.window.attachedSheet else { return }
+        if let alert = open.attachedSheet {
+            open.endSheet(alert)
+            await hosted.settle(0.3)
+        }
+        let buttons = await nodes(sheetOnly: true).filter { $0.role == "AXButton" && $0.isEnabled }
+        let close = buttons.first { button in ["close", "cancel"].contains { button.identifier.lowercased().contains($0) } }
+            ?? buttons.first { ["Close", "Cancel", "Done"].contains($0.spoken) }
+        if let close { _ = await press(close) }
+        for _ in 0..<15 where hosted.window.attachedSheet != nil { await hosted.settle(0.2) }
     }
 
     /// Replaces the text of a field.
@@ -291,7 +371,7 @@ final class AXWindow {
 
     private nonisolated static let attributes = [
         kAXRoleAttribute, kAXIdentifierAttribute, kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute,
-        kAXEnabledAttribute, kAXPositionAttribute, kAXSizeAttribute, kAXChildrenAttribute,
+        kAXEnabledAttribute, kAXPositionAttribute, kAXSizeAttribute, kAXChildrenAttribute, kAXSelectedAttribute,
     ] as [String]
 
     /// A window's frame as accessibility reports it: screen coordinates with the origin at the top left.
@@ -367,9 +447,10 @@ final class AXWindow {
         }
         let enabled = (array.count > 5 ? (array[5] as? NSNumber)?.boolValue : nil) ?? true
         let children = (array.count > 8 ? array[8] as? [AXUIElement] : nil) ?? []
+        let selected = (array.count > 9 ? (array[9] as? NSNumber)?.boolValue : nil) ?? false
         let node = Node(
             element: element, role: string(0), identifier: string(1), title: string(2), label: string(3), value: string(4),
-            isEnabled: enabled, frame: CGRect(origin: point(6), size: size(7))
+            isEnabled: enabled, isSelected: selected, frame: CGRect(origin: point(6), size: size(7))
         )
         return (node, children)
     }
