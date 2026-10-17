@@ -289,9 +289,6 @@ final class ScrollOffsetProbe: UIView {
     private func attach() {
         guard observation == nil else { return }
         if let scroll = Self.pageScrollView(near: self) {
-            #if DEBUG
-            NSLog("HeaderEdgeFade: tracking %@ after %d tries", String(describing: type(of: scroll)), attempts)
-            #endif
             report(scroll)
             observation = scroll.observe(\.contentOffset, options: [.new]) { [weak self] scroll, _ in
                 MainActor.assumeIsolated { self?.report(scroll) }
@@ -300,7 +297,10 @@ final class ScrollOffsetProbe: UIView {
         }
         attempts += 1
         guard attempts <= 10 else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in self?.attach() }
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            self?.attach()
+        }
     }
 
     private func report(_ scroll: UIScrollView) {
