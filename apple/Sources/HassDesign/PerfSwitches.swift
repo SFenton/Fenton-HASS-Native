@@ -1,0 +1,27 @@
+import Foundation
+
+/// Launch-time switches that turn one costly layer off for an A/B run (`.agents/testing/apple/performance.md`, "Scroll
+/// cost"). The simulator cannot show what a layer costs the GPU, so a phone is launched twice, once with the layer and once
+/// without (`FENTON_PERF_DISABLE=headerFade,backdrop`), and the two scroll runs are compared. Everything is on in a normal
+/// launch; nothing reads these in the app's own flows.
+public enum PerfSwitches {
+    /// A layer that can be turned off.
+    public enum Layer: String, CaseIterable, Sendable {
+        /// The mask that fades content out under the navigation bar (``SwiftUICore/View/headerEdgeFade()``): a full-page
+        /// offscreen pass while a page scrolls.
+        case headerFade
+        /// The blurred house photo behind pages and its scrim (the plain base colour is drawn instead).
+        case backdrop
+    }
+
+    /// The layers this launch turned off.
+    public static let disabled: Set<Layer> = parse(ProcessInfo.processInfo.environment["FENTON_PERF_DISABLE"])
+
+    /// Whether `layer` is turned off for this launch.
+    public static func isOff(_ layer: Layer) -> Bool { disabled.contains(layer) }
+
+    /// The layers named in a comma separated list (unknown names are ignored).
+    static func parse(_ value: String?) -> Set<Layer> {
+        Set((value ?? "").split(separator: ",").compactMap { Layer(rawValue: $0.trimmingCharacters(in: .whitespaces)) })
+    }
+}

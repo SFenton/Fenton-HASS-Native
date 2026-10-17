@@ -45,13 +45,24 @@ public final class HassConnection {
     @ObservationIgnored let connection: HAConnection
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
     @ObservationIgnored private var statesSubscription: HACancellable?
-    @ObservationIgnored private var stateObserver: NSObjectProtocol?
+    // Read in `deinit`, which is nonisolated; only the main actor writes it.
+    @ObservationIgnored nonisolated(unsafe) private var stateObserver: NSObjectProtocol?
     @ObservationIgnored private var saveTask: Task<Void, Never>?
-    /// The HAKit entities last applied, so each delivery converts only what changed.
-    @ObservationIgnored private var lastDelivered: [String: HAEntity] = [:]
+    /// The HAKit entities last diffed, so each delivery converts only what changed. Touched only on ``deltaQueue``.
+    @ObservationIgnored nonisolated(unsafe) private var lastDelivered: [String: HAEntity] = [:]
+    /// The newest delivery not yet diffed (``receive(_:)``). Touched only on ``deltaQueue``.
+    @ObservationIgnored nonisolated(unsafe) private var pendingDelivery: Delivery?
+    /// HAKit's callback queue, in place of the main queue. HAKit rebuilds its whole set of entities (thousands) on every
+    /// change and hands it over, and the diff against the last set hashes and compares them all again: together over
+    /// half of the main thread's CPU time, about 9 ms per delivery several times a second, longer than a 120 Hz frame
+    /// (`.agents/testing/apple/performance.md`, "Scroll cost"). Both now run here and only the changed entities
+    /// reach the main thread.
+    @ObservationIgnored private let deltaQueue = DispatchQueue(label: "com.sfenton.home.entity-delta", qos: .userInitiated)
     /// The app wants the socket open (between ``connect(subscribingToStates:)`` and ``disconnect()``).
     @ObservationIgnored var wantsConnection = false
     @ObservationIgnored private var routeTask: Task<Void, Never>?
+    /// Gauges for what this connection registers (`ResourceCensus`).
+    @ObservationIgnored private var census: ResourceCensus.Registration?
 
     /// How long live updates are batched before the disk snapshot is rewritten.
     static let snapshotDebounce: Duration = .seconds(10)
@@ -95,6 +106,7 @@ public final class HassConnection {
         self.snapshotCache = snapshotCache
         self.connection = connection
         self.route = route
+        connection.callbackQueue = deltaQueue
 
         if let snapshot = snapshotCache.load(for: server) {
             store.replaceAll(snapshot.entities, freshness: .snapshot(savedAt: snapshot.savedAt))
@@ -111,6 +123,24 @@ public final class HassConnection {
         route?.startWatching { [weak self] in
             Task { @MainActor in self?.networkDidChange() }
         }
+
+        census = ResourceCensus.shared.register { [weak self] in self?.liveResources ?? [:] }
+    }
+
+    /// What this connection has registered right now (`ResourceCensus`): each is 0 or 1, and a resume leaves them as
+    /// they were.
+    var liveResources: [String: Int] {
+        [
+            "Connection.statesSubscription": statesSubscription == nil ? 0 : 1,
+            "Connection.stateObserver": stateObserver == nil ? 0 : 1,
+            "Connection.saveTask": saveTask == nil ? 0 : 1,
+            "Connection.routeTask": routeTask == nil ? 0 : 1,
+        ]
+    }
+
+    deinit {
+        // A block observer stays registered until it is removed; dropping the token would leave it behind.
+        if let stateObserver { NotificationCenter.default.removeObserver(stateObserver) }
     }
 
     /// Where HAKit connects: the route's current URL (HAKit reads this on every connect and swaps the socket
@@ -129,10 +159,7 @@ public final class HassConnection {
         connection.connect()
         refreshRoute()
         guard subscribingToStates, statesSubscription == nil else { return }
-        statesSubscription = connection.caches.states().subscribe { [weak self] _, cached in
-            let entities = cached.all
-            MainActor.assumeIsolated { self?.receive(entities) }
-        }
+        statesSubscription = connection.caches.states().subscribe(Self.statesHandler(for: self))
     }
 
     /// Closes the websocket and saves the snapshot. The store keeps its values so the UI does not blank.
@@ -211,7 +238,7 @@ public final class HassConnection {
             data: data
         )
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            connection.send(request) { result in
+            connection.send(request) { @Sendable result in
                 switch result {
                 case .success: continuation.resume()
                 case let .failure(error): continuation.resume(throwing: error)
@@ -272,13 +299,48 @@ public final class HassConnection {
         return value
     }
 
-    /// Applies one HAKit delivery. HAKit's states cache always delivers the full set (thousands of entities)
-    /// on every change, so converting and comparing all of them per event cost whole frames while scrolling.
-    /// Only entities whose `last_updated` or state moved are converted (`HAEntity ==` compares those).
-    func receive(_ entities: Set<HAEntity>) {
-        let interval = Telemetry.begin(Telemetry.Name.entityUpdate)
-        let delta = Self.delta(from: lastDelivered, to: entities)
+    /// One HAKit delivery: every entity the server has. HAKit's entities hold untyped attribute dictionaries, so the set is
+    /// not `Sendable`; it is immutable here and only read on ``deltaQueue``.
+    struct Delivery: @unchecked Sendable {
+        var entities: Set<HAEntity>
+    }
+
+    /// What a delivery changed, ready to apply on the main thread.
+    struct Applied: Sendable {
+        var changed: [EntityState]
+        var removed: [String]
+        var isFirst: Bool
+    }
+
+    /// The states subscription's handler. Built outside the main actor on purpose: a closure written in ``connect(subscribingToStates:)``
+    /// would inherit its isolation, and HAKit calls it on ``deltaQueue``, where Swift traps a main-actor closure.
+    nonisolated private static func statesHandler(for connection: HassConnection) -> (HACancellable, HACachedStates) -> Void {
+        { [weak connection] _, cached in connection?.receive(Delivery(entities: cached.all)) }
+    }
+
+    /// Keeps the newest delivery and schedules a pass behind whatever is queued, so a burst of changes is diffed once: every
+    /// delivery is the whole set, and the newest says everything the older ones did. Runs on ``deltaQueue`` only.
+    nonisolated func receive(_ delivery: Delivery) {
+        pendingDelivery = delivery
+        deltaQueue.async { [weak self] in
+            guard let self, let latest = self.pendingDelivery else { return }
+            self.pendingDelivery = nil
+            self.process(latest)
+        }
+    }
+
+    /// Diffs one HAKit delivery against the last and applies what changed on the main actor, in delivery order.
+    /// Runs on ``deltaQueue`` only.
+    nonisolated func process(_ delivery: Delivery) {
+        let delta = Self.delta(from: lastDelivered, to: delivery.entities)
         lastDelivered = delta.delivered
+        let applied = Applied(changed: delta.changed, removed: delta.removed, isFirst: delta.isFirst)
+        DispatchQueue.main.async { MainActor.assumeIsolated { self.apply(applied) } }
+    }
+
+    /// Applies one delivery's changes to the store. The only part of a delivery that runs on the main thread.
+    func apply(_ delta: Applied) {
+        let interval = Telemetry.begin(Telemetry.Name.entityUpdate)
         if delta.isFirst {
             // The first live set replaces the disk snapshot, dropping entities the server no longer has.
             store.replaceAll(delta.changed, freshness: .live)
@@ -306,7 +368,7 @@ public final class HassConnection {
     }
 
     /// Diffs `entities` against the previous delivery, converting only the entities that changed.
-    static func delta(from previous: [String: HAEntity], to entities: Set<HAEntity>) -> Delta {
+    nonisolated static func delta(from previous: [String: HAEntity], to entities: Set<HAEntity>) -> Delta {
         var delivered: [String: HAEntity] = [:]
         delivered.reserveCapacity(entities.count)
         var changed: [EntityState] = []

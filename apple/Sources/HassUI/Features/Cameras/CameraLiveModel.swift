@@ -3,6 +3,7 @@ import CoreImage
 import Foundation
 import QuartzCore
 import HassCore
+import HassTelemetry
 import Observation
 #if canImport(WebRTC) && canImport(UIKit)
 import WebRTC
@@ -32,10 +33,18 @@ final class CameraLiveModel {
     private(set) var isMuted = true
     /// Whether a stream is connecting or playing (``start(connection:)`` ran and ``stop()`` has not).
     private(set) var isRunning = false
+    /// When the stream last stopped showing frames (stalled, or suspended in the background); cleared by the next
+    /// first frame. The viewer's reconnecting pill reads "Last live 6:51 PM" from it.
+    private(set) var lastLiveAt: Date?
 
     let camera: HomeConfig.Camera
     /// Called when every mode failed, so the pool can drop the stream's retention.
     @ObservationIgnored var onExhausted: (() -> Void)?
+    /// Called when a stream shows its first frame (the pool forgets the camera's failed attempts).
+    @ObservationIgnored var onLive: (() -> Void)?
+    /// Called when a live stream stopped delivering frames and was taken down, so the pool can restart it with its
+    /// retry backoff.
+    @ObservationIgnored var onStalled: (() -> Void)?
     /// Called when ``isMuted`` changes, so the pool can update the app's audio session.
     @ObservationIgnored var onMuteChange: (() -> Void)?
     @ObservationIgnored private var hlsVideoOutput: AVPlayerItemVideoOutput?
@@ -52,6 +61,20 @@ final class CameraLiveModel {
     /// KVO on the HLS item and player. (Combine's `publisher(for:).values` delivered only the initial
     /// values here, so a playing stream never reported its first frame.)
     @ObservationIgnored private var hlsObservations: [NSKeyValueObservation] = []
+    @ObservationIgnored private var census: ResourceCensus.Registration?
+    /// Watches a live stream's frame count; nil unless a stream is live.
+    @ObservationIgnored private var watchdog: Task<Void, Never>?
+    @ObservationIgnored private let stallAfter: Duration
+    @ObservationIgnored private let stallCheckInterval: Duration
+    /// Replaces how the frame count is read (tests, and the Debug freeze below).
+    @ObservationIgnored private let frameCounter: (@MainActor (CameraLiveModel) -> Int?)?
+    #if DEBUG
+    /// Debug fault injection (`FENTON_CAMERA_FREEZE_ONCE=<go2rtc stream id>`): the named camera's frame count stops
+    /// advancing the first time it is read while live, as a camera that stops sending does, so a journey can watch the
+    /// watchdog restart the stream. Only that first stream freezes.
+    @ObservationIgnored private var frozenCount: Int?
+    @ObservationIgnored private var didFreeze = false
+    #endif
 
     // MARK: - Init
 
@@ -60,12 +83,36 @@ final class CameraLiveModel {
     ///   - modes: Modes to try in order; defaults to ``defaultModes``.
     ///   - opener: Replaces the network opening of each mode (tests).
     ///   - firstFrameTimeout: Replaces each mode's first-frame timeout (tests).
+    ///   - stallAfter: How long a live stream's frame count may stay put before it is taken down and restarted
+    ///     (web `FRAME_STALL_MS`, 8 s).
+    ///   - stallCheckInterval: How often the frame count is read (web `FRAME_CHECK_MS`, 1 s).
+    ///   - frameCounter: Replaces how the frame count is read (tests).
     init(camera: HomeConfig.Camera, modes: [CameraStreamMode] = CameraLiveModel.defaultModes, opener: CameraStreamOpener? = nil,
-         firstFrameTimeout: @escaping (CameraStreamMode) -> Duration = \.firstFrameTimeout) {
+         firstFrameTimeout: @escaping (CameraStreamMode) -> Duration = \.firstFrameTimeout,
+         stallAfter: Duration = FrameStallDetector.defaultStallAfter, stallCheckInterval: Duration = .seconds(1),
+         frameCounter: (@MainActor (CameraLiveModel) -> Int?)? = nil) {
         self.camera = camera
         self.opener = opener
         self.firstFrameTimeout = firstFrameTimeout
+        self.stallAfter = stallAfter
+        self.stallCheckInterval = stallCheckInterval
+        self.frameCounter = frameCounter
         state = CameraStreamState(modes: modes)
+        census = ResourceCensus.shared.register { [weak self] in self?.liveResources ?? [:] }
+    }
+
+    /// What this model holds right now (`ResourceCensus`): players, the attempt task and KVO observations.
+    var liveResources: [String: Int] {
+        var players = hlsPlayer == nil ? 0 : 1
+        #if canImport(WebRTC) && canImport(UIKit)
+        players += webRTCPeer == nil ? 0 : 1
+        #endif
+        return [
+            "Camera.players": players,
+            "Camera.attempts": attempt == nil ? 0 : 1,
+            "Camera.watchdogs": watchdog == nil ? 0 : 1,
+            "Camera.observations": hlsObservations.count,
+        ]
     }
 
     /// WebRTC then HLS on iOS. macOS (hosted tests) has no player views, so no live modes.
@@ -114,8 +161,10 @@ final class CameraLiveModel {
     /// connecting, so views put the snapshot back over the (now empty) player instead of leaving a black frame
     /// that read "Live" until the stream restarted. ``start(connection:)`` follows on return.
     func suspend() {
+        let wasLive = state.phase == .live
         stop()
         state.restart()
+        if wasLive { lastLiveAt = Date() }
         CameraTrace.record("\(camera.rtcStreamId) suspended")
     }
 
@@ -155,6 +204,67 @@ final class CameraLiveModel {
         state.firstFrame(mode)
         attempt?.cancel()
         attempt = nil
+        lastLiveAt = nil
+        startWatchdog()
+        onLive?()
+    }
+
+    // MARK: - Frame watchdog
+
+    /// Starts watching the live stream's frame count (web `stream-manager.js` `_checkFrames`). One task per live
+    /// stream, one read a second on the main actor: the WebRTC count is kept by the decoder's own callback and the
+    /// HLS count comes from the player's clock, so nothing runs per frame.
+    private func startWatchdog() {
+        watchdog?.cancel()
+        let current = generation
+        let limit = stallAfter
+        let interval = stallCheckInterval
+        watchdog = Task { [weak self] in
+            var detector = FrameStallDetector(stallAfter: limit)
+            while !Task.isCancelled {
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled, let self, current == self.generation else { return }
+                guard let frames = self.currentFrameCount() else { continue }
+                if detector.observe(frames: frames, at: .now) {
+                    self.stalled()
+                    return
+                }
+            }
+        }
+    }
+
+    /// A live stream stopped delivering frames: it goes back to its snapshot (the phase leaves live, so the tile's dot
+    /// goes and the snapshot cross-fades back over the player) and the pool restarts it with its retry backoff.
+    private func stalled() {
+        CameraTrace.record("\(camera.rtcStreamId) frames stopped for \(stallAfter), restarting")
+        stop()
+        state.restart()
+        lastLiveAt = Date()
+        onStalled?()
+    }
+
+    /// The live stream's frame count, or nil when nothing is playing.
+    private func currentFrameCount() -> Int? {
+        if let frameCounter { return frameCounter(self) }
+        let real = realFrameCount()
+        #if DEBUG
+        if let frozenCount { return frozenCount }
+        if !didFreeze, let real, ProcessInfo.processInfo.environment["FENTON_CAMERA_FREEZE_ONCE"] == camera.rtcStreamId {
+            didFreeze = true
+            frozenCount = real
+            CameraTrace.record("\(camera.rtcStreamId) frames frozen for the watchdog test")
+        }
+        #endif
+        return real
+    }
+
+    private func realFrameCount() -> Int? {
+        #if canImport(WebRTC) && canImport(UIKit)
+        if let peer = webRTCPeer { return peer.frames.frameCount }
+        #endif
+        guard let player = hlsPlayer else { return nil }
+        let seconds = player.currentTime().seconds
+        return seconds.isFinite ? Int(seconds * 4) : nil // A live playlist's play position advances while frames do.
     }
 
     // MARK: - Attempts
@@ -269,9 +379,20 @@ final class CameraLiveModel {
     }
 
     private func tearDownPlayers() {
+        watchdog?.cancel()
+        watchdog = nil
+        #if DEBUG
+        frozenCount = nil
+        #endif
         hlsObservations.forEach { $0.invalidate() }
         hlsObservations = []
-        hlsPlayer?.pause()
+        if let player = hlsPlayer {
+            // An emptied player releases its item, video output and AVFoundation's observers; dropping it alone left
+            // notification observers and timebases behind on every restart (`.agents/patterns/resume-lifecycle.md`).
+            player.pause()
+            if let output = hlsVideoOutput { player.currentItem?.remove(output) }
+            player.replaceCurrentItem(with: nil)
+        }
         hlsPlayer = nil
         hlsVideoOutput = nil
         #if canImport(WebRTC) && canImport(UIKit)

@@ -38,7 +38,12 @@ final class LightSheetsJourneyTests: JourneyTestCase {
         guard let capture = RenderedContrast.Capture.screen() else { return [] }
         let bar = app.navigationBars.containing(NSPredicate(format: "label == 'Close'")).firstMatch
         let top = bar.exists ? bar.frame : app.buttons["Close"].firstMatch.frame
-        let left = bar.exists ? top.minX : max(0, top.maxX - 400)
+        // The folded Duo draws Close on a side rail and insets its sheet about 8 pt from the window's edge, with the
+        // content (and its tiles) starting 23 pt in: the navigation bar's own left edge is inside Climate's room tiles
+        // there, so the column 14 pt in from the window is the sheet's ground (2026-10-16).
+        let window = app.windows.firstMatch.frame
+        let left = FentonHomeApp.family == .iPhoneDuo ? window.minX + 11
+            : bar.exists ? top.minX : max(0, top.maxX - 400)
         return stride(from: top.maxY + 40, to: top.maxY + 400, by: 45).compactMap {
             RenderedContrast.luminance(at: CGPoint(x: left + 3, y: $0), in: capture)
         }
