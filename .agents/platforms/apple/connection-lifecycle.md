@@ -5,7 +5,7 @@
 | Moment | Behavior |
 |---|---|
 | Cold launch | `EntitySnapshotCache` loads the last saved states from disk into `EntityStore` before the first frame, so Home draws real values immediately. `EntityStore.freshness` is `.snapshot(savedAt)` until the first live update |
-| Connected | HAKit's `caches.states()` (`subscribe_entities`) delivers the full set on every change. `HassConnection.receive` diffs it against the previous delivery by `last_updated` and state, converts only changed entities, and `EntityStore.apply(_:removing:freshness:)` updates only their boxes (converting every entity per event cost whole frames while scrolling) |
+| Connected | HAKit's `caches.states()` (`subscribe_entities`) delivers the full set on every change. HAKit's callback queue is the connection's own serial queue (`deltaQueue`), not the main queue, so HAKit rebuilding its set and `HassConnection.process` diffing it against the previous delivery by `last_updated` and state (a burst is diffed once, `receive`) both run off the main thread. Only the changed entities hop to the main actor, where `EntityStore.apply(_:removing:freshness:)` updates their boxes (`HassConnection.apply`). Diffing thousands of entities on the main thread took about 9 ms a delivery, five times a second: over half of its CPU time, and longer than a 120 Hz frame |
 | Background | The connection stays up for a grace period (`ConnectionLifecycle.backgroundGrace`, 30 s) so a quick app switch costs nothing, then disconnects. The snapshot is saved on entering background |
 | Foreground | Reconnect; HAKit resubscribes and the store diffs the fresh full state in place. Views keep their identity and scroll position |
 | Camera streams | Suspended on background (snapshot back over the player), restarted on return only after `HassConnection.ensureLive` shows the socket answers; see below |
@@ -13,6 +13,8 @@
 | At home | `LocalServerRoute` moves the websocket (and HAKit's REST calls) to Home Assistant's home network address. HAKit re-reads `connectionInfo` on every `connect()` and swaps the socket only when the URL changed, so the subscription, store and views stay put |
 
 Rules:
+
+- **Nothing on the main thread is proportional to the number of entities.** The house has thousands; a change to one of them must cost the main thread one box update. A closure passed to HAKit (`send`, `subscribe`) runs on `deltaQueue`: write it `@Sendable` or build it in a `nonisolated` function, because a closure that inherits `@MainActor` traps the first time HAKit calls it (`dispatch_assert_queue`, seen 2026-10-16). Measure with `tools/ios_scrollcost.sh` (`upd ms`, `>8ms`) and `testLiveEntityUpdatesStayOffTheMainThread` ([performance](../../testing/apple/performance.md)).
 - Never set a screen back to a loading state on reconnect. Show staleness with a quiet indicator, not by clearing content.
 - The snapshot is written with `.completeUntilFirstUserAuthentication` protection, debounced (10 s) and encoded off the main thread while live updates stream; entering background saves synchronously.
 - Optimistic UI goes through `OptimisticActions` ([optimistic-actions](../../patterns/optimistic-actions.md)): the intent shows until the matching live state arrives, the call fails, or the revert time passes.

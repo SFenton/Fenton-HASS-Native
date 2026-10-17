@@ -31,7 +31,7 @@ extension HassConnection {
     /// Fetches the signed-in user over the existing websocket.
     public func currentUser() async throws -> HassUser {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<HassUser, Error>) in
-            connection.send(.currentUser()) { result in
+            connection.send(.currentUser()) { @Sendable result in
                 switch result {
                 case let .success(user):
                     continuation.resume(returning: HassUser(id: user.id, name: user.name, isOwner: user.isOwner, isAdmin: user.isAdmin))

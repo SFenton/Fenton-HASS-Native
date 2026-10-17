@@ -138,7 +138,17 @@ struct HeaderEdgeFadeModifier: ViewModifier {
         )
     }
 
+    @ViewBuilder
     func body(content: Content) -> some View {
+        if PerfSwitches.isOff(.headerFade) {
+            // An A/B run without the fade (`FENTON_PERF_DISABLE=headerFade`); the bar's own background stays hidden.
+            content.modifier(HeaderBackgroundHidden())
+        } else {
+            faded(content)
+        }
+    }
+
+    private func faded(_ content: Content) -> some View {
         content
             .modifier(ScrollOffsetReader { scrollOffset = $0 })
             .modifier(HeaderBackgroundHidden())

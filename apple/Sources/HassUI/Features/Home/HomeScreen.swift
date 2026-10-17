@@ -20,7 +20,10 @@ struct HomeScreen: View {
                 // every pass, so the columns never feed back into the width that decides them
                 // (`.agents/design/apple/split-view.md`, Implementation).
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
-                .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { container = $0 }
+                // Vertical position dropped: this view scrolls, so its global frame changes every frame of a scroll, and
+                // a state write per frame re-evaluated the whole page (`.agents/testing/apple/performance.md`).
+                // The columns depend on the horizontal position and the size only, which a vertical scroll leaves alone.
+                .onGeometryChange(for: CGRect.self, of: HomeScreen.windowFrame(of:)) { container = $0 }
                 .padding(.vertical, HassTokens.Spacing.m)
         }
         .scrollTelemetry("Home")
@@ -43,6 +46,12 @@ struct HomeScreen: View {
 }
 
 extension HomeScreen {
+    /// The measured view's frame in window coordinates without its vertical position, so scrolling does not change it
+    /// (``HomeColumns/container(from:)``).
+    nonisolated static func windowFrame(of proxy: GeometryProxy) -> CGRect {
+        HomeColumns.container(from: proxy.frame(in: .global))
+    }
+
     /// One column everywhere, except the unfolded Duo in landscape: two halves on the hinge (mockup n1-duo-unfolded).
     @ViewBuilder
     private var content: some View {

@@ -65,6 +65,23 @@ struct OrientationPolicyTests {
 
 /// Home's two columns on the hinge (plan Phase 4, decision 5).
 struct HomeColumnsTests {
+    @Test func containerIgnoresTheVerticalScrollPosition() {
+        let atTop = CGRect(x: 8, y: 120, width: 951, height: 2400)
+        let scrolled = CGRect(x: 8, y: -840, width: 951, height: 2400)
+        #expect(HomeColumns.container(from: atTop) == HomeColumns.container(from: scrolled))
+        #expect(HomeColumns.container(from: scrolled) == CGRect(x: 8, y: 0, width: 951, height: 2400))
+    }
+
+    @Test func columnsAreTheSameAtEveryScrollPosition() {
+        let hinge = CGRect(x: 455.3, y: 0, width: 40.4, height: 669)
+        let atTop = CGRect(x: 0, y: 0, width: 951, height: 669)
+        let scrolled = CGRect(x: 0, y: -500, width: 951, height: 669)
+        let first = HomeColumns.resolve(container: HomeColumns.container(from: atTop), isRegularWidth: true, hinge: hinge)
+        let second = HomeColumns.resolve(container: HomeColumns.container(from: scrolled), isRegularWidth: true, hinge: hinge)
+        #expect(first != nil)
+        #expect(first == second)
+    }
+
     /// Unfolded Duo landscape as measured on the simulator: 951 pt wide, hinge band 455.3 to 495.7 pt, content ending at
     /// the system's trailing bar (868 pt).
     let hinge = CGRect(x: 455.3, y: 0, width: 40.4, height: 669)
