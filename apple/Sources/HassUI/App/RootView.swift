@@ -1,3 +1,4 @@
+import CoreSpotlight
 import HassCore
 import HassDesign
 import SwiftUI
@@ -13,6 +14,11 @@ public struct RootView: View {
     /// - Parameter session: The app's one session.
     public init(session: AppSession) {
         self.session = session
+    }
+
+    /// Opens the page of a tapped Spotlight result.
+    private func openSpotlightResult(_ activity: NSUserActivity) {
+        session.push.open(spotlightUserInfo: activity.userInfo)
     }
 
     public var body: some View {
@@ -42,6 +48,18 @@ public struct RootView: View {
             }
         }
         .observesDeviceSignals()
+        // A tapped Spotlight result (`SpotlightCatalog`): opens that page like a notification's link.
+        .onContinueUserActivity(CSSearchableItemActionType, perform: openSpotlightResult)
+        #if DEBUG
+        // Journeys cannot tap a Spotlight result inside the app: `FENTON_OPEN_SPOTLIGHT=<item id>` hands the same
+        // activity the system would to the same handler.
+        .task {
+            guard let identifier = ProcessInfo.processInfo.environment["FENTON_OPEN_SPOTLIGHT"] else { return }
+            let activity = NSUserActivity(activityType: CSSearchableItemActionType)
+            activity.userInfo = [CSSearchableItemActivityIdentifier: identifier]
+            openSpotlightResult(activity)
+        }
+        #endif
         #if DEBUG
         .overlay(alignment: .topLeading) {
             if ResourceCensusProbe.isEnabled { ResourceCensusProbe() }
