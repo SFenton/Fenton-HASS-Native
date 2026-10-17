@@ -45,5 +45,5 @@ struct WeatherCarouselPaging: Equatable {
     func clamped(_ page: Int) -> Int { max(0, min(pageCount - 1, page)) }
 
     /// `Page 2 of 4`, for the pagination element's value.
-    func pageDescription(_ page: Int) -> String { "Page \(clamped(page) + 1) of \(pageCount)" }
+    func pageDescription(_ page: Int) -> String { PagedRowMetrics.pageDescription(page, pageCount: pageCount) }
 }

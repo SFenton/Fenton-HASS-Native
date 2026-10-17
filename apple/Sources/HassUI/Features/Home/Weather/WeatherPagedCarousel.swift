@@ -6,10 +6,10 @@ import SwiftUI
 ///
 /// Each page holds ``WeatherCarouselPaging/perPage`` whole cells; scrolling snaps to pages in a UIKit paging scroll view
 /// (`PagedRow`), which moves without touching the sheet's view graph (and has no `scrollTargetBehavior`, which leaks
-/// observation state on every resume, `.agents/patterns/resume-lifecycle.md`). Every cell stays in the accessibility tree, so VoiceOver reaches each
-/// hour and scrolls the row itself; the page indicator is an adjustable element. Wide layouts (regular horizontal size class)
-/// add 44 pt previous and next buttons, because the web shows them for pointer devices. HIG: Scroll views, Page
-/// controls.
+/// observation state on every resume, `.agents/patterns/resume-lifecycle.md`). VoiceOver reads the hours on the page on
+/// screen (the scroll view exposes only those, and announces "Page 2 of 3" when it changes) and pages with a three-finger
+/// swipe, the adjustable page indicator or, on wide layouts (regular horizontal size class), 44 pt previous and next
+/// buttons, because the web shows them for pointer devices. HIG: Scroll views, Page controls.
 struct WeatherPagedCarousel<Cell: View>: View {
     var count: Int
     /// Hours per page in a compact and a regular layout at the default text size.
@@ -50,18 +50,12 @@ struct WeatherPagedCarousel<Cell: View>: View {
     }
 
     private func strip(paging: WeatherCarouselPaging) -> some View {
-        let current = paging.page(containing: firstVisible)
-        // Read here, not in the cell closure: the closure runs in the hosted view graph, where this view's environment is
-        // not installed and `showsControls` would read the default size class (nothing hidden).
-        let hidesOffPage = showsControls
         // The paging happens in UIKit (`PagedRow`): a swipe on a SwiftUI `ScrollView` nested in the sheet's own scroll view
         // committed its offset through the sheet's view graph on every frame.
         return PagedRow(itemCount: count, perPage: paging.perPage, firstVisible: $firstVisible, animatesPaging: !reduceMotion) { index in
+            // VoiceOver reads the page on screen (the hosted scroll view exposes only that page) and pages with Previous
+            // and Next, the indicator or a three-finger swipe.
             cell(index)
-                // With previous and next buttons, VoiceOver should read the page on screen and page with them; hours on
-                // other pages are marked hidden. Inside the hosted row XCUITest still lists them (and the scroll view pages
-                // itself to a focused hour), so this is best effort until VoiceOver is checked on a device.
-                .accessibilityHidden(hidesOffPage && paging.page(containing: index) != current)
         }
         .accessibilityIdentifier("\(identifier).carousel")
     }

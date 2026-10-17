@@ -216,13 +216,78 @@ final class HostedScrollView<Content: View>: UIScrollView, UIScrollViewDelegate 
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { isMovingToPage = false }
 
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) { announcePage() }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        if !decelerate { announcePage() }
+    }
+
     func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
         isMovingToPage = false
         // A page written into the binding while this move was under way is followed now; otherwise the page reached is
         // reported.
         followBinding()
-        if !isMovingToPage { reportPage() }
+        if !isMovingToPage {
+            reportPage()
+            announcePage()
+        }
     }
+
+    // MARK: - Accessibility
+
+    /// What VoiceOver reads: only the cells on the page on screen. SwiftUI's `accessibilityHidden` on the other pages' cells
+    /// does not reach UIKit from a hosted view (XCUITest still listed all 24 hours on iPad), so the scroll view filters the
+    /// hosted elements by where they are. VoiceOver pages with ``accessibilityScroll(_:)`` and the controls around the row.
+    override var accessibilityElements: [Any]? {
+        get {
+            guard paging != nil else { return super.accessibilityElements }
+            let elements = Self.leafElements(of: host.view)
+            let viewport = UIAccessibility.convertToScreenCoordinates(bounds, in: self)
+            let frames = elements.map { ($0 as? NSObject)?.accessibilityFrame ?? .null }
+            return PagedRowMetrics.indexes(ofFrames: frames, overlapping: viewport).map { elements[$0] }
+        }
+        set { super.accessibilityElements = newValue }
+    }
+
+    /// The accessibility elements under a view, containers flattened.
+    private static func leafElements(of container: NSObject) -> [Any] {
+        var children: [Any] = container.accessibilityElements ?? []
+        if children.isEmpty {
+            let count = container.accessibilityElementCount()
+            if count != NSNotFound, count > 0 { children = (0..<count).compactMap { container.accessibilityElement(at: $0) } }
+        }
+        return children.flatMap { child -> [Any] in
+            guard let object = child as? NSObject, !object.isAccessibilityElement else { return [child] }
+            let nested = leafElements(of: object)
+            return nested.isEmpty ? [child] : nested
+        }
+    }
+
+    /// A three-finger swipe moves by a page, as a paging scroll view does, and says which page it reached.
+    override func accessibilityScroll(_ direction: UIAccessibilityScrollDirection) -> Bool {
+        guard let paging else { return super.accessibilityScroll(direction) }
+        let step: Int
+        switch direction {
+        case .left, .next: step = 1
+        case .right, .previous: step = -1
+        default: return super.accessibilityScroll(direction)
+        }
+        guard let target = PagedRowMetrics.page(from: shownPage(paging), step: step, pageCount: paging.pageCount) else { return false }
+        isMovingToPage = true
+        setContentOffset(CGPoint(x: PagedRowMetrics.offset(ofPage: target, viewport: bounds.width, contentWidth: contentSize.width), y: 0), animated: true)
+        return true
+    }
+
+    /// Tells VoiceOver which page the row settled on ("Page 2 of 3"), once per page.
+    private func announcePage() {
+        guard let paging, bounds.width > 0 else { return }
+        let page = shownPage(paging)
+        defer { announcedPage = page }
+        guard let announcedPage, announcedPage != page, UIAccessibility.isVoiceOverRunning else { return }
+        UIAccessibility.post(notification: .pageScrolled, argument: PagedRowMetrics.pageDescription(page, pageCount: paging.pageCount))
+    }
+
+    private var announcedPage: Int? = 0
 
     /// Joins the nearest view controller so the hosted content gets appearance and trait callbacks.
     override func didMoveToWindow() {

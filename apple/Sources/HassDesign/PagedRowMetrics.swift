@@ -35,6 +35,26 @@ public enum PagedRowMetrics {
         max(0, min(pageCount - 1, (index ?? 0) / max(1, perPage)))
     }
 
+    /// The page a VoiceOver paging gesture goes to: a swipe left (next) or right (previous) from `page`, or nil at the ends.
+    public static func page(from page: Int, step: Int, pageCount: Int) -> Int? {
+        let target = page + step
+        return target >= 0 && target < pageCount && target != page ? target : nil
+    }
+
+    /// `Page 2 of 3`, what VoiceOver says when a paging row settles on a page.
+    public static func pageDescription(_ page: Int, pageCount: Int) -> String {
+        "Page \(max(0, min(pageCount - 1, page)) + 1) of \(max(1, pageCount))"
+    }
+
+    /// The indexes of the accessibility frames that overlap the viewport (both in screen coordinates). A paging row exposes
+    /// only the page on screen to VoiceOver; the hidden flag on SwiftUI cells does not reach UIKit from a hosted view.
+    public static func indexes(ofFrames frames: [CGRect], overlapping viewport: CGRect) -> [Int] {
+        frames.indices.filter { index in
+            let overlap = frames[index].intersection(viewport)
+            return !overlap.isNull && overlap.width > 1 && overlap.height > 0
+        }
+    }
+
     /// The offset that puts a page at the leading edge, held inside the content.
     public static func offset(ofPage page: Int, viewport: CGFloat, contentWidth: CGFloat) -> CGFloat {
         min(max(0, CGFloat(page) * viewport), max(0, contentWidth - viewport))

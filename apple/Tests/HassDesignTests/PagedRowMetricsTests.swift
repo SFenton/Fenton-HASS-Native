@@ -61,4 +61,29 @@ struct PagedRowMetricsTests {
         #expect(PagedRowMetrics.offset(ofPage: 4, viewport: 400, contentWidth: 1920) == 1520)
         #expect(PagedRowMetrics.offset(ofPage: 1, viewport: 400, contentWidth: 300) == 0)
     }
+
+    @Test func aPagingGestureStopsAtTheEnds() {
+        #expect(PagedRowMetrics.page(from: 0, step: 1, pageCount: 3) == 1)
+        #expect(PagedRowMetrics.page(from: 2, step: 1, pageCount: 3) == nil)
+        #expect(PagedRowMetrics.page(from: 0, step: -1, pageCount: 3) == nil)
+        #expect(PagedRowMetrics.page(from: 1, step: -1, pageCount: 3) == 0)
+    }
+
+    @Test func thePageIsAnnouncedFromOne() {
+        #expect(PagedRowMetrics.pageDescription(1, pageCount: 3) == "Page 2 of 3")
+        #expect(PagedRowMetrics.pageDescription(9, pageCount: 3) == "Page 3 of 3")
+        #expect(PagedRowMetrics.pageDescription(0, pageCount: 0) == "Page 1 of 1")
+    }
+
+    @Test func onlyTheCellsOnScreenAreExposedToVoiceOver() {
+        // Five 80 pt cells on screen at x 100...500; the rest of the row sits right of it, and one cell is cut at each edge.
+        let viewport = CGRect(x: 100, y: 200, width: 400, height: 80)
+        let frames = (0..<8).map { CGRect(x: 100 + CGFloat($0) * 80, y: 200, width: 80, height: 80) }
+        #expect(PagedRowMetrics.indexes(ofFrames: frames, overlapping: viewport) == [0, 1, 2, 3, 4])
+        // After a page, the first cells are off to the left and the next ones are in.
+        let shifted = frames.map { $0.offsetBy(dx: -400, dy: 0) }
+        #expect(PagedRowMetrics.indexes(ofFrames: shifted, overlapping: viewport) == [5, 6, 7])
+        // A null frame (no accessibility frame) is not exposed.
+        #expect(PagedRowMetrics.indexes(ofFrames: [.null], overlapping: viewport).isEmpty)
+    }
 }

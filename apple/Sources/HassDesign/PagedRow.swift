@@ -8,8 +8,9 @@ import SwiftUI
 /// to that page; swiping writes it. It changes once per page, not once per frame, so the page around the row updates
 /// only when the page changes.
 ///
-/// Every cell stays in the accessibility tree (the hosted content is ordinary SwiftUI), so VoiceOver reaches each one
-/// and the scroll view pages itself to bring it into view.
+/// VoiceOver reads the cells on the page on screen: the hosted scroll view exposes only the accessibility elements that
+/// overlap its viewport, pages with a three-finger swipe (`accessibilityScroll(_:)`) and announces "Page 2 of 3" when it
+/// settles. (`accessibilityHidden` on SwiftUI cells does not reach UIKit from a hosted view, so it cannot do this.)
 ///
 /// **Use it for light cells on a long page.** A hosted row pays for its own cells on every frame of a swipe (UIKit moves
 /// the hosting view and SwiftUI re-derives its transform, about 0.7 ms a frame for 60 image cards), where a nested

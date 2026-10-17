@@ -86,16 +86,27 @@ final class WeatherJourneyTests: XCTestCase {
         XCTAssertTrue(now.waitForExistence(timeout: 8))
         XCTAssertTrue(now.label.hasPrefix("Now "), now.label)
         XCTAssertTrue(now.label.hasSuffix("°F"), now.label)
-        // Every hour stays in the accessibility tree, with or without paging buttons: the hosted row (`PagedRow`) is a UIKit
-        // scroll view whose SwiftUI cells keep their accessibility elements when `accessibilityHidden` marks the ones on
-        // other pages (measured on iPad, 2026-10-17: all 24 stay in the XCUITest snapshot), and the scroll view pages itself
-        // to bring a focused hour into view.
-        XCTAssertTrue(element("home.weather.hour.5", in: app).exists, "Every hour stays in the accessibility tree")
-        XCTAssertTrue(element("home.weather.hour.23", in: app).exists)
+        // VoiceOver reads only the page on screen: the hosted row (`PagedRow`) exposes the cells that overlap its viewport, and
+        // the next page's after paging (Next on wide layouts, a swipe otherwise).
+        XCTAssertFalse(element("home.weather.hour.23", in: app).exists, "Hours on other pages are not accessibility elements")
+        let visibleBefore = (0..<24).filter { element("home.weather.hour.\($0)", in: app).exists }
+        XCTAssertEqual(visibleBefore, Array(0..<visibleBefore.count), "The first page's hours are consecutive from the first")
+        XCTAssertTrue((2..<24).contains(visibleBefore.count), "A page holds a few hours, not all: \(visibleBefore)")
+        let next = app.buttons["home.weather.next"]
+        if next.exists {
+            next.tap()
+        } else {
+            element("home.weather.carousel", in: app).swipeLeft()
+        }
+        XCTAssertTrue(waitFor(element("home.weather.pages", in: app), "value BEGINSWITH %@", "Page 2"))
+        let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: now)
+        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 5), .completed, "The first page's hours leave the tree after paging")
+        XCTAssertTrue(element("home.weather.hour.\(visibleBefore.count)", in: app).waitForExistence(timeout: 5),
+                      "The next page's hours are accessibility elements")
 
         let pages = element("home.weather.pages", in: app)
         XCTAssertTrue(pages.exists)
-        XCTAssertTrue((pages.value as? String ?? "").hasPrefix("Page 1 of"), "\(String(describing: pages.value))")
+        XCTAssertTrue((pages.value as? String ?? "").hasPrefix("Page 2 of"), "\(String(describing: pages.value))")
     }
 
     /// Swiping the hours scrolls them and never opens the sheet; the indicator follows.
