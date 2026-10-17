@@ -116,12 +116,14 @@ final class WeatherJourneyTests: XCTestCase {
         XCTAssertTrue(carousel.waitForExistence(timeout: 15))
         XCTAssertTrue(element("home.weather.hour.0", in: app).waitForExistence(timeout: 8))
         let pages = element("home.weather.pages", in: app)
+        // A swipe moves one page or more (a fast one under load carried on to page 3), so the journey asks for "off the
+        // first page" and then swipes back until the first page shows, instead of assuming exactly one page each way.
         carousel.swipeLeft()
-        XCTAssertTrue(waitFor(pages, "value BEGINSWITH %@", "Page 2"), "The indicator stayed on \(String(describing: pages.value))")
+        XCTAssertTrue(waitFor(pages, "NOT (value BEGINSWITH %@)", "Page 1"), "The indicator stayed on \(String(describing: pages.value))")
         XCTAssertFalse(app.buttons["Close"].exists, "Scrolling opened the sheet")
         XCTAssertFalse(element("weather.sheet", in: app).exists)
-        carousel.swipeRight()
-        XCTAssertTrue(waitFor(pages, "value BEGINSWITH %@", "Page 1"))
+        for _ in 0..<4 where !waitFor(pages, "value BEGINSWITH %@", "Page 1", timeout: 3) { carousel.swipeRight() }
+        XCTAssertTrue(waitFor(pages, "value BEGINSWITH %@", "Page 1"), "The indicator stayed on \(String(describing: pages.value))")
     }
 
     /// Wide layouts add previous and next buttons; the first page's Previous is disabled.

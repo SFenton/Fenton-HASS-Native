@@ -361,6 +361,11 @@ final class InventoryJourneyTests: JourneyTestCase {
             if step >= 2 {
                 let form = app.collectionViews.matching(NSPredicate(format: "identifier BEGINSWITH 'scan.'")).firstMatch
                 for _ in 0..<4 where form.exists {
+                    // Only while the form is scrolled: at the top, a drag down closes a content-height sheet (the folded Duo's
+                    // default-size pass audited the Pantry page behind it, 2026-10-17). The first row sitting at or below the
+                    // form's top edge means it is at the top (a lazy form drops rows that scrolled away).
+                    let first = form.cells.firstMatch
+                    if first.exists, first.frame.minY >= form.frame.minY { break }
                     form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.2))
                         .press(forDuration: 0.05, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.9)))
                 }
