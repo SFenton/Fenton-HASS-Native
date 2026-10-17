@@ -135,12 +135,12 @@ struct RoomPageContent: View {
 
     func cardSheet(_ card: RoomCard) -> some View {
         RoomCardSheet(controller: controller, card: card)
-            .hassSheet(.page)
+            .hassSheet(.page, height: .full) // Navigates room to lights to a light
     }
 
     func remoteSheet(_ selection: RemoteSelection) -> some View {
         MediaRemoteSheet(controller: selection.controller, imageServer: imageServer, initialTab: .controls)
-            .hassSheet(.page)
+            .hassSheet(.page, height: .full) // A remote
     }
 
     func deviceSheet(_ modal: RoomDeviceModal) -> some View {

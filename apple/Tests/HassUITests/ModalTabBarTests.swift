@@ -1,4 +1,5 @@
 @testable import HassUI
+import HassCore
 import SwiftUI
 import Testing
 
@@ -29,5 +30,25 @@ struct ModalTabBarTests {
             .frame(width: 360, height: 400)
         #expect(ImageRenderer(content: page).cgImage != nil)
         #expect(ModalTabBarStyle.glassInset > 0)
+    }
+
+    @Test func iconsOnCompactWidthTextOtherwiseAndAMenuAtAccessibilitySizes() {
+        typealias Style = ModalTabBarStyle
+        #expect(Style.form(hasSymbols: true, compactWidth: true, accessibilitySize: false) == .icons, "iPhone shows the web's icons")
+        #expect(Style.form(hasSymbols: true, compactWidth: false, accessibilitySize: false) == .text, "iPad shows titles")
+        #expect(Style.form(hasSymbols: false, compactWidth: true, accessibilitySize: false) == .text, "No icons supplied")
+        #expect(Style.form(hasSymbols: true, compactWidth: true, accessibilitySize: true) == .menu)
+        #expect(Style.form(hasSymbols: false, compactWidth: false, accessibilitySize: true) == .menu)
+    }
+
+    @Test func everyModalSectionHasAnIconFromTheWeb() {
+        for tab in MediaRemoteTab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
+        for tab in HumidifierTab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
+        for tab in BedSideSheet.Tab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
+        for tab in WakeLightSheet.Tab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
+        for tab in ClimateConfig.Tab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
+        #expect(ModalTabSymbols.mdi(for: MediaRemoteTab.hueSync) == "mdi:lightbulb-multiple")
+        #expect(ModalTabSymbols.mdi(for: ClimateConfig.Tab.rooms) == "mdi:home-thermometer")
+        #expect(ModalTabSymbols.mdi(for: BedSideSheet.Tab.alarms) == "mdi:alarm")
     }
 }

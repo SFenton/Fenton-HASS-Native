@@ -58,7 +58,7 @@ struct TodoPageView<Header: View>: View {
         ])
         .sheet(item: $sheet) { sheet in
             sheetContent(sheet)
-                .modifier(TodoSheetSizing(isShortPrompt: TodoPageLayout.isShortPrompt(sheet, addAction: page.addAction)))
+                .hassSheet(.form, fitKey: "todo.\(sheet.id)")
         }
     }
 
@@ -130,26 +130,6 @@ enum TodoSheet: Identifiable, Hashable {
     }
 }
 
-/// How tall a todo sheet opens: the medium detent for a short prompt (growing to large), full height otherwise
-/// (``SwiftUI/View/hassSheet(_:)``). At accessibility sizes a prompt opens full height too: half a sheet clipped its
-/// rows at AX5.
-struct TodoSheetSizing: ViewModifier {
-    var isShortPrompt: Bool
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    func body(content: Content) -> some View {
-        if isShortPrompt && !typeSize.isAccessibilitySize {
-            content
-                .followsSystemAppearance()
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .hassSheetSizing(.form)
-        } else {
-            content.hassSheet(.form)
-        }
-    }
-}
-
 /// A DoneTick task opened from a list row (web `DonetickTaskEditTarget`).
 struct DonetickEditTarget: Hashable, Sendable {
     var itemUid: String
@@ -206,8 +186,8 @@ enum TodoPageLayout {
         sections.allSatisfy { $0.isSettled && !$0.isShown }
     }
 
-    /// Adding a grocery and renaming a to-do are one-field prompts, which open at the medium detent (direction G, Sheets:
-    /// "Medium detents only for short prompts (… rename, Add Grocery)"). Everything else opens full height.
+    /// Adding a grocery and renaming a to-do are one-field prompts. Every todo sheet is content-fitted now (owner,
+    /// 2026-10-16), so this is no longer a sizing input; kept for the tests that name the short prompts.
     static func isShortPrompt(_ sheet: TodoSheet, addAction: ChoresConfig.AddAction) -> Bool {
         switch sheet {
         case .create:

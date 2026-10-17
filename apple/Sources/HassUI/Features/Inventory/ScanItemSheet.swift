@@ -60,7 +60,7 @@ struct ScanItemSheet: View {
             .sheetSubtitle(model.subtitle)
             .toolbar { toolbar }
         }
-        .hassSheet(.form)
+        .hassSheet(.form, height: .full) // Live camera scanner
         .presentationBackground(Self.surface)
         .interactiveDismissDisabled(model.addStatus == .adding)
         .task(id: CameraKey(step: model.step, wanted: model.wantedCamera)) { await camera.sync(with: model) }

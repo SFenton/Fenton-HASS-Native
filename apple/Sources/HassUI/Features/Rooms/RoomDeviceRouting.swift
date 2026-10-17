@@ -78,19 +78,19 @@ struct RoomDeviceModalSheet: View {
     var body: some View {
         switch modal {
         case let .vacuum(vacuum):
-            if let connection { VacuumSheet(vacuum: vacuum, connection: connection).hassSheet(.page) }
+            if let connection { VacuumSheet(vacuum: vacuum, connection: connection).hassSheet(.page, height: .full) }
         case let .bathroomFan(fan, _):
             BathroomFanSheet(controller: fan).hassSheet(.form)
         case let .airPurifier(purifier):
             AirPurifierSheet(config: purifier, store: store, caller: caller).hassSheet(.form)
         case let .humidifier(humidifier):
-            if let connection { HumidifierSheet(config: humidifier, connection: connection).hassSheet(.page) }
+            if let connection { HumidifierSheet(config: humidifier, connection: connection).hassSheet(.page, height: .full) }
         case .grill:
             GrillSheet(config: .bearGrills, store: store, caller: caller).hassSheet(.form)
         case let .wakeLight(devices, tab):
-            WakeLightSheet(devices: devices, initialTab: tab, onOpenBed: onOpenBed).hassSheet(.page)
+            WakeLightSheet(devices: devices, initialTab: tab, onOpenBed: onOpenBed).hassSheet(.page, height: .full)
         case let .bed(devices, side, tab):
-            BedSideSheet(devices: devices, side: side, initialTab: tab).hassSheet(.page)
+            BedSideSheet(devices: devices, side: side, initialTab: tab).hassSheet(.page, height: .full)
         }
     }
 }

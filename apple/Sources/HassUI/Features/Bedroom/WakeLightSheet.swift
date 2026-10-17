@@ -58,7 +58,8 @@ public struct WakeLightSheet: View {
                 .padding(HassTokens.Spacing.l)
             }
             .modalChrome()
-            .modalTabBar(Tab.allCases, label: "\(controller.config.title) sections", title: \.title, selection: $tab,
+            .modalTabBar(Tab.allCases, label: "\(controller.config.title) sections", title: \.title,
+                         symbol: ModalTabSymbols.symbol(for:), selection: $tab,
                          identifier: "wake.tabs")
             .navigationTitle(controller.config.title) // With the room name the bar title clips at AX5.
             .inlineNavigationTitle()
