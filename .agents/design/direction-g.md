@@ -123,6 +123,22 @@ People have no colour of their own. **Rooms do** (owner reversal, 2026-10-16: "r
 | Guest Bathroom | `#407B6E` | Master Bathroom | `#59596F` |
 | Dining Room | `#975B46` | Entryway | `#7D7200` |
 
+**Quick Links tiles** (owner, 2026-10-16: "Quick Links now have different tile sizes (prefer consistency of what we had before), and no color there as well"; `HassDesign/QuickLinkPalette`):
+- Same treatment as a room: a solid fill, a filled white glyph and white text, on every link. Each link reuses the colour its own pages already use; only Rooms is new.
+- The arrangement is the Rooms grid's (below), not the Row. Every tile is one size: `equalRowHeights` plus `equalHeightTiles()`, so the tallest tile (a two-line name over a two-line state, "Food & Recipes" over "42 Items • 3 Expiring Soon") sets the height of all of them, and at accessibility sizes they grow together. The cause of the unequal sizes was the Row layout (#95) in a grid without equal heights: a tile with a state line was taller than one without.
+
+| Link | Fill | Source |
+|---|---|---|
+| Rooms | `#1F3A5F` deep navy | new: at least 0.06 (OKLab) from every room, family and alarm fill, because the tile stands for all of them |
+| Security System | the alarm mode's fill: Home `#1565C0`, Away `#C62828`, Night `#7B1FA2`, Disarmed `#2A732E`, Triggered `#D70015`; slate `#4C6270` while arming, unknown or redacted | Security family (and the Security page and chip) |
+| Food & Recipes | `#4A6B4E` | All Food |
+| Vacuums | `#7A3FB0` | Cleaning |
+| Media | `#A03A61` | Media |
+| Custom Lights | `#7A4A00` | the Lights chip's amber (lights have no tile fill: only the warm lit tile, which would read as "on") |
+| Sprinklers | `#076C91` | Water |
+
+White passes 4.5:1 on every fill and no two links on the sheet are within 0.05 OKLab (`QuickLinkPaletteTests`). The chore lists' quick links (Chores tab) are the Chores lane's.
+
 ## Type
 
 SF Pro only.
@@ -157,6 +173,7 @@ SF Pro only.
 | Status chips (Home, room pages, Security) | Capsules with glyph, title and one-line state, coloured as on the web (see Colour families, "Status chips follow the web"); Contact Sensors also read the house. Neutral when nothing is active. Colour changes cross-fade. They scroll horizontally in compact width and wrap in regular width (`ChipRail`). |
 | Tiles | 2 columns on iPhone, 22pt radius, equal heights within a grid (the tallest name, such as "Master Bedroom Closet" on two lines, sets the row). Off is dark with the glyph in its family colour. On fills with the family colour and white ink; lights use the warm lit tile. Errors use a red glyph and red state text. A chevron appears only when the tile opens something, vertically centred on the tile (owner, 2026-10-16). The glyph, title and state follow the tile layout below. Filled tiles (on) draw the fill glyph in white; off tiles keep the family glyph. |
 | Tile layout (owner, 2026-10-16: "it feels too high up / lots of dead space, but I like the tiles themselves") | Four arrangements were drawn and measured (`HassDesign/TileLayout`, gallery `FENTON_GALLERY=direction-g`, Tile Layouts). Shipped: **Row**, Apple Home's tile: glyph leading and title with state beside it, the pair centred vertically, 72 pt minimum height. Accessibility text sizes anchor the text to the bottom of a stacked tile instead (a row has no width left for text at AX5). Alternatives kept in the code for the owner to override: Anchored Bottom (glyph top-leading, text bottom-leading), Centred Stack, and the old Stacked Top. |
+| Navigation tiles: Rooms, Quick Links, Climate's Rooms tab (owner, 2026-10-16: "Rooms should have taller tiles with room for two lines of text; multi-line text can still appear under the icon (as it did before), single-line takes the 'bottom' line") | **Anchored Bottom with a two-line reserve** (`.tileLayout(.anchoredBottom).tileTitleLines(2)`, `TileMetrics`): the glyph top-leading, the name anchored to the bottom, so a one-line name sits on the bottom line and a two-line name fills both. The tile is as tall as glyph + 8 pt + two title lines + padding at the current Dynamic Type size (96 pt at the default size, measured from `ScaledMetric`s of the title3 glyph and subheadline lines), equal across the grid, and growing with the text at AX sizes. **Device tiles on room pages keep the Row**: they carry a state line the glance should read first, and the Row is Apple Home's accessory tile; a navigation tile has only a name, so the reserve costs nothing and a short name still has a bottom line to sit on. A tile whose state is two lines (Climate's rooms) is taller than the reserve and sets the grid's height. |
 | **Light dragger** (signature) | Tap a light tile to toggle it. Press and drag sideways to set brightness: the bright band follows the finger, a "30%" bubble floats beside it, there is a haptic tick every 10%, and the tile lifts while dragging. A room's lights stack as full-width slabs that work the same way. The light detail adds a 168pt brightness slab, White and Color modes, a colour-temperature track with presets, and a colour wheel. |
 | **Thermostat dial** (signature) | main's `ThermostatDial` exactly: a 22pt round-capped 270° track, heat arc orange to the heat setpoint, cool arc teal from the cool setpoint, white knobs, a dark dot for the current temperature, "Heating", a Thin numeral with a raised °F, and the range line. The bed and humidifier dials reuse its geometry. |
 | **Remote** (signature) | A 3×3 grid of 72pt grey circles: Back, Up, Power (red glyph, top-trailing), Left, OK, Right, Home, Down, Menu. Volume is a slider with speaker − and +. Transport keys sit below. |

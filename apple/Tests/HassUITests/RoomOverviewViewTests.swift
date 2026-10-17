@@ -83,16 +83,16 @@ struct RoomOverviewViewTests {
         }
     }
 
-    /// Quick Links glyphs take their page's colour family, and Security System follows the alarm mode.
-    @Test func quickLinkFamilies() {
+    /// Quick Links tiles take their page's colour family as a solid fill, and Security System follows the alarm mode.
+    @Test func quickLinkFills() {
         func link(_ id: String) -> QuickLink { QuickLinks.items.first { $0.id == id }! }
-        #expect(QuickLinkTile.family(link("rooms"), alarmState: nil) == .neutral)
-        #expect(QuickLinkTile.family(link("food"), alarmState: nil) == .neutral)
-        #expect(QuickLinkTile.family(link("vacuums"), alarmState: nil) == .cleaning)
-        #expect(QuickLinkTile.family(link("media"), alarmState: nil) == .media)
-        #expect(QuickLinkTile.family(link("custom-lights"), alarmState: nil) == .lights)
-        #expect(QuickLinkTile.family(link("sprinklers"), alarmState: nil) == .water)
-        #expect(QuickLinkTile.family(link("security-system"), alarmState: "armed_home") == .securityHome)
-        #expect(QuickLinkTile.family(link("security-system"), alarmState: "arming") == .neutral)
+        #expect(QuickLinkTile.fill(link("rooms"), alarmState: nil) == QuickLinkPalette.rooms)
+        #expect(QuickLinkTile.fill(link("food"), alarmState: nil) == ColorFamily.food.spec.fill)
+        #expect(QuickLinkTile.fill(link("vacuums"), alarmState: nil) == ColorFamily.cleaning.spec.fill)
+        #expect(QuickLinkTile.fill(link("media"), alarmState: nil) == ColorFamily.media.spec.fill)
+        #expect(QuickLinkTile.fill(link("custom-lights"), alarmState: nil) == QuickLinkPalette.customLights)
+        #expect(QuickLinkTile.fill(link("sprinklers"), alarmState: nil) == ColorFamily.water.spec.fill)
+        #expect(QuickLinkTile.fill(link("security-system"), alarmState: "armed_home") == ColorFamily.securityHome.spec.fill)
+        #expect(QuickLinkTile.fill(link("security-system"), alarmState: "arming") == QuickLinkPalette.securityUnknown)
     }
 }

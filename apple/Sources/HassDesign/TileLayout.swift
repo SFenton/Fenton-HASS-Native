@@ -60,3 +60,45 @@ public extension View {
     /// Draws tiles inside with `layout`; the gallery uses it to compare arrangements.
     func tileLayout(_ layout: TileLayout) -> some View { environment(\.tileLayout, layout) }
 }
+
+// MARK: - Title reserve
+
+public extension EnvironmentValues {
+    /// How many lines of title a tile keeps room for (``TileMetrics/minContentHeight(layout:titleLines:glyphHeight:titleLineHeight:)``);
+    /// 0 sizes a tile to its content. The Rooms grid asks for two (owner, 2026-10-16: "room for two lines of text").
+    @Entry var tileTitleLines: Int = 0
+}
+
+public extension View {
+    /// Keeps room in every tile inside for `lines` lines of title at the current Dynamic Type size, so a one-line name
+    /// sits on the bottom line of an anchored tile and a two-line name fills both lines, with equal tile heights.
+    func tileTitleLines(_ lines: Int) -> some View { environment(\.tileTitleLines, lines) }
+}
+
+/// The height arithmetic of a tile that reserves title lines, apart from the drawing so it is unit tested.
+public enum TileMetrics {
+    /// A title-style line (subheadline semibold) at the default text size, scaled with Dynamic Type by the face.
+    public static let titleLineHeight: CGFloat = 20
+    /// The glyph's line (title3) at the default text size.
+    public static let glyphHeight: CGFloat = 24
+    /// The least space between the glyph and the text of a stacked tile.
+    public static let glyphGap: CGFloat = HassTokens.Spacing.s
+
+    /// The content height a tile keeps before its padding.
+    /// - Parameters:
+    ///   - layout: The arrangement drawn.
+    ///   - titleLines: Lines of title to reserve; 0 reserves none.
+    ///   - glyphHeight: The glyph's height at the current text size.
+    ///   - titleLineHeight: One title line at the current text size.
+    /// - Returns: The layout's own minimum, raised to fit the glyph, the gap and the reserved lines in a stacked
+    ///   arrangement, or the lines alone beside the glyph in a row.
+    public static func minContentHeight(layout: TileLayout, titleLines: Int, glyphHeight: CGFloat = glyphHeight,
+                                        titleLineHeight: CGFloat = titleLineHeight) -> CGFloat {
+        guard titleLines > 0 else { return layout.minHeight }
+        let lines = CGFloat(titleLines) * titleLineHeight
+        switch layout {
+        case .row: return max(layout.minHeight, lines)
+        case .anchoredBottom, .centeredStack, .stackedTop: return max(layout.minHeight, glyphHeight + glyphGap + lines)
+        }
+    }
+}
