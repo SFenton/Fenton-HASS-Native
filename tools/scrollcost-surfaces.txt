@@ -1,0 +1,42 @@
+# Surfaces tools/ios_scrollcost.sh measures: `Name|KEY=VALUE KEY=VALUE ...` (launch environment).
+# [gallery] surfaces run on fixtures with no sign-in; [live] surfaces sign in with the token (`LIVE=1`) and open a page
+# with FENTON_SCROLLCOST_OPEN=<dashboard path> (a tab: security, thermostat, chores; a Home page: living-room, media ...).
+# A surface that fits one screen on the phone has nothing to scroll and is reported as such.
+
+[gallery]
+Grid workload (300 tiles)|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid
+Living Room|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=living-room
+Music Room|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=music-room
+Kitchen|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=kitchen
+Master Bedroom|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=master-bedroom
+Theater Room|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=theater-room
+Climate|FENTON_GALLERY=climate FENTON_GALLERY_CLEAN=1
+Security|FENTON_GALLERY=security FENTON_GALLERY_CLEAN=1
+Chores|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1
+Food hub|FENTON_GALLERY=food FENTON_GALLERY_ROUTE=hub
+Recipes|FENTON_GALLERY=food FENTON_GALLERY_ROUTE=recipes
+Pantry|FENTON_GALLERY=inventory FENTON_GALLERY_SPACE=pantry FENTON_GALLERY_CLEAN=1
+Media|FENTON_GALLERY=media-page FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_OFFLINE=1
+Admin settings|FENTON_GALLERY=household-settings FENTON_GALLERY_HOUSEHOLD=admin FENTON_GALLERY_CLEAN=1
+Weather sheet|FENTON_GALLERY=weather FENTON_GALLERY_WEATHER_OPEN=1
+Vacuum sheet: controls|FENTON_GALLERY=vacuums FENTON_GALLERY_VACUUM=valetudo_exaltedsneakydeer FENTON_GALLERY_TAB=controls FENTON_GALLERY_SCENARIO=docked FENTON_GALLERY_CLEAN=1
+Vacuum sheet: zones|FENTON_GALLERY=vacuums FENTON_GALLERY_VACUUM=valetudo_exaltedsneakydeer FENTON_GALLERY_TAB=zones FENTON_GALLERY_SCENARIO=docked FENTON_GALLERY_CLEAN=1
+Humidifier sheet|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=controls FENTON_GALLERY_CLEAN=1
+Humidifier schedules|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=schedules FENTON_GALLERY_CLEAN=1
+
+[live]
+Live Home|LIVE=1
+Live Security|LIVE=1 FENTON_SCROLLCOST_OPEN=security
+Live Climate|LIVE=1 FENTON_SCROLLCOST_OPEN=thermostat
+Live Chores|LIVE=1 FENTON_SCROLLCOST_OPEN=chores
+Live Living Room|LIVE=1 FENTON_SCROLLCOST_OPEN=living-room
+Live Master Bedroom|LIVE=1 FENTON_SCROLLCOST_OPEN=master-bedroom
+Live Kitchen|LIVE=1 FENTON_SCROLLCOST_OPEN=kitchen
+Live Theater Room|LIVE=1 FENTON_SCROLLCOST_OPEN=theater-room
+Live Media|LIVE=1 FENTON_SCROLLCOST_OPEN=media
+Live Custom Lights|LIVE=1 FENTON_SCROLLCOST_OPEN=custom-lights
+Live Sprinklers|LIVE=1 FENTON_SCROLLCOST_OPEN=sprinklers
+Live Vacuums|LIVE=1 FENTON_SCROLLCOST_OPEN=vacuums
+Live Food hub|LIVE=1 FENTON_OPEN_FOOD=hub
+Live Recipes|LIVE=1 FENTON_OPEN_FOOD=recipes
+Live Pantry|LIVE=1 FENTON_OPEN_INVENTORY=pantry
