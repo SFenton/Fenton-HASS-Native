@@ -9,6 +9,7 @@ import SwiftUI
 /// ```
 public struct ArcProgressViewStyle: ProgressViewStyle {
     private let size: ArcSpinner.Size
+    @Environment(\.tileSurface) private var surface
 
     /// Creates the style.
     /// - Parameter size: How big to draw the arc.
@@ -25,7 +26,9 @@ public struct ArcProgressViewStyle: ProgressViewStyle {
                 ArcSpinner(size).accessibilityHidden(true)
                 configuration.label
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    // `.secondary` measured 3.1:1 over the wallpaper (Direction G gallery, iPad): a page title takes the
+                    // wallpaper's secondary ink, a sheet's the sheet's.
+                    .foregroundStyle(surface == .sheet ? HassTokens.Surface.secondaryInSheet : HassTokens.Surface.secondaryOnWallpaper)
                     .multilineTextAlignment(.center)
             }
             .accessibilityElement(children: .combine)

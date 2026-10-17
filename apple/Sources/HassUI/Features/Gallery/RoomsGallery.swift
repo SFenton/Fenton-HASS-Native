@@ -185,6 +185,8 @@ enum RoomsFixtures {
         if id.hasPrefix("sensor."), id.contains("humidity") { return ["unit_of_measurement": .string("%")] }
         if id.hasPrefix("sensor."), id.contains("pm2_5") { return ["unit_of_measurement": .string("µg/m³")] }
         if id.hasPrefix("light.") { return ["supported_color_modes": .array([.string("brightness")])] }
+        // Vents report how far they are open, which their tiles show.
+        if id.hasPrefix("cover.") { return ["current_position": .number(60)] }
         return [:]
     }
 }

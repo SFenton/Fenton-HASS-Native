@@ -81,6 +81,14 @@ final class RoomsJourneyTests: XCTestCase {
         vents.tap()
         XCTAssertTrue(element("room.entity.cover.living_room_vent_1_vent", in: app).waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["room.entity.cover.living_room_vent_1_vent"].exists, "Read-only tiles are not buttons")
+        XCTAssertEqual(element("room.entity.cover.living_room_vent_1_vent", in: app).value as? String, "Open · 60%",
+                       "An open vent shows its position, as in Advanced Controls")
+        // It fills with the Vents family while open (`#3B58B8`), like Advanced Controls' vent tiles.
+        if let capture = RenderedContrast.Capture.screen() {
+            let frame = element("room.entity.cover.living_room_vent_1_vent", in: app).frame
+            let sample = TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture)
+            XCTAssertTrue(sample.map { TileGeometry.matches($0, 0x3B58B8, tolerance: 22) } ?? false, "Open vent fill: \(String(describing: sample))")
+        }
         app.buttons["Close"].tap()
 
         let remote = element("room.card.Living Room Remote", in: app)
