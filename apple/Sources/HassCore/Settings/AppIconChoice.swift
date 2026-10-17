@@ -1,7 +1,7 @@
 import Foundation
 
-/// The eight tinted-glass app icons (owner, 2026-10-17): the same house and heart in a glass tile, each in a matching
-/// pair of colours. ``navySky`` is the app's own icon (`AppIcon` in the asset catalog); the other seven are alternate
+/// The eight tinted-glass app icons (owner, 2026-10-17): the same house and heart on full-bleed tinted glass, each in a
+/// matching pair of colours. ``navySky`` is the app's own icon (`AppIcon` in the asset catalog); the other seven are alternate
 /// icons the user picks in Settings → App Icon (`AppIconPickerModel`).
 ///
 /// The colours here are the single source for both the icon art and its previews: `tools/render_app_icons.sh` renders
@@ -60,10 +60,10 @@ public enum AppIconChoice: String, CaseIterable, Identifiable, Sendable {
         self = Self.allCases.first { $0.alternateIconName == alternateIconName } ?? .default
     }
 
-    /// The opacity of ``tint`` over the glow: 0.82 for all eight.
-    public static let tintOpacity = 0.82
+    /// The opacity of ``tint`` over the glow: 0.86 for all eight (the dark icon uses a deeper 0.92).
+    public static let tintOpacity = 0.86
 
-    /// The glass tile's tint as `0xRRGGBB`, drawn at ``tintOpacity`` over the dusk glow.
+    /// The glass's tint as `0xRRGGBB`, drawn across the whole icon at ``tintOpacity`` over the dusk glow.
     public var tint: UInt32 {
         switch self {
         case .navySky: 0x0E1E46
@@ -74,20 +74,6 @@ public enum AppIconChoice: String, CaseIterable, Identifiable, Sendable {
         case .indigoPeriwinkle: 0x221C5A
         case .espressoAmber: 0x342014
         case .midnightGold: 0x101630
-        }
-    }
-
-    /// The ring around the heart, which separates it from the house, as `0xRRGGBB`.
-    public var ring: UInt32 {
-        switch self {
-        case .navySky: 0x172446
-        case .tealMint: 0x123B40
-        case .plumLilac: 0x382346
-        case .forestGreen: 0x1B3426
-        case .burgundyRose: 0x431B26
-        case .indigoPeriwinkle: 0x252159
-        case .espressoAmber: 0x36271E
-        case .midnightGold: 0x1A2036
         }
     }
 
