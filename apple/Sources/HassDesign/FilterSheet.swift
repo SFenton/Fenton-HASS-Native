@@ -15,23 +15,23 @@ public struct FilterSheet<Content: View>: View {
     public var canReset: Bool
     public var onApply: () -> Void
     public var onReset: () -> Void
-    /// Sheet heights; `nil` keeps the default (medium and large, large only at accessibility sizes). A list longer
-    /// than the medium detent passes `[.large]`: rows cut by the sheet's edge read as clipped text to the audit.
-    public var detents: Set<PresentationDetent>?
+    /// How tall the sheet opens: as tall as its rows by default (owner, 2026-10-16), so a short Sort sheet is short and
+    /// a long Filter sheet reaches the large detent and scrolls.
+    public var height: HassSheetHeight
     @ViewBuilder public var content: () -> Content
 
     @Environment(\.dismiss) private var dismiss
 
     /// Creates a sheet.
     public init(title: String, subtitle: String? = nil, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void,
-                onReset: @escaping () -> Void, detents: Set<PresentationDetent>? = nil, @ViewBuilder content: @escaping () -> Content) {
+                onReset: @escaping () -> Void, height: HassSheetHeight = .fitted, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.subtitle = subtitle
         self.canApply = canApply
         self.canReset = canReset
         self.onApply = onApply
         self.onReset = onReset
-        self.detents = detents
+        self.height = height
         self.content = content
     }
 
@@ -40,7 +40,9 @@ public struct FilterSheet<Content: View>: View {
             Form {
                 content()
                 // Shown only when there is something to reset: a disabled row fails the contrast audit. A list row in
-                // the action tint, as in the mockups (n5 Filter Recipes; direction G, Sheets: "Reset is a list row").
+                // the action tint (blue), as in the mockups (n5 Filter Recipes; direction G, Sheets: "Reset is a list
+                // row"). Never red: resetting filters is not destructive (HIG Buttons: reserve red for destructive
+                // actions; owner, 2026-10-16).
                 if canReset {
                     Section {
                         Button(action: onReset) {
@@ -56,6 +58,9 @@ public struct FilterSheet<Content: View>: View {
                     }
                 }
             }
+            // The sheet's own header treatment: no material band behind the title, rows fade out under it
+            // (owner, 2026-10-16: "Filter Recipes shows a translucent background under its header").
+            .modalChrome()
             .navigationTitle(title)
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -70,19 +75,10 @@ public struct FilterSheet<Content: View>: View {
                 }
             }
         }
-        // The system appearance while the pages behind stay dark (``SystemAppearance``).
-        .followsSystemAppearance()
-        // Full height like every modal (owner, 2026-10-13; `.agents/patterns/modal-sheet.md`); half a sheet also
-        // clipped rows at the sheet's edge at AX5.
-        .presentationDetents(detents ?? [.large])
-        .presentationDragIndicator(.visible)
-        // A form sheet on iPad: filters, sorts and pickers are lists and editors.
-        .hassSheetSizing(.form)
-        #if os(iOS)
-        // Opaque, not glass: at the medium detent the page's floating buttons otherwise show through and fail contrast.
-        // In the dark sheet this is G's `#1C1C1E` ground under `#2C2C2E` rows.
-        .presentationBackground(Color(.systemGroupedBackground))
-        #endif
+        // The system appearance, the grabber, the iPad form size and the fitted height
+        // (``SwiftUICore/View/hassSheet(_:height:appearance:fitKey:)``), keyed by title so the Sort and Filter sheets
+        // remember their own heights.
+        .hassSheet(.form, height: height, fitKey: "FilterSheet.\(title)")
     }
 }
 

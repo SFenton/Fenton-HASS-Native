@@ -1,7 +1,7 @@
 import XCTest
 
 /// Root navigation and on-demand split (`.agents/design/apple/split-view.md`, `ipados.md`):
-/// tab bar in compact width, overlay flyout in regular width; Settings inside the Account sheet (direction G).
+/// tab bar in compact width, overlay flyout in regular width; Settings is the last tab (owner, 2026-10-16).
 @MainActor
 final class NavigationJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
@@ -52,12 +52,8 @@ final class NavigationJourneyTests: XCTestCase {
         return frame.width > frame.height
     }
 
-    /// Goes to a section through whichever navigation the window shows; Settings through the Account sheet.
+    /// Goes to a section through whichever navigation the window shows (the tab bar, or the flyout).
     private func open(_ section: String, title: String, in app: XCUIApplication) {
-        if section == "settings" {
-            app.openAccountSettings()
-            return
-        }
         let item = tab(title, in: app)
         if !(item.exists && item.isHittable) {
             app.buttons["nav.open"].tap()
@@ -72,22 +68,22 @@ final class NavigationJourneyTests: XCTestCase {
 
     // MARK: - Compact width
 
-    /// iPhone (and folded Duo) navigate with the tab bar: the four sections and the trailing Quick Links tab.
-    /// Settings is in the Account sheet, where a topic pushes with Back.
+    /// iPhone (and folded Duo) navigate with the tab bar: the five sections, Settings last. Quick Links is a header
+    /// button, not a tab. A Settings topic pushes with Back.
     func testCompactWidthUsesTabBarAndPushes() throws {
         let app = try FentonHomeApp.launchSignedIn()
         guard !usesFlyout(app) else { throw XCTSkip("Regular-width window") }
-        for title in ["Security", "Climate", "Chores", "Home", "Quick Links"] {
+        for title in ["Home", "Security", "Climate", "Chores", "Settings"] {
             XCTAssertTrue(tab(title, in: app).exists, "\(title) tab missing")
         }
-        XCTAssertFalse(tab("Settings", in: app).exists, "Settings is in the Account sheet, not the bar")
+        XCTAssertFalse(app.tabBars.buttons["Quick Links"].exists, "Quick Links is a header button, not a tab")
         XCTAssertFalse(app.buttons["nav.open"].exists, "Menu button in compact width")
         XCTAssertTrue(app.buttons["nav.profile"].isHittable, "No profile button on the section root")
-        // Quick Links is its own page and returns to Home unchanged.
-        tab("Quick Links", in: app).tap()
+        // Quick Links opens as a sheet over Home and returns to it unchanged.
+        app.buttons["quickLinks.open"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["quickLinks.rooms"].waitForExistence(timeout: 5), "Quick Links did not open")
-        keepScreenshot(app, "quick-links-tab")
-        tab("Home", in: app).tap()
+        keepScreenshot(app, "quick-links-sheet")
+        app.buttons["quickLinks.close"].tap()
         XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 5))
         open("settings", title: "Settings", in: app)
         app.buttons["settings.topic.specialDeviceModes"].tap()
@@ -144,15 +140,15 @@ final class NavigationJourneyTests: XCTestCase {
         let flyout = flyout(app)
         XCTAssertTrue(flyout.waitForExistence(timeout: 3))
         XCTAssertFalse(app.buttons["home.chip.lights"].exists, "Content under the scrim still reachable by VoiceOver")
-        for section in ["home", "security", "climate", "chores", "quickLinks"] {
+        for section in ["home", "security", "climate", "chores", "settings"] {
             let row = app.buttons["nav.\(section)"]
             XCTAssertTrue(row.isHittable, "\(section) row unreachable")
             XCTAssertGreaterThanOrEqual(row.frame.height, 44, "\(section) row under 44 pt")
         }
         XCTAssertTrue(app.buttons["nav.home"].isSelected, "Current section not marked selected")
-        // Quick Links follows the four sections; Settings is not in the flyout.
-        XCTAssertGreaterThan(app.buttons["nav.quickLinks"].frame.minY, app.buttons["nav.chores"].frame.maxY)
-        XCTAssertFalse(app.buttons["nav.settings"].exists, "Settings row in the flyout")
+        // Settings is the last row; Quick Links is a header button, not a row.
+        XCTAssertGreaterThan(app.buttons["nav.settings"].frame.minY, app.buttons["nav.chores"].frame.maxY)
+        XCTAssertFalse(app.buttons["nav.quickLinks"].exists, "Quick Links row in the flyout")
         // The scrim closes it without navigating.
         app.buttons["nav.flyout.scrim"].tap()
         XCTAssertTrue(flyout.waitForNonExistence(timeout: 3))
@@ -216,17 +212,17 @@ final class NavigationJourneyTests: XCTestCase {
         }
     }
 
-    /// Settings sits in the Account sheet on every family and orientation: a topic pushes inside the sheet with
-    /// Back and never splits, and the sheet audits clean (AX5 included).
-    func testSettingsInTheAccountSheetPushesTopics() throws {
+    /// Settings is its own tab on every family and orientation: a topic pushes inside the tab with Back and never
+    /// splits, and the page audits clean (AX5 included).
+    func testSettingsTabPushesTopics() throws {
         let app = try FentonHomeApp.launchSignedIn()
         open("settings", title: "Settings", in: app)
-        XCTAssertFalse(app.descendants(matching: .any)["settings.placeholder"].exists, "Split placeholder in a sheet")
+        XCTAssertFalse(app.descendants(matching: .any)["settings.placeholder"].exists, "Split placeholder in the Settings tab")
         let modes = app.buttons["settings.topic.specialDeviceModes"]
         for _ in 0..<6 where !(modes.exists && modes.isHittable) { app.settingsList.swipeUp() }
         modes.tap()
         XCTAssertTrue(app.navigationBars["Special Device Modes"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["split.close"].exists, "A sheet split")
+        XCTAssertFalse(app.buttons["split.close"].exists, "The Settings tab split")
         goBack(in: app)
         XCTAssertTrue(modes.waitForExistence(timeout: 5))
         try FentonHomeApp.audit(app) {
@@ -237,15 +233,12 @@ final class NavigationJourneyTests: XCTestCase {
         }
     }
 
-    /// Choosing Quick Links in the flyout presents its sheet and closes the flyout.
-    func testFlyoutQuickLinksPresentsTheSheet() throws {
+    /// Quick Links is the header button in a flyout window too, and the flyout is closed while its sheet is up.
+    func testQuickLinksHeaderButtonPresentsTheSheet() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        guard usesFlyout(app) else { throw XCTSkip("Compact window") }
-        app.buttons["nav.open"].tap()
-        XCTAssertTrue(flyout(app).waitForExistence(timeout: 3))
-        app.buttons["nav.quickLinks"].tap()
+        app.buttons["quickLinks.open"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["quickLinks.rooms"].waitForExistence(timeout: 5), "Quick Links did not open")
-        XCTAssertFalse(flyout(app).exists, "Flyout stayed open under the sheet")
+        XCTAssertFalse(flyout(app).exists, "Flyout open under the sheet")
         app.buttons["quickLinks.close"].tap()
         XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 5))
     }
@@ -276,7 +269,8 @@ final class NavigationJourneyTests: XCTestCase {
             app.openAccountSheet()
             sleep(1)
             keep(app, "account-\(suffix)")
-            app.buttons["account.settings"].tap()
+            app.buttons["account.close"].tap()
+            open("settings", title: "Settings", in: app)
             XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
             // Show the end of the list: it closes with the Home Assistant row (below the fold on
             // phones and in the split's leading pane).

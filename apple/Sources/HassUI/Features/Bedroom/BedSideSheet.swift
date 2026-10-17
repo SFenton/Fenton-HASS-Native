@@ -85,7 +85,8 @@ public struct BedSideSheet: View {
             }
             .background { WindowMetricsReader(metrics: $window) }
             .modalChrome()
-            .modalTabBar(Tab.allCases, label: "\(controller.config.title) sections", title: \.title, selection: $tab,
+            .modalTabBar(Tab.allCases, label: "\(controller.config.title) sections", title: \.title,
+                         symbol: ModalTabSymbols.symbol(for:), selection: $tab,
                          identifier: "bed.tabs")
             .navigationTitle(controller.title)
             .inlineNavigationTitle()

@@ -87,7 +87,8 @@ public struct HumidifierSheet: View {
                 .accessibilityIdentifier(twoColumns ? "humidifier.layout.twoColumn" : "humidifier.layout.singleColumn")
             }
             .background { WindowMetricsReader(metrics: $window) }
-            .modalTabBar(HumidifierTab.allCases, label: "Humidifier sections", title: \.title, selection: $tab,
+            .modalTabBar(HumidifierTab.allCases, label: "Humidifier sections", title: \.title,
+                         symbol: ModalTabSymbols.symbol(for:), selection: $tab,
                          identifier: "humidifier.tabs")
             .navigationDestination(item: $editing) { rule in
                 HumidifierActivityEditor(schedules: schedules, rule: rule, isNew: !schedules.rules.contains { $0.id == rule.id }) {

@@ -95,7 +95,8 @@ final class ChoresJourneyTests: JourneyTestCase {
         XCTAssertEqual(lastCall(in: app), "todo.update_item 13--fixture")
     }
 
-    /// The pencil opens the task form, loads the task, and saving sends the form.
+    /// The pencil opens the task form, loads the task, and saving sends the form once something changed: the confirm
+    /// check is disabled while the task is as loaded (`SheetEditState`).
     func testEditingATaskLoadsAndSaves() {
         let app = launch()
         let edit = element("todo.edit.13--fixture", in: app)
@@ -105,7 +106,12 @@ final class ChoresJourneyTests: JourneyTestCase {
         let name = app.textFields["task.name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         XCTAssertEqual(name.value as? String, "Run the dishwasher")
-        app.buttons["task.save"].tap()
+        let save = app.buttons["task.save"]
+        XCTAssertFalse(save.isEnabled, "Nothing changed yet: the check is disabled")
+        name.tap()
+        name.typeText("!")
+        XCTAssertTrue(save.wait(for: \.isEnabled, toEqual: true, timeout: 5), "A change enables the check")
+        save.tap()
         XCTAssertTrue(name.waitForNonExistence(timeout: 5))
         XCTAssertEqual(lastCall(in: app), "donetick.update_task_form")
     }

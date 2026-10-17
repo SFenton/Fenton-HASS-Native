@@ -17,9 +17,8 @@ struct RecipeDetailSheet: View {
                 .modalChrome()
                 .toolbar { SheetCloseItem(identifier: "recipe.done") { dismiss() } }
         }
-        .hassSheet(.page)
-        // Explicitly full height (owner, 2026-10-16): other sheets size to their content, but a recipe is a page to read.
-        .presentationDetents([.large])
+        // Full height (owner, 2026-10-16): other sheets size to their content, but a recipe is a page to read.
+        .hassSheet(.page, height: .full)
     }
 }
 
@@ -115,7 +114,7 @@ struct RecipeDetailContent: View {
         .scrollTelemetry("Recipe Detail")
         .accessibilityIdentifier("recipe.scroll")
         .modalTabBar(RecipeDetailModel.Tab.allCases, label: "Recipe sections", title: \.title,
-                     selection: $model.tab, identifier: "recipe.tabs")
+                     symbol: \.symbol, selection: $model.tab, identifier: "recipe.tabs")
     }
 }
 

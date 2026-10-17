@@ -43,8 +43,27 @@ public struct SheetCancelItem: ToolbarContent {
     }
 }
 
+/// When a create or edit sheet's confirm check can be pressed.
+///
+/// The check is always shown and is **disabled until there is something to confirm** (owner, 2026-10-16: "should the
+/// confirm checkmark only appear if things are changed, as opposed to a gray checkmark visible then blue on change?";
+/// answer: visible, disabled until a change, as in Calendar and Reminders; HIG Toolbars: keep controls in a stable
+/// place, and disable rather than hide one that does not apply now). A new item needs a valid draft; an edit also
+/// needs a change, so confirming never re-saves what is already saved.
+public enum SheetEditState {
+    /// - Parameters:
+    ///   - isValid: The draft can be saved (a name is present, the item has loaded).
+    ///   - hasChanges: The draft differs from what is saved; always true for a new item, whose draft is the change.
+    ///   - isBusy: A save or a load is in flight.
+    /// - Returns: Whether the confirm check is enabled.
+    public static func canConfirm(isValid: Bool, hasChanges: Bool, isBusy: Bool = false) -> Bool {
+        isValid && hasChanges && !isBusy
+    }
+}
+
 /// The trailing confirm on a create or edit sheet: a checkmark on G's filled `#0071E3` circle
-/// (``HassTokens/Ink/actionFill``, 4.6:1 under white). While the save is in flight it shows an inline ``ArcSpinner``
+/// (``HassTokens/Ink/actionFill``, 4.6:1 under white), dimmed and unpressable until there is something to confirm
+/// (``SheetEditState``). While the save is in flight it shows an inline ``ArcSpinner``
 /// and is spoken as the action in progress ("Saving").
 ///
 /// iOS 26 and later use `Button(role: .confirm)`, which the system draws prominent on glass; earlier systems draw a
@@ -60,7 +79,7 @@ public struct SheetConfirmItem: ToolbarContent {
     /// Creates the item.
     /// - Parameters:
     ///   - title: What the check does, spoken by VoiceOver: "Save", "Add", "Create" or "Apply".
-    ///   - isEnabled: False while the draft can't be saved (an empty name, nothing changed).
+    ///   - isEnabled: False while the draft can't be saved (an empty name, nothing changed; ``SheetEditState/canConfirm(isValid:hasChanges:isBusy:)``).
     ///   - isBusy: Shows the spinner in place of the check, which is disabled meanwhile.
     ///   - busyTitle: Spoken while busy ("Saving"); defaults to the title.
     ///   - identifier: Accessibility identifier; sheets keep their existing one so UI tests stay stable.

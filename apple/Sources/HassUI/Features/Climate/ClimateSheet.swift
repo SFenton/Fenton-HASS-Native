@@ -73,7 +73,7 @@ struct ClimateSheet: View {
             .accessibilityIdentifier("climate.sheet.\(tab.rawValue)")
             .modalChrome()
             .modalTabBar(ClimateConfig.Tab.allCases, label: "Thermostat sections", title: \.title,
-                         selection: $tab, identifier: "climate.sheet.tabs")
+                         symbol: ModalTabSymbols.symbol(for:), selection: $tab, identifier: "climate.sheet.tabs")
             .navigationTitle(ClimateConfig.sheetTitle)
             .inlineNavigationTitle()
             .toolbar { closeButton }

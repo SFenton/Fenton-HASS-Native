@@ -70,7 +70,11 @@ struct DonetickTaskSheet: View {
         .task { await load() }
     }
 
-    private var canSave: Bool { loaded && busy == nil && !form.trimmedName.isEmpty }
+    /// A new task needs a name; an edit also needs a change (``SheetEditState``).
+    private var canSave: Bool {
+        SheetEditState.canConfirm(isValid: loaded && !form.trimmedName.isEmpty,
+                                  hasChanges: mode.editTarget == nil || form != initialForm, isBusy: busy != nil)
+    }
 
     // MARK: Actions
 

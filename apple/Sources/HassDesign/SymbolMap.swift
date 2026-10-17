@@ -10,6 +10,7 @@ public enum SymbolMap {
         "mdi:thermometer": "thermometer.medium",
         "mdi:clipboard-list": "checklist",
         "mdi:cog": "gearshape",
+        "mdi:alarm": "alarm",
         "mdi:lightbulb-group": "lightbulb.2",
         "mdi:lightbulb": "lightbulb",
         "mdi:motion-sensor": "figure.walk.motion",

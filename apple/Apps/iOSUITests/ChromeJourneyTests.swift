@@ -46,15 +46,13 @@ final class ChromeJourneyTests: XCTestCase {
         XCTAssertTrue(close.waitForNonExistence(timeout: 5), "Modal did not close")
     }
 
-    /// Every section root has the profile button, and the menu wherever Settings is not a visible tab.
+    /// Every section root has the profile and Quick Links header buttons (owner, 2026-10-16), and Settings is a tab.
     func testSectionRootsCarryShellItems() throws {
         let app = try FentonHomeApp.launchSignedIn()
         XCTAssertTrue(app.buttons["nav.profile"].waitForExistence(timeout: 5), "No profile button")
-        XCTAssertGreaterThanOrEqual(app.buttons["nav.profile"].frame.height, 44, "Profile under 44 pt")
-        // Direction G: Settings is in the Account sheet behind the profile avatar, never a tab.
-        XCTAssertFalse(tab("Settings", in: app).exists, "Settings tab")
-        let quickLinksTab = tab("Quick Links", in: app)
-        XCTAssertTrue(quickLinksTab.exists || app.buttons["quickLinks.open"].exists, "Quick Links unreachable")
+        XCTAssertGreaterThanOrEqual(app.buttons["nav.profile"].frame.height, 36, "Profile under its glass circle (the 44 pt hit area is `ShellJourneyTests.testHeaderCirclesHaveA44PointHitArea`)")
+        XCTAssertTrue(app.buttons["quickLinks.open"].exists, "No Quick Links header button")
+        XCTAssertFalse(app.tabBars.buttons["Quick Links"].exists, "Quick Links is a header button, not a tab")
     }
 
     /// Pages, the menu, Quick Links and the main modals on this device, kept for design review.
@@ -88,18 +86,13 @@ final class ChromeJourneyTests: XCTestCase {
         keepScreenshot(app, "chrome-modal-profile-\(suffix)")
         app.buttons["account.close"].tap()
 
-        let quickLinks = tab("Quick Links", in: app)
-        if quickLinks.exists, quickLinks.isHittable {
-            quickLinks.tap()
-        } else {
-            app.buttons["quickLinks.open"].tap()
-        }
+        app.buttons["quickLinks.open"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["quickLinks.rooms"].waitForExistence(timeout: 5))
         sleep(1)
         keepScreenshot(app, "chrome-quick-links-\(suffix)")
         if app.buttons["quickLinks.close"].exists { closeModal(app) }
 
-        for (section, title) in [("security", "Security"), ("climate", "Climate"), ("chores", "Chores")] {
+        for (section, title) in [("security", "Security"), ("climate", "Climate"), ("chores", "Chores"), ("settings", "Settings")] {
             open(section, title: title, in: app)
             sleep(2)
             keepScreenshot(app, "chrome-\(section)-\(suffix)")
@@ -114,10 +107,6 @@ final class ChromeJourneyTests: XCTestCase {
         app.openAccountSheet()
         sleep(1)
         keepScreenshot(app, "chrome-account-\(suffix)")
-        app.buttons["account.settings"].tap()
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        sleep(1)
-        keepScreenshot(app, "chrome-settings-\(suffix)")
     }
 
     /// Home with the new toolbar items and pill chips, and the Quick Links page, audit clean (AX5 included).
@@ -130,14 +119,12 @@ final class ChromeJourneyTests: XCTestCase {
             return large
         }
         let relaunched = try FentonHomeApp.launchSignedIn()
-        let quickLinks = tab("Quick Links", in: relaunched)
-        guard quickLinks.exists, quickLinks.isHittable else { return }
-        quickLinks.tap()
+        relaunched.buttons["quickLinks.open"].tap()
         XCTAssertTrue(relaunched.descendants(matching: .any)["quickLinks.rooms"].waitForExistence(timeout: 5))
         sleep(1)
         try FentonHomeApp.audit(relaunched) {
             let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
-            self.tab("Quick Links", in: large).tap()
+            large.buttons["quickLinks.open"].tap()
             XCTAssertTrue(large.descendants(matching: .any)["quickLinks.rooms"].waitForExistence(timeout: 5))
             sleep(1)
             return large

@@ -4,82 +4,29 @@ import SwiftUI
 
 // MARK: - Button
 
-/// The toolbar button that opens Quick Links where it is not the trailing circle (``CompactTabLayout``): iPad, the
-/// unfolded Duo, and iOS before 26. The web shows a floating action button on every page; iOS puts the same action
-/// in the navigation bar (HIG: Toolbars), labeled "Quick Links" for VoiceOver.
+/// The header button that opens Quick Links, beside Profile on every page (owner, 2026-10-16). The web shows a floating
+/// action button on every page; iOS puts the same action in the navigation bar (HIG Toolbars: "Trailing: important
+/// always-available items"), a glass circle labeled "Quick Links" for VoiceOver.
 struct QuickLinksButton: View {
-    /// The Quick Links symbol, shared by this button and the trailing tab.
+    /// The Quick Links symbol, shared by this button.
     static let symbol = "square.grid.2x2"
 
     var action: () -> Void
 
     var body: some View {
+        // A custom image on its own glass circle, like Profile beside it (``SwiftUI/View/headerCircle()``): the system sizes
+        // a bar item built from a `Label` itself and ignores a frame (it measured 39 x 36).
         Button(action: action) {
+            Image(systemName: Self.symbol)
+                .font(.body.weight(.medium))
+                .foregroundStyle(.primary)
+                .headerCircle()
+        }
+        .accessibilityLabel(QuickLinks.title)
+        .accessibilityShowsLargeContentViewer {
             Label(QuickLinks.title, systemImage: Self.symbol)
         }
         .accessibilityIdentifier("quickLinks.open")
-    }
-}
-
-extension View {
-    /// Adds the Quick Links toolbar button or floating circle and the sheet; a chosen page pushes through
-    /// ``HomeRouteDestination`` once the sheet has gone, so the push never races the dismissal.
-    /// - Parameters:
-    ///   - caller: Service caller for the Security System and room-visit actions.
-    ///   - showsButton: Show the toolbar button (false where Quick Links is the trailing tab or the floating circle).
-    ///   - showsFloatingButton: Show the floating circle bottom trailing (regular width).
-    func quickLinks(caller: (any HassServiceCalling)?, showsButton: Bool = true, showsFloatingButton: Bool = false) -> some View {
-        modifier(QuickLinksPresenter(caller: caller, showsButton: showsButton, showsFloatingButton: showsFloatingButton))
-    }
-}
-
-private struct QuickLinksPresenter: ViewModifier {
-    var caller: (any HassServiceCalling)?
-    var showsButton: Bool
-    var showsFloatingButton: Bool
-    @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
-    @Environment(\.shellSection) private var section
-    @State private var localIsPresented = false
-    @State private var pending: HomeRoute?
-    @State private var route: HomeRoute?
-
-    /// In the shell, the navigator says which section's root presents the sheet, so the trailing circle, the
-    /// flyout row and this button all open it over the selected section, once. Elsewhere it is local.
-    private var isPresented: Binding<Bool> {
-        guard let navigator, let section else { return $localIsPresented }
-        return Binding(
-            get: { navigator.quickLinksSection == section },
-            set: { if !$0, navigator.quickLinksSection == section { navigator.quickLinksSection = nil } }
-        )
-    }
-
-    private func open() {
-        if let navigator, section != nil { navigator.openQuickLinks() } else { localIsPresented = true }
-    }
-
-    func body(content: Content) -> some View {
-        content
-            .toolbar {
-                if showsButton {
-                    ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: open) }
-                }
-            }
-            // A bottom inset, not an overlay: scroll content gets room to scroll clear of the circle, which sits
-            // above the home indicator and inside the side safe areas (the unfolded Duo's trailing bar).
-            .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
-                if showsFloatingButton {
-                    FloatingQuickLinksButton(action: open)
-                        .padding(.trailing, HassTokens.Spacing.l)
-                        .padding(.bottom, HassTokens.Spacing.s)
-                }
-            }
-            .sheet(isPresented: isPresented, onDismiss: {
-                route = pending
-                pending = nil
-            }) {
-                QuickLinksSheet(caller: caller) { pending = $0 }
-            }
-            .homeRouteDestination($route)
     }
 }
 
@@ -104,7 +51,7 @@ struct QuickLinksSheet: View {
                 }
                 .toolbar { SheetCloseItem(identifier: "quickLinks.close") { dismiss() } }
         }
-        .hassSheet(.page)
+        .hassSheet(.page, height: .full) // Navigates to rooms and detail pages
         .accessibilityIdentifier("quickLinks.sheet")
     }
 
@@ -119,35 +66,6 @@ struct QuickLinksSheet: View {
     func go(_ route: HomeRoute) {
         onNavigate(route)
         dismiss()
-    }
-}
-
-// MARK: - Tab
-
-/// Quick Links as the tab bar's trailing tab (iOS 26 and later in compact width; ``CompactTabLayout``). Like a
-/// Search tab, it is its own page: Rooms and Security System open inside it, and the pages it links push on its
-/// own stack, so leaving the tab returns to the section underneath unchanged.
-struct QuickLinksTab: View {
-    var caller: (any HassServiceCalling)?
-    @State private var path = NavigationPath()
-
-    var body: some View {
-        NavigationStack(path: $path) {
-            QuickLinksRoot { link in
-                switch link.action {
-                case let .detail(detail): path.append(detail)
-                case let .navigate(route): if let route = HomeRoute(path: route) { path.append(route) }
-                }
-            }
-            .navigationDestination(for: QuickLink.Detail.self) { detail in
-                QuickLinksDetailView(detail: detail, caller: caller) { path.append(HomeRoute.room($0)) }
-                    .pageChrome()
-            }
-            .navigationDestination(for: HomeRoute.self) { HomeRouteDestination(route: $0).pageChrome() }
-            .sectionRootChrome()
-            .pageChrome()
-        }
-        .accessibilityIdentifier("quickLinks.tab")
     }
 }
 

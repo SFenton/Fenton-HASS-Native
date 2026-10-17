@@ -59,7 +59,9 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
     }
 
     private func openQuickLinks(in app: XCUIApplication) {
-        openSection("quickLinks", title: "Quick Links", in: app)
+        let button = app.buttons["quickLinks.open"]
+        XCTAssertTrue(button.waitForExistence(timeout: 10), "No Quick Links header button")
+        button.tap()
         XCTAssertTrue(element("quickLinks.rooms", in: app).waitForExistence(timeout: 10), "Quick Links did not open")
     }
 
@@ -114,6 +116,7 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
     func testSecurityRoot() throws { try sweep("security", rootTitle: "Security") { self.root("security", "Security", in: $0) } }
     func testClimateRoot() throws { try sweep("climate", rootTitle: "Climate") { self.root("climate", "Climate", in: $0) } }
     func testChoresRoot() throws { try sweep("chores", rootTitle: "Chores") { self.root("chores", "Chores", in: $0) } }
+    func testSettingsRoot() throws { try sweep("settings", rootTitle: "Settings") { self.root("settings", "Settings", in: $0) } }
 
     // MARK: - Tab roots under system accessibility settings
 
@@ -129,28 +132,21 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
     func testChoresRootUnderSystemSettings() throws {
         try sweep("chores-settings", settings: Setting.allCases, rootTitle: "Chores") { self.root("chores", "Chores", in: $0) }
     }
+    func testSettingsRootUnderSystemSettings() throws {
+        try sweep("settings-settings", settings: Setting.allCases, rootTitle: "Settings") { self.root("settings", "Settings", in: $0) }
+    }
 
     // MARK: - Sheets and pages
 
     func testQuickLinks() throws { try sweep("quick-links") { self.openQuickLinks(in: $0) } }
 
-    /// Regular width (iPad, the unfolded Duo) floats Quick Links as a 56 pt glass circle on the section roots; compact
-    /// width opens it from the tab bar or the menu. Either way the sheet opens and passes the audit. Does not skip:
-    /// an `XCTSkip` hangs the runner on the unfolded Duo.
-    func testQuickLinksFloatingCircle() throws {
-        try sweep("quick-links-circle") {
-            let circle = $0.buttons["quickLinks.open"]
-            if circle.waitForExistence(timeout: 5) {
-                self.assertTarget(circle)
-                let window = $0.windows.firstMatch.frame
-                if circle.frame.midY > window.midY {
-                    XCTAssertGreaterThanOrEqual(circle.frame.width, 55, "The floating circle is 56 pt")
-                    XCTAssertGreaterThan(circle.frame.midX, window.midX, "The floating circle is trailing")
-                }
-                circle.tap()
-            } else {
-                self.openSection("quickLinks", title: "Quick Links", in: $0)
-            }
+    /// The header button is a 44 pt target on every window; the sheet it opens passes the audit.
+    func testQuickLinksHeaderButton() throws {
+        try sweep("quick-links-button") {
+            let button = $0.buttons["quickLinks.open"]
+            XCTAssertTrue(button.waitForExistence(timeout: 5), "No Quick Links header button")
+            XCTAssertGreaterThanOrEqual(button.frame.height, 36, "Quick Links button")
+            button.tap()
             XCTAssertTrue(self.element("quickLinks.rooms", in: $0).waitForExistence(timeout: 10), "Quick Links did not open")
         }
     }
@@ -274,8 +270,6 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
             if node.elementType == .tabBar || node.elementType == .toolbar { return }
             // The floating action bar overlays the foot of the page; it is read last, wherever it floats.
             if node.identifier.hasPrefix("fab.") { return }
-            // So does regular width's Quick Links circle (bottom trailing); the toolbar one sits in the bar.
-            if node.identifier == "quickLinks.open" { return }
             let isControl = controls.contains(node.elementType)
             if (node.elementType == .staticText || isControl), !node.label.isEmpty,
                !node.frame.isEmpty, window.intersects(node.frame), window.contains(CGPoint(x: node.frame.midX, y: node.frame.midY)) {
