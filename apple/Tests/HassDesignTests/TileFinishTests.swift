@@ -108,6 +108,33 @@ struct TileFinishTests {
         }
     }
 
+    @Test func theOffGlyphIsLiftedOnlyWhereTintedGlassNeedsIt() {
+        for family in ColorFamily.allCases {
+            // Solid is the shipped mix; a light sheet is the same mix with tinted glass's keep.
+            #expect(family.offGlyphRGB(.dark, under: .solid) == family.offGlyphRGB(.dark))
+            #expect(family.offGlyphRGB(.light, under: .solid) == family.offGlyphRGB(.light))
+            #expect(family.offGlyphRGB(.light, under: .tintedGlass) == family.offGlyphRGB(.light, keep: 0.88))
+            // The dark glyph is never darker than the plain mix, and reads 3:1 on the lightest ground.
+            let plain = family.offGlyphRGB(.dark, keep: 0.88)
+            let lifted = family.offGlyphRGB(.dark, under: .tintedGlass)
+            #expect(ChipTint.luminance(lifted) >= ChipTint.luminance(plain) - 1e-9, "\(family)")
+            #expect(ChipTint.contrast(lifted, ColorFamily.lightestGlyphGround) >= 3, "\(family)")
+        }
+        // A family that already reads is untouched; the Food families are the ones that needed it.
+        #expect(ColorFamily.lights.offGlyphRGB(.dark, under: .tintedGlass) == ColorFamily.lights.offGlyphRGB(.dark, keep: 0.88))
+        #expect(ColorFamily.pantry.offGlyphRGB(.dark, under: .tintedGlass) != ColorFamily.pantry.offGlyphRGB(.dark, keep: 0.88))
+    }
+
+    @Test func aChosenControlTakesTheEdgeUnlessTransparencyIsReduced() {
+        // The accessibility settings are read-only environment values, so the journeys cover them; here both finishes draw.
+        for finish in TileFinish.allCases {
+            let control = RoundedRectangle(cornerRadius: 16).fill(.blue).frame(width: 90, height: 64)
+                .tintedGlassEdge(cornerRadius: 16)
+                .tileFinish(finish)
+            #expect(ImageRenderer(content: control).cgImage != nil, "\(finish)")
+        }
+    }
+
     // MARK: Contrast
 
     /// Where a tile's text sits, as fractions of its height. A row's title is at about a third of the height and its state
