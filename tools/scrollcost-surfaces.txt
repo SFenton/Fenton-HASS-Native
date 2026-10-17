@@ -59,9 +59,19 @@ Live Pantry|LIVE=1 FENTON_OPEN_INVENTORY=pantry
 # `HassDesign/PerfSwitches.swift`). The simulator shows what a layer costs the main thread; what it costs the GPU needs the
 # same surfaces on a phone (`--device`, `--disable`).
 [layers]
+Settings (layers baseline)|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1
+Chores long (layers baseline)|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12
 Settings without headerFade|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=headerFade
+Settings without fadeMask|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=fadeMask
+Settings without fadeReaders|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=fadeReaders
+Settings without fadeScroll|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=fadeScroll
+Settings without fadeGeometry|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=fadeGeometry
 Settings without backdrop|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=backdrop
 Chores long without headerFade|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=headerFade
+Chores long without fadeMask|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=fadeMask
+Chores long without fadeReaders|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=fadeReaders
+Chores long without fadeScroll|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=fadeScroll
+Chores long without fadeGeometry|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=fadeGeometry
 Chores long without glassBar|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=glassBar
 Chores long without scrollEdge|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=scrollEdge
 Chores long without backdrop|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=backdrop

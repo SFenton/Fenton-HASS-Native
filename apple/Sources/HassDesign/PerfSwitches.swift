@@ -10,6 +10,15 @@ public enum PerfSwitches {
         /// The mask that fades content out under the navigation bar (``SwiftUICore/View/headerEdgeFade()``): a full-page
         /// offscreen pass while a page scrolls.
         case headerFade
+        /// Only the mask half of the header fade: the readers (scroll offset, safe area) keep running, so a run without it
+        /// shows what the offscreen mask costs on its own.
+        case fadeMask
+        /// Only the readers half of the header fade: the mask stays, the scroll offset and safe area readers go.
+        case fadeReaders
+        /// Only the scroll offset reader of the header fade (`onScrollGeometryChange`).
+        case fadeScroll
+        /// Only the safe area and container geometry readers of the header fade (`onGeometryChange`).
+        case fadeGeometry
         /// The blurred house photo behind pages and its scrim (the plain base colour is drawn instead).
         case backdrop
         /// The Liquid Glass behind the floating action bar's buttons (a plain thin material is drawn instead).
