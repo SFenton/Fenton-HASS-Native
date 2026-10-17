@@ -141,15 +141,18 @@ final class ModalSizingJourneyTests: JourneyTestCase {
             sleep(1)
             guard let capture = RenderedContrast.Capture.screen() else { return XCTFail("No capture") }
             let cancel = app.buttons["filterSheet.cancel"].frame
-            // Just right of Cancel, clear of the title (a folded Duo's title starts close), where rows would show
-            // through a material.
-            let x = cancel.maxX + 6
+            // Beside Cancel and beside Apply, 14 pt clear of their glass shadows, where rows would show through a
+            // material. The title sits between them and can reach either on a folded Duo, so one clear side suffices.
+            let applyFrame = apply.frame
             let y = cancel.midY
-            let band = RenderedContrast.luminance(at: CGPoint(x: x, y: y), in: capture)
             let ground = RenderedContrast.luminance(at: CGPoint(x: cancel.minX - 12, y: cancel.maxY + 30), in: capture)
+            let sides = [cancel.maxX + 14, applyFrame.minX - 14].compactMap {
+                RenderedContrast.luminance(at: CGPoint(x: $0, y: y), in: capture)
+            }
             keepScreenshot(app, "modal-filter-header-\(appearance)-\(layout)")
-            guard let band, let ground else { return XCTFail("Off capture") }
-            XCTAssertEqual(band, ground, accuracy: 0.03, "\(appearance): the header sits on a band, not the sheet's ground")
+            guard let ground, !sides.isEmpty else { return XCTFail("Off capture") }
+            let closest = sides.map { abs($0 - ground) }.min() ?? 1
+            XCTAssertLessThan(closest, 0.03, "\(appearance): the header sits on a band, not the sheet's ground (\(sides) vs \(ground))")
             app.terminate()
         }
     }
