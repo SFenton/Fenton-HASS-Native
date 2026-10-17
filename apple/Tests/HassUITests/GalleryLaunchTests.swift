@@ -43,18 +43,43 @@ extension HostedWindow {
     }
 }
 
+extension NSWindow {
+    /// The largest scroll view in the window's hierarchy: the page's or sheet's content.
+    func mainScrollView() -> NSScrollView? {
+        var best: NSScrollView?
+        func walk(_ view: NSView) {
+            if let scroll = view as? NSScrollView, (scroll.documentView?.frame.height ?? 0) > (best?.documentView?.frame.height ?? -1) {
+                best = scroll
+            }
+            view.subviews.forEach(walk)
+        }
+        if let content = contentView { walk(content) }
+        return best
+    }
+
+    /// Moves the main scroll view's content by `delta` points (positive reveals what is further down). Returns whether it
+    /// moved. Set directly on the clip view: wheel events sent to a window end the test host.
+    @discardableResult
+    func scrollContent(by delta: CGFloat) -> Bool {
+        guard let scroll = mainScrollView(), let document = scroll.documentView else { return false }
+        let clip = scroll.contentView
+        let before = clip.bounds.origin
+        // The clip view keeps the target inside the content, so asking past the end stops at the end.
+        let target = NSPoint(x: before.x, y: before.y + (document.isFlipped ? delta : -delta))
+        clip.scroll(to: clip.constrainBoundsRect(NSRect(origin: target, size: clip.bounds.size)).origin)
+        scroll.reflectScrolledClipView(clip)
+        return abs(clip.bounds.origin.y - before.y) > 0.5
+    }
+}
+
 extension HostedWindow {
-    /// Scrolls the window's content (its sheet's, when one is up) from top to bottom with wheel events, so the rows a lazy
-    /// list builds only when they come into view are drawn and their code runs.
-    func scrollThrough(steps: Int = 6, pixels: Int32 = -450) async {
+    /// Scrolls the window's content (its sheet's, when one is up) from top to bottom a screenful at a time, so the rows a
+    /// lazy list builds only when they come into view are drawn and their code runs.
+    func scrollThrough(steps: Int = 8) async {
         let target = window.attachedSheet ?? window
-        let screenTop = NSScreen.screens.first?.frame.maxY ?? 0
         for _ in 0..<steps {
-            guard let wheel = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: pixels, wheel2: 0, wheel3: 0) else { return }
-            wheel.location = CGPoint(x: target.frame.midX, y: screenTop - target.frame.midY)
-            wheel.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: Int64(target.windowNumber))
-            wheel.setIntegerValueField(.mouseEventWindowUnderMousePointerThatCanHandleThisEvent, value: Int64(target.windowNumber))
-            if let event = NSEvent(cgEvent: wheel) { target.sendEvent(event) }
+            let page = (target.mainScrollView()?.contentView.bounds.height ?? 400) * 0.8
+            guard target.scrollContent(by: page) else { break }
             await settle(0.1)
         }
     }

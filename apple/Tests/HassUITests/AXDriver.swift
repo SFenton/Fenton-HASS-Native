@@ -64,14 +64,14 @@ final class AXWindow {
     // MARK: Reading
 
     /// Every element in this window (and its sheets), depth first, up to `limit` elements.
-    func nodes(limit: Int = 4000) async -> [Node] {
+    func nodes(limit: Int = 4000, sheetOnly: Bool = false, stopWhen: ((Node) -> Bool)? = nil) async -> [Node] {
         let pid = ProcessInfo.processInfo.processIdentifier
         // The tree is briefly empty while the window relayouts; ask again.
         for _ in 0..<5 {
             let expected = Self.axFrame(of: hosted.window)
             // On the main thread: in this process an accessibility query runs on the calling thread, and AppKit builds
             // the table cells it reads there (off the main thread that trips its auto layout checks).
-            let found = Self.walk(pid: pid, expected: expected, limit: limit)
+            let found = Self.walk(pid: pid, expected: expected, limit: limit, sheetOnly: sheetOnly, stopWhen: stopWhen)
             if !found.isEmpty { return found }
             await hosted.settle(0.1)
         }
@@ -80,7 +80,7 @@ final class AXWindow {
 
     /// The first element whose accessibility identifier is `identifier`.
     func node(_ identifier: String) async -> Node? {
-        await nodes().first { $0.identifier == identifier }
+        await nodes(stopWhen: { $0.identifier == identifier }).last { $0.identifier == identifier }
     }
 
     /// The first element whose label or title is exactly `text`, optionally of `role` (for example `AXButton`).
@@ -108,7 +108,13 @@ final class AXWindow {
 
     /// Waits for an element with `identifier` to exist and returns it.
     func waitFor(_ identifier: String, timeout: TimeInterval = 20) async -> Node? {
-        await wait(timeout: timeout) { $0.contains { $0.identifier == identifier } }.first { $0.identifier == identifier }
+        var waited: TimeInterval = 0
+        while waited < timeout {
+            if let found = await node(identifier) { return found }
+            await hosted.settle(0.15)
+            waited += 0.2
+        }
+        return await node(identifier)
     }
 
     /// The value (or label) of the element with `identifier`, as a screen reader would read it.
@@ -170,22 +176,16 @@ final class AXWindow {
         return true
     }
 
-    /// Scrolls the window's content (its sheet's, when one is up) by wheel events until the element is in view and
+    /// Scrolls the window's content (its sheet's, when one is up) until the element is in view and
     /// clear of the bars: a click outside the window reaches nothing. Returns the element at its new position.
     private func reveal(_ node: Node) async -> Node {
         var current = node
         let target = hosted.window.attachedSheet ?? hosted.window
-        let screenTop = NSScreen.screens.first?.frame.maxY ?? 0
         for _ in 0..<16 {
             let bounds = Self.axFrame(of: target)
             let y = current.frame.midY
             if y > bounds.minY + 80, y < bounds.maxY - 90 { return current }
-            let pixels: Int32 = y > bounds.midY ? -300 : 300
-            guard let wheel = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 1, wheel1: pixels, wheel2: 0, wheel3: 0) else { break }
-            wheel.location = CGPoint(x: target.frame.midX, y: screenTop - target.frame.midY)
-            wheel.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: Int64(target.windowNumber))
-            wheel.setIntegerValueField(.mouseEventWindowUnderMousePointerThatCanHandleThisEvent, value: Int64(target.windowNumber))
-            if let event = NSEvent(cgEvent: wheel) { target.sendEvent(event) }
+            guard target.scrollContent(by: y > bounds.midY ? 250 : -250) else { break }
             await hosted.settle(0.15)
             if !current.identifier.isEmpty, let fresh = await self.node(current.identifier) { current = fresh }
         }
@@ -198,7 +198,7 @@ final class AXWindow {
         guard let found = node else { return false }
         let node = await reveal(found)
         let ok = await click(at: node.frame, along: fraction)
-        await hosted.settle(0.25)
+        await hosted.settle(0.15)
         return ok
     }
 
@@ -219,6 +219,39 @@ final class AXWindow {
         await press(await waitFor(identifier))
     }
 
+    /// What pressing one control did to a gallery's last-call line.
+    struct PressOutcome: CustomStringConvertible {
+        var identifier: String
+        /// The last-call line afterwards when the press changed it; nil when it sent nothing.
+        var call: String?
+        var description: String { "\(identifier) -> \(call ?? "nothing")" }
+    }
+
+    /// Presses, one after another, every enabled button, switch and radio button whose identifier starts with `prefix`,
+    /// and records which of them changed the last-call line (a press that opens a page or a sheet sends nothing).
+    func pressEach(prefixes: [String], inSheet: Bool = false, skipping: (String) -> Bool = { _ in false }, lastCall id: String = "gallery.lastCall") async -> [PressOutcome] {
+        let roles: Set<String> = ["AXButton", "AXCheckBox", "AXRadioButton"]
+        var seen = Set<String>()
+        let identifiers = await nodes(sheetOnly: inSheet).filter { node in
+            !node.identifier.isEmpty && prefixes.contains { node.identifier.hasPrefix($0) } && roles.contains(node.role) && node.isEnabled
+                && !skipping(node.identifier)
+        }.map(\.identifier).filter { seen.insert($0).inserted }
+        var outcomes: [PressOutcome] = []
+        var before = await text(id)
+        for identifier in identifiers {
+            guard let node = await node(identifier), await press(node) else { continue }
+            var after = await text(id)
+            if after == before {
+                // A call can land a pass later (it goes through a task).
+                await hosted.settle(0.15)
+                after = await text(id)
+            }
+            outcomes.append(PressOutcome(identifier: identifier, call: after != before ? after : nil))
+            before = after
+        }
+        return outcomes
+    }
+
     /// Replaces the text of a field.
     @discardableResult
     func type(_ text: String, into node: Node?) async -> Bool {
@@ -232,6 +265,17 @@ final class AXWindow {
     @discardableResult
     func type(_ text: String, into identifier: String) async -> Bool {
         await type(text, into: await waitFor(identifier))
+    }
+
+    /// Types into the field until `condition` holds, at most `attempts` times: under load the first value can land on
+    /// a field that is rebuilt a moment later.
+    @discardableResult
+    func type(_ text: String, into identifier: String, attempts: Int = 3, until condition: ([Node]) -> Bool) async -> Bool {
+        for _ in 0..<attempts {
+            guard await type(text, into: await waitFor(identifier)) else { return false }
+            if condition(await wait(timeout: 6, condition)) { return true }
+        }
+        return false
     }
 
     /// Performs a named action (`AXIncrement`, `AXDecrement`, `AXShowMenu`) on an element.
@@ -268,7 +312,7 @@ final class AXWindow {
         return CGRect(origin: position, size: size)
     }
 
-    private nonisolated static func walk(pid: pid_t, expected: CGRect, limit: Int) -> [Node] {
+    private nonisolated static func walk(pid: pid_t, expected: CGRect, limit: Int, sheetOnly: Bool, stopWhen: ((Node) -> Bool)?) -> [Node] {
         let app = AXUIElementCreateApplication(pid)
         var windows: CFTypeRef?
         guard AXUIElementCopyAttributeValue(app, kAXWindowsAttribute as CFString, &windows) == .success,
@@ -280,10 +324,16 @@ final class AXWindow {
             _ = name
             guard Self.frame(of: window).integral == expected.integral else { continue }
             var queue = [window]
-            while !queue.isEmpty, result.count < limit {
-                let element = queue.removeFirst()
-                let (node, children) = read(element)
+            if sheetOnly {
+                // Start from the window's sheets, not the page behind them.
+                queue = read(window).1.filter { read($0).0.role == "AXSheet" }
+            }
+            var next = 0
+            while next < queue.count, result.count < limit {
+                let (node, children) = read(queue[next])
+                next += 1
                 result.append(node)
+                if stopWhen?(node) == true { return result }
                 queue.append(contentsOf: children)
             }
         }

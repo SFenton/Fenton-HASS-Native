@@ -18,3 +18,21 @@ A full `swift test` runs every `@MainActor` suite in one process, interleaved on
 - **Production timeouts race the main actor too.** A `Task.sleep` whose timer already fired returns normally even if the task is cancelled before its continuation runs, so check `Task.checkCancellation()` after a timeout sleep. Cover the race by blocking the main actor past a shortened timeout (`CameraLiveViewTests.aFirstFrameBeatsATimeoutThatHasNotRunYet`).
 - **Compare renders with a tolerance.** The first `ImageRenderer` render in a process is a level or two off on a few antialiased pixels, so byte-equal `Data` depends on which test rendered first. Compare channels with a small threshold (`ValetudoMapDrawingTests.differs`).
 - **Only expect a difference the view draws.** A "this changes the pixels" check on a configuration that draws nothing new passes only by render noise; assert the no-op instead (a vacuum without room selection hatches nothing).
+
+## Driving hosted windows (2026-10-16)
+
+The UX bar is 95%, which needs the code behind taps, sheets and rows to run, not only the first screen. Three tools in `apple/Tests/HassUITests` do that on the macOS host:
+
+- **Launch switches** (`withLaunch(environment:defaults:)` in `GalleryLaunchTests.swift`). Set the `FENTON_GALLERY_*` variables and launch arguments the journeys pass, host `ComponentGallery` in a real window and check what it drew (`HostedWindow.snapshot()`, `distinctColors`, `differs(from:)`). `GalleryLaunchMatrixTests` opens every sheet, tab, scenario and fixture each gallery offers and checks the sheet is up. A lazy `List` builds only the rows in view, so `scrollThrough()` wheel-scrolls the window or sheet to run the rows below the fold. Add a launch to the matrix when a gallery gains a switch.
+- **`AXWindow`** (`AXDriver.swift`). Hosts a view and drives it through the accessibility tree: find by `accessibilityIdentifier` or label, `press`, `type(_:into:)`, read values and enabled state, and wait on them (`wait`, `waitFor`, `text(_:where:)`). It needs the test host to be a regular application and the process to be trusted for accessibility (`AXWindow.isAvailable`): flow suites carry `.enabled(if: AXWindow.isAvailable)`, so on a machine without that permission they skip and the coverage gate reads low rather than passing without them.
+- **View-model tests** for logic that sits in a view (`LoginModel` was split out of `LoginView` for this): drive the model against a stubbed session (`LoginStubProtocol`) and host the view over it for each state.
+
+Rules learned the hard way:
+
+- **Presses are real mouse events, never `AXPress`.** An accessibility action in this process ends the test host (it exits through `swift_task_asyncMainDrainQueue`), and so does posting events to `NSApplication`. `AXWindow.press` scrolls the element into view, then sends mouse moved, down and up to the window straight after each other (an `await` between them lets another test's window take the key place and drops the click).
+- **Reads run on the main actor.** In this process an accessibility query runs on the calling thread, and AppKit builds table cells there, so a background query trips its auto layout checks.
+- **Know which controls answer a synthetic click.** SwiftUI-gesture controls do: primary and capsule buttons, chips and tiles, floating actions, navigation rows, toolbar items, alert buttons. AppKit-backed ones mostly do not: bordered and destructive-role buttons, `Toggle` checkboxes in a list (the first press sometimes works), `BrightnessTile`'s drag and tap, rows in a plain `List` below the first screen. Assert state for those (present, enabled, labelled) and cover their closures another way.
+- **Windows are told apart by position**, not title (SwiftUI renames a window after its navigation title): `AXWindow` gives each one its own origin, so another test's window with the same identifiers is not read.
+- **Poll the state a press changes** (`press(_:until:)` retries at other points along the element), never a fixed sleep: a full run keeps the main actor busy for seconds at a time.
+
+The hosted suites add about ten minutes to a full `swift test`; the gate's devcap hold is an hour.

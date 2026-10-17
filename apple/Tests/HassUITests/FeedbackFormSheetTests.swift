@@ -245,12 +245,10 @@ struct FeedbackFormFlowTests {
             size: FeedbackFormSheetTests.phone
         )
         defer { driver.close() }
-        #expect(await driver.type("[Bug] Lights flicker", into: "feedback.field.title"))
-        #expect(await driver.type("They flicker when the fan starts", into: "feedback.field.description"))
-        #expect(await driver.type("Open Home", into: "feedback.field.repro"))
-        #expect(await driver.type("Steady light", into: "feedback.field.expected"))
-        let typed = await driver.wait { _ in model.canSubmit }
-        _ = typed
+        #expect(await driver.type("[Bug] Lights flicker", into: "feedback.field.title") { _ in model.title == "[Bug] Lights flicker" })
+        #expect(await driver.type("They flicker when the fan starts", into: "feedback.field.description") { _ in model.descriptionText.hasPrefix("They flicker") })
+        #expect(await driver.type("Open Home", into: "feedback.field.repro") { _ in model.reproSteps == "Open Home" })
+        #expect(await driver.type("Steady light", into: "feedback.field.expected") { _ in model.expectedBehavior == "Steady light" })
         #expect(model.title == "[Bug] Lights flicker" && model.descriptionText.hasPrefix("They flicker"))
         #expect(model.reproSteps == "Open Home" && model.expectedBehavior == "Steady light")
         #expect(model.canSubmit)
