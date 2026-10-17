@@ -174,7 +174,7 @@ struct HouseBackdrop: View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 HouseBackdropStyle.base
-                if let image = store?.image, !reduceTransparency {
+                if let image = store?.image, !reduceTransparency, !PerfSwitches.isOff(.backdrop) {
                     let size = canvas == .zero ? proxy.size : canvas
                     Image(decorative: image, scale: 1)
                         .resizable()
