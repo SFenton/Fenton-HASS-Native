@@ -235,6 +235,9 @@ final class AccessibilitySweepJourneyTests: JourneyTestCase {
         try sweep("food") {
             self.openQuickLinkPage("food", in: $0)
             XCTAssertTrue(self.element("food.scroll", in: $0).waitForExistence(timeout: 15), "Food did not open")
+            // The hub fades in behind its load gate; audit once the spinner is gone and the content has settled (an audit
+            // that began mid-fade sampled a half-laid-out title, 2026-10-16).
+            XCTAssertTrue(self.element("contentGate.spinner", in: $0).waitForNonExistence(timeout: 10), "The load spinner stayed")
         }
     }
 
