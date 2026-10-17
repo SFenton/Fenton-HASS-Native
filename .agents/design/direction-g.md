@@ -79,6 +79,7 @@ Pages are always dark-styled because they sit on the dimmed photo, the way Apple
 | Cleaning | vacuums, dishwasher, laundry | `#C88CFA` | `#7A3FB0`; progress is a lighter band from the leading edge |
 | Power | plugs, towel rack, chargers | `#FFD60A` | `#FFE45C` → `#FFD60A`, dark ink |
 | Cooking | grill, oven | `#FF8A4C` | `#A8420E` |
+| Chores quick links | Stephen's, Steph's, Unassigned, Home Tasks, Groceries (owner, 2026-10-16: distinct colours used nowhere else) | `#B4A8FF`, `#FF8FE3`, `#F2C94C`, `#A9BBD6`, `#E0AE8A` | indigo `#4C3CCB`, fuchsia `#A8209A`, mustard `#705600`, steel slate `#4A5A70`, cocoa `#6E4430`; white filled glyph; each at least 0.06 OKLab from every other fill |
 | Security | by mode, as on the web | white on the fill | Home `#1565C0`, Away `#C62828`, Night `#7B1FA2`, Disarmed `#2A732E`, Triggered `#D70015` |
 
 **Status chips follow the web:**
@@ -145,7 +146,7 @@ SF Pro only.
 
 - **Occupancy:** a "Who's Home" list is added.
 - **Doors chip:** it names a real sensor.
-- **Chore lists:** shown neutral grey; the alternative is their web colours.
+- **Chore lists:** decided 2026-10-16 (owner): filled tiles in five colours used nowhere else, with white filled glyphs (see Colour families). The web colours collide with device families, so they are not used.
 - **Donetick labels:** not on the task form.
 - **Settings:** lives inside the Account sheet. Vacation and To-Do appear in both Quick Links and Settings.
 - **Duo:** four chips show beside the hinge.

@@ -17,7 +17,15 @@ Web source `ha-sfenton-react-dash@9ac2a46`: `src/pages/DashboardViewPage.tsx` (`
 - A list's entity state is its open-item count: 0 hides the list before any fetch. Loaded lists with no open items hide too. When every visible list is settled and hidden, the empty state shows ("No Chores Due" / "…nice job!", "You have no chores due- nice job!" on the viewer's own page, "Enjoy vacation!" on chore pages while `input_boolean.vacation_mode` is on).
 - Items load over the websocket (`todo/item/list`), sort by due (undated last), and reload when the list entity changes or a sheet saves. Completed items are hidden.
 - Checking off is optimistic: the row disappears at once and returns if the call fails or nothing confirms within 15 s.
+- **Resident pages are assigned-only; the Chores tab includes unassigned tasks** (found 2026-10-16, owner: "Stephen doesn't show the aroma pad chores"). DoneTick exposes two views per resident: `todo.stephen_s_*` (tasks assigned to Stephen) and `todo.stephen_s_*_with_unassigned` (those plus tasks with no assignee). The three LV600S humidifier chores ("Replace LV600S Aroma Pad", "Water Filter Sponge", "Absorption Pad", tasks 503 to 505) have `assigned_to: null` and `assign_strategy: no_assignee`, so they are in `todo.stephen_s_past_due_with_unassigned` (3) and `todo.unassigned_past_due` (3) and in none of Stephen's own lists (`todo.stephen_s_tasks` is 7 without them). The Chores tab shows them under Past Due for Stephen and Steph; the Stephen's Chores page (`stephens-chores`) and its count follow the web (`portedDashboard.ts:468`) and use the assigned-only lists, so they are not there; Unassigned Tasks lists them. Not a native filter bug; the fix is to assign the tasks in DoneTick (edit sheet, Assignee) if they should count as Stephen's.
 - Row: checkbox, title (battery maintenance tasks append "· 18%"), relative due ("Due in 3 days", "2 hours overdue"; overdue under a day vs longer are distinct tones), optional "Edit {title}" button. DoneTick rows are editable only when the uid starts with a task id (`42--…`).
+
+## Native additions (owner, 2026-10-16)
+
+- **Swipe actions** (not on the web): swiping a row from the leading edge completes it (full swipe performs it); from the trailing edge it offers Delete (outermost, destructive, asks "Delete {title}?" first) and Edit. Delete exists on DoneTick pages and Groceries (`todo.remove_item`), not the admin To-Do (GitHub-synced); Edit only where the row has an editor. The same actions are in the row's context menu and VoiceOver actions (`TodoRowActions`). See [ios.md](ios.md).
+- **Completion animates**: a checked-off row leaves the list with the list's row animation and comes back, with the error, if the call fails or nothing confirms in 15 s.
+- **Quick-link tiles** are filled in colours used nowhere else (see [ios.md](ios.md)).
+- **Add Task**: Task Name and Description are separate sections, each with a header and a footer saying what goes in it; the sheet has no "Donetick" subtitle.
 
 ## Sheets
 
