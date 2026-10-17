@@ -70,8 +70,12 @@ final class FoodJourneyTests: XCTestCase {
     /// receives the swipes, the app otherwise.
     private func reveal(_ element: XCUIElement, in app: XCUIApplication, swiping container: XCUIElement? = nil) {
         let target = container ?? app
-        for _ in 0..<12 where !(element.exists && element.isHittable) { target.swipeUp() }
-        XCTAssertTrue(element.isHittable, "\(element) never came into view")
+        // Fully on screen, not merely hittable: a tile whose top edge shows still reports hittable, and the tap at its
+        // centre then lands below the window (the hub's All Food tile on iPhone, 2026-10-17).
+        let window = app.windows.firstMatch.frame
+        func inView() -> Bool { element.exists && element.isHittable && window.contains(element.frame) }
+        for _ in 0..<12 where !inView() { target.swipeUp() }
+        XCTAssertTrue(inView(), "\(element) never came into view")
     }
 
     private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
@@ -283,7 +287,6 @@ final class FoodJourneyTests: XCTestCase {
         waitForGrid(app)
         expectCall("recipe_query kind=browse q= sort=availability cursor=-", in: app)
         keepScreenshot(app, "food-recipes-\(device)")
-        try audit(app) { self.launch("recipes", arguments: FentonHomeApp.ax5) }
 
         for id in ["fab.sort", "fab.filter", "fab.search"] { assertTarget(element(id, in: app)) }
 
@@ -295,9 +298,9 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(element("recipes.sort.alphabetical", in: app).isSelected)
         sleep(1)
         keepScreenshot(app, "food-recipes-sort-\(device)")
-        // The AX5 page lets the audit waive the stock Form button's iPad Dynamic Type false positive on
-        // "Reset to Defaults" (FentonHomeApp.audit, ax5Page).
-        try audit(app, presenter: element("fab.sort", in: app)) { self.openSortSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
+        // The sheets' audits (with their AX5 comparison pages) are `testSortSheetPassesAccessibilityAudit` and
+        // `testFilterSheetPassesAccessibilityAudit`. An audit with an AX5 page relaunches the app at AX5 and the gallery
+        // hides its Last call line at accessibility sizes, so this journey never audits half way through.
         app.buttons["filterSheet.apply"].tap()
         expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
         XCTAssertTrue(element("fab.sort", in: app).isSelected, "an applied sort marks the button")
@@ -314,7 +317,6 @@ final class FoodJourneyTests: XCTestCase {
                       "the footer explains the chosen horizon")
         sleep(1)
         keepScreenshot(app, "food-recipes-filter-\(device)")
-        try audit(app, presenter: element("fab.filter", in: app)) { self.openFilterSheet(self.launch("recipes", arguments: FentonHomeApp.ax5)) }
         app.buttons["filterSheet.apply"].tap()
         expectCall("recipe_query kind=browse q= sort=alphabetical", in: app)
         XCTAssertTrue(element("fab.filter", in: app).wait(for: \.isSelected, toEqual: true, timeout: 5), "applied filters mark the button")
@@ -328,6 +330,13 @@ final class FoodJourneyTests: XCTestCase {
         expectCall("recipe_hydration query=zzz", in: app)
         element("fab.search.close", in: app).tap()
         XCTAssertFalse(field.exists)
+    }
+
+    /// The Recipes page itself, at the default size and against its AX5 comparison page.
+    func testRecipesPagePassesAccessibilityAudit() throws {
+        let app = launch("recipes")
+        waitForGrid(app)
+        try audit(app) { self.launch("recipes", arguments: FentonHomeApp.ax5) }
     }
 
     /// The Sort sheet with a changed choice (so Reset to Defaults shows), scrolled until `reveal` is on screen,
@@ -415,16 +424,28 @@ final class FoodJourneyTests: XCTestCase {
     }
 
     func testRecipesErrorAndEmpty() throws {
+        // Each audit carries its AX5 comparison page: the floating search pill reads as element-less "Text clipped" at larger
+        // sizes on every Recipes page, and only the same page's growth at AX5 (the audit's evidence) clears it.
         let failing = launch("recipes", mode: "error")
         XCTAssertTrue(element("recipes.error", in: failing).waitForExistence(timeout: 15))
         assertTarget(element("recipes.retry", in: failing))
         keepScreenshot(failing, "food-recipes-error-\(device)")
-        try audit(failing)
+        try audit(failing) {
+            let large = self.launch("recipes", mode: "error", arguments: FentonHomeApp.ax5)
+            XCTAssertTrue(self.element("recipes.error", in: large).waitForExistence(timeout: 15))
+            sleep(1)
+            return large
+        }
 
         let empty = launch("recipes", mode: "empty")
         XCTAssertTrue(element("recipes.empty", in: empty).waitForExistence(timeout: 15))
         keepScreenshot(empty, "food-recipes-empty-\(device)")
-        try audit(empty)
+        try audit(empty) {
+            let large = self.launch("recipes", mode: "empty", arguments: FentonHomeApp.ax5)
+            XCTAssertTrue(self.element("recipes.empty", in: large).waitForExistence(timeout: 15))
+            sleep(1)
+            return large
+        }
     }
 
     func testRecipesLoadMoreOnScroll() {
@@ -556,8 +577,17 @@ final class FoodJourneyTests: XCTestCase {
         sleep(1)
         let window = app.windows.firstMatch.frame
         if element("recipe.pane", in: app).exists {
-            XCTAssertTrue(element("recipes.card.11", in: app).isHittable, "the grid stays usable beside the pane")
             XCTAssertTrue(element("recipes.card.6", in: app).isSelected)
+            // The grid stays usable beside the pane: a card beside it takes a tap and the pane follows it. `isHittable`
+            // is not asked: XCUITest reported the first match of a card's identifier (a label-less twin of the button)
+            // not hittable although the card took taps (iPad landscape, 2026-10-17).
+            let other = element("recipes.card.11", in: app)
+            XCTAssertTrue(other.exists, "the grid stays visible beside the pane")
+            XCTAssertTrue(window.contains(other.frame), "card 11 lies inside the window: \(other.frame) in \(window)")
+            other.tap()
+            if !other.wait(for: \.isSelected, toEqual: true, timeout: 5) { add(XCTAttachment(string: app.debugDescription)) }
+            XCTAssertTrue(other.isSelected, "a card beside the pane takes the selection")
+            XCTAssertTrue(element("recipes.card.6", in: app).wait(for: \.isSelected, toEqual: false, timeout: 5))
             element("recipe.close", in: app).tap()
             XCTAssertFalse(element("recipe.pane", in: app).waitForExistence(timeout: 2))
             element("recipes.card.6", in: app).tap()
