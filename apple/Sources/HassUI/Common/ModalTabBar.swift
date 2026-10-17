@@ -17,7 +17,7 @@ import SwiftUI
 /// web app instead of text titles"), which fit five sections where titles do not; on iPad and the unfolded Duo (regular
 /// width) they are text titles. HIG Segmented controls: "Prefer text or images, not a mix, in one control" and "Limit
 /// segments: ... about 5 on iPhone". Icon segments still carry their titles for VoiceOver. At accessibility text sizes,
-/// where segments cannot grow, the control becomes a menu that names the selected section, with the icon beside it.
+/// where segments cannot grow, the control becomes a menu of text titles that names the selected section.
 /// A caller that passes no `symbol` always shows text. The glass is Liquid Glass on iOS 26 (`glassEffect`, a navigation
 /// control: HIG Materials) and a thin-material capsule before (``SwiftUI/View/navigationGlass(in:)``).
 struct ModalTabBar<Item: Hashable & Identifiable>: View {
@@ -36,13 +36,11 @@ struct ModalTabBar<Item: Hashable & Identifiable>: View {
         let form = ModalTabBarStyle.form(hasSymbols: symbol != nil, compactWidth: sizeClass == .compact,
                                          accessibilitySize: typeSize.isAccessibilitySize)
         if form == .menu {
+            // Titles, not icons: at accessibility sizes the section names are what a reader needs (owner, 2026-10-16:
+            // "keep text labels ... at accessibility sizes where the existing menu fallback applies").
             Picker(label, selection: $selection) {
                 ForEach(tabs) { tab in
-                    if let symbol {
-                        Label(title(tab), systemImage: symbol(tab)).tag(tab)
-                    } else {
-                        Text(title(tab)).tag(tab)
-                    }
+                    Text(title(tab)).tag(tab)
                 }
             }
             .pickerStyle(.menu)
