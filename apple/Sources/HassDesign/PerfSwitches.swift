@@ -12,6 +12,10 @@ public enum PerfSwitches {
         case headerFade
         /// The blurred house photo behind pages and its scrim (the plain base colour is drawn instead).
         case backdrop
+        /// The Liquid Glass behind the floating action bar's buttons (a plain thin material is drawn instead).
+        case glassBar
+        /// The soft scroll edge effect under the floating action bar (``SwiftUICore/View/floatingActionBar(_:search:)``).
+        case scrollEdge
     }
 
     /// The layers this launch turned off.

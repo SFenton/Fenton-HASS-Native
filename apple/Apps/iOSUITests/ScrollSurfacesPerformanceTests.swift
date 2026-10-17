@@ -65,6 +65,9 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
     static let livingRoom = Surface(name: "Living Room", gallery: "rooms", environment: offline.merging(["FENTON_GALLERY_ROOM": "living-room"]) { $1 }, ready: "room.scroll.living-room")
     static let climate = Surface(name: "Climate", gallery: "climate", environment: ["FENTON_GALLERY_CLEAN": "1"], ready: "climate.scroll")
     static let chores = Surface(name: "Chores", gallery: "chores", environment: ["FENTON_GALLERY_CLEAN": "1"], ready: "todo.page.chores")
+    /// A house as long as the real one (12 more chores in each of Stephen's lists): the short fixture page barely scrolls.
+    static let choresLongHouse = Surface(name: "Chores (long house)", gallery: "chores", environment: ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_CHORES": "12"], ready: "todo.page.chores")
+    static let settings = Surface(name: "Settings", gallery: "settings", environment: ["FENTON_GALLERY_CLEAN": "1"], ready: "settings.list")
     static let foodHub = Surface(name: "Food hub", gallery: "food", environment: ["FENTON_GALLERY_ROUTE": "hub"], ready: "food.scroll")
     static let recipes = Surface(name: "Recipes", gallery: "food", environment: ["FENTON_GALLERY_ROUTE": "recipes"], ready: "recipes.grid")
     static let admin = Surface(name: "Admin settings", gallery: "household-settings", environment: ["FENTON_GALLERY_HOUSEHOLD": "admin", "FENTON_GALLERY_CLEAN": "1"], ready: "household.admin")
@@ -165,6 +168,18 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
         assertScrollWithinBudget("Chores", app: launchGallery(Self.chores), p95: Budget.fixtureP95)
     }
 
+    /// Owner, 2026-10-17: Chores and Settings did not scroll smoothly. Both are real `List`s; before the fix the long Chores
+    /// page read p95 6.7 to 7.2 ms with 48 turns over 8 ms.
+    func testChoresLongHouseScrollStaysWithinBudget() throws {
+        try requireMeasurableDevice()
+        assertScrollWithinBudget("Chores (long house)", app: launchGallery(Self.choresLongHouse), p95: Budget.fixtureP95)
+    }
+
+    func testSettingsScrollStaysWithinBudget() throws {
+        try requireMeasurableDevice()
+        assertScrollWithinBudget("Settings", app: launchGallery(Self.settings), p95: Budget.fixtureP95)
+    }
+
     func testFoodHubScrollStaysWithinBudget() throws {
         try requireMeasurableDevice()
         assertScrollWithinBudget("Food hub", app: launchGallery(Self.foodHub), p95: Budget.fixtureP95)
@@ -210,6 +225,14 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
 
     func testLiveClimateScrollStaysWithinBudget() throws {
         assertScrollWithinBudget("Live Climate", app: try launchLive(open: "thermostat"), p95: Budget.livePageP95)
+    }
+
+    func testLiveChoresScrollStaysWithinBudget() throws {
+        assertScrollWithinBudget("Live Chores", app: try launchLive(open: "chores"), p95: Budget.livePageP95)
+    }
+
+    func testLiveSettingsScrollStaysWithinBudget() throws {
+        assertScrollWithinBudget("Live Settings", app: try launchLive(open: "settings"), p95: Budget.livePageP95)
     }
 
     func testLiveHomeScrollStaysWithinBudget() throws {

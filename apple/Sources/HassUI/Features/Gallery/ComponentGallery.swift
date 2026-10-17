@@ -23,6 +23,7 @@ public struct ComponentGallery: View {
         case floatingActions = "floating-actions"
         case inventory
         case chores
+        case settings
         case performance
         case weather
         case directionG = "direction-g"
@@ -63,6 +64,9 @@ public struct ComponentGallery: View {
         } else if page == .chores {
             // Owns its stack so pushed todo pages inherit the fixture store and model.
             ChoresGallery()
+        } else if page == .settings {
+            // The Settings tab's root as the app's section stack hosts it (page chrome included), on fixtures.
+            SettingsGallery()
         } else if page == .vacation {
             // Owns its stack, so its last-call line stays under pushed pages too.
             VacationGallery()
@@ -94,7 +98,7 @@ public struct ComponentGallery: View {
                     case .weather: WeatherGallery()
                     case .systemAccessibility: SystemAccessibilityGallery()
                     case .modalSizing: ModalSizingGallery()
-                    case .rooms, .vacation, .food, .chores, .location: EmptyView()
+                    case .rooms, .vacation, .food, .chores, .location, .settings: EmptyView()
                     }
                 }
                 // Direction G: a gallery page sits on the same dark house backdrop as the page it stands in for.
