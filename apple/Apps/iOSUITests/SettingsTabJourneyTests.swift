@@ -6,10 +6,10 @@ import XCTest
 /// (`SettingsJourneyTests`) cover the Home Assistant modal.
 final class SettingsTabJourneyTests: JourneyTestCase {
     /// The rows in order: Vacation and (for a viewer who sees it) To-Do, the household topics, Home Assistant, Performance,
-    /// then the two feedback rows.
+    /// then the two feedback rows (`FeedbackKind` raw values).
     private static let rows = [
         "settings.vacation", "settings.topic.admin", "settings.topic.specialDeviceModes", "settings.topic.guests",
-        "settings.topic.machE", "settings.homeAssistant", "settings.performance", "settings.feedback.issue",
+        "settings.topic.machE", "settings.homeAssistant", "settings.performance", "settings.feedback.bug", "settings.feedback.feature",
     ]
 
     private func launch(arguments: [String] = []) -> XCUIApplication {
