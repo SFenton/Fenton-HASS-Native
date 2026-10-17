@@ -1,8 +1,7 @@
 import XCTest
 
 /// Layout that adapts to the window (plan Phase 4, decisions 1 to 5; `.agents/design/apple/ipados.md`, `duo.md`):
-/// grids reach four columns on iPad, status chips wrap in regular width and scroll in compact width, and Quick Links is
-/// a floating circle in regular width. Every test names what it expects per device family; the unfolded Duo cannot be
+/// grids reach four columns on iPad, and status chips wrap in regular width and scroll in compact width. Every test names what it expects per device family; the unfolded Duo cannot be
 /// driven here (the simulator may not unfold), so its hinge rules are unit tested (`HomeColumnsTests`, `ChipRailTests`,
 /// `DynamicGridHingeTests`).
 @MainActor
@@ -81,58 +80,10 @@ final class AdaptiveLayoutJourneyTests: JourneyTestCase {
         keepShot(app, "g4-home-chips-\(layout)")
     }
 
-    // MARK: Quick Links (decision 3)
+    // MARK: Quick Links (decision 3, reversed 2026-10-16)
 
-    /// Quick Links is a floating 56 pt circle at the bottom trailing corner in regular width, and not a toolbar button.
-    /// It opens the sheet, and Home still passes the audit with it on screen.
-    func testFloatingQuickLinksOnRegularWidth() throws {
-        let app = try FentonHomeApp.launchSignedIn()
-        sleep(2)
-        let button = app.buttons["quickLinks.open"]
-        guard isRegular(app) else {
-            // Compact: the trailing tab (iOS 26) or the toolbar button (earlier); never a floating circle.
-            XCTAssertFalse(button.exists && button.frame.width >= 56 && button.frame.minY > app.windows.firstMatch.frame.midY,
-                           "A floating Quick Links circle in compact width")
-            return
-        }
-        XCTAssertTrue(button.waitForExistence(timeout: 5), "No Quick Links button")
-        XCTAssertEqual(button.label, "Quick Links")
-        XCTAssertFalse(app.navigationBars.buttons["quickLinks.open"].exists, "Quick Links is still a toolbar button")
-        XCTAssertEqual(button.frame.width, 56, accuracy: 1)
-        XCTAssertEqual(button.frame.height, 56, accuracy: 1)
-        assertTarget(button)
-        let window = app.windows.firstMatch.frame
-        XCTAssertGreaterThan(button.frame.midX, window.midX, "Not trailing")
-        XCTAssertGreaterThan(button.frame.midY, window.midY, "Not at the bottom")
-        XCTAssertLessThanOrEqual(button.frame.maxX, window.maxX - 8, "Crowds the trailing edge")
-        XCTAssertLessThanOrEqual(button.frame.maxY, window.maxY - 8, "Crowds the home indicator")
-        keepShot(app, "g4-home-quicklinks-\(layout)")
-        try FentonHomeApp.audit(app) {
-            let large = try FentonHomeApp.launchSignedIn(arguments: FentonHomeApp.ax5)
-            sleep(2)
-            return large
-        }
-        button.tap()
-        XCTAssertTrue(element("quickLinks.rooms", in: app).waitForExistence(timeout: 5), "Quick Links did not open")
-        app.buttons["quickLinks.close"].tap()
-        XCTAssertTrue(button.waitForExistence(timeout: 5), "Quick Links circle gone after closing the sheet")
-    }
-
-    /// The floating circle is on every section root, and the flyout's Quick Links row still opens the sheet.
-    func testFloatingQuickLinksOnEverySectionRoot() throws {
-        let app = try FentonHomeApp.launchSignedIn()
-        // Not a skip: a skipped test hangs the unfolded Duo's runner in tear-down (`.agents/testing/apple/devices.md`).
-        guard isRegular(app) else { return }
-        for (section, title) in [("security", "Security"), ("climate", "Climate"), ("chores", "Chores"), ("home", "Home")] {
-            openSection(section, title: title, in: app)
-            XCTAssertTrue(app.buttons["quickLinks.open"].waitForExistence(timeout: 5), "\(title) has no Quick Links circle")
-        }
-        app.buttons["nav.open"].tap()
-        XCTAssertTrue(element("nav.flyout", in: app).waitForExistence(timeout: 5))
-        app.buttons["nav.quickLinks"].tap()
-        XCTAssertTrue(element("quickLinks.rooms", in: app).waitForExistence(timeout: 5), "Flyout row did not open Quick Links")
-        app.buttons["quickLinks.close"].tap()
-    }
+    // Quick Links is a header button beside Profile on every page of every window now, so the floating circle's journeys
+    // are gone; `ShellJourneyTests` covers the button on every tab root and on a pushed page, on all three families.
 
     // MARK: Home on the hinge (decision 5)
 

@@ -4,14 +4,22 @@ import SwiftUI
 
 // MARK: - List
 
-/// The Settings list, pushed inside the Account sheet (direction G; ``AccountSheet``): the web's household topics (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`: Vacation, which
-/// pushes its own pages, the admin To-Do, hidden from Steph, which pushes too, then the household topics), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
+/// Where the Settings tab pushes besides the household topics. Every push is a value on the tab's path
+/// (``SettingsRoute``, ``HouseholdSettingsPage``), so the shell knows when the tab is not at its root.
+enum SettingsRoute: Hashable, Sendable {
+    case vacation, adminTodo, performance
+}
+
+/// The Settings page, the last tab (owner, 2026-10-16: its own page like the web's): the web's household topics
+/// (`portedDashboard.ts` `SETTINGS_PAGE_ITEMS`: Vacation, which pushes its own pages, the admin To-Do, hidden from Steph,
+/// which pushes too, then the household topics), then Home Assistant Settings, which opens ``HomeAssistantSettingsView``
 /// as a full-screen modal (`.agents/design/apple/split-view.md`).
 struct SettingsScreen: View {
     @Binding var openTopic: HouseholdSettingsPage?
     @State private var showsHomeAssistant = false
     @State private var feedbackForm: FeedbackKind?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
+    @Environment(\.tileSurface) private var surface
 
     /// Creates the list.
     /// - Parameter openTopic: The topic open beside or above the list; constant nil for a static render.
@@ -21,67 +29,65 @@ struct SettingsScreen: View {
 
     var body: some View {
         List {
-            Section {
-                NavigationLink {
-                    VacationRoute().pageChrome()
-                } label: {
-                    SettingsLinkRow(
-                        title: Vacation.Copy.settingsLinkTitle,
-                        subtitle: Vacation.Copy.settingsLinkSubtitle,
-                        symbol: SymbolMap.symbol(for: "mdi:airplane"),
-                        showsChevron: false
-                    )
-                }
-                .accessibilityIdentifier("settings.vacation")
-                if ChoresConfig.showsAdminTodo(to: ChoresConfig.Resident.forUserId(viewerUserId)) {
-                    NavigationLink {
-                        AdminTodoScreen().pageChrome()
-                    } label: {
-                        SettingsLinkRow(title: "To-Do", subtitle: "An admin panel for to-do tasks.",
-                                        symbol: SymbolMap.symbol(for: "mdi:clipboard-list"), showsChevron: false)
+            Group {
+                Section {
+                    NavigationLink(value: SettingsRoute.vacation) {
+                        SettingsLinkRow(
+                            title: Vacation.Copy.settingsLinkTitle,
+                            subtitle: Vacation.Copy.settingsLinkSubtitle,
+                            symbol: SymbolMap.symbol(for: "mdi:airplane"),
+                            showsChevron: false
+                        )
                     }
-                    .accessibilityIdentifier("settings.todo")
+                    .accessibilityIdentifier("settings.vacation")
+                    if ChoresConfig.showsAdminTodo(to: ChoresConfig.Resident.forUserId(viewerUserId)) {
+                        NavigationLink(value: SettingsRoute.adminTodo) {
+                            SettingsLinkRow(title: "To-Do", subtitle: "An admin panel for to-do tasks.",
+                                            symbol: SymbolMap.symbol(for: "mdi:clipboard-list"), showsChevron: false)
+                        }
+                        .accessibilityIdentifier("settings.todo")
+                    }
                 }
-            }
-            Section {
-                ForEach(HouseholdSettingsPage.allCases) { page in
-                    Button {
-                        openTopic = page
-                    } label: {
-                        SettingsLinkRow(title: page.rowTitle, subtitle: page.subtitle, symbol: page.symbol)
+                Section {
+                    ForEach(HouseholdSettingsPage.allCases) { page in
+                        Button {
+                            openTopic = page
+                        } label: {
+                            SettingsLinkRow(title: page.rowTitle, subtitle: page.subtitle, symbol: page.symbol)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(openTopic == page ? .isSelected : [])
+                        .accessibilityIdentifier("settings.topic.\(page.rawValue)")
+                    }
+                } header: {
+                    SettingsSectionHeader("Household")
+                }
+                Section {
+                    Button { showsHomeAssistant = true } label: {
+                        SettingsLinkRow(
+                            title: HomeAssistantSettingsView.linkTitle,
+                            subtitle: HomeAssistantSettingsView.linkSubtitle,
+                            symbol: SymbolMap.symbol(for: "mdi:cog")
+                        )
                     }
                     .buttonStyle(.plain)
-                    .listRowBackground(openTopic == page ? Color.accentColor.opacity(0.18) : nil)
-                    .accessibilityAddTraits(openTopic == page ? .isSelected : [])
-                    .accessibilityIdentifier("settings.topic.\(page.rawValue)")
+                    .accessibilityIdentifier("settings.homeAssistant")
+                    .accessibilityHint("Opens server, account and sign-out options.")
+                } footer: {
+                    Text("Server, account and Home Assistant's own settings pages.")
+                        .foregroundStyle(surface == .page ? HassTokens.Ink.onDarkSecondary : HassTokens.Ink.secondary)
                 }
-            } header: {
-                SettingsSectionHeader("Household")
-            }
-            Section {
-                Button { showsHomeAssistant = true } label: {
-                    SettingsLinkRow(
-                        title: HomeAssistantSettingsView.linkTitle,
-                        subtitle: HomeAssistantSettingsView.linkSubtitle,
-                        symbol: SymbolMap.symbol(for: "mdi:cog")
-                    )
+                Section {
+                    NavigationLink(value: SettingsRoute.performance) {
+                        SettingsLinkRow(title: "Performance", subtitle: "Scrolling, loading and image cache measurements on this device.",
+                                        symbol: "gauge.with.dots.needle.67percent", showsChevron: false)
+                    }
+                    .accessibilityIdentifier("settings.performance")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("settings.homeAssistant")
-                .accessibilityHint("Opens server, account and sign-out options.")
-            } footer: {
-                FormFooter("Server, account and Home Assistant's own settings pages.")
+                FeedbackSettingsSection(openForm: $feedbackForm)
             }
-            Section {
-                NavigationLink {
-                    PerformanceScreen()
-                } label: {
-                    SettingsLinkRow(title: "Performance", subtitle: "Scrolling, loading and image cache measurements on this device.",
-                                    symbol: "gauge.with.dots.needle.67percent", showsChevron: false)
-                }
-                .accessibilityIdentifier("settings.performance")
-            }
-            FeedbackSettingsSection(openForm: $feedbackForm)
+            // On the wallpaper the rows are modules (direction G, Layers); a list in a sheet keeps the system cells.
+            .listRowBackground(surface == .page ? HassTokens.Surface.moduleThin : nil)
         }
         .accessibilityIdentifier("settings.list")
         .navigationTitle("Settings")
@@ -138,7 +144,7 @@ struct SettingsLinkRow: View {
         Image(systemName: symbol)
             .font(.title3)
             .foregroundStyle(HassTokens.Ink.secondary)
-            .frame(minWidth: 28)
+            .frame(width: 34)
             .accessibilityHidden(true)
     }
 }

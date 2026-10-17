@@ -198,27 +198,25 @@ struct PushNavigationTests {
         #expect(navigator.selection == .security)
         #expect(navigator.isAtRoot(.security))
         #expect(!navigator.isFlyoutOpen)
-        for (section, expected) in [(PushSection.home, AppSection.home), (.climate, .climate), (.chores, .chores)] {
+        for (section, expected) in [(PushSection.home, AppSection.home), (.climate, .climate), (.chores, .chores), (.settings, .settings)] {
             navigator.open(.section(section))
             #expect(navigator.selection == expected)
         }
     }
 
-    @Test func settingsOpensTheAccountSheetOverTheCurrentSection() {
+    @Test func settingsOpensTheSettingsTabAtItsRoot() {
         let navigator = ShellNavigator(selection: .chores)
-        navigator.paths[.chores] = NavigationPath(["detail"])
+        navigator.paths[.settings] = NavigationPath(["detail"])
         navigator.open(.section(.settings))
-        #expect(navigator.selection == .chores)
-        #expect(navigator.accountSection == .chores)
-        #expect(!navigator.isAtRoot(.chores))
+        #expect(navigator.selection == .settings)
+        #expect(navigator.isAtRoot(.settings))
+        #expect(navigator.accountSection == nil)
     }
 
     @Test func homePagesPushOnHome() {
         let navigator = ShellNavigator(selection: .climate)
-        navigator.rootTab = .quickLinks
         navigator.open(.homePage("garage"))
         #expect(navigator.selection == .home)
-        #expect(navigator.rootTab == .section(.home))
         #expect(navigator.paths[.home]?.count == 1)
         navigator.open(.homePage("all-food"))
         #expect(navigator.paths[.home]?.count == 1)

@@ -211,7 +211,7 @@ final class LocationAccountJourneyTests: JourneyTestCase {
         guard FentonHomeApp.family != .iPad else {
             // No reset here: the iPad never asks, and resetting its authorization timed out on the iOS 27 simulator.
             let app = try relaunchToAccount(first: true)
-            XCTAssertTrue(app.buttons["account.settings"].exists)
+            XCTAssertTrue(app.buttons["account.signOut"].exists || app.buttons["account.close"].exists)
             XCTAssertFalse(app.buttons["account.location"].exists, "iPad has no Share Location row")
             XCTAssertFalse(app.switches["account.location.report"].exists, "iPad has no Report toggle")
             keepScreenshot(app, "location-account-ipad-\(layout)")

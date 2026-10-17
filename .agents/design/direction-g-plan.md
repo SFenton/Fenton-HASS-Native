@@ -19,6 +19,14 @@
 - **Colour families and the arc spinner** (Stephen, 2026-10-14) are part of Phase 1. See direction-g.md.
 - **Arc spinner sweep (Phase 1 step 2):** `ArcSpinner` replaced the system spinner in `ContentGate` and every `ProgressView()` spinner outside the open PRs. Titled spinners keep their words with `.progressViewStyle(.arc)` (`ArcProgressViewStyle`); a determinate `ProgressView(value:)` keeps its bar. The Chores and Cameras files skipped while #35 and #39 were open (`DonetickTaskSheet`, `TodoListSection`, `CameraLiveView`) were swept after they merged (2026-10-14).
 
+## Update 2026-10-16: shell decisions reversed (owner, Stephen)
+
+Phase 2's shell rules changed after the owner used the app. These replace the "Phase 2 (shell), 2026-10-14" bullets above and decision 4 below:
+1. **Settings is its own page, the last tab** (Home, Security, Climate, Chores, Settings), as on the web. The iPad and unfolded-Duo flyout lists the same five. Settings' topics push inside the Settings tab (household topics, Vacation, To-Do, Performance, Feedback; Home Assistant settings stays a full-screen modal). Settings is gone from the Account sheet. On macOS it stays the Settings window.
+2. **Quick Links is a header button beside Profile on every page**, tab roots and pushed pages, on iPhone, Duo and iPad. The trailing Quick Links tab (iPhone) and the floating circle (iPad, #84) are removed; the flyout has no Quick Links row. Identifiers `quickLinks.open` and `nav.profile` are unchanged. The sheets hang once on each section's stack, so a pushed page never presents a second copy; a page Quick Links chooses pushes on the section's path.
+3. **The Profile (Account) sheet is the web's profile modal**: Your Summary (overdue and upcoming chores, expired food) plus People at Home, with the account, Location and Sign Out. The Profile button carries the web's attention badge (overdue chores plus expired food, "9+").
+4. **Title in the header on iPhone and the folded Duo:** `toolbarTitleDisplayMode(.inlineLarge)` from `pageChrome()`. Found by trying it on iOS 27 (2026-10-16): the large title sits leading in the header row beside the trailing circles, collapses to a centred inline title on scroll and returns at the top, and a pushed page with a Back button keeps the system's large title below the bar. Nothing custom was needed, so there is no departure to record. iOS 17 to 25 get the same behaviour from the same API without glass.
+
 ## Phase 1 status (2026-10-14)
 
 Built on `claude/project-thread-06krou`, one commit per step, in the order the coordinator set:
@@ -55,7 +63,7 @@ Built on `claude/project-thread-06krou`, one commit per step, in the order the c
 1. **Build on the App chrome thread's pieces, not beside them.** Its `HouseBackdrop`, `HassModal`, `.hassSheet()`, `SheetCloseItem`, tab bar, profile button and pill chips get restyled to G. No second set of components.
 2. **Sections move to the bottom.** The chrome thread's `ModalTabBar` sits at the top. G puts sections in a bottom glass control, as in the mockups Stephen approved, so `ModalTabBar` gains bottom placement and every sheet switches to it.
 3. **Dark everywhere in v1.** Pages are dark by design. Sheets ship dark too, since that is what the mockups show; light-appearance sheets are a follow-up.
-4. **Settings leaves the tab bar** and is pushed inside the Account sheet. On macOS it becomes the Settings window (⌘,).
+4. ~~**Settings leaves the tab bar** and is pushed inside the Account sheet.~~ Reversed 2026-10-16: Settings is the last tab (see the update above). On macOS it is the Settings window (⌘,).
 5. **The open questions in direction-g.md keep their mockup defaults** until Stephen answers.
 6. **One look change per screen, no behaviour changes.** G threads restyle; they don't change what a control does, except where G names a new behaviour (the % bubble, Hub and Fan pop-up menus, garage button states, the "Updating" pill).
 

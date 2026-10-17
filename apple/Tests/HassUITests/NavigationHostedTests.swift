@@ -364,7 +364,69 @@ struct SettingsHostedTests {
         }
     }
 
-    /// The Account sheet, with Settings inside it, renders.
+    /// The Account sheet renders the profile summary for a resident: people, chores and expired food from a populated
+    /// store, in vacation mode too. Not asserted by element (macOS builds no accessibility tree): it must lay out and
+    /// settle with every section drawn.
+    @Test func accountSheetRendersTheProfileSummary() async {
+        let saved = UserDefaults.standard.string(forKey: ChoresModel.viewerDefaultsKey)
+        UserDefaults.standard.set(ChoresConfig.Resident.stephen.haUserId, forKey: ChoresModel.viewerDefaultsKey)
+        defer { UserDefaults.standard.set(saved, forKey: ChoresModel.viewerDefaultsKey) }
+        let (session, connection) = offlineEnvironment()
+        let lists = ProfileSummary.lists(for: .stephen)
+        let expired = EntityState(entityId: ProfileSummary.expiredFoodEntityId, state: "1", attributes: ["expired_list": .array([
+            .object(["name": .string("Milk"), "expiry_date": .string("2020-01-01"), "location": .string("frigo")]),
+        ])])
+        for vacation in [false, true] {
+            connection.store.replaceAll([
+                EntityState(entityId: "person.stephen", state: "home", attributes: ["friendly_name": .string("Stephen")]),
+                EntityState(entityId: "person.steph", state: "not_home", attributes: ["friendly_name": .string("Steph")]),
+                EntityState(entityId: lists.overdue.entityId, state: "2"),
+                EntityState(entityId: lists.dueToday.entityId, state: "0"),
+                EntityState(entityId: lists.noDueDate.entityId, state: "0"),
+                EntityState(entityId: ChoresConfig.vacationModeEntityId, state: vacation ? "on" : "off"),
+                expired,
+            ])
+            let hosted = HostedWindow(
+                AccountSheet()
+                    .environment(ShellNavigator())
+                    .environment(connection)
+                    .environment(connection.store)
+                    .environment(session),
+                size: CGSize(width: 500, height: 900)
+            )
+            await hosted.settle()
+            #expect(hosted.window.contentView != nil)
+            hosted.close()
+        }
+    }
+
+    /// The Settings tab's root and a page pushed from it render inside a section stack.
+    @Test func settingsTabRootRendersAndRoutesAreValues() async {
+        let (session, connection) = offlineEnvironment()
+        let navigator = ShellNavigator(selection: .settings)
+        let hosted = HostedWindow(
+            NavigationStack(path: navigator.path(for: .settings)) {
+                SettingsTabRoot().pageChrome()
+                    .navigationDestination(for: HouseholdSettingsPage.self) { HouseholdSettingsDestination(page: $0) }
+                    .navigationDestination(for: SettingsRoute.self) { SettingsRouteDestination(route: $0) }
+            }
+            .environment(navigator)
+            .environment(connection)
+            .environment(connection.store)
+            .environment(session),
+            size: CGSize(width: 500, height: 900)
+        )
+        defer { hosted.close() }
+        await hosted.settle()
+        navigator.paths[.settings, default: NavigationPath()].append(HouseholdSettingsPage.guests)
+        await hosted.settle()
+        navigator.paths[.settings] = NavigationPath()
+        navigator.paths[.settings, default: NavigationPath()].append(SettingsRoute.vacation)
+        await hosted.settle()
+        #expect(!navigator.isAtRoot(.settings))
+    }
+
+    /// The Account sheet renders (the signed-in header, Location where reported, Sign Out).
     @Test func accountSheetRenders() async {
         let (session, connection) = offlineEnvironment()
         let hosted = HostedWindow(
