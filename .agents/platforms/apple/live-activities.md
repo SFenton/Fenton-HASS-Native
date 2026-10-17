@@ -2,7 +2,38 @@
 
 > **What:** how Fenton Home shows running household jobs (dishwasher, fan timers, laundry and more) as one Live Activity on the Lock Screen, Dynamic Island, StandBy, Apple Watch, CarPlay and the Mac, kept current by Home Assistant over APNs while the app is closed. **Read when:** implementing or changing Live Activities, the widget extension, the `fenton_push` job engine, or their contract.
 
-Status: research and spec only (owner request, Stephen, 2026-10-17). Nothing is built. The current Apple SDK is iOS 27 / Xcode 27.1 and the deployment target is iOS 17.0. Home Assistant is 2026.10.1.
+Status: spec (owner request, Stephen, 2026-10-17). **Phase 1 (the pipe) is built** on `claude/live-activities-phase1` and `SFenton/ha-fenton-push#4`, and not yet checked on a phone; §0 holds what Phase 1 verified and decided, and where it departs from the text below. Phases 2 to 4 are not started. The current Apple SDK is iOS 27 / Xcode 27.1 and the deployment target is iOS 17.0. Home Assistant is 2026.10.1.
+
+## 0. Phase 1: verified facts and decisions (2026-10-17)
+
+**Verified** (evidence in each line; all reads, nothing mutated on the owner's Home Assistant):
+
+| Question | Answer |
+|---|---|
+| (a) Does the installed `mobile_app` take and use the tokens as §1 says? | **Yes.** `GET /api/config` reports `2026.10.1` with `mobile_app` and `fenton_push` loaded. `home-assistant/core` at tag `2026.10.1`, `homeassistant/components/mobile_app/`: `const.py` `SCHEMA_APP_DATA` accepts `start_live_activity_token`; `live_activity/webhook.py` registers webhook commands `live_activity_token` (`{tag, push_token, expires_at}`, `expires_at` a positive number of Unix seconds) and `live_activity_dismissed` (`{tag}`); `live_activity/store.py` keeps one token per webhook id and tag and sweeps expired ones; `live_activity/__init__.py` `resolve_live_activity_push` picks the event from a `notify` call that has `data.tag`: `clear_notification` ends only when a stored, unexpired token exists; otherwise `data.live_update` starts with `app_data.start_live_activity_token` or updates with the stored token; with neither it returns nothing and `notify` sends an **ordinary** notification. Only registrations with `manufacturer == "Apple"` (ours) are routed (`notify.py`). `fire_event` stamps the registration's user (`registration_context`), which the button automations rely on. The post to `push_url` carries `live_activity_token` and `data.event`. |
+| (b) What did `ha-fenton-push` do with them? | At `4dafdf2` `payload.py` `_live_activity` already mapped a post with `live_activity_token` to an `apns-push-type: liveactivity` request on the right topic, but with the type name `FentonActivityAttributes`, a flat `{message, title, progress…}` content-state the app has no type for, no `stale-date`, a `dismissal-date` that was always now, priority 10 for every update, and **no drop rule**: a `live_update` post for a device with no tokens fell through to the alert path and became a banner. PR #4 replaces that (contract v2, §7). The app did not send either token before Phase 1. |
+| (c) Does `xcrun simctl push` deliver `liveactivity` payloads? | **No.** On Xcode 27.1 with the iOS 27.0 simulator, `simctl push <udid> com.sfenton.home update.apns` for an `event: update` payload exits 121 with `UNErrorDomain 1401: Notification has no user visible content`; an `end` payload fails the same way. It parses the file as a remote notification and never reaches ActivityKit. So there is no push-driven simulator journey. The substitute is the debug hook `FENTON_LIVE_ACTIVITY_FIXTURE` (start, update, end through ActivityKit, locally), the gallery, and Python-generated fixtures decoded by the app's unit tests (`tools/push_fixtures/live-*.apns`). |
+| (d) Does a push-started activity wake the app to hand over its token? | **Documented, not checkable without a device.** Apple's push guide says the system launches the app in the background when a push-to-start creates an activity, so it can read `Activity.activityUpdates` and `pushTokenUpdates`; `LiveActivityTokenReporter` follows every activity that appears, so it reports the token as soon as it is handed over. Device check below. |
+
+**Decisions that depart from or settle the text below:**
+
+1. **Attributes type is `HomeActivityAttributes`** (owner lane brief), not the `FentonActivityAttributes` the spec first proposed. The relay never started an activity before (no app could receive one), so no push-to-start token is orphaned. It lives in the SwiftPM target `FentonActivityModel` with the content state, ordering, pager and budget logic.
+2. **No new app-side registration path was needed.** (a) and (b) held, so the design stands: the app adds `start_live_activity_token` to `app_data` (only next to the push details) and posts `live_activity_token` / `live_activity_dismissed` on its registration webhook. Turning Live Activities off in iOS Settings removes the start token from `app_data` (`activityEnablementUpdates`), so no per-app Settings switch is needed to gate registration; the in-app switch (open question 5) waits for Phase 2.
+3. **Foreground derivation (departure from §6, "the app never derives jobs").** Phase 1 has no engine, so while the app is open `HomeJobDeriver` reads the dishwasher and bathroom fan timer entities through `EntityStore` and `HomeActivityDirector` starts, updates and ends the activity locally. It never starts from the disk snapshot (only once the store is live). When the Phase 2 engine and `sensor.fenton_live_jobs` exist the director must yield to them, so the activity has one writer.
+4. **Buttons in Phase 1 are answered by an automation**, not the engine: the owner applies [live-activities-ha-automations.md](live-activities-ha-automations.md) (it also pushes start, update and end from Home Assistant while the app is closed). Nothing was applied to `/config`.
+5. **Lock Screen rows: two compact rows, not three.** The limit is 160 pt and the focused job's line (pager and controls, 44 pt targets) takes 44 of it. One job shows the header ("Home · 1 running"), a glass row (title, status, bar) and its controls (about 138 pt). Several jobs show two compact rows (title and status on one line), the focus outlined, and the pager line, with no header (the pager already says "2 of 3", and the container reads "Home, 3 running" to VoiceOver): about 154 pt. A third and later job is reached with the pager. At accessibility text sizes one row shows, titles wrap and the header goes. Every scenario is asserted at 160 pt or less on iPhone, iPhone Duo and iPad by `LiveActivityJourneyTests`.
+6. **Target and extension.** Widget extension target `FentonHomeWidgets` (`apple/Apps/Widgets`, bundle `com.sfenton.home.Widgets`, app group `group.com.sfenton.home`, team `3Q9X8JX23S`, `APPLICATION_EXTENSION_API_ONLY`), embedded in `FentonHome`; it links `FentonActivityModel` and `FentonActivityViews` (the views use `HassDesign` for the colour families) and nothing else. The intents file `apple/Apps/Shared/LiveActivityIntents.swift` is compiled into both. `NSSupportsLiveActivities` is set; `NSSupportsLiveActivitiesFrequentUpdates` is **not** (§6 rule 4). A tap opens `fentonhome://liveactivity?url=<dashboard path>` (`ActivityDeepLink`, scheme registered in the app's Info.plist) and `PushCoordinator.openLiveActivity` maps it like a notification's `url`.
+7. **Where the code the coverage gate cannot see lives**, listed so the gate's numbers are honest: `apple/Apps/Widgets/*` (the `ActivityConfiguration`, island regions and `ActivityActions.intents`), `apple/Apps/Shared/LiveActivityIntents.swift`, `apple/Apps/iOS/SystemLiveActivityClient.swift` (ActivityKit translation only) and `apple/Apps/iOS/LiveActivityDebugLaunch.swift` (debug). They need ActivityKit or WidgetKit, which do not run on the macOS test host, and are thin: every decision is in `HassCore/LiveActivity`, `FentonActivityModel` and `FentonActivityViews`, which are gated.
+
+**Device checks still needed** (the owner's phone; agents never touch it). Install the Phase 1 build from this branch and the relay from `SFenton/ha-fenton-push#4`, then:
+
+1. **Foreground start.** Run a bathroom fan timer from the app (or the dishwasher). The Lock Screen and the Dynamic Island show the Home activity; `‹ ›` appear with two jobs; the countdown ticks; Cancel Timer works only after the automation in §3 of the automations file is applied (until then the press shows "Stopping…" and nothing changes).
+2. **Start token reaches Home Assistant.** After launch, Developer Tools, States has no token (it is not an entity); check Settings, Devices & services, Mobile App, the phone's diagnostics for `start_live_activity_token` under `app_data`, or the integration log at debug level.
+3. **Push-to-start while the app is closed** (this is also check (d)): swipe the app away, then Developer Tools, Actions, `notify.mobile_app_<device>_fenton` with `data: {tag: fenton-home, live_update: true, fenton_activity: {...}}` (a block from `tests/samples.py` `HOME_ACTIVITY` with future `end_ts`). The activity should appear within seconds. Then call it again with changed content: it should update without opening the app, which proves the app handed over the update token in the background. If the first call shows a banner instead, the start token is missing; if nothing shows, read Apple's Push Notifications Console for the `liveactivity` delivery log.
+4. **End:** `notify.mobile_app_<device>_fenton` with `message: clear_notification` and `data: {tag: fenton-home}`.
+5. **Buttons while the app is closed and the phone unlocked:** Stop and ‹ › from the Lock Screen (the system launches the app in the background; locked phones keep buttons inert).
+6. **Apple Watch Smart Stack and CarPlay:** whether the `.small` family appears and whether buttons work there (spec §4 left this open).
+7. **iPad Lock Screen:** the activity on an iPadOS 17+ iPad.
 
 ## 1. Answers in brief
 
@@ -18,7 +49,7 @@ Status: research and spec only (owner request, Stephen, 2026-10-17). Nothing is 
   - One activity also stays clear of the per-app limit. Apple gives no number for it, only the errors `targetMaximumExceeded` and `globalMaximumExceeded`; "5" comes from third parties. It leaves the other Dynamic Island slots (one attached plus up to two detached minimal views, HIG) for other apps, and spends the push-to-start budget, also undisclosed, once per run of jobs rather than once per job.
   - Automatic rotation is impossible. The views have no timers, animations run only on an update and last at most 2 s ([animating updates](https://developer.apple.com/documentation/widgetkit/animating-data-updates-in-widgets-and-live-activities)), and rotating by push would spend the update budget.
 - **The plumbing already exists upstream.** Since 2026.7.0, Home Assistant's `mobile_app` stores the phone's push-to-start token (`app_data.start_live_activity_token`) and per-activity update tokens (webhooks `live_activity_token` and `live_activity_dismissed`, with expiry cleanup). It also routes `notify` calls carrying `data.live_update: true` + `tag` to start or update, and `clear_notification` to end ([core#172928](https://github.com/home-assistant/core/pull/172928), `homeassistant/components/mobile_app/live_activity/`).
-  - Fenton Push's relay already turns those posts into `liveactivity` APNs requests (`payload.py` `_live_activity`). They use the topic `com.sfenton.home.push-type.liveactivity` and the attributes type `FentonActivityAttributes`.
+  - Fenton Push's relay already turns those posts into `liveactivity` APNs requests (`payload.py` `_live_activity`). They use the topic `com.sfenton.home.push-type.liveactivity` and the attributes type `HomeActivityAttributes`.
   - The missing pieces are the app side, a typed content schema, and the job engine.
 
 ## 2. Architecture
@@ -66,7 +97,7 @@ Rules:
 
 ## 3. Activity model
 
-One attributes type, `FentonActivityAttributes`. It is the name the relay already sends, and a push-to-start token is per type. It lives in a new dependency-free SwiftPM target, `FentonActivityModel`, which the widget extension links without HAKit.
+One attributes type, `HomeActivityAttributes`. It is the name the relay already sends, and a push-to-start token is per type. It lives in a new dependency-free SwiftPM target, `FentonActivityModel`, which the widget extension links without HAKit.
 
 | Static attribute | Type | Meaning |
 |---|---|---|
@@ -102,7 +133,7 @@ HIG: [Live Activities](https://developer.apple.com/design/human-interface-guidel
 
 | Surface | Content |
 |---|---|
-| Lock Screen (84–160 pt tall, 14 pt margins, `ContainerRelativeShape` corners) | Header "Home · 3 running". Up to 3 job rows: symbol, title, status, and a trailing `Text(timerInterval:)` (monospaced digits) or a percentage, with a thin bar under each row. A "+2 more" footer. One control row for the **focus** job only (HIG: one or two essential controls), with ‹ › paging when there are 2 or more jobs |
+| Lock Screen (84–160 pt tall, 14 pt margins, `ContainerRelativeShape` corners) | Header "Home · 1 running" for a single job. Two compact job rows when there is a control line, else up to 3 (§0, decision 5): symbol, title, status, and a trailing `Text(timerInterval:)` (monospaced digits) or a percentage, with a thin bar under each row. No header and no footer with several jobs (§0, decision 5). One control row for the **focus** job only (HIG: one or two essential controls), with ‹ › paging when there are 2 or more jobs |
 | Island compact | Leading: focus job symbol in its tint, with a count dot when there are 2 or more jobs. Trailing: the focus countdown (`Text(timerInterval:)`, fixed width) or a percentage. "Done" with a checkmark during linger |
 | Island minimal | Focus symbol inside a ring (`ProgressView(timerInterval:)`, circular). In limited width it must fit a 28 pt circle |
 | Limited width (iPhone Duo, iOS 27 landscape island, two or more activities on iPhone 18 Pro) | Read `isDynamicIslandLimitedInWidth` (iOS 27 SDK, behind `#available`). Show leading only; the system hides trailing. This is geometric, like `SplitPolicy`, and never a device-name check |
@@ -187,9 +218,9 @@ Engine rules:
 
 **Token registration (app).**
 
-- On launch, every token change and every enablement change (`activityEnablementUpdates`), on iOS 17.2+, the app adds `start_live_activity_token` (lowercase hex of `Activity<FentonActivityAttributes>.pushToStartToken`) to `app_data`, or removes it. That token is accepted by core's `SCHEMA_APP_DATA`. Sign-out already sends `app_data: {}`.
+- On launch, every token change and every enablement change (`activityEnablementUpdates`), on iOS 17.2+, the app adds `start_live_activity_token` (lowercase hex of `Activity<HomeActivityAttributes>.pushToStartToken`) to `app_data`, or removes it. That token is accepted by core's `SCHEMA_APP_DATA`. Sign-out already sends `app_data: {}`.
 - For each activity, it watches `Activity.activityUpdates`, which includes activities started by push, and their `pushTokenUpdates`. It then sends the webhook `{"type": "live_activity_token", "data": {"tag": …, "push_token": …, "expires_at": start + 8 h}}`.
-- The start relaunches the app in the background to collect the token (push guide; Phase 1 verifies this on the device). Push-to-start pushes carry `input-push-token: 1` (iOS 18) to ask for it.
+- The start relaunches the app in the background to collect the token (push guide; verified on a device in §0, check 3). Push-to-start pushes carry `input-push-token: 1` (iOS 18) to ask for it.
 
 ## 7. Server changes (`SFenton/ha-fenton-push`, read-only here; a later lane opens its PR)
 
@@ -254,7 +285,7 @@ Not candidates:
 
 | Piece | Where |
 |---|---|
-| Widget extension `FentonHomeWidgets` | `apple/Apps/Widgets/`. Bundle `com.sfenton.home.Widgets`, extension point `com.apple.widgetkit-extension`, a `WidgetBundle` with `ActivityConfiguration(for: FentonActivityAttributes.self)`, iOS 17.0, team 3Q9X8JX23S automatic signing, embedded as a dependency of `FentonHome`. No network and no Keychain. It can host Home Screen widgets and Controls later |
+| Widget extension `FentonHomeWidgets` | `apple/Apps/Widgets/`. Bundle `com.sfenton.home.Widgets`, extension point `com.apple.widgetkit-extension`, a `WidgetBundle` with `ActivityConfiguration(for: HomeActivityAttributes.self)`, iOS 17.0, team 3Q9X8JX23S automatic signing, embedded as a dependency of `FentonHome`. No network and no Keychain. It can host Home Screen widgets and Controls later |
 | App `Info.plist` | `NSSupportsLiveActivities: true`. `remote-notification` is already present. The topic uses the app's existing `aps-environment` |
 | Model | New SwiftPM target `FentonActivityModel` (attributes, ContentState, job ordering, formatting), which HassCore depends on |
 | Views | New target `FentonActivityViews` (model + HassDesign), linked by the extension and by the app's debug gallery `FENTON_GALLERY=live-activity` |

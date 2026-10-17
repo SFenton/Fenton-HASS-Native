@@ -48,6 +48,8 @@ public struct RootView: View {
             }
         }
         .observesDeviceSignals()
+        // A tap on the Home Live Activity opens the focused job's page (`ActivityDeepLink`).
+        .onOpenURL { session.push.openLiveActivity($0) }
         // A tapped Spotlight result (`SpotlightCatalog`): opens that page like a notification's link.
         .onContinueUserActivity(CSSearchableItemActionType, perform: openSpotlightResult)
         #if DEBUG
