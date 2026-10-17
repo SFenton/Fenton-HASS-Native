@@ -27,6 +27,9 @@ public final class AppSession {
     /// Location reporting in shadow mode; nil on iPad and in launches that don't report (``LocationLaunchPolicy``).
     @ObservationIgnored public let location: LocationCoordinator?
 
+    /// The Home Live Activity: tokens for Home Assistant and the foreground start (nil in tests that don't need it).
+    @ObservationIgnored public let liveActivities: LiveActivityCoordinator?
+
     @ObservationIgnored private let tokenStore: TokenStore
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
 
@@ -37,13 +40,15 @@ public final class AppSession {
     ///   - snapshotCache: The disk snapshot of entity states.
     ///   - push: The app's push coordinator (the app delegate's, so system callbacks reach it).
     ///   - location: The app's location coordinator (the app delegate's, created at launch for zone relaunches).
+    ///   - liveActivities: The app's Live Activity coordinator (the app delegate's, so its buttons work at launch).
     public init(tokenStore: TokenStore = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup),
                 snapshotCache: EntitySnapshotCache = .init(), push: PushCoordinator = .inert(),
-                location: LocationCoordinator? = nil) {
+                location: LocationCoordinator? = nil, liveActivities: LiveActivityCoordinator? = nil) {
         self.tokenStore = tokenStore
         self.snapshotCache = snapshotCache
         self.push = push
         self.location = location
+        self.liveActivities = liveActivities
         #if DEBUG
         // UI tests start signed out: FENTON_UITEST_RESET=1 clears the saved sign-in and snapshot, and the location
         // screen is offered again.
@@ -89,8 +94,10 @@ public final class AppSession {
         tokens = nil
         backdrop = nil
         phase = .signedOut
-        let push = push
+        let push = push, liveActivities = liveActivities
         Task {
+            // Nothing of the signed-in person stays on a Lock Screen.
+            await liveActivities?.sessionEnded()
             await push.sessionEnded()
             if let stored { await HassLoginFlow.revoke(server: stored.server, refreshToken: stored.refreshToken) }
         }
@@ -103,6 +110,7 @@ public final class AppSession {
         let lifecycle = ConnectionLifecycle(connection: connection)
         self.tokens = tokens
         push.sessionStarted(server: server) { try await tokens.validAccessToken() }
+        liveActivities?.sessionStarted(store: connection.store)
         // Created before the phase changes so the first signed-in frame already has the cached photo.
         backdrop = HouseBackdropStore.session(for: server)
         phase = .signedIn(connection, lifecycle)

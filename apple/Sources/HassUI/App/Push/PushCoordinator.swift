@@ -1,3 +1,4 @@
+import FentonActivityModel
 import Foundation
 import HassCore
 import Observation
@@ -111,6 +112,15 @@ public final class PushCoordinator {
     /// The shell opened ``pendingRequest``.
     public func didOpen(_ request: PushNavigationRequest) {
         if pendingRequest == request { pendingRequest = nil }
+    }
+
+    /// A tap on the Home Live Activity (`fentonhome://liveactivity?url=…`): opens the focused job's page.
+    /// - Returns: Whether the URL was a Live Activity link.
+    @discardableResult
+    public func openLiveActivity(_ url: URL) -> Bool {
+        guard let link = ActivityDeepLink.link(from: url) else { return false }
+        open(link: link)
+        return true
     }
 
     /// Opens a notification link: an app page, Home Assistant's own page, or another site.

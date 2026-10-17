@@ -65,16 +65,19 @@ public actor MobileAppRegistrar {
     ///     (``MobileAppDevice/owned(by:)``).
     ///   - token: The APNs token as hex, if the system issued one (nil before permission or in a build without
     ///     the capability): the registration is then websocket-only.
+    ///   - startActivityToken: The Home activity's push-to-start token, if the system issued one; it rides in
+    ///     `app_data` next to the push details.
     /// - Throws: ``Refusal/simulator`` without sending anything when registration isn't allowed; a
     ///   ``PushClientError`` when Home Assistant fails.
     @discardableResult
-    public func sync(userID: String, userName: String? = nil, token: String?) async throws -> Outcome {
+    public func sync(userID: String, userName: String? = nil, token: String?, startActivityToken: String? = nil) async throws -> Outcome {
         guard allowsRegistration else { throw Refusal.simulator }
         let device = device.owned(by: userName)
         // No integration (404) registers without push details, like `available: false`.
         var config = try await client.config() ?? PushConfig(available: false)
         if let bundle = config.bundleID, bundle != PushApp.appID { config.available = false }
-        let appData = PushAppData.resolve(config: config, token: token, environment: device.apnsEnvironment)
+        let appData = PushAppData.resolve(config: config, token: token, environment: device.apnsEnvironment,
+                                          startActivityToken: startActivityToken)
         if let saved = store.registration(server: server, userID: userID) {
             do {
                 try await client.updateRegistration(saved, device: device, appData: appData)

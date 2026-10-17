@@ -42,6 +42,8 @@ public struct RootView: View {
             }
         }
         .observesDeviceSignals()
+        // A tap on the Home Live Activity opens the focused job's page (`ActivityDeepLink`).
+        .onOpenURL { session.push.openLiveActivity($0) }
         #if DEBUG
         .overlay(alignment: .topLeading) {
             if ResourceCensusProbe.isEnabled { ResourceCensusProbe() }
