@@ -203,7 +203,7 @@ targets:
     info:
       path: Apps/Widgets/Info.plist
       properties:
-        CFBundleDisplayName: Home Live Activities
+        CFBundleDisplayName: S+H Live Activities
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
