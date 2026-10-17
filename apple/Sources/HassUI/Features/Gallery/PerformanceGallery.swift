@@ -6,7 +6,7 @@ import SwiftUI
 
 /// Debug gallery for the performance pieces (`FENTON_GALLERY=performance`), chosen with `FENTON_GALLERY_PERF`:
 /// - `screen` (default): ``PerformanceScreen`` over seeded measurements.
-/// - `gate`: a ``ContentGate`` whose data loads after a delay, with a Reload button.
+/// - `gate`: a ``ContentGate`` whose data loads after a delay (`FENTON_GALLERY_GATE_DELAY_MS`), with a Reload button.
 /// - `grid`: 300 glass tiles in a ``DynamicGridLayout``, a fixed workload for the fast-scroll tests.
 /// - `chips`: Home's six-chip ``StatusRail`` over a column of tiles on fixture state, for the sideways-swipe tests.
 struct PerformanceGallery: View {
@@ -18,10 +18,15 @@ struct PerformanceGallery: View {
         case "grid": GridWorkload()
         case "chips": ChipRailWorkload()
         default:
+            // Seeded before the screen is built, once per process: the screen reads the log when it appears, and seeding
+            // from `onAppear` ran after that read, leaving every section empty (journeys saw "Scroll a page to measure
+            // it", 2026-10-17). Reset Measurements must stay reset, hence once.
+            let _ = Self.seeded
             PerformanceScreen()
-                .onAppear(perform: Self.seed)
         }
     }
+
+    private static let seeded: Void = seed()
 
     /// Fills the log with representative samples so the screen shows every section.
     static func seed() {
@@ -45,9 +50,16 @@ struct PerformanceGallery: View {
 }
 
 /// A gated page whose data arrives after a delay; Reload fades it out and back in.
+///
+/// `FENTON_GALLERY_GATE_DELAY_MS=<ms>` sets the delay (default 900). The simulator's launch alone can outlast the
+/// default, so a journey that watches the spinner stretches it (`PerformanceJourneyTests`).
 private struct GateDemo: View {
     @State private var loaded = false
     @State private var generation = 0
+
+    private static var loadDelay: Duration {
+        .milliseconds(ProcessInfo.processInfo.environment["FENTON_GALLERY_GATE_DELAY_MS"].flatMap { Int($0) } ?? 900)
+    }
 
     var body: some View {
         ContentGate(page: "Gallery Gate", isReady: loaded) {
@@ -71,7 +83,7 @@ private struct GateDemo: View {
             .accessibilityIdentifier("gate.reload")
         }
         .task(id: generation) {
-            try? await Task.sleep(for: .milliseconds(900))
+            try? await Task.sleep(for: Self.loadDelay)
             loaded = true
         }
     }

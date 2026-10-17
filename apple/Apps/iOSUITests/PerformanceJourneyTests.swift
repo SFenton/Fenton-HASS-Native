@@ -6,10 +6,13 @@ import XCTest
 final class PerformanceJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
 
-    private func launch(_ mode: String, arguments: [String] = []) -> XCUIApplication {
+    /// `gateDelayMs` stretches the gate demo's load (default 900 ms): the launch alone can outlast it, and the spinner
+    /// (which shows 150 ms in) was gone before the first query.
+    private func launch(_ mode: String, arguments: [String] = [], gateDelayMs: Int? = nil) -> XCUIApplication {
         let app = FentonHomeApp.makeApp()
         app.launchEnvironment["FENTON_GALLERY"] = "performance"
         app.launchEnvironment["FENTON_GALLERY_PERF"] = mode
+        if let gateDelayMs { app.launchEnvironment["FENTON_GALLERY_GATE_DELAY_MS"] = String(gateDelayMs) }
         app.launchArguments += arguments
         app.launch()
         return app
@@ -31,22 +34,24 @@ final class PerformanceJourneyTests: XCTestCase {
     /// Loading hides the content and shows a labeled spinner; once loaded the spinner goes and the content shows.
     /// Reload fades the content out and runs the sequence again.
     func testGateShowsSpinnerThenContent() {
-        let app = launch("gate")
+        let app = launch("gate", gateDelayMs: 4000)
         let spinner = element("contentGate.spinner", in: app)
-        let tile = app.buttons["Item 1"].firstMatch
+        // A tile is a switch labelled "Item 1" whose subtitle is a child text, "Loaded 0"; the gate hides the tiles from
+        // assistive technologies while it loads.
+        func tile(loaded generation: Int) -> XCUIElement { app.staticTexts["Loaded \(generation)"].firstMatch }
         XCTAssertTrue(spinner.waitForExistence(timeout: 5), "No spinner while loading")
         XCTAssertEqual(spinner.label, "Loading")
-        XCTAssertFalse(tile.exists, "Content is reachable while it is hidden")
+        XCTAssertFalse(tile(loaded: 0).exists, "Content is reachable while it is hidden")
         screenshot("gate-loading")
 
-        XCTAssertTrue(tile.waitForExistence(timeout: 5), "Content never appeared")
+        XCTAssertTrue(tile(loaded: 0).waitForExistence(timeout: 10), "Content never appeared")
         XCTAssertTrue(spinner.waitForNonExistence(timeout: 2), "Spinner stayed after the content appeared")
-        XCTAssertTrue(app.staticTexts["Loaded 0"].firstMatch.exists)
         screenshot("gate-loaded")
 
         app.buttons["gate.reload"].tap()
-        XCTAssertTrue(spinner.waitForExistence(timeout: 2), "Reload did not return to loading")
-        XCTAssertTrue(app.staticTexts["Loaded 1"].firstMatch.waitForExistence(timeout: 5), "Reloaded content never appeared")
+        XCTAssertTrue(spinner.waitForExistence(timeout: 3), "Reload did not return to loading")
+        XCTAssertTrue(tile(loaded: 1).waitForExistence(timeout: 10), "Reloaded content never appeared")
+        XCTAssertTrue(spinner.waitForNonExistence(timeout: 2), "Spinner stayed after the reload")
     }
 
     // MARK: - Performance screen
@@ -55,8 +60,10 @@ final class PerformanceJourneyTests: XCTestCase {
     func testPerformanceScreenShowsMeasurements() {
         let app = launch("screen")
         XCTAssertTrue(element("performance.screen", in: app).waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["Recipes"].firstMatch.exists || app.otherElements["Recipes"].firstMatch.exists
-            || element("Recipes", in: app).exists, "Recipes scroll row missing")
+        // The seeded rows arrive with the screen's first refresh, a beat after the list itself.
+        let recipes = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Recipes'")).firstMatch
+        if !recipes.waitForExistence(timeout: 10) { add(XCTAttachment(string: app.debugDescription)) }
+        XCTAssertTrue(recipes.exists, "Recipes scroll row missing")
         XCTAssertTrue(app.switches["performance.recording"].exists)
         screenshot("performance-top")
         for _ in 0..<4 { app.collectionViews.firstMatch.swipeUp() }
@@ -88,7 +95,8 @@ final class PerformanceJourneyTests: XCTestCase {
 
     func testGatePassesAccessibilityAudit() throws {
         let app = launch("gate")
-        XCTAssertTrue(app.buttons["Item 1"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(element("gate.content", in: app).waitForExistence(timeout: 10))
+        XCTAssertTrue(element("contentGate.spinner", in: app).waitForNonExistence(timeout: 5), "The spinner stayed")
         sleep(1)
         try FentonHomeApp.audit(app)
     }
