@@ -30,41 +30,46 @@ final class LiveActivityJourneyTests: JourneyTestCase {
     /// Controls and the pager are named buttons of at least 44 pt, and say which job they belong to.
     func testButtonsAreNamedAndLargeEnough() {
         let app = launch("three")
-        let cancel = app.buttons["Cancel Timer Master Bath Fan"]
+        // The island's expanded stand-in repeats the buttons; the Lock Screen's are the ones under test.
+        let lock = element("liveactivity.lockscreen", in: app)
+        let cancel = lock.buttons["Cancel Timer Master Bath Fan"]
         XCTAssertTrue(cancel.exists, "the focused fan's control is named for its job")
         assertTarget(cancel)
         for name in ["Previous job", "Next job"] {
-            let button = app.buttons[name]
+            let button = lock.buttons[name]
             XCTAssertTrue(button.exists, name)
             assertTarget(button)
             XCTAssertEqual(button.value as? String, "2 of 3", "\(name) says where the pager stands")
         }
         let single = launch("dishwasher")
-        let stop = single.buttons["Stop Dishwasher"]
+        let singleLock = element("liveactivity.lockscreen", in: single)
+        let stop = singleLock.buttons["Stop Dishwasher"]
         XCTAssertTrue(stop.exists)
         assertTarget(stop)
-        XCTAssertFalse(single.buttons["Next job"].exists, "one job has no pager")
+        XCTAssertFalse(singleLock.buttons["Next job"].exists, "one job has no pager")
     }
 
     /// ‹ and › walk the jobs and wrap around; the focused job's controls follow.
     func testThePagerWalksTheJobsAndWraps() {
         let app = launch("three")
-        app.buttons["Next job"].tap()
+        let lock = element("liveactivity.lockscreen", in: app)
+        lock.buttons["Next job"].tap()
         XCTAssertEqual(lastAction(app), "focus dishwasher", "› from the last position wraps to the first job")
-        XCTAssertTrue(app.buttons["Stop Dishwasher"].waitForExistence(timeout: 5), "the dishwasher's control replaces the fan's")
-        XCTAssertFalse(app.buttons["Cancel Timer Master Bath Fan"].exists)
-        app.buttons["Previous job"].tap()
+        XCTAssertTrue(lock.buttons["Stop Dishwasher"].waitForExistence(timeout: 5), "the dishwasher's control replaces the fan's")
+        XCTAssertFalse(lock.buttons["Cancel Timer Master Bath Fan"].exists)
+        lock.buttons["Previous job"].tap()
         XCTAssertEqual(lastAction(app), "focus fan.master")
-        XCTAssertTrue(app.buttons["Cancel Timer Master Bath Fan"].waitForExistence(timeout: 5))
+        XCTAssertTrue(lock.buttons["Cancel Timer Master Bath Fan"].waitForExistence(timeout: 5))
     }
 
     /// A control shows the job as stopping at once and puts its button away (optimistic, until Home Assistant confirms).
     func testStopShowsStoppingAndHidesTheButton() {
         let app = launch("dishwasher")
-        app.buttons["Stop Dishwasher"].tap()
+        let lock = element("liveactivity.lockscreen", in: app)
+        lock.buttons["Stop Dishwasher"].tap()
         XCTAssertEqual(lastAction(app), "stop dishwasher")
-        XCTAssertTrue(app.staticTexts["Stopping…"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Stop Dishwasher"].exists)
+        XCTAssertTrue(lock.staticTexts["Stopping…"].waitForExistence(timeout: 5))
+        XCTAssertFalse(lock.buttons["Stop Dishwasher"].exists)
         keepScreenshot(app, "live-activity-stopping-pressed-\(layout)")
     }
 
@@ -85,7 +90,7 @@ final class LiveActivityJourneyTests: JourneyTestCase {
         XCTAssertLessThanOrEqual(lock.maxX, window.maxX + 0.5)
         XCTAssertGreaterThanOrEqual(lock.minX, window.minX - 0.5)
         for name in ["Previous job", "Next job", "Cancel Timer Master Bath Fan"] {
-            let button = app.buttons[name]
+            let button = element("liveactivity.lockscreen", in: app).buttons[name]
             XCTAssertTrue(button.exists, name)
             assertTarget(button)
             XCTAssertLessThanOrEqual(button.frame.maxX, window.maxX + 0.5, "\(name) runs off the screen")

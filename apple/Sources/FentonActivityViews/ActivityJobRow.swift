@@ -7,12 +7,14 @@ import SwiftUI
 struct ActivityJobRow: View {
     let job: ActivityJob
     var isFocused = false
+    /// Title and status on one line, so two rows and the focus line fit the Lock Screen's 160 pt.
+    var isCompact = false
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
     var body: some View {
         let style = ActivityStyle(tint: job.tint)
-        VStack(spacing: 4) {
+        VStack(spacing: isCompact ? 3 : 4) {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) { ActivityGlyph(job: job); title }
@@ -21,8 +23,8 @@ struct ActivityJobRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 HStack(spacing: 8) {
-                    ActivityGlyph(job: job)
-                    title
+                    ActivityGlyph(job: job, size: isCompact ? 24 : 26)
+                    if isCompact { inlineTitle } else { title }
                     Spacer(minLength: 4)
                     ActivityTrailing(job: job)
                 }
@@ -30,7 +32,7 @@ struct ActivityJobRow: View {
             ActivityBar(job: job)
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.vertical, isCompact ? 4 : 6)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(style.rowFill(dimmed: isLuminanceReduced)))
         .overlay {
             if isFocused {
@@ -42,6 +44,12 @@ struct ActivityJobRow: View {
         // of a phrase frozen at the last update.
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isFocused ? .isSelected : [])
+    }
+
+    private var inlineTitle: some View {
+        Text("\(Text(job.title).font(.subheadline.weight(.semibold)).foregroundStyle(ActivityStyle.primaryText))\(Text(job.status.isEmpty ? "" : " · \(job.status)").font(.caption).foregroundStyle(ActivityStyle.secondaryText))")
+            .lineLimit(1)
+            .minimumScaleFactor(0.85)
     }
 
     private var title: some View {
