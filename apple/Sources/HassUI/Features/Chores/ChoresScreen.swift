@@ -16,9 +16,6 @@ struct ChoresScreen: View {
 struct ChoresContent: View {
     @Environment(ChoresModel.self) private var model
     @Environment(EntityStore.self) private var store
-    /// The sub-page a quick link opened. The links are buttons that set this, not `NavigationLink`s: the links share one
-    /// `List` row, and a row of several links activates only one of them whichever is tapped.
-    @State private var openedPage: ChoresConfig.Page?
 
     var body: some View {
         // Read here, during body: the stack builds destinations later, outside this view's update, where
@@ -26,10 +23,10 @@ struct ChoresContent: View {
         let model = model
         let store = store
         TodoPageView(page: ChoresConfig.chores) {
-            ChoreQuickLinks { openedPage = $0 }
+            ChoreQuickLinks()
         }
         .navigationTitle("Chores")
-        .navigationDestination(item: $openedPage) { page in
+        .navigationDestination(for: ChoresConfig.Page.self) { page in
             // A pushed page takes its environment from the section's NavigationStack, above the
             // ChoresModelHost, so the model is handed on explicitly (without it every quick link crashed).
             // The store too: the app injects it above the stack, but the debug gallery injects it below.
@@ -64,9 +61,6 @@ struct AdminTodoScreen: View {
 /// on iPad and stops there: four links fill four tracks and a wide Groceries closes the second row. Direction G mockup
 /// n5-chores: dark tiles with the open count top-trailing, Groceries across the last row.
 struct ChoreQuickLinks: View {
-    /// Opens a link's page.
-    var open: (ChoresConfig.Page) -> Void = { _ in }
-
     @Environment(ChoresModel.self) private var model
     @Environment(EntityStore.self) private var store
 
@@ -78,7 +72,7 @@ struct ChoreQuickLinks: View {
                     let title = link.title(viewer: model.viewer)
                     let subtitle = link.subtitle { store.entity($0).state }
                     let count = ChoresConfig.counts(for: link.page) { store.entity($0).state }.total
-                    Button { open(link.page) } label: {
+                    NavigationLink(value: link.page) {
                         QuickLinkFace(title: title, subtitle: subtitle, count: count, symbol: Self.symbol(for: link),
                                       family: Self.family(for: link))
                     }

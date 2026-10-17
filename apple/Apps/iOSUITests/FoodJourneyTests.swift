@@ -57,7 +57,7 @@ final class FoodJourneyTests: XCTestCase {
     private func expectCall(_ prefix: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
         let label = app.staticTexts["gallery.lastCall"].firstMatch
         let matched = waitFor(label, "label BEGINSWITH %@", "Last call: \(prefix)")
-        XCTAssertTrue(matched, "Last call was '\(label.label)'", file: file, line: line)
+        XCTAssertTrue(matched, "Last call was '\(label.exists ? label.label : "(label missing)")', expected '\(prefix)'", file: file, line: line)
     }
 
     private func waitFor(_ element: XCUIElement, _ format: String, _ argument: String, timeout: TimeInterval = 10) -> Bool {

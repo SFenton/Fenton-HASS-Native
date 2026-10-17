@@ -79,7 +79,7 @@ final class ChoresJourneyTests: JourneyTestCase {
         XCTAssertEqual(element("chores.link.stephs-chores", in: app).label, "Steph's Chores")
         XCTAssertGreaterThanOrEqual(mine.frame.height, 43)
         mine.tap()
-        // The page that opens is the tapped link's (the links once shared a row and every tap opened Groceries).
+        // The page that opens is the tapped link's (in a list row, the links all fired and Groceries, the last, won).
         XCTAssertTrue(app.navigationBars["Stephen's Chores"].waitForExistence(timeout: 10), "Your Chores did not open Stephen's Chores")
     }
 

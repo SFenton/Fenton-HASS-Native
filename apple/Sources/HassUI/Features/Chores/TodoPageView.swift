@@ -27,7 +27,15 @@ struct TodoPageView<Header: View>: View {
         // (`ModuleRowBackground`); everything else is a plain row on the wallpaper.
         List {
             if Header.self != EmptyView.self {
-                header().modifier(TodoPlainRow(top: 0, bottom: HassTokens.Spacing.s))
+                // A section header, not a row: a row of several `NavigationLink`s (the Chores quick links) activates
+                // every one of them on any tap, and a button-driven destination hung the page in the debug gallery
+                // (2026-10-16). The header view sits 16 pt inside the list's margins, which the padding takes back so the
+                // content lines up with the modules.
+                Section {} header: {
+                    header()
+                        .textCase(nil)
+                        .padding(.horizontal, -HassTokens.Spacing.l)
+                }
             }
             if TodoPageLayout.showsEmptyState(sections) {
                 emptyState.modifier(TodoPlainRow(top: HassTokens.Spacing.m, bottom: 0))
