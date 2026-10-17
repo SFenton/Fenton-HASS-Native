@@ -100,12 +100,15 @@ launch_words() {
 if [[ -n "$INNER" ]]; then
   # ---- inside the simulator hold -------------------------------------------------------------------------------
   xcrun simctl bootstatus "$UDID" -b > /dev/null 2>&1 || true
-  xcrun simctl install "$UDID" "$APP"
   rm -f "$TSV"
   while IFS='|' read -r NAME ENVS; do
     settle="${DELAY:-9}"
     [[ "$ENVS" == *LIVE=1* ]] && settle="${DELAY:-18}"
+    # A fresh install each time: the app restores the tab it was last on (SceneStorage), so a page left by the last surface would
+    # be this one's starting page.
     xcrun simctl terminate "$UDID" "$BUNDLE" > /dev/null 2>&1 || true
+    xcrun simctl uninstall "$UDID" "$BUNDLE" > /dev/null 2>&1 || true
+    xcrun simctl install "$UDID" "$APP"
     args=()
     while IFS= read -r word; do args+=("SIMCTL_CHILD_$word"); done < <(launch_words "$ENVS")
     env "${args[@]}" SIMCTL_CHILD_FENTON_UITEST_RESET=1 SIMCTL_CHILD_FENTON_SCROLLCOST_AUTORUN="$settle" \

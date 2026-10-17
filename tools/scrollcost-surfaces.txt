@@ -25,7 +25,7 @@ Humidifier sheet|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FE
 Humidifier schedules|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=schedules FENTON_GALLERY_CLEAN=1
 
 [live]
-Live Home|LIVE=1
+Live Home|LIVE=1 FENTON_SCROLLCOST_OPEN=home
 Live Security|LIVE=1 FENTON_SCROLLCOST_OPEN=security
 Live Climate|LIVE=1 FENTON_SCROLLCOST_OPEN=thermostat
 Live Chores|LIVE=1 FENTON_SCROLLCOST_OPEN=chores
