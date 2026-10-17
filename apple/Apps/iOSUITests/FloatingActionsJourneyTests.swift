@@ -67,6 +67,39 @@ final class FloatingActionsJourneyTests: JourneyTestCase {
         XCTAssertTrue(app.buttons["fab.sort"].isSelected, "Cancel applied the draft")
     }
 
+    /// The top of the bar's buttons, in screen points.
+    private func barTop(_ app: XCUIApplication) -> CGFloat {
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'fab.'")).allElementsBoundByIndex.map(\.frame.minY).min() ?? .greatestFiniteMagnitude
+    }
+
+    /// Owner, 2026-10-16: nothing stays permanently covered. The bar's height is added to the list's bottom inset, so the
+    /// last row scrolls clear of the buttons and can still be tapped.
+    func testLastRowScrollsClearOfTheBar() {
+        let app = launch()
+        let list = app.collectionViews.firstMatch
+        let last = app.staticTexts["Row 30"]
+        for _ in 0..<15 { list.swipeUp(velocity: .fast) }
+        XCTAssertTrue(last.exists, "Row 30 never appeared")
+        XCTAssertLessThanOrEqual(last.frame.maxY, barTop(app), "The last row ends under the bar")
+        XCTAssertTrue(last.isHittable, "The last row can't be reached")
+    }
+
+    /// Owner, 2026-10-16: the bar is Liquid Glass, so a row scrolled under it still shows through. A row's text under the
+    /// bar's search capsule measures its rendered contrast against the glass behind it.
+    func testRowsShowThroughTheGlassBar() throws {
+        let app = launch()
+        let top = barTop(app)
+        // At rest the list shows rows 52 pt apart, so one starts inside the bar's 52 pt strip.
+        let rows = (1...30).map { app.staticTexts["Row \($0)"] }.filter(\.exists)
+        let seen = rows.map { "\($0.label)@\(Int($0.frame.minY))" }.joined(separator: " ")
+        let covered = rows.first { $0.frame.midY > top + 4 && $0.frame.midY < top + 48 }
+        let row = try XCTUnwrap(covered, "No row came to rest under the bar (bar top \(Int(top)); rows: \(seen))")
+        keepScreenshot(app, "floating-actions-through-glass-\(FentonHomeApp.family)")
+        let capture = try XCTUnwrap(RenderedContrast.Capture.screen())
+        let ratio = try XCTUnwrap(RenderedContrast.ratio(of: row.frame, in: capture), "No pixels under \(row.label)")
+        XCTAssertGreaterThanOrEqual(ratio, 1.15, "\(row.label) under the bar is not visible through the glass (rendered \(ratio):1)")
+    }
+
     func testPagePassesAccessibilityAudit() throws {
         let app = launch()
         keepScreenshot(app, "floating-actions-\(FentonHomeApp.family)")

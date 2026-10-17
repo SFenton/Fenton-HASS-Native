@@ -6,9 +6,27 @@ import XCTest
 final class ChoresJourneyTests: JourneyTestCase {
     // MARK: Helpers
 
-    private func launch(page: String? = nil, empty: Bool = false, arguments: [String] = []) -> XCUIApplication {
+    /// The settings belong to the simulator: leave it as found.
+    override func tearDown() {
+        super.tearDown()
+        let reduced = reducedMotion
+        MainActor.assumeIsolated {
+            if reduced { FentonHomeApp.launchGallery("system-accessibility").terminate() }
+        }
+    }
+
+    private var reducedMotion = false
+
+    /// Drags a row part of the way left, which opens its trailing swipe actions without performing the full swipe.
+    private func revealTrailingActions(of row: XCUIElement) {
+        let start = row.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.45, dy: 0.5)))
+    }
+
+    private func launch(page: String? = nil, empty: Bool = false, arguments: [String] = [], environment: [String: String] = [:]) -> XCUIApplication {
         let app = FentonHomeApp.makeApp()
         app.launchEnvironment["FENTON_GALLERY"] = "chores"
+        app.launchEnvironment.merge(environment) { _, new in new }
         if let page { app.launchEnvironment["FENTON_GALLERY_TODO_PAGE"] = page }
         if empty { app.launchEnvironment["FENTON_GALLERY_EMPTY"] = "1" }
         app.launchArguments += arguments
@@ -30,12 +48,17 @@ final class ChoresJourneyTests: JourneyTestCase {
         for _ in 0..<20 where !clear() { // AX5 pages run many screens long.
             // A short drag, not a fling, so the row stops where it lands and the next tap isn't eaten
             // by deceleration.
-            let scroll = app.scrollViews.firstMatch
+            let scroll = scroller(app)
             scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.7))
                 .press(forDuration: 0.05, thenDragTo: scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.4)))
         }
         XCTAssertTrue(clear(), "\(element) never came into view")
         return element
+    }
+
+    /// The page's scrolling list: a `List` is a collection view to XCUITest.
+    private func scroller(_ app: XCUIApplication) -> XCUIElement {
+        app.collectionViews.firstMatch.exists ? app.collectionViews.firstMatch : app.scrollViews.firstMatch
     }
 
     private func screenshotName(_ name: String) -> String {
@@ -56,8 +79,8 @@ final class ChoresJourneyTests: JourneyTestCase {
         XCTAssertEqual(element("chores.link.stephs-chores", in: app).label, "Steph's Chores")
         XCTAssertGreaterThanOrEqual(mine.frame.height, 43)
         mine.tap()
-        XCTAssertTrue(element("todo.page.stephens-chores", in: app).waitForExistence(timeout: 5))
-        XCTAssertTrue(app.navigationBars["Stephen's Chores"].exists)
+        // The page that opens is the tapped link's (in a list row, the links all fired and Groceries, the last, won).
+        XCTAssertTrue(app.navigationBars["Stephen's Chores"].waitForExistence(timeout: 10), "Your Chores did not open Stephen's Chores")
     }
 
     /// Checking a chore off hides it at once and calls Home Assistant.
@@ -107,6 +130,126 @@ final class ChoresJourneyTests: JourneyTestCase {
         XCTAssertEqual(lastCall(in: app), "donetick.create_task_form")
     }
 
+    /// Owner, 2026-10-16: Task Name and Description are separate fields, each with a footer saying what goes in it, and the
+    /// header no longer says "Donetick".
+    func testAddTaskSheetHasSeparateFieldsWithFooters() {
+        let app = launch()
+        app.buttons["fab.add"].tap()
+        XCTAssertTrue(app.textFields["task.name"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["task.description"].exists || app.textViews["task.description"].exists)
+        for footer in ["task.name.footer", "task.description.footer"] {
+            XCTAssertTrue(element(footer, in: app).exists, "\(footer) missing")
+        }
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'short name for the chore'")).firstMatch.exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS 'Optional. Add steps'")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts["Donetick"].exists, "The Donetick subtitle is gone")
+        keepScreenshot(app, screenshotName("task-create-fields"))
+    }
+
+    // MARK: Swipe actions
+
+    /// Owner, 2026-10-16: swiping a row in from the leading edge completes it (a full swipe performs the action).
+    func testLeadingSwipeCompletes() {
+        let app = launch()
+        let row = reveal(element("todo.item.13--fixture", in: app), in: app)
+        // A drag across most of the row is a full swipe, which performs the leading action.
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5))
+            .press(forDuration: 0.05, thenDragTo: row.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)))
+        XCTAssertTrue(row.waitForNonExistence(timeout: 8), "Swiped chore still shown")
+        XCTAssertEqual(lastCall(in: app), "todo.update_item 13--fixture")
+    }
+
+    /// The trailing swipe offers Delete (outermost) and Edit; Edit opens the task form.
+    func testTrailingSwipeShowsDeleteAndEdit() {
+        let app = launch()
+        let row = reveal(element("todo.item.13--fixture", in: app), in: app)
+        revealTrailingActions(of: row)
+        let delete = element("todo.swipe.delete.13--fixture", in: app)
+        let edit = element("todo.swipe.edit.13--fixture", in: app)
+        XCTAssertTrue(delete.waitForExistence(timeout: 5) && edit.exists, "Trailing actions missing")
+        XCTAssertEqual(delete.label, "Delete")
+        XCTAssertEqual(edit.label, "Edit")
+        keepScreenshot(app, screenshotName("chores-swipe-trailing"))
+        XCTAssertLessThan(edit.frame.minX, delete.frame.minX, "Delete is outermost")
+        edit.tap()
+        XCTAssertTrue(app.textFields["task.name"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["task.name"].value as? String, "Run the dishwasher")
+    }
+
+    /// Delete asks first; cancelling leaves the task, confirming removes it with `todo.remove_item`.
+    func testSwipeDeleteConfirmsBeforeRemoving() {
+        let app = launch()
+        let row = reveal(element("todo.item.13--fixture", in: app), in: app)
+        revealTrailingActions(of: row)
+        element("todo.swipe.delete.13--fixture", in: app).tap()
+        let confirm = element("todo.delete.confirm", in: app)
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5), "No confirmation")
+        XCTAssertNotEqual(lastCall(in: app), "todo.remove_item 13--fixture", "Deleted before the answer")
+        XCTAssertTrue(row.exists)
+        confirm.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 5))
+        XCTAssertEqual(lastCall(in: app), "todo.remove_item 13--fixture")
+    }
+
+    /// Owner, 2026-10-16: a completed chore animates away, and if Home Assistant rejects it the chore comes back with
+    /// the error (the fixture refuses every check-off after 4 s).
+    func testRejectedCompletionBringsTheChoreBack() {
+        let app = launch(environment: ["FENTON_GALLERY_FAIL_COMPLETE": "1"])
+        let row = reveal(element("todo.item.13--fixture", in: app), in: app)
+        row.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 8), "The chore did not leave at once")
+        XCTAssertTrue(element("todo.item.13--fixture", in: app).waitForExistence(timeout: 15), "The chore never came back")
+        XCTAssertTrue(app.staticTexts["Unable to update task"].waitForExistence(timeout: 3), "No error shown")
+        XCTAssertTrue(lastCall(in: app).hasSuffix("failed"))
+    }
+
+    /// Reduce Motion: the row still leaves and returns (a fade, not a slide).
+    func testCompletionStillWorksWithReduceMotion() {
+        let app = FentonHomeApp.launchGallery("chores", environment: FentonHomeApp.SystemSetting.environment([.reduceMotion]))
+        reducedMotion = true
+        XCTAssertTrue(app.buttons["fab.add"].waitForExistence(timeout: 10))
+        let row = reveal(element("todo.item.13--fixture", in: app), in: app)
+        row.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 5))
+    }
+
+    /// Owner, 2026-10-16: quick-link tiles are filled in colours that nothing else in the app uses, with white filled
+    /// glyphs. Each tile's fill is sampled from the screen and matched to its family.
+    func testQuickLinkTilesAreFilledInTheirOwnColours() throws {
+        let app = launch()
+        let expected: [(id: String, family: String, rgb: (Int, Int, Int))] = [
+            ("stephens-chores", "choreStephen", (0x00, 0x22, 0xCC)),
+            ("stephs-chores", "choreSteph", (0xB4, 0x10, 0xAE)),
+            ("unassigned-chores", "choreUnassigned", (0xC2, 0x12, 0x7A)),
+            ("home-improvement-chores", "choreHome", (0x66, 0x00, 0xCC)),
+            ("groceries", "groceries", (0x80, 0x22, 0x00)),
+        ]
+        keepScreenshot(app, screenshotName("chores-quick-links"))
+        let capture = try XCTUnwrap(RenderedContrast.Capture.screen())
+        for tile in expected {
+            let link = element("chores.link.\(tile.id)", in: app)
+            XCTAssertTrue(link.exists, tile.id)
+            // The bottom-leading corner area, below the text and clear of the top highlight.
+            let point = CGPoint(x: link.frame.minX + 10, y: link.frame.maxY - 6)
+            let sample = try XCTUnwrap(RenderedContrast.rgb(at: point, in: capture), tile.id)
+            XCTAssertLessThanOrEqual(abs(sample.red - tile.rgb.0) + abs(sample.green - tile.rgb.1) + abs(sample.blue - tile.rgb.2), 24,
+                                     "\(tile.id) is \(sample), expected \(tile.rgb) (\(tile.family))")
+        }
+    }
+
+    /// The Add bar's height is added to the list's bottom inset: at AX5 the last chore scrolls clear of the bar and can be
+    /// tapped (owner, 2026-10-16: nothing permanently covered).
+    func testLastChoreScrollsClearOfTheAddBar() {
+        let app = launch(arguments: FentonHomeApp.ax5)
+        let list = scroller(app)
+        for _ in 0..<20 { list.swipeUp(velocity: .fast) }
+        let last = element("todo.item.15--fixture", in: app)
+        XCTAssertTrue(last.exists, "The last chore never appeared")
+        let barTop = min(app.buttons["fab.add"].frame.minY, app.staticTexts["gallery.lastCall"].frame.minY)
+        XCTAssertLessThanOrEqual(last.frame.maxY, barTop, "The last chore ends under the Add bar")
+        XCTAssertTrue(last.isHittable)
+    }
+
     // MARK: Sub-pages
 
     func testGroceriesAddAndCheckOff() {
@@ -133,8 +276,8 @@ final class ChoresJourneyTests: JourneyTestCase {
         XCTAssertFalse(app.buttons["renameTodo.save"].isEnabled)
         name.tap()
         name.typeText(" now")
-        app.buttons["renameTodo.save"].tap()
-        XCTAssertTrue(name.waitForNonExistence(timeout: 5))
+        // On iPad the first tap can only end editing in the focused field.
+        submit(app.buttons["renameTodo.save"], closing: name)
         XCTAssertEqual(lastCall(in: app), "todo.update_item a1")
         element("todo.item.a2", in: app).tap()
         XCTAssertTrue(element("todo.item.a2", in: app).waitForNonExistence(timeout: 5))

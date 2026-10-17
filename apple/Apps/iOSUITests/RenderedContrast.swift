@@ -75,6 +75,14 @@ enum RenderedContrast {
         return luminance(capture.pixels[i], capture.pixels[i + 1], capture.pixels[i + 2])
     }
 
+    /// The sRGB colour (0...255 per channel) of the pixel under a screen point, or nil when the point is off the capture.
+    static func rgb(at point: CGPoint, in capture: Capture) -> (red: Int, green: Int, blue: Int)? {
+        let x = Int(point.x * capture.scale), y = Int(point.y * capture.scale)
+        guard x >= 0, y >= 0, x < capture.width, y < capture.height else { return nil }
+        let i = (y * capture.width + x) * 4
+        return (Int(capture.pixels[i]), Int(capture.pixels[i + 1]), Int(capture.pixels[i + 2]))
+    }
+
     /// WCAG contrast of the text against its surface inside `frame` (screen points), or nil when the
     /// frame is empty or off the capture (then there is no evidence and the issue stays open).
     static func ratio(of frame: CGRect, in capture: Capture) -> Double? {

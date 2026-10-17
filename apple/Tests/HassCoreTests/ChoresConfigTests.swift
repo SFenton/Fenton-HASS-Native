@@ -27,7 +27,15 @@ struct ChoresConfigTests {
         #expect(ChoresConfig.page("groceries")?.lists.first?.entityId == "todo.shopping_list")
         #expect(ChoresConfig.page("nope") == nil)
         #expect(ChoresConfig.chores.lists.count == 13)
-        #expect(ChoresConfig.stephsChores.lists.map(\.entityId) == ["todo.steph_s_past_due", "todo.steph_s_due_today", "todo.steph_s_upcoming", "todo.steph_s_no_due_date"])
+        // A resident's page reads the views that include unassigned chores, like the Chores tab and the Profile summary
+        // (owner, 2026-10-16: the LV600S aroma pad chores have no assignee and must show for Stephen).
+        #expect(ChoresConfig.stephsChores.lists.map(\.entityId) == ["todo.steph_s_past_due_with_unassigned", "todo.steph_s_due_today_with_unassigned",
+                                                                    "todo.steph_s_upcoming_with_unassigned", "todo.steph_s_no_due_date_with_unassigned"])
+        #expect(ChoresConfig.stephensChores.lists.map(\.entityId).allSatisfy { $0.hasSuffix("_with_unassigned") })
+        #expect(ChoresConfig.unassignedChores.lists.map(\.entityId) == ["todo.unassigned_past_due", "todo.unassigned_due_today", "todo.unassigned_upcoming", "todo.unassigned_no_due_date"])
+        // The Profile summary's overdue list is the Past Due list of the same page, so the badge, the summary and the page agree.
+        #expect(ProfileSummary.lists(for: .stephen).overdue.entityId == ChoresConfig.stephensChores.lists[0].entityId)
+        #expect(ProfileSummary.lists(for: .steph).overdue.entityId == ChoresConfig.stephsChores.lists[0].entityId)
         #expect(ChoresConfig.homeImprovementChores.addAction == .donetickTask(defaultAssignee: "3"))
         #expect(ChoresConfig.adminTodo.editsAdminTodo)
         #expect(!ChoresConfig.groceries.editsAdminTodo)
@@ -66,8 +74,9 @@ struct ChoresConfigTests {
     }
 
     @Test func countsSumIntoBuckets() {
-        let states: [String: String] = ["todo.stephen_s_past_due": "2", "todo.stephen_s_due_today": "1", "todo.stephen_s_upcoming": "3",
-                                        "todo.stephen_s_no_due_date": "1", "todo.shopping_list": "unavailable"]
+        let states: [String: String] = ["todo.stephen_s_past_due_with_unassigned": "2", "todo.stephen_s_due_today_with_unassigned": "1",
+                                        "todo.stephen_s_upcoming_with_unassigned": "3", "todo.stephen_s_no_due_date_with_unassigned": "1",
+                                        "todo.shopping_list": "unavailable"]
         let lookup: (String) -> EntityState? = { id in states[id].map { EntityState(entityId: id, state: $0) } }
         #expect(ChoresConfig.counts(for: ChoresConfig.stephensChores, lookup) == .init(overdue: 2, upcoming: 4, noDueDate: 1, total: 7))
         #expect(ChoresConfig.counts(for: ChoresConfig.groceries, lookup) == .init())

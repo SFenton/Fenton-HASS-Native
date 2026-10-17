@@ -69,6 +69,57 @@ public struct ModuleList<Content: View>: View {
     }
 }
 
+// MARK: - List row background
+
+/// A module's share of one row, for a real `List` whose rows need system swipe actions (a `ScrollView` can't have them
+/// before iOS 27): the density's tint with the module's corners rounded on the first row's top and the last row's bottom,
+/// so the rows read as one inset card (`.listRowBackground(ModuleRowBackground(...))`). Pair it with
+/// ``SwiftUICore/View/moduleRowSeparator(isFirst:inset:)`` for the hairline.
+public struct ModuleRowBackground: View {
+    private let density: ModuleDensity
+    private let isFirst: Bool
+    private let isLast: Bool
+
+    /// Creates a row background.
+    /// - Parameters:
+    ///   - density: The module's density.
+    ///   - isFirst: The row is the first of its card (top corners rounded).
+    ///   - isLast: The row is the last of its card (bottom corners rounded).
+    public init(_ density: ModuleDensity = .thin, isFirst: Bool, isLast: Bool) {
+        self.density = density
+        self.isFirst = isFirst
+        self.isLast = isLast
+    }
+
+    public var body: some View {
+        let radius = HassTokens.Radius.module
+        Color.clear
+            .module(density, cornerRadius: 0)
+            .clipShape(UnevenRoundedRectangle(
+                topLeadingRadius: isFirst ? radius : 0, bottomLeadingRadius: isLast ? radius : 0,
+                bottomTrailingRadius: isLast ? radius : 0, topTrailingRadius: isFirst ? radius : 0, style: .continuous
+            ))
+    }
+}
+
+public extension View {
+    /// Draws the hairline above a row that isn't the first of its ``ModuleRowBackground`` card, inset to the row's text.
+    /// Use with `.listRowSeparator(.hidden)`: the system separator can't be inset per row in a plain card.
+    /// - Parameters:
+    ///   - isFirst: The row is the first of its card, so it has no hairline above it.
+    ///   - inset: Where the hairline starts; defaults to ``ModuleRowMetrics/textInset``.
+    func moduleRowSeparator(isFirst: Bool, inset: CGFloat = ModuleRowMetrics.textInset) -> some View {
+        overlay(alignment: .top) {
+            if !isFirst {
+                HassTokens.Surface.separator
+                    .frame(height: 0.5)
+                    .padding(.leading, inset)
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+}
+
 // MARK: - Row
 
 /// One row of a ``ModuleList``: a leading glyph in its colour family, a title and optional subtitle, then a trailing

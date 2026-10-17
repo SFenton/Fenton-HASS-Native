@@ -79,6 +79,7 @@ Pages are always dark-styled because they sit on the dimmed photo, the way Apple
 | Cleaning | vacuums, dishwasher, laundry | `#C88CFA` | `#7A3FB0`; progress is a lighter band from the leading edge |
 | Power | plugs, towel rack, chargers | `#FFD60A` | `#FFE45C` → `#FFD60A`, dark ink |
 | Cooking | grill, oven | `#FF8A4C` | `#A8420E` |
+| Chores quick links | Stephen's, Steph's, Unassigned, Home Tasks, Groceries (owner, 2026-10-16: distinct colours used nowhere else) | `#8FA0FF`, `#FF8CF7`, `#FF8FBF`, `#B98CFF`, `#E0916F` | ultramarine `#0022CC`, magenta `#B410AE`, raspberry `#C2127A`, violet `#6600CC`, chestnut `#802200`; white filled glyph; each at least 0.05 OKLab from every device, security, Food and room fill |
 | Food (owner, 2026-10-16: "Food Spaces / All Food should have colours like the web") | Food hub tiles, always filled: Pantry `#855A25`, Fridge and All Recipes `#196B94`, Freezer `#2F4A9E`, Spice Rack `#AA4727`, Cabinet `#6A5F55`, All Food `#4A6B4E` | each a lightened tint of its fill | the web's tile colours (`ha-sfenton-react-dash@9ac2a46:src/constants/everShelfFood.ts:13-18`, `FoodHubPage.tsx:46,60`), nudged until white ink passes 4.5:1 and no two spaces read as one (≥ 30 apart in sRGB). The Freezer indigo sits near Vents and the Spice Rack near Cooking, as the web's own colours do; they never share a page |
 | Security | by mode, as on the web | white on the fill | Home `#1565C0`, Away `#C62828`, Night `#7B1FA2`, Disarmed `#2A732E`, Triggered `#D70015` |
 
@@ -257,7 +258,7 @@ SF Pro only.
 
 - **Occupancy:** a "Who's Home" list is added.
 - **Doors chip:** it names a real sensor.
-- **Chore lists:** shown neutral grey; the alternative is their web colours.
+- **Chore lists:** decided 2026-10-16 (owner): filled tiles in five colours used nowhere else, with white filled glyphs (see Colour families). The web colours collide with device families, so they are not used.
 - **Donetick labels:** not on the task form.
 - **Settings:** its own tab (owner, 2026-10-16). Vacation and To-Do appear in both Quick Links and Settings.
 - **Duo:** four chips show beside the hinge.

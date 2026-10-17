@@ -35,6 +35,9 @@ public enum ColorFamily: String, CaseIterable, Sendable {
     case climate
     /// Security by alarm mode, as on the web.
     case securityHome, securityAway, securityNight, securityDisarmed, securityTriggered
+    /// The Chores quick-link tiles (owner, 2026-10-16: "header tiles for Chores sub-pages need distinct colours not
+    /// reused elsewhere"). Ultramarine, magenta, raspberry, violet and chestnut: none within 0.05 (OKLab) of any device, security, Food or room fill.
+    case choreStephen, choreSteph, choreUnassigned, choreHome, groceries
     /// The Food pages (owner, 2026-10-16: "Food Spaces / All Food should have colours like the web"). Each is the web's
     /// tile colour (`ha-sfenton-react-dash@9ac2a46:src/constants/everShelfFood.ts:13-18`, `FoodHubPage.tsx:46,60,69`)
     /// darkened (or, for the Fridge, Freezer, Spice Rack and Cabinet, nudged apart) until white text on it passes 4.5:1 and no two Food tiles read as one. They fill as a tile on the Food hub: the spaces are places, but the
@@ -57,6 +60,9 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         public let darkInk: Bool
     }
 
+    /// The Chores quick-link families, in tile order.
+    public static let choreFamilies: [ColorFamily] = [.choreStephen, .choreSteph, .choreUnassigned, .choreHome, .groceries]
+
     /// The raw values (direction-g.md table).
     public var spec: Spec {
         switch self {
@@ -78,6 +84,11 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         case .securityNight: Spec(glyph: 0xD08CF0, fill: 0x7B1FA2, darkInk: false)
         case .securityDisarmed: Spec(glyph: 0x5BD16A, fill: 0x2A732E, darkInk: false)
         case .securityTriggered: Spec(glyph: 0xFF6961, fill: 0xD70015, darkInk: false)
+        case .choreStephen: Spec(glyph: 0x8FA0FF, fill: 0x0022CC, darkInk: false)
+        case .choreSteph: Spec(glyph: 0xFF8CF7, fill: 0xB410AE, darkInk: false)
+        case .choreUnassigned: Spec(glyph: 0xFF8FBF, fill: 0xC2127A, darkInk: false)
+        case .choreHome: Spec(glyph: 0xB98CFF, fill: 0x6600CC, darkInk: false)
+        case .groceries: Spec(glyph: 0xE0916F, fill: 0x802200, darkInk: false)
         case .pantry: Spec(glyph: 0xAC8F6B, fill: 0x855A25, darkInk: false)
         case .fridge, .recipes: Spec(glyph: 0x639AB6, fill: 0x196B94, darkInk: false)
         case .freezer: Spec(glyph: 0x8292C5, fill: 0x2F4A9E, darkInk: false)
@@ -108,6 +119,11 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         case .securityHome: 0x4C86C2
         case .securityAway, .securityTriggered: 0xD95952
         case .securityNight: 0xA26DBB
+        case .choreStephen: 0x0022CC
+        case .choreSteph: 0xB410AE
+        case .choreUnassigned: 0xC2127A
+        case .choreHome: 0x6600CC
+        case .groceries: 0x802200
         case .pantry: 0xA28665
         case .fridge, .recipes: 0x5D91AB
         case .freezer: 0x7A89B9

@@ -27,6 +27,8 @@ struct MainTabView: View {
     var body: some View {
         ZStack(alignment: .leading) {
             tabs
+                // The Chores tab's badge: the viewer's overdue chores, the count Profile and Your Summary read.
+                .modifier(OverdueChoresBadge())
                 // While the flyout is open its scrim covers the content; hide the content from VoiceOver too.
                 .accessibilityHidden(while: navigator.isFlyoutOpen)
                 .flyoutEdgeSwipe(navigator, isEnabled: chrome.showsMenuButton)

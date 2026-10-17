@@ -131,6 +131,21 @@ public final class TodoListController: Identifiable {
         }
     }
 
+    /// Removes an item (`todo.remove_item`). The row leaves at once and returns, with the error, if the call fails.
+    public func remove(_ item: TodoItem) async {
+        let identity = item.identity
+        guard !identity.isEmpty, let before = items else { return }
+        items = before.filter { $0.identity != identity }
+        do {
+            try await service.callService("todo", "remove_item", data: ["entity_id": entityId, "item": identity])
+            error = nil
+            if let items { onItemsChange(entityId, items) }
+        } catch {
+            items = before
+            self.error = Self.message(error, fallback: "Unable to delete task")
+        }
+    }
+
     private func scheduleRevert(_ identity: String, requestId: Int) {
         let delay = revertDelay
         Task { [weak self] in

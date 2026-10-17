@@ -137,6 +137,32 @@ struct TodoListControllerTests {
         #expect(controller.error == "Server said no")
     }
 
+    /// A swipe-to-delete removes the row at once, calls `todo.remove_item` and caches the shorter list.
+    @Test func removeDropsTheRowAndCallsRemoveItem() async {
+        let service = MockTodoService()
+        let a = TodoItem(uid: "a", summary: "A"), b = TodoItem(uid: "b", summary: "B")
+        var cached: [TodoItem] = []
+        let controller = controller(service, cached: [a, b]) { _, items in cached = items }
+        await controller.remove(a)
+        #expect(controller.items == [b])
+        #expect(cached == [b])
+        #expect(service.calls == ["todo.remove_item entity_id=todo.list,item=a"])
+        #expect(controller.error == nil)
+    }
+
+    /// A rejected delete puts the row back with the error, like a rejected check-off.
+    @Test func failedRemoveBringsTheRowBack() async {
+        let service = MockTodoService()
+        service.failure = MockTodoService.Failure()
+        let a = TodoItem(uid: "a", summary: "A")
+        let controller = controller(service, cached: [a])
+        await controller.remove(a)
+        #expect(controller.items == [a])
+        #expect(controller.error == "Server said no")
+        await controller.remove(TodoItem(uid: nil, summary: nil))
+        #expect(service.calls.count == 1, "An item without an identity sends nothing")
+    }
+
     @Test func toggleIgnoresItemsWithoutIdentity() async {
         let service = MockTodoService()
         await controller(service).toggle(TodoItem(uid: nil, summary: nil))

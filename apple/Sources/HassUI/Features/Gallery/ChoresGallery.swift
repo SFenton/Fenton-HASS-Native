@@ -7,7 +7,8 @@ import SwiftUI
 /// Gallery page for Chores, Groceries and To-Do on fixture lists with a recording service, so journeys,
 /// audits and screenshots reach every page and sheet without touching the house.
 /// `FENTON_GALLERY_TODO_PAGE=<page id>` opens another page as the root (e.g. `to-do`);
-/// `FENTON_GALLERY_VIEWER=steph` signs the fixtures in as Steph; `FENTON_GALLERY_EMPTY=1` empties every list.
+/// `FENTON_GALLERY_VIEWER=steph` signs the fixtures in as Steph; `FENTON_GALLERY_EMPTY=1` empties every list;
+/// `FENTON_GALLERY_FAIL_COMPLETE=1` makes every check-off fail after 4 s, to show a row leave and come back.
 struct ChoresGallery: View {
     @State private var store: EntityStore
     @State private var model: ChoresModel
@@ -17,7 +18,8 @@ struct ChoresGallery: View {
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         let empty = environment["FENTON_GALLERY_EMPTY"] == "1"
         let store = EntityStore()
-        let service = ChoresFixtureService(store: store, lists: empty ? [:] : ChoresFixtures.lists())
+        let service = ChoresFixtureService(store: store, lists: empty ? [:] : ChoresFixtures.lists(),
+                                           failsCompletion: environment["FENTON_GALLERY_FAIL_COMPLETE"] == "1")
         store.replaceAll(service.entityStates())
         let viewer = environment["FENTON_GALLERY_VIEWER"].flatMap(ChoresConfig.Resident.init(rawValue:)) ?? .stephen
         _store = State(initialValue: store)
@@ -78,6 +80,11 @@ enum ChoresFixtures {
             "todo.shopping_list": [
                 TodoItem(uid: "g1", summary: "Oat milk"), TodoItem(uid: "g2", summary: "Coffee beans"), TodoItem(uid: "g3", summary: "Lemons"),
             ],
+            // A resident's page reads the `_with_unassigned` views, which hold the same chores here.
+            "todo.stephen_s_due_today_with_unassigned": [task(13, "Run the dishwasher", due: 5 * hour)],
+            "todo.stephen_s_upcoming_with_unassigned": [task(15, "Water the plants", due: 2 * day)],
+            "todo.steph_s_due_today_with_unassigned": [task(21, "Fold laundry", due: 3 * hour)],
+            "todo.steph_s_upcoming_with_unassigned": [task(22, "Book the vet", due: 30 * day)],
             "todo.stephen_s_past_due": [task(11, "Take out the recycling", due: -3 * hour), task(12, "Clean the gutters", due: -9 * day)],
             "todo.stephen_s_due_today": [task(13, "Run the dishwasher", due: 5 * hour)],
             "todo.stephen_s_upcoming": [task(15, "Water the plants", due: 2 * day)],
@@ -110,10 +117,16 @@ final class ChoresFixtureService: TodoServicing {
     private var lists: [String: [TodoItem]]
     private let store: EntityStore
     private var nextId = 100
+    /// Check-offs fail after 4 s (the optimistic rollback journey).
+    private let failsCompletion: Bool
 
-    init(store: EntityStore, lists: [String: [TodoItem]]) {
+    /// A call the fixture refuses.
+    struct Refused: Error {}
+
+    init(store: EntityStore, lists: [String: [TodoItem]], failsCompletion: Bool = false) {
         self.store = store
         self.lists = lists
+        self.failsCompletion = failsCompletion
     }
 
     /// One entity per configured list; its state is the open-item count, like Home Assistant's todo entities.
@@ -143,6 +156,12 @@ final class ChoresFixtureService: TodoServicing {
         lastCall = "\(domain).\(service) \(item)".trimmingCharacters(in: .whitespaces)
         switch (domain, service) {
         case ("todo", "update_item"):
+            if failsCompletion, data["status"] as? String == "completed" {
+                // Long enough for the row to be seen leaving before it comes back.
+                try await Task.sleep(for: .seconds(4))
+                lastCall += " failed"
+                throw Refused()
+            }
             if let status = (data["status"] as? String).flatMap(TodoItem.Status.init(rawValue:)) { update(entityId, item) { $0.status = status } }
             if let rename = data["rename"] as? String { update(entityId, item) { $0.summary = rename } }
         case ("todo", "add_item"):

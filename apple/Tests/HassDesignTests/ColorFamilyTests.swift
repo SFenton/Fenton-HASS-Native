@@ -75,6 +75,41 @@ struct ColorFamilyTests {
         #expect(contrast(family.chipGlyphRGB, fill) >= 3, "\(family) glyph")
     }
 
+    /// OKLab coordinates of `0xRRGGBB`, for perceptual distance.
+    private func oklab(_ rgb: UInt32) -> (Double, Double, Double) {
+        func linear(_ shift: UInt32) -> Double {
+            let c = Double((rgb >> shift) & 0xFF) / 255
+            return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        }
+        let (r, g, b) = (linear(16), linear(8), linear(0))
+        let l = cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
+        let m = cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
+        let s = cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
+        return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+                0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
+    }
+
+    private func oklabDistance(_ a: UInt32, _ b: UInt32) -> Double {
+        let (x, y) = (oklab(a), oklab(b))
+        return ((x.0 - y.0) * (x.0 - y.0) + (x.1 - y.1) * (x.1 - y.1) + (x.2 - y.2) * (x.2 - y.2)).squareRoot()
+    }
+
+    /// Owner, 2026-10-16: the Chores quick-link tiles use colours no device family, security mode, Food tile or room
+    /// reuses. The floor is an OKLab distance of 0.05 between fills, the one the room palette keeps (the closest existing
+    /// pair, heating and cooking, is 0.002 apart).
+    @Test(arguments: ColorFamily.choreFamilies)
+    func choreTilesUseColoursNothingElseDoes(_ family: ColorFamily) throws {
+        let fill = try #require(family.spec.fill)
+        for other in ColorFamily.allCases where other != family {
+            guard let otherFill = other.spec.fill else { continue }
+            #expect(oklabDistance(fill, otherFill) >= 0.05, "\(family) vs \(other)")
+        }
+        for (room, roomFill) in RoomPalette.fills {
+            #expect(oklabDistance(fill, roomFill) >= 0.05, "\(family) vs \(room)")
+        }
+    }
+
     /// Distance between two `0xRRGGBB` colours in sRGB.
     private func distance(_ a: UInt32, _ b: UInt32) -> Double {
         func channel(_ rgb: UInt32, _ shift: UInt32) -> Double { Double((rgb >> shift) & 0xFF) }
