@@ -40,7 +40,14 @@ struct HostedRoot<Content: View>: View {
         content
             .fixedSize()
             .onGeometryChange(for: CGSize.self) { $0.size } action: { onNaturalSize($0) }
-            .transformEnvironment(\.self) { $0 = environment }
+            .transformEnvironment(\.self) { hosted in
+                // Keep the hosting view's own accessibility switch: the copy was taken from the page when it last
+                // updated, which can be before an assistive technology (or XCUITest) connected, and a stale `false`
+                // left the chips out of the accessibility tree entirely (iPhone and Duo journeys, 2026-10-16).
+                let accessibilityEnabled = hosted.accessibilityEnabled
+                hosted = environment
+                hosted.accessibilityEnabled = accessibilityEnabled
+            }
     }
 }
 

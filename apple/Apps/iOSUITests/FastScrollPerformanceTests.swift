@@ -154,6 +154,7 @@ final class FastScrollPerformanceTests: XCTestCase {
     }
 
     /// The rail scrolls sideways (the first chip moves off its start) and swipes in both directions leave the page standing.
+    /// Compact width only (iPhone, folded Duo): a regular-width rail wraps, so there is nothing to scroll and no `chipRail.scroll`.
     func testChipRailSwipesWithoutLosingContent() throws {
         let (app, _) = launch(Self.chipRailPage)
         let rail = app.descendants(matching: .any)["chipRail.scroll"].firstMatch
