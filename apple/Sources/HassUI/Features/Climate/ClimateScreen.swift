@@ -88,7 +88,7 @@ struct ClimatePage: View {
             ClimateSheet(controller: controller, request: request)
                 // Bottom edge: at the top a wrapped debug line covered the sheet's Back and Close on iPad.
                 .safeAreaInset(edge: .bottom) { sheetAccessory }
-                .hassSheet(.page)
+                .hassSheet(.page, height: .full) // Section tab bar
         }
     }
 

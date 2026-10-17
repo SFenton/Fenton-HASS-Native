@@ -185,7 +185,7 @@ struct VacuumSheetChrome: ViewModifier {
 
     func body(content root: Content) -> some View {
         let tabs = controller.tabs(in: content.swap.displayed.mode)
-        let symbol: ((VacuumTab) -> String)? = VacuumTabSymbols.usesSymbols(tabs) ? { VacuumTabSymbols.symbol(for: $0) } : nil
+        let symbol: (VacuumTab) -> String = { VacuumTabSymbols.symbol(for: $0) }
         // Always applied, even at one section: a conditional bar would rebuild the sheet's root (and the map) when a
         // clean starts or ends. Every configured vacuum has Controls plus Auto-Clean or Info.
         root

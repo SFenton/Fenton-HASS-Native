@@ -122,33 +122,45 @@ public extension View {
             .environment(\.tileSurface, .sheet)
             .scrollContentBackground(.hidden)
             .background { ModalBackground().ignoresSafeArea() }
+            // Tells a fitted sheet how tall this page's content is (``SheetFit``).
+            .reportsSheetFit()
     }
 
-    /// Presents this modal at full height on iPhone with a visible grabber (owner, 2026-10-13: "All modals
-    /// (security system, cameras, etc.) need to open to full height on iPhone"), the one sheet sizing API. It also
-    /// draws the sheet in the system appearance, light or dark, while the pages behind stay dark
-    /// (``SwiftUICore/View/followsSystemAppearance()``).
+    /// Presents this modal, sized to its content on iPhone, with a visible grabber, in the system appearance while the
+    /// pages behind stay dark (``SwiftUICore/View/followsSystemAppearance()``). The one sheet sizing API.
     ///
-    /// Every sheet names its iPad size (plan Phase 4, decision 4; HIG: Sheets, "Prefer page or form sheet styles in an
-    /// iPadOS app"): `.page` for viewing and control sheets with tile grids, dials, maps or a second column, `.form`
-    /// for lists, editors and prompts. The default is `.form`, so a sheet that forgets still gets a narrow, readable
-    /// sheet rather than the system's full-screen-ish default; choose `.page` explicitly when the content has columns.
+    /// **Height (owner, 2026-10-16, replacing 2026-10-13's "all modals full height").** A sheet opens only as tall as it
+    /// needs (``HassSheetHeight/fitted``, the default): the page's scroll content is measured (``SheetFit``) and the
+    /// detent follows it, capped at large, recomputed when the content or Dynamic Type changes. Pass
+    /// ``HassSheetHeight/full`` for a remote, any modal with a section tab bar, a sheet that navigates between pages
+    /// and a sheet over live video; their height must not change with a tab or a pushed page. Recipe detail stays full
+    /// screen.
+    ///
+    /// **Width (iPad).** Every sheet names its size (plan Phase 4, decision 4; HIG: Sheets, "Prefer page or form
+    /// sheet styles in an iPadOS app"): `.page` for viewing and control sheets with tile grids, dials, maps or a second
+    /// column, `.form` for lists, editors and prompts. The default is `.form`, so a sheet that forgets still gets a
+    /// narrow, readable sheet rather than the system's full-screen-ish default.
     /// - Parameters:
     ///   - width: The iPad sheet size: a form sheet or a page sheet. No effect on iPhone.
+    ///   - height: Content-fitted (default) or full height.
     ///   - appearance: Follow the system (default), or stay dark for a sheet drawn over a photo or gradient (Weather).
-    func hassSheet(_ width: HassSheetWidth = .form, appearance: HassSheetAppearance = .system) -> some View {
-        modifier(HassSheetPresentation(width: width, appearance: appearance))
+    ///   - fitKey: Identifies this sheet so its measured height is remembered for the next time it opens. Leave the
+    ///     default, the call site.
+    func hassSheet(_ width: HassSheetWidth = .form, height: HassSheetHeight = .fitted,
+                   appearance: HassSheetAppearance = .system,
+                   fitKey: String = "\(#fileID):\(#line)") -> some View {
+        modifier(HassSheetPresentation(width: width, height: height, appearance: appearance, fitKey: fitKey))
     }
 
-    /// Only the iPad sheet size, for sheets that keep their own detents (a short prompt that opens at the medium
-    /// detent and grows to large). iOS 18 and later; earlier systems keep the system's size.
+    /// Only the iPad sheet size, for sheets that keep their own detents. iOS 18 and later; earlier systems keep the
+    /// system's size.
     /// - Parameter width: The iPad sheet size.
     func hassSheetSizing(_ width: HassSheetWidth) -> some View {
-        modifier(HassSheetSizing(width: width))
+        modifier(HassSheetSizing(width: width, fitsHeight: false))
     }
 }
 
-/// How wide a ``SwiftUI/View/hassSheet(_:)`` modal is on iPad.
+/// How wide a ``SwiftUI/View/hassSheet(_:height:appearance:fitKey:)`` modal is on iPad.
 public enum HassSheetWidth: Sendable, Equatable {
     /// A form sheet (540 pt): lists, editors, prompts, short device controls.
     case form
@@ -156,7 +168,7 @@ public enum HassSheetWidth: Sendable, Equatable {
     case page
 }
 
-/// How a ``SwiftUI/View/hassSheet(_:appearance:)`` modal chooses light or dark.
+/// How a ``SwiftUI/View/hassSheet(_:height:appearance:fitKey:)`` modal chooses light or dark.
 public enum HassSheetAppearance: Sendable {
     /// The user's system appearance (``SystemAppearance``): light or dark.
     case system
@@ -164,32 +176,52 @@ public enum HassSheetAppearance: Sendable {
     case dark
 }
 
-/// Implementation of ``SwiftUI/View/hassSheet(_:appearance:)``.
+/// Implementation of ``SwiftUI/View/hassSheet(_:height:appearance:fitKey:)``.
 private struct HassSheetPresentation: ViewModifier {
     var width: HassSheetWidth
+    var height: HassSheetHeight
     var appearance: HassSheetAppearance
+    var fitKey: String
 
     func body(content: Content) -> some View {
         content
             .modifier(SheetAppearanceModifier(appearance: appearance))
-            .presentationDetents([.large])
             .presentationDragIndicator(.visible)
-            .hassSheetSizing(width)
+            // Opaque ground at every detent: a partial-height sheet is glass on iOS 26 and let a page's coloured tiles
+            // show through (HIG: Sheets; Accessibility, Color and effects). A dark-by-design sheet keeps its own.
+            .modifier(SheetGroundModifier(appearance: appearance))
+            // Inside the height modifier, which publishes the measurement the iPad sizing reads.
+            .modifier(HassSheetSizing(width: width, fitsHeight: height == .fitted))
+            .modifier(SheetHeightModifier(height: height, fitKey: fitKey))
     }
 }
 
 /// Implementation of ``SwiftUI/View/hassSheetSizing(_:)``.
 private struct HassSheetSizing: ViewModifier {
     var width: HassSheetWidth
+    /// iPad: size the sheet's height to the measured content instead of the form or page sheet's fixed height.
+    var fitsHeight: Bool
+    @Environment(\.sheetFit) private var fit
 
+    @ViewBuilder
     func body(content: Content) -> some View {
         #if os(watchOS)
         content
         #else
         if #available(iOS 18.0, macOS 15.0, *) {
-            switch width {
-            case .form: content.presentationSizing(.form)
-            case .page: content.presentationSizing(.page)
+            if fitsHeight, let wanted = fit?.contentHeight {
+                // The wanted height as the content's ideal height, which a fitted presentation sizes itself to.
+                switch width {
+                case .form:
+                    content.frame(idealHeight: wanted).presentationSizing(.form.fitted(horizontal: false, vertical: true))
+                case .page:
+                    content.frame(idealHeight: wanted).presentationSizing(.page.fitted(horizontal: false, vertical: true))
+                }
+            } else {
+                switch width {
+                case .form: content.presentationSizing(.form)
+                case .page: content.presentationSizing(.page)
+                }
             }
         } else {
             content
@@ -209,6 +241,24 @@ private struct SheetAppearanceModifier: ViewModifier {
         case .system: content.followsSystemAppearance()
         case .dark: content.preferredColorScheme(.dark)
         }
+    }
+}
+
+/// The opaque sheet ground behind the content, so a partial-height sheet never shows the page through glass.
+private struct SheetGroundModifier: ViewModifier {
+    var appearance: HassSheetAppearance
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        #if os(iOS)
+        if appearance == .system {
+            content.presentationBackground(Color(uiColor: .systemGroupedBackground))
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }
 

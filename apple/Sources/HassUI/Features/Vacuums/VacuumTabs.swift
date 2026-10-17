@@ -17,9 +17,6 @@ enum VacuumTabSymbols {
         case .info: VacuumStyle.symbol(tab.icon)
         }
     }
-
-    /// Symbols only when the text segments would not fit (more than four sections).
-    static func usesSymbols(_ tabs: [VacuumTab]) -> Bool { tabs.count > 4 }
 }
 
 // MARK: - Clean target
