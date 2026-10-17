@@ -24,6 +24,15 @@ final class TilesRound2JourneyTests: JourneyTestCase {
         return app
     }
 
+    /// Keeps the screenshot in the result bundle and, when `TEST_RUNNER_FENTON_TILES2_SHOTS` names a folder, writes it there too
+    /// (owner-facing captures; never committed).
+    private func shot(_ app: XCUIApplication, _ name: String) {
+        keepScreenshot(app, name)
+        guard let folder = ProcessInfo.processInfo.environment["FENTON_TILES2_SHOTS"], !folder.isEmpty else { return }
+        try? FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
+        try? app.screenshot().pngRepresentation.write(to: URL(fileURLWithPath: folder).appendingPathComponent("\(name).png"))
+    }
+
     private func capture() throws -> RenderedContrast.Capture {
         try XCTUnwrap(RenderedContrast.Capture.screen(), "No screen capture")
     }
@@ -43,7 +52,7 @@ final class TilesRound2JourneyTests: JourneyTestCase {
             XCTAssertEqual(tile.frame.height, first.height, accuracy: 1, "\(id) height")
             assertTarget(tile)
         }
-        keepScreenshot(app, "quick-links-\(layout)")
+        shot(app, "quick-links-\(layout)")
         // Solid fills, read at a point clear of the glyph, the text and the chevron.
         let shot = try capture()
         // The fixture's alarm is armed_home; Sprinklers shows only while its visibility entity is on.
@@ -70,7 +79,7 @@ final class TilesRound2JourneyTests: JourneyTestCase {
             XCTAssertEqual(frame.height, frames[0].height, accuracy: 1, "\(id) height at AX5")
             XCTAssertLessThanOrEqual(frame.maxX, window.maxX + 1, "\(id) is clipped at AX5")
         }
-        keepScreenshot(app, "quick-links-ax5-\(layout)")
+        shot(app, "quick-links-ax5-\(layout)")
     }
 
     /// Quick Links and its tiles pass the audit (contrast of white ink on each fill, names, targets), and so does a light
@@ -79,7 +88,7 @@ final class TilesRound2JourneyTests: JourneyTestCase {
         let app = launchQuickLinks()
         try FentonHomeApp.audit(app) { self.launchQuickLinks(arguments: FentonHomeApp.ax5) }
         let light = launchQuickLinks(appearance: "light")
-        keepScreenshot(light, "quick-links-light-\(layout)")
+        shot(light, "quick-links-light-\(layout)")
         try FentonHomeApp.audit(light) { self.launchQuickLinks(arguments: FentonHomeApp.ax5, appearance: "light") }
     }
 
@@ -89,10 +98,12 @@ final class TilesRound2JourneyTests: JourneyTestCase {
     /// the bottom line whether it is one line or two.
     func testRoomsTilesReserveTwoLinesAndAnchorTheNameToTheBottom() throws {
         let app = openRooms()
-        keepScreenshot(app, "rooms-two-lines-\(layout)")
+        shot(app, "rooms-two-lines-\(layout)")
         let shot = try capture()
         let rooms = ["living-room", "guest-room", "gym", "master-bedroom", "office", "hallway", "kitchen", "downstairs-hallway"]
-        let tiles = rooms.map { element("rooms.\($0)", in: app) }.filter { $0.exists && $0.isHittable }
+        // Tiles wholly clear of the bottom edge (the last row can sit under the sheet's fold).
+        let bottom = app.windows.firstMatch.frame.maxY - 90
+        let tiles = rooms.map { element("rooms.\($0)", in: app) }.filter { $0.exists && $0.isHittable && $0.frame.maxY < bottom }
         XCTAssertGreaterThanOrEqual(tiles.count, 4)
         let height = tiles[0].frame.height
         // Glyph (title3, ~24 pt), the gap, two title lines (~20 pt each) and 12 pt padding top and bottom.
@@ -116,7 +127,7 @@ final class TilesRound2JourneyTests: JourneyTestCase {
             XCTAssertLessThanOrEqual(tile.frame.maxX, window.maxX + 1, "\(tile.identifier) is clipped at AX5")
             assertTarget(tile)
         }
-        keepScreenshot(app, "rooms-two-lines-ax5-\(layout)")
+        shot(app, "rooms-two-lines-ax5-\(layout)")
     }
 
     func testRoomsGridAuditsClean() throws {
@@ -146,7 +157,7 @@ final class TilesRound2JourneyTests: JourneyTestCase {
                 XCTAssertTrue(tile.exists, "\(finish) \(name)")
                 assertTarget(tile)
             }
-            keepScreenshot(app, "tile-finish-\(finish)-\(layout)")
+            shot(app, "tile-finish-\(finish)-\(layout)")
             try FentonHomeApp.audit(app) { self.launchFinish(finish, arguments: FentonHomeApp.ax5) }
         }
     }
@@ -155,7 +166,7 @@ final class TilesRound2JourneyTests: JourneyTestCase {
         for finish in ["solid", "tintedGlass", "frostedModule", "webPort"] {
             let app = launchFinish(finish, appearance: "light", sheet: true)
             XCTAssertTrue(app.buttons["sheet.close"].waitForExistence(timeout: 10), "\(finish) sheet")
-            keepScreenshot(app, "tile-finish-sheet-light-\(finish)-\(layout)")
+            shot(app, "tile-finish-sheet-light-\(finish)-\(layout)")
             try FentonHomeApp.audit(app) { self.launchFinish(finish, arguments: FentonHomeApp.ax5, appearance: "light", sheet: true) }
         }
     }

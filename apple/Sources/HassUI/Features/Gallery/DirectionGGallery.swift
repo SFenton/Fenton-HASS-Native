@@ -280,6 +280,9 @@ private struct DirectionGGallerySheet: View {
         }
     }
 
+    /// `-directionGFinish webPort` limits the sheet's finish comparison to one proposal.
+    private let onlyFinish = UserDefaults.standard.string(forKey: "directionGFinish").flatMap(TileFinish.init(rawValue:))
+
     /// `-directionGSheetSection Families` picks the first section, so a journey audits each one at launch.
     @State private var section = Section(rawValue: UserDefaults.standard.string(forKey: "directionGSheetSection") ?? "") ?? .controls
 
@@ -337,8 +340,7 @@ private struct DirectionGGallerySheet: View {
 
     /// The tile finish proposals on the sheet's cells (`-directionGFinish <raw>` limits them to one).
     private var finishes: some View {
-        let only = UserDefaults.standard.string(forKey: "directionGFinish").flatMap(TileFinish.init(rawValue:))
-        return ForEach(TileFinish.allCases.filter { only == nil || $0 == only }) { finish in
+        ForEach(TileFinish.allCases.filter { onlyFinish == nil || $0 == onlyFinish }) { finish in
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
                 Text(finish.title).font(.headline).accessibilityAddTraits(.isHeader)
                 FinishSampleGrid(finish: finish)

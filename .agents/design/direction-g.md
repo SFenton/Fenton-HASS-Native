@@ -139,6 +139,65 @@ People have no colour of their own. **Rooms do** (owner reversal, 2026-10-16: "r
 
 White passes 4.5:1 on every fill and no two links on the sheet are within 0.05 OKLab (`QuickLinkPaletteTests`). The chore lists' quick links (Chores tab) are the Chores lane's.
 
+## Tile finish (proposals, owner choice pending)
+
+Owner, 2026-10-16: "Ideate on a more 'frosted' tile look like we have on the web; subtle but looks less childish? Consult the design agents and HIG." Three proposals sit beside the shipped solid finish in the gallery (`FENTON_GALLERY=direction-g`, Tile Finish; `-directionGOrder finish`, `-directionGFinish solid|tintedGlass|frostedModule|webPort`, also a "Finish" section in the gallery sheet, which follows `FENTON_APPEARANCE`). `HassDesign/TileFinish` is an environment value (`.tileFinish(_:)`); **nothing ships a finish other than `solid` until Stephen picks one**.
+
+**What the web does** (`ha-sfenton-react-dash@f5a7bf9`): a tile is `background: var(--tile-color)` (a family colour at 0.1 to 0.6 alpha, the neutral and off tiles `rgba(255,255,255,0.1)`) over `backdrop-filter: blur(15px) saturate(1.08)`, with `box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.08)` and a 32 px radius (`src/components/core/GlassTile.module.css:11-15`; `src/components/core/Card.module.css:15-18`, radius 30, 28 compact). Cards add an `::after` sheen: `linear-gradient(135deg, rgba(255,255,255,0.13), transparent 44%)` plus a vertical `rgba(255,255,255,0.02)` to `rgba(0,0,0,0.12)` (`Card.module.css:53-61`), a 1 px `text-shadow` on the title (`:110`) and a white icon with a drop shadow (`:88`). The page behind is the photo at `blur(16px) saturate(1.04) brightness(.76)` (`src/components/shell/AppShell.module.css:62-65`). So the web's frost is a milky veil, a lit hairline and a diagonal sheen over a blurred photo. Colour is a tint wash, not a solid fill.
+
+**Design-skill conclusions.**
+- *apple-hig, Materials:* "Don't use Liquid Glass in the content layer. Use standard materials for content-layer elements"; tiles are content, so no `.glassEffect`. Standard materials differ by thickness: "Thicker, more opaque materials improve contrast for fine details; thinner, more translucent materials preserve context". The wallpaper is already blurred once, so a thin-material look comes from translucency over it. *Color:* "Avoid relying solely on color to differentiate objects" (a tile's state keeps its glyph fill and text) and "colors can look different behind or on translucent elements"; supply light and dark variants. *Accessibility:* Reduce Transparency and Increase Contrast must give a higher-contrast scheme: every proposal resolves to the shipped opaque finish (`TileFinish.effective`). *HomeKit:* the HIG's HomeKit page covers terms and setup, not tile styling; Apple Home's own tiles (a neutral rounded module that turns light when on) are the reference.
+- *design-critique* (Von Restorff, Law of Similarity, H8 minimal design, aesthetic-usability): an "on" tile must stand out from an off one at a glance (Von Restorff), and the same state must look the same everywhere (Similarity). Decoration that adds nothing to state or hierarchy fails H8. The solid fills read as "childish" because a saturated flat rectangle has no edge light, no depth and no relation to the photo; the cure is edge and depth, not less colour. A finish that dims "on" into the off ground (B) trades the glance for polish; one that copies the web's tint strength (C) pays contrast for little change.
+- *design-systems:* the finish is a **perceptual pattern** of one functional pattern (the tile), so it is a variant token set, not a fourth tile. Three tiers: reference values (`#1C1C1E`, family fills, `#FFFFFF`), semantic (`underlay`, `fillUnderlay`, `offVeil`, `fillOpacity`, `sheen`, `rim`, `edgeGlow`) and component (`GlassTileFace`). At most five variants per pattern, named by what they do, not how they look.
+
+**Rules shared by the three** (and the reasons the numbers are what they are):
+- No live blur or material per tile; translucency over the cached wallpaper, one sheen gradient layer, one hairline stroke, one flattened ground colour (`FinishColor.flatten` composites the underlay, veil and fill into one `Color`).
+- Dark-ink faces (the lit tile, Power) stay opaque: a translucent light fill over a dark wallpaper only gets darker.
+- On a page the state text uses `Surface.secondaryOnWallpaper` (85%) instead of the module's 68%, because a frosted ground is a little lighter.
+- A sheet has no wallpaper to show through, so every finish is opaque there (fill 100%, no veil), keeping the sheen and rim; on a white cell the sheen is dropped and the hairline is the sheet's separator colour.
+- The off glyph keeps 88% of its family colour on a frosted ground (72% on solid), so it holds 3:1 where the ground is lighter.
+
+| Token | Solid (shipped) | A Tinted Glass | B Frosted Module | C Web Port |
+|---|---|---|---|---|
+| `underlay` (`#1C1C1E`, off ground) | 0.66 | 0.66 | 0.66 | 0.62 |
+| `fillUnderlay` (beneath a fill) | 0.66 | 0.50 | n/a | 0.42 |
+| `offVeil` (white over off, page) | 0 | 0 | 0 | 0.05 |
+| `fillOpacity` (white-ink fills, page) | 1 | 0.78 | n/a, neutral module | 0.84 |
+| `sheen` top white / bottom black | 0.10 / 0 | 0.14 / 0.08 | 0.10 / 0.06 | 0.15 / 0.12, diagonal |
+| `rim` top / bottom white | none | 0.32 / 0.06 | 0.22 / 0.06 | 0.24 / 0 |
+| `edgeGlow` / `edgeWash` | none | none | 0.62 / 0.26 | none |
+| glyph | bare | bare | on a 34 pt disc: family fill when on, a dark well when off | bare |
+| radius | 22 | 22 | 22 | 28 (the web's) |
+| title shadow | none | none | none | 0 1 1 black 0.30, on a page |
+
+- **A Tinted Glass.** The family fill at 78% over a dark underlay, so the photo tints it a little; a lit hairline and a soft top highlight with a faint bottom shade. Every state keeps the solid finish's meaning; the difference is edge and depth. The subtlest of the three.
+- **B Frosted Module.** One neutral frosted module for every state. The family colour moves to a glyph disc (filled when on, a shallow well when off) and a coloured hairline and corner wash when on; text is the off face's white. Closest to Apple Home, and the calmest page, but "on" no longer fills the tile, which departs from the owner's coloured, filled tiles (2026-10-14 families; 2026-10-16 "icons should be filled/white").
+- **C Web Port.** The web's structure at the strength contrast allows: milky veil on off, the tint at 84% rather than 60%, a diagonal sheen, 28 pt radius, the title shadow. Reads as A with rounder corners and a stronger sheen; the closest to the web.
+
+**Measured** (iPhone 17 Pro simulator, optimized build, 300-tile grid scrolled 8 s twice, `tools/ios_scrollcost.sh --section finish`; the Mac was busy, so read the ratios, not the totals):
+
+| Finish | CPU instructions while scrolling | Main-thread CPU | p95 turn | Turns over 8 ms |
+|---|---|---|---|---|
+| Solid | 4.73 G | 2.47 s | 5.9 ms | 7 |
+| A Tinted Glass | 5.60 G (+18%) | 2.74 s (+11%) | 6.7 ms | 7 |
+| B Frosted Module | 5.82 G (+23%) | 2.62 s (+6%) | 6.1 ms | 4 |
+| C Web Port | 5.95 G (+26%) | 2.98 s (+21%) | 7.1 ms | 12 |
+
+A second run measured the same order (A +23%, B +25%, C +26% instructions). Taking one layer off A: no sheen 5.41 G, no rim 5.35 G, neither 4.93 G (+4% on solid), so the sheen and the hairline are about 8 to 10% each. A real page has 10 to 40 tiles, not 300: about 3.6 M instructions per tile over the whole 16 s probe, under 1% of one core for a room page. No finish adds a backdrop or offscreen pass (the simulator cannot show GPU cost; run the phone A/B `--disable` before shipping one).
+
+**Contrast** (rendered pixels, `TileFinishTests`, every family and room fill, the off face and the error face, on the wallpaper's lightest region (sRGB grey 0.46, the lightest ground under which white text still reads 4.5:1) and its darkest (`#111723`)): worst case for title, state, error text and off glyph. All pass; solid is the baseline.
+
+| Finish | Title | State | Error text | Off glyph |
+|---|---|---|---|---|
+| Solid | 4.71 | 4.66 | 5.12 | 3.56 |
+| A | 5.09 | 5.09 | 4.67 | 3.24 |
+| B | 10.31 | 6.94 | 4.80 | 4.12 |
+| C | 5.91 | 5.91 | 5.41 | 3.24 |
+
+The journeys audit every finish on the page, at AX5 and in a light sheet (`TilesRound2JourneyTests`), and check that Reduce Transparency draws the shipped pixels.
+
+**Recommendation: A, Tinted Glass.** It answers "subtle, less childish" with edge light and depth while keeping the glanceable family-colour fill the owner asked for (Von Restorff; Similarity). Contrast and Reduce Transparency are as safe as solid. If a cost has to come off, drop A's sheen (about 8% fewer instructions on the stress grid) and keep the hairline, which carries most of the "edge" read. B is the pick only if Stephen prefers a calmer, Apple-Home-like page over a colour-filled one; C adds corner radius and a stronger sheen for the highest cost and little visual distance from A.
+
 ## Type
 
 SF Pro only.
@@ -209,3 +268,4 @@ SF Pro only.
 - **Remote apps:** placeholder icons, not real app icons.
 - **Library:** kept as a storage choice.
 - **Swipe actions:** used for row Edit and Delete.
+- **Tile finish:** shipped solid; the three frosted proposals (A recommended) wait in the gallery, Tile Finish.
