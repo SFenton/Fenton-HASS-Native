@@ -24,6 +24,40 @@ Vacuum sheet: zones|FENTON_GALLERY=vacuums FENTON_GALLERY_VACUUM=valetudo_exalte
 Humidifier sheet|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=controls FENTON_GALLERY_CLEAN=1
 Humidifier schedules|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=schedules FENTON_GALLERY_CLEAN=1
 
+# Tile finish (`--section finish`; `--section all` skips it): the same tile-heavy pages with the shipped tinted glass and the solid
+# fallback (`FENTON_TILE_FINISH`, Debug builds; `.agents/design/direction-g.md`, Tile finish), and tinted glass with a layer left out.
+[finish]
+Grid solid|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=solid
+Grid tintedGlass|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass
+Grid tintedGlass without sheen|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=sheen
+Grid tintedGlass without rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=rim
+Grid tintedGlass without sheen or rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=sheen,rim
+
+[live] surfaces sign in with the token (`LIVE=1`) and open a page
+# with FENTON_SCROLLCOST_OPEN=<dashboard path> (a tab: security, thermostat, chores; a Home page: living-room, media ...).
+# A surface that fits one screen on the phone has nothing to scroll and is reported as such.
+
+[gallery]
+Grid workload (300 tiles)|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid
+Living Room|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=living-room
+Music Room|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=music-room
+Kitchen|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=kitchen
+Master Bedroom|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=master-bedroom
+Theater Room|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=theater-room
+Climate|FENTON_GALLERY=climate FENTON_GALLERY_CLEAN=1
+Security|FENTON_GALLERY=security FENTON_GALLERY_CLEAN=1
+Chores|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1
+Food hub|FENTON_GALLERY=food FENTON_GALLERY_ROUTE=hub
+Recipes|FENTON_GALLERY=food FENTON_GALLERY_ROUTE=recipes
+Pantry|FENTON_GALLERY=inventory FENTON_GALLERY_SPACE=pantry FENTON_GALLERY_CLEAN=1
+Media|FENTON_GALLERY=media-page FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_OFFLINE=1
+Admin settings|FENTON_GALLERY=household-settings FENTON_GALLERY_HOUSEHOLD=admin FENTON_GALLERY_CLEAN=1
+Weather sheet|FENTON_GALLERY=weather FENTON_GALLERY_WEATHER_OPEN=1
+Vacuum sheet: controls|FENTON_GALLERY=vacuums FENTON_GALLERY_VACUUM=valetudo_exaltedsneakydeer FENTON_GALLERY_TAB=controls FENTON_GALLERY_SCENARIO=docked FENTON_GALLERY_CLEAN=1
+Vacuum sheet: zones|FENTON_GALLERY=vacuums FENTON_GALLERY_VACUUM=valetudo_exaltedsneakydeer FENTON_GALLERY_TAB=zones FENTON_GALLERY_SCENARIO=docked FENTON_GALLERY_CLEAN=1
+Humidifier sheet|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=controls FENTON_GALLERY_CLEAN=1
+Humidifier schedules|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=schedules FENTON_GALLERY_CLEAN=1
+
 # Tile finish proposals (`--section finish`; `--section all` skips it): the same tile-heavy pages with each finish
 # (`FENTON_TILE_FINISH`, Debug builds; `.agents/design/direction-g.md`, Tile finish).
 [finish]

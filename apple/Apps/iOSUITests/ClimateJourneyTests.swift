@@ -235,7 +235,8 @@ final class ClimateJourneyTests: XCTestCase {
             guard tile.isHittable else { continue }
             let frame = tile.frame
             let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture))
-            XCTAssertTrue(TileGeometry.matches(sample, fill), "\(key) is \(sample), expected \(String(fill, radix: 16))")
+            XCTAssertTrue(TileGeometry.matchesGlass(sample, fill, heightFraction: 1 - 10 / frame.height),
+                          "\(key) is \(sample), expected \(String(fill, radix: 16)) under tinted glass")
             let chevron = try XCTUnwrap(TileGeometry.chevron(in: frame, capture: capture), "\(key): no chevron")
             XCTAssertEqual(chevron.midY, frame.midY, accuracy: 3, "\(key) chevron is vertically centred")
         }

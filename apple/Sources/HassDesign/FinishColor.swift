@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Colour arithmetic for the frosted grounds.
+/// Colour arithmetic for the tinted glass ground.
 enum FinishColor {
     /// Several translucent `0xRRGGBB` layers, bottom first, flattened into one colour that composites the same way: fewer
     /// layers per tile (a layer is real cost on a page of 120 tiles, `.agents/testing/apple/performance.md`).

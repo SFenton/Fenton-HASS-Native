@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Helpers the frosted finishes use to tell a filled or lit face from a neutral one.
+/// Helper the tinted glass finish uses to tell a filled or lit face from a neutral one.
 extension TileFaceStyle {
     var isFilledOrLit: Bool {
         switch self {

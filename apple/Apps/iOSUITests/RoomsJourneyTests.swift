@@ -87,7 +87,8 @@ final class RoomsJourneyTests: XCTestCase {
         if let capture = RenderedContrast.Capture.screen() {
             let frame = element("room.entity.cover.living_room_vent_1_vent", in: app).frame
             let sample = TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture)
-            XCTAssertTrue(sample.map { TileGeometry.matches($0, 0x3B58B8, tolerance: 22) } ?? false, "Open vent fill: \(String(describing: sample))")
+            XCTAssertTrue(sample.map { TileGeometry.matchesGlass($0, 0x3B58B8, heightFraction: 1 - 10 / frame.height) } ?? false,
+                          "Open vent fill: \(String(describing: sample))")
         }
         app.buttons["Close"].tap()
 
@@ -246,7 +247,8 @@ final class RoomsJourneyTests: XCTestCase {
             assertTarget(tile)
             let frame = tile.frame
             let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture))
-            XCTAssertTrue(TileGeometry.matches(sample, fill), "\(room) is \(sample), expected \(String(fill, radix: 16))")
+            XCTAssertTrue(TileGeometry.matchesGlass(sample, fill, heightFraction: 1 - 10 / frame.height),
+                          "\(room) is \(sample), expected \(String(fill, radix: 16)) under tinted glass")
             let chevron = try XCTUnwrap(TileGeometry.chevron(in: frame, capture: capture), "\(room): no chevron")
             XCTAssertEqual(chevron.midY, frame.midY, accuracy: 3, "\(room) chevron is vertically centred")
             // A filled white glyph: white ink in the leading 44 pt column, and nothing else but the title beside it.
