@@ -45,6 +45,12 @@ public struct MobileAppWebhookClient: Sendable {
         return zones
     }
 
+    /// Sends a webhook command that carries a `data` object: the Live Activity tokens and events
+    /// (`.agents/platforms/apple/live-activities.md` §6).
+    public func send(command type: String, data: [String: Any]) async throws {
+        _ = try await send(["type": type, "data": data])
+    }
+
     // MARK: - HTTP
 
     private func send(_ body: [String: Any]) async throws -> Data {
