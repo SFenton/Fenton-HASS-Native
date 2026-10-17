@@ -52,6 +52,12 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The seven alternates of Settings → App Icon (`AppIconChoice`, `.agents/design/direction-g.md` App icon); the
+        # names must match the asset sets in Apps/iOS/Assets.xcassets, which `tools/render_app_icons.sh` writes. The
+        # compiler lists them under CFBundleIcons / CFBundleAlternateIcons in the built Info.plist.
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: >-
+          AppIcon-TealMint AppIcon-PlumLilac AppIcon-ForestGreen AppIcon-BurgundyRose
+          AppIcon-IndigoPeriwinkle AppIcon-EspressoAmber AppIcon-MidnightGold
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     info:
       path: Apps/iOS/Info.plist
