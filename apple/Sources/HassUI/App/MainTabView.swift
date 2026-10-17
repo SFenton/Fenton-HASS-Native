@@ -136,6 +136,7 @@ struct MainTabView: View {
             .navigationDestination(for: HomeRoute.self) { HomeRouteDestination(route: $0).pageChrome() }
         }
         .environment(\.shellSection, section)
+        .environment(\.sectionIsShowing, navigator.isShowing(section))
     }
 
     /// Where the inline navigation bar ends: the status bar plus a compact bar

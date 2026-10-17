@@ -29,6 +29,9 @@ struct CameraLiveView: View {
     @Environment(HassConnection.self) private var connection
     @Environment(\.cameraStreamPool) private var poolOverride
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.sectionIsShowing) private var sectionIsShowing
+    /// Whether this view has told the pool it shows the camera. A reference, not state: it changes without a redraw.
+    @State private var presence = Presence()
 
     private var pool: CameraStreamPool { poolOverride ?? .shared }
 
@@ -66,8 +69,25 @@ struct CameraLiveView: View {
                 if style == .viewer { retry(model.state) }
             }
             .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: model.state.phase)
-            .onAppear { pool.appear(camera, connection: connection) }
-            .onDisappear { pool.disappear(camera) }
+            // Shown means on screen *and* in the section the user is looking at: the tab bar keeps the other sections'
+            // views alive without calling `onDisappear`, so a camera behind another tab would otherwise keep its stream.
+            .onAppear { presence.onScreen = true; syncPresence() }
+            .onDisappear { presence.onScreen = false; syncPresence() }
+            .onChange(of: sectionIsShowing) { syncPresence() }
+    }
+
+    /// Tells the pool when this view starts or stops showing the camera.
+    private func syncPresence() {
+        let shows = presence.onScreen && sectionIsShowing
+        guard shows != presence.counted else { return }
+        presence.counted = shows
+        if shows { pool.appear(camera, connection: connection) } else { pool.disappear(camera) }
+    }
+
+    /// Whether the view is on screen, and whether the pool counts it as a viewer.
+    private final class Presence {
+        var onScreen = false
+        var counted = false
     }
 
     // MARK: - Pieces

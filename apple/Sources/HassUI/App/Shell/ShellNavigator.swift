@@ -63,6 +63,9 @@ final class ShellNavigator {
         }
     }
 
+    /// Whether a section is the one on screen: selected, and not covered by the Quick Links tab.
+    func isShowing(_ section: AppSection) -> Bool { selection == section && !isQuickLinksActive }
+
     /// Leaves the Quick Links tab for the section under it (the window grew into flyout style).
     func closeQuickLinks() { isQuickLinksActive = false }
 

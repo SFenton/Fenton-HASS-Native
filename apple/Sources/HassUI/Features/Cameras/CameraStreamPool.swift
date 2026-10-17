@@ -43,11 +43,12 @@ final class CameraStreamPool {
     @ObservationIgnored private let stallAfter: Duration
     @ObservationIgnored private let stallCheckInterval: Duration
     @ObservationIgnored private let frameCounter: (@MainActor (CameraLiveModel) -> Int?)?
-    /// Pending automatic retries by camera id, and how many each camera has used since it last went live.
     /// How long a retained stream keeps running with no view showing it before it is paused (short enough to stop
     /// decoding behind a page with no camera, long enough that Home to Security, whose tiles share the stream, never does).
     @ObservationIgnored let pauseAfterHidden: Duration
+    /// Pending pauses by camera id (a view showing the camera again cancels its pause).
     @ObservationIgnored private var pauseTasks: [String: Task<Void, Never>] = [:]
+    /// Pending automatic retries by camera id, and how many each camera has used since it last went live.
     @ObservationIgnored private var retryTasks: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var retryAttempts: [String: Int] = [:]
 
@@ -160,6 +161,7 @@ final class CameraStreamPool {
 
     /// A view showing the camera disappeared: stops its stream only if nothing retains it.
     func disappear(_ camera: HomeConfig.Camera) {
+        CameraTrace.record("\(camera.rtcStreamId) hidden, \(max(0, retention.viewers[camera.id, default: 0] - 1)) views left")
         if retention.disappear(camera.id) == .stop {
             models[camera.id]?.stop()
         } else if retention.retainsShownStreams, retention.viewers[camera.id] == nil {
