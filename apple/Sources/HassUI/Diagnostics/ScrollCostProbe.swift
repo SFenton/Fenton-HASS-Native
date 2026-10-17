@@ -122,6 +122,8 @@ final class ScrollCostDriver {
 
     /// Seconds a run lasts and the scroll speed in points per second (`FENTON_SCROLLCOST_SECONDS`, `_SPEED`).
     private var seconds: Double { Double(ProcessInfo.processInfo.environment["FENTON_SCROLLCOST_SECONDS"] ?? "") ?? 10 }
+    /// `FENTON_SCROLLCOST_AXIS=horizontal` drives the widest sideways scroll view (a carousel or rail) instead of the page.
+    private var horizontal: Bool { ProcessInfo.processInfo.environment["FENTON_SCROLLCOST_AXIS"] == "horizontal" }
     private var speed: Double { Double(ProcessInfo.processInfo.environment["FENTON_SCROLLCOST_SPEED"] ?? "") ?? 900 }
 
     /// Runs one measurement.
@@ -130,7 +132,7 @@ final class ScrollCostDriver {
     func run(scrolling: Bool) async -> MainThreadCostMeter.Report? {
         var scrollView: UIScrollView?
         if scrolling {
-            scrollView = Self.frontScrollView()
+            scrollView = Self.frontScrollView(horizontal: horizontal)
             guard scrollView != nil else { return nil }
         }
         let meter = MainThreadCostMeter()
@@ -142,7 +144,7 @@ final class ScrollCostDriver {
         meter.begin()
         var distance = 0.0
         if let scrollView {
-            let mover = Mover(scrollView: scrollView, speed: speed)
+            let mover = Mover(scrollView: scrollView, speed: speed, horizontal: horizontal)
             start(mover)
             try? await Task.sleep(until: end, clock: .continuous)
             stop()
@@ -177,7 +179,7 @@ final class ScrollCostDriver {
     }
 
     /// The visible vertical scroll view that covers the most of the front-most presented screen.
-    static func frontScrollView() -> UIScrollView? {
+    static func frontScrollView(horizontal: Bool = false) -> UIScrollView? {
         let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
         guard let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first,
               let window = scene.keyWindow ?? scene.windows.first else { return nil }
@@ -190,9 +192,16 @@ final class ScrollCostDriver {
             stack.append(contentsOf: view.subviews)
             guard let scroll = view as? UIScrollView, !scroll.isHidden, scroll.alpha > 0.01, scroll.window != nil else { continue }
             let visible = scroll.convert(scroll.bounds, to: window).intersection(window.bounds)
-            guard visible.width > 200, visible.height > 200 else { continue }
-            // A vertical scroller: the content is taller than the view, or wider content is not what scrolls it.
-            guard scroll.contentSize.height > scroll.bounds.height + 1 else { continue }
+            if horizontal {
+                // A carousel or rail: wider content than the view, and not the page.
+                guard visible.width > 200, visible.height > 20,
+                      scroll.contentSize.width > scroll.bounds.width + 1, scroll.contentSize.height <= scroll.bounds.height + 1
+                else { continue }
+            } else {
+                guard visible.width > 200, visible.height > 200 else { continue }
+                // A vertical scroller: the content is taller than the view, or wider content is not what scrolls it.
+                guard scroll.contentSize.height > scroll.bounds.height + 1 else { continue }
+            }
             let area = visible.width * visible.height
             if best == nil || area > best!.area { best = (scroll, area) }
         }
@@ -224,9 +233,12 @@ final class ScrollCostDriver {
         private var direction = 1.0
         private var last: CFTimeInterval?
 
-        init(scrollView: UIScrollView, speed: Double) {
+        let horizontal: Bool
+
+        init(scrollView: UIScrollView, speed: Double, horizontal: Bool = false) {
             self.scrollView = scrollView
             self.speed = speed
+            self.horizontal = horizontal
         }
 
         func step(_ link: CADisplayLink) {
@@ -234,6 +246,15 @@ final class ScrollCostDriver {
             guard let last else { return }
             let delta = min(link.timestamp - last, 0.1) * speed
             let inset = scrollView.adjustedContentInset
+            if horizontal {
+                let start = -inset.left
+                let end = max(start, scrollView.contentSize.width - scrollView.bounds.width + inset.right)
+                var x = scrollView.contentOffset.x + direction * delta
+                if x >= end { x = end; direction = -1 } else if x <= start { x = start; direction = 1 }
+                travelled += delta
+                scrollView.setContentOffset(CGPoint(x: x, y: scrollView.contentOffset.y), animated: false)
+                return
+            }
             let top = -inset.top
             let bottom = max(top, scrollView.contentSize.height - scrollView.bounds.height + inset.bottom)
             var y = scrollView.contentOffset.y + direction * delta

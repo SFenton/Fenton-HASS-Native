@@ -2,6 +2,22 @@
 import SwiftUI
 import UIKit
 
+/// How a ``HostedHorizontalScroll`` pages: the cells on a page, and the first cell on screen (see ``PagedRow``).
+struct HostedPaging {
+    var itemCount: Int
+    var perPage: Int
+    /// The first cell on screen, always a page's first cell. Read to follow the page, written as the page changes.
+    var firstVisible: Binding<Int?>
+    /// Whether moving to a page written into ``firstVisible`` scrolls across to it.
+    var animated: Bool
+    /// Whether the scroll view clips to its bounds; unclipped, the next page peeks into the margin beside it.
+    var clips: Bool
+    /// Called when the content's size changed after layout, so the row asks its container for a new height.
+    var contentSizeChanged: () -> Void = {}
+
+    var pageCount: Int { PagedRowMetrics.pageCount(itemCount: itemCount, perPage: perPage) }
+}
+
 /// A sideways-scrolling row whose scrolling happens in UIKit, so dragging it writes nothing into the page's SwiftUI
 /// view graph (`.agents/patterns/status-rail.md`, Scrolling).
 ///
@@ -10,29 +26,45 @@ import UIKit
 /// 0.5 ms of main-thread time per frame on a 120-tile page, none left with this view). A `UIScrollView` moves the same
 /// pixels on the render server with no graph work. The content stays ordinary SwiftUI, hosted once and handed the
 /// surrounding environment, so chips keep reading the entity store and updating in place.
+///
+/// With ``HostedPaging`` the scroll view pages by its own width and reports the page it settles on; the content reads the
+/// viewport width from the environment to size its cells (``PagedRow``).
 struct HostedHorizontalScroll<Content: View>: UIViewRepresentable {
     var content: Content
+    var paging: HostedPaging?
     @Environment(\.self) private var environment
 
     func makeUIView(context: Context) -> HostedScrollView<Content> {
-        HostedScrollView(rootView: root)
+        let view = HostedScrollView(rootView: root(viewportWidth: nil))
+        view.apply(paging: paging)
+        return view
     }
 
     func updateUIView(_ view: HostedScrollView<Content>, context: Context) {
-        view.update(root)
+        view.apply(paging: paging)
+        view.update(root(viewportWidth: view.viewportWidth))
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView view: HostedScrollView<Content>, context: Context) -> CGSize? {
-        CGSize(width: proposal.width ?? view.naturalSize.width, height: view.naturalSize.height)
+        if paging != nil, let width = proposal.width {
+            // The cells are as wide as the viewport, so the content's height is known only for the proposed width.
+            view.apply(paging: paging)
+            view.update(root(viewportWidth: width))
+        }
+        return CGSize(width: proposal.width ?? view.naturalSize.width, height: view.naturalSize.height)
     }
 
-    private var root: HostedRoot<Content> { HostedRoot(content: content, environment: environment) }
+    private func root(viewportWidth: CGFloat?) -> HostedRoot<Content> {
+        HostedRoot(content: content, environment: environment, viewportWidth: paging == nil ? nil : viewportWidth)
+    }
 }
 
 /// The hosted content, re-rooted in the page's environment (a hosting controller starts from a blank one).
 struct HostedRoot<Content: View>: View {
     var content: Content
     var environment: EnvironmentValues
+    /// The viewport the content pages in, for a paging scroll view.
+    var viewportWidth: CGFloat?
     /// Called with the content's natural size whenever it changes.
     var onNaturalSize: (CGSize) -> Void = { _ in }
 
@@ -47,13 +79,20 @@ struct HostedRoot<Content: View>: View {
                 let accessibilityEnabled = hosted.accessibilityEnabled
                 hosted = environment
                 hosted.accessibilityEnabled = accessibilityEnabled
+                hosted.hostedViewportWidth = viewportWidth
             }
     }
 }
 
 /// The `UIScrollView` behind ``HostedHorizontalScroll``.
-final class HostedScrollView<Content: View>: UIScrollView {
+final class HostedScrollView<Content: View>: UIScrollView, UIScrollViewDelegate {
     private let host: UIHostingController<HostedRoot<Content>>
+    private var paging: HostedPaging?
+    /// True while a move to a page written into the binding is under way, so the offsets it passes through are not
+    /// reported back as pages the user chose.
+    private var isMovingToPage = false
+    /// The viewport width the hosted content was last built for (paging only).
+    private(set) var viewportWidth: CGFloat?
 
     init(rootView: HostedRoot<Content>) {
         host = UIHostingController(rootView: rootView)
@@ -75,26 +114,105 @@ final class HostedScrollView<Content: View>: UIScrollView {
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
 
     /// The content's natural size: how wide the row is and how tall the scroll view should be.
+    ///
+    /// A paging row keeps the last size, because measuring the whole hosted row (every page of cards) took almost half
+    /// of the busiest turns when a page change re-laid out the row's container, and again on every frame of a swipe
+    /// (`layoutSubviews`). The hosted content reports its size when it changes (``HostedRoot/onNaturalSize``), which
+    /// replaces the kept one; a new viewport width drops it.
     var naturalSize: CGSize {
-        host.view.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+        if paging != nil, let measuredSize { return measuredSize }
+        let size = host.view.sizeThatFits(CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+        if paging != nil { measuredSize = size }
+        return size
+    }
+
+    /// The natural size of a paging row, until the viewport changes or the content reports another.
+    private var measuredSize: CGSize?
+
+    /// Takes the paging configuration (or `nil` for a plain scrolling row).
+    func apply(paging: HostedPaging?) {
+        self.paging = paging
+        isPagingEnabled = paging != nil
+        delegate = paging == nil ? nil : self
+        clipsToBounds = paging?.clips ?? true
+        if paging == nil { viewportWidth = nil }
     }
 
     func update(_ rootView: HostedRoot<Content>) {
+        if viewportWidth != rootView.viewportWidth { measuredSize = nil }
+        viewportWidth = rootView.viewportWidth
         host.rootView = withResizeHandler(rootView)
         setNeedsLayout()
+        followBinding()
     }
 
     private func withResizeHandler(_ rootView: HostedRoot<Content>) -> HostedRoot<Content> {
         var rootView = rootView
-        rootView.onNaturalSize = { [weak self] _ in self?.setNeedsLayout() }
+        rootView.onNaturalSize = { [weak self] size in
+            guard let self else { return }
+            if paging != nil, measuredSize != size {
+                let hadSize = measuredSize != nil
+                measuredSize = size
+                if hadSize { paging?.contentSizeChanged() }
+            }
+            setNeedsLayout()
+        }
         return rootView
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        if paging != nil, bounds.width > 0, viewportWidth != bounds.width {
+            // A rotation or a split changed the viewport: rebuild the cells for it before measuring them.
+            viewportWidth = bounds.width
+            measuredSize = nil
+            var rootView = host.rootView
+            rootView.viewportWidth = bounds.width
+            host.rootView = rootView
+        }
         let size = ChipRailMetrics.hostedContentSize(natural: naturalSize, bounds: bounds.size)
         if host.view.frame.size != size { host.view.frame = CGRect(origin: .zero, size: size) }
-        if contentSize != size { contentSize = size }
+        if contentSize != size {
+            contentSize = size
+            followBinding()
+        }
+    }
+
+    // MARK: - Paging
+
+    /// Moves to the page the binding names when it is not the page on screen.
+    private func followBinding() {
+        guard let paging, bounds.width > 0, contentSize.width > 0, !isTracking, !isDecelerating, !isMovingToPage else { return }
+        let pageCount = paging.pageCount
+        let wanted = PagedRowMetrics.page(containing: paging.firstVisible.wrappedValue, perPage: paging.perPage, pageCount: pageCount)
+        guard wanted != shownPage(paging) else { return }
+        let target = CGPoint(x: PagedRowMetrics.offset(ofPage: wanted, viewport: bounds.width, contentWidth: contentSize.width), y: 0)
+        isMovingToPage = true
+        setContentOffset(target, animated: paging.animated && window != nil)
+        if !(paging.animated && window != nil) { isMovingToPage = false }
+    }
+
+    private func shownPage(_ paging: HostedPaging) -> Int {
+        PagedRowMetrics.page(forOffset: contentOffset.x, viewport: bounds.width, contentWidth: contentSize.width, pageCount: paging.pageCount)
+    }
+
+    /// Writes the page on screen into the binding, once per page.
+    private func reportPage() {
+        guard let paging, bounds.width > 0, !isMovingToPage else { return }
+        let first = PagedRowMetrics.firstIndex(ofPage: shownPage(paging), itemCount: paging.itemCount, perPage: paging.perPage)
+        if paging.firstVisible.wrappedValue != first { paging.firstVisible.wrappedValue = first }
+    }
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) { reportPage() }
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) { isMovingToPage = false }
+
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        isMovingToPage = false
+        // A page written into the binding while this move was under way is followed now; otherwise the page reached is
+        // reported.
+        followBinding()
+        if !isMovingToPage { reportPage() }
     }
 
     /// Joins the nearest view controller so the hosted content gets appearance and trait callbacks.
