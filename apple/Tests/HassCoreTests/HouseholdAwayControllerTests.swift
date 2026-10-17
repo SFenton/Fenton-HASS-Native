@@ -110,7 +110,8 @@ struct HouseholdAwayControllerTests {
     }
 
     @Test func oneCommandAtATime() async {
-        let (controller, responder, _) = make(timeout: .milliseconds(200))
+        // A timeout a busy main actor cannot overtake before `cancel()` runs (200 ms lost that race under load).
+        let (controller, responder, _) = make(timeout: .seconds(1))
         responder.hangs = true
         async let first = controller.endNow()
         await Task.yield()
@@ -158,12 +159,14 @@ struct HouseholdAwayControllerTests {
     }
 
     @Test func aLateAnswerAfterTheTimeoutIsDropped() async {
+        // The answer is far enough behind the timeout that a stalled main actor cannot deliver both at once and let the
+        // answer win (20 ms against 120 ms did under load).
         let (controller, responder, _) = make(timeout: .milliseconds(20))
-        responder.delay = .milliseconds(120)
+        responder.delay = .milliseconds(800)
         responder.responses = [ScriptedResponder.accepted(revision: 8)]
         #expect(await controller.endNow() == .unknown)
         // The answer arrives after the outcome was already reported unknown: it changes nothing.
-        try? await Task.sleep(for: .milliseconds(250))
+        try? await Task.sleep(for: .milliseconds(1000))
         #expect(controller.errorCode == "unknown_outcome")
         #expect(!controller.pending)
         responder.delay = nil
@@ -173,9 +176,10 @@ struct HouseholdAwayControllerTests {
     }
 
     @Test func theTimeoutFiringAfterAnAnswerIsIgnored() async {
-        let (controller, _, _) = make(timeout: .milliseconds(60))
+        // The timeout outlasts any stall before the answer is read (60 ms lost that race under load).
+        let (controller, _, _) = make(timeout: .milliseconds(500))
         #expect(await controller.cancel() == .accepted(revision: nil))
-        try? await Task.sleep(for: .milliseconds(150))
+        try? await Task.sleep(for: .milliseconds(700)) // The timer fires and must change nothing.
         #expect(controller.errorCode == nil)
     }
 
@@ -248,22 +252,22 @@ struct HouseholdAwayControllerTests {
     @Test func setupUnavailableWaitsOutTheGrace() async {
         let store = EntityStore()
         store.replaceAll([awayEntity("active", awayAttributes(mode: "solo_trip", traveler: "stephen"))])
-        let controller = HouseholdAwayController(store: store, responder: ScriptedResponder(), setupGrace: .milliseconds(150))
+        let controller = HouseholdAwayController(store: store, responder: ScriptedResponder(), setupGrace: .milliseconds(600))
         #expect(!controller.setupUnavailable)
+        // Unavailable and available again with no suspension between: the grace cannot have elapsed, however busy the
+        // host is. (Sleeps of 40 and 200 ms around a 150 ms grace failed under load.)
         store.apply([awayEntity("ending", awayAttributes(mode: "solo_trip", traveler: "stephen", commandAvailable: false))])
-        try? await Task.sleep(for: .milliseconds(40))
         #expect(!controller.setupUnavailable)
-        // Available again inside the grace: nothing was ever shown.
         store.apply([awayEntity("idle", awayAttributes())])
-        try? await Task.sleep(for: .milliseconds(200))
+        try? await Task.sleep(for: .milliseconds(900)) // Past the grace: nothing was ever shown.
         #expect(!controller.setupUnavailable)
         #expect(!controller.commandOutageConfirmed)
-        // Unavailable past the grace: shown.
+        // Unavailable past the grace: shown (wait for the grace to run out instead of guessing when).
         store.apply([awayEntity("idle", awayAttributes(commandAvailable: false))])
-        try? await Task.sleep(for: .milliseconds(300))
+        for _ in 0..<1000 where !controller.setupUnavailable { try? await Task.sleep(for: .milliseconds(10)) }
         #expect(controller.setupUnavailable)
         store.apply([awayEntity("idle", awayAttributes())])
-        try? await Task.sleep(for: .milliseconds(40))
+        for _ in 0..<1000 where controller.setupUnavailable { try? await Task.sleep(for: .milliseconds(10)) }
         #expect(!controller.setupUnavailable)
     }
 
