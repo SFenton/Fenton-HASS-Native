@@ -11,3 +11,4 @@
 | [capacity.md](capacity.md) | Machine-wide simulator, device and build slots (`tools/devcap.py`) |
 | [app-name.md](app-name.md) | The public name "S+H", its spoken name, search keywords, Spotlight pages and App Shortcuts |
 | [location.md](location.md) | Location and device sensors through `mobile_app` |
+| [live-activities.md](live-activities.md) | Live Activities spec: the Home activity, the Fenton Push job engine, push-to-start and update tokens |
