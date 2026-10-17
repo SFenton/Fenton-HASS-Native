@@ -61,6 +61,14 @@ struct OrientationPolicyTests {
         #expect(presence.hasHinge)
         #expect(calls == 1)
     }
+
+    /// The default hook asks every scene to re-read its orientations; with no scenes (and on macOS) it does nothing.
+    @MainActor @Test func theDefaultHingeHookIsSafeWithoutScenes() {
+        HingePresence.requestOrientationUpdate()
+        let presence = HingePresence()
+        presence.record(hinge: .closed)
+        #expect(presence.hasHinge)
+    }
 }
 
 /// Home's two columns on the hinge (plan Phase 4, decision 5).

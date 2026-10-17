@@ -1,3 +1,4 @@
+import CoreVideo
 import Foundation
 import HassCore
 @testable import HassUI
@@ -84,5 +85,27 @@ struct CameraLiveViewTests {
             .environment(store)
             .frame(width: 402, height: 874)
         #expect(ImageRenderer(content: view).cgImage != nil)
+    }
+
+    /// A grabbed HLS frame converts to an image off the main actor.
+    @Test func aPixelFrameBecomesAnImage() async throws {
+        var buffer: CVPixelBuffer?
+        CVPixelBufferCreate(nil, 16, 9, kCVPixelFormatType_32BGRA, nil, &buffer)
+        let frame = CameraFrame.pixels(try #require(buffer))
+        let image = try #require(await frame.image())
+        #expect(image.width == 16 && image.height == 9)
+    }
+
+    /// With no socket the HLS mode waits for it, cannot ask for a stream path and gives up, leaving the snapshot.
+    @Test func hlsGivesUpWhenThereIsNoConnection() async throws {
+        let store = EntityStore()
+        let connection = HassConnection(server: .fentonHome, tokens: TokenManager(store: InMemoryTokenStore()), store: store)
+        let model = CameraLiveModel(camera: HomeConfig.cameras[0], modes: [.hls], firstFrameTimeout: { _ in .seconds(1) })
+        var exhausted = false
+        model.onExhausted = { exhausted = true }
+        model.start(connection: connection)
+        #expect(model.isRunning)
+        for _ in 0..<1800 where !exhausted { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(exhausted && model.state.phase == .failed && !model.isRunning)
     }
 }

@@ -7,39 +7,39 @@ struct LoginView: View {
     /// Called with fresh tokens on success.
     var onSignedIn: @MainActor (HassServer, AuthTokens) throws -> Void
 
-    @State private var serverText = HassServer.fentonHome.baseURL.absoluteString
-    @State private var username = ""
-    @State private var password = ""
-    @State private var mfaCode = ""
-    @State private var flow: HassLoginFlow?
-    @State private var needsMFA = false
-    @State private var isWorking = false
-    @State private var errorMessage: String?
+    @State private var model: LoginModel
     @FocusState private var focusedField: Field?
 
     private enum Field: Hashable { case server, code, username, password }
+
+    /// Creates the screen.
+    /// - Parameters:
+    ///   - model: The fields and sign-in flow (tests pass one on a stubbed session).
+    ///   - onSignedIn: Called with fresh tokens on success.
+    init(model: LoginModel = LoginModel(), onSignedIn: @escaping @MainActor (HassServer, AuthTokens) throws -> Void) {
+        _model = State(initialValue: model)
+        self.onSignedIn = onSignedIn
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
                     // Wraps rather than truncating long URLs (Dynamic Type audit); Return adds no line.
-                    TextField("Server", text: $serverText, axis: .vertical)
+                    TextField("Server", text: $model.serverText, axis: .vertical)
                         .lineLimit(1...4)
                         .urlEntryField()
-                        .onChange(of: serverText) { _, value in
-                            if value.contains(where: \.isNewline) { serverText = value.filter { !$0.isNewline } }
-                        }
+                        .onChange(of: model.serverText) { model.stripNewlines() }
                         .focusesFromWholeRow($focusedField, .server)
                         .accessibilityIdentifier("login.server")
-                        .disabled(needsMFA)
+                        .disabled(model.needsMFA)
                 } header: {
                     FormHeader("Home Assistant")
                 }
 
-                if needsMFA {
+                if model.needsMFA {
                     Section {
-                        TextField("Code", text: $mfaCode)
+                        TextField("Code", text: $model.mfaCode)
                             .oneTimeCodeEntryField()
                             .focusesFromWholeRow($focusedField, .code)
                             .accessibilityIdentifier("login.code")
@@ -50,18 +50,18 @@ struct LoginView: View {
                     }
                 } else {
                     Section {
-                        TextField("Username", text: $username)
+                        TextField("Username", text: $model.username)
                             .usernameEntryField()
                             .focusesFromWholeRow($focusedField, .username)
                             .accessibilityIdentifier("login.username")
-                        SecureField("Password", text: $password)
+                        SecureField("Password", text: $model.password)
                             .textContentType(.password)
                             .focusesFromWholeRow($focusedField, .password)
                             .accessibilityIdentifier("login.password")
                     }
                 }
 
-                if let errorMessage {
+                if let errorMessage = model.errorMessage {
                     Section {
                         Label(errorMessage, systemImage: "exclamationmark.triangle")
                             .foregroundStyle(HassTokens.Ink.danger)
@@ -70,90 +70,28 @@ struct LoginView: View {
 
                 Section {
                     // Direction G: the screen's one primary action, a filled capsule.
-                    Button(action: submit) {
+                    Button { model.submit(onSignedIn: onSignedIn) } label: {
                         HStack(spacing: HassTokens.Spacing.s) {
-                            if isWorking {
+                            if model.isWorking {
                                 ArcSpinner(.inline).accessibilityHidden(true)
                             }
-                            Text(needsMFA ? "Verify" : "Sign In")
+                            Text(model.needsMFA ? "Verify" : "Sign In")
                         }
                     }
                     .buttonStyle(PrimaryButtonStyle())
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
-                    .disabled(!canSubmit)
+                    .disabled(!model.canSubmit)
                     // The arc is silent; the button says it is busy.
-                    .accessibilityValue(isWorking ? (needsMFA ? "Verifying" : "Signing In") : "")
+                    .accessibilityValue(model.busyValue)
                     .accessibilityIdentifier("login.submit")
                 }
             }
             .navigationTitle("Sign In")
-            .onAppear(perform: prefillForDebugTesting)
+            .onAppear { model.prefillForDebugTesting() }
         }
         // Direction G is dark throughout; sign-in matches the app it opens.
         .preferredColorScheme(.dark)
-    }
-
-    private var canSubmit: Bool {
-        guard !isWorking else { return false }
-        return needsMFA ? !mfaCode.isEmpty : (!username.isEmpty && !password.isEmpty && URL(string: serverText) != nil)
-    }
-
-    private func submit() {
-        guard let url = URL(string: serverText.trimmingCharacters(in: .whitespaces)) else { return }
-        let server = HassServer(baseURL: url)
-        isWorking = true
-        errorMessage = nil
-        Task {
-            defer { isWorking = false }
-            do {
-                let flow = self.flow ?? HassLoginFlow(server: server)
-                self.flow = flow
-                let step = needsMFA
-                    ? try await flow.submitMFACode(mfaCode)
-                    : try await flow.signIn(username: username, password: password)
-                switch step {
-                case .needsMFACode:
-                    needsMFA = true
-                case let .signedIn(tokens):
-                    password = ""
-                    try onSignedIn(server, tokens)
-                }
-            } catch let error as HassLoginFlow.LoginError {
-                errorMessage = message(for: error)
-                if case .unexpectedResponse = error { reset() }
-            } catch {
-                errorMessage = error.localizedDescription
-                reset()
-            }
-        }
-    }
-
-    private func reset() {
-        flow = nil
-        needsMFA = false
-        mfaCode = ""
-    }
-
-    private func message(for error: HassLoginFlow.LoginError) -> String {
-        switch error {
-        case .invalidCredentials: "Incorrect username or password."
-        case .invalidCode: "That code didn't work. Try the current one."
-        case let .network(detail): "Couldn't reach the server (\(detail))."
-        case let .unexpectedResponse(detail): "Sign-in failed (\(detail)). Try again."
-        }
-    }
-
-    /// Debug builds only: prefill from launch environment so automated test runs can sign in without
-    /// credentials in the repo. Set `FENTON_HASS_USERNAME` / `FENTON_HASS_PASSWORD` in a local,
-    /// uncommitted scheme or via `simctl launch` environment.
-    private func prefillForDebugTesting() {
-        #if DEBUG
-        let environment = ProcessInfo.processInfo.environment
-        if let value = environment["FENTON_HASS_SERVER"] { serverText = value }
-        if let value = environment["FENTON_HASS_USERNAME"] { username = value }
-        if let value = environment["FENTON_HASS_PASSWORD"] { password = value }
-        #endif
     }
 }
 
