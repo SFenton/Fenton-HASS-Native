@@ -42,7 +42,7 @@ struct RecipesScreen: View {
     var body: some View {
         @Bindable var collection = collection
         HStack(spacing: 0) {
-            results
+            gatedResults
                 .frame(maxWidth: .infinity)
                 .floatingActionBar(
                     [
@@ -74,14 +74,26 @@ struct RecipesScreen: View {
 
     // MARK: - Results
 
+    /// The results wait for the first page like the web's page load gate (spinner fades in, stays at least a second, fades
+    /// out, then the grid fades in); later searches, sorts and filters use the quicker results timings. The floating actions
+    /// stay outside, so a search keeps its field and keyboard while its results reload.
+    private var gatedResults: some View {
+        let isReady = collection.phase == .loaded || collection.phase == .failed
+        return ContentGate(page: "Recipes", isReady: isReady, timing: .page, reloadTiming: .results, label: "Loading Recipes") {
+            results
+        }
+    }
+
     @ViewBuilder
     private var results: some View {
         switch collection.phase {
         case .idle, .loading:
-            ProgressView("Loading recipes")
-                .progressViewStyle(.arc)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .accessibilityIdentifier("recipes.loading")
+            // The previous results stay under the gate while it fades them out for a reload; nothing yet on the first load.
+            if collection.items.isEmpty {
+                Color.clear
+            } else {
+                RecipeGrid(collection: collection, selectedId: split ? selected?.id : nil) { open($0) }
+            }
         case .failed:
             ContentUnavailableView {
                 Label("Unable to Load Recipes", systemImage: "exclamationmark.triangle")
@@ -328,7 +340,6 @@ struct RecipeFilterSheet: View {
                     : "Tune how strongly available and expiring ingredients influence ranked recipe results.")
             }
         }
-        .hassSheet(.form)
     }
 }
 

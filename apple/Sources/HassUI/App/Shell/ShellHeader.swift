@@ -126,7 +126,7 @@ private struct ShellSheets: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: binding(\.accountSection)) { AccountSheet().hassSheet(.form) }
+            .sheet(isPresented: binding(\.accountSection)) { AccountSheet().hassSheet(.form, height: .full) }
             .sheet(isPresented: binding(\.quickLinksSection), onDismiss: pushPending) {
                 QuickLinksSheet(caller: caller) { pending = $0 }
             }

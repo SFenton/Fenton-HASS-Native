@@ -274,10 +274,12 @@ public enum RoomOverview {
         return "\(truncatedOneDecimal(low))\(first.unit) - \(truncatedOneDecimal(high))\(first.unit)"
     }
 
-    /// A temperature sensor's tile text: one truncated decimal plus unit (`71.2°F`), else the compact state
-    /// (web `formatClimateEntityState`).
+    /// A temperature sensor's tile text: one truncated decimal plus unit (`71.2°F`); a vent's state with its position
+    /// (`Open · 50%`, the same rule as Climate's Advanced Controls, ``ClimateLogic/ventSubtitle(_:)``); else the compact
+    /// state (web `formatClimateEntityState`).
     public static func climateText(_ entity: EntityState?) -> String {
         guard let entity else { return "Unavailable" }
+        if entity.domain == "cover" { return ClimateLogic.ventSubtitle(entity) }
         if entity.domain == "sensor", let value = reading(entity) { return truncatedOneDecimal(value.value) + value.unit }
         return RoomFormat.compact(entity)
     }

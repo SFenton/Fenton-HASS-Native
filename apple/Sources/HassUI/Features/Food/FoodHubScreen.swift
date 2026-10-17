@@ -30,7 +30,26 @@ struct FoodHubScreen: View {
         return SplitPolicy.allowsSplit(size: size, isRegularWidth: horizontalSizeClass == .regular || window.isRegularWidth)
     }
 
+    /// The hub waits for its Suggested Recipes before it shows, like the web's `DashboardPageLoadGate` (settled once the
+    /// carousel is no longer loading). A hub that already loaded them opens at once.
+    private var isReady: Bool {
+        switch models.suggestions.phase {
+        case .ready, .failed: true
+        case .idle, .loading: false
+        }
+    }
+
     var body: some View {
+        ContentGate(page: "Food", isReady: isReady, timing: .page, reloadTiming: .results, label: "Loading Food & Recipes") {
+            hub
+        }
+        .navigationTitle("Food & Recipes")
+        .onAppear { models.suggestions.appear() }
+        .navigationDestination(item: $pushed) { FoodNavigation.destination($0, models: models).pageChrome() }
+        .sheet(item: $openDetail) { RecipeDetailSheet(model: $0) }
+    }
+
+    private var hub: some View {
         ScrollView {
             Group {
                 if split {
@@ -53,10 +72,6 @@ struct FoodHubScreen: View {
         .background { WindowMetricsReader(metrics: $window) }
         .scrollTelemetry("Food")
         .accessibilityIdentifier("food.scroll")
-        .navigationTitle("Food & Recipes")
-        .onAppear { models.suggestions.appear() }
-        .navigationDestination(item: $pushed) { FoodNavigation.destination($0, models: models).pageChrome() }
-        .sheet(item: $openDetail) { RecipeDetailSheet(model: $0) }
     }
 
     // MARK: - Sections
@@ -65,29 +80,37 @@ struct FoodHubScreen: View {
     private var recipeSections: some View {
         // The carousel draws its own header: "Page 1 of 5" follows its scroll position.
         SuggestedRecipesCarousel(title: "Suggested Recipes", model: models.suggestions, clipsPages: split) { open($0) }
-        FoodLinkRow(
-            title: "All Recipes", symbol: FoodSymbols.symbol(for: "mdi:book-open-page-variant"), identifier: "food.allRecipes"
+        // The web's full-width blue tile with a navigation chevron (`ha-sfenton-react-dash@9ac2a46:src/pages/FoodHubPage.tsx:46-54`).
+        GlassTile(
+            title: "All Recipes", symbol: FoodSymbols.symbol(for: "mdi:book-open-page-variant"), family: .recipes,
+            isActive: true, kind: .navigate
         ) { pushed = .recipes }
+        .tileIdentifier("food.allRecipes")
     }
 
     @ViewBuilder
     private var inventorySections: some View {
         let state: (String) -> EntityState? = { store?.entity($0).state }
         FoodSection("All Food") {
-            FoodLinkRow(
-                title: "All Food", subtitle: FoodConfig.allFoodSubtitle(state: state),
-                symbol: FoodSymbols.symbol(for: "mdi:food-variant"), identifier: "food.allFood"
-            ) { pushed = .inventory(.allFood) }
+            // One tile in the spaces' grid, so it is as wide as one space (web `singleTileGrid`, `FoodHubPage.tsx:60-68`).
+            DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
+                GlassTile(
+                    title: "All Food", subtitle: FoodConfig.allFoodSubtitle(state: state),
+                    symbol: FoodSymbols.symbol(for: "mdi:food-variant"), family: .food, isActive: true, kind: .navigate
+                ) { pushed = .inventory(.allFood) }
+                .tileIdentifier("food.allFood")
+            }
+            .equalHeightTiles()
         }
         FoodSection("Food Spaces") {
-            // Dark G tiles with neutral glyphs: storage spaces are places, which have no colour of their own
-            // (direction G, Colour). Off faces, so the glyph stays an outline and nothing reads as "on".
+            // Filled tiles in each space's web colour (`everShelfFood.ts:13-18`) with a white glyph and ink (direction G, Colour
+            // families). Always filled: the colour is what tells the places apart, not an on state.
             DynamicGridLayout(minCellWidth: 150, maxColumns: 4, equalRowHeights: true) {
                 ForEach(FoodConfig.spaces) { space in
                     GlassTile(
                         title: space.title, subtitle: FoodConfig.spaceSubtitle(space, state: state),
-                        symbol: FoodSymbols.symbol(for: space.icon), family: .neutral,
-                        isActive: false, kind: .navigate
+                        symbol: FoodSymbols.symbol(for: space.icon), family: FoodFamilies.family(forLocation: space.location),
+                        isActive: true, kind: .navigate
                     ) {
                         if let inventory = FoodInventoryScreen.space(forLocation: space.location) { pushed = .inventory(inventory) }
                     }

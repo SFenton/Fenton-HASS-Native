@@ -111,10 +111,91 @@ struct ContentGateTests {
 
     @Test func gateRendersEveryPhase() {
         for ready in [true, false] {
-            let gate = ContentGate(page: "Render", isReady: ready) {
+            let gate = ContentGate(page: "Render", isReady: ready, timing: .page, reloadTiming: .results, label: "Loading Test") {
                 Text("Content").contentReadiness("text", isReady: true)
             }
             #expect(ImageRenderer(content: gate.frame(width: 200, height: 200)).cgImage != nil)
         }
+    }
+
+    // MARK: Page profile (web DashboardPageLoadGate)
+
+    /// A clock the test moves.
+    @MainActor final class Clock {
+        var instant = ContinuousClock.now
+        func advance(_ duration: Duration) { instant = instant.advanced(by: duration) }
+    }
+
+    private func makePage(isReady: Bool, clock: Clock, sleeps: Sleeps) -> ContentGateModel {
+        ContentGateModel(
+            page: "Test", isReady: isReady, firstLoad: .page, reload: .results,
+            sleep: { await sleeps.sleep($0) }, now: { clock.instant }
+        )
+    }
+
+    @Test func pageProfilePortsTheWebTimings() {
+        let page = ContentGateModel.Profile.page
+        #expect(page.minimumLoading == .milliseconds(1000), "DASHBOARD_MIN_LOADING_MS")
+        #expect(page.spinnerExit == .milliseconds(500), "DASHBOARD_LOADING_EXIT_MS")
+        #expect(page.contentEnter == .milliseconds(170), "dashboardGateContentEnter")
+        #expect(page.loadTimeout == .milliseconds(10_000), "DASHBOARD_PAGE_LOAD_TIMEOUT_MS")
+        #expect(page.spinnerDelay == .zero)
+        #expect(ContentGateModel.Profile.results.minimumLoading == .zero)
+        #expect(ContentGateModel.Profile.results.loadTimeout == nil)
+    }
+
+    @Test func dataThatArrivesFirstWaitsOutTheMinimumThenFadesSpinnerOutAndContentIn() async {
+        let clock = Clock(), sleeps = Sleeps()
+        let model = makePage(isReady: false, clock: clock, sleeps: sleeps)
+        // The data is ready before the spinner's own task ran: the gate still fades the spinner in, holds it for the
+        // whole second, fades it out over 500 ms and only then fades the content in.
+        clock.advance(.milliseconds(300))
+        await model.advance(isReady: true)
+        #expect(model.phase == .idle)
+        #expect(!model.spinnerShown)
+        #expect(sleeps.waited == [.milliseconds(700), .milliseconds(500), .milliseconds(170)])
+    }
+
+    @Test func dataThatArrivesAfterTheMinimumDoesNotWaitAgain() async {
+        let clock = Clock(), sleeps = Sleeps()
+        let model = makePage(isReady: false, clock: clock, sleeps: sleeps)
+        sleeps.cancelAt = .milliseconds(10_000)
+        await model.advance(isReady: false)
+        #expect(model.spinnerShown, "the spinner fades in at once, with no delay")
+        sleeps.cancelAt = nil
+        sleeps.waited.removeAll()
+        clock.advance(.milliseconds(2500))
+        await model.advance(isReady: true)
+        #expect(sleeps.waited == [.milliseconds(500), .milliseconds(170)])
+    }
+
+    @Test func dataThatNeverArrivesShowsTheContentAfterTheTimeout() async {
+        let clock = Clock(), sleeps = Sleeps()
+        let model = makePage(isReady: false, clock: clock, sleeps: sleeps)
+        clock.advance(.milliseconds(10_000))
+        await model.advance(isReady: false)
+        #expect(model.phase == .idle, "the gate gives up like the web does")
+    }
+
+    @Test func reloadsAfterTheFirstLoadUseTheQuickResultsTimings() async {
+        let clock = Clock(), sleeps = Sleeps()
+        let model = makePage(isReady: false, clock: clock, sleeps: sleeps)
+        clock.advance(.milliseconds(1000))
+        await model.advance(isReady: true)
+        sleeps.waited.removeAll()
+        await model.advance(isReady: false)
+        await model.advance(isReady: true)
+        #expect(sleeps.waited == [
+            ContentGateModel.Timing.contentExit, ContentGateModel.Timing.spinnerDelay,
+            ContentGateModel.Timing.spinnerExit, ContentGateModel.Timing.contentEnter,
+        ])
+    }
+
+    @Test func aGateThatStartsReadyIsInstantEvenOnThePageProfile() async {
+        let clock = Clock(), sleeps = Sleeps()
+        let model = makePage(isReady: true, clock: clock, sleeps: sleeps)
+        await model.advance(isReady: true)
+        #expect(model.phase == .idle)
+        #expect(sleeps.waited.isEmpty)
     }
 }

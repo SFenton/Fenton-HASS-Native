@@ -71,11 +71,11 @@ struct FloatingActionBarTests {
         #expect(render(FilterOptionRow(title: "Alphabetical", isSelected: true) {}.dynamicTypeSize(.accessibility5)) != nil)
     }
 
-    @Test func filterSheetDetentsDefaultUnlessGiven() {
+    @Test func filterSheetIsFittedUnlessGivenFull() {
         let standard = FilterSheet(title: "Sort", canApply: false, canReset: false, onApply: {}, onReset: {}) { EmptyView() }
-        #expect(standard.detents == nil)
-        let tall = FilterSheet(title: "Filter", canApply: false, canReset: false, onApply: {}, onReset: {}, detents: [.large]) { EmptyView() }
-        #expect(tall.detents == [.large])
+        #expect(standard.height == .fitted)
+        let tall = FilterSheet(title: "Filter", canApply: false, canReset: false, onApply: {}, onReset: {}, height: .full) { EmptyView() }
+        #expect(tall.height == .full)
         #expect(render(tall.frame(height: 600)) != nil)
     }
 

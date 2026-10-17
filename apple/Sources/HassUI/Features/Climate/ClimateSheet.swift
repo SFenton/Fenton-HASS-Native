@@ -65,7 +65,7 @@ struct ClimateSheet: View {
         NavigationStack(path: $path) {
             Group {
                 switch tab {
-                case .rooms: ClimateRoomsTab(controller: controller)
+                case .rooms: ClimateRoomsTab(controller: controller) { path.append(.room($0)) }
                 case .automation: ClimateAutomationTab(controller: controller)
                 case .tracking: ClimateTrackingTab(controller: controller)
                 }
@@ -73,7 +73,7 @@ struct ClimateSheet: View {
             .accessibilityIdentifier("climate.sheet.\(tab.rawValue)")
             .modalChrome()
             .modalTabBar(ClimateConfig.Tab.allCases, label: "Thermostat sections", title: \.title,
-                         selection: $tab, identifier: "climate.sheet.tabs")
+                         symbol: ModalTabSymbols.symbol(for:), selection: $tab, identifier: "climate.sheet.tabs")
             .navigationTitle(ClimateConfig.sheetTitle)
             .inlineNavigationTitle()
             .toolbar { closeButton }
@@ -188,43 +188,52 @@ struct ClimateToggleSection: View {
 
 // MARK: - Rooms
 
-/// Every room: occupancy under its name, its temperature trailing, and a disclosure to its detail
+/// Every room as a colour tile like the Rooms grid (``RoomPalette``; owner, 2026-10-16: "standardise on room tiles across
+/// the app"): the room's glyph, its name, and its temperature and occupancy under it. A tap opens the room's detail
 /// (web `ThermostatRoomsRoot`).
 struct ClimateRoomsTab: View {
     var controller: ClimateController
+    /// Opens a room's detail page by its key (`living_room`).
+    var onOpen: (String) -> Void = { _ in }
+    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 150
 
     var body: some View {
         let lookup = controller.lookup
-        ClimateForm {
-            Section {
-                ForEach(ClimateConfig.rooms) { room in
-                    let occupied = ClimateLogic.isOccupied(lookup(room.occupancyEntityId))
-                    NavigationLink(value: ClimateRoute.room(room.key)) {
-                        LabeledContent {
-                            Text(ClimateLogic.roomTemperature(room, lookup))
-                                .foregroundStyle(HassTokens.Ink.primary)
-                                .monospacedDigit()
-                        } label: {
-                            ClimateRowLabel(title: room.title, subtitle: ClimateLogic.roomOccupancy(room, lookup),
-                                            icon: occupied ? "mdi:thermometer-check" : "mdi:thermometer-off")
-                        }
+        ScrollView {
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
+                DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
+                    ForEach(ClimateConfig.rooms) { room in
+                        GlassTile(
+                            title: room.title,
+                            // Two lines, so a narrow tile never breaks the pair mid-way ("70.9°F ·" over "Occupied").
+                            subtitle: "\(ClimateLogic.roomTemperature(room, lookup))\n\(ClimateLogic.roomOccupancy(room, lookup))",
+                            symbol: SymbolMap.symbol(for: RoomNavigation.item(for: room.key.replacingOccurrences(of: "_", with: "-"))?.icon ?? "mdi:home-thermometer"),
+                            family: .neutral,
+                            fillRGB: RoomPalette.fill(forKey: room.key),
+                            isActive: false,
+                            kind: .navigate
+                        ) { onOpen(room.key) }
+                        // On the tile's own button, so the identifier, label and value stay on one element.
+                        .tileIdentifier("climate.room.\(room.key)")
                     }
-                    // On the link itself, not a wrapping element, so the identifier and state stay on one element.
-                    .accessibilityLabel(room.title)
-                    .accessibilityValue(ClimateLogic.roomSubtitle(room, lookup))
-                    .accessibilityIdentifier("climate.room.\(room.key)")
                 }
-            } footer: {
+                .equalHeightTiles()
                 FormFooter(ClimateConfig.Tab.rooms.description)
+                    .font(.footnote)
             }
+            .padding(HassTokens.Spacing.l)
+            .frame(maxWidth: 720)
+            .frame(maxWidth: .infinity)
         }
     }
 }
 
-/// A room's dial, vents and away notice (web `ThermostatRoomModalContent`).
+/// A room's dial, vents and away notice (web `ThermostatRoomModalContent`). The vents are Vents-family tiles that fill
+/// while open and show their position.
 struct ClimateRoomDetail: View {
     var controller: ClimateController
     var room: ClimateConfig.Room
+    @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 150
 
     var body: some View {
         ClimateForm {
@@ -245,27 +254,24 @@ struct ClimateRoomDetail: View {
                 }
             }
             Section {
-                ForEach(Array(room.ventEntityIds.enumerated()), id: \.element) { index, ventId in
-                    let vent = controller.entity(ventId)
-                    let title = room.ventTitle(at: index)
-                    let state = ClimateLogic.ventState(vent)
-                    LabeledContent {
-                        Text(state).foregroundStyle(HassTokens.Ink.primary)
-                    } label: {
-                        Label {
-                            Text(title).foregroundStyle(HassTokens.Ink.primary)
-                        } icon: {
-                            Image(systemName: ClimateStyle.symbol("mdi:fan"))
-                                .foregroundStyle(vent?.state == "open" ? ClimateStyle.cool : HassTokens.Surface.secondaryInSheet)
-                                // Unavailable dims the glyph only; the text keeps full strength.
-                                .opacity(vent?.isUnavailable ?? true ? 0.5 : 1)
-                        }
+                DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
+                    ForEach(Array(room.ventEntityIds.enumerated()), id: \.element) { index, ventId in
+                        let vent = controller.entity(ventId)
+                        GlassTile(
+                            title: room.ventTitle(at: index),
+                            subtitle: ClimateLogic.ventSubtitle(vent),
+                            symbol: ClimateStyle.symbol("mdi:fan"),
+                            family: .vents,
+                            isActive: ClimateLogic.isVentOpen(vent),
+                            isUnavailable: vent?.isUnavailable ?? true,
+                            kind: .state
+                        )
+                        .tileIdentifier("climate.vent.\(ventId)")
                     }
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(title)
-                    .accessibilityValue(state)
-                    .accessibilityIdentifier("climate.vent.\(ventId)")
                 }
+                .equalHeightTiles()
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
             } header: {
                 FormHeader(room.ventSectionTitle)
             }

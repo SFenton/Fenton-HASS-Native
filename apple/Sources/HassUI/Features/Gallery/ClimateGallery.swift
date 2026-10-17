@@ -120,7 +120,10 @@ enum ClimateFixtures {
             states.append(entity(room.forceCriticalEntityId, room.key == "guest_room" ? "on" : "off"))
             states.append(entity(room.occupiedOnlyEntityId, ["master_bathroom", "guest_bathroom"].contains(room.key) ? "on" : "off"))
             for (ventIndex, vent) in room.ventEntityIds.enumerated() {
-                states.append(entity(vent, room.key == "office" || (room.key == "dining_room" && ventIndex == 0) ? "closed" : "open"))
+                let closed = room.key == "office" || (room.key == "dining_room" && ventIndex == 0)
+                // Open vents report a position (the second living-room vent is half open), so the tiles show it.
+                states.append(entity(vent, closed ? "closed" : "open",
+                                     ["current_position": .number(closed ? 0 : (room.key == "living_room" && ventIndex == 1 ? 50 : 100))]))
             }
         }
         return states

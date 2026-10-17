@@ -38,7 +38,8 @@ struct RoomDevicesGallery: View {
                 .safeAreaInset(edge: .top) {
                     if !GalleryEnvironment.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
                 }
-                .hassSheet(fixture.kind == .humidifier ? .page : .form)
+                .hassSheet(fixture.kind == .humidifier ? .page : .form,
+                           height: fixture.kind == .humidifier ? .full : .fitted)
         }
     }
 

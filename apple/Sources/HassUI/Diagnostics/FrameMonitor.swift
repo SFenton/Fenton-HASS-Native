@@ -23,6 +23,20 @@ public final class FrameMonitor {
     private var frames: [String: [Double]] = [:]
     private var lastTimestamp: CFTimeInterval?
     private var budgetMs = 1000.0 / 60
+    private var census: ResourceCensus.Registration?
+
+    init() {
+        census = ResourceCensus.shared.register { [weak self] in ["FrameMonitor.displayLinks": self?.displayLinkCount ?? 0] }
+    }
+
+    /// Display links running now: one while a page scrolls with telemetry on, else none.
+    var displayLinkCount: Int {
+        #if os(iOS)
+        link == nil ? 0 : 1
+        #else
+        0
+        #endif
+    }
 
     /// Whether any page is scrolling.
     public var isMonitoring: Bool { !active.isEmpty }

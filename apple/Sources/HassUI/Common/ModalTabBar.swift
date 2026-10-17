@@ -13,10 +13,13 @@ import SwiftUI
 /// subviews; use a tab bar for completely separate app sections". The glass marks it as a navigation-layer
 /// control floating over the content (HIG: Materials, Liquid Glass).
 ///
-/// Segments show text, or icons when the caller passes `symbol` (the vacuum's labels are too long for five
-/// segments). HIG Segmented controls: "Prefer text or images, not a mix, in one control" and "Limit segments:
-/// ... about 5 on iPhone". Icon segments still carry their names for VoiceOver. At accessibility text sizes,
-/// where segments cannot grow, the control becomes a menu that names the selected section.
+/// On iPhone (compact width) the segments are the web's icons (`ModalIconTabNav`; owner, 2026-10-16: "show icons like the
+/// web app instead of text titles"), which fit five sections where titles do not; on iPad and the unfolded Duo (regular
+/// width) they are text titles. HIG Segmented controls: "Prefer text or images, not a mix, in one control" and "Limit
+/// segments: ... about 5 on iPhone". Icon segments still carry their titles for VoiceOver. At accessibility text sizes,
+/// where segments cannot grow, the control becomes a menu of text titles that names the selected section.
+/// A caller that passes no `symbol` always shows text. The glass is Liquid Glass on iOS 26 (`glassEffect`, a navigation
+/// control: HIG Materials) and a thin-material capsule before (``SwiftUI/View/navigationGlass(in:)``).
 struct ModalTabBar<Item: Hashable & Identifiable>: View {
     var tabs: [Item]
     /// Spoken name of the control, e.g. `Thermostat sections`.
@@ -27,16 +30,17 @@ struct ModalTabBar<Item: Hashable & Identifiable>: View {
     @Binding var selection: Item
     var identifier: String
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        if typeSize.isAccessibilitySize {
+        let form = ModalTabBarStyle.form(hasSymbols: symbol != nil, compactWidth: sizeClass == .compact,
+                                         accessibilitySize: typeSize.isAccessibilitySize)
+        if form == .menu {
+            // Titles, not icons: at accessibility sizes the section names are what a reader needs (owner, 2026-10-16:
+            // "keep text labels ... at accessibility sizes where the existing menu fallback applies").
             Picker(label, selection: $selection) {
                 ForEach(tabs) { tab in
-                    if let symbol {
-                        Label(title(tab), systemImage: symbol(tab)).tag(tab)
-                    } else {
-                        Text(title(tab)).tag(tab)
-                    }
+                    Text(title(tab)).tag(tab)
                 }
             }
             .pickerStyle(.menu)
@@ -48,7 +52,7 @@ struct ModalTabBar<Item: Hashable & Identifiable>: View {
         } else {
             Picker(label, selection: $selection) {
                 ForEach(tabs) { tab in
-                    if let symbol {
+                    if form == .icons, let symbol {
                         // A label, not a bare image: the segmented control reads its title to VoiceOver.
                         Label(title(tab), systemImage: symbol(tab))
                             .labelStyle(.iconOnly)
@@ -76,10 +80,30 @@ enum ModalTabBarPlacement: Sendable {
     case bottom
 }
 
-/// Measurements of the glass section bar.
+/// Measurements and the form of the glass section bar.
 enum ModalTabBarStyle {
     /// Glass visible around the segmented control.
     static let glassInset: CGFloat = 4
+
+    /// How the control draws its sections.
+    enum Form: Equatable {
+        /// A segmented control of icons (iPhone), each named for VoiceOver.
+        case icons
+        /// A segmented control of text titles (iPad, unfolded Duo, or no icons supplied).
+        case text
+        /// A menu naming the selected section (accessibility text sizes, where segments cannot grow).
+        case menu
+    }
+
+    /// The form for the environment.
+    /// - Parameters:
+    ///   - hasSymbols: The caller supplied an SF Symbol per section.
+    ///   - compactWidth: Compact horizontal size class (iPhone, folded Duo).
+    ///   - accessibilitySize: An accessibility Dynamic Type size.
+    static func form(hasSymbols: Bool, compactWidth: Bool, accessibilitySize: Bool) -> Form {
+        if accessibilitySize { return .menu }
+        return hasSymbols && compactWidth ? .icons : .text
+    }
 }
 
 extension View {

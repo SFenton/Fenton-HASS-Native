@@ -224,16 +224,14 @@ struct ShellChromeTests {
         #expect(StatusChipStyle.fillFamily(.neutral, isActive: true) == nil)
     }
 
-    @Test func homeChipsFollowTheWebColours() {
-        // Security fills with its mode; Climate and Air Quality always fill; the rest only while active.
-        #expect(StatusChipView.family(.security, alarmState: "armed_away") == .securityAway)
-        #expect(StatusChipView.isFilled(.security, family: .securityDisarmed, isActive: false))
-        #expect(!StatusChipView.isFilled(.security, family: nil, isActive: true))
-        #expect(StatusChipView.isFilled(.climate, family: .climate, isActive: false))
-        #expect(StatusChipView.isFilled(.air, family: .air, isActive: false))
-        #expect(!StatusChipView.isFilled(.contact, family: .contact, isActive: false))
-        #expect(StatusChipView.isFilled(.light, family: .lights, isActive: true))
-        #expect(StatusChipView.family(.presence, alarmState: nil) == .occupancy)
+    @Test func chipTintsWinOverTheFamilyAndAnimateOnlyColour() {
+        // A computed tint (temperature, AQI, contact state) fills the chip even when its family would leave it neutral.
+        #expect(StatusChipStyle.fillTint(.contact, isActive: false, tint: .contactOpenAway) == .contactOpenAway)
+        #expect(StatusChipStyle.fillTint(.contact, isActive: false, tint: nil) == nil)
+        #expect(StatusChipStyle.fillTint(.occupancy, isActive: true, tint: nil) == ChipTint(family: .occupancy))
+        #expect(StatusChipStyle.fillTint(.neutral, isActive: true, tint: nil) == nil)
+        // Reduce Motion keeps a colour cross-fade (HIG, Motion), only shorter.
+        #expect(StatusChipStyle.colorAnimation(reduceMotion: true) != StatusChipStyle.colorAnimation(reduceMotion: false))
     }
 
     @Test func chipsRenderFilledAndNeutral() {
@@ -241,6 +239,9 @@ struct ShellChromeTests {
             let chip = StatusChipButton(title: "Lights", summary: "3 On", symbol: "lightbulb", family: family,
                                         isActive: active, action: {})
             #expect(ImageRenderer(content: chip).cgImage != nil)
+            let tinted = StatusChipButton(title: "Climate", summary: "72°F", symbol: "thermometer", family: family,
+                                          isActive: active, tint: ChipTint.fromWeb(0xFFD700), action: nil)
+            #expect(ImageRenderer(content: tinted).cgImage != nil)
         }
     }
 }

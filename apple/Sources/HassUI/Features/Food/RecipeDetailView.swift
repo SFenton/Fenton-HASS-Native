@@ -17,7 +17,8 @@ struct RecipeDetailSheet: View {
                 .modalChrome()
                 .toolbar { SheetCloseItem(identifier: "recipe.done") { dismiss() } }
         }
-        .hassSheet(.page)
+        // Full height (owner, 2026-10-16): other sheets size to their content, but a recipe is a page to read.
+        .hassSheet(.page, height: .full)
     }
 }
 
@@ -63,6 +64,8 @@ struct RecipeDetailContent: View {
     @Bindable var model: RecipeDetailModel
     /// False in the split pane, whose page title stays "Recipes".
     var setsNavigationTitle = true
+    /// The scroll view's visible height, so Instructions can centre in it.
+    @State private var viewportHeight: CGFloat = 0
 
     var body: some View {
         Group {
@@ -93,6 +96,7 @@ struct RecipeDetailContent: View {
     }
 
     private func loaded(_ detail: RecipeDetail) -> some View {
+        // Instructions that fit the sheet sit in its vertical centre (owner, 2026-10-16); longer ones scroll from the top.
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
                 switch model.tab {
@@ -103,11 +107,14 @@ struct RecipeDetailContent: View {
             }
             .padding(.horizontal, HassTokens.Spacing.l)
             .padding(.vertical, HassTokens.Spacing.m)
+            .frame(minHeight: model.tab == .instructions ? viewportHeight : nil, alignment: .center)
         }
+        .scrollBounceBehavior(model.tab == .instructions ? .basedOnSize : .automatic)
+        .onGeometryChange(for: CGFloat.self, of: \.size.height) { viewportHeight = $0 }
         .scrollTelemetry("Recipe Detail")
         .accessibilityIdentifier("recipe.scroll")
         .modalTabBar(RecipeDetailModel.Tab.allCases, label: "Recipe sections", title: \.title,
-                     selection: $model.tab, identifier: "recipe.tabs")
+                     symbol: \.symbol, selection: $model.tab, identifier: "recipe.tabs")
     }
 }
 
@@ -351,10 +358,16 @@ struct ChipFlow: View {
     }
 }
 
-/// "Add Missing Ingredients to Groceries", the sheet's one ``PrimaryButtonStyle`` button, with its disabled reason,
-/// progress and result (web `RecipeGroceryAction`).
+/// "Add to Grocery List", the sheet's one ``PrimaryButtonStyle`` button, with its description (or the reason it is
+/// disabled), progress and result (web `RecipeGroceryAction`, which says "Add Missing Ingredients to Groceries"; the
+/// owner renamed it on 2026-10-16).
 struct GroceryAction: View {
     let model: RecipeDetailModel
+
+    /// The button's title.
+    static let title = "Add to Grocery List"
+    /// What the button does, under it while it can run (a disabled button shows its reason instead).
+    static let explanation = "Adds the missing ingredients for this recipe to your shopping list."
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
@@ -362,7 +375,7 @@ struct GroceryAction: View {
             case let .added(message):
                 HStack(spacing: HassTokens.Spacing.s) {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.green).accessibilityHidden(true)
-                    Text("Added to Groceries").foregroundStyle(HassTokens.Ink.primary)
+                    Text("Added to Grocery List").foregroundStyle(HassTokens.Ink.primary)
                 }
                 .font(.headline)
                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
@@ -380,7 +393,7 @@ struct GroceryAction: View {
                         } else {
                             Image(systemName: "cart.badge.plus").accessibilityHidden(true)
                         }
-                        Text("Add Missing Ingredients to Groceries")
+                        Text(Self.title)
                     }
                 }
                 .buttonStyle(PrimaryButtonStyle())
@@ -390,6 +403,10 @@ struct GroceryAction: View {
                     Text(reason).font(.footnote).foregroundStyle(HassTokens.Ink.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("recipe.grocery.reason")
+                } else {
+                    Text(Self.explanation).font(.footnote).foregroundStyle(HassTokens.Ink.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("recipe.grocery.description")
                 }
                 if case let .failed(message) = model.grocery {
                     InlineAlert(message, severity: .error)
@@ -400,7 +417,7 @@ struct GroceryAction: View {
         .onChange(of: model.grocery) { _, state in
             #if os(iOS)
             switch state {
-            case let .added(message): UIAccessibility.post(notification: .announcement, argument: "Added to groceries. \(message)")
+            case let .added(message): UIAccessibility.post(notification: .announcement, argument: "Added to grocery list. \(message)")
             case let .failed(message): UIAccessibility.post(notification: .announcement, argument: message)
             default: break
             }

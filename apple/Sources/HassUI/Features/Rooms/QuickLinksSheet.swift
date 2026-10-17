@@ -51,7 +51,7 @@ struct QuickLinksSheet: View {
                 }
                 .toolbar { SheetCloseItem(identifier: "quickLinks.close") { dismiss() } }
         }
-        .hassSheet(.page)
+        .hassSheet(.page, height: .full) // Navigates to rooms and detail pages
         .accessibilityIdentifier("quickLinks.sheet")
     }
 
@@ -206,7 +206,8 @@ struct QuickLinksSecurityDetail: View {
 
 // MARK: - Rooms grid
 
-/// Every room, most-visited first (web `RoomNavigationGrid`). Opening a room counts the visit.
+/// Every room as a coloured tile (``RoomPalette``), most-visited first (web `RoomNavigationGrid`). Opening a room counts
+/// the visit.
 struct RoomNavigationGrid: View {
     var caller: (any HassServiceCalling)?
     var onOpen: (String) -> Void
@@ -216,9 +217,9 @@ struct RoomNavigationGrid: View {
     var body: some View {
         DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4) {
             ForEach(RoomNavigation.ranked { store.entity($0).state?.state }) { item in
-                // Rooms have no colour of their own (direction G, Colour families).
+                // A solid fill per room with a filled white glyph (direction G, Colour: Room tiles; owner, 2026-10-16).
                 GlassTile(title: item.title, symbol: SymbolMap.symbol(for: item.icon), family: .neutral,
-                          isActive: false, kind: .navigate) { open(item) }
+                          fillRGB: RoomPalette.fill(forRoom: item.path), isActive: false, kind: .navigate) { open(item) }
                     .accessibilityHint("Opens the \(item.title) page")
                     .accessibilityIdentifier("rooms.\(item.path)")
             }

@@ -14,6 +14,6 @@ struct LocationPermissionSheet: View {
             onRequestPermission: { location.requestPermission() },
             onClose: onClose
         )
-        .hassSheet(.page)
+        .hassSheet(.page, height: .full)
     }
 }

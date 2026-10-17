@@ -191,9 +191,7 @@ struct VacuumViewTests {
         #expect(!VacuumSettingRow.segmentsFitBesideTitle(mode))
     }
 
-    @Test func fiveSectionsUseSymbols() {
-        #expect(VacuumTabSymbols.usesSymbols(VacuumTab.allCases))
-        #expect(!VacuumTabSymbols.usesSymbols([.controls, .autoClean, .info]))
+    @Test func everySectionHasASymbol() {
         for tab in VacuumTab.allCases {
             #if canImport(AppKit)
             #expect(NSImage(systemSymbolName: VacuumTabSymbols.symbol(for: tab), accessibilityDescription: nil) != nil, "\(tab)")

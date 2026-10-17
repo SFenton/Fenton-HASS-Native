@@ -52,7 +52,7 @@ struct CameraLiveView: View {
             .allowsHitTesting(false)
             .modifier(VideoAccessibility(style: style, camera: camera, state: model.state))
             .overlay(alignment: .topLeading) {
-                if style == .viewer { badge(model.state) }
+                if style == .viewer { badge(model.state, lastLive: model.lastLiveAt) }
             }
             .overlay(alignment: .bottom) {
                 if style == .viewer { retry(model.state) }
@@ -77,7 +77,7 @@ struct CameraLiveView: View {
         #endif
     }
 
-    private func badge(_ state: CameraStreamState) -> some View {
+    private func badge(_ state: CameraStreamState, lastLive: Date?) -> some View {
         HStack(spacing: HassTokens.Spacing.xs) {
             switch state.phase {
             case .connecting:
@@ -88,7 +88,7 @@ struct CameraLiveView: View {
             case .failed:
                 Image(systemName: "photo")
             }
-            Text(Self.badgeText(state))
+            Text(Self.badgeText(state, lastLive: lastLive))
         }
         .font(.caption.weight(.semibold))
         .foregroundStyle(.white)
@@ -115,10 +115,13 @@ struct CameraLiveView: View {
 
     // MARK: - Text
 
-    /// The short badge text.
-    static func badgeText(_ state: CameraStreamState) -> String {
+    /// The short badge text. While a stream that was live reconnects (its frames stopped, or the app went away) the
+    /// snapshot stays up and the pill says when the picture was last live (direction G's "Snapshot from" pill; the
+    /// time is when frames stopped, since the snapshot's own age is not known).
+    static func badgeText(_ state: CameraStreamState, lastLive: Date? = nil) -> String {
         switch state.phase {
-        case .connecting: "Connecting"
+        case .connecting:
+            if let lastLive { "Last live \(lastLive.formatted(date: .omitted, time: .shortened))" } else { "Connecting" }
         case .live: state.mode == .hls ? "Live · Delayed" : "Live"
         case .failed: "Snapshot"
         }

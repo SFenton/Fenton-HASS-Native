@@ -51,7 +51,7 @@ struct WeatherCardContent: View {
         .accessibilityIdentifier("home.weather")
         .sheet(isPresented: $isPresented) {
             WeatherSheet(forecasts: forecasts)
-                .hassSheet(.page, appearance: .dark)
+                .hassSheet(.page, height: .full, appearance: .dark) // Forecast over a condition gradient
         }
         .onAppear {
             if startsOpen, !didAutoOpen {

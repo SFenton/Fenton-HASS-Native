@@ -44,7 +44,7 @@ public struct SprinklersScreen: View {
         .sheet(item: $open) { controller in
             SprinklerControllerSheet(controller: controller, initialDetail: initialDetail)
                 .galleryLastCallBanner()
-                .hassSheet(.page)
+                .hassSheet(.page, height: .full) // Detail pages push inside it
         }
     }
 }

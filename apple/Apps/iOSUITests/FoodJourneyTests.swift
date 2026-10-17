@@ -33,8 +33,9 @@ final class FoodJourneyTests: XCTestCase {
         }
     }
 
-    private func launch(_ route: String, mode: String? = nil, arguments: [String] = []) -> XCUIApplication {
+    private func launch(_ route: String, mode: String? = nil, arguments: [String] = [], environment: [String: String] = [:]) -> XCUIApplication {
         let app = FentonHomeApp.makeApp()
+        app.launchEnvironment.merge(environment) { $1 }
         app.launchEnvironment["FENTON_GALLERY"] = "food"
         app.launchEnvironment["FENTON_GALLERY_ROUTE"] = route
         if let mode { app.launchEnvironment["FENTON_GALLERY_FOOD_MODE"] = mode }
@@ -189,6 +190,57 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["All Food"].waitForExistence(timeout: 10), "All Food did not open its page")
     }
 
+    /// The hub loads like the web (owner, 2026-10-16): the spinner fades in over a hidden hub, then the spinner leaves
+    /// and the content fades in; they never show together.
+    func testHubSpinnerThenContent() throws {
+        // Answers take 5 s, so the spinner outlasts the simulator's own launch and can be watched.
+        let app = launch("hub", environment: ["FENTON_GALLERY_FOOD_DELAY_MS": "5000"])
+        let spinner = element("contentGate.spinner", in: app)
+        XCTAssertTrue(spinner.waitForExistence(timeout: 5), "The spinner never showed")
+        XCTAssertEqual(spinner.label, "Loading Food & Recipes")
+        XCTAssertFalse(element("food.suggestion.1", in: app).exists, "The hub's content shows under the spinner")
+        XCTAssertFalse(element("food.allFood", in: app).exists, "The hub's tiles show under the spinner")
+        XCTAssertTrue(element("food.suggestion.1", in: app).waitForExistence(timeout: 20), "The hub never loaded")
+        XCTAssertTrue(spinner.waitForNonExistence(timeout: 3), "The spinner stayed once the content showed")
+    }
+
+    /// While the suggestions never arrive the spinner holds and the hub stays hidden.
+    func testHubStaysOnTheSpinnerWhileLoading() {
+        let app = launch("hub", mode: "slow")
+        XCTAssertTrue(element("contentGate.spinner", in: app).waitForExistence(timeout: 5))
+        sleep(2)
+        XCTAssertTrue(element("contentGate.spinner", in: app).exists)
+        XCTAssertFalse(element("food.allRecipes", in: app).exists)
+    }
+
+    /// All Recipes, All Food and the five spaces are filled tiles, each a button with its count line as the value.
+    func testHubTilesAreColouredTiles() throws {
+        let app = launch("hub")
+        XCTAssertTrue(element("food.suggestion.1", in: app).waitForExistence(timeout: 15))
+        let allRecipes = element("food.allRecipes", in: app)
+        XCTAssertTrue(allRecipes.exists)
+        XCTAssertEqual(allRecipes.elementType, .button, "All Recipes is a tile button")
+        let allFood = element("food.allFood", in: app)
+        reveal(allFood, in: app)
+        XCTAssertEqual(allFood.elementType, .button, "All Food is a tile button, not a list row")
+        XCTAssertTrue("\(allFood.label) \(allFood.value as? String ?? "")".contains("143 Items"), "All Food reads '\(allFood.label)'")
+        assertTarget(allFood)
+        let titles = ["dispensa": "Pantry", "frigo": "Fridge", "freezer": "Freezer", "spice_rack": "Spice Rack", "cabinet": "Cabinet"]
+        reveal(element("food.space.cabinet", in: app), in: app)
+        for (key, title) in titles {
+            let tile = element("food.space.\(key)", in: app)
+            XCTAssertTrue(tile.exists, title)
+            XCTAssertEqual(tile.label, title)
+            assertTarget(tile)
+        }
+        sleep(1)
+        keepScreenshot(app, "food-hub-tiles-\(device)")
+        // Audit from the top, as the hub journey does: the audit measures frames against a capture that a scrolled page moves.
+        for _ in 0..<4 where !element("food.suggestion.1", in: app).isHittable { app.swipeDown() }
+        sleep(1)
+        try audit(app)
+    }
+
     func testHubFailureOffersRetry() {
         let app = launch("hub", mode: "error")
         XCTAssertTrue(element("food.suggestions.error", in: app).waitForExistence(timeout: 15))
@@ -269,7 +321,9 @@ final class FoodJourneyTests: XCTestCase {
         for _ in 0..<6 where !(alphabetical.exists && alphabetical.isHittable) { sheet.swipeUp() }
         alphabetical.tap()
         if reveal == "Sort By" {
-            for _ in 0..<6 { sheet.swipeDown() }
+            // Only while the header is off screen: a swipe down on a sheet already at the top drags it closed, which a
+            // fitted sheet (content-height detent) reaches at the default text size.
+            for _ in 0..<6 where !app.staticTexts["Sort By"].isHittable { sheet.swipeDown() }
             sleep(1)
         } else {
             scroll(to: reveal, in: app, sheet: sheet)
@@ -392,6 +446,10 @@ final class FoodJourneyTests: XCTestCase {
         let add = element("recipe.grocery.add", in: app)
         reveal(add, in: app, swiping: element("recipe.scroll", in: app))
         assertTarget(add)
+        // Owner, 2026-10-16: "Add to Grocery List", with what it does under it.
+        XCTAssertEqual(add.label, "Add to Grocery List")
+        XCTAssertTrue(app.staticTexts["Adds the missing ingredients for this recipe to your shopping list."].exists,
+                      "The button's description is missing")
         add.tap()
         expectCall("recipe_grocery_add recipe_id=6 selections=1,4", in: app)
         XCTAssertTrue(element("recipe.grocery.added", in: app).waitForExistence(timeout: 10))
@@ -400,6 +458,36 @@ final class FoodJourneyTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Heat the oven to 425°F and zest the lemons."].waitForExistence(timeout: 5))
         keepScreenshot(app, "food-recipe-instructions-\(device)")
         try audit(app)
+    }
+
+    /// Owner, 2026-10-16: a recipe opens full screen (the other sheets size to their content), and Instructions that fit
+    /// sit in the vertical centre of the sheet.
+    func testRecipeIsFullScreenAndInstructionsAreCentred() throws {
+        let app = launch("recipes")
+        waitForGrid(app)
+        element("recipes.card.6", in: app).tap()
+        let tabs = element("recipe.tabs", in: app)
+        XCTAssertTrue(tabs.waitForExistence(timeout: 10))
+        sleep(1)
+        if !element("recipe.pane", in: app).exists {
+            // A sheet: its section bar sits at the bottom of the window, which a half-height sheet would not.
+            XCTAssertGreaterThan(tabs.frame.maxY, app.windows.firstMatch.frame.height * 0.85, "The recipe sheet is not full height")
+        }
+        tabs.buttons["Instructions"].tap()
+        let first = app.staticTexts["Heat the oven to 425°F and zest the lemons."]
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        sleep(1)
+        let scroll = element("recipe.scroll", in: app)
+        let last = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'Roast for 40 minutes'")).firstMatch
+        XCTAssertTrue(last.exists)
+        let top = first.frame.minY
+        let bottom = last.frame.maxY
+        let contentMid = (top + bottom) / 2
+        // Short instructions sit around the scroll view's middle, not at its top.
+        XCTAssertEqual(contentMid, scroll.frame.midY, accuracy: scroll.frame.height * 0.2,
+                       "Instructions are not vertically centred (content \(top)-\(bottom), sheet \(scroll.frame))")
+        XCTAssertGreaterThan(top - scroll.frame.minY, 60, "Instructions start at the top of the sheet")
+        keepScreenshot(app, "food-recipe-instructions-centred-\(device)")
     }
 
     func testCookidooRecipeLinksOut() throws {

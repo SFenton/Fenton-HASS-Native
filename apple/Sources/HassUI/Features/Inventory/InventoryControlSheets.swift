@@ -27,9 +27,7 @@ struct InventorySortSheet: View {
             onReset: {
                 mode = .title
                 direction = .ascending
-            },
-            // Six options: cut off at the medium detent in iPad landscape.
-            detents: [.large]
+            }
         ) {
             FilterSection("Sort By") {
                 ForEach(InventorySortMode.allCases) { option in
@@ -67,9 +65,7 @@ struct InventoryFilterSheet: View {
             canApply: mode != model.filterMode,
             canReset: mode != .all,
             onApply: { model.filterMode = mode },
-            onReset: { mode = .all },
-            // Seven options don't fit the medium detent.
-            detents: [.large]
+            onReset: { mode = .all }
         ) {
             // "Show" rather than the web's "Filter Items", which repeated the sheet title. FilterSection's header wraps at
             // AX sizes (the old custom header was reported clipped).
