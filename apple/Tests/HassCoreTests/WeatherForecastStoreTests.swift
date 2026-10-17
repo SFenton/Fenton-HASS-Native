@@ -125,6 +125,25 @@ struct WeatherForecastStoreTests {
         #expect(h.store.hourly.phase == .ready)
     }
 
+    @Test func manyBackgroundAndForegroundCyclesLeaveOneTimerAndNoFetchesBehind() async {
+        let h = makeHarness()
+        h.store.activate(caller: h.caller, revision: "a")
+        await h.store.settle()
+        let launch = h.store.liveResources
+        #expect(launch["Weather.consumers"] == 1)
+        #expect(launch["Weather.timer"] == 1)
+        for _ in 0..<10 {
+            h.store.setForeground(false)
+            #expect(h.store.liveResources["Weather.timer"] == 0, "No timer runs in the background")
+            h.store.setForeground(true)
+            await h.store.settle()
+            #expect(h.scheduler.armedCount == 1)
+        }
+        #expect(h.store.liveResources == launch)
+        h.store.deactivate()
+        #expect(h.store.liveResources["Weather.timer"] == 0)
+    }
+
     @Test func pausesInTheBackgroundAndRefreshesOnceOnReturn() async {
         let h = makeHarness()
         h.store.activate(caller: h.caller, revision: "a")

@@ -49,8 +49,9 @@ struct RoomGroupDetail: View {
                 .accessibilityIdentifier("room.light.\(item.entityId)")
         case .climate:
             let vent = item.entityId.hasPrefix("cover.")
+            // A vent fills with the Vents family while it is open, as in Advanced Controls (`ClimateLogic.isVentOpen`).
             sensorTile(item, subtitle: RoomOverview.climateText(entity), symbol: vent ? "fan" : "thermometer.medium",
-                       family: vent ? .vents : .climate, active: false)
+                       family: vent ? .vents : .climate, active: vent && ClimateLogic.isVentOpen(entity))
         case .occupancy:
             let occupied = RoomFormat.isOccupied(entity)
             sensorTile(item, subtitle: RoomFormat.occupancy(entity),
@@ -67,7 +68,7 @@ struct RoomGroupDetail: View {
     }
 
     /// A read-only sensor tile (web `source-row` cards): filled with its family colour while active (occupied, open),
-    /// else dark with the family glyph (direction G, Colour families). Temperatures and vents never fill.
+    /// else dark with the family glyph (direction G, Colour families). Temperatures never fill; an open vent does.
     private func sensorTile(_ item: RoomGroupItem, subtitle: String, symbol: String, family: ColorFamily, active: Bool,
                             redacts: Bool = false) -> some View {
         let redact = redacts && ScreenshotPrivacy.isRedacting

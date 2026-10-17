@@ -36,8 +36,17 @@ public enum ColorFamily: String, CaseIterable, Sendable {
     /// Security by alarm mode, as on the web.
     case securityHome, securityAway, securityNight, securityDisarmed, securityTriggered
     /// The Chores quick-link tiles (owner, 2026-10-16: "header tiles for Chores sub-pages need distinct colours not
-    /// reused elsewhere"). Indigo, fuchsia, mustard, steel slate and cocoa: none within 0.06 (OKLab) of any device or security fill.
+    /// reused elsewhere"). Ultramarine, magenta, raspberry, violet and chestnut: none within 0.05 (OKLab) of any device, security, Food or room fill.
     case choreStephen, choreSteph, choreUnassigned, choreHome, groceries
+    /// The Food pages (owner, 2026-10-16: "Food Spaces / All Food should have colours like the web"). Each is the web's
+    /// tile colour (`ha-sfenton-react-dash@9ac2a46:src/constants/everShelfFood.ts:13-18`, `FoodHubPage.tsx:46,60,69`)
+    /// darkened (or, for the Fridge, Freezer, Spice Rack and Cabinet, nudged apart) until white text on it passes 4.5:1 and no two Food tiles read as one. They fill as a tile on the Food hub: the spaces are places, but the
+    /// web gives each its own colour, and the hub is the only page that draws them.
+    case pantry, fridge, freezer, spiceRack, cabinet
+    /// All Food (the web's sage green, `rgba(88,128,94)`).
+    case food
+    /// All Recipes (the web's blue, `rgba(42,126,180)`, the same as the Fridge).
+    case recipes
     /// Anything without a family: grey glyph, no fill.
     case neutral
 
@@ -75,11 +84,17 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         case .securityNight: Spec(glyph: 0xD08CF0, fill: 0x7B1FA2, darkInk: false)
         case .securityDisarmed: Spec(glyph: 0x5BD16A, fill: 0x2A732E, darkInk: false)
         case .securityTriggered: Spec(glyph: 0xFF6961, fill: 0xD70015, darkInk: false)
-        case .choreStephen: Spec(glyph: 0xB4A8FF, fill: 0x4C3CCB, darkInk: false)
-        case .choreSteph: Spec(glyph: 0xFF8FE3, fill: 0xA8209A, darkInk: false)
-        case .choreUnassigned: Spec(glyph: 0xF2C94C, fill: 0x705600, darkInk: false)
-        case .choreHome: Spec(glyph: 0xA9BBD6, fill: 0x4A5A70, darkInk: false)
-        case .groceries: Spec(glyph: 0xE0AE8A, fill: 0x6E4430, darkInk: false)
+        case .choreStephen: Spec(glyph: 0x8FA0FF, fill: 0x0022CC, darkInk: false)
+        case .choreSteph: Spec(glyph: 0xFF8CF7, fill: 0xB410AE, darkInk: false)
+        case .choreUnassigned: Spec(glyph: 0xFF8FBF, fill: 0xC2127A, darkInk: false)
+        case .choreHome: Spec(glyph: 0xB98CFF, fill: 0x6600CC, darkInk: false)
+        case .groceries: Spec(glyph: 0xE0916F, fill: 0x802200, darkInk: false)
+        case .pantry: Spec(glyph: 0xAC8F6B, fill: 0x855A25, darkInk: false)
+        case .fridge, .recipes: Spec(glyph: 0x639AB6, fill: 0x196B94, darkInk: false)
+        case .freezer: Spec(glyph: 0x8292C5, fill: 0x2F4A9E, darkInk: false)
+        case .spiceRack: Spec(glyph: 0xC5826C, fill: 0xAA4727, darkInk: false)
+        case .cabinet: Spec(glyph: 0x9A928B, fill: 0x6A5F55, darkInk: false)
+        case .food: Spec(glyph: 0x849A87, fill: 0x4A6B4E, darkInk: false)
         case .neutral: Spec(glyph: 0x8E8E93, fill: nil, darkInk: false)
         }
     }
@@ -104,11 +119,17 @@ public enum ColorFamily: String, CaseIterable, Sendable {
         case .securityHome: 0x4C86C2
         case .securityAway, .securityTriggered: 0xD95952
         case .securityNight: 0xA26DBB
-        case .choreStephen: 0x4C3CCB
-        case .choreSteph: 0xA8209A
-        case .choreUnassigned: 0x705600
-        case .choreHome: 0x4A5A70
-        case .groceries: 0x6E4430
+        case .choreStephen: 0x0022CC
+        case .choreSteph: 0xB410AE
+        case .choreUnassigned: 0xC2127A
+        case .choreHome: 0x6600CC
+        case .groceries: 0x802200
+        case .pantry: 0xA28665
+        case .fridge, .recipes: 0x5D91AB
+        case .freezer: 0x7A89B9
+        case .spiceRack: 0xB97A66
+        case .cabinet: 0x918983
+        case .food: 0x7B8F7E
         case .neutral: 0x818186
         }
     }

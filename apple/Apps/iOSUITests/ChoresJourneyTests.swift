@@ -212,11 +212,11 @@ final class ChoresJourneyTests: JourneyTestCase {
     func testQuickLinkTilesAreFilledInTheirOwnColours() throws {
         let app = launch()
         let expected: [(id: String, family: String, rgb: (Int, Int, Int))] = [
-            ("stephens-chores", "choreStephen", (0x4C, 0x3C, 0xCB)),
-            ("stephs-chores", "choreSteph", (0xA8, 0x20, 0x9A)),
-            ("unassigned-chores", "choreUnassigned", (0x70, 0x56, 0x00)),
-            ("home-improvement-chores", "choreHome", (0x4A, 0x5A, 0x70)),
-            ("groceries", "groceries", (0x6E, 0x44, 0x30)),
+            ("stephens-chores", "choreStephen", (0x00, 0x22, 0xCC)),
+            ("stephs-chores", "choreSteph", (0xB4, 0x10, 0xAE)),
+            ("unassigned-chores", "choreUnassigned", (0xC2, 0x12, 0x7A)),
+            ("home-improvement-chores", "choreHome", (0x66, 0x00, 0xCC)),
+            ("groceries", "groceries", (0x80, 0x22, 0x00)),
         ]
         keepScreenshot(app, screenshotName("chores-quick-links"))
         let capture = try XCTUnwrap(RenderedContrast.Capture.screen())

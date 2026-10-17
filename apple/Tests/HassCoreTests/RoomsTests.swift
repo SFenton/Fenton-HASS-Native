@@ -60,6 +60,27 @@ struct RoomsTests {
         #expect(ranked.count == 16)
     }
 
+    /// The grid re-ranks as Home Assistant's counters change: a visit counted by the script reaches the store through the
+    /// websocket, and the next read puts that room first. Equal counts keep the configured order. The counters live in
+    /// Home Assistant, so a cold launch from the disk snapshot ranks the same way.
+    @Test func theGridReRanksAsVisitCountersChange() {
+        let store = EntityStore()
+        func counter(_ path: String, _ count: Int) -> EntityState {
+            EntityState(entityId: RoomNavigation.item(for: path)!.accessCounterEntityId, state: String(count))
+        }
+        func ranked(_ store: EntityStore) -> [String] { RoomNavigation.ranked { store.entity($0).state?.state }.map(\.path) }
+        #expect(ranked(store) == RoomNavigation.items.map(\.path), "No counters: configured order")
+        store.replaceAll([counter("gym", 4), counter("office", 4), counter("kitchen", 1)])
+        #expect(Array(ranked(store).prefix(3)) == ["gym", "office", "kitchen"])
+        store.apply([counter("kitchen", 5)])
+        #expect(Array(ranked(store).prefix(3)) == ["kitchen", "gym", "office"])
+        store.apply([counter("office", 6)])
+        #expect(Array(ranked(store).prefix(3)) == ["office", "kitchen", "gym"])
+        let restored = EntityStore()
+        restored.replaceAll(Array(store.allValues.values), freshness: .snapshot(savedAt: Date()))
+        #expect(ranked(restored) == ranked(store))
+    }
+
     @Test func unreadableCountersCountAsZero() {
         #expect(RoomNavigation.accessCount(nil) == 0)
         #expect(RoomNavigation.accessCount("unavailable") == 0)
@@ -277,6 +298,41 @@ struct RoomsTests {
         set(store, "binary_sensor.garage_doors", "on")
         #expect(room.chip(doors).summary == "Open")
         #expect(room.chip(doors).icon == "mdi:door-open")
+    }
+
+    /// Owner, 2026-10-16: a contact chip says whether the house is closed, open with someone home, open while away, or open
+    /// while the system is armed; the alarm outranks being away.
+    @Test func roomContactChipsFollowTheHouse() {
+        let (room, store, _, _) = controller("garage", ["binary_sensor.garage_doors": "off"])
+        let doors = card("garage", "Doors")
+        #expect(room.chip(doors).contact == .allClosed)
+        set(store, "binary_sensor.garage_doors", "on")
+        #expect(room.chip(doors).contact == .openHome)
+        set(store, ClimateConfig.homeAwayEntityId, "Away")
+        #expect(room.chip(doors).contact == .openAway)
+        set(store, SecurityConfig.alarmEntityId, "armed_night")
+        #expect(room.chip(doors).contact == .openArmed)
+        set(store, SecurityConfig.alarmEntityId, "disarmed")
+        set(store, ClimateConfig.homeAwayEntityId, "Home")
+        #expect(room.chip(doors).contact == .openHome)
+        set(store, "binary_sensor.garage_doors", "unavailable")
+        #expect(room.chip(doors).contact == .unavailable)
+        #expect(room.chip(card("garage", "Doors")).webColor == nil)
+    }
+
+    @Test func roomClimateAndAirChipsCarryTheWebColour() {
+        let (room, store, _, _) = controller("living-room", [:])
+        let climate = card("living-room", "Climate")
+        let air = card("living-room", "Air Quality")
+        #expect(room.chip(climate).webColor == nil, "No helper and no range: the family navy")
+        set(store, climate.entityId, "70.0°F - 74.0°F")
+        #expect(room.chip(climate).webColor == RoomOverview.colorFromTemperature(72), "The gradient at the range's mean")
+        set(store, "input_text.living_room_climate_color", "rgba(158, 209, 46, 1)")
+        #expect(room.chip(climate).webColor == RoomColor(158, 209, 46), "The helper wins")
+        #expect(room.chip(air).webColor == ChipWebColor.airTeal, "No AQI helper yet: the web teal")
+        set(store, "input_text.living_room_aqi_color", "rgba(255, 190, 0, 1)")
+        #expect(room.chip(air).webColor == RoomColor(255, 190, 0))
+        #expect(room.chip(card("living-room", "Lights")).webColor == nil)
     }
 
     // MARK: Sheets

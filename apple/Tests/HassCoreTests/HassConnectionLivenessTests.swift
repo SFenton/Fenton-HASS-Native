@@ -77,11 +77,21 @@ struct HassConnectionLivenessTests {
             MainActor.assumeIsolated { count += 1 }
         }
         defer { NotificationCenter.default.removeObserver(token) }
+        /// HAKit calls back on the connection's own queue, so each state reaches the main actor a hop after it is set; wait for
+        /// the connection to show it instead of guessing how long the hop takes.
+        func waitFor(_ condition: () -> Bool) async {
+            for _ in 0..<300 where !condition() { try? await Task.sleep(for: .milliseconds(10)) }
+        }
+        func isConnected() -> Bool {
+            if case .connected = connection.status { return true }
+            return false
+        }
         connection.connect(subscribingToStates: false)
-        await settle(mock)
+        await waitFor(isConnected)
         mock.setState(.disconnected(reason: .disconnected), waitForQueue: false)
-        await settle(mock)
+        await waitFor { connection.status == .disconnected }
         mock.setState(.ready(version: "1.0-mock"), waitForQueue: false)
+        await waitFor(isConnected)
         await settle(mock)
         #expect(count == 2, "First connect and the reconnect")
     }

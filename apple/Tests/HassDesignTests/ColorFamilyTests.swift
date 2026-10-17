@@ -90,19 +90,47 @@ struct ColorFamilyTests {
                 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
     }
 
-    private func distance(_ a: UInt32, _ b: UInt32) -> Double {
+    private func oklabDistance(_ a: UInt32, _ b: UInt32) -> Double {
         let (x, y) = (oklab(a), oklab(b))
         return ((x.0 - y.0) * (x.0 - y.0) + (x.1 - y.1) * (x.1 - y.1) + (x.2 - y.2) * (x.2 - y.2)).squareRoot()
     }
 
-    /// Owner, 2026-10-16: the Chores quick-link tiles use colours no device family or security mode reuses. The floor is
-    /// an OKLab distance of 0.06 between fills (the closest existing pair, heating and cooking, is 0.002 apart).
+    /// Owner, 2026-10-16: the Chores quick-link tiles use colours no device family, security mode, Food tile or room
+    /// reuses. The floor is an OKLab distance of 0.05 between fills, the one the room palette keeps (the closest existing
+    /// pair, heating and cooking, is 0.002 apart).
     @Test(arguments: ColorFamily.choreFamilies)
     func choreTilesUseColoursNothingElseDoes(_ family: ColorFamily) throws {
         let fill = try #require(family.spec.fill)
         for other in ColorFamily.allCases where other != family {
             guard let otherFill = other.spec.fill else { continue }
-            #expect(distance(fill, otherFill) >= 0.06, "\(family) vs \(other)")
+            #expect(oklabDistance(fill, otherFill) >= 0.05, "\(family) vs \(other)")
+        }
+        for (room, roomFill) in RoomPalette.fills {
+            #expect(oklabDistance(fill, roomFill) >= 0.05, "\(family) vs \(room)")
+        }
+    }
+
+    /// Distance between two `0xRRGGBB` colours in sRGB.
+    private func distance(_ a: UInt32, _ b: UInt32) -> Double {
+        func channel(_ rgb: UInt32, _ shift: UInt32) -> Double { Double((rgb >> shift) & 0xFF) }
+        return [16, 8, 0].map { pow(channel(a, $0) - channel(b, $0), 2) }.reduce(0, +).squareRoot()
+    }
+
+    @Test func foodTilesAreFilledAndTellTheSpacesApart() throws {
+        // Owner, 2026-10-16: Food Spaces and All Food take the web's colours. Each is a filled family; All Recipes shares the
+        // Fridge's blue, as on the web, and nothing else repeats.
+        let spaces: [ColorFamily] = [.pantry, .fridge, .freezer, .spiceRack, .cabinet, .food]
+        for family in spaces + [.recipes] {
+            let fill = try #require(family.spec.fill, "\(family)")
+            #expect(!family.spec.darkInk, "\(family) takes white ink")
+            #expect(family.chipFillRGB == fill)
+        }
+        #expect(ColorFamily.recipes.spec == ColorFamily.fridge.spec)
+        for (index, first) in spaces.enumerated() {
+            for second in spaces[(index + 1)...] {
+                let a = try #require(first.spec.fill), b = try #require(second.spec.fill)
+                #expect(distance(a, b) >= 30, "\(first) and \(second)")
+            }
         }
     }
 

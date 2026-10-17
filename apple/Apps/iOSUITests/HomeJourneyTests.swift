@@ -24,6 +24,22 @@ final class HomeJourneyTests: XCTestCase {
         }
     }
 
+    /// Every Home chip keeps its text at 4.5:1 as rendered, whatever colour the house gives it (the temperature and AQI
+    /// colours come from Home Assistant, the contact chip from the alarm and who is home).
+    func testStatusChipsKeepTheirTextReadableInTheirColours() throws {
+        let app = try FentonHomeApp.launchSignedIn()
+        sleep(2)
+        for sheet in ["lights", "security", "climate", "occupancy", "contacts", "airQuality"] {
+            let chip = app.buttons["home.chip.\(sheet)"]
+            XCTAssertTrue(chip.waitForExistence(timeout: 10), sheet)
+            revealChip(chip, in: app)
+            sleep(1) // A colour cross-fade settles before it is measured.
+            if let capture = RenderedContrast.Capture.screen(), let ratio = RenderedContrast.ratio(of: chip.frame, in: capture) {
+                XCTAssertGreaterThanOrEqual(ratio, 4.5, "\(sheet) chip measured \(ratio):1 (\(chip.label))")
+            }
+        }
+    }
+
     func testLightsSheetOpensAndAudits() throws {
         let app = try FentonHomeApp.launchSignedIn()
         app.buttons["home.chip.lights"].tap()

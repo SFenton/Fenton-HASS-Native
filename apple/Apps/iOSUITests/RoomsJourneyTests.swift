@@ -81,12 +81,37 @@ final class RoomsJourneyTests: XCTestCase {
         vents.tap()
         XCTAssertTrue(element("room.entity.cover.living_room_vent_1_vent", in: app).waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["room.entity.cover.living_room_vent_1_vent"].exists, "Read-only tiles are not buttons")
+        XCTAssertEqual(element("room.entity.cover.living_room_vent_1_vent", in: app).value as? String, "Open · 60%",
+                       "An open vent shows its position, as in Advanced Controls")
+        // It fills with the Vents family while open (`#3B58B8`), like Advanced Controls' vent tiles.
+        if let capture = RenderedContrast.Capture.screen() {
+            let frame = element("room.entity.cover.living_room_vent_1_vent", in: app).frame
+            let sample = TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture)
+            XCTAssertTrue(sample.map { TileGeometry.matches($0, 0x3B58B8, tolerance: 22) } ?? false, "Open vent fill: \(String(describing: sample))")
+        }
         app.buttons["Close"].tap()
 
         let remote = element("room.card.Living Room Remote", in: app)
         reveal(remote, in: app)
         remote.tap()
         XCTAssertTrue(element("remote.power", in: app).waitForExistence(timeout: 5), "Remote opens the media remote sheet")
+    }
+
+    /// The room rail's chips keep their text at 4.5:1 as rendered in their colours (Climate and Air Quality follow Home
+    /// Assistant's colours, Occupancy fills when detected, Window reads the house), each named with its state.
+    func testLivingRoomChipsReadOnTheirColours() throws {
+        let app = launch(room: "living-room", clean: true)
+        for title in ["Lights", "Climate", "Occupancy", "Window", "Air Quality"] {
+            let chip = element("room.chip.\(title)", in: app)
+            XCTAssertTrue(chip.waitForExistence(timeout: 10), title)
+            XCTAssertTrue(chip.label.hasPrefix("\(title), "), chip.label)
+            assertTarget(chip)
+            if chip.frame.maxX <= app.windows.firstMatch.frame.maxX,
+               let capture = RenderedContrast.Capture.screen(), let ratio = RenderedContrast.ratio(of: chip.frame, in: capture) {
+                XCTAssertGreaterThanOrEqual(ratio, 4.5, "\(title) chip measured \(ratio):1")
+            }
+        }
+        keepScreenshot(app, "room-chips-\(FentonHomeApp.family)")
     }
 
     /// Towel racks send an explicit turn_on, then turn_off, never toggle.
@@ -203,6 +228,34 @@ final class RoomsJourneyTests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Kitchen"].waitForExistence(timeout: 10), "Room pushes after the sheet closes")
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "script.increment_room_access")).firstMatch.exists
             || app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "script.turn_on")).firstMatch.exists)
+    }
+
+    /// The Rooms grid draws each room in its own colour with a filled white glyph and a vertically centred chevron
+    /// (owner, 2026-10-16: "room tiles don't have nice colours, and icons should be filled/white").
+    func testRoomsGridTilesAreColouredWithCentredChevrons() throws {
+        let app = launch(quickLinks: true, clean: true)
+        element("quickLinks.rooms", in: app).tap()
+        XCTAssertTrue(element("rooms.kitchen", in: app).waitForExistence(timeout: 5))
+        sleep(1)
+        keepScreenshot(app, "rooms-grid-\(FentonHomeApp.family)")
+        let capture = try XCTUnwrap(RenderedContrast.Capture.screen())
+        let expected: [String: UInt32] = ["kitchen": 0x547F12, "gym": 0xAF5F00, "garage": 0xA6222C, "living-room": 0x8A6F44]
+        for (room, fill) in expected {
+            let tile = element("rooms.\(room)", in: app)
+            guard tile.exists, tile.isHittable else { continue } // Below the fold on a short window.
+            assertTarget(tile)
+            let frame = tile.frame
+            let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture))
+            XCTAssertTrue(TileGeometry.matches(sample, fill), "\(room) is \(sample), expected \(String(fill, radix: 16))")
+            let chevron = try XCTUnwrap(TileGeometry.chevron(in: frame, capture: capture), "\(room): no chevron")
+            XCTAssertEqual(chevron.midY, frame.midY, accuracy: 3, "\(room) chevron is vertically centred")
+            // A filled white glyph: white ink in the leading 44 pt column, and nothing else but the title beside it.
+            let glyphColumn = CGRect(x: frame.minX + 8, y: frame.minY + 6, width: 36, height: frame.height - 12)
+            // Only near-white differs from every room fill by this much, so a family-coloured glyph would not register.
+            let glyph = try XCTUnwrap(TileGeometry.inkBounds(in: glyphColumn, background: sample, threshold: 400, capture: capture),
+                                      "\(room): no white glyph")
+            XCTAssertGreaterThan(glyph.height, 14, "\(room) glyph is drawn")
+        }
     }
 
     /// Page links close Quick Links and push their page.

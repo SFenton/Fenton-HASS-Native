@@ -9,6 +9,7 @@ import SwiftUI
 ///
 /// - `FENTON_GALLERY_ROUTE=hub|recipes` opens that page (default `hub`).
 /// - `FENTON_GALLERY_FOOD_MODE=error|empty|slow` makes the service fail, return nothing, or stay loading.
+/// - `FENTON_GALLERY_FOOD_DELAY_MS=<ms>` sets how long each answer takes (default 300).
 struct FoodGallery: View {
     @State private var store = FoodFixtures.store()
     @State private var service: FixtureRecipeService
@@ -22,7 +23,12 @@ struct FoodGallery: View {
 
     init() {
         let environment = ProcessInfo.processInfo.environment
-        _service = State(initialValue: FixtureRecipeService(mode: environment["FENTON_GALLERY_FOOD_MODE"].flatMap(FixtureRecipeService.Mode.init(rawValue:)) ?? .normal))
+        // FENTON_GALLERY_FOOD_DELAY_MS stretches every answer, so a journey can watch the load gate's spinner (the
+        // simulator's launch alone outlasts the web's one-second minimum).
+        let delay = environment["FENTON_GALLERY_FOOD_DELAY_MS"].flatMap { Int($0) }.map { Duration.milliseconds($0) } ?? .milliseconds(300)
+        _service = State(initialValue: FixtureRecipeService(
+            mode: environment["FENTON_GALLERY_FOOD_MODE"].flatMap(FixtureRecipeService.Mode.init(rawValue:)) ?? .normal, delay: delay
+        ))
         // `none` starts on the gallery list, e.g. to open a page with the debug launch route (FENTON_OPEN_FOOD).
         let start: [FoodRoute] = switch environment["FENTON_GALLERY_ROUTE"] {
         case "recipes": [.hub, .recipes]

@@ -4,9 +4,10 @@ import SwiftUI
 /// A horizontally paging row of equal-width cells with a page indicator and, on wide layouts, previous and next
 /// buttons (web `useHorizontalScrollControls`, `WeatherScrollControls`, `WeatherCarouselPagination`).
 ///
-/// Each page holds ``WeatherCarouselPaging/perPage`` whole cells; scrolling snaps to pages
-/// (`scrollTargetBehavior(.paging)`). Every cell stays in the accessibility tree, so VoiceOver reaches each hour and
-/// scrolls the row itself; the page indicator is an adjustable element. Wide layouts (regular horizontal size class)
+/// Each page holds ``WeatherCarouselPaging/perPage`` whole cells; scrolling snaps to pages with
+/// `pagesScrollViewByViewport()`, not `scrollTargetBehavior`, which leaks observation state on every resume
+/// (`.agents/patterns/resume-lifecycle.md`). Every cell stays in the accessibility tree, so VoiceOver reaches each
+/// hour and scrolls the row itself; the page indicator is an adjustable element. Wide layouts (regular horizontal size class)
 /// add 44 pt previous and next buttons, because the web shows them for pointer devices. HIG: Scroll views, Page
 /// controls.
 struct WeatherPagedCarousel<Cell: View>: View {
@@ -62,8 +63,8 @@ struct WeatherPagedCarousel<Cell: View>: View {
                 }
             }
             .scrollTargetLayout()
+            .pagesScrollViewByViewport()
         }
-        .scrollTargetBehavior(.paging)
         .scrollPosition(id: $firstVisible)
         .accessibilityIdentifier("\(identifier).carousel")
     }

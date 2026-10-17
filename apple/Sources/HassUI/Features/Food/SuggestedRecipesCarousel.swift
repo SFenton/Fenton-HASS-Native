@@ -81,8 +81,8 @@ struct SuggestedRecipesCarousel: View {
                 }
             }
             .scrollTargetLayout()
+            .pagesScrollViewByViewport()
         }
-        .scrollTargetBehavior(.paging)
         .scrollIndicators(.hidden)
         .scrollPosition(id: $page)
         // The next page peeks into the page margin at standard sizes; at accessibility sizes the sliver is unreadable (and
