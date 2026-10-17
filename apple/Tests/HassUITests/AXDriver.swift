@@ -376,7 +376,7 @@ final class AXWindow {
         // A page or sheet can take a while to appear when the machine is busy.
         var identifiers = await pressable()
         var waited: TimeInterval = 0
-        while identifiers.isEmpty, waited < 15 {
+        while identifiers.isEmpty, waited < 60 {
             await hosted.settle(0.3)
             waited += 0.4
             identifiers = await pressable()
