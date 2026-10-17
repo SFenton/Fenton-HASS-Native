@@ -123,18 +123,22 @@ final class LiveActivityJourneyTests: JourneyTestCase {
         app.launchEnvironment["FENTON_LIVE_ACTIVITY"] = "1"
         app.launchEnvironment["FENTON_LIVE_ACTIVITY_FIXTURE"] = "three"
         app.launch()
-        sleep(5)
+        sleep(8)
         let lock = NSSelectorFromString("pressLockButton")
         guard XCUIDevice.shared.responds(to: lock) else { throw XCTSkip("This runtime has no lock button hook") }
         _ = XCUIDevice.shared.perform(lock)
         sleep(2)
         _ = XCUIDevice.shared.perform(lock)
-        sleep(3)
+        sleep(6)
         let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         shot.name = "live-activity-real-lockscreen-\(layout)"
         shot.lifetime = .keepAlways
         add(shot)
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let tree = XCTAttachment(string: springboard.debugDescription)
+        tree.name = "springboard-tree-\(layout)"
+        tree.lifetime = .keepAlways
+        add(tree)
         let rows = springboard.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Bath Fan' OR label CONTAINS 'Dishwasher'"))
         XCTAssertTrue(rows.firstMatch.waitForExistence(timeout: 10), "the activity's rows are not on the Lock Screen")
         XCUIDevice.shared.press(.home)
