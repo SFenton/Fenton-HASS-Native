@@ -147,7 +147,7 @@ final class WallpaperJourneyTests: JourneyTestCase {
     }
 
     private func openQuickLinks(in app: XCUIApplication) {
-        openSection("quickLinks", title: "Quick Links", in: app)
+        app.buttons["quickLinks.open"].tap()
         XCTAssertTrue(element("quickLinks.rooms", in: app).waitForExistence(timeout: 10), "Quick Links did not open")
     }
 
