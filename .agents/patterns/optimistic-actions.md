@@ -13,6 +13,7 @@
   - Use `.liveChange` when something else may override the result. Lights under Presence Based Lighting are the example: if the light reverts, the tile follows the truth instead of holding the tapped value.
 - **Live source:** `init(store:rules:caller:)` tracks entity states. `init(rules:caller:live:)` takes any observable value, such as an attribute (`fan_mode`) or a derived key.
 - **Reading:** views read `shown(key)`. `isPending(key)` tells a control it is waiting, for example to dim a spinner. Do not show an error UI for a pending value.
+- **Pending outline (not built, 2026-10-17).** The sign-in lane was asked for a faint outline on a tile between the tap and the confirmation. `isPending` exists for a control's own dimming, but a tile outline needs a new `GlassTile` input every controller would pass, and "no error UI between the optimistic value and the live one" is the pattern's rule; the planner decides whether to add it as a tile-wide pattern.
 - **Telemetry:** each call is a `ServiceCall` signpost, each confirmation an `OptimisticConfirm` interval, and rollbacks are counted (`optimistic.rollbacks`).
 - **Adopting:**
   - New controllers use `OptimisticActions`.
