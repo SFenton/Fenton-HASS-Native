@@ -135,7 +135,8 @@ struct GalleryLaunchTests {
         return hosted.snapshot()
     }
 
-    @Test(arguments: ComponentGallery.Page.allCases)
+    /// `.backdrop` is blank by design (the wallpaper and nothing else, drawn only with `FENTON_BACKDROP_FIXTURE=1`).
+    @Test(arguments: ComponentGallery.Page.allCases.filter { $0 != .backdrop })
     func everyGalleryPageDrawsOnAPhoneAndATablet(page: ComponentGallery.Page) async throws {
         for size in [Self.phone, Self.tablet] {
             let image = try #require(await draw(page, size: size), "\(page) at \(size)")

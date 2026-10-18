@@ -1,3 +1,4 @@
+import HassCore
 import HassDesign
 import SwiftUI
 
@@ -31,6 +32,8 @@ public struct ComponentGallery: View {
         case systemAccessibility = "system-accessibility"
         case modalSizing = "modal-sizing"
         case liveActivity = "live-activity"
+        /// An empty page: only the wallpaper and its scrim (with `FENTON_BACKDROP_FIXTURE=1`), for screenshots.
+        case backdrop
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -50,7 +53,7 @@ public struct ComponentGallery: View {
     public var body: some View {
         // Every gallery file is compiled into Debug builds only; release builds never show a gallery.
         #if DEBUG
-        pages
+        pages.modifier(GalleryBackdrop())
         #else
         EmptyView()
         #endif
@@ -100,6 +103,7 @@ public struct ComponentGallery: View {
                     case .systemAccessibility: SystemAccessibilityGallery()
                     case .modalSizing: ModalSizingGallery()
                     case .liveActivity: LiveActivityGallery()
+                    case .backdrop: BackdropOnlyPage()
                     case .rooms, .vacation, .food, .chores, .location, .settings: EmptyView()
                     }
                 }
@@ -113,3 +117,36 @@ public struct ComponentGallery: View {
     }
     #endif
 }
+
+#if DEBUG
+/// With `FENTON_BACKDROP_FIXTURE=1` a gallery gets the same wallpaper as the shell: the fixture store, and the window
+/// measured for it, so journeys and the scroll cost probe see the photo, the Background Blur setting and the real
+/// render path. Without it a gallery draws the plain base, as before.
+private struct GalleryBackdrop: ViewModifier {
+    @State private var store = HouseBackdropStore.fixture(for: HassServer(baseURL: URL(string: "https://gallery.invalid")!))
+
+    func body(content: Content) -> some View {
+        if let store {
+            content
+                .backdropCanvasProvider()
+                .environment(store)
+                .task { await store.refresh() }
+        } else {
+            content
+        }
+    }
+}
+#endif
+
+#if DEBUG
+/// A page with nothing on it: the wallpaper and its scrim and no navigation bar (`FENTON_GALLERY=backdrop`).
+private struct BackdropOnlyPage: View {
+    var body: some View {
+        #if os(iOS)
+        Color.clear.toolbar(.hidden, for: .navigationBar)
+        #else
+        Color.clear
+        #endif
+    }
+}
+#endif

@@ -37,6 +37,14 @@ Grid A without sheen|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_
 Grid A without rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=rim
 Grid A without sheen or rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=sheen,rim
 
+# The wallpaper's cost (--section backdrop; --section all skips it): the same pages with the fixture house photo
+# behind them (FENTON_BACKDROP_FIXTURE=1, Debug builds; the gallery draws the shell's backdrop store), so the wallpaper
+# bitmap, its offset and its scrim are in the number. Add FENTON_BACKDROP_BLUR=<0-100> to start at another setting.
+[backdrop]
+Settings (wallpaper)|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_BACKDROP_FIXTURE=1
+Living Room (wallpaper)|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_ROOM=living-room FENTON_BACKDROP_FIXTURE=1
+Grid workload (wallpaper)|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_BACKDROP_FIXTURE=1
+
 [live]
 Live Home|LIVE=1 FENTON_SCROLLCOST_OPEN=home
 Live Security|LIVE=1 FENTON_SCROLLCOST_OPEN=security

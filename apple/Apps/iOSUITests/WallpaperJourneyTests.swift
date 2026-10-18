@@ -20,7 +20,7 @@ final class WallpaperJourneyTests: JourneyTestCase {
     /// The base color's channels (`HouseBackdropStyle.base`, `#111723`).
     private static let base = [17.0, 23.0, 35.0]
     /// The scrim's black opacity by fraction of the window height (`HouseBackdropStyle.scrimStops`).
-    private static let scrim: [(location: Double, opacity: Double)] = [(0, 0.44), (0.28, 0.40), (0.50, 0.42), (0.75, 0.52), (1, 0.64)]
+    private static let scrim: [(location: Double, opacity: Double)] = [(0, 0.44), (0.28, 0.45), (0.50, 0.46), (0.75, 0.52), (1, 0.64)]
 
     /// The plain base color under the scrim at `fraction` of the window's height: what shows where there is no photo.
     private static func plain(atFraction fraction: Double) -> [Double] {
