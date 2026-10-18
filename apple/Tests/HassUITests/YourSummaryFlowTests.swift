@@ -16,13 +16,12 @@ struct YourSummaryFlowTests {
     static let phone = CGSize(width: 402, height: 874)
     static let tablet = CGSize(width: 810, height: 1080)
 
-    /// The profile gallery with `environment` set, settled.
+    /// The profile gallery with `environment` (passed to it directly, not through the process environment, which a suite running
+    /// beside this one may be changing), settled.
     func open(_ environment: [String: String] = [:], size: CGSize = YourSummaryFlowTests.phone) async -> AXWindow {
-        await withLaunch(environment: environment) {
-            let driver = AXWindow(ComponentGallery(page: .profile), size: size)
-            await driver.window.settle(1.0)
-            return driver
-        }
+        let driver = AXWindow(ProfileGallery(environment: environment), size: size)
+        await driver.window.settle(1.0)
+        return driver
     }
 
     func lastCall(_ driver: AXWindow, _ matches: @escaping (String) -> Bool) async -> String {

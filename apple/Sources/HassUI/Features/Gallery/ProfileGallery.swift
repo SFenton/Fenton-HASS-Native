@@ -72,6 +72,11 @@ struct ProfileGallery: View {
                         }
                     }
                     .hassSheet(.form, height: .full)
+                    #if os(macOS)
+                    // A hosted macOS sheet sizes to its content; tall enough that every tab, row and the tab bar are in view
+                    // without scrolling, which the driven tests rely on.
+                    .frame(minHeight: 760)
+                    #endif
             }
     }
 
