@@ -133,10 +133,11 @@ struct MotionGallery: View {
             AnyView(DueLabel(text: "3 days", tone: on ? .overdueLong : .future))
         },
         Case(id: "climateNotice", title: "ClimateNotice") { on in
-            AnyView(ClimateNotice(text: on ? "A window is open." : "Everything is closed.", isWarning: on))
+            // The same text both ways: on a narrow window two sentences wrap differently, and only colour may change.
+            AnyView(ClimateNotice(text: "A window is open.", isWarning: on))
         },
         Case(id: "lightingMode", title: "LightingModeButton") { on in
-            AnyView(LightingModeButton(mode: on ? "Evening" : "Day",
+            AnyView(LightingModeButton(mode: "Evening",
                                        swatch: on ? [.init(255, 140, 0), .init(120, 0, 160)] : [.init(255, 255, 255), .init(120, 200, 255)],
                                        action: {}))
         },
