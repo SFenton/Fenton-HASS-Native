@@ -29,6 +29,8 @@ struct MotionGallery: View {
             }
             .padding(HassTokens.Spacing.l)
         }
+        // On the scroll view only: an outer identifier would replace the Toggle all button's.
+        .accessibilityIdentifier("motion.scroll")
         // Always in reach, so a test (or a person) can flip everything from anywhere on the page.
         .safeAreaInset(edge: .bottom) {
             // The primary button's own fill and label: the system prominent style measured 2.8:1 on the dark page.
@@ -41,7 +43,6 @@ struct MotionGallery: View {
             .background(.bar)
         }
         .navigationTitle("Motion")
-        .accessibilityIdentifier("motion.scroll")
     }
 
     private func card(_ item: Case) -> some View {
