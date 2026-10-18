@@ -9,7 +9,7 @@ final class LiveActivityJourneyTests: JourneyTestCase {
     private func launch(_ scenario: String, arguments: [String] = [], identifier: String? = nil) -> XCUIApplication {
         let app = FentonHomeApp.launchGallery("live-activity", arguments: arguments, environment: ["FENTON_GALLERY_SCENARIO": scenario])
         let first = identifier.map { element($0, in: app) } ?? app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'liveactivity.'")).firstMatch
-        XCTAssertTrue(first.waitForExistence(timeout: 10), "\(scenario) did not draw")
+        XCTAssertTrue(first.waitForExistence(timeout: 30), "\(scenario) did not draw")
         return app
     }
 

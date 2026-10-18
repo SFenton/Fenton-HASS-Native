@@ -96,6 +96,6 @@ public struct HomeActivityIslandPreview: View {
     /// An empty element with the exact bounds of the view it backs, so the journeys can measure a region or the island itself:
     /// a container's own accessibility frame is the union of its children, which hides how much room the region had.
     private static func bounds(_ identifier: String) -> some View {
-        Color.clear.accessibilityElement().accessibilityIdentifier(identifier)
+        Color.clear.accessibilityElement().accessibilityLabel("Island stand-in region").accessibilityIdentifier(identifier)
     }
 }
