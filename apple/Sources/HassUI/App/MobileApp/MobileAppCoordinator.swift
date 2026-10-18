@@ -29,6 +29,8 @@ public final class MobileAppCoordinator {
     @ObservationIgnored private(set) var userID: String?
     @ObservationIgnored private var userName: String?
     @ObservationIgnored private var token: String?
+    /// The Home activity's push-to-start token (nil while Live Activities are off or unsupported).
+    @ObservationIgnored private var startActivityToken: String?
     /// The running sync, so a token arriving mid-sync waits for it instead of racing it.
     @ObservationIgnored private var syncTask: Task<Void, Never>?
     @ObservationIgnored private var listeners: [@MainActor (MobileAppRegistration?) -> Void] = []
@@ -95,13 +97,41 @@ public final class MobileAppCoordinator {
         return true
     }
 
+    /// The Home activity's push-to-start token changed, or Live Activities were turned off (nil).
+    /// - Returns: Whether it differs from the last one, so the caller syncs.
+    func setStartActivityToken(_ hex: String?) -> Bool {
+        guard hex != startActivityToken else { return false }
+        startActivityToken = hex
+        return true
+    }
+
+    /// Takes the Home activity's push-to-start token (nil removes it) and syncs the registration when it changed, so
+    /// Home Assistant can start the activity while the app is closed (`.agents/platforms/apple/live-activities.md` §6).
+    public func registerStartActivityToken(_ hex: String?) async {
+        guard setStartActivityToken(hex) else { return }
+        await sync()
+    }
+
+    /// Where the Live Activity buttons and tokens go: the signed-in user's webhook, looked up when each is sent so the
+    /// App Intents work in a process the app was launched into in the background. Nil while signed out, not yet
+    /// registered, disabled, or in a build that may not register (the simulator).
+    public nonisolated func activityWebhookProvider() -> @Sendable () -> (any LiveActivityWebhookSending)? {
+        let store = store, transport = transport, enabled = isEnabled && allowsRegistration
+        return {
+            guard enabled, let active = store.active else { return nil }
+            return MobileAppLiveActivityWebhook(
+                client: MobileAppWebhookClient(source: FixedMobileAppWebhookSource(active.webhook), transport: transport))
+        }
+    }
+
     /// Registers or updates for the session's user with the current token. Waits for a running sync first.
     public func sync() async {
         await syncTask?.value
         guard isEnabled, let registrar, let userID else { return }
-        let token = token, userName = userName
+        let token = token, userName = userName, startActivityToken = startActivityToken
         let task = Task { [weak self] in
-            guard let outcome = try? await registrar.sync(userID: userID, userName: userName, token: token) else { return }
+            guard let outcome = try? await registrar.sync(userID: userID, userName: userName, token: token,
+                                                          startActivityToken: startActivityToken) else { return }
             self?.setRegistration(outcome.registration)
         }
         syncTask = task

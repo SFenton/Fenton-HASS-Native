@@ -23,9 +23,15 @@ targets:
     platform: iOS
     sources:
       - path: Apps/iOS
+      # The Live Activity's App Intents, compiled into the app (they run here) and the widget extension (it draws them).
+      - path: Apps/Shared
     dependencies:
       - package: FentonHomeApple
         product: HassUI
+      - package: FentonHomeApple
+        product: FentonActivityModel
+      # The Home Live Activity (Lock Screen, Dynamic Island) draws in this extension.
+      - target: FentonHomeWidgets
       # Finishes Fenton Push notifications: buttons, camera snapshots (`.agents/platforms/apple/push.md`).
       - target: FentonHomeNotificationService
       # The live camera view of an expanded camera notification.
@@ -46,18 +52,35 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # The seven alternates of Settings → App Icon (`AppIconChoice`, `.agents/design/direction-g.md` App icon); the
+        # names must match the asset sets in Apps/iOS/Assets.xcassets, which `tools/render_app_icons.sh` writes. The
+        # compiler lists them under CFBundleIcons / CFBundleAlternateIcons in the built Info.plist.
+        ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES: >-
+          AppIcon-TealMint AppIcon-PlumLilac AppIcon-ForestGreen AppIcon-BurgundyRose
+          AppIcon-IndigoPeriwinkle AppIcon-EspressoAmber AppIcon-MidnightGold
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     info:
       path: Apps/iOS/Info.plist
       properties:
-        CFBundleDisplayName: Home
+        # The public name (owner, 2026-10-17); the bundle id stays com.sfenton.home. `AppBranding` mirrors these.
+        # CFBundleSpokenName is what VoiceOver and Siri say for "S+H"; INAlternativeAppNames lets Siri take the old
+        # and platform names in an App Shortcut phrase (three at most). `.agents/platforms/apple/app-name.md`.
+        CFBundleDisplayName: S+H
+        CFBundleSpokenName: S and H
+        INAlternativeAppNames:
+          - INAlternativeAppName: Home Assistant
+            INAlternativeAppNamePronunciationHint: home assistant
+          - INAlternativeAppName: HASS
+            INAlternativeAppNamePronunciationHint: hass like pass
+          - INAlternativeAppName: Fenton Home
+            INAlternativeAppNamePronunciationHint: fenton home
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSCameraUsageDescription: Scan item barcodes and printed expiration dates to add groceries to your inventory.
         NSPhotoLibraryAddUsageDescription: Save camera snapshots to your photo library.
         # Location reports Home and Away to Home Assistant (`.agents/platforms/apple/location.md`).
-        NSLocationWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away.
-        NSLocationAlwaysAndWhenInUseUsageDescription: Home Assistant uses your location to know when you're home or away, even when this app is closed.
+        NSLocationWhenInUseUsageDescription: S+H shares your location with Home Assistant to know when you're home or away.
+        NSLocationAlwaysAndWhenInUseUsageDescription: S+H shares your location with Home Assistant to know when you're home or away, even when the app is closed.
         # Zone crossings and significant location changes relaunch the app in the background; silent pushes run
         # commands such as clear_notification (contract v1, rule 3).
         UIBackgroundModes:
@@ -65,13 +88,21 @@ targets:
           - remote-notification
         UILaunchScreen:
           UIColorName: LaunchBackground
+        # The Home Live Activity (`.agents/platforms/apple/live-activities.md`). NSSupportsLiveActivitiesFrequentUpdates
+        # stays off until Apple throttles the pushes (spec, Engine rules 4).
+        NSSupportsLiveActivities: true
+        # A tap on the activity opens the focused job's page (`fentonhome://liveactivity?url=…`, ActivityDeepLink).
+        CFBundleURLTypes:
+          - CFBundleURLName: com.sfenton.home.liveactivity
+            CFBundleURLSchemes:
+              - fentonhome
         # Lets ProMotion iPhones scroll and animate at 120 Hz; without it the app is capped at 60 Hz.
         CADisableMinimumFrameDurationOnPhone: true
         # At home the app talks to Home Assistant on its home network address (plain HTTP on port 8123) instead of
         # the public URL through Cloudflare; it finds it by its Bonjour advertisement (LocalServerRoute,
         # `.agents/platforms/apple/connection-lifecycle.md`). NSAllowsLocalNetworking permits HTTP only to local
         # names and addresses; every other host still needs HTTPS.
-        NSLocalNetworkUsageDescription: Home connects to Home Assistant directly on your home network, which is faster than going through the internet.
+        NSLocalNetworkUsageDescription: S+H connects to Home Assistant directly on your home network, which is faster than going through the internet.
         NSBonjourServices:
           - _home-assistant._tcp
         NSAppTransportSecurity:
@@ -108,7 +139,7 @@ targets:
     info:
       path: Apps/NotificationService/Info.plist
       properties:
-        CFBundleDisplayName: Home Notifications
+        CFBundleDisplayName: S+H Notifications
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -139,7 +170,7 @@ targets:
     info:
       path: Apps/NotificationContent/Info.plist
       properties:
-        CFBundleDisplayName: Home Camera Notifications
+        CFBundleDisplayName: S+H Camera Notifications
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
@@ -149,6 +180,40 @@ targets:
             UNNotificationExtensionCategory: fenton.camera
             UNNotificationExtensionInitialContentSizeRatio: 0.5625
             UNNotificationExtensionDefaultContentHidden: false
+  FentonHomeWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Apps/Widgets
+      - path: Apps/Shared
+    dependencies:
+      # The model and the views only: no HAKit, no networking, no Keychain.
+      - package: FentonHomeApple
+        product: FentonActivityModel
+      - package: FentonHomeApple
+        product: FentonActivityViews
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    entitlements:
+      path: Apps/Widgets/FentonHomeWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.sfenton.home
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.Widgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_DEBUG_DYLIB: NO
+        # An extension may only use extension-safe API (HassDesign draws the activity's colours).
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: Apps/Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: S+H Live Activities
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
   FentonHomeWatch:
     type: application
     platform: watchOS
@@ -162,7 +227,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home.watchkitapp
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.sfenton.home
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Home
+        INFOPLIST_KEY_CFBundleDisplayName: S+H
   FentonHomeUITests:
     type: bundle.ui-testing
     platform: iOS

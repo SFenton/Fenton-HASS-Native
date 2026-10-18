@@ -1,6 +1,7 @@
 #if os(macOS)
 import AppKit
 import Foundation
+import FentonActivityModel
 import HassCore
 import HassDesign
 @testable import HassUI
@@ -69,6 +70,17 @@ struct GalleryLaunchMatrixTests {
         }
         launches.append(Launch(page: .bedroom, environment: ["FENTON_GALLERY_SHEET": "wake-light"], opensSheet: true, size: Self.tablet))
         launches.append(Launch(page: .bedroom, environment: ["FENTON_GALLERY_SHEET": "stephens-bed"], opensSheet: true, size: Self.tablet))
+        await run(launches)
+    }
+
+    @Test func liveActivityGalleryDrawsEachFixtureGroupAndTheIslandWidths() async {
+        var launches = HomeActivityFixtures.groups.keys.sorted().map {
+            Launch(page: .liveActivity, environment: ["FENTON_GALLERY_SCENARIO": $0])
+        }
+        launches += ["fan", "vacuum-paused", "problem-navigation-stuck", "island-widths", "nothing-at-all"].map {
+            Launch(page: .liveActivity, environment: ["FENTON_GALLERY_SCENARIO": $0])
+        }
+        launches.append(Launch(page: .liveActivity, environment: ["FENTON_GALLERY_SCENARIO": "stack"], size: Self.tablet))
         await run(launches)
     }
 

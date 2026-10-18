@@ -261,7 +261,7 @@ private struct BarGlass<S: Shape>: ViewModifier {
         #if os(watchOS)
         content.background(.ultraThinMaterial, in: shape)
         #else
-        if #available(iOS 26.0, macOS 26.0, *) {
+        if #available(iOS 26.0, macOS 26.0, *), !PerfSwitches.isOff(.glassBar) {
             content.glassEffect(glass, in: shape)
         } else {
             content.background {
@@ -304,8 +304,12 @@ public extension View {
         safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
         #else
         if #available(iOS 26, macOS 26, *) {
-            safeAreaBar(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
-                .scrollEdgeEffectStyle(.soft, for: .bottom)
+            if PerfSwitches.isOff(.scrollEdge) {
+                safeAreaBar(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
+            } else {
+                safeAreaBar(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
+                    .scrollEdgeEffectStyle(.soft, for: .bottom)
+            }
         } else {
             safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) { bar }
         }

@@ -27,6 +27,12 @@ public final class AppSession {
     /// Location reporting in shadow mode; nil on iPad and in launches that don't report (``LocationLaunchPolicy``).
     @ObservationIgnored public let location: LocationCoordinator?
 
+    /// The Live Activities: tokens for Home Assistant, button presses and sign-out (nil in tests that do not need it).
+    @ObservationIgnored public let liveActivities: LiveActivityCoordinator?
+
+    /// The app's pages in system search; filled when a session starts and emptied at sign-out.
+    @ObservationIgnored private let spotlight: any SpotlightIndexing
+
     @ObservationIgnored private let tokenStore: TokenStore
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
 
@@ -37,13 +43,18 @@ public final class AppSession {
     ///   - snapshotCache: The disk snapshot of entity states.
     ///   - push: The app's push coordinator (the app delegate's, so system callbacks reach it).
     ///   - location: The app's location coordinator (the app delegate's, created at launch for zone relaunches).
+    ///   - liveActivities: The app's Live Activity coordinator (the app delegate's, so its buttons work at launch).
+    ///   - spotlight: Where the app's pages are indexed; inert unless the app passes ``CoreSpotlightIndexer``.
     public init(tokenStore: TokenStore = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup),
                 snapshotCache: EntitySnapshotCache = .init(), push: PushCoordinator = .inert(),
-                location: LocationCoordinator? = nil) {
+                location: LocationCoordinator? = nil, liveActivities: LiveActivityCoordinator? = nil,
+                spotlight: any SpotlightIndexing = InertSpotlightIndexer()) {
+        self.spotlight = spotlight
         self.tokenStore = tokenStore
         self.snapshotCache = snapshotCache
         self.push = push
         self.location = location
+        self.liveActivities = liveActivities
         #if DEBUG
         // UI tests start signed out: FENTON_UITEST_RESET=1 clears the saved sign-in and snapshot, and the location
         // screen is offered again.
@@ -88,9 +99,12 @@ public final class AppSession {
         UserDefaults.standard.removeObject(forKey: ChoresModel.viewerDefaultsKey)
         tokens = nil
         backdrop = nil
+        spotlight.removeAll()
         phase = .signedOut
-        let push = push
+        let push = push, liveActivities = liveActivities
         Task {
+            // Nothing of the signed-in person stays on a Lock Screen.
+            await liveActivities?.sessionEnded()
             await push.sessionEnded()
             if let stored { await HassLoginFlow.revoke(server: stored.server, refreshToken: stored.refreshToken) }
         }
@@ -103,9 +117,11 @@ public final class AppSession {
         let lifecycle = ConnectionLifecycle(connection: connection)
         self.tokens = tokens
         push.sessionStarted(server: server) { try await tokens.validAccessToken() }
+        liveActivities?.sessionStarted()
         // Created before the phase changes so the first signed-in frame already has the cached photo.
         backdrop = HouseBackdropStore.session(for: server)
         phase = .signedIn(connection, lifecycle)
+        spotlight.indexPages(SpotlightCatalog.entries)
         lifecycle.didBecomeActive()
     }
 }

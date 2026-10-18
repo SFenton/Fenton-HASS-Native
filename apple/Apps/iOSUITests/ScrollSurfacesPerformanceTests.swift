@@ -23,6 +23,12 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
         /// The 95th percentile of the main thread's CPU time per run-loop turn while scrolling, in ms (a 120 Hz frame is 8.3).
         static let fixtureP95 = 6.0
         static let livePageP95 = 3.5
+        /// A long Chores page on fixtures: every row that scrolls in is a new `List` cell, sized and built by SwiftUI and UIKit
+        /// (about 40% of the main thread's samples, none of it ours), so it sits above the 6 ms fixture budget. After the
+        /// header fade stopped updating the view graph per frame it reads p95 6.8 to 7.7 ms and 32 to 57 turns over 8 ms
+        /// (before: 7.3 to 7.8 ms, 54 to 61). The budget holds that line, it does not bless it.
+        static let longListP95 = 8.0
+        static let longListTurnsOver8 = 70.0
         /// Turns that computed longer than 8 ms in a scroll run: none. Before the fix every live page had 18 to 26.
         static let turnsOver8 = 0.0
         /// The longest turn in the (warm) second scroll run, in ms.
@@ -65,6 +71,9 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
     static let livingRoom = Surface(name: "Living Room", gallery: "rooms", environment: offline.merging(["FENTON_GALLERY_ROOM": "living-room"]) { $1 }, ready: "room.scroll.living-room")
     static let climate = Surface(name: "Climate", gallery: "climate", environment: ["FENTON_GALLERY_CLEAN": "1"], ready: "climate.scroll")
     static let chores = Surface(name: "Chores", gallery: "chores", environment: ["FENTON_GALLERY_CLEAN": "1"], ready: "todo.page.chores")
+    /// A house as long as the real one (12 more chores in each of Stephen's lists): the short fixture page barely scrolls.
+    static let choresLongHouse = Surface(name: "Chores (long house)", gallery: "chores", environment: ["FENTON_GALLERY_CLEAN": "1", "FENTON_GALLERY_CHORES": "12"], ready: "todo.page.chores")
+    static let settings = Surface(name: "Settings", gallery: "settings", environment: ["FENTON_GALLERY_CLEAN": "1"], ready: "settings.list")
     static let foodHub = Surface(name: "Food hub", gallery: "food", environment: ["FENTON_GALLERY_ROUTE": "hub"], ready: "food.scroll")
     static let recipes = Surface(name: "Recipes", gallery: "food", environment: ["FENTON_GALLERY_ROUTE": "recipes"], ready: "recipes.grid")
     static let admin = Surface(name: "Admin settings", gallery: "household-settings", environment: ["FENTON_GALLERY_HOUSEHOLD": "admin", "FENTON_GALLERY_CLEAN": "1"], ready: "household.admin")
@@ -128,7 +137,7 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
     }
 
     /// Scrolls twice after a settle and holds the second (warm) run to the budget.
-    private func assertScrollWithinBudget(_ name: String, app: XCUIApplication, p95: Double) {
+    private func assertScrollWithinBudget(_ name: String, app: XCUIApplication, p95: Double, turnsOver8: Double = Budget.turnsOver8) {
         sleep(6) // first-appearance work (images, shaders, the first layout of every tile) settles before measuring
         var last = Reading("")
         for _ in 0..<2 {
@@ -139,7 +148,7 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
             if last.fits { return }
         }
         XCTAssertLessThanOrEqual(last["p95_ms"], p95, "\(name): p95 main-thread turn while scrolling")
-        XCTAssertLessThanOrEqual(last["over8"], Budget.turnsOver8, "\(name): turns over 8 ms while scrolling")
+        XCTAssertLessThanOrEqual(last["over8"], turnsOver8, "\(name): turns over 8 ms while scrolling")
         XCTAssertLessThanOrEqual(last["worst_ms"], Budget.worstTurn, "\(name): longest main-thread turn while scrolling")
     }
 
@@ -163,6 +172,18 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
     func testChoresScrollStaysWithinBudget() throws {
         try requireMeasurableDevice()
         assertScrollWithinBudget("Chores", app: launchGallery(Self.chores), p95: Budget.fixtureP95)
+    }
+
+    /// Owner, 2026-10-17: Chores and Settings did not scroll smoothly. Both are real `List`s; the header fade's scroll reader
+    /// cost them a fifth to a third of their main-thread time (`.agents/testing/apple/performance.md`, Round 3).
+    func testChoresLongHouseScrollStaysWithinBudget() throws {
+        try requireMeasurableDevice()
+        assertScrollWithinBudget("Chores (long house)", app: launchGallery(Self.choresLongHouse), p95: Budget.longListP95, turnsOver8: Budget.longListTurnsOver8)
+    }
+
+    func testSettingsScrollStaysWithinBudget() throws {
+        try requireMeasurableDevice()
+        assertScrollWithinBudget("Settings", app: launchGallery(Self.settings), p95: Budget.fixtureP95)
     }
 
     func testFoodHubScrollStaysWithinBudget() throws {
@@ -210,6 +231,14 @@ final class ScrollSurfacesPerformanceTests: XCTestCase {
 
     func testLiveClimateScrollStaysWithinBudget() throws {
         assertScrollWithinBudget("Live Climate", app: try launchLive(open: "thermostat"), p95: Budget.livePageP95)
+    }
+
+    func testLiveChoresScrollStaysWithinBudget() throws {
+        assertScrollWithinBudget("Live Chores", app: try launchLive(open: "chores"), p95: Budget.livePageP95)
+    }
+
+    func testLiveSettingsScrollStaysWithinBudget() throws {
+        assertScrollWithinBudget("Live Settings", app: try launchLive(open: "settings"), p95: Budget.livePageP95)
     }
 
     func testLiveHomeScrollStaysWithinBudget() throws {

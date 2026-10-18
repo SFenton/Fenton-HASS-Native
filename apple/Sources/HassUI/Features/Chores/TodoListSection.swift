@@ -135,12 +135,13 @@ struct TodoListSection: View {
 struct TodoPlainRow: ViewModifier {
     var top: CGFloat
     var bottom: CGFloat
-    @Environment(\.reportsRowOrigin) private var reportOrigin
+    @Environment(\.todoRowMetrics) private var metrics
 
     func body(content: Content) -> some View {
         content
-            // Where the list's margin is, for the quick links header to line up with (``AlignedToListMargins``).
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(TodoListSpace.name)).minX.rounded() } action: { reportOrigin($0) }
+            // How wide the list's margin leaves a row, for the quick links header to line up with (``AlignedToListMargins``). A
+            // width does not change as the list scrolls, where a position did, on every frame.
+            .onGeometryChange(for: CGFloat.self) { $0.size.width.rounded() } action: { metrics?.report(rowWidth: $0) }
             .listRowInsets(EdgeInsets(top: top, leading: 0, bottom: bottom, trailing: 0))
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)

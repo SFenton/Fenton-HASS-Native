@@ -179,10 +179,21 @@ final class HostedScrollView<Content: View>: UIScrollView, UIScrollViewDelegate 
             rootView.viewportWidth = bounds.width
             host.rootView = rootView
         }
-        let size = ChipRailMetrics.hostedContentSize(natural: naturalSize, bounds: bounds.size)
-        if host.view.frame.size != size { host.view.frame = CGRect(origin: .zero, size: size) }
+        let natural = naturalSize
+        let rightToLeft = effectiveUserInterfaceLayoutDirection == .rightToLeft
+        let size = ChipRailMetrics.hostedContentSize(natural: natural, bounds: bounds.size)
+        // The hosted view is as wide as the row, not the scroll view: a wider hosting view centres what it hosts, and a
+        // short row (Security's two chips) must start at the leading edge, not mid-page.
+        let frame = paging == nil
+            ? ChipRailMetrics.hostedContentFrame(natural: natural, bounds: bounds.size, isRightToLeft: rightToLeft)
+            : CGRect(origin: .zero, size: size)
+        if host.view.frame != frame { host.view.frame = frame }
         if contentSize != size {
             contentSize = size
+            if paging == nil, rightToLeft, !isTracking, !isDecelerating {
+                // Right to left the row starts at the right: show its leading end, not the scroll view's origin.
+                contentOffset.x = ChipRailMetrics.hostedLeadingOffset(contentWidth: size.width, boundsWidth: bounds.width, isRightToLeft: true)
+            }
             followBinding()
         }
     }
