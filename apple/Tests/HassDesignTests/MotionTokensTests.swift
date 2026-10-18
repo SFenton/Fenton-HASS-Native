@@ -37,6 +37,8 @@ struct MotionTokensTests {
         #expect(MotionTokens.Arrival.slideDistance == 30 && MotionTokens.Arrival.riseDistance == 16)
         #expect(MotionTokens.Intro.formDelay > MotionTokens.Intro.titleDelay && MotionTokens.Intro.titleDelay > MotionTokens.Intro.markDelay)
         #expect(MotionTokens.Intro.markPeak > 1 && MotionTokens.Intro.markStart < 1)
-        _ = [MotionTokens.Intro.glow, .markRise, .title, .form, MotionTokens.Arrival.lift, .backdrop]
+        let curves: [Animation] = [MotionTokens.Intro.glow, MotionTokens.Intro.markRise, MotionTokens.Intro.title, MotionTokens.Intro.form,
+                                   MotionTokens.Arrival.lift, MotionTokens.Arrival.backdrop]
+        #expect(curves.count == 6)
     }
 }
