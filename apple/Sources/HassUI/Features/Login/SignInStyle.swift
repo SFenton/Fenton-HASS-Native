@@ -11,6 +11,8 @@ enum SignInStyle {
     /// The glow's centre, then its middle ring (`#3A4E73` → `#1E2A44` → `#121722`).
     static let glowCentre: UInt32 = 0x3A4E73
     static let glowMiddle: UInt32 = 0x1E2A44
+    /// Text-button blue on this ground: `#409CFF` read 3.8:1 over the glow's lighter middle, so this one is lifted to 4.5:1 there.
+    static let link: UInt32 = 0x8AC4FF
     /// The red of an error on this ground: `#FF6961` is 5.9:1 on the base.
     static let error: UInt32 = 0xFF6961
     /// The widest the form column grows (iPad and the unfolded Duo, any orientation).

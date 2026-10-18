@@ -74,6 +74,9 @@ struct LoginView: View {
                 .scrollDismissesKeyboard(.interactively)
             }
         }
+        // The screen is one named group for assistive technologies; its controls keep their own labels.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Sign in")
         // Dark throughout, like the app it opens.
         .preferredColorScheme(.dark)
         .onAppear {
@@ -124,13 +127,14 @@ struct LoginView: View {
             }
             signInButton
             if case .welcomeBack = model.mode {
-                Button(LoginCopy.differentAccount) {
-                    withAnimation(MotionTokens.quick) { model.useDifferentAccount() }
-                    onUseDifferentAccount()
+                Button(action: useDifferentAccount) {
+                    Text(LoginCopy.differentAccount)
+                        .font(.body)
+                        .foregroundStyle(Color(rgb: SignInStyle.link))
+                        .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
+                        .contentShape(Rectangle())
                 }
-                .font(.body)
-                .foregroundStyle(Color(rgb: HassTokens.Palette.tintText))
-                .frame(minHeight: HassTokens.minTarget)
+                .buttonStyle(.plain)
                 .disabled(model.isWorking)
                 .accessibilityIdentifier("login.differentAccount")
             }
@@ -168,6 +172,11 @@ struct LoginView: View {
             submit()
         }
         #endif
+    }
+
+    private func useDifferentAccount() {
+        withAnimation(MotionTokens.quick) { model.useDifferentAccount() }
+        onUseDifferentAccount()
     }
 
     private func submit() {

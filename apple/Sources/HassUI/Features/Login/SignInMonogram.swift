@@ -7,18 +7,19 @@ import SwiftUI
 struct SignInMonogram: View {
     var name: String?
     var icon: AppIconChoice
-    var size: CGFloat = 88
+    /// The disc's diameter; it grows with the text size, like the initials in it.
+    @ScaledMetric(relativeTo: .largeTitle) private var size: CGFloat = 88
 
     var body: some View {
         ZStack {
             Circle().fill(Color(rgb: icon.glyph))
             if let initials = ProfileButton.initials(name) {
                 Text(initials)
-                    .font(.system(size: size * 0.38, weight: .semibold, design: .rounded))
+                    .font(.system(.title, design: .rounded, weight: .semibold))
                     .foregroundStyle(Color(rgb: icon.tint))
             } else {
                 Image(systemName: "person.fill")
-                    .font(.system(size: size * 0.42))
+                    .font(.title)
                     .foregroundStyle(Color(rgb: icon.tint))
             }
         }

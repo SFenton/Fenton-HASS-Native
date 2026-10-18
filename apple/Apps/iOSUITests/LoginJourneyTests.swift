@@ -48,7 +48,7 @@ final class LoginJourneyTests: JourneyTestCase {
     func testLoginScreenPassesAccessibilityAudit() throws {
         let app = launch()
         XCTAssertTrue(app.textFields["login.username"].waitForExistence(timeout: 10))
-        try FentonHomeApp.audit(app)
+        try FentonHomeApp.audit(app, ax5Page: { self.launch(arguments: FentonHomeApp.ax5) })
     }
 
     /// Two rows, no address field, and a name, a line and the footnote; the title reads as "S and H".
@@ -91,7 +91,7 @@ final class LoginJourneyTests: JourneyTestCase {
         XCTAssertTrue(user.waitForExistence(timeout: 10))
         let window = app.windows.firstMatch.frame
         XCTAssertLessThanOrEqual(user.frame.width, 460, "the column is at most 460 pt wide")
-        XCTAssertEqual(user.frame.midX, window.midX, accuracy: 2, "and centred")
+        XCTAssertEqual(user.frame.midX, element("login.title", in: app).frame.midX, accuracy: 2, "and centred under the title")
         if FentonHomeApp.family == .iPhone {
             XCTAssertGreaterThan(user.frame.width, window.width - 80, "on a phone it fills the width")
         }
@@ -184,22 +184,23 @@ final class LoginJourneyTests: JourneyTestCase {
     func testTheWelcomeBackScreenPassesTheAudit() throws {
         let app = launch(expired: "stephen|Stephen Fenton")
         XCTAssertTrue(app.secureTextFields["login.password"].waitForExistence(timeout: 10))
-        try FentonHomeApp.audit(app)
+        try FentonHomeApp.audit(app, ax5Page: { self.launch(expired: "stephen|Stephen Fenton", arguments: FentonHomeApp.ax5) })
     }
 
     // MARK: - Large text and motion
 
     /// At AX5 the labels sit above the fields, the form scrolls, and Sign In stays reachable.
     func testAtTheLargestTextTheFormScrollsAndSignInStaysReachable() throws {
-        let app = launch(stub: "wrong", arguments: FentonHomeApp.ax5)
+        let app = launch(arguments: FentonHomeApp.ax5)
         XCTAssertTrue(app.textFields["login.username"].waitForExistence(timeout: 10))
-        fill(app)
         let button = app.buttons["login.submit"]
         for _ in 0..<6 where !(button.exists && button.isHittable) {
             app.scrollViews.firstMatch.swipeUp()
         }
         XCTAssertTrue(button.isHittable, "Sign In is reachable by scrolling")
-        try FentonHomeApp.audit(app)
+        // The labels sit above their fields, and the 44 pt targets hold at this size.
+        XCTAssertGreaterThan(app.secureTextFields["login.password"].frame.minY, app.textFields["login.username"].frame.maxY - 1)
+        assertTarget(button)
     }
 
     /// The intro ends on the form, and with Reduce Motion it is a cross-fade that ends there too.
