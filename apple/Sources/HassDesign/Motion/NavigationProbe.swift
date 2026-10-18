@@ -145,24 +145,34 @@ final class NavigationProbeController: UIViewController {
         tracker?.start()
     }
 
+    /// The controllers the page lives in: this one's parents, and the controllers its view sits in (the responder chain), each with
+    /// their parents. SwiftUI may add the probe to a hosting controller above the pushed page's own, so both routes are walked.
+    private var ancestors: [UIViewController] {
+        var found: [UIViewController] = []
+        func add(from start: UIViewController?) {
+            var current = start
+            while let controller = current {
+                if !found.contains(where: { $0 === controller }) { found.append(controller) }
+                current = controller.parent
+            }
+        }
+        add(from: self)
+        var responder: UIResponder? = isViewLoaded ? view : nil
+        while let current = responder {
+            if let controller = current as? UIViewController { add(from: controller) }
+            responder = current.next
+        }
+        return found
+    }
+
     /// Whether the page itself is going away (popped or dismissed), not merely covered by a page pushed above it.
     private var isLeaving: Bool {
-        var current: UIViewController? = self
-        while let controller = current {
-            if controller.isMovingFromParent || controller.isBeingDismissed { return true }
-            current = controller.parent
-        }
-        return false
+        ancestors.contains { $0.isMovingFromParent || $0.isBeingDismissed }
     }
 
     /// Whether a push, pop, presentation or dismissal that includes this page is animating now.
     var isTransitioning: Bool {
-        var current: UIViewController? = self
-        while let controller = current {
-            if controller.transitionCoordinator != nil || controller.navigationController?.transitionCoordinator != nil { return true }
-            current = controller.parent
-        }
-        return false
+        ancestors.contains { $0.transitionCoordinator != nil || $0.navigationController?.transitionCoordinator != nil }
     }
 }
 
