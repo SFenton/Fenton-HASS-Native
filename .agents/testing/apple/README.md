@@ -10,6 +10,23 @@
 | [performance.md](performance.md) | Fast-scroll tests on a physical device, telemetry and targets |
 | [ha-companion.md](ha-companion.md) | The official Home Assistant app on our simulators, for comparison |
 
+## Journey health rules (2026-10-17)
+
+Found by running the whole journey suite per family on main; each was a stale or racy journey, or a real app issue, fixed at its cause.
+
+- **A full journey run is sharded.** `tools/devcap.py` caps one hold at 2 h and a family's suite is longer, so run the classes in groups of about 60 tests, one `tools/ios_uitest.sh … -only-testing:FentonHomeUITests/<Class>` per group, and read the results per group. A hold timeout kills the run mid-test and says only `BUILD INTERRUPTED`.
+- **An audit with an `ax5Page` relaunches the app at AX5 in place.** The `app` the journey holds is then the AX5 process, whose galleries hide their Last call line, so a later `expectCall` finds nothing. Audit last, or in its own test (`testRecipesPagePassesAccessibilityAudit`, `testSortSheetPassesAccessibilityAudit`).
+- **A gallery's debug bar never covers a control an AX5 journey taps.** The Food and Vacuum galleries leave the Last call line out at accessibility sizes; the vacuum one grew over the section bar and took its taps.
+- **Find Close with `app.buttons["Close"]`**, never `app.navigationBars.buttons["Close"]`: the folded Duo's rail takes bar buttons into its toolbar.
+- **`isHittable` is true for a tile whose top edge shows.** Scroll until `window.contains(element.frame)` before tapping at its centre. And the first match of a card's identifier can be a label-less twin that reports not hittable although the card takes taps: tap it and assert the selection instead of asking `isHittable`.
+- **Spinner journeys stretch the load.** The simulator's launch outlasts a 900 ms demo load, so the spinner (which shows after 150 ms) is gone before the first query: `FENTON_GALLERY_GATE_DELAY_MS` on the Performance gallery, `FENTON_GALLERY_FOOD_DELAY_MS` on Food.
+- **Gallery data is seeded before the screen builds.** A screen reads its log when it appears, and SwiftUI starts a `.task` before an outer `.onAppear` runs (Performance gallery); seed once per process with a static.
+- **A lazy Form drops rows that scrolled away.** A reveal helper for an element that is not in the tree searches down, then up (`ClimateJourneyTests.reveal`): on the folded Duo's short screen the row is above the end the page was left at.
+- **Never drag a sheet down to "go back to the top" unless the first row is off screen.** A content-height sheet at the top closes (the Scan Item steps audited the Pantry page behind it).
+- **A frame-growth check cannot pass a row with a fixed floor.** Rows that keep a 44 pt minimum height stay the same height while their text triples (iPad Filter sheet Reset row, 74 → 93.5 pt). Give such rows padding that scales (`@ScaledMetric`) rather than a floor, and the Dynamic Type evidence holds without a waiver. The audit's "none shrank" allows half a point (the same fixed text measures 52.0 and 51.99 in two launches).
+- **An accessibility element drawn from a clear shape needs `.contentShape(.accessibility, …)`** or it comes back with a zero frame (camera viewer video).
+- **Core and hosted tests wait on state with margins wider than a stall.** Poll the condition against the clock; a 20 to 200 ms production timeout, a 150 ms grace or a 50 ms "let the hop land" lost to a busy main actor (`HassConnectionLivenessTests`, `HouseholdAwayControllerTests`, `InventoryListModelTests`).
+
 ## Order-independent tests
 
 A full `swift test` runs every `@MainActor` suite in one process, interleaved on the main actor, and a run-loop pump (`RunLoop.main.run`) runs other suites' work nested inside it. A test that passes alone with `--filter` but fails in the full run is depending on that timing or on process state. Run the full suite before calling such a test fixed (2026-10-16).
