@@ -254,11 +254,14 @@ final class ChoresJourneyTests: JourneyTestCase {
         for tile in expected {
             let link = element("chores.link.\(tile.id)", in: app)
             XCTAssertTrue(link.exists, tile.id)
-            // The bottom-leading corner area, below the text and clear of the top highlight.
+            // The bottom-leading corner area, below the text and clear of the top highlight. On the page the tile is tinted
+            // glass: the fill at 78% over the dark underlay, then the sheen's bottom shade (`TileGeometry.glass`).
             let point = CGPoint(x: link.frame.minX + 10, y: link.frame.maxY - 6)
             let sample = try XCTUnwrap(RenderedContrast.rgb(at: point, in: capture), tile.id)
-            XCTAssertLessThanOrEqual(abs(sample.red - tile.rgb.0) + abs(sample.green - tile.rgb.1) + abs(sample.blue - tile.rgb.2), 24,
-                                     "\(tile.id) is \(sample), expected \(tile.rgb) (\(tile.family))")
+            let fill = UInt32(tile.rgb.0 << 16 | tile.rgb.1 << 8 | tile.rgb.2)
+            XCTAssertTrue(TileGeometry.matchesGlass((sample.red, sample.green, sample.blue), fill, onPage: true,
+                                                    heightFraction: 1 - 6 / link.frame.height),
+                          "\(tile.id) is \(sample), expected \(tile.rgb) (\(tile.family)) under tinted glass")
         }
     }
 

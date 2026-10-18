@@ -243,7 +243,8 @@ final class RoomsJourneyTests: XCTestCase {
         let expected: [String: UInt32] = ["kitchen": 0x547F12, "gym": 0xAF5F00, "garage": 0xA6222C, "living-room": 0x8A6F44]
         for (room, fill) in expected {
             let tile = element("rooms.\(room)", in: app)
-            guard tile.exists, tile.isHittable else { continue } // Below the fold on a short window.
+            // Below the fold on a short window: a tile can be hittable while its bottom edge is off the screen.
+            guard tile.exists, tile.isHittable, tile.frame.maxY < app.windows.firstMatch.frame.maxY - 20 else { continue }
             assertTarget(tile)
             let frame = tile.frame
             let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture))
