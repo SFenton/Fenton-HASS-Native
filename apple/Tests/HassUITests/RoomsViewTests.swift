@@ -346,6 +346,66 @@ struct RoomsViewTests {
         #expect(render(page(bath), size: Self.phone) != nil)
     }
 
+    @Test func bathroomFanTileDrawsEveryStateAtEverySize() {
+        let bath = RoomsConfig.page(id: "master-bathroom")!
+        let card = bath.allCards.first { $0.control == .bathroomFan }!
+        let config = BathroomFanConfig.forPowerEntity(card.entityId)!
+        func fan(_ states: [EntityState]) -> BathroomFanController {
+            let store = EntityStore()
+            store.replaceAll(states)
+            return BathroomFanController(config: config, store: store, caller: RecordingCaller())
+        }
+        let now = Date()
+        let gone = RoomDeviceFixture.fanStates(config, power: "off", locked: false, pending: false, now: now).map {
+            EntityState(entityId: $0.entityId, state: "unavailable", attributes: [:])
+        }
+        let states: [[EntityState]] = [
+            RoomDeviceFixture.fanStates(config, power: "off", locked: false, pending: false, now: now),
+            RoomDeviceFixture.fanStates(config, power: "on", locked: true, pending: true, now: now),
+            RoomDeviceFixture.fanStates(config, power: "off", locked: true, pending: false, now: now),
+            gone,
+        ]
+        for state in states {
+            let controller = fan(state)
+            for (size, typeSize) in [(CGSize(width: 370, height: 120), DynamicTypeSize.large),
+                                     (CGSize(width: 380, height: 120), .large),
+                                     (CGSize(width: 370, height: 320), .accessibility5)] {
+                #expect(render(BathroomFanRoomTile(fan: controller, card: card) {}, size: size, typeSize: typeSize) != nil)
+            }
+        }
+    }
+
+    @Test func fanRailButtonsStayCirclesAndGlyphsStayInside() {
+        // 44 pt at the default size, never more than 66 however large the text, and the glyph under half the circle.
+        #expect(FanRailButton.diameter(scaled: 44) == 44)
+        #expect(FanRailButton.diameter(scaled: 30) == 44)
+        #expect(FanRailButton.diameter(scaled: 140) == 66)
+        for scaled in stride(from: 18.0, through: 60.0, by: 6) {
+            let circle = FanRailButton.diameter(scaled: scaled * 44 / 18)
+            #expect(FanRailButton.glyphSize(scaled: scaled, diameter: circle) <= circle * 0.45 + 0.001)
+        }
+        #expect(FanRailButton.glyphSize(scaled: 18, diameter: 44) == 18)
+        // Inactive: translucent discs by tile; active: solid white with the teal glyph.
+        #expect(FanRailButton.fill(isOn: true, tileIsLit: true) == .white)
+        #expect(FanRailButton.fill(isOn: true, tileIsLit: false) == .white)
+        #expect(FanRailButton.fill(isOn: false, tileIsLit: true) == Color.black.opacity(0.18))
+        #expect(FanRailButton.fill(isOn: false, tileIsLit: false) == Color.white.opacity(0.12))
+        #expect(FanRailButton.ink(isOn: false) == .white)
+        #expect(FanRailButton.ink(isOn: true) == ColorFamily.air.fill)
+        let button = FanRailButton(label: "Lock", symbol: "lock.fill", isOn: true, tileIsLit: false, id: "lock") {}
+        #expect(render(button, size: CGSize(width: 80, height: 80)) != nil)
+        #expect(render(button, size: CGSize(width: 160, height: 160), typeSize: .accessibility5) != nil)
+    }
+
+    @Test func aBathroomFanLeadJoinsTheGridOnlyAtRegularWidth() {
+        let bath = RoomsConfig.page(id: "guest-bathroom")!
+        let climate = bath.sections[0]
+        #expect(RoomSectionView.leadJoinsGrid(climate, regularWidth: true))
+        #expect(!RoomSectionView.leadJoinsGrid(climate, regularWidth: false), "A phone keeps the full-width lead row")
+        let remote = RoomsConfig.page(id: "living-room")!.sections.first { $0.layout != .grid }
+        if let remote { #expect(!RoomSectionView.leadJoinsGrid(remote, regularWidth: true), "Only the fan leaves the lead row") }
+    }
+
     @Test func masterBedroomCardsOpenTheBedroomSheets() {
         let store = EntityStore()
         store.replaceAll(RoomsFixtures.states + BedroomFixtures.states(BedroomFixtures.Scenario.allCases[0]))
