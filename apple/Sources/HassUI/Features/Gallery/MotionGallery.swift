@@ -125,7 +125,8 @@ struct MotionGallery: View {
                                         identifier: "motion.camera") {})
         },
         Case(id: "dueLabel", title: "DueLabel") { on in
-            AnyView(DueLabel(text: on ? "2 days ago" : "In 3 days", tone: on ? .overdueLong : .future))
+            // The same text both ways: only the colour changes, so the label's own width cannot.
+            AnyView(DueLabel(text: "3 days", tone: on ? .overdueLong : .future))
         },
         Case(id: "climateNotice", title: "ClimateNotice") { on in
             AnyView(ClimateNotice(text: on ? "A window is open." : "Everything is closed.", isWarning: on))
@@ -146,7 +147,7 @@ struct MotionGallery: View {
             AnyView(DayPicker(days: .constant(on ? [1, 3, 5] : [])))
         },
         Case(id: "sprinklerRow", title: "SprinklerRow") { on in
-            AnyView(SprinklerRow(symbol: "sprinkler.and.droplets", isActive: on, title: "Front Lawn", lines: [on ? "Watering" : "Idle"]))
+            AnyView(SprinklerRow(symbol: "sprinkler.and.droplets", isActive: on, title: "Front Lawn", lines: ["Front yard"]))
         },
         Case(id: "sprinklerControllerRow", title: "ModuleRow (controller)") { on in
             AnyView(ModuleList { SprinklerControllerRow(title: "Controller", subtitle: on ? "Watering" : "Idle", isWatering: on) {} })
