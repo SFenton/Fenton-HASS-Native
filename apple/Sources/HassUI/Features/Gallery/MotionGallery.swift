@@ -25,14 +25,20 @@ struct MotionGallery: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-                // The primary button's own fill and label: the system prominent style measured 2.8:1 on the dark page.
-                PrimaryButton("Toggle all") {
-                    if onCases.count == Self.cases.count { onCases = [] } else { onCases = Set(Self.cases.map(\.id)) }
-                }
-                .accessibilityIdentifier("motion.toggleAll")
                 ForEach(Self.cases) { card($0) }
             }
             .padding(HassTokens.Spacing.l)
+        }
+        // Always in reach, so a test (or a person) can flip everything from anywhere on the page.
+        .safeAreaInset(edge: .bottom) {
+            // The primary button's own fill and label: the system prominent style measured 2.8:1 on the dark page.
+            PrimaryButton("Toggle all") {
+                if onCases.count == Self.cases.count { onCases = [] } else { onCases = Set(Self.cases.map(\.id)) }
+            }
+            .accessibilityIdentifier("motion.toggleAll")
+            .padding(.horizontal, HassTokens.Spacing.l)
+            .padding(.vertical, HassTokens.Spacing.s)
+            .background(.bar)
         }
         .navigationTitle("Motion")
         .accessibilityIdentifier("motion.scroll")

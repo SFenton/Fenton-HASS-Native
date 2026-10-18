@@ -95,24 +95,22 @@ final class MotionJourneyTests: JourneyTestCase {
         for reduceMotion in [false, true] {
             let app = launch(reduceMotion: reduceMotion)
             func component(_ id: String) -> XCUIElement { app.descendants(matching: .any)["motion.component.\(id)"].firstMatch }
-            // Off-screen components are not in the accessibility tree, so each is scrolled to before it is read. Scrolling moves
-            // positions, so the sizes (and the leading edge) are what must hold still.
+            // Off-screen components are not in the accessibility tree, so each is scrolled to before it is read, down the page, up
+            // it, and down again. Scrolling moves positions, so the sizes are what must hold still.
             var sizes: [String: CGSize] = [:]
             for id in Self.componentIDs {
                 reveal(app.buttons["motion.toggle.\(id)"], in: app)
                 sizes[id] = component(id).frame.size
             }
             let all = app.buttons["motion.toggleAll"]
-            reveal(all, in: app)
+            XCTAssertTrue(all.isHittable, "Toggle all is not always in reach")
             all.tap()
-            sleep(1)
-            for id in Self.componentIDs {
+            for id in Self.componentIDs.reversed() {
                 reveal(app.buttons["motion.toggle.\(id)"], in: app)
                 waitForValue(component(id), "On")
                 XCTAssertEqual(component(id).frame.size.width, sizes[id]?.width ?? 0, accuracy: 0.5, "\(id) changed width")
                 XCTAssertEqual(component(id).frame.size.height, sizes[id]?.height ?? 0, accuracy: 0.5, "\(id) changed height")
             }
-            reveal(all, in: app)
             all.tap()
             for id in Self.componentIDs {
                 reveal(app.buttons["motion.toggle.\(id)"], in: app)
