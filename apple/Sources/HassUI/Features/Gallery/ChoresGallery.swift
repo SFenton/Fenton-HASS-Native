@@ -8,7 +8,9 @@ import SwiftUI
 /// audits and screenshots reach every page and sheet without touching the house.
 /// `FENTON_GALLERY_TODO_PAGE=<page id>` opens another page as the root (e.g. `to-do`);
 /// `FENTON_GALLERY_VIEWER=steph` signs the fixtures in as Steph; `FENTON_GALLERY_EMPTY=1` empties every list;
-/// `FENTON_GALLERY_FAIL_COMPLETE=1` makes every check-off fail after 4 s, to show a row leave and come back.
+/// `FENTON_GALLERY_FAIL_COMPLETE=1` makes every check-off fail after 4 s, to show a row leave and come back;
+/// `FENTON_GALLERY_CHORES=<n>` adds `n` more chores to each of Stephen's lists, as many as the real house has, for the
+/// scroll cost probe.
 struct ChoresGallery: View {
     @State private var store: EntityStore
     @State private var model: ChoresModel
@@ -18,7 +20,7 @@ struct ChoresGallery: View {
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         let empty = environment["FENTON_GALLERY_EMPTY"] == "1"
         let store = EntityStore()
-        let service = ChoresFixtureService(store: store, lists: empty ? [:] : ChoresFixtures.lists(),
+        let service = ChoresFixtureService(store: store, lists: empty ? [:] : ChoresFixtures.lists(extra: Int(environment["FENTON_GALLERY_CHORES"] ?? "") ?? 0),
                                            failsCompletion: environment["FENTON_GALLERY_FAIL_COMPLETE"] == "1")
         store.replaceAll(service.entityStates())
         let viewer = environment["FENTON_GALLERY_VIEWER"].flatMap(ChoresConfig.Resident.init(rawValue:)) ?? .stephen
@@ -65,12 +67,13 @@ enum ChoresFixtures {
         ISO8601DateFormatter().string(from: now.addingTimeInterval(offset))
     }
 
-    static func lists(now: Date = .now) -> [String: [TodoItem]] {
+    /// - Parameter extra: More chores for each of Stephen's lists (a house as long as the real one, for the scroll cost probe).
+    static func lists(now: Date = .now, extra: Int = 0) -> [String: [TodoItem]] {
         let hour = 3600.0, day = 86_400.0
         func task(_ id: Int, _ summary: String, due: TimeInterval?, description: String? = nil) -> TodoItem {
             TodoItem(uid: "\(id)--fixture", summary: summary, description: description, due: due.map { iso($0, from: now) })
         }
-        return [
+        var lists: [String: [TodoItem]] = [
             "todo.stephen_s_past_due_with_unassigned": [task(11, "Take out the recycling", due: -3 * hour), task(12, "Clean the gutters", due: -9 * day)],
             "todo.stephen_s_evening_with_unassigned": [task(13, "Run the dishwasher", due: 5 * hour)],
             "todo.stephen_s_no_due_date_with_unassigned": [
@@ -96,6 +99,13 @@ enum ChoresFixtures {
             "todo.home_improvement_s_upcoming": [task(41, "Paint the deck", due: 75 * day)],
             "todo.groceries": [TodoItem(uid: "a1", summary: "Port the Chores page"), TodoItem(uid: "a2", summary: "Check the backup job")],
         ]
+        for key in lists.keys where extra > 0 && key.hasPrefix("todo.stephen_s_") {
+            // Alternating overdue and upcoming, so the page shows both due-label tones.
+            lists[key, default: []] += (0..<extra).map { n in
+                task(1000 + n, "Fixture chore \(n + 1)", due: n.isMultiple(of: 2) ? -Double(n + 1) * day : Double(n + 1) * day)
+            }
+        }
+        return lists
     }
 
     /// A `donetick.get_task` response for a fixture task.

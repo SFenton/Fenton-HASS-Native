@@ -67,6 +67,21 @@ struct GalleryFlowTests {
         #expect(families.contains { $0.spoken.hasPrefix("Lights") }, "Families lists every colour family")
     }
 
+    // MARK: Live Activity
+
+    @Test func aButtonOnTheStackShowsPendingInPlaceOfItself() async throws {
+        let driver = await withLaunch(environment: ["FENTON_GALLERY_SCENARIO": "stack"]) { await page(.liveActivity) }
+        defer { driver.close() }
+        func said(_ text: String) -> ([AXWindow.Node]) -> Bool { { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.contains(text) == true } }
+        let stop = try #require(await driver.node(label: "Stop Guest Bath Fan"))
+        #expect(await driver.press(stop, until: said("stop job.fan.guest")))
+        func isStopping(_ node: AXWindow.Node) -> Bool { [node.label, node.title, node.value].contains { $0.contains("Stopping") } }
+        let stopping = await driver.wait { $0.contains(where: isStopping) }
+        #expect(stopping.contains(where: isStopping), "the pending label replaces the button")
+        #expect(!stopping.contains { $0.spoken == "Stop Guest Bath Fan" })
+        #expect(stopping.contains { $0.spoken == "Stop Dishwasher" }, "the other cards keep their buttons")
+    }
+
     // MARK: Floating actions
 
     @Test func theFloatingBarAddsASortsAndFiltersThroughItsSheets() async throws {

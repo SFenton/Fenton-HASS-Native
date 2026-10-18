@@ -1,3 +1,4 @@
+import FentonActivityModel
 import HassCore
 import HassUI
 import SwiftUI
@@ -32,16 +33,31 @@ final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
         LocationLaunchPolicy.isEnabled(isPresenceDevice: LocationReporter.deviceIsPresenceDevice)
             ? LocationCoordinator.system(mobileApp: push.mobileApp) : nil
 
+    /// The Live Activities: tokens for Home Assistant, sign-out, and the cards' buttons
+    /// (`.agents/platforms/apple/live-activities-per-job.md`). Created with the delegate so a button pressed on the Lock Screen,
+    /// which launches the app in the background, finds its handler.
+    private(set) lazy var liveActivities = LiveActivityLaunchPolicy.isEnabled()
+        ? LiveActivityCoordinator(client: SystemLiveActivityClient(), mobileApp: push.mobileApp)
+        : LiveActivityCoordinator.inert(mobileApp: push.mobileApp)
+
     /// The app's one session (sign-in, connection, route). Made once here: `FentonHomeApp.body` and `RootView.init`
     /// run again whenever SwiftUI rebuilds the scene.
-    @MainActor lazy var session = AppSession(push: push, location: location)
+    @MainActor lazy var session = AppSession(push: push, location: location, liveActivities: liveActivities,
+                                             spotlight: CoreSpotlightIndexer())
 
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         // Set before launch finishes, so a tap that launched the app is delivered.
         UNUserNotificationCenter.current().delegate = self
+        // The Live Activity's buttons run in this process, launched in the background: install their handler first.
+        LiveActivityIntentRuntime.install(liveActivities.isEnabled ? liveActivities.intentHandler : nil)
+        // The card's corner mark follows the app icon: share the installed choice with the widget extension.
+        AppIconAppGroupSync.writeInstalledChoice()
+        // App Shortcuts open pages through the same request a notification's link makes.
+        AppShortcutRouter.install { [push] destination in push.open(destination) }
         if let location { Task { await location.resume() } }
         #if DEBUG
+        LiveActivityDebugLaunch.startIfRequested(client: SystemLiveActivityClient())
         DebugSystemSettings.applyIfRequested()
         PushPreview.scheduleIfRequested()
         if let command = PushPreview.command() {

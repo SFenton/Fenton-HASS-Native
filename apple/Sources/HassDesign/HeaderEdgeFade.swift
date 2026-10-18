@@ -73,6 +73,18 @@ public enum HeaderEdgeFade {
         return 1 - min(max(progress, 0), 1)
     }
 
+    /// The offset the fade tracks, from a scroll view's own readings: whole points, clamped to the ramp so only changes that
+    /// move the mask are ever reported.
+    ///
+    /// - Parameters:
+    ///   - contentOffset: The scroll view's vertical content offset.
+    ///   - topInset: Its top content inset (the bar the content rests below).
+    ///   - rampHeight: The ramp's height.
+    /// - Returns: The distance scrolled from the resting top, -1 when pulled down, at most `rampHeight + 1`.
+    public static func trackedOffset(contentOffset: CGFloat, topInset: CGFloat, rampHeight: CGFloat = rampHeight) -> CGFloat {
+        min(max((contentOffset + topInset).rounded(), -1), rampHeight + 1)
+    }
+
     /// The ramp for the reader's settings: Reduce Transparency or Increase Contrast turns it into a hard edge
     /// (content cut cleanly at the header, never dimmed; FestivalNativeApps scroll-edge R7).
     ///
@@ -149,46 +161,67 @@ struct HeaderEdgeFadeModifier: ViewModifier {
     }
 
     private func faded(_ content: Content) -> some View {
-        content
-            .modifier(ScrollOffsetReader { scrollOffset = $0 })
+        // The two halves can each be turned off for an A/B run (`FENTON_PERF_DISABLE=fadeMask,fadeReaders`); a normal launch
+        // has both.
+        let reads = !PerfSwitches.isOff(.fadeReaders) && !PerfSwitches.isOff(.fadeGeometry)
+        let readsScroll = !PerfSwitches.isOff(.fadeReaders) && !PerfSwitches.isOff(.fadeScroll)
+        return content
+            .modifier(ScrollOffsetReader(isEnabled: readsScroll) { scrollOffset = $0 })
+            .background {
+                #if os(iOS)
+                if readsScroll {
+                    UIKitScrollOffset { scrollOffset = $0 }
+                        .frame(width: ScrollOffsetProbe.exposesValue ? 2 : 0, height: ScrollOffsetProbe.exposesValue ? 2 : 0)
+                        .accessibilityHidden(!ScrollOffsetProbe.exposesValue)
+                }
+                #endif
+            }
             .modifier(HeaderBackgroundHidden())
             .background {
-                Color.clear
-                    // A new size (rotation, fold, resize) starts over: the bar's height may have changed.
-                    .onGeometryChange(for: CGSize.self) { CGSize(width: $0.size.width.rounded(), height: $0.size.height.rounded()) } action: { _ in
-                        smallestInset = nil
-                    }
-                    .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top.rounded() } action: { inset in
-                        safeAreaInset = inset
-                        if inset > 0, inset < (smallestInset ?? .infinity) { smallestInset = inset }
-                    }
-                    .accessibilityHidden(true)
+                if reads {
+                    Color.clear
+                        // A new size (rotation, fold, resize) starts over: the bar's height may have changed.
+                        .onGeometryChange(for: CGSize.self) { CGSize(width: $0.size.width.rounded(), height: $0.size.height.rounded()) } action: { _ in
+                            smallestInset = nil
+                        }
+                        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top.rounded() } action: { inset in
+                            safeAreaInset = inset
+                            if inset > 0, inset < (smallestInset ?? .infinity) { smallestInset = inset }
+                        }
+                        .accessibilityHidden(true)
+                }
             }
             .background {
-                Color.clear
-                    .onGeometryChange(for: CGFloat.self) { -$0.frame(in: .named(Self.space)).minY.rounded() } action: {
-                        containerOffset = $0
-                    }
-                    .ignoresSafeArea()
-                    .accessibilityHidden(true)
+                if reads {
+                    Color.clear
+                        .onGeometryChange(for: CGFloat.self) { -$0.frame(in: .named(Self.space)).minY.rounded() } action: {
+                            containerOffset = $0
+                        }
+                        .ignoresSafeArea()
+                        .accessibilityHidden(true)
+                }
             }
             .mask {
-                VStack(spacing: 0) {
-                    Color.clear.frame(height: headerHeight)
-                    LinearGradient(
-                        colors: [
-                            .black.opacity(HeaderEdgeFade.edgeOpacity(
-                                progress: HeaderEdgeFade.progress(scrollOffset: scrollOffset, rampHeight: rampHeight)
-                            )),
-                            .black,
-                        ],
-                        startPoint: .top, endPoint: .bottom
-                    )
-                    .frame(height: rampHeight)
-                    Color.black
+                if PerfSwitches.isOff(.fadeMask) {
+                    Color.black.ignoresSafeArea()
+                } else {
+                    VStack(spacing: 0) {
+                        Color.clear.frame(height: headerHeight)
+                        LinearGradient(
+                            colors: [
+                                .black.opacity(HeaderEdgeFade.edgeOpacity(
+                                    progress: HeaderEdgeFade.progress(scrollOffset: scrollOffset, rampHeight: rampHeight)
+                                )),
+                                .black,
+                            ],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                        .frame(height: rampHeight)
+                        Color.black
+                    }
+                    // Reach under the header so the clear band covers it.
+                    .ignoresSafeArea()
                 }
-                // Reach under the header so the clear band covers it.
-                .ignoresSafeArea()
             }
             .coordinateSpace(.named(Self.space))
     }
@@ -196,21 +229,133 @@ struct HeaderEdgeFadeModifier: ViewModifier {
 
 /// Reports the enclosed scroll view's distance from its resting top (iOS 18 / macOS 15 and later).
 private struct ScrollOffsetReader: ViewModifier {
+    /// False in an A/B run without the readers (``PerfSwitches/Layer/fadeReaders``).
+    var isEnabled: Bool
     var action: (CGFloat) -> Void
 
     func body(content: Content) -> some View {
-        if #available(iOS 18.0, macOS 15.0, watchOS 11.0, *) {
+        // iOS reads the offset from UIKit (``UIKitScrollOffset``): `onScrollGeometryChange` makes SwiftUI update the page's
+        // view graph on every frame of a scroll, which cost a `List` page a fifth to a third of its main-thread time.
+        #if os(iOS)
+        content
+        #else
+        if isEnabled, #available(iOS 18.0, macOS 15.0, watchOS 11.0, *) {
             content.onScrollGeometryChange(for: CGFloat.self) { geometry in
                 // Whole points, clamped to the ramp: only changes that move the mask reach the action.
-                min(max((geometry.contentOffset.y + geometry.contentInsets.top).rounded(), -1), HeaderEdgeFade.rampHeight + 1)
+                HeaderEdgeFade.trackedOffset(contentOffset: geometry.contentOffset.y, topInset: geometry.contentInsets.top)
             } action: { _, offset in
                 action(offset)
             }
         } else {
             content
         }
+        #endif
     }
 }
+
+#if os(iOS)
+/// Reports the page's scroll offset from UIKit, so a scroll never makes SwiftUI update the page's view graph.
+///
+/// `onScrollGeometryChange` observes the scroll geometry through the graph: every frame of a scroll was a graph update for
+/// the whole page, whether or not the value it reads changed (Time Profiler, Settings and Chores on the simulator: graph
+/// updates 23% to 10% of the main thread's samples without it, 27% less main-thread time and 40% fewer instructions per
+/// 1000 pt). A key-value observer on the scroll view's `contentOffset` costs a closure call per frame and writes to
+/// SwiftUI only when the clamped, rounded value changes, which is the first 40 points of a scroll.
+///
+/// The probe view sits in the page's background, finds the page's vertical scroll view next to it and observes that. Until it
+/// is found (the first layout) the fade rests at its at-rest state, which is the right look at the top of a page.
+private struct UIKitScrollOffset: UIViewRepresentable {
+    var action: (CGFloat) -> Void
+
+    func makeUIView(context: Context) -> ScrollOffsetProbe { ScrollOffsetProbe() }
+
+    func updateUIView(_ view: ScrollOffsetProbe, context: Context) { view.action = action }
+}
+
+/// The view behind ``UIKitScrollOffset``.
+final class ScrollOffsetProbe: UIView {
+    var action: (CGFloat) -> Void = { _ in }
+    private var observation: NSKeyValueObservation?
+    private var attempts = 0
+    private var last: CGFloat?
+
+    /// Debug launches with `FENTON_FADE_PROBE=1` expose the tracked offset as the accessibility value of
+    /// `diagnostics.headerFade`, so a journey can see the fade follow a scroll (`HeaderFadeJourneyTests`).
+    static let exposesValue: Bool = {
+        #if DEBUG
+        ProcessInfo.processInfo.environment["FENTON_FADE_PROBE"] == "1"
+        #else
+        false
+        #endif
+    }()
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            observation = nil
+            attempts = 0
+        } else {
+            attach()
+        }
+    }
+
+    /// Looks for the scroll view; a page whose list is built a moment after it appears gets a few more tries.
+    private func attach() {
+        guard observation == nil else { return }
+        if let scroll = Self.pageScrollView(near: self) {
+            report(scroll)
+            observation = scroll.observe(\.contentOffset, options: [.new]) { [weak self] scroll, _ in
+                MainActor.assumeIsolated { self?.report(scroll) }
+            }
+            return
+        }
+        attempts += 1
+        guard attempts <= 10 else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(300))
+            self?.attach()
+        }
+    }
+
+    private func report(_ scroll: UIScrollView) {
+        let value = HeaderEdgeFade.trackedOffset(contentOffset: scroll.contentOffset.y, topInset: scroll.adjustedContentInset.top)
+        guard value != last else { return }
+        last = value
+        if Self.exposesValue {
+            isAccessibilityElement = true
+            accessibilityIdentifier = "diagnostics.headerFade"
+            accessibilityValue = String(Int(value))
+        }
+        action(value)
+    }
+
+    /// The vertical scroll view that holds the page: the shallowest one, in the nearest ancestor that has one, that is about as
+    /// wide as the probe's container. A sideways rail inside the page is narrower or deeper and is passed over.
+    static func pageScrollView(near probe: UIView) -> UIScrollView? {
+        var ancestor = probe.superview
+        for _ in 0..<8 {
+            guard let container = ancestor else { return nil }
+            var queue = [container]
+            var depth = 0
+            while !queue.isEmpty, depth < 8 {
+                var next: [UIView] = []
+                for view in queue {
+                    if let scroll = view as? UIScrollView, scroll.bounds.width >= container.bounds.width * 0.8,
+                       scroll.contentSize.width <= scroll.bounds.width + 1 {
+                        return scroll
+                    }
+                    next += view.subviews.filter { $0 !== probe }
+                }
+                queue = next
+                depth += 1
+            }
+            if container.next is UIViewController { return nil }
+            ancestor = container.superview
+        }
+        return nil
+    }
+}
+#endif
 
 /// Hides the header's own background: the iOS 26 top scroll-edge effect and the navigation bar material.
 private struct HeaderBackgroundHidden: ViewModifier {

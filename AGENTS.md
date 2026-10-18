@@ -4,6 +4,7 @@ Read this file first, then [.agents/README.md](.agents/README.md) for the page, 
 
 ## Invariants
 
+- **Name.** The app is **S+H** to people (owner, 2026-10-17); bundle ids, app group, Keychain group and the `mobile_app` registration name stay as they are. See [app-name](.agents/platforms/apple/app-name.md).
 - **Native only.** SwiftUI for iOS, iPadOS and watchOS. No WebView UI, except the in-app Home Assistant settings modal (the backend's own config pages), which is a full-screen modal so the app stays usable underneath.
 - **Home Assistant is the source of truth.** The app signals intent through one service call path (`HassConnection.callService`) and may show optimistic state only for immediate feedback. It never duplicates automation logic.
 - **One state path.** Every entity read goes through `EntityStore`; every connection goes through `HassConnection` (HAKit). Do not open a second websocket or poll REST for state.

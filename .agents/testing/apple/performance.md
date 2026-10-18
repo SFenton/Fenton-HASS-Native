@@ -22,7 +22,7 @@ The app measures itself (`HassUI/Diagnostics/ScrollCostProbe.swift`, `HassTeleme
 - **Run it:** `tools/ios_scrollcost.sh [--section gallery|live] [--only "Living Room"] [--env temp.env] [--compare BASE.tsv]`. It builds the app optimized (`-O`: the Release code path, gallery still in), runs every surface in `tools/scrollcost-surfaces.txt` on one simulator inside a devcap hold, and prints `tools/scrollcost_report.py`'s table. About a minute a surface.
 - **Why not an XCUITest swipe.** The first attempt flicked pages with `swipeUp` under `XCTCPUMetric`. Every page read the same 2.6 to 2.9 G instructions, a Grid of 300 tiles included: what it measured was the accessibility snapshot the swipe asks of the app, not the page. The probe's own display link moves the scroll view, and nothing touches the app while it measures.
 - **Gallery or live.** `[gallery]` surfaces run on fixtures with no connection, so the number is the page alone. `[live]` surfaces sign in with the token and open a page with `FENTON_SCROLLCOST_OPEN=<dashboard path>`: live entity updates and camera streams are in the number, which is how the owner's phone behaves. Compare like with like. Whole-process `minstr` is not comparable between live runs (the camera streams alone retire about 20 G instructions in 8 s on any page); compare `main_ms`, `over8`, `p95_ms` and `update_ms`.
-- **Tile finish A/B** (`--section finish`, not part of `all`): the 300-tile grid with each `TileFinish` (`FENTON_TILE_FINISH=solid|tintedGlass|frostedModule|webPort`), and variants with a layer left out (`FENTON_TILE_FINISH_OMIT=sheen,rim`, Debug only). Numbers: direction-g.md, Tile finish.
+- **Tile finish A/B** (`--section finish`, not part of `all`): the 300-tile grid with each `TileFinish` (`FENTON_TILE_FINISH=solid|tintedGlass`, tinted glass is the shipped default), and variants with a layer left out (`FENTON_TILE_FINISH_OMIT=sheen,rim`, Debug only). Run it after changing a finish token or layer. Numbers: direction-g.md, Tile finish.
 - **Tests:** `Apps/iOSUITests/ScrollSurfacesPerformanceTests.swift` holds the surfaces that were slow to a budget (`TEST_RUNNER_FENTON_PERF_ON_SIMULATOR=1`, and the token for the `testLive*` ones). Budgets, from the post-fix numbers: p95 turn 6 ms on fixtures and 3.5 ms live, no turn over 8 ms, none over 16 ms in the warm run, 25 ms of live-update work and 100 ms of main-thread time for a standing-still live page in 8 s.
 - **Unit tests:** `MainThreadCostMeterTests` (the report), `HomeColumnsTests` (the scroll-invariant container), `EntityDeliveryOffMainTests` (deliveries cross to the main actor in order, a burst is diffed once).
 
@@ -86,6 +86,61 @@ iPhone 17 Pro simulator, iOS 27.0, optimized build, process CPU and main-thread 
 
 **Reproduce:** `FENTON_SCROLLCOST=1 FENTON_SCROLLCOST_AXIS=horizontal` (with `FENTON_GALLERY=weather FENTON_GALLERY_WEATHER_OPEN=1` or `FENTON_GALLERY=food FENTON_GALLERY_ROUTE=hub`); the camera numbers need the token and `FENTON_SCROLLCOST_OPEN=chores`. On a phone: `tools/ios_scrollcost.sh --device 00008160-00022D8230914036 --label phone-r2` (Live Chores and Live Climate for the camera pause, the Weather sheet for the rain) and compare with `--compare` against a run of `main`.
 
+## Round 3 (2026-10-17, `claude/perf-chores-settings`): Chores and Settings
+
+Owner, iPhone 18 Pro, Release: Climate, Security, Home and room pages scroll smoothly; Chores and Settings do not. Both are real `List`s (UIKit collection views); the others are `ScrollView`s. iPhone 17 Pro simulator, iOS 27.0, optimized build, gallery fixtures (`FENTON_GALLERY=settings`, `FENTON_GALLERY=chores FENTON_GALLERY_CHORES=12`, a house as long as the real one).
+
+**Measure A/B in one hold, alternating.** The same build read 862, 883 and 817 ms of main-thread time on Settings in three runs and 1294 and 1183 ms on the long Chores page in two, whatever else the Mac was doing (other lanes' simulators share its cores). A first "before and after" taken minutes apart showed a 13% gain and 14 against 48 turns over 8 ms that the alternating rounds did not reproduce. Run base and change back to back, three rounds, and compare the rounds, not the first run of each. One long simulator hold carrying every run (a queue of command files) beats a hold per run: the simulator gate was full for an hour at a time.
+
+**Root cause: the header fade's scroll reader.** `HeaderEdgeFade` read the page's scroll offset with `onScrollGeometryChange`. SwiftUI observes scroll geometry through the view graph, so every frame of a scroll became a graph update for the whole page, whether or not the value it reads changed (the clamped value changes only in the first 40 points). Layer A/B (`--section layers`, `FENTON_PERF_DISABLE`): Settings 890 ms without nothing, 647 without the whole fade, 614 without both readers, 640 without only the scroll reader, 811 without only the mask, 827 without only the geometry readers; instructions per 1000 pt 200 M with it, 120 M without. Time Profiler on Settings: SwiftUI graph updates 23% of main-thread samples, 10% without; `_UIHostingView` work 23%, 9%. A `ScrollView` page pays this too (Climate profiles at 42% graph updates) but spreads it over fewer, bigger hosting views; a `List` page has little else to spend.
+
+**Fix.** On iOS the fade reads the offset from UIKit: a probe in the page's background finds the page's vertical scroll view (the shallowest one about as wide as the page, so a sideways rail is passed over) and observes `contentOffset` with KVO, writing to SwiftUI only when the clamped, rounded value changes (`UIKitScrollOffset`, `ScrollOffsetProbe`; the value is `HeaderEdgeFade.trackedOffset`, unit-tested). Other platforms keep `onScrollGeometryChange`. Until the scroll view is found (the first layout) the fade rests at its at-rest state, which is the right look at the top of a page.
+
+| Gallery fixtures, scrolling 8 s (3 alternating rounds) | main-thread time | p95 turn | instructions per 1000 pt |
+|---|---|---|---|
+| Settings | 862, 883, 817 ms to 724, 718, 558 ms (-17% to -32%) | 2.4 to 2.6 ms to 1.7 to 2.2 ms | 187 M to 165 M |
+| Chores tab (short fixtures) | 1013, 1016, 994 ms to 859, 811, 804 ms (-15% to -20%) | 3.1 to 2.9 ms | 264 M to 183 M |
+| Chores, long house | 1447, 1412, 1378 ms to 1297, 1097, 1194 ms (-10% to -22%) | 7.8, 7.5, 7.3 ms to 7.7, 6.8, 6.9 ms | 450 M to 390 M |
+
+Live Settings read 683 and 848 ms before and 734 and 661 after (the live house adds noise, not signal). Live Chores could not be measured: the house has nothing overdue today, so the tab fits one 874 pt screen and the probe finds nothing to scroll (`content=870`). A phone with the real overdue list is the measurement that settles it (below).
+
+**What did not move it** (A/B, same hold): the quick links header's `onGeometryChange` positions (now widths, below), the soft bottom scroll edge effect (`scrollEdge`), the glass buttons (`glassBar`), the mask half of the header fade (`fadeMask`, 9%), the backdrop (`backdrop`, about 10% on Settings, none on Chores), per-row `listRowBackground` against a background drawn in the row's own content, and the per-row clip mask in `ModuleRowBackground` (now a shape fill; free on the CPU, a layer less on the GPU). The simulator cannot show GPU cost.
+
+**What is left on the long Chores page, and not ours.** Time Profiler, 2,493 main-thread samples: 55% inside `UICollectionView`, of which `_createPreparedCellForItemAtIndexPath` is 24% and the self-sizing pass it triggers (`preferredLayoutAttributesFitting` → `ViewGraphRootValueUpdater._sizeThatFits`) 16%; 12% is `UINavigationController` observing the content scroll view for the large title; `TodoItemRow.body` itself is 2%, and everything of ours together is 3% (73 samples). A row that scrolls in is a new hosted cell, sized and built by SwiftUI and UIKit: 32 to 57 turns over 8 ms in 16 s of 900 pt/s scrolling, where a `ScrollView` page keeps its views. The levers left are fewer modifiers per row and fewer rows built at once, not anything on the page's own work. `Budget.longListP95` (8.0) and `longListTurnsOver8` (70) hold the line.
+
+**Quick links alignment** (`AlignedToListMargins`) compared positions in the list's coordinate space: `frame(in: .named(...)).minX` on the header and on every plain row (section headers, spinners, errors), read on every frame because the row's frame moves with the scroll, through a closure put in the environment on every evaluation of the page. It compares widths now (a header is set in from both edges by the same amount, so the inset is half the difference of the two widths: `TodoRowMetrics.headerInset`, unit-tested), held in an `@Observable` the page owns, so only the header re-renders when a row reports. It did not move the numbers (the rule below was already in this file), and the journey for the alignment is unchanged.
+
+**On a phone (nothing here ran on the iPhone 18 Pro).** The GPU is the half the simulator cannot see, and the one most likely behind "not smooth" on a 120 Hz display. Release build, signed in, run twice and compare with `tools/scrollcost_report.py B.tsv --compare A.tsv`:
+
+```bash
+tools/ios_scrollcost.sh --device 00008160-00022D8230914036 --only "Live Chores,Live Settings" --label phone-r3
+# One layer off per run; headerFade, fadeMask, glassBar, scrollEdge, backdrop (HassDesign/PerfSwitches.swift):
+for layer in headerFade fadeMask glassBar scrollEdge backdrop; do
+  tools/ios_scrollcost.sh --device 00008160-00022D8230914036 --only "Live Chores,Live Settings" --label phone-no-$layer --disable $layer
+done
+python3 tools/scrollcost_report.py apple/.build/scrollcost-phone-no-fadeMask.tsv --compare apple/.build/scrollcost-phone-r3.tsv
+tools/ios_perf.sh --device 00008160-00022D8230914036 --live --env temp.env --only testFlickLiveTabs   # system hitch ratio
+```
+
+If `fadeMask` (a full-page offscreen mask) or `glassBar` / `scrollEdge` moves the phone's p95 or `over8` while the simulator's CPU does not, that is the GPU cost, and the next change is a cheaper fade (a band over the top of the page, not a mask over all of it).
+
+## Round 4 (2026-10-17, `claude/backdrop-blur`): the wallpaper
+
+Owner: "less blur on the background image. Get us closer to web." The wallpaper was already blurred once, not live (`HouseBackdropStore` rendered a 480 px copy with sigma 20 and the view stretched it to the window), so the change is the recipe, not the cost model: the blur is now rendered once in points at the window's pixel size (`BackdropRenderer`), the view draws the bitmap with no scale effect, and the Settings slider re-renders off the main thread ([page-backdrop](../../patterns/page-backdrop.md) R8, R9).
+
+`tools/ios_scrollcost.sh --section backdrop` runs three pages with the wallpaper behind them (`FENTON_BACKDROP_FIXTURE=1`: the gallery draws the shell's backdrop store with a fixture photo). iPhone 17 Pro simulator, iOS 27.0, optimized build, one hold, three alternating rounds, before (`origin/main` plus the fixture hooks) then after:
+
+| Page, scrolling 8 s | main-thread time | p95 turn | turns over 8 ms | instructions per 1000 pt |
+|---|---|---|---|---|
+| Settings, before | 892, 779, 844 ms | 2.85, 2.26, 2.35 ms | 2, 2, 2 | 191 to 193 M |
+| Settings, after | 824, 784, 794 ms | 2.84, 2.65, 2.63 ms | 2, 3, 2 | 194 to 202 M |
+| Grid of 300 tiles, before | 2554, 2321, 2259 ms | 5.96, 5.45, 5.32 ms | 2, 1, 0 | 656 M |
+| Grid of 300 tiles, after | 2433, 2434, 2322 ms | 5.95, 5.61, 5.62 ms | 1, 1, 2 | 642 to 657 M |
+
+No difference outside the run-to-run noise (a first run in a hold reads a bogus idle floor, so its instruction columns are left out). Living Room fits one screen on the fixture and has nothing to scroll. What the number cannot show is the GPU: the after path draws one bitmap per page (no blur, no material, no scale effect), as before; run the phone A/B (`--disable backdrop`) before judging scroll feel.
+
+The render itself (`BackdropRenderer.render`, a 1024 x 684 photo, a 402 x 874 pt window at 3x, on the Mac's GPU): 5 ms at 0% (1206 x 2622 px), under 2 ms at 50% and 100% (302 x 656 px, a quarter of the resolution), always off the main thread. A slider drag renders as fast as renders finish, with 140 ms between them.
+
 ## What only a phone can settle
 
 Run these on the iPhone 18 Pro (nothing here has been run on it):
@@ -107,6 +162,7 @@ tools/ios_perf.sh --device 00008160-00022D8230914036 --live --env temp.env --onl
 ## Rules
 
 - **No work on the main thread proportional to the number of entities.** A change to one entity costs the main thread one box update ([connection lifecycle](../../platforms/apple/connection-lifecycle.md)).
+- **No SwiftUI observer on a scrolling page's offset.** `onScrollGeometryChange` (and `onScrollPhaseChange` with a state write) makes SwiftUI update the page's view graph on every frame, even when the value it reads does not change. Observe the scroll view's `contentOffset` from UIKit (`UIKitScrollOffset`) and write to SwiftUI when a clamped value changes. A/B anything that touches every page with `FENTON_PERF_DISABLE` in one alternating hold before believing a number.
 - **No state written from a geometry read that moves with a scroll.** `onGeometryChange` / `GeometryReader` in or around scrolling content that reads `frame(in: .global)` (or any scrolling space) fires every frame; return a value that does not change with the scroll (the size, the horizontal position) or write nothing.
 - **A closure given to HAKit runs off the main thread.** Mark it `@Sendable` or build it in a `nonisolated` function.
 - **Measure CPU with instructions and run-loop turns, never with an XCUITest swipe or a simulator hitch ratio.**

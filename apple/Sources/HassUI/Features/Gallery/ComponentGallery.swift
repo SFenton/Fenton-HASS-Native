@@ -1,3 +1,4 @@
+import HassCore
 import HassDesign
 import SwiftUI
 
@@ -23,12 +24,16 @@ public struct ComponentGallery: View {
         case floatingActions = "floating-actions"
         case inventory
         case chores
+        case settings
         case performance
         case weather
         case directionG = "direction-g"
         case location
         case systemAccessibility = "system-accessibility"
         case modalSizing = "modal-sizing"
+        case liveActivity = "live-activity"
+        /// An empty page: only the wallpaper and its scrim (with `FENTON_BACKDROP_FIXTURE=1`), for screenshots.
+        case backdrop
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -48,7 +53,7 @@ public struct ComponentGallery: View {
     public var body: some View {
         // Every gallery file is compiled into Debug builds only; release builds never show a gallery.
         #if DEBUG
-        pages
+        pages.modifier(GalleryBackdrop())
         #else
         EmptyView()
         #endif
@@ -63,6 +68,9 @@ public struct ComponentGallery: View {
         } else if page == .chores {
             // Owns its stack so pushed todo pages inherit the fixture store and model.
             ChoresGallery()
+        } else if page == .settings {
+            // The Settings tab's root as the app's section stack hosts it (page chrome included), on fixtures.
+            SettingsGallery()
         } else if page == .vacation {
             // Owns its stack, so its last-call line stays under pushed pages too.
             VacationGallery()
@@ -94,7 +102,9 @@ public struct ComponentGallery: View {
                     case .weather: WeatherGallery()
                     case .systemAccessibility: SystemAccessibilityGallery()
                     case .modalSizing: ModalSizingGallery()
-                    case .rooms, .vacation, .food, .chores, .location: EmptyView()
+                    case .liveActivity: LiveActivityGallery()
+                    case .backdrop: BackdropOnlyPage()
+                    case .rooms, .vacation, .food, .chores, .location, .settings: EmptyView()
                     }
                 }
                 // Direction G: a gallery page sits on the same dark house backdrop as the page it stands in for.
@@ -107,3 +117,36 @@ public struct ComponentGallery: View {
     }
     #endif
 }
+
+#if DEBUG
+/// With `FENTON_BACKDROP_FIXTURE=1` a gallery gets the same wallpaper as the shell: the fixture store, and the window
+/// measured for it, so journeys and the scroll cost probe see the photo, the Background Blur setting and the real
+/// render path. Without it a gallery draws the plain base, as before.
+private struct GalleryBackdrop: ViewModifier {
+    @State private var store = HouseBackdropStore.fixture(for: HassServer(baseURL: URL(string: "https://gallery.invalid")!))
+
+    func body(content: Content) -> some View {
+        if let store {
+            content
+                .backdropCanvasProvider()
+                .environment(store)
+                .task { await store.refresh() }
+        } else {
+            content
+        }
+    }
+}
+#endif
+
+#if DEBUG
+/// A page with nothing on it: the wallpaper and its scrim and no navigation bar (`FENTON_GALLERY=backdrop`).
+private struct BackdropOnlyPage: View {
+    var body: some View {
+        #if os(iOS)
+        Color.clear.toolbar(.hidden, for: .navigationBar)
+        #else
+        Color.clear
+        #endif
+    }
+}
+#endif

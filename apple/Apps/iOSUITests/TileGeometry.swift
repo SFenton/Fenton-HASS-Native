@@ -44,6 +44,30 @@ enum TileGeometry {
             && abs(colour.b - Int(hex & 0xFF)) <= tolerance
     }
 
+    /// The colour a tinted glass tile draws for a flat family or room fill (`0xRRGGBB`) at a fraction of its height
+    /// (`.agents/design/direction-g.md`, Tile finish): the fill itself in a sheet, and 78% over the dark underlay on the page
+    /// (the wallpaper behind is taken as mid grey, so allow the page's tolerance), then the sheen's bottom shade, a black
+    /// gradient from clear at 46% of the height to 8% at the bottom edge. Valid below the middle of the tile, where the
+    /// highlight is gone.
+    static func glass(_ hex: UInt32, onPage: Bool, heightFraction: Double) -> RGB {
+        func channel(_ shift: UInt32) -> Double {
+            let fill = Double((hex >> shift) & 0xFF)
+            let module = Double(0x1C)
+            let base = onPage ? fill * 0.78 + (1 - 0.78) * (module * 0.5 + 65 * 0.5) : fill
+            let shade = 0.08 * max(0, heightFraction - 0.46) / 0.54
+            return base * (1 - shade)
+        }
+        return (Int(channel(16).rounded()), Int(channel(8).rounded()), Int(channel(0).rounded()))
+    }
+
+    /// Whether `colour` is the tinted glass rendering of `hex` at `heightFraction` of a tile's height (``glass``). The page
+    /// allows for the unknown wallpaper behind the translucent fill.
+    static func matchesGlass(_ colour: RGB, _ hex: UInt32, onPage: Bool = false, heightFraction: Double) -> Bool {
+        let expected = glass(hex, onPage: onPage, heightFraction: heightFraction)
+        let tolerance = onPage ? 16 : 8
+        return abs(colour.r - expected.r) <= tolerance && abs(colour.g - expected.g) <= tolerance && abs(colour.b - expected.b) <= tolerance
+    }
+
     /// The chevron's ink inside a tile: the trailing 32 pt, clear of the tile's rounded corners (top and bottom 14 pt).
     /// - Parameters:
     ///   - frame: The tile's frame in screen points.

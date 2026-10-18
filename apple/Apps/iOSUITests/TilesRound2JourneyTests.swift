@@ -1,8 +1,8 @@
 import XCTest
 
 /// Tiles round 2 (owner, 2026-10-16): Quick Links tiles are one size again and coloured, the Rooms grid keeps two lines for
-/// a name with a one-line name on the bottom line, and the Direction G gallery's Tile Finish section draws the frosted
-/// proposals beside the shipped finish. iPhone, folded iPhone Duo and iPad (`.agents/design/direction-g.md`).
+/// a name with a one-line name on the bottom line, and the Direction G gallery's Tile Finish section draws the shipped
+/// tinted glass beside the solid fallback (owner chose tinted glass, 2026-10-17). iPhone, folded iPhone Duo and iPad (`.agents/design/direction-g.md`).
 @MainActor
 final class TilesRound2JourneyTests: JourneyTestCase {
     // MARK: Helpers
@@ -53,7 +53,7 @@ final class TilesRound2JourneyTests: JourneyTestCase {
             assertTarget(tile)
         }
         shot(app, "quick-links-\(layout)")
-        // Solid fills, read at a point clear of the glyph, the text and the chevron.
+        // Tinted glass fills (opaque in a sheet).
         let shot = try capture()
         // The fixture's alarm is armed_home; Sprinklers shows only while its visibility entity is on.
         let expected: [String: UInt32] = ["rooms": 0x1F3A5F, "security-system": 0x1565C0, "food": 0x4A6B4E, "vacuums": 0x7A3FB0,
@@ -61,9 +61,11 @@ final class TilesRound2JourneyTests: JourneyTestCase {
         var seen = Set<UInt32>()
         for (id, tile) in zip(ids, tiles) where tile.exists && tile.isHittable {
             let frame = tile.frame
-            let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.maxX - 14, y: frame.minY + 12), in: shot))
+            // Low on the tile, clear of the glyph, the text and the chevron, where only the sheen's bottom shade has touched the fill.
+            let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.maxX - 14, y: frame.maxY - 10), in: shot))
             let fill = try XCTUnwrap(expected[id])
-            XCTAssertTrue(TileGeometry.matches(sample, fill), "\(id) is \(sample), expected \(String(fill, radix: 16))")
+            XCTAssertTrue(TileGeometry.matchesGlass(sample, fill, heightFraction: 1 - 10 / frame.height),
+                          "\(id) is \(sample), expected \(String(fill, radix: 16)) under tinted glass")
             seen.insert(fill)
         }
         XCTAssertGreaterThanOrEqual(seen.count, 5, "Each visible link is its own colour")
@@ -142,15 +144,15 @@ final class TilesRound2JourneyTests: JourneyTestCase {
         if let finish { args += ["-directionGFinish", finish] }
         if sheet { args += ["-directionGSheet", "open", "-directionGSheetSection", "Finish"] }
         let app = FentonHomeApp.launchGallery("direction-g", arguments: args, appearance: appearance)
-        XCTAssertTrue(element("g.finish.\(finish ?? "solid").Table Lamp", in: app).waitForExistence(timeout: 30), "Tile Finish did not appear")
+        XCTAssertTrue(element("g.finish.\(finish ?? "tintedGlass").Table Lamp", in: app).waitForExistence(timeout: 30), "Tile Finish did not appear")
         sleep(1)
         return app
     }
 
-    /// Each finish draws the same eight tiles; the three proposals and the shipped one are audited on the page, at AX5, and in a
+    /// Each finish draws the same eight tiles; tinted glass and the solid fallback are audited on the page, at AX5, and in a
     /// light sheet, and screenshots are kept for the owner.
     func testEveryFinishAuditsCleanOnThePage() throws {
-        for finish in ["solid", "tintedGlass", "frostedModule", "webPort"] {
+        for finish in ["tintedGlass", "solid"] {
             let app = launchFinish(finish)
             for name in ["Office Lamp", "Table Lamp", "Living Room Purifier", "Towel Rack", "Garage Door", "Kitchen"] {
                 let tile = element("g.finish.\(finish).\(name)", in: app)
@@ -163,7 +165,7 @@ final class TilesRound2JourneyTests: JourneyTestCase {
     }
 
     func testEveryFinishAuditsCleanInALightSheet() throws {
-        for finish in ["solid", "tintedGlass", "frostedModule", "webPort"] {
+        for finish in ["tintedGlass", "solid"] {
             let app = launchFinish(finish, appearance: "light", sheet: true)
             XCTAssertTrue(app.buttons["sheet.close"].waitForExistence(timeout: 10), "\(finish) sheet")
             shot(app, "tile-finish-sheet-light-\(finish)-\(layout)")
@@ -171,13 +173,12 @@ final class TilesRound2JourneyTests: JourneyTestCase {
         }
     }
 
-    /// Reduce Transparency and Increase Contrast turn every proposal back into the shipped finish: the page draws the same
-    /// pixels for the proposal as for the shipped one.
-    func testReduceTransparencyFallsBackToTheShippedFinish() throws {
-        let environment = FentonHomeApp.SystemSetting.environment([.reduceTransparency])
-        func tileFrame(_ finish: String) throws -> [UInt8] {
+    /// Reduce Transparency and Increase Contrast turn tinted glass into the solid finish: the page draws the same pixels for
+    /// tinted glass as for the solid fallback.
+    func testReduceTransparencyAndIncreaseContrastFallBackToSolid() throws {
+        func tileFrame(_ finish: String, _ settings: [FentonHomeApp.SystemSetting]) throws -> [UInt8] {
             let app = FentonHomeApp.launchGallery("direction-g", arguments: ["-directionGOrder", "finish", "-directionGFinish", finish],
-                                                  environment: environment)
+                                                  environment: FentonHomeApp.SystemSetting.environment(settings))
             let tile = element("g.finish.\(finish).Living Room Purifier", in: app)
             XCTAssertTrue(tile.waitForExistence(timeout: 30))
             sleep(1)
@@ -189,14 +190,17 @@ final class TilesRound2JourneyTests: JourneyTestCase {
                 return TileGeometry.rgb(at: point, in: shot).map { [UInt8($0.r), UInt8($0.g), UInt8($0.b)] } ?? []
             }
         }
-        let shipped = try tileFrame("solid")
-        for finish in ["tintedGlass", "frostedModule", "webPort"] {
-            let proposal = try tileFrame(finish)
-            XCTAssertEqual(proposal.count, shipped.count)
-            // The same fill to within a few levels per channel (the capture's own dithering): a translucent or
-            // frosted ground would be tens of levels away on at least one of the eight samples.
-            let farthest = zip(proposal, shipped).map { abs(Int($0) - Int($1)) }.max() ?? 0
-            XCTAssertLessThanOrEqual(farthest, 4, "\(finish) under Reduce Transparency is the shipped finish")
+        let solid = try tileFrame("solid", [])
+        let glass = try tileFrame("tintedGlass", [])
+        // Tinted glass is not the solid fill: the sheen and the translucent fill put tens of levels between them.
+        XCTAssertGreaterThan(zip(glass, solid).map { abs(Int($0) - Int($1)) }.max() ?? 0, 6, "Tinted glass draws differently from solid")
+        for settings in [[FentonHomeApp.SystemSetting.reduceTransparency], [.increaseContrast]] {
+            let fallback = try tileFrame("tintedGlass", settings)
+            XCTAssertEqual(fallback.count, solid.count)
+            // The same fill to within a few levels per channel (the capture's own dithering): a translucent ground would be
+            // tens of levels away on at least one of the eight samples.
+            let farthest = zip(fallback, solid).map { abs(Int($0) - Int($1)) }.max() ?? 0
+            XCTAssertLessThanOrEqual(farthest, 4, "Tinted glass under \(settings) is the solid finish")
         }
     }
 }

@@ -9,6 +9,10 @@ let package = Package(
         .library(name: "HassCore", targets: ["HassCore"]),
         .library(name: "HassDesign", targets: ["HassDesign"]),
         .library(name: "HassUI", targets: ["HassUI"]),
+        // Live Activity: the dependency-free model (attributes, content state, job logic) and its SwiftUI views.
+        // The widget extension links these two and nothing else (`.agents/platforms/apple/live-activities.md` §9).
+        .library(name: "FentonActivityModel", targets: ["FentonActivityModel"]),
+        .library(name: "FentonActivityViews", targets: ["FentonActivityViews"]),
     ],
     dependencies: [
         .package(url: "https://github.com/home-assistant/HAKit", from: "0.4.19"),
@@ -21,9 +25,11 @@ let package = Package(
     targets: [
         // Signposts and the in-app performance log; every other module reports into it.
         .target(name: "HassTelemetry"),
+        .target(name: "FentonActivityModel"),
+        .target(name: "FentonActivityViews", dependencies: ["FentonActivityModel", "HassDesign"]),
         .target(
             name: "HassCore",
-            dependencies: ["HassTelemetry", .product(name: "HAKit", package: "HAKit")]
+            dependencies: ["HassTelemetry", "FentonActivityModel", .product(name: "HAKit", package: "HAKit")]
         ),
         .target(name: "HassDesign", dependencies: ["HassTelemetry"]),
         .target(
@@ -32,25 +38,29 @@ let package = Package(
                 "HassCore",
                 "HassDesign",
                 "HassTelemetry",
+                "FentonActivityModel",
+                "FentonActivityViews",
                 .product(name: "WebRTC", package: "WebRTC", condition: .when(platforms: [.iOS])),
             ]
         ),
         // Test doubles every test target shares (callers, schedulers); never linked into the app.
-        .target(name: "HassTestSupport", dependencies: ["HassCore"], path: "Tests/HassTestSupport"),
+        .target(name: "HassTestSupport", dependencies: ["HassCore", "FentonActivityModel"], path: "Tests/HassTestSupport"),
         .testTarget(
             name: "HassCoreTests",
             dependencies: [
                 "HassCore",
+                "FentonActivityModel",
                 "HassTestSupport",
                 .product(name: "HAKit+Mocks", package: "HAKit"),
                 .product(name: "Starscream", package: "Starscream"),
             ]
         ),
         .testTarget(name: "HassDesignTests", dependencies: ["HassDesign"]),
+        .testTarget(name: "FentonActivityModelTests", dependencies: ["FentonActivityModel"]),
         .testTarget(name: "HassTelemetryTests", dependencies: ["HassTelemetry"]),
         .testTarget(
             name: "HassUITests",
-            dependencies: ["HassUI", "HassCore", "HassTestSupport", .product(name: "HAKit+Mocks", package: "HAKit")]
+            dependencies: ["HassUI", "HassCore", "HassTestSupport", "FentonActivityModel", "FentonActivityViews", .product(name: "HAKit+Mocks", package: "HAKit")]
         ),
     ],
     swiftLanguageModes: [.v6]

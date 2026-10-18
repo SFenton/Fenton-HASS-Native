@@ -48,6 +48,10 @@ struct SettingsScreen: View {
                         .accessibilityIdentifier("settings.todo")
                     }
                 }
+                // Appearance sits with the first sections, above the household topics and well before the diagnostic
+                // Performance and Feedback sections (owner follow-up, 2026-10-17): Background Blur, then the App
+                // Icon row where the system can switch icons.
+                AppearanceSettingsSection()
                 Section {
                     ForEach(HouseholdSettingsPage.allCases) { page in
                         Button {
@@ -105,6 +109,8 @@ struct SettingsLinkRow: View {
     var symbol: String
     /// Off inside a `NavigationLink`, which draws its own chevron.
     var showsChevron = true
+    /// An app icon whose small preview replaces the symbol (the App Icon row); nil draws the symbol.
+    var appIcon: AppIconChoice?
 
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -140,12 +146,18 @@ struct SettingsLinkRow: View {
         .accessibilityElement(children: .combine)
     }
 
+    @ViewBuilder
     private var icon: some View {
-        Image(systemName: symbol)
-            .font(.title3)
-            .foregroundStyle(HassTokens.Ink.secondary)
-            .frame(width: 34)
-            .accessibilityHidden(true)
+        if let appIcon {
+            AppIconPreview(choice: appIcon, side: 30)
+                .frame(width: 34)
+        } else {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(HassTokens.Ink.secondary)
+                .frame(width: 34)
+                .accessibilityHidden(true)
+        }
     }
 }
 

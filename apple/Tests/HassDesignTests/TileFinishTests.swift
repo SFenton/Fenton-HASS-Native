@@ -3,52 +3,61 @@ import Foundation
 import SwiftUI
 import Testing
 
-/// The tile finish proposals (`.agents/design/direction-g.md`, Tile finish): tokens, the accessibility fallback and the
-/// rendered contrast of every finish on the wallpaper's lightest and darkest regions.
+/// The tile finish (`.agents/design/direction-g.md`, Tile finish): the tinted glass tokens, the accessibility fallback to
+/// solid, and the rendered contrast of every family, room, Quick Link, chore and food fill on the wallpaper's lightest and
+/// darkest regions and in dark and light sheets.
 @MainActor
 struct TileFinishTests {
     typealias RGB = (r: Double, g: Double, b: Double)
 
     /// The lightest wallpaper under the scrim that white text still reads on at 4.5:1 (sRGB grey 0.46, 4.7:1 for white), and
     /// the darkest, the web shell's `#111723`.
-    static let lightest: RGB = (0.46, 0.46, 0.46)
-    static let darkest: RGB = (17 / 255, 23 / 255, 35 / 255)
+    nonisolated static let lightest: RGB = (0.46, 0.46, 0.46)
+    nonisolated static let darkest: RGB = (17 / 255, 23 / 255, 35 / 255)
+
+    /// A surface the finish is drawn on: the wallpaper (dark, always) or a sheet in either appearance.
+    struct Place: CustomTestStringConvertible, Sendable {
+        var surface: TileSurface
+        var scheme: ColorScheme
+        var backdrop: RGB?
+        var testDescription: String { "\(surface) \(scheme)\(backdrop == nil ? "" : " \(backdrop!)")" }
+        var appearance: TileAppearance { .resolve(surface: surface, scheme: scheme) }
+    }
+
+    nonisolated static let places: [Place] = [
+        Place(surface: .page, scheme: .dark, backdrop: lightest), Place(surface: .page, scheme: .dark, backdrop: darkest),
+        Place(surface: .sheet, scheme: .dark, backdrop: nil), Place(surface: .sheet, scheme: .light, backdrop: nil),
+    ]
 
     // MARK: Tokens
 
-    @Test func theShippedFinishIsSolidAndTheProposalsAreNot() {
-        #expect(TileFinish.standard == .solid, "A finish ships only after the owner picks one")
-        #expect(EnvironmentValues().tileFinish == .solid)
-        #expect(TileFinish.allCases.count == 4)
-        #expect(Set(TileFinish.allCases.map(\.title)).count == 4)
-        #expect(Set(TileFinish.allCases.map(\.summary)).count == 4)
-        #expect(TileFinish.frostedModule.usesGlyphDisc)
-        #expect(!TileFinish.tintedGlass.usesGlyphDisc)
+    @Test func tintedGlassShipsAndSolidIsTheFallback() {
+        #expect(TileFinish.standard == .tintedGlass, "The owner chose A, Tinted Glass (2026-10-17)")
+        #expect(EnvironmentValues().tileFinish == .tintedGlass)
+        #expect(TileFinish.allCases == [.tintedGlass, .solid])
+        #expect(Set(TileFinish.allCases.map(\.title)).count == 2)
+        #expect(Set(TileFinish.allCases.map(\.summary)).count == 2)
+        #expect(TileFinish.solid.offGlyphKeep == 0.72 && TileFinish.tintedGlass.offGlyphKeep == 0.88)
     }
 
-    @Test func aSheetIsOpaqueBecauseThereIsNoWallpaperToShowThrough() {
-        for finish in TileFinish.allCases {
-            let sheet = finish.tokens(on: .sheet)
-            #expect(sheet.fillOpacity == 1, "\(finish)")
-            #expect(sheet.offVeil == 0, "\(finish)")
-        }
-    }
-
-    @Test func theFrostedFinishesLetTheWallpaperTintTheFillOnAPage() {
-        #expect(TileFinish.solid.tokens(on: .page).fillOpacity == 1)
-        for finish in [TileFinish.tintedGlass, .webPort] {
-            let page = finish.tokens(on: .page)
-            #expect(page.fillOpacity < 1 && page.fillOpacity >= 0.7, "\(finish) \(page.fillOpacity)")
-            #expect(page.rimTop > 0)
-        }
-        let module = TileFinish.frostedModule.tokens(on: .page)
-        #expect(module.edgeGlow > 0 && module.edgeWash > 0)
+    @Test func theTokensAreTheOwnersChoiceAndASheetIsOpaque() {
+        let page = TileFinish.Tokens.tintedGlass(on: .page)
+        #expect(page == TileFinish.Tokens(underlay: 0.66, fillUnderlay: 0.50, fillOpacity: 0.78, sheenTop: 0.14, sheenBottom: 0.08,
+                                          rimTop: 0.32, rimBottom: 0.06))
+        // The wallpaper tints a fill a little, but not so much that white ink loses its contrast.
+        #expect(page.fillOpacity < 1 && page.fillOpacity >= 0.7)
+        #expect(page.rimTop > page.rimBottom && page.rimBottom > 0)
+        // A sheet has no wallpaper to show through: the fill is opaque, the sheen and rim are the page's.
+        let sheet = TileFinish.Tokens.tintedGlass(on: .sheet)
+        #expect(sheet.fillOpacity == 1)
+        #expect(sheet.sheenTop == page.sheenTop && sheet.rimTop == page.rimTop)
     }
 
     @Test func reduceTransparencyAndIncreaseContrastFallBackToSolid() {
         for finish in TileFinish.allCases {
             #expect(TileFinish.effective(finish, reduceTransparency: true, increasedContrast: false) == .solid)
             #expect(TileFinish.effective(finish, reduceTransparency: false, increasedContrast: true) == .solid)
+            #expect(TileFinish.effective(finish, reduceTransparency: true, increasedContrast: true) == .solid)
             #expect(TileFinish.effective(finish, reduceTransparency: false, increasedContrast: false) == finish)
         }
     }
@@ -99,46 +108,112 @@ struct TileFinishTests {
         }
     }
 
+    @Test func theOffGlyphIsLiftedOnlyWhereTintedGlassNeedsIt() {
+        for family in ColorFamily.allCases {
+            // Solid is the shipped mix; a light sheet is the same mix with tinted glass's keep.
+            #expect(family.offGlyphRGB(.dark, under: .solid) == family.offGlyphRGB(.dark))
+            #expect(family.offGlyphRGB(.light, under: .solid) == family.offGlyphRGB(.light))
+            #expect(family.offGlyphRGB(.light, under: .tintedGlass) == family.offGlyphRGB(.light, keep: 0.88))
+            // The dark glyph is never darker than the plain mix, and reads 3:1 on the lightest ground.
+            let plain = family.offGlyphRGB(.dark, keep: 0.88)
+            let lifted = family.offGlyphRGB(.dark, under: .tintedGlass)
+            #expect(ChipTint.luminance(lifted) >= ChipTint.luminance(plain) - 1e-9, "\(family)")
+            #expect(ChipTint.contrast(lifted, ColorFamily.lightestGlyphGround) >= 3, "\(family)")
+        }
+        // A family that already reads is untouched; the Food families are the ones that needed it.
+        #expect(ColorFamily.lights.offGlyphRGB(.dark, under: .tintedGlass) == ColorFamily.lights.offGlyphRGB(.dark, keep: 0.88))
+        #expect(ColorFamily.pantry.offGlyphRGB(.dark, under: .tintedGlass) != ColorFamily.pantry.offGlyphRGB(.dark, keep: 0.88))
+    }
+
+    @Test func aChosenControlTakesTheEdgeUnlessTransparencyIsReduced() {
+        // The accessibility settings are read-only environment values, so the journeys cover them; here both finishes draw.
+        for finish in TileFinish.allCases {
+            let control = RoundedRectangle(cornerRadius: 16).fill(.blue).frame(width: 90, height: 64)
+                .tintedGlassEdge(cornerRadius: 16)
+                .tileFinish(finish)
+            #expect(ImageRenderer(content: control).cgImage != nil, "\(finish)")
+        }
+    }
+
     // MARK: Contrast
 
-    /// Every finish keeps the page's text at 4.5:1 (state text at 85% ink for the frosted ones) and its off glyphs at 3:1 on the
-    /// wallpaper's lightest and darkest regions, measured on rendered pixels at the right edge of the tile (clear of the text,
-    /// at the heights text sits).
-    @Test(arguments: TileFinish.allCases)
-    func inkHoldsContrastOnTheLightestAndDarkestWallpaper(_ finish: TileFinish) {
-        for backdrop in [Self.lightest, Self.darkest] {
-            // Off
-            for ground in samples(finish, .off, backdrop: backdrop) {
-                let secondary = finish == .solid ? 0.68 : 0.85
-                expectRatio(white, over: ground, atLeast: 4.5, "\(finish) off title")
-                expectRatio(blend((235 / 255, 235 / 255, 245 / 255), over: ground, alpha: secondary), over: ground, atLeast: 4.5,
-                            "\(finish) off state")
+    /// Where a tile's text sits, as fractions of its height. A row's title is at about a third of the height and its state
+    /// below the middle; an anchored-bottom tile's text is lower still.
+    private static let titleRows = [0.3, 0.5, 0.85]
+    private static let stateRows = [0.5, 0.85]
+
+    /// Every white-ink fill, the way the app uses it: the families (which include the chore lists and the food spaces), the
+    /// sixteen rooms, and the Quick Links (Rooms, Security by alarm mode and unknown, Custom Lights).
+    private static let whiteInkFills: [(name: String, style: TileFaceStyle)] = {
+        var fills: [(String, TileFaceStyle)] = ColorFamily.allCases.compactMap { family in
+            family.spec.darkInk || family.spec.fill == nil ? nil : (family.rawValue, .filled(family))
+        }
+        fills += RoomPalette.fills.map { ("room \($0.key)", .colored($0.value)) }
+        var links = Set(["rooms", "custom-lights"].compactMap { QuickLinkPalette.fill(forLink: $0) })
+        links.insert(QuickLinkPalette.securityUnknown)
+        for state in ["armed_home", "armed_away", "armed_night", "disarmed", "triggered", "arming"] {
+            if let fill = QuickLinkPalette.fill(forLink: "security-system", alarmState: state) { links.insert(fill) }
+        }
+        fills += links.sorted().map { ("link \(String($0, radix: 16))", .colored($0)) }
+        return fills
+    }()
+
+    /// The page's text holds 4.5:1 and a glyph 3:1 under tinted glass in every place a tile draws, measured on rendered
+    /// pixels at the tile's right edge (clear of the text) at the heights the title and state sit: the wallpaper's lightest
+    /// and darkest regions, and a dark and a light sheet.
+    @Test(arguments: places)
+    func inkHoldsContrastEverywhere(_ place: Place) {
+        let secondary: Double = switch (place.surface, place.appearance) {
+        case (.page, _): HassTokens.Surface.secondaryOnWallpaperOpacity
+        case (.sheet, .dark): HassTokens.Palette.secondaryInSheetDarkOpacity
+        case (.sheet, .light): HassTokens.Palette.secondaryInSheetLightOpacity
+        }
+        // Off: the neutral module on the page, the cell in a sheet (a white cell in a light sheet carries label ink).
+        let primary: RGB = place.appearance == .light ? hex(0x1C1C1E) : white
+        let secondaryInk: RGB = place.appearance == .light ? hex(0x3C3C43) : (235 / 255, 235 / 255, 245 / 255)
+        for ground in samples(.off, in: place, fractions: Self.titleRows) {
+            expectRatio(primary, over: ground, atLeast: 4.5, "\(place) off title")
+        }
+        for ground in samples(.off, in: place, fractions: Self.stateRows) {
+            expectRatio(blend(secondaryInk, over: ground, alpha: secondary), over: ground, atLeast: 4.5, "\(place) off state")
+        }
+        // On: white ink on every white-ink fill the app uses.
+        for (name, style) in Self.whiteInkFills {
+            for ground in samples(style, in: place, fractions: Self.titleRows) {
+                expectRatio(white, over: ground, atLeast: 4.5, "\(place) \(name) title")
             }
-            // On, white ink on every white-ink family fill and every room: B keeps white ink on its neutral module.
-            let fills = ColorFamily.allCases.compactMap { family in family.spec.darkInk ? nil : family.spec.fill.map { (family.rawValue, $0) } }
-                + RoomPalette.fills.map { ($0.key, $0.value) }
-            for (name, fill) in fills {
-                let style: TileFaceStyle = ColorFamily(rawValue: name).map { .filled($0) } ?? .colored(fill)
-                for ground in samples(finish, style, backdrop: backdrop) {
-                    expectRatio(white, over: ground, atLeast: 4.5, "\(finish) \(name) title")
-                    expectRatio(blend(white, over: ground, alpha: finish.usesGlyphDisc ? 0.85 : style.isColored ? 1 : 0.92), over: ground, atLeast: 4.5,
-                                "\(finish) \(name) state")
+            for ground in samples(style, in: place, fractions: Self.stateRows) {
+                expectRatio(blend(white, over: ground, alpha: style.isColored ? 1 : 0.92), over: ground, atLeast: 4.5, "\(place) \(name) state")
+            }
+            // A chore list's open count is a bold 22 pt numeral in the top-trailing corner, under the sheen's brightest part.
+            if case .filled = style {
+                for ground in samples(style, in: place, fractions: [0.15]) {
+                    expectRatio(white, over: ground, atLeast: 3, "\(place) \(name) count")
                 }
             }
-            // An error: the page red on the dense ground.
-            for ground in samples(finish, .error, backdrop: backdrop) {
-                expectRatio(hex(HassTokens.Palette.red), over: ground, atLeast: 4.5, "\(finish) error")
-            }
-            // Off glyphs: the family colour mixed toward grey, 3:1 where the shipped finish reaches it (the lightest region is
-            // the extreme the scrim is tuned for), and never more than 15% under the shipped finish's ratio.
-            for family in ColorFamily.allCases where family != .neutral {
-                let shipped = samples(.solid, .off, backdrop: backdrop).map { ratio(hex(family.offGlyphRGB(.dark)), $0) }.min() ?? 0
-                let glyph = hex(family.offGlyphRGB(.dark, keep: finish.offGlyphKeep))
-                for sample in samples(finish, .off, backdrop: backdrop) {
-                    // Finish B sets the glyph in a darker disc.
-                    let ground = finish.usesGlyphDisc ? blend((0, 0, 0), over: sample, alpha: TileFinish.offDiscShade.dark) : sample
-                    expectRatio(glyph, over: ground, atLeast: min(3, shipped * 0.85), "\(finish) \(family) off glyph")
-                }
+        }
+        // Dark ink on the lit tile and on power: the sheen only lightens the top and shades the bottom a little.
+        for ground in samples(.lit, in: place, fractions: Self.titleRows) {
+            expectRatio(hex(0x1C1C1E), over: ground, atLeast: 4.5, "\(place) lit title")
+        }
+        for ground in samples(.lit, in: place, fractions: Self.stateRows) {
+            expectRatio(blend(hex(0x1C1C1E), over: ground, alpha: LitTile.secondaryInkOpacity), over: ground, atLeast: 4.5, "\(place) lit state")
+        }
+        for ground in samples(.filled(.power), in: place, fractions: Self.titleRows) {
+            expectRatio(hex(0x1C1C1E), over: ground, atLeast: 4.5, "\(place) power title")
+        }
+        for ground in samples(.filled(.power), in: place, fractions: Self.stateRows) {
+            expectRatio(blend(hex(0x282000), over: ground, alpha: 0.82), over: ground, atLeast: 4.5, "\(place) power state")
+        }
+        // An error: the red state text on the dense ground (page) or the cell (sheet).
+        for ground in samples(.error, in: place, fractions: Self.stateRows) {
+            expectRatio(hex(place.appearance.errorRGB), over: ground, atLeast: 4.5, "\(place) error")
+        }
+        // Off glyphs: the family colour mixed toward grey; 3:1 in every place a tile draws.
+        for family in ColorFamily.allCases where family != .neutral {
+            let glyph = hex(family.offGlyphRGB(place.appearance.scheme, under: .tintedGlass))
+            for ground in samples(.off, in: place, fractions: [0.15, 0.3, 0.5]) {
+                expectRatio(glyph, over: ground, atLeast: 3, "\(place) \(family) off glyph")
             }
         }
     }
@@ -171,34 +246,23 @@ struct TileFinishTests {
         #expect(value >= minimum, "\(label): \(value):1 over \(ground)", sourceLocation: sourceLocation)
     }
 
-    /// The ground the finish draws behind text, read from rendered pixels at the right edge at three heights.
-    private func samples(_ finish: TileFinish, _ style: TileFaceStyle, backdrop: RGB) -> [RGB] {
-        // The shipped finish has no frosted ground to render, so its numbers come from the module and fill directly.
-        if finish == .solid { return solidSamples(style, backdrop: backdrop) }
+    /// The ground tinted glass draws behind text, read from rendered pixels at the right edge at the given heights (a
+    /// fraction of the tile): where the title and state sit by default.
+    private func samples(_ style: TileFaceStyle, in place: Place, fractions: [Double]) -> [RGB] {
         let size = CGSize(width: 170, height: 90)
+        let ground = TintedGlassGround(style: style, surface: place.surface, appearance: place.appearance,
+                                       tint: .gray, wash: nil, level: nil, levelTint: nil)
+            .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
         let view = ZStack {
-            Color(.sRGB, red: backdrop.r, green: backdrop.g, blue: backdrop.b)
-            FrostedGround(finish: finish, style: style, surface: .page, appearance: .dark,
-                          tint: .gray, wash: nil, level: nil, levelTint: nil)
-                .clipShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+            Color(.sRGB, red: place.backdrop?.r ?? 0, green: place.backdrop?.g ?? 0, blue: place.backdrop?.b ?? 0)
+            ground
         }
         .frame(width: size.width, height: size.height)
-        .environment(\.colorScheme, .dark)
+        .environment(\.colorScheme, place.scheme)
         let image = ImageRenderer(content: view)
         image.scale = 1
         guard let cg = image.cgImage else { return [] }
-        return [0.35, 0.5, 0.85].compactMap { fraction in pixel(cg, x: Int(size.width * 0.85), y: Int(size.height * fraction)) }
-    }
-
-    /// The solid finish's ground: the thin module (66%) over the backdrop for off and error, the fill itself otherwise.
-    private func solidSamples(_ style: TileFaceStyle, backdrop: RGB) -> [RGB] {
-        switch style {
-        case .off, .tinted: [blend(hex(HassTokens.Palette.moduleThin), over: backdrop, alpha: 0.66)]
-        case .error: [blend(hex(HassTokens.Palette.moduleDense), over: backdrop, alpha: 0.78)]
-        case let .filled(family): [hex(family.spec.fill ?? 0)]
-        case let .colored(fill): [hex(fill)]
-        case .lit: [hex(0xEADBC4)]
-        }
+        return fractions.compactMap { fraction in pixel(cg, x: Int(size.width * 0.85), y: Int(size.height * fraction)) }
     }
 
     private func pixel(_ image: CGImage, x: Int, y: Int) -> RGB? {
