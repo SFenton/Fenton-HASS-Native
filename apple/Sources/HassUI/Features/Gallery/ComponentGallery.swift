@@ -30,6 +30,7 @@ public struct ComponentGallery: View {
         case location
         case systemAccessibility = "system-accessibility"
         case modalSizing = "modal-sizing"
+        case liveActivity = "live-activity"
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -98,6 +99,7 @@ public struct ComponentGallery: View {
                     case .weather: WeatherGallery()
                     case .systemAccessibility: SystemAccessibilityGallery()
                     case .modalSizing: ModalSizingGallery()
+                    case .liveActivity: LiveActivityGallery()
                     case .rooms, .vacation, .food, .chores, .location, .settings: EmptyView()
                     }
                 }

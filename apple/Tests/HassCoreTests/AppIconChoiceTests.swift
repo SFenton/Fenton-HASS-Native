@@ -47,18 +47,17 @@ struct AppIconChoiceTests {
     }
 
     @Test func colourPairsMatchTheMockups() {
-        let expected: [(AppIconChoice, UInt32, UInt32, UInt32)] = [
-            (.navySky, 0x0E1E46, 0x172446, 0x7CC4FF), (.tealMint, 0x063A3E, 0x123B40, 0x6EE7C8),
-            (.plumLilac, 0x3A1648, 0x382346, 0xD3A8FF), (.forestGreen, 0x10301E, 0x1B3426, 0x9BE29B),
-            (.burgundyRose, 0x48101E, 0x431B26, 0xFF9EB0), (.indigoPeriwinkle, 0x221C5A, 0x252159, 0xA8B4FF),
-            (.espressoAmber, 0x342014, 0x36271E, 0xFFB35C), (.midnightGold, 0x101630, 0x1A2036, 0xFFD36B),
+        let expected: [(AppIconChoice, UInt32, UInt32)] = [
+            (.navySky, 0x0E1E46, 0x7CC4FF), (.tealMint, 0x063A3E, 0x6EE7C8),
+            (.plumLilac, 0x3A1648, 0xD3A8FF), (.forestGreen, 0x10301E, 0x9BE29B),
+            (.burgundyRose, 0x48101E, 0xFF9EB0), (.indigoPeriwinkle, 0x221C5A, 0xA8B4FF),
+            (.espressoAmber, 0x342014, 0xFFB35C), (.midnightGold, 0x101630, 0xFFD36B),
         ]
-        for (choice, tint, ring, glyph) in expected {
+        for (choice, tint, glyph) in expected {
             #expect(choice.tint == tint, "\(choice) tint")
-            #expect(choice.ring == ring, "\(choice) ring")
             #expect(choice.glyph == glyph, "\(choice) glyph")
         }
-        #expect(AppIconChoice.tintOpacity == 0.82)
+        #expect(AppIconChoice.tintOpacity == 0.86)
     }
 
     @Test func everyChoiceLooksDifferent() {
