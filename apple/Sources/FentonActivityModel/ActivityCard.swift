@@ -91,8 +91,6 @@ public struct ActivityCard: Equatable, Sendable {
 
     /// The widest a compact word grows, in points.
     public static let compactLabelWidth: Double = 56
-    /// A count-up this old (seconds) gets the `H:MM:SS` template, since it reaches an hour before the next push.
-    public static let hoursTemplateAfter: Double = 3000
 
     /// The hidden text whose width the compact island's time takes: "0:00:00" from an hour on, else "00:00".
     public static func compactTemplate(hours: Bool) -> String { hours ? "0:00:00" : "00:00" }
@@ -267,7 +265,8 @@ public struct ActivityCard: Equatable, Sendable {
         switch figure {
         case .complete: return .complete
         case let .countdown(_, showsHours, _): return .timer(template: Self.compactTemplate(hours: showsHours))
-        case let .countup(start): return .timer(template: Self.compactTemplate(hours: now.timeIntervalSince(start) >= Self.hoursTemplateAfter))
+        // A count-up gets no push while it runs, so it always takes the wide template: a dryer passes an hour unseen.
+        case .countup: return .timer(template: Self.compactTemplate(hours: true))
         case let .frozen(seconds): return .timer(template: Self.compactTemplate(hours: seconds >= 3600))
         case let .percent(value): return .label(short ?? "\(value)%")
         case let .text(text): return .label(short ?? text)

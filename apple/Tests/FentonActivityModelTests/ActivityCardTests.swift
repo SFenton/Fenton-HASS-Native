@@ -225,8 +225,8 @@ struct ActivityCardTests {
         #expect(try card("dishwasher").compactTrailing == .timer(template: "00:00"), "42 minutes left")
         #expect(try card("dishwasher-long").compactTrailing == .timer(template: "0:00:00"), "1:04:42 left")
         #expect(try card("fan-long").compactTrailing == .timer(template: "0:00:00"))
-        // A count-up reaches an hour before the next push, so it takes the wide template from 50 minutes.
-        #expect(try card("dryer").compactTrailing == .timer(template: "00:00"), "32 minutes")
+        // A count-up gets no push while it runs, so it takes the wide template from the start.
+        #expect(try card("dryer").compactTrailing == .timer(template: "0:00:00"), "32 minutes, and an hour later with no push")
         var long = try card("dryer").state
         long.value = .countup(start: now.addingTimeInterval(-3_100))
         #expect(ActivityCard(attributes: try card("dryer").attributes, state: long, now: now).compactTrailing == .timer(template: "0:00:00"))

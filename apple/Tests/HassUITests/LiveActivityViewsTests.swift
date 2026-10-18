@@ -142,7 +142,7 @@ struct LiveActivityViewsTests {
         #expect(abs(width(HomeActivityIsland.CompactTrailing(card: card("dishwasher"))) - short) < 1, "42:00 takes the MM:SS template")
         #expect(abs(width(HomeActivityIsland.CompactTrailing(card: card("dishwasher-long"))) - hours) < 1, "1:04:42 takes the H:MM:SS template")
         #expect(abs(width(HomeActivityIsland.CompactTrailing(card: card("fan"))) - short) < 1)
-        #expect(abs(width(HomeActivityIsland.CompactTrailing(card: card("dryer"))) - short) < 1, "a count-up too")
+        #expect(abs(width(HomeActivityIsland.CompactTrailing(card: card("dryer"))) - hours) < 1, "a count-up always takes the H:MM:SS template")
     }
 
     @Test func aCompactWordIsCappedAt56PointsAndTruncates() {
