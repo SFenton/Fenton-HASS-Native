@@ -34,6 +34,8 @@ struct RoomOverviewSheet: View {
             .navigationDestination(for: RoomGroup.self) { group in
                 RoomGroupDetailPage(kind: kind, group: group) { dismiss() }
                     .modalChrome()
+                    // Times the push; a zoom destination re-labels it `ZoomOpen` / `ZoomClose` through the environment.
+                    .measuresNavigation(.push, page: "Room overview")
                     .zoomDestination(id: group.room, in: rooms)
             }
             .toolbar {

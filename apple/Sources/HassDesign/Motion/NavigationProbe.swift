@@ -80,18 +80,21 @@ private struct NavigationProbe: UIViewControllerRepresentable {
     }
 }
 
+/// The probe's view controller. It never trusts the `animated` flag of its own appearance callbacks: SwiftUI adds it to the
+/// page's hosting controller after that controller has started appearing, so UIKit reports its appearance as not animated even
+/// during a push. Instead a ``TransitionTracker`` watches the transition coordinators above it, frame by frame.
 @MainActor
 final class NavigationProbeController: UIViewController {
     var kind: NavigationKind
     private let page: String
-    private var measurement: NavigationMeasurement?
+    private var tracker: TransitionTracker?
 
     init(kind: NavigationKind, page: String) {
         self.kind = kind
         self.page = page
         super.init(nibName: nil, bundle: nil)
         // The page being built is the closest thing to the intent the page can see.
-        measurement = .begin(kind.appear, page: page)
+        tracker = TransitionTracker(controller: self, measurement: .begin(kind.appear, page: page))
     }
 
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
@@ -102,38 +105,19 @@ final class NavigationProbeController: UIViewController {
         view.isAccessibilityElement = false
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        guard animated else {
-            // A cold launch, a restored path, a tab becoming visible: not a transition.
-            measurement?.cancel()
-            measurement = nil
-            return
-        }
-        // Coming back after a page above this one was popped is also animated; only a measurement in flight counts.
-        guard let measurement else { return }
-        NextFrame.perform { measurement.firstFrame() }
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        measurement?.settled()
-        measurement = nil
+    override func didMove(toParent parent: UIViewController?) {
+        super.didMove(toParent: parent)
+        // Added to the hosting controller: the page is going on screen. A push or a presentation is under way right now or never.
+        if parent != nil { tracker?.start() }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        guard animated, isLeaving else { return }
-        measurement?.cancel()
-        let leaving = NavigationMeasurement.begin(kind.disappear, page: page)
-        measurement = leaving
-        NextFrame.perform { leaving.firstFrame() }
-    }
-
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        if isLeaving { measurement?.settled() } else { measurement?.cancel() }
-        measurement = nil
+        guard isLeaving else { return }
+        // The page itself is going away (popped or dismissed): time that transition instead.
+        tracker?.cancel()
+        tracker = TransitionTracker(controller: self, measurement: .begin(kind.disappear, page: page))
+        tracker?.start()
     }
 
     /// Whether the page itself is going away (popped or dismissed), not merely covered by a page pushed above it.
@@ -146,5 +130,64 @@ final class NavigationProbeController: UIViewController {
         return false
     }
 
+    /// Whether a push, pop, presentation or dismissal that includes this page is animating now.
+    var isTransitioning: Bool {
+        var current: UIViewController? = self
+        while let controller = current {
+            if controller.transitionCoordinator != nil || controller.navigationController?.transitionCoordinator != nil { return true }
+            current = controller.parent
+        }
+        return false
+    }
+}
+
+/// Watches one transition frame by frame and reports it to a ``NavigationMeasurement``: the first frame once a transition is seen
+/// under way, settled when it ends. If no transition shows up within about half a second (a cold launch, a restored path, a tab
+/// becoming visible), the measurement is cancelled and nothing is recorded.
+@MainActor
+final class TransitionTracker: NSObject {
+    private weak var controller: NavigationProbeController?
+    private let measurement: NavigationMeasurement
+    private var link: CADisplayLink?
+    private var frames = 0
+    private var sawTransition = false
+
+    /// Frames to wait for a transition to begin.
+    static let patience = 40
+
+    init(controller: NavigationProbeController, measurement: NavigationMeasurement) {
+        self.controller = controller
+        self.measurement = measurement
+    }
+
+    func start() {
+        guard link == nil else { return }
+        let link = CADisplayLink(target: self, selector: #selector(tick(_:)))
+        link.add(to: .main, forMode: .common)
+        self.link = link
+    }
+
+    func cancel() {
+        link?.invalidate()
+        link = nil
+        measurement.cancel()
+    }
+
+    @objc private func tick(_ link: CADisplayLink) {
+        frames += 1
+        let transitioning = controller?.isTransitioning ?? false
+        if transitioning {
+            if !sawTransition {
+                sawTransition = true
+                measurement.firstFrame()
+            }
+        } else if sawTransition {
+            link.invalidate()
+            self.link = nil
+            measurement.settled()
+        } else if frames > Self.patience || controller == nil {
+            cancel()
+        }
+    }
 }
 #endif
