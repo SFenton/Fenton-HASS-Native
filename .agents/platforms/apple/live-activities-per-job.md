@@ -16,6 +16,11 @@ Design source: the canvas **S+H Live Activity** (`https://claude.ai/artifact/ToY
 5. **Vacuums show one room at a time.** A card ends when its room finishes, and a new card starts when the next room starts. There are no room counts and no map.
 6. **One problem card design for every device.** The device name is the title. Red means it stopped and needs you (with sound); amber means it carries on but needs attention (silent). **There is no offline card.**
 7. **Laundry has no buttons.** People swipe the card away.
+8. **"Complete" everywhere** (2026-10-17, round 4). Every job that finishes on its own (dishwasher, washer, dryer, hot flash) shows **Complete** for **5 minutes** (the default linger), then ends. A job stopped by a person ends at once. Card text is 17 pt title over a 28 pt value.
+9. **No laundry estimates.** Spin cycles vary, so the washer and dryer count up and never show an estimated completion. The washer card exists only during the spin. Both finish on the same signal as the household "done" notification.
+10. **Everyone with S+H gets cards** (every registration with a push-to-start token), not only the owner's phone.
+11. **Hot flash** is a job (§4a), with its own audience rules.
+12. **Problem cards replace the household notification** for people with S+H, and live as long as the related Donetick task: they end when Home Assistant auto-completes it or a person completes it, including with the card's own **Done** button (§5).
 
 ## 1. What failed in Phase 1 (2026-10-17)
 
@@ -95,7 +100,7 @@ Explicit `CodingKeys` with snake_case keys. Times are Unix seconds as doubles (t
 | `value.kind` | `countdown` · `countup` · `percent` · `text` | `countdown` needs `end_ts` (and `start_ts` for the ring). `countup` needs `start_ts` and an optional `paused_elapsed_s`, which shows a frozen time while paused. `percent` needs `progress`. `text` needs `text` (≤ 16 characters, e.g. "Done") |
 | `value.estimated` | Bool | The dryer's learned ETA. It still shows a countdown; the VoiceOver label says "about" |
 | `progress` | Double? 0…1 | Drives the ring when there is no time range |
-| `controls` | [≤ 2] `{id, title, role}` | `role`: `primary` (white pill) or `secondary` (dark pill). The first control is primary |
+| `controls` | [≤ 2; ≤ 3 on problem cards] `{id, title, role}` | `role`: `primary` (white pill) or `secondary` (dark pill). The first control is primary. Problem cards put Done last |
 | `problem` | `{severity, code, icon, problem, message, chips[≤2]}`? | Present ⇔ `phase == problem`. `severity` is `critical` or `warning`. `icon` is from the problem glyph set (§5). Strings are already worded by the engine |
 | `pending` | `{control, label, since_ts}`? | Written **only by the app** (§7). The engine never sends it, so any push clears it |
 | `url` | String? | Tap target, mapped by `ActivityDeepLink` |
@@ -104,7 +109,7 @@ Budget: the whole payload must be ≤ 4 KB. Strings are capped: title 32, headli
 
 ### Fixtures
 
-The relay lane generates `tests/fixtures/live2-*.apns` (fan start, fan stop end, dishwasher percent, dryer estimated, vacuum count-up, vacuum paused, problem critical, problem warning, unknown error, unmapped error, v1 compatibility). They are mirrored into `tools/push_fixtures/`, and the app's `RelayFixtureTests` decode every one. **The app lane hand-writes the same fixtures from this table first**, and review diffs the two sets.
+The relay lane generates `tests/fixtures/live2-*.apns` (fan start, fan stop end, dishwasher percent, washer and dryer count-up, Complete (dishwasher, washer, dryer, hot flash), hot flash cooling / holding / by Steph / whole bed, vacuum count-up, vacuum paused, problem critical, problem warning, unknown error, unmapped error, v1 compatibility). They are mirrored into `tools/push_fixtures/`, and the app's `RelayFixtureTests` decode every one. **The app lane hand-writes the same fixtures from this table first**, and review diffs the two sets.
 
 ## 4. Jobs
 
@@ -113,16 +118,57 @@ Times are local. "End now" means `clear_notification`, which the relay sends as 
 | Job | Starts when | Card | Updates on | Ends when | Controls → service |
 |---|---|---|---|---|---|
 | **Bathroom fan** (`fan.guest`, `fan.master`) | `input_boolean.<r>_bathroom_fan_timer_pending` turns on and `input_datetime.<r>_bathroom_fan_timer_ends_at` is in the future (`ends_at` is stale after a cancel, so check both) | "Guest Bath Fan", countdown to `ends_at`; ring from pending `last_changed` | `ends_at` moves by more than 30 s (timer extended) | pending turns off (expired, cancelled, fan turned off anywhere) → end now | **Stop** → `script.<r>_bathroom_fan_command {command: power, target_power: off}`. The lane confirms in `scripts.yaml` that `power off` also clears the timer; if not, call `timer_cancel` and then `power off` |
-| **Dishwasher** (`dishwasher`) | `sensor.dishwasher_operation_state` → `run` (or `delayedstart`, which is `waiting` with "Starts h:mm") | "Dishwasher", countdown to `sensor.dishwasher_program_finish_time`; if that is unavailable, `percent` from `sensor.dishwasher_program_progress` | finish time moves by more than 60 s; progress +5 points, at most every 5 min, priority 5; `pause` ↔ `run` | `finished` → end with `value: text "Clean"` and a 15 min linger (open question 1); `ready` / `inactive` / `aborting` → end now | **Stop** → `button.press button.dishwasher_stop_program` (only while `binary_sensor.dishwasher_remote_control` is on; otherwise no button). While `pause`: **Resume** → `button.dishwasher_resume_program`. No Pause (Home Connect has no pause entity) |
-| **Dryer** (`dryer`) | `input_boolean.dryer_started_helper` → on (5 min after vibration starts, so `start_ts` = on − 300 s) | "Dryer", countdown to start + learned median (`value.estimated`). Past the estimate it switches to `countup` from the start | the estimate passes | helper → off → end now (the household "Dryer done" notification still goes out, so the card does not alert) | none |
-| **Washer** (`washer`) | **Deferred.** The vibration sensor only catches the spin (5 to 9 min spells), so it can't tell when a wash started. It needs a power-monitoring plug (open question 2) | | | | none |
+| **Dishwasher** (`dishwasher`) | `sensor.dishwasher_operation_state` → `run` (or `delayedstart`, which is `waiting` with "Starts h:mm") | "Dishwasher", countdown to `sensor.dishwasher_program_finish_time`; if that is unavailable, `percent` from `sensor.dishwasher_program_progress` | finish time moves by more than 60 s; progress +5 points, at most every 5 min, priority 5; `pause` ↔ `run` | `finished` → **Complete** for 5 min, then end; `ready` / `inactive` / `aborting` → end now | **Stop** → `button.press button.dishwasher_stop_program` (only while `binary_sensor.dishwasher_remote_control` is on; otherwise no button). While `pause`: **Resume** → `button.dishwasher_resume_program`. No Pause (Home Connect has no pause entity) |
+| **Dryer** (`dryer`) | `input_boolean.dryer_started_helper` → on (5 min after vibration starts, so `start_ts` = on − 300 s) | "Dryer", `countup` from `start_ts`. Steady full ring. No estimate | nothing in between | helper → off (the same trigger as `Washer/Dryer Notifications`) → **Complete** for 5 min, then end. No alert | none |
+| **Washer** (`washer`) | `input_boolean.washer_started_helper` → on (the spin; 5 min after vibration starts, so `start_ts` = on − 300 s) | "Washing Machine", `countup` from `start_ts`. No estimate | nothing in between | helper → off → **Complete** for 5 min, then end. No alert | none |
 | **Vacuum, Main Floor** (`vacuum.main_floor`) | `sensor.main_floor_vacuum_coordinator_current_room` gets a `room_id` with phase `cleaning` (or `resumed_cleaning`) | headline `{Vacuuming\|Mopping\|Cleaning} {room_name}`. The verb comes from `vacuum_only`, else `select.valetudo_exaltedsneakydeer_mode` (`vacuum` → Vacuuming, `mop` → Mopping, `vacuum_and_mop` → Cleaning). Count-up from `start_confirmed_at`. `room_name` comes from the matching `sensor.main_floor_vacuum_coordinator_<room>_last_cleaned` attribute | vacuum `paused` ↔ `cleaning` (with `paused_elapsed_s`); problem raised or cleared | `room_id` changes or clears → end now; a new room → start again (same tag; core removed the token on the end, so this is a fresh push-to-start) | **Pause** / **Resume** and **Dock** → while `binary_sensor.main_floor_vacuum_coordinator_auto_cleaning` is on, use `valetudo_vacuum_coordinator.set_paused` and `cancel_session`; otherwise `vacuum.pause` / `vacuum.start` / `vacuum.return_to_base` (§7) |
 | **Vacuum, manual runs** (any robot, no coordinator session) | vacuum → `cleaning` with no coordinator session | `sensor.valetudo_<id>_status_flag`: `segment` → "Vacuuming {estimated segment}"; `zone` → "Cleaning {floor} area" (drawn area); `spot` → "Spot cleaning"; `none` → "Cleaning {floor}". Count-up from the state change | segment changes (ends and restarts, as above), pause, problem | `returning` / `docked` / `idle` → end now | as above, with plain `vacuum.*` services |
 | **Problem** (any device tag) | §5 | §5 | issue changes | issue clears → back to the job content if the job still runs, else end now | §5 |
 
-Other candidates found (not in this phase; owner question 5): EV charging (FordPass `elvehcharging.estimatedEndTime`, no HA stop control), the Traeger cook timer (`sensor.d8478fa2ad0a_cook_timer_remaining`, grill offline today), sprinklers (B-hyve valves, `zone_name` attributes don't match entity names), hot flash timers (15 min, bedtime only), and media sleep timers (no end time).
+Not in this phase (owner, 2026-10-17): EV charging, the grill cook timer, sprinklers and media sleep timers.
 
-**Dryer learner (HA side, §10).** This is a trigger-based template sensor `sensor.dryer_cycle_minutes`. On each helper on→off it appends the run's minutes to a list of the last 10 runs in its attributes, and its state is their median. Until 3 runs are recorded, the card uses `countup` with no estimate.
+### 4a. Hot flash (`hot_flash`, owner request 2026-10-17)
+
+The bed is SleepyPod. The engine reads the broker's own entities, **not** the legacy `timer.eight_sleep_*` timers, which nothing starts any more. That separate bug is flagged as its own task; it breaks the app's countdown and the "hold started" notification.
+
+| | Left side | Right side |
+|---|---|---|
+| Owner | Stephen (`person.stephen_fenton`) | Steph (`person.stephanie_hobart`) |
+| Phase | `input_select.sleepypod_hot_flash_left_phase` | `…_right_phase` |
+| Hold timer | `timer.sleepypod_hot_flash_left` (`finishes_at`) | `…_right` |
+| Hard deadline | `input_datetime.sleepypod_hot_flash_left_restore_at` | `…_right_restore_at` |
+| Started by | `input_text.eight_sleep_stephen_hot_flash_requested_by` (`stephen` / `steph` / `unattributed`; stale between runs) | `…_steph_…` |
+| Cancel | `input_button.eight_sleep_stephen_cancel_hot_flash` | `…_steph_…` |
+
+**Phases.**
+- `cooling` is chilling to the coldest level: value `text "Cooling"`, with the ring filling from the climate's `current_temperature` toward 56 °F.
+- `holding` counts down to the timer's `finishes_at` (15 min).
+- `restore_pending` → `idle` is the natural end: **Complete** for 5 min.
+- `superseded` (someone changed the level by hand) ends now.
+- Only `cooling` and `holding` count as active. Never read `restore_at` or `requested_by` alone, because they persist from old runs.
+
+**Audience, per side.**
+- **Who:** the side's owner plus the person in `requested_by`, captured when the phase turns `cooling`.
+- **Solo Trip** (`sensor.household_away_status` `mode == solo_trip`): the traveller is removed, even for their own side.
+- **Vacation** (`binary_sensor.effective_vacation_mode`): everyone is removed except the person who started it.
+- **`unattributed`** (an automation started it): only the owner gets the card.
+
+**Cards, one per person** (tag `job.hot_flash`, per registration):
+- **Title "Hot Flash".**
+- **One short line:**
+  - "Your side", "Stephen's side" or "Steph's side";
+  - or "Whole bed" when both active sides are in that person's audience;
+  - plus " · by Steph" (or " · by Home" for an automation) when the starter isn't the viewer.
+- **Whole bed:**
+  - The value is the later of the two ends.
+  - `cooling` wins until both sides are `holding`.
+  - Stop presses both cancel buttons.
+- **Stop:** presses that side's cancel button (§7).
+- **No alert.** Relevance 70.
+
+**Today** only Stephen has an S+H registration (`notify.mobile_app_stephen_s_iphone_fenton`). Steph is on the Companion app (`notify.mobile_app_stephanies_iphone`), so her cards start when she installs S+H. Until then the existing hold notification is her signal.
+
+**Engine needs per-person fan-out.** Map registrations to people through the registration's `user_id` (`person.*.user_id`), not device trackers. The S+H tracker `device_tracker.iphone_fenton` is not attached to any person today.
 
 ## 5. Problem cards
 
@@ -152,9 +198,31 @@ Wording lives in the engine (`problems.py`), so new wording ships with a relay u
 | dishwasher `error` | critical | question | Stopped with an error | Check the dishwasher's display. | none |
 | unavailable / offline | none | | | **No card** (owner). An activity already running ends | |
 
+**Lifecycle follows the Donetick task** (owner, 2026-10-17).
+
+- **Where tasks come from.** `script.valetudo_error_mapping` creates a Donetick task for every mapped error except `Low battery` and `Unknown error 75`. The task is named `"<Vacuum name> · <mapped title>"`, for example "Main Floor Vacuum · Robot Stuck", is unassigned, and goes in `todo.all_tasks_internal`. No id is stored.
+- **Finding the task.** The engine finds it with `todo.get_items {status: needs_action}` on `todo.all_tasks_internal`, matching `summary`, and takes `task_id = uid.split('--')[0]`. It keeps the id with the card.
+- **When the card ends:**
+  - **Taskable problem.** The card stays until that task is completed. The engine listens to `todo.all_tasks_internal`:
+    - Home Assistant auto-completes `current_fault` errors when the error sensor reads `No error`.
+    - `Valetudo Dock Component Task Lifecycle` completes `persistent_condition` ones (tanks, dust bag, tray, cover, mop pad) when the dock recovers. Clean-water tasks are manual only.
+    - A person can complete it here, in the app or in Donetick.
+    - If the error clears and the job is still running, the card shows the job again. The task can then still be open (persistent conditions), so the card stays a problem card until the task closes.
+  - **Problem with no task** (low battery, error 75, unmapped text, dishwasher `actionrequired`/`error`). The card ends when the condition clears.
+- **Done button.**
+  - **Every taskable problem has Done as its last control.** Problem cards may carry **3** controls (Resume, Dock, Done), the only exception to the 2-control cap.
+  - **What Done does:** the engine calls `donetick.complete_task {task_id}`, with `completed_by` set to the Donetick user mapped from the event's HA user when known. It then ends the card on every device once the todo list shows the task as completed.
+  - **The pending label** is "Completing…".
+  - **If the task is already completed,** the call is a no-op (`continue_on_error`).
+- **The card replaces the household push** for people with S+H.
+  - Today `Vacuum Error Notifications` sends to `notify.household` (= `notify.stephen_s_phone` [Companion `mobile_app_iphone_18_pro` + `fenton_stephen`] + `notify.stephanie_s_phone` [Companion]).
+  - That notify step becomes a call to a new engine service, `fenton_push.problem`: `{device, code, raw, title, message, task_title, url, tag}`.
+  - For each person in the household, the engine shows a card on their S+H registrations that have Live Activities enabled. **For those people it skips all their notify targets** (their Companion app too). Everyone else still gets the push, through their own `notify.<person>_phone` group.
+  - **Clearing.** When the card ends, the engine also clears any fallback push with `clear_notification` on the same tag (`vacuum-<room>-error`). Today those pushes are never cleared.
+  - The same service later takes the dishwasher's "Refill rinse aid" task. That task has no auto-complete, so only Done or Donetick ends it.
+
 Rules:
 - **Alerts.** A critical problem alerts with sound. The engine sends `live_alert: true` on the update that turns the card red, or, when the problem starts a new activity, a start followed by an alerting update 2 s later. The relay's start alert is silent; §9 adds a start-sound option and then the follow-up goes away. Warnings never alert. Clearing never alerts.
-- **Household notifications stay.** The existing `Vacuum Error Notifications` (to `notify.household`, with Donetick tasks) keeps running, because it reaches people without S+H. The Live Activity is the owner's live view. If that turns out to double-alert on the owner's phone, suppress the problem *alert* (not the card) for devices that have an active activity (open question 6).
 - **Unknown text** is quoted as received, capped at 60 characters, and the engine logs `fenton_push.problem_unmapped` once per text so the mapping can be added.
 - `power.low_battery` while returning keeps the job card's tag. When the robot docks to charge mid-session, the card stays as a warning until cleaning resumes (then it is the job card again) or the session ends.
 
@@ -168,7 +236,8 @@ Rules:
   - warning 90;
   - jobs `80 − min(minutes left, 60) / 2` (so 50 to 80, where sooner is higher);
   - count-up jobs 55;
-  - done/linger 10.
+  - hot flash 70;
+  - Complete (linger) 10.
 
   The Dynamic Island shows the highest; the Lock Screen orders by it.
 - **Priority.** 10 for start, end, alerts and control confirmations; 5 for everything else (the relay's rule already). Don't set `NSSupportsLiveActivitiesFrequentUpdates`. Running timers tick on their own, so pushes happen only on real changes.
@@ -211,7 +280,8 @@ All from the canvas boards; Lock Screen first.
 - **Job card** (fan, dishwasher, dryer):
   - a 64 pt progress ring with the job glyph;
   - the title (17 pt semibold, one line, tail truncation);
-  - the big value (38 pt semibold, monospaced digits);
+  - the big value (28 pt semibold, monospaced digits; the owner found 38 pt too far from the 17 pt title);
+  - finished jobs: a filled ring with a check and **Complete** in the job's tint;
   - the primary control bottom-right;
   - the corner mark top-right.
   - Height ≤ 160 pt at default text size; at AX sizes, the value wraps under the title and the controls stack.
@@ -251,7 +321,15 @@ All from the canvas boards; Lock Screen first.
    - fan-out per registration through `notify.mobile_app_*` (core keeps owning tokens);
    - `sensor.fenton_live_jobs` (per-tag state, for debugging).
    - Configured in the integration's options: which jobs are on and which registrations get cards (open question 4).
-2. **`problems.py`.** The §5 table, the raw-text fallback, and the `problem_unmapped` log.
+2. **`problems.py`.** The §5 table, the raw-text fallback, and the `problem_unmapped` log. Also:
+   - the service `fenton_push.problem` (§5), which routes a card or a push per person;
+   - the Donetick link: find the task by title, keep its id, listen to `todo.all_tasks_internal`, and handle the **Done** control with `donetick.complete_task`;
+   - fallback-push clearing.
+2a. **Audience.**
+   - Map registrations to people by the registration's `user_id` and `person.*.user_id`.
+   - Default audience: every person with S+H.
+   - Hot flash audience rules (§4a) read `sensor.household_away_status` and `binary_sensor.effective_vacation_mode`.
+   - Content is per person (the hot flash line says "Your side" or "Stephen's side"), so fan-out builds the content per registration.
 3. **`payload.py` / `live.py`.**
    - Accept content state v2 (validate keys, caps and 4 KB).
    - Put `kind`, `symbol` and `tint` into `attributes` on start.
@@ -270,7 +348,8 @@ All from the canvas boards; Lock Screen first.
 ## 10. Home Assistant config (planner, with the owner's standing approval; back up first)
 
 - After the engine ships and is verified, remove `/config/packages/fenton_live_activity.yaml`: the engine replaces its script and automations. Back it up first.
-- Add `sensor.dryer_cycle_minutes` (§4) in a new package `fenton_dryer_learner.yaml`.
+- `Vacuum Error Notifications` (id `1769047894700`, `automations.yaml`): replace its `notify.household` step with `fenton_push.problem`, passing the mapped title, message, task title and tag. Back up first. Task creation and auto-complete stay exactly as they are.
+- Do not change the hot flash automations here. The dead `timer.eight_sleep_*` trigger in `SleepyPod Hot Flash Hold Started Notifications` is its own task.
 - Leave every household notification automation as it is (dishwasher clean, rinse aid, laundry done, vacuum complete and errors).
 - Validate with `ha core check`; reload template entities. No service call against the house during tests; the engine's unit tests use recorded snapshots.
 
@@ -284,7 +363,7 @@ All from the canvas boards; Lock Screen first.
 | `HassUI/App/LiveActivity` | `LiveActivityCoordinator` keeps token reporting and `endAll` on sign-out only |
 | Settings | Write `appIconChoice` to the app group (`AppIconPickerModel` on apply, and at launch) |
 | Intents | Drop `FocusJobIntent`. `JobControlIntent(tag, control)` |
-| Gallery | `FENTON_GALLERY=live-activity` scenarios for every canvas card: fan, dishwasher countdown and percent, dryer estimated, vacuum running/mopping/drawn area/paused, all 18 problem rows (§5), pending, pending-stale, notice, 4-card stack |
+| Gallery | `FENTON_GALLERY=live-activity` scenarios for every canvas card: fan, dishwasher countdown and percent, dryer estimated, vacuum running/mopping/drawn area/paused, every problem row (§5) with and without Done, Completing…, pending, pending-stale, notice, 4-card stack |
 
 ## 12. Tests and verification
 
@@ -312,6 +391,8 @@ All from the canvas boards; Lock Screen first.
   4. A forced problem: lift the robot → red card with sound; set it down + Resume → back to the job card.
   5. Airplane mode, then tap Stop → "Stopping…", then "Not confirmed" with the button back after about 20 s.
   6. Five jobs → the cap holds.
+  8. Hot flash: start your side → Cooling, then the countdown, then Complete. Have the other person start your side → "by Steph" on yours.
+  9. A vacuum problem → card, no household push on your phones. Tap Done → the Donetick task completes and the card ends.
   7. Watch Smart Stack.
 
 ## 13. Lanes and order
@@ -324,11 +405,17 @@ All from the canvas boards; Lock Screen first.
 
 Merge order: B can merge first (v1 stays decodable). Deploy B to the phone. Then deploy A through HACS, run the device checks, then C. Review diffs A's generated fixtures against B's hand-written ones before either merges.
 
-## 14. Open questions (owner)
+## 14. Owner answers (2026-10-17) and open questions
 
-1. **Dishwasher finished:** keep a 15 min "Clean" card, or remove it at once? The household "Dishwasher clean" notification already goes out.
-2. **Washer:** skip it until a power-monitoring plug is added, or show a card only during the spin?
-3. **Dryer estimate:** fine to learn from the last 10 runs, and count up until 3 runs are recorded?
-4. **Who gets cards:** only your phone, or every S+H install (each person's own registrations)?
-5. **More jobs later:** EV charging, grill cook timer, sprinklers, hot flash. Which, if any?
-6. **Problem alerts** on your phone would double up with the household vacuum error notification. Keep both, or let the card's alert replace the notification for you?
+Answered:
+1. Dishwasher finished → **Complete** for 5 minutes.
+2. Washer → card only during the spin. No estimates for the washer or dryer → count-up; Complete for 5 minutes on the done signal.
+3. (Dryer learner) → dropped.
+4. Cards go to **everyone** with S+H.
+5. Hot flash → yes (§4a). Not now: EV, grill, sprinklers.
+6. Problem cards **replace** the household push for S+H people. They live until the Donetick task completes, and have a Done button.
+
+Open:
+1. **Done on a problem with no task.** For low battery or unmapped errors, should Done dismiss the card for everyone, or should those cards have no Done (as specced)?
+2. **Steph and S+H.** Steph is on the Companion app today. Install S+H on her phone so she gets cards (hot flash on her side, problems)?
+3. **Problem audience.** Vacuum problems go to everyone in the household today. Keep that, or send problems only to people at home?
