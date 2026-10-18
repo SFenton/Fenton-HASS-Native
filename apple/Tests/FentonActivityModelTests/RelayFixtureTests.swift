@@ -14,7 +14,7 @@ struct RelayFixtureTests {
         "fan-start", "fan-end", "dishwasher-countdown", "dishwasher-percent", "dishwasher-waiting", "washer-countup", "dryer-countup",
         "complete-dishwasher", "complete-washer", "complete-dryer", "complete-hotflash",
         "hotflash-cooling", "hotflash-holding", "hotflash-bysteph", "hotflash-wholebed",
-        "vacuum-countup", "vacuum-paused",
+        "vacuum-countup", "vacuum-paused", "vacuum-area", "vacuum-long-title", "dishwasher-hours", "fan-long-title", "hotflash-stephen-bysteph",
         "problem-critical", "problem-warning", "problem-no-task", "problem-unknown-error", "problem-unmapped", "v1-compat",
     ]
 
@@ -49,7 +49,7 @@ struct RelayFixtureTests {
     }
 
     @Test func aStartCarriesAttributesTheAppDecodes() throws {
-        for name in ["fan-start", "washer-countup", "dryer-countup", "vacuum-countup", "hotflash-cooling"] {
+        for name in ["fan-start", "washer-countup", "dryer-countup", "vacuum-countup", "hotflash-cooling", "vacuum-area"] {
             let aps = try aps(name)
             #expect(aps["event"] as? String == "start" && aps["attributes-type"] as? String == HomeActivityAttributes.wireName, Comment(rawValue: name))
             let attributes = try attributes(name)
@@ -104,13 +104,28 @@ struct RelayFixtureTests {
         #expect(try attributes("hotflash-cooling").glyph == .hotFlash)
     }
 
-    @Test func aVacuumRoomCountsUpAndPausesWithAFrozenTime() throws {
+    @Test func aVacuumRoomHasNoTimeAndNoBarJustAHeadlineAndAShortWord() throws {
+        let now = Date(timeIntervalSince1970: 1_792_249_200)
         let running = try state("vacuum-countup")
-        #expect(running.headline == "Vacuuming Kitchen" && running.controls.map(\.id) == ["pause", "dock"])
+        #expect(running.headline == "Vacuuming Kitchen" && running.short == "Kitchen" && running.controls.map(\.id) == ["pause", "dock"])
+        #expect(running.value == nil && running.progress == nil, "the engine omits value and progress for a vacuum")
+        let card = ActivityCard(attributes: try attributes("vacuum-countup"), state: running, now: now)
+        #expect(card.bigLine == "Vacuuming Kitchen" && card.bar == nil && card.compactTrailing == .label("Kitchen"))
+        #expect(card.buttons.map(\.icon) == [.pause, .dock])
         let paused = try state("vacuum-paused")
-        #expect(paused.phase == .paused && paused.value?.pausedElapsedS == 760)
-        let card = ActivityCard(attributes: try attributes("vacuum-countup"), state: paused, now: Date(timeIntervalSince1970: 1_792_249_200))
-        #expect(card.figure == .frozen(seconds: 760) && card.isPaused)
+        #expect(paused.phase == .paused && paused.value == nil && paused.short == "Paused" && paused.controls.map(\.id) == ["resume", "dock"])
+        let pausedCard = ActivityCard(attributes: try attributes("vacuum-countup"), state: paused, now: now)
+        #expect(pausedCard.isPaused && pausedCard.bigLine == "Paused in Kitchen" && pausedCard.buttons.map(\.icon) == [.play, .dock])
+        #expect(try state("vacuum-area").short == "Area" && (try state("vacuum-area")).headline == "Cleaning Main Floor area")
+        #expect(try state("vacuum-long-title").headline == "Vacuuming Master Bedroom Closet")
+    }
+
+    @Test func twoLineTitlesAndAnHoursDishwasherDecode() throws {
+        #expect(try attributes("fan-long-title").title == "Master Bedroom Closet Exhaust Fan")
+        #expect(try state("hotflash-stephen-bysteph").detail == "Stephen's side · by Steph")
+        let dishwasher = HomeActivityAttributes(tag: "job.dishwasher", title: "Dishwasher", kind: "dishwasher", symbol: "dishwasher", tint: "cleaning")
+        let hours = ActivityCard(attributes: dishwasher, state: try state("dishwasher-hours"), now: Date(timeIntervalSince1970: 1_792_249_200))
+        #expect(hours.compactTrailing == .timer(template: "0:00:00"), "1:04:42 left takes the hours template")
     }
 
     @Test func problemCardsCarryTheirSeverityTaskAndButtons() throws {
@@ -121,7 +136,7 @@ struct RelayFixtureTests {
         let attention = try self.state("problem-warning")
         #expect(critical.value?.text == "Needs help" && attention.value?.text == "Attention")
         let card = ActivityCard(attributes: try attributes("vacuum-countup"), state: critical, now: Date(timeIntervalSince1970: 1_792_249_200))
-        #expect(card.problemIslandLabel == "Needs help")
+        #expect(card.problem?.severity.islandLabel == "Needs help")
         #expect(try aps("problem-critical")["alert"] != nil, "a critical update alerts")
         let warning = try state("problem-warning")
         #expect(warning.problem?.severity == .warning && warning.controls.last?.id == "done")

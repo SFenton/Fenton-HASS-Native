@@ -14,15 +14,16 @@ public extension EnvironmentValues {
     }
 }
 
-/// The house and heart in a card's corner: 40 pt, no tile, tinted with the foreground colour of the app icon the person
+/// The house and heart in a card's corner: 24 pt (40 pt on a problem card), no tile, tinted with the foreground colour of the app icon the person
 /// picked (``CornerMarkPalette``). It is decoration: the card's own label says what it is.
 struct CornerMark: View {
+    var size: CGFloat = ActivityStyle.markSize
     @Environment(\.cornerMarkChoice) private var choice
 
     var body: some View {
         HouseHeartShape()
             .fill(Color(rgb: CornerMarkPalette.glyph(for: choice ?? ActivityAppIconStore.shared.choice)))
-            .frame(width: ActivityStyle.markSize, height: ActivityStyle.markSize)
+            .frame(width: size, height: size)
             .accessibilityHidden(true)
     }
 }

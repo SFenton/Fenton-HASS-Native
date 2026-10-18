@@ -18,10 +18,7 @@
         }
       ],
       "headline": "Vacuuming Kitchen",
-      "value": {
-        "kind": "countup",
-        "start_ts": 1792248440
-      },
+      "short": "Kitchen",
       "url": "/sfenton-react-dash/home?path=vacuums"
     },
     "attributes-type": "HomeActivityAttributes",

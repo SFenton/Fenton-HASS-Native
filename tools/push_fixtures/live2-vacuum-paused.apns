@@ -18,11 +18,7 @@
         }
       ],
       "headline": "Paused in Kitchen",
-      "value": {
-        "kind": "countup",
-        "start_ts": 1792248200,
-        "paused_elapsed_s": 760
-      }
+      "short": "Paused"
     },
     "relevance-score": 55.0,
     "stale-date": 1792251000

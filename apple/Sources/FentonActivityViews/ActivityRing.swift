@@ -13,8 +13,8 @@ struct ActivityRing: View {
 
     private var style: ActivityStyle { ActivityStyle(tint: card.tint) }
     private var lineWidth: CGFloat { max(3, diameter * 6 / 64) }
-    /// A paused card dims.
-    private var accent: Color { card.isPaused ? style.accent.opacity(0.4) : style.accent }
+    /// Paused is the word and the Resume button, so the ring does not dim.
+    private var accent: Color { style.accent }
 
     var body: some View {
         ZStack {

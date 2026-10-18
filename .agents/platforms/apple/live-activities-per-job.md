@@ -103,6 +103,7 @@ Explicit `CodingKeys` with snake_case keys. Times are Unix seconds as doubles (t
 | `controls` | [≤ 2; ≤ 3 on problem cards] `{id, title, role}` | `role`: `primary` (white pill) or `secondary` (dark pill). The first control is primary. Problem cards put Done last |
 | `problem` | `{severity, code, icon, problem, message, chips[≤1], task_id?}`? | Present ⇔ `phase == problem`. `severity` is `critical` or `warning`. `icon` is from the problem glyph set (§5). Strings are already worded by the engine |
 | `detail` | String? (≤ 32) | The small line under the title (13 pt). Hot flash only today: "Your side", "Stephen's side", "Steph's side" or "Whole bed", plus " · by Steph" / " · by Home" when it fits (dropped otherwise). Title stays the attribute `title` ("Hot Flash") and `headline` is null |
+| `short` | String? (≤ 10) | The compact island's trailing word when the card has no `value` (§8a): the room ("Kitchen"), "Paused" or "Area". Decoded with a default |
 | `notice` | String? (≤ 60) | One-update message from §7 ("Couldn't stop. Try again.", "No longer available"); shown in place of the value |
 | `pending` | `{control, label, since_ts}`? | Written **only by the app** (§7). The engine never sends it, so any push clears it |
 | `url` | String? | Tap target, mapped by `ActivityDeepLink` |
@@ -289,7 +290,7 @@ All from the canvas boards; Lock Screen first.
   - the primary control bottom-right;
   - the corner mark top-right.
   - Height ≤ 160 pt at default text size; at AX sizes, the value wraps under the title and the controls stack.
-- **Vacuum card.** The same, with `headline` as the title line and a steady full ring (no per-room progress). Paused dims the ring and shows the frozen time at 55% white.
+- **Vacuum card.** The same, with `headline` as the title line and a steady full ring (no per-room progress). **Superseded by §8a:** a vacuum has no time, no ring and no bar.
 - **Problem card.** It has its own layout, not the job layout:
   - a severity-tinted background (critical red gradient, warning amber) with a matching hairline border;
   - a 44 pt solid severity circle with the problem glyph;
@@ -327,7 +328,7 @@ These replace the matching parts of §8.
   - **Top, beside the camera:** the job glyph (24 pt) on the left, and the house-and-heart corner mark (24 pt, tinted with the app icon choice, heart knocked out against black) on the right, mirroring it (owner, 2026-10-17).
   - **Below the camera:** the title over the value on the left, **both white** (title 16 pt semibold, value 32 pt semibold monospaced). Up to two buttons sit on the right, **in line** with that title-and-value block. Then a 5 pt progress **bar** in the job's tint, only when there is progress (countdowns and percent).
   - **Title wrapping:** long titles **wrap to two lines**. Live Activity views cannot animate on their own, so a scrolling title is impossible.
-  - **Paused:** the word itself says so, and Resume replaces Pause. Text never dims or turns grey (owner, 2026-10-17).
+  - **Paused:** status text is **always white** (owner, 2026-10-17); nothing dims. Paused is shown by the word itself and the Resume (play) button.
   - **Implementation:** `.leading`, `.trailing` and `.bottom` regions with no fixed frames; the bottom region holds the block.
 - **Lock Screen = L4** (bars, no ring).
   - Row 1: the glyph (22 pt) in its tint, then the title (17 pt semibold; it wraps to two lines), with the corner mark (24 pt) top-right.
@@ -340,13 +341,27 @@ These replace the matching parts of §8.
 - **Vacuums: no time and no bar anywhere** (owner).
   - **Content:** the engine omits `value` and `progress` for vacuum cards.
   - **Small title:** the attribute title ("Main Floor Vacuum").
-  - **Big line (24 pt):** the `headline` ("Vacuuming Kitchen", "Paused in Kitchen"; always white).
+  - **Big line (24 pt):** the `headline` ("Vacuuming Kitchen", "Paused in Kitchen"). Always white, paused or not.
   - **Buttons** are 44 pt **round icon buttons** with spoken labels:
     - Pause: a white circle with a pause glyph; it becomes Resume, a play glyph, when paused.
     - Dock: a dark circle with a house glyph, labelled "Dock".
   - **Compact** shows the vacuum glyph and `short`; minimal shows the glyph.
 - **New content key `short`** (String?, ≤ 10): the compact island's trailing word when there is no time. The engine sets the room ("Kitchen"), "Paused" or "Area".
 - **General rule:** a card with no `value` shows `headline` as its big line under the title.
+
+### 8a-notes. App-lane notes for the refinements (built 2026-10-17, `claude/live-activities-refine`)
+
+Where the build chose or departed from §8a:
+
+- **Titles and the big line.** `ActivityCard.title` is the attribute title. A card with no figure shows `headline` as `bigLine` (24 pt, `lineLimit(2)`). An older engine's card with both a time and a headline is still named by the headline. The hot flash `detail` joins the title as `headerLine` ("Hot Flash · Your side").
+- **Two accessibility elements, not one.** The Lock Screen puts the value beside the buttons, so the title and the value can no longer share one combined element. The title reads "Dryer, running for" (or "…, time left") and the value is the next element, with the live time.
+- **Compact template.** The hidden template is "0:00:00" when a countdown shows hours, when a frozen time is an hour or more, and for **every count-up** (a count-up gets no push while it runs, so a dryer would pass an hour and outgrow "00:00"; planner review, 2026-10-18). The time is 15 pt semibold (`.subheadline`, a text style, so the template and the live text scale together and the width stays the template's; the island caps its text size). Percent and text values ("62%", "Cooling", "Paused") use the 13 pt word style (`.footnote`), capped at 56 pt.
+- **Compact leading and minimal.** A 24 pt ring when the card has a time or progress; the glyph alone when it has neither (a vacuum).
+- **Bar.** A system linear `ProgressView` (the timer form for countdowns), scaled to 5 pt. Only countdowns, percentages, fractions and Complete have one.
+- **Expanded island, problems.** The leading region is a 28 pt severity circle and the trailing region the 24 pt mark, as for a job. The one-word "Needs help" / "Attention" label that used to sit beside the camera is gone: the island's text is capped at xxxLarge, so a word there fails the Dynamic Type audit, and the bottom block already names the device and the problem line in the severity's tint. (The value text still carries the word, and the compact island keeps its one-word problem label.)
+- **Round buttons** apply to a vacuum's job card (glyph `vacuum`, control ids `pause`, `resume`, `dock`). A vacuum's problem card keeps text pills (Resume, Dock, Done).
+- **Rings** no longer dim when paused.
+- **Not changed.** Problem cards keep their own layout and the 40 pt mark.
 
 ## 9. `fenton_push` changes (repo `SFenton/ha-fenton-push`)
 

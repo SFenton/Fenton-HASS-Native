@@ -34,14 +34,15 @@ public enum HomeActivityFixtures {
     // MARK: - Names
 
     /// Fan timers, dishwasher and laundry, running.
-    public static let jobNames = ["fan", "fan-long", "dishwasher", "dishwasher-percent", "dishwasher-paused", "dishwasher-waiting",
-                                  "dryer", "dryer-estimated", "washer"]
+    public static let jobNames = ["fan", "fan-long", "fan-xlong", "dishwasher", "dishwasher-long", "dishwasher-percent", "dishwasher-paused",
+                                  "dishwasher-waiting", "dryer", "dryer-estimated", "washer"]
     /// Finished jobs: **Complete**.
     public static let completeNames = ["dishwasher-complete", "dryer-complete", "washer-complete", "hotflash-complete"]
     /// Vacuum rooms.
-    public static let vacuumNames = ["vacuum", "vacuum-mopping", "vacuum-cleaning", "vacuum-drawn", "vacuum-paused"]
+    public static let vacuumNames = ["vacuum", "vacuum-mopping", "vacuum-cleaning", "vacuum-drawn", "vacuum-paused", "vacuum-long"]
     /// Hot flash.
-    public static let hotFlashNames = ["hotflash-cooling", "hotflash-holding", "hotflash-bysteph", "hotflash-wholebed", "hotflash-byhome"]
+    public static let hotFlashNames = ["hotflash-cooling", "hotflash-holding", "hotflash-bysteph", "hotflash-wholebed", "hotflash-byhome",
+                                       "hotflash-stephen-bysteph"]
     /// A press waiting, unconfirmed, and failed.
     public static let stateNames = ["fan-pending", "fan-pending-stale", "fan-notice", "problem-completing"]
     /// Four jobs: the cap.
@@ -72,6 +73,7 @@ public enum HomeActivityFixtures {
         switch name {
         case "fan": return job(name, fan(t, end: 282))
         case "fan-long": return job(name, fan(t, end: 3_882, room: "master", title: "Master Bedroom Closet Fan"))
+        case "fan-xlong": return job(name, fan(t, end: 282, room: "master", title: "Master Bedroom Closet Exhaust Fan"))
         case "fan-pending":
             let base = fan(t, end: 282)
             return ActivityFixture(name: name, attributes: base.0, state: base.1.awaiting(control: "stop", now: now))
@@ -82,6 +84,12 @@ public enum HomeActivityFixtures {
             let base = fan(t, end: 282)
             return ActivityFixture(name: name, attributes: base.0, state: base.1.failing(notice: "Couldn't reach Home"))
         case "dishwasher": return job(name, dishwasher(t))
+        case "dishwasher-long":
+            // An H:MM:SS countdown (1:04:42): the compact island's time takes the wider template.
+            let (attributes, initial) = dishwasher(t)
+            var state = initial
+            state.value = ActivityValue(kind: .countdown, startTs: t - 600, endTs: t + 3_882)
+            return ActivityFixture(name: name, attributes: attributes, state: state)
         case "dishwasher-percent":
             let (attributes, initial) = dishwasher(t)
             var state = initial
@@ -112,16 +120,17 @@ public enum HomeActivityFixtures {
         case "dryer-complete": return job(name, complete(laundry("dryer", title: "Dryer", symbol: "dryer", start: t - 1_930)))
         case "washer": return job(name, laundry("washer", title: "Washing Machine", symbol: "washer", start: t - 372))
         case "washer-complete": return job(name, complete(laundry("washer", title: "Washing Machine", symbol: "washer", start: t - 372)))
-        case "vacuum": return job(name, vacuum(t, headline: "Vacuuming Kitchen", elapsed: 760, tint: "cleaning"))
-        case "vacuum-mopping": return job(name, vacuum(t, headline: "Mopping Kitchen", elapsed: 365, tint: "water"))
-        case "vacuum-cleaning": return job(name, vacuum(t, headline: "Cleaning Living Room", elapsed: 192, tint: "cleaning"))
-        case "vacuum-drawn": return job(name, vacuum(t, headline: "Cleaning Main Floor area", elapsed: 375, tint: "cleaning"))
+        case "vacuum": return job(name, vacuum(headline: "Vacuuming Kitchen", short: "Kitchen", tint: "cleaning"))
+        case "vacuum-mopping": return job(name, vacuum(headline: "Mopping Kitchen", short: "Kitchen", tint: "water"))
+        case "vacuum-cleaning": return job(name, vacuum(headline: "Cleaning Living Room", short: "Living Rm", tint: "cleaning"))
+        case "vacuum-drawn": return job(name, vacuum(headline: "Cleaning Main Floor area", short: "Area", tint: "cleaning"))
+        case "vacuum-long": return job(name, vacuum(headline: "Vacuuming Master Bedroom Closet", short: "Closet", tint: "cleaning"))
         case "vacuum-paused":
-            let (attributes, initial) = vacuum(t, headline: "Paused in Kitchen", elapsed: 1_000, tint: "cleaning")
+            // Paused is the word and the Resume button; nothing dims.
+            let (attributes, initial) = vacuum(headline: "Paused in Kitchen", short: "Paused", tint: "cleaning")
             var state = initial
             state.phase = .paused
-            state.value = ActivityValue(kind: .countup, startTs: t - 1_000, pausedElapsedS: 760)
-            state.controls = [ActivityControl(id: "resume", title: "Resume"), ActivityControl(id: "dock", title: "Dock")]
+            state.controls = [ActivityControl(id: "resume", title: "Resume"), ActivityControl(id: "dock", title: "Dock", role: .secondary)]
             return ActivityFixture(name: name, attributes: attributes, state: state)
         case "hotflash-cooling":
             let (attributes, initial) = hotFlash(t, line: "Your side")
@@ -130,6 +139,7 @@ public enum HomeActivityFixtures {
             state.progress = 0.45
             return ActivityFixture(name: name, attributes: attributes, state: state)
         case "hotflash-holding": return job(name, hotFlash(t, line: "Your side"))
+        case "hotflash-stephen-bysteph": return job(name, hotFlash(t, line: "Stephen's side · by Steph"))
         case "hotflash-bysteph": return job(name, hotFlash(t, line: "Your side · by Steph"))
         case "hotflash-byhome": return job(name, hotFlash(t, line: "Your side · by Home"))
         case "hotflash-wholebed": return job(name, hotFlash(t, line: "Whole bed", remaining: 845))
@@ -190,10 +200,12 @@ public enum HomeActivityFixtures {
          HomeActivityState(value: ActivityValue(kind: .countup, startTs: start), url: "/sfenton-react-dash/home?path=laundry"))
     }
 
-    private static func vacuum(_ t: TimeInterval, headline: String, elapsed: TimeInterval, tint: String) -> Base {
+    /// A vacuum room as the engine sends it: no `value` and no `progress` (no time and no bar anywhere), the headline as the
+    /// big line and `short` for the compact island.
+    private static func vacuum(headline: String, short: String, tint: String) -> Base {
         (HomeActivityAttributes(tag: "job.vacuum.main_floor", title: "Main Floor Vacuum", kind: "vacuum", symbol: "vacuum", tint: tint),
-         HomeActivityState(headline: headline, value: ActivityValue(kind: .countup, startTs: t - elapsed),
-                           controls: [ActivityControl(id: "pause", title: "Pause"), ActivityControl(id: "dock", title: "Dock")],
+         HomeActivityState(headline: headline, short: short,
+                           controls: [ActivityControl(id: "pause", title: "Pause"), ActivityControl(id: "dock", title: "Dock", role: .secondary)],
                            url: "/sfenton-react-dash/home?path=vacuums"))
     }
 
