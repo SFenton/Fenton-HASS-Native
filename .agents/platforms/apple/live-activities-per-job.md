@@ -101,7 +101,7 @@ Explicit `CodingKeys` with snake_case keys. Times are Unix seconds as doubles (t
 | `value.estimated` | Bool | The dryer's learned ETA. It still shows a countdown; the VoiceOver label says "about" |
 | `progress` | Double? 0…1 | Drives the ring when there is no time range |
 | `controls` | [≤ 2; ≤ 3 on problem cards] `{id, title, role}` | `role`: `primary` (white pill) or `secondary` (dark pill). The first control is primary. Problem cards put Done last |
-| `problem` | `{severity, code, icon, problem, message, chips[≤2]}`? | Present ⇔ `phase == problem`. `severity` is `critical` or `warning`. `icon` is from the problem glyph set (§5). Strings are already worded by the engine |
+| `problem` | `{severity, code, icon, problem, message, chips[≤1], task_id?}`? | Present ⇔ `phase == problem`. `severity` is `critical` or `warning`. `icon` is from the problem glyph set (§5). Strings are already worded by the engine |
 | `pending` | `{control, label, since_ts}`? | Written **only by the app** (§7). The engine never sends it, so any push clears it |
 | `url` | String? | Tap target, mapped by `ActivityDeepLink` |
 
@@ -192,8 +192,8 @@ Wording lives in the engine (`problems.py`), so new wording ships with a relay u
 | vacuum-only fallback (`input_text.<floor>_vacuum_error_message` while the fallback helper is on) | warning | mop | Vacuuming only | Mopping isn't available. Check the mop attachment, water tanks and pads. | none |
 | `dock.cover_open` | warning | bag | Dock cover open | Check the dust bag is in, then close the cover. | none |
 | `dock.dustbag_blocked` | warning | bag | Dust bag full | Replace the dust bag in the dock. | none |
-| `vendor.unknown_error_N` | critical | question | Stopped with an error | Check the robot, then tap Resume. Chips: "Error N", "Since h:mm" | Resume · Dock |
-| `unmapped.*` | critical | question | Stopped with an error | The robot says "{raw text}". Check it, then tap Resume. Chips: "Not recognised yet", "Since h:mm" | Resume · Dock |
+| `vendor.unknown_error_N` | critical | question | Stopped with an error | Check the robot, then tap Resume. Chip: "Error N" (no time chip) | Resume · Dock |
+| `unmapped.*` | critical | question | Stopped with an error | The robot says "{raw text}". Check it, then tap Resume. No chips | Resume · Dock |
 | dishwasher `actionrequired` | warning | door_dish | Needs attention | Check the dishwasher's display. (Home Connect gives no reason; refine if an event entity appears) | none |
 | dishwasher `error` | critical | question | Stopped with an error | Check the dishwasher's display. | none |
 | unavailable / offline | none | | | **No card** (owner). An activity already running ends | |
@@ -415,7 +415,9 @@ Answered:
 5. Hot flash → yes (§4a). Not now: EV, grill, sprinklers.
 6. Problem cards **replace** the household push for S+H people. They live until the Donetick task completes, and have a Done button.
 
-Open:
-1. **Done on a problem with no task.** For low battery or unmapped errors, should Done dismiss the card for everyone, or should those cards have no Done (as specced)?
-2. **Steph and S+H.** Steph is on the Companion app today. Install S+H on her phone so she gets cards (hot flash on her side, problems)?
-3. **Problem audience.** Vacuum problems go to everyone in the household today. Keep that, or send problems only to people at home?
+Round 5 (2026-10-17):
+7. Problems with no task (low battery, error 75, unknown numbered, unmapped, dishwasher `actionrequired`/`error`) have **no Done**. They end when they clear. Unmapped cards carry no chips; unknown numbered errors keep only the "Error N" chip.
+8. Steph and S+H → **later**. The owner wants to use and develop it more first. Until then she keeps the Companion pushes, and the engine's per-person routing leaves her on push automatically.
+9. Problem cards go to **everyone** in the household, home or not.
+
+No open questions remain for v2.
