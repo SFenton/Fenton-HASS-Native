@@ -75,10 +75,11 @@ enum BackdropRenderer {
 
     // MARK: - Files
 
-    /// Reads a stored render.
+    /// Reads a stored render, decoded now: an image source decodes lazily, and a full-window JPEG decoded on its first
+    /// draw would cost the main thread instead of the caller's (off-main) thread.
     nonisolated static func load(_ url: URL) -> CGImage? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
-        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+        return CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
     }
 
     /// Writes a render as JPEG; false when it can't.
