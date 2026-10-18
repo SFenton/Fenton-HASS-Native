@@ -6,15 +6,20 @@ public struct PrimaryButtonStyle: ButtonStyle {
     public static let height: CGFloat = 50
 
     private let family: ColorFamily?
+    private let pressedScale: CGFloat
 
     /// Creates the style.
-    /// - Parameter family: An owner's colour family to fill with instead of the tint.
-    public init(family: ColorFamily? = nil) {
+    /// - Parameters:
+    ///   - family: An owner's colour family to fill with instead of the tint.
+    ///   - pressedScale: What the button shrinks to while pressed (sign-in uses 0.96); 1 keeps it still. Reduce Motion
+    ///     keeps it still whatever this is.
+    public init(family: ColorFamily? = nil, pressedScale: CGFloat = 1) {
         self.family = family
+        self.pressedScale = pressedScale
     }
 
     public func makeBody(configuration: Configuration) -> some View {
-        PrimaryButtonBody(configuration: configuration, colors: Self.colors(family))
+        PrimaryButtonBody(configuration: configuration, colors: Self.colors(family), pressedScale: pressedScale)
     }
 
     /// The fill and label colours: the tint with white, or a family's glyph colour with dark text. Both are fixed, in
@@ -29,7 +34,9 @@ public struct PrimaryButtonStyle: ButtonStyle {
 private struct PrimaryButtonBody: View {
     var configuration: ButtonStyleConfiguration
     var colors: (fill: Color, label: Color)
+    var pressedScale: CGFloat
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         configuration.label
@@ -42,5 +49,7 @@ private struct PrimaryButtonBody: View {
             .background(colors.fill, in: RoundedRectangle(cornerRadius: PrimaryButtonStyle.height / 2, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: PrimaryButtonStyle.height / 2, style: .continuous))
             .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? pressedScale : 1)
+            .animation(reduceMotion ? nil : MotionTokens.press, value: configuration.isPressed)
     }
 }
