@@ -136,7 +136,7 @@ struct RelayFixtureTests {
         let attention = try self.state("problem-warning")
         #expect(critical.value?.text == "Needs help" && attention.value?.text == "Attention")
         let card = ActivityCard(attributes: try attributes("vacuum-countup"), state: critical, now: Date(timeIntervalSince1970: 1_792_249_200))
-        #expect(card.problemIslandLabel == "Needs help")
+        #expect(card.problem?.severity.islandLabel == "Needs help")
         #expect(try aps("problem-critical")["alert"] != nil, "a critical update alerts")
         let warning = try state("problem-warning")
         #expect(warning.problem?.severity == .warning && warning.controls.last?.id == "done")

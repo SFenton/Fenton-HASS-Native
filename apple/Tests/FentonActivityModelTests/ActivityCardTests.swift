@@ -127,14 +127,8 @@ struct ActivityCardTests {
     @Test func aProblemPhaseMakesAProblemCard() throws {
         let stuck = try card("problem-navigation-stuck")
         #expect(stuck.style == .problem(.critical) && stuck.problem?.code == "navigation.stuck")
-        #expect(stuck.problemIslandLabel == "Needs help")
-        var worded = stuck.state
-        worded.value = .text("Stopped")
-        #expect(ActivityCard(attributes: stuck.attributes, state: worded, now: now).problemIslandLabel == "Stopped", "the engine's wording wins")
-        worded.value = nil
-        #expect(ActivityCard(attributes: stuck.attributes, state: worded, now: now).problemIslandLabel == "Needs help", "else the severity's word")
         #expect(try card("problem-mop-clean_water_empty").style == .problem(.warning))
-        #expect(try card("fan").style == .job && (try card("fan")).problem == nil && (try card("fan")).problemIslandLabel == nil)
+        #expect(try card("fan").style == .job && (try card("fan")).problem == nil)
         // A problem phase with no problem is a job card (a malformed push never blanks the card).
         var broken = stuck.state
         broken.problem = nil

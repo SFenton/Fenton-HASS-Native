@@ -154,24 +154,16 @@ public enum HomeActivityIsland {
     }
 
     /// Expanded, trailing (beside the camera): the corner mark at 24 pt, mirroring the glyph, with no fixed width. A problem
-    /// puts its one word ("Needs help" or "Attention") beside the mark.
+    /// says its severity in the severity circle opposite and the problem line below, not in a word here (the island's text
+    /// is capped, so a word beside the mark could not grow with the person's text size).
     public struct ExpandedTrailing: View {
         let card: ActivityCard
 
         public init(card: ActivityCard) { self.card = card }
 
         public var body: some View {
-            HStack(spacing: 6) {
-                if let problem = card.problem {
-                    Text(card.problemIslandLabel ?? problem.severity.islandLabel)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
-                CornerMark()
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            CornerMark()
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
     }
 

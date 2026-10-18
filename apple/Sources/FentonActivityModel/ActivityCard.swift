@@ -275,14 +275,6 @@ public struct ActivityCard: Equatable, Sendable {
         }
     }
 
-    /// What the expanded island's trailing region says for a problem: the engine's value text ("Needs help" or "Attention"),
-    /// else the severity's own word.
-    public var problemIslandLabel: String? {
-        guard let problem else { return nil }
-        if let text = state.value?.text, state.value?.kind == .text, !text.isEmpty { return text }
-        return problem.severity.islandLabel
-    }
-
     // MARK: - Speech
 
     /// The title as VoiceOver reads it, with the words that make the figure beside it a sentence:
