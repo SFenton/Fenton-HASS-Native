@@ -40,6 +40,18 @@ public enum Telemetry {
         public static let scroll: StaticString = "Scroll"
         /// A frame that missed its deadline.
         public static let hitch: StaticString = "Hitch"
+        /// The first-launch intro on the sign-in screen, from its first frame to the form in place.
+        public static let intro: StaticString = "Intro"
+        /// Process start until the first frame is on screen (``beginTracked(_:)``; ended by the root view).
+        public static let launch: StaticString = "Launch"
+        /// Process start until the disk snapshot's values are on screen (a signed-in relaunch).
+        public static let snapshotShown: StaticString = "SnapshotShown"
+        /// Sign In pressed until Home Assistant hands back tokens.
+        public static let signIn: StaticString = "SignIn"
+        /// Sign-in succeeded until Home has finished arriving (the end of the arrival animation).
+        public static let arrival: StaticString = "Arrival"
+        /// The connection started or left live until it is live again.
+        public static let reconnect: StaticString = "Reconnect"
     }
 
     /// `UserDefaults` key for the Performance screen's recording switch.
