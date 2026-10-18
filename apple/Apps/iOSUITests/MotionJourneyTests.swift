@@ -109,7 +109,7 @@ final class MotionJourneyTests: JourneyTestCase {
                 reveal(app.buttons["motion.toggle.\(id)"], in: app)
                 sizes[id] = component(id).frame.size
             }
-            let all = app.buttons["motion.toggleAll"]
+            let all = app.descendants(matching: .any)["motion.toggleAll"].firstMatch
             XCTAssertTrue(all.exists, "Toggle all is not in the bar")
             all.tap()
             for id in Self.componentIDs.reversed() {
@@ -128,7 +128,7 @@ final class MotionJourneyTests: JourneyTestCase {
 
     func testGalleryPassesTheAccessibilityAudit() throws {
         let app = launch(reduceMotion: false)
-        app.buttons["motion.toggleAll"].tap()
+        app.descendants(matching: .any)["motion.toggleAll"].firstMatch.tap()
         sleep(1)
         try FentonHomeApp.audit(app)
     }
