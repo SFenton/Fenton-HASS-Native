@@ -4,13 +4,14 @@
     "timestamp": 1792249200,
     "event": "end",
     "content-state": {
-      "v": 1,
-      "jobs": []
+      "v": 2,
+      "phase": "done",
+      "controls": []
     },
     "dismissal-date": 1792249200
   },
   "fenton": {
     "v": 2,
-    "tag": "fenton-home"
+    "tag": "job.fan.guest"
   }
 }

@@ -1,87 +1,292 @@
 import Foundation
 
-/// Fixture content for the debug gallery, the debug launch hook and tests: the same shapes the relay sends, with times
-/// relative to `now` so a countdown is always ticking when it is drawn.
+/// One fixture card: the attributes and content an activity would hold.
+public struct ActivityFixture: Equatable, Sendable, Identifiable {
+    /// The fixture's name (`fan`, `problem-navigation-stuck`).
+    public var name: String
+    /// The static attributes.
+    public var attributes: HomeActivityAttributes
+    /// The content.
+    public var state: HomeActivityState
+    /// Past its stale date (the pending-stale scenario).
+    public var isStale: Bool
+
+    public var id: String { name }
+
+    /// Creates a fixture.
+    public init(name: String, attributes: HomeActivityAttributes, state: HomeActivityState, isStale: Bool = false) {
+        self.name = name
+        self.attributes = attributes
+        self.state = state
+        self.isStale = isStale
+    }
+
+    /// The card, with times counted from `now`.
+    public func card(now: Date = Date()) -> ActivityCard {
+        ActivityCard(attributes: attributes, state: state, isStale: isStale, now: now)
+    }
+}
+
+/// Fixture content for the debug gallery, the debug launch hook and tests: every card on the canvas
+/// (`.agents/platforms/apple/live-activities-per-job.md` §11), in the shapes the relay sends, with times relative to
+/// `now` so a countdown is always ticking when it is drawn.
 public enum HomeActivityFixtures {
-    /// A named set of jobs.
-    public enum Scenario: String, CaseIterable, Sendable {
-        /// The dishwasher alone, 42 minutes left.
-        case dishwasher
-        /// A bathroom fan timer alone.
-        case fan
-        /// The dishwasher and a fan.
-        case two
-        /// The dishwasher and both fans, with a fan focused.
-        case three
-        /// Six jobs: the most the activity lists, with an estimated dryer and a job that reports progress.
-        case six
-        /// The dishwasher has finished (the linger).
-        case done
-        /// The dishwasher needs a person.
-        case attention
-        /// A control was pressed and Home Assistant has not confirmed it yet.
-        case stopping
+    // MARK: - Names
+
+    /// Fan timers, dishwasher and laundry, running.
+    public static let jobNames = ["fan", "fan-long", "dishwasher", "dishwasher-percent", "dishwasher-paused", "dishwasher-waiting",
+                                  "dryer", "dryer-estimated", "washer"]
+    /// Finished jobs: **Complete**.
+    public static let completeNames = ["dishwasher-complete", "dryer-complete", "washer-complete", "hotflash-complete"]
+    /// Vacuum rooms.
+    public static let vacuumNames = ["vacuum", "vacuum-mopping", "vacuum-cleaning", "vacuum-drawn", "vacuum-paused"]
+    /// Hot flash.
+    public static let hotFlashNames = ["hotflash-cooling", "hotflash-holding", "hotflash-bysteph", "hotflash-wholebed", "hotflash-byhome"]
+    /// A press waiting, unconfirmed, and failed.
+    public static let stateNames = ["fan-pending", "fan-pending-stale", "fan-notice", "problem-completing"]
+    /// Four jobs: the cap.
+    public static let stackNames = ["fan", "dishwasher-percent", "washer", "dryer"]
+    /// Every problem row of the spec's §5 table, as the table has it.
+    public static let problemNames = problemRows.map { "problem-" + $0.slug }
+    /// The same rows with Done flipped: added to a row that has no task, taken off one that has.
+    public static let problemFlippedNames = problemRows.map { "problem-" + $0.slug + ($0.hasTask ? "-nodone" : "-done") }
+
+    /// Named groups the gallery shows together.
+    public static let groups: [String: [String]] = [
+        "jobs": jobNames, "complete": completeNames, "vacuum": vacuumNames, "hotflash": hotFlashNames,
+        "states": stateNames, "stack": stackNames, "problems": problemNames, "problems-flipped": problemFlippedNames,
+    ]
+
+    /// Every fixture name, once.
+    public static var allNames: [String] {
+        var seen = Set<String>()
+        return (jobNames + completeNames + vacuumNames + hotFlashNames + stateNames + problemNames + problemFlippedNames)
+            .filter { seen.insert($0).inserted }
     }
 
-    /// The content for a scenario.
-    /// - Parameters:
-    ///   - scenario: Which jobs.
-    ///   - now: Where "42 minutes left" counts from.
-    public static func state(_ scenario: Scenario, now: Date = Date()) -> HomeActivityState {
+    // MARK: - Lookup
+
+    /// The fixture for a name, or nil.
+    public static func fixture(_ name: String, now: Date = Date()) -> ActivityFixture? {
         let t = now.timeIntervalSince1970
-        let dishwasher = ActivityJob(
-            id: "dishwasher", kind: "dishwasher", title: "Dishwasher", status: "Eco 50° · 62%", phase: .running,
-            startTs: t - 8_000, endTs: t + 2_520, progress: 0.62, symbol: "dishwasher", tint: "cleaning",
-            controls: [ActivityControl(id: "stop", title: "Stop", role: .destructive)])
-        func fan(_ room: String, minutes: Double) -> ActivityJob {
-            ActivityJob(id: "fan.\(room)", kind: "bathroom_fan", title: "\(room.capitalized) Bath Fan", status: "Off in",
-                        startTs: t - 300, endTs: t + minutes * 60, symbol: "fan", tint: "air",
-                        controls: [ActivityControl(id: "cancel_timer", title: "Cancel Timer")])
+        switch name {
+        case "fan": return job(name, fan(t, end: 282))
+        case "fan-long": return job(name, fan(t, end: 3_882, room: "master", title: "Master Bedroom Closet Fan"))
+        case "fan-pending":
+            let base = fan(t, end: 282)
+            return ActivityFixture(name: name, attributes: base.0, state: base.1.awaiting(control: "stop", now: now))
+        case "fan-pending-stale":
+            let base = fan(t, end: 282)
+            return ActivityFixture(name: name, attributes: base.0, state: base.1.awaiting(control: "stop", now: now), isStale: true)
+        case "fan-notice":
+            let base = fan(t, end: 282)
+            return ActivityFixture(name: name, attributes: base.0, state: base.1.failing(notice: "Couldn't reach Home"))
+        case "dishwasher": return job(name, dishwasher(t))
+        case "dishwasher-percent":
+            let (attributes, initial) = dishwasher(t)
+            var state = initial
+            state.value = .percent
+            state.progress = 0.62
+            return ActivityFixture(name: name, attributes: attributes, state: state)
+        case "dishwasher-paused":
+            let (attributes, initial) = dishwasher(t)
+            var state = initial
+            state.phase = .paused
+            state.value = .text("Paused")
+            state.controls = [ActivityControl(id: "resume", title: "Resume", role: .primary), ActivityControl(id: "stop", title: "Stop")]
+            return ActivityFixture(name: name, attributes: attributes, state: state)
+        case "dishwasher-waiting":
+            let (attributes, initial) = dishwasher(t)
+            var state = initial
+            state.phase = .waiting
+            state.value = .text("Starts 5:10 PM")
+            state.controls = []
+            return ActivityFixture(name: name, attributes: attributes, state: state)
+        case "dishwasher-complete": return job(name, complete(dishwasher(t)))
+        case "dryer": return job(name, laundry("dryer", title: "Dryer", symbol: "dryer", start: t - 1_930))
+        case "dryer-estimated":
+            let (attributes, initial) = laundry("dryer", title: "Dryer", symbol: "dryer", start: t - 600)
+            var state = initial
+            state.value = .countdown(end: Date(timeIntervalSince1970: t + 1_200), estimated: true)
+            return ActivityFixture(name: name, attributes: attributes, state: state)
+        case "dryer-complete": return job(name, complete(laundry("dryer", title: "Dryer", symbol: "dryer", start: t - 1_930)))
+        case "washer": return job(name, laundry("washer", title: "Washing Machine", symbol: "washer", start: t - 372))
+        case "washer-complete": return job(name, complete(laundry("washer", title: "Washing Machine", symbol: "washer", start: t - 372)))
+        case "vacuum": return job(name, vacuum(t, headline: "Vacuuming Kitchen", elapsed: 760, tint: "cleaning"))
+        case "vacuum-mopping": return job(name, vacuum(t, headline: "Mopping Kitchen", elapsed: 365, tint: "water"))
+        case "vacuum-cleaning": return job(name, vacuum(t, headline: "Cleaning Living Room", elapsed: 192, tint: "cleaning"))
+        case "vacuum-drawn": return job(name, vacuum(t, headline: "Cleaning Main Floor area", elapsed: 375, tint: "cleaning"))
+        case "vacuum-paused":
+            let (attributes, initial) = vacuum(t, headline: "Paused in Kitchen", elapsed: 1_000, tint: "cleaning")
+            var state = initial
+            state.phase = .paused
+            state.value = ActivityValue(kind: .countup, startTs: t - 1_000, pausedElapsedS: 760)
+            state.controls = [ActivityControl(id: "resume", title: "Resume", role: .primary), ActivityControl(id: "dock", title: "Dock")]
+            return ActivityFixture(name: name, attributes: attributes, state: state)
+        case "hotflash-cooling":
+            let (attributes, initial) = hotFlash(t, line: "Your side")
+            var state = initial
+            state.value = .text("Cooling")
+            state.progress = 0.45
+            return ActivityFixture(name: name, attributes: attributes, state: state)
+        case "hotflash-holding": return job(name, hotFlash(t, line: "Your side"))
+        case "hotflash-bysteph": return job(name, hotFlash(t, line: "Your side · by Steph"))
+        case "hotflash-byhome": return job(name, hotFlash(t, line: "Your side · by Home"))
+        case "hotflash-wholebed": return job(name, hotFlash(t, line: "Whole bed", remaining: 845))
+        case "hotflash-complete": return job(name, complete(hotFlash(t, line: "Your side")))
+        case "problem-completing":
+            guard let row = problemRows.first else { return nil }
+            var base = problem(row, hasTask: true, now: t)
+            base.state = base.state.awaiting(control: "done", now: now)
+            return ActivityFixture(name: name, attributes: base.attributes, state: base.state)
+        default: break
         }
-        let url = "/sfenton-react-dash/home?path=kitchen"
-        switch scenario {
-        case .dishwasher:
-            return HomeActivityState(url: url, jobs: [dishwasher])
-        case .fan:
-            return HomeActivityState(url: "/sfenton-react-dash/home?path=master-bathroom", jobs: [fan("master", minutes: 12)])
-        case .two:
-            return HomeActivityState(url: url, jobs: [fan("master", minutes: 12), dishwasher])
-        case .three:
-            return HomeActivityState(focus: "fan.master", url: "/sfenton-react-dash/home?path=master-bathroom",
-                                     jobs: [fan("guest", minutes: 5), fan("master", minutes: 12), dishwasher])
-        case .six:
-            var dryer = ActivityJob(id: "dryer", kind: "dryer", title: "Dryer", status: "Running", endTs: t + 1_200, estimated: true,
-                                    symbol: "dryer", tint: "cleaning")
-            dryer.controls = []
-            let vacuum = ActivityJob(id: "vacuum", kind: "vacuum", title: "Upstairs Vacuum", status: "Kitchen · 2 of 5 rooms",
-                                     progress: 0.4, symbol: "fan", tint: "cleaning")
-            let washer = ActivityJob(id: "washer", kind: "washer", title: "Washer", status: "Spinning", symbol: "washer", tint: "cleaning")
-            return HomeActivityState(focus: "dishwasher", url: url,
-                                     jobs: [fan("guest", minutes: 5), fan("master", minutes: 12), dryer, dishwasher, vacuum, washer])
-        case .done:
-            var done = dishwasher
-            done.phase = .done
-            done.status = "Clean"
-            done.endTs = nil
-            done.progress = nil
-            done.controls = []
-            return HomeActivityState(url: url, jobs: [done])
-        case .attention:
-            var attention = dishwasher
-            attention.phase = .attention
-            attention.status = "Needs attention"
-            attention.endTs = nil
-            attention.progress = nil
-            return HomeActivityState(url: url, jobs: [attention])
-        case .stopping:
-            return HomeActivityState(url: url, jobs: [dishwasher]).stopping("dishwasher")
+        guard name.hasPrefix("problem-") else { return nil }
+        for row in problemRows {
+            let base = "problem-" + row.slug
+            if name == base { return named(name, problem(row, hasTask: row.hasTask, now: t)) }
+            if name == base + (row.hasTask ? "-nodone" : "-done") { return named(name, problem(row, hasTask: !row.hasTask, now: t)) }
         }
+        return nil
     }
 
-    /// A state from a debug launch value: a scenario name, or the base64 of a content-state JSON.
-    public static func state(fromLaunchValue value: String, now: Date = Date()) -> HomeActivityState? {
-        if let scenario = Scenario(rawValue: value) { return state(scenario, now: now) }
-        guard let data = Data(base64Encoded: value) else { return nil }
-        return try? HomeActivityState.decode(data)
+    /// The fixtures a debug launch value names: a fixture name, a group name, or the base64 of a content-state JSON (which
+    /// starts a generic activity). Empty when it names nothing.
+    public static func fixtures(fromLaunchValue value: String, now: Date = Date()) -> [ActivityFixture] {
+        if let one = fixture(value, now: now) { return [one] }
+        if let names = groups[value] { return names.compactMap { fixture($0, now: now) } }
+        guard let data = Data(base64Encoded: value), let state = try? HomeActivityState.decode(data) else { return [] }
+        return [ActivityFixture(name: "custom", attributes: HomeActivityAttributes(tag: "job.custom", title: "Custom", kind: "generic"), state: state)]
+    }
+
+    // MARK: - Builders
+
+    private typealias Base = (attributes: HomeActivityAttributes, state: HomeActivityState)
+
+    private static func job(_ name: String, _ base: Base) -> ActivityFixture {
+        ActivityFixture(name: name, attributes: base.attributes, state: base.state)
+    }
+
+    private static func named(_ name: String, _ base: Base) -> ActivityFixture {
+        ActivityFixture(name: name, attributes: base.attributes, state: base.state)
+    }
+
+    private static func fan(_ t: TimeInterval, end: TimeInterval, room: String = "guest", title: String = "Guest Bath Fan") -> Base {
+        (HomeActivityAttributes(tag: "job.fan.\(room)", title: title, kind: "fan", symbol: "fan", tint: "air"),
+         HomeActivityState(value: ActivityValue(kind: .countdown, startTs: t - 300, endTs: t + end),
+                           controls: [ActivityControl(id: "stop", title: "Stop", role: .primary)],
+                           url: "/sfenton-react-dash/home?path=\(room)-bathroom"))
+    }
+
+    private static func dishwasher(_ t: TimeInterval) -> Base {
+        (HomeActivityAttributes(tag: "job.dishwasher", title: "Dishwasher", kind: "dishwasher", symbol: "dishwasher", tint: "cleaning"),
+         HomeActivityState(value: ActivityValue(kind: .countdown, startTs: t - 8_000, endTs: t + 2_520),
+                           controls: [ActivityControl(id: "stop", title: "Stop", role: .primary)],
+                           url: "/sfenton-react-dash/home?path=kitchen"))
+    }
+
+    private static func laundry(_ kind: String, title: String, symbol: String, start: TimeInterval) -> Base {
+        (HomeActivityAttributes(tag: "job.\(kind)", title: title, kind: kind, symbol: symbol, tint: "cleaning"),
+         HomeActivityState(value: ActivityValue(kind: .countup, startTs: start), url: "/sfenton-react-dash/home?path=laundry"))
+    }
+
+    private static func vacuum(_ t: TimeInterval, headline: String, elapsed: TimeInterval, tint: String) -> Base {
+        (HomeActivityAttributes(tag: "job.vacuum.main_floor", title: "Main Floor Vacuum", kind: "vacuum", symbol: "vacuum", tint: tint),
+         HomeActivityState(headline: headline, value: ActivityValue(kind: .countup, startTs: t - elapsed),
+                           controls: [ActivityControl(id: "pause", title: "Pause", role: .primary), ActivityControl(id: "dock", title: "Dock")],
+                           url: "/sfenton-react-dash/home?path=vacuums"))
+    }
+
+    private static func hotFlash(_ t: TimeInterval, line: String, remaining: TimeInterval = 760) -> Base {
+        (HomeActivityAttributes(tag: "job.hot_flash", title: "Hot Flash", kind: "hot_flash", symbol: "hot_flash", tint: "cooling"),
+         HomeActivityState(subtitle: line, value: ActivityValue(kind: .countdown, startTs: t - 140, endTs: t + remaining),
+                           controls: [ActivityControl(id: "stop", title: "Stop", role: .primary)],
+                           url: "/sfenton-react-dash/home?path=master-bedroom"))
+    }
+
+    private static func complete(_ base: Base) -> Base {
+        var state = base.state
+        state.phase = .done
+        state.value = .text("Done")
+        state.progress = nil
+        state.controls = []
+        return (base.attributes, state)
+    }
+
+    // MARK: - Problems (spec §5)
+
+    /// One row of the §5 table.
+    struct ProblemRow {
+        var code: String
+        var severity: ActivityProblem.Severity
+        var icon: String
+        var problem: String
+        var message: String
+        var buttons: [(id: String, title: String)]
+        var hasTask: Bool
+        var chips: [String] = []
+        var device = "Main Floor Vacuum"
+        var tag = "job.vacuum.main_floor"
+        var kind = "vacuum"
+        var symbol = "vacuum"
+
+        /// `navigation-stuck`.
+        var slug: String { code.replacingOccurrences(of: ".", with: "-") }
+    }
+
+    static let problemRows: [ProblemRow] = [
+        ProblemRow(code: "navigation.stuck", severity: .critical, icon: "alert", problem: "Stuck in Kitchen",
+                   message: "Move it somewhere flat, then tap Resume.", buttons: [("resume", "Resume"), ("dock", "Dock")], hasTask: true),
+        ProblemRow(code: "navigation.target_unreachable", severity: .critical, icon: "door", problem: "Can't reach Office",
+                   message: "A door may be closed. Open it, then tap Resume.", buttons: [("resume", "Resume"), ("dock", "Dock")], hasTask: true),
+        ProblemRow(code: "navigation.dock_unreachable", severity: .critical, icon: "dock", problem: "Can't get back to the dock",
+                   message: "Clear the way to the dock or carry it there.", buttons: [("try_again", "Try Again")], hasTask: true),
+        ProblemRow(code: "navigation.ramp_hazard", severity: .critical, icon: "edge", problem: "Stopped at a drop or ramp",
+                   message: "Move it away from the edge, then tap Resume.", buttons: [("resume", "Resume"), ("dock", "Dock")], hasTask: true),
+        ProblemRow(code: "maintenance.main_brush_jammed", severity: .critical, icon: "brush", problem: "Main brush jammed",
+                   message: "Turn it over, clear the brush, then tap Resume.", buttons: [("resume", "Resume"), ("dock", "Dock")], hasTask: true),
+        ProblemRow(code: "maintenance.side_brush_jammed", severity: .critical, icon: "brush", problem: "Side brush jammed",
+                   message: "Untangle the side brush, then tap Resume.", buttons: [("resume", "Resume"), ("dock", "Dock")], hasTask: true),
+        ProblemRow(code: "power.critical_battery", severity: .critical, icon: "battery", problem: "Battery critically low",
+                   message: "Carry it to the dock to charge.", buttons: [], hasTask: false),
+        ProblemRow(code: "power.low_battery", severity: .warning, icon: "battery", problem: "Battery low",
+                   message: "Heading to the dock. It finishes Kitchen after charging.", buttons: [], hasTask: false),
+        ProblemRow(code: "mop.clean_water_empty", severity: .warning, icon: "water", problem: "Clean water tank empty",
+                   message: "Refill the clean water tank on the dock, then tap Resume.", buttons: [("resume", "Resume")], hasTask: true),
+        ProblemRow(code: "mop.dirty_water_unavailable", severity: .warning, icon: "waste", problem: "Wastewater tank full or missing",
+                   message: "Empty the wastewater tank and seat it firmly.", buttons: [("resume", "Resume")], hasTask: true),
+        ProblemRow(code: "mop.attachment_missing", severity: .warning, icon: "mop", problem: "Mop pads missing",
+                   message: "Attach the mop pads, or it vacuums only.", buttons: [("vacuum_only", "Vacuum Only")], hasTask: true),
+        ProblemRow(code: "mop.vacuum_only_fallback", severity: .warning, icon: "mop", problem: "Vacuuming only",
+                   message: "Mopping isn't available. Check the mop attachment, water tanks and pads.", buttons: [], hasTask: false,
+                   device: "Music Room Vacuum", tag: "job.vacuum.music_room"),
+        ProblemRow(code: "dock.cover_open", severity: .warning, icon: "bag", problem: "Dock cover open",
+                   message: "Check the dust bag is in, then close the cover.", buttons: [], hasTask: true),
+        ProblemRow(code: "dock.dustbag_blocked", severity: .warning, icon: "bag", problem: "Dust bag full",
+                   message: "Replace the dust bag in the dock.", buttons: [], hasTask: true),
+        ProblemRow(code: "vendor.unknown_error_88", severity: .critical, icon: "question", problem: "Stopped with an error",
+                   message: "Check the robot, then tap Resume.", buttons: [("resume", "Resume"), ("dock", "Dock")], hasTask: false, chips: ["Error 88"]),
+        ProblemRow(code: "unmapped.wheel_suspended", severity: .critical, icon: "question", problem: "Stopped with an error",
+                   message: "The robot says “Wheel suspended”. Check it, then tap Resume.", buttons: [("resume", "Resume"), ("dock", "Dock")], hasTask: false),
+        ProblemRow(code: "dishwasher.actionrequired", severity: .warning, icon: "door_dish", problem: "Needs attention",
+                   message: "Check the dishwasher's display.", buttons: [], hasTask: false,
+                   device: "Dishwasher", tag: "job.dishwasher", kind: "dishwasher", symbol: "dishwasher"),
+        ProblemRow(code: "dishwasher.error", severity: .critical, icon: "question", problem: "Stopped with an error",
+                   message: "Check the dishwasher's display.", buttons: [], hasTask: false,
+                   device: "Dishwasher", tag: "job.dishwasher", kind: "dishwasher", symbol: "dishwasher"),
+        ProblemRow(code: "dishwasher.rinse_aid", severity: .warning, icon: "water", problem: "Rinse aid low",
+                   message: "Refill the rinse aid.", buttons: [], hasTask: true,
+                   device: "Dishwasher", tag: "job.dishwasher", kind: "dishwasher", symbol: "dishwasher"),
+    ]
+
+    private static func problem(_ row: ProblemRow, hasTask: Bool, now: TimeInterval) -> Base {
+        var controls = row.buttons.enumerated().map { index, button in
+            ActivityControl(id: button.id, title: button.title, role: index == 0 ? .primary : .secondary)
+        }
+        if hasTask { controls.append(ActivityControl(id: "done", title: "Done")) }
+        let content = ActivityProblem(severity: row.severity, code: row.code, icon: row.icon, problem: row.problem, message: row.message,
+                                      chips: row.chips, taskId: hasTask ? "task-1042" : nil)
+        return (HomeActivityAttributes(tag: row.tag, title: row.device, kind: row.kind, symbol: row.symbol, tint: "cleaning"),
+                HomeActivityState(phase: .problem, controls: controls, problem: content, url: "/sfenton-react-dash/home?path=vacuums"))
     }
 }

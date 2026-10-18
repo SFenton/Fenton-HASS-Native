@@ -2,16 +2,29 @@ import Foundation
 @testable import FentonActivityModel
 import Testing
 
-/// The relay's real output (`SFenton/ha-fenton-push` `tests/fixtures/live-*.apns`, mirrored in `tools/push_fixtures`):
-/// the app decodes what Python wrote, with the same default `JSONDecoder` ActivityKit uses.
+/// The push fixtures in `tools/push_fixtures/live2-*.apns`: the app decodes what the relay writes, with the same default
+/// `JSONDecoder` ActivityKit uses. The app lane hand-wrote these from the spec text (§3, "Fixtures"); review diffs them
+/// against the relay lane's own set (`SFenton/ha-fenton-push` `tests/fixtures/live2-*.apns`).
 struct RelayFixtureTests {
     private static let root = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
+    /// Every fixture the spec names, plus the problem variants.
+    private static let names = [
+        "fan-start", "fan-end", "dishwasher-countdown", "dishwasher-percent", "dishwasher-waiting", "washer-countup", "dryer-countup",
+        "complete-dishwasher", "complete-washer", "complete-dryer", "complete-hotflash",
+        "hotflash-cooling", "hotflash-holding", "hotflash-bysteph", "hotflash-wholebed",
+        "vacuum-countup", "vacuum-paused",
+        "problem-critical", "problem-warning", "problem-no-task", "problem-unknown-error", "problem-unmapped", "v1-compat",
+    ]
+
+    private func object(_ name: String) throws -> [String: Any] {
+        let data = try Data(contentsOf: Self.root.appendingPathComponent("tools/push_fixtures/live2-\(name).apns"))
+        return try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+
     private func aps(_ name: String) throws -> [String: Any] {
-        let data = try Data(contentsOf: Self.root.appendingPathComponent("tools/push_fixtures/\(name).apns"))
-        let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
-        return try #require(object["aps"] as? [String: Any])
+        try #require(object(name)["aps"] as? [String: Any])
     }
 
     private func state(_ name: String) throws -> HomeActivityState {
@@ -19,42 +32,108 @@ struct RelayFixtureTests {
         return try HomeActivityState.decode(JSONSerialization.data(withJSONObject: content))
     }
 
-    @Test func theStartContentDecodesAndKeepsItsTimesIn2026() throws {
-        let state = try state("live-start")
-        #expect(state.jobs.map(\.id) == ["dishwasher", "fan.master"])
-        #expect(state.focus == "dishwasher" && state.url == "/sfenton-react-dash/home?path=kitchen")
-        let end = try #require(state.jobs[0].endDate)
-        #expect(Calendar(identifier: .gregorian).component(.year, from: end) == 2026, "a Date read from 2001 would land in 1995")
-        #expect(state.jobs[0].controls == [ActivityControl(id: "stop", title: "Stop", role: .destructive)])
-        #expect(state.jobs[0].trailing != .none)
+    private func attributes(_ name: String) throws -> HomeActivityAttributes {
+        let raw = try #require(aps(name)["attributes"])
+        return try JSONDecoder().decode(HomeActivityAttributes.self, from: JSONSerialization.data(withJSONObject: raw))
     }
 
-    @Test func theStartCarriesAttributesTheAppDecodes() throws {
-        let aps = try aps("live-start")
-        #expect(aps["attributes-type"] as? String == HomeActivityAttributes.wireName)
-        let attributes = try #require(aps["attributes"] as? [String: Any])
-        let decoded = try JSONDecoder().decode(HomeActivityAttributes.self, from: JSONSerialization.data(withJSONObject: attributes))
-        #expect(decoded == HomeActivityAttributes(tag: HomeActivityAttributes.homeTag, title: "Home", kind: "home"))
-    }
-
-    @Test func theEndFixtureIsAnEmptyListTheAppAccepts() throws {
-        let state = try state("live-end")
-        #expect(state.jobs.isEmpty && state.focusedJob == nil)
-    }
-
-    @Test func theGenericFixtureIsOneCountdownJob() throws {
-        let state = try state("live-generic")
-        let job = try #require(state.jobs.first)
-        #expect(state.jobs.count == 1 && job.kind == "generic" && job.symbol == "drop.fill")
-        #expect(job.timerRange != nil && job.progress == 0.25)
-    }
-
-    @Test func everyFixtureFitsApplesFourKilobytes() throws {
-        for name in ["live-start", "live-update", "live-end", "live-generic"] {
-            let data = try Data(contentsOf: Self.root.appendingPathComponent("tools/push_fixtures/\(name).apns"))
-            let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    @Test func everyFixtureDecodesAndFitsApplesFourKilobytes() throws {
+        for name in Self.names {
+            let state = try state(name)
+            #expect(state.version == 2, Comment(rawValue: name))
+            let object = try object(name)
             let compact = try JSONSerialization.data(withJSONObject: object.filter { $0.key != "Simulator Target Bundle" })
             #expect(compact.count < HomeActivityState.maxPayloadBytes, Comment(rawValue: name))
+            #expect(state == state.fitted(), "\(name) is within the string and control caps")
         }
+    }
+
+    @Test func aStartCarriesAttributesTheAppDecodes() throws {
+        for name in ["fan-start", "washer-countup", "dryer-countup", "vacuum-countup", "hotflash-cooling"] {
+            let aps = try aps(name)
+            #expect(aps["event"] as? String == "start" && aps["attributes-type"] as? String == HomeActivityAttributes.wireName, Comment(rawValue: name))
+            let attributes = try attributes(name)
+            #expect(attributes.tag.hasPrefix("job.") && attributes.glyph != .generic && attributes.tint != "neutral", Comment(rawValue: name))
+        }
+        let fan = try attributes("fan-start")
+        #expect(fan == HomeActivityAttributes(tag: "job.fan.guest", title: "Guest Bath Fan", kind: "fan", symbol: "fan", tint: "air"))
+    }
+
+    @Test func theFanCountsDownInto2026WithAStopButton() throws {
+        let state = try state("fan-start")
+        let value = try #require(state.value)
+        #expect(value.kind == .countdown)
+        let end = try #require(value.endDate)
+        #expect(Calendar(identifier: .gregorian).component(.year, from: end) == 2026, "a Date read from 2001 would land in 1995")
+        #expect(state.controls == [ActivityControl(id: "stop", title: "Stop", role: .primary)])
+        let card = ActivityCard(attributes: try attributes("fan-start"), state: state, now: Date(timeIntervalSince1970: 1_792_249_200))
+        #expect(card.buttons.map(\.accessibilityLabel) == ["Stop Guest Bath Fan"])
+        let ended = try aps("fan-end")
+        #expect(ended["event"] as? String == "end" && ended["dismissal-date"] as? Double == ended["timestamp"] as? Double, "ends now")
+    }
+
+    @Test func theDishwasherShowsACountdownOrAPercentage() throws {
+        #expect(try state("dishwasher-countdown").value?.kind == .countdown)
+        let percent = try state("dishwasher-percent")
+        #expect(percent.value?.kind == .percent && percent.progress == 0.62)
+        let waiting = try state("dishwasher-waiting")
+        #expect(waiting.phase == .waiting && waiting.value?.text == "Starts 5:10 PM")
+    }
+
+    @Test func laundryCountsUpAndHasNoButtons() throws {
+        for name in ["washer-countup", "dryer-countup"] {
+            let state = try state(name)
+            #expect(state.value?.kind == .countup && state.value?.endTs == nil && state.controls.isEmpty, Comment(rawValue: name))
+        }
+    }
+
+    @Test func finishedJobsAreComplete() throws {
+        for name in ["complete-dishwasher", "complete-washer", "complete-dryer", "complete-hotflash"] {
+            let state = try state(name)
+            #expect(state.phase == .done && state.controls.isEmpty, Comment(rawValue: name))
+        }
+    }
+
+    @Test func hotFlashSaysWhoseSideItIs() throws {
+        #expect(try state("hotflash-cooling").value?.text == "Cooling" && (try state("hotflash-cooling")).progress == 0.45)
+        #expect(try state("hotflash-holding").value?.kind == .countdown)
+        #expect(try state("hotflash-bysteph").subtitle == "Your side · by Steph")
+        #expect(try state("hotflash-wholebed").subtitle == "Whole bed")
+        #expect(try attributes("hotflash-cooling").glyph == .hotFlash)
+    }
+
+    @Test func aVacuumRoomCountsUpAndPausesWithAFrozenTime() throws {
+        let running = try state("vacuum-countup")
+        #expect(running.headline == "Vacuuming Kitchen" && running.controls.map(\.id) == ["pause", "dock"])
+        let paused = try state("vacuum-paused")
+        #expect(paused.phase == .paused && paused.value?.pausedElapsedS == 760)
+        let card = ActivityCard(attributes: try attributes("vacuum-countup"), state: paused, now: Date(timeIntervalSince1970: 1_792_249_200))
+        #expect(card.figure == .frozen(seconds: 760) && card.isPaused)
+    }
+
+    @Test func problemCardsCarryTheirSeverityTaskAndButtons() throws {
+        let critical = try state("problem-critical")
+        #expect(critical.phase == .problem && critical.problem?.severity == .critical && critical.problem?.taskId == "1042")
+        #expect(critical.controls.map(\.id) == ["resume", "dock", "done"], "Done is last")
+        #expect(try aps("problem-critical")["alert"] != nil, "a critical update alerts")
+        let warning = try state("problem-warning")
+        #expect(warning.problem?.severity == .warning && warning.controls.last?.id == "done")
+        #expect(try aps("problem-warning")["alert"] == nil, "a warning is silent")
+        let none = try state("problem-no-task")
+        #expect(none.problem?.hasTask == false && none.controls.isEmpty)
+        let numbered = try state("problem-unknown-error")
+        #expect(numbered.problem?.chips == ["Error 88"] && numbered.problem?.hasTask == false)
+        let unmapped = try state("problem-unmapped")
+        #expect(unmapped.problem?.chips.isEmpty == true && unmapped.problem?.message.contains("“Wheel suspended”") == true)
+        for name in ["problem-critical", "problem-warning", "problem-no-task", "problem-unknown-error", "problem-unmapped"] {
+            #expect(try state(name).problem?.glyph != .generic, Comment(rawValue: name))
+        }
+    }
+
+    @Test func aPhaseOnePayloadStillDecodesByItsFocusJob() throws {
+        let state = try state("v1-compat")
+        #expect(state.headline == "Dishwasher" && state.controls.map(\.id) == ["stop"] && state.value?.kind == .countdown)
+        let attributes = try attributes("v1-compat")
+        #expect(attributes == HomeActivityAttributes(tag: "fenton-home", title: "Home", kind: "home", symbol: "", tint: "neutral"))
     }
 }

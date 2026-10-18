@@ -2,9 +2,11 @@
   "Simulator Target Bundle": "com.sfenton.home",
   "aps": {
     "timestamp": 1792249200,
-    "event": "update",
+    "event": "start",
     "content-state": {
       "v": 1,
+      "focus": "dishwasher",
+      "url": "/sfenton-react-dash/home?path=kitchen",
       "jobs": [
         {
           "id": "dishwasher",
@@ -42,11 +44,18 @@
             }
           ]
         }
-      ],
-      "focus": "dishwasher",
-      "url": "/sfenton-react-dash/home?path=kitchen"
+      ]
     },
-    "stale-date": 1792251300
+    "attributes-type": "HomeActivityAttributes",
+    "attributes": {
+      "tag": "fenton-home",
+      "title": "Home",
+      "kind": "home",
+      "symbol": "",
+      "tint": "neutral"
+    },
+    "input-push-token": 1,
+    "stale-date": 1792251000
   },
   "fenton": {
     "v": 2,
