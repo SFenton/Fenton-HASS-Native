@@ -192,6 +192,10 @@ final class HomeJourneyTests: XCTestCase {
         let tile = app.descendants(matching: .any)["room.lightGroup.light.guest_room"]
         XCTAssertTrue(tile.waitForExistence(timeout: 5))
         XCTAssertTrue(tile.wait(for: \.isHittable, toEqual: true, timeout: 5), "Sheet still presenting")
+        // The sheet can open before the guest room light's state has arrived: wait on the state rather than read the
+        // "Unavailable" a tile shows until then (live run, 2026-10-17).
+        let arrived = NSPredicate(format: "value != 'Unavailable'")
+        _ = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: arrived, object: tile)], timeout: 15)
         let before = try XCTUnwrap(tile.value as? String)
         XCTAssertNotEqual(before, "Unavailable")
         XCTAssertTrue(before == "Off" || before.hasSuffix("%"), "Not a brightness tile: \(before)")
