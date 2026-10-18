@@ -9,8 +9,7 @@
       "controls": [
         {
           "id": "resume",
-          "title": "Resume",
-          "role": "primary"
+          "title": "Resume"
         },
         {
           "id": "dock",

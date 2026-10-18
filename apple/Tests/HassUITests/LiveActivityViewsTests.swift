@@ -105,6 +105,15 @@ struct LiveActivityViewsTests {
         }
     }
 
+    @Test func aTimeRingDrawsAsAFractionWhenTheGalleryAsksForIt() async {
+        let live = await render(HomeActivityLockScreenView(card: card("fan")).environment(\.activityStaticTimerRing, true))
+        let done = await render(HomeActivityLockScreenView(card: card("fan")).environment(\.activityStaticTimerRing, true).environment(\.isLuminanceReduced, true))
+        #expect((live?.distinctColors ?? 0) > 3 && done != nil)
+        var values = EnvironmentValues()
+        #expect(values.activityStaticTimerRing == false)
+        values.activityStaticTimerRing = true
+    }
+
     @Test func theCompactIslandHidesItsTrailingSideInALimitedWidth() async {
         let limited = await render(HomeActivityIsland.CompactTrailing(card: card("fan"), isLimitedWidth: true), size: CGSize(width: 80, height: 40))
         let normal = await render(HomeActivityIsland.CompactTrailing(card: card("fan")), size: CGSize(width: 80, height: 40))

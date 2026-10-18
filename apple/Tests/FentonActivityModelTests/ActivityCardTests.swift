@@ -19,10 +19,10 @@ struct ActivityCardTests {
         var empty = vacuum.state
         empty.headline = ""
         #expect(ActivityCard(attributes: vacuum.attributes, state: empty).title == "Main Floor Vacuum")
-        #expect(try card("hotflash-bysteph").subtitle == "Your side · by Steph")
-        #expect(try card("fan").subtitle == nil)
-        empty.subtitle = ""
-        #expect(ActivityCard(attributes: vacuum.attributes, state: empty).subtitle == nil)
+        #expect(try card("hotflash-bysteph").detail == "Your side · by Steph")
+        #expect(try card("fan").detail == nil)
+        empty.detail = ""
+        #expect(ActivityCard(attributes: vacuum.attributes, state: empty).detail == nil)
     }
 
     // MARK: Figure
@@ -104,6 +104,11 @@ struct ActivityCardTests {
         let stuck = try card("problem-navigation-stuck")
         #expect(stuck.style == .problem(.critical) && stuck.problem?.code == "navigation.stuck")
         #expect(stuck.problemIslandLabel == "Needs help")
+        var worded = stuck.state
+        worded.value = .text("Stopped")
+        #expect(ActivityCard(attributes: stuck.attributes, state: worded, now: now).problemIslandLabel == "Stopped", "the engine's wording wins")
+        worded.value = nil
+        #expect(ActivityCard(attributes: stuck.attributes, state: worded, now: now).problemIslandLabel == "Needs help", "else the severity's word")
         #expect(try card("problem-mop-clean_water_empty").style == .problem(.warning))
         #expect(try card("fan").style == .job && (try card("fan")).problem == nil && (try card("fan")).problemIslandLabel == nil)
         // A problem phase with no problem is a job card (a malformed push never blanks the card).

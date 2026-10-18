@@ -43,17 +43,17 @@ public enum HomeActivityIsland {
                 EmptyView()
             } else if let problem = card.problem {
                 Text(problem.compactLabel)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             } else if card.isComplete {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(ActivityStyle(tint: card.tint).accent)
                     .accessibilityLabel("Complete")
             } else {
-                ActivityFigure(card: card, font: .system(size: 15, weight: .semibold), alignment: .trailing)
+                ActivityFigure(card: card, font: .subheadline.weight(.semibold), alignment: .trailing)
             }
         }
     }
@@ -104,20 +104,20 @@ public enum HomeActivityIsland {
 
         public var body: some View {
             if let problem = card.problem {
-                Text(problem.severity.islandLabel)
-                    .font(.system(size: 15, weight: .semibold))
+                Text(card.problemIslandLabel ?? problem.severity.islandLabel)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             } else if let notice = card.notice {
                 Text(notice)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.footnote.weight(.semibold))
                     .foregroundStyle(ActivityStyle.noticeText)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             } else {
-                ActivityFigure(card: card, font: .system(size: 22, weight: .semibold), alignment: .trailing)
+                ActivityFigure(card: card, font: .title2.weight(.semibold), alignment: .trailing)
                     .accessibilityLabel(card.spokenFigure ?? "")
             }
         }
@@ -134,18 +134,18 @@ public enum HomeActivityIsland {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(card.problem == nil ? card.title : card.deviceTitle)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.headline)
                         .foregroundStyle(ActivityStyle.primaryText)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     if let problem = card.problem {
                         Text(problem.problem)
-                            .font(.system(size: 14))
+                            .font(.footnote)
                             .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
                             .lineLimit(1)
-                    } else if let subtitle = card.subtitle {
-                        Text(subtitle)
-                            .font(.system(size: 13))
+                    } else if let detail = card.detail {
+                        Text(detail)
+                            .font(.footnote)
                             .foregroundStyle(ActivityStyle.secondaryText)
                             .lineLimit(1)
                     }

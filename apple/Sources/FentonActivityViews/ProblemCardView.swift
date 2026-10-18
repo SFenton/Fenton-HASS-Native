@@ -45,36 +45,21 @@ struct ProblemCardView: View {
             // The first two lines share the corner with the mark; the instruction starts below it and runs full width.
             VStack(alignment: .leading, spacing: 2) {
                 Text(card.deviceTitle)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.headline)
                     .foregroundStyle(ActivityStyle.primaryText)
                     .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                 Text(problem.problem)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(colors.lightText)
                     .lineLimit(typeSize.isAccessibilitySize ? 4 : 1)
             }
             .padding(.trailing, showsMark ? 48 : 0)
             Text(problem.message)
-                .font(.system(size: 15))
+                .font(.subheadline)
                 .foregroundStyle(Color.white.opacity(0.82))
                 .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
                 .minimumScaleFactor(0.9)
                 .fixedSize(horizontal: false, vertical: true)
         }
-    }
-}
-
-/// The solid circle behind a problem's glyph: red when it stopped, amber when it carries on.
-struct SeverityCircle: View {
-    let glyph: ActivityGlyph
-    let severity: ActivityProblem.Severity
-    var diameter: CGFloat
-
-    var body: some View {
-        Circle()
-            .fill(ActivityStyle.severity(severity).circle)
-            .frame(width: diameter, height: diameter)
-            .overlay { ActivityGlyphImage(glyph: glyph, size: diameter * 0.46, color: .white, weight: .bold) }
-            .accessibilityHidden(true)
     }
 }

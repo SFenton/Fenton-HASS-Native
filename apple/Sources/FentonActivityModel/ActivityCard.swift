@@ -91,7 +91,7 @@ public struct ActivityCard: Equatable, Sendable {
         return headline
     }
     /// The short line under the title (the hot flash card), or nil.
-    public var subtitle: String? { state.subtitle.flatMap { $0.isEmpty ? nil : $0 } }
+    public var detail: String? { state.detail.flatMap { $0.isEmpty ? nil : $0 } }
     /// The device glyph.
     public var glyph: ActivityGlyph { attributes.glyph }
     /// The `ColorFamily` raw value that tints the card.
@@ -184,8 +184,13 @@ public struct ActivityCard: Equatable, Sendable {
 
     // MARK: - Island
 
-    /// What the expanded island's trailing region says for a problem: "Needs help" or "Attention".
-    public var problemIslandLabel: String? { problem?.severity.islandLabel }
+    /// What the expanded island's trailing region says for a problem: the engine's value text ("Needs help" or "Attention"),
+    /// else the severity's own word.
+    public var problemIslandLabel: String? {
+        guard let problem else { return nil }
+        if let text = state.value?.text, state.value?.kind == .text, !text.isEmpty { return text }
+        return problem.severity.islandLabel
+    }
 
     // MARK: - Speech
 
@@ -210,7 +215,7 @@ public struct ActivityCard: Equatable, Sendable {
             return parts.joined(separator: ", ")
         }
         var parts = [title]
-        if let subtitle { parts.append(subtitle) }
+        if let detail { parts.append(detail) }
         if let phrase = spokenFigure { parts.append(phrase) }
         return parts.joined(separator: ", ")
     }

@@ -110,6 +110,16 @@ struct ActivityProblemTests {
         #expect(!ActivityProblem(severity: .warning, code: "", icon: "", problem: "", message: "", taskId: "").hasTask)
     }
 
+    @Test func aTaskIdMayBeAStringOrAJsonInteger() throws {
+        func problem(_ id: String) throws -> ActivityProblem? {
+            try ActivityFixtures.json(#"{"v":2,"phase":"problem","problem":{"severity":"critical","task_id":\#(id)}}"#).problem
+        }
+        #expect(try problem(#""1042""#)?.taskId == "1042")
+        #expect(try problem("4217")?.taskId == "4217", "a numeric id must not fail the whole card")
+        #expect(try problem("null")?.taskId == nil)
+        #expect(try problem("true")?.taskId == nil, "an id of the wrong type is no id")
+    }
+
     @Test func aProblemRoundTrips() throws {
         let problem = ActivityProblem(severity: .critical, code: "navigation.stuck", icon: "alert", problem: "Stuck in Kitchen",
                                       message: "Move it.", chips: ["Error 1"], taskId: "9")
@@ -183,10 +193,10 @@ struct ActivityPendingAndClockTests {
 struct HomeActivityStateTests {
     @Test func aV2StateDecodesEveryKey() throws {
         let state = try ActivityFixtures.json("""
-        {"v":2,"phase":"paused","headline":"Paused in Kitchen","subtitle":"Your side","value":{"kind":"countup","start_ts":1792248440},
+        {"v":2,"phase":"paused","headline":"Paused in Kitchen","detail":"Your side","value":{"kind":"countup","start_ts":1792248440},
          "progress":0.5,"controls":[{"id":"resume","title":"Resume","role":"primary"}],"notice":"n","url":"/p"}
         """)
-        #expect(state.version == 2 && state.phase == .paused && state.headline == "Paused in Kitchen" && state.subtitle == "Your side")
+        #expect(state.version == 2 && state.phase == .paused && state.headline == "Paused in Kitchen" && state.detail == "Your side")
         #expect(state.progress == 0.5 && state.controls.count == 1 && state.notice == "n" && state.url == "/p")
         #expect(state.problem == nil && state.pending == nil)
     }
@@ -208,14 +218,15 @@ struct HomeActivityStateTests {
         let long = String(repeating: "x", count: 200)
         let problem = ActivityProblem(severity: .critical, code: "c", icon: "alert", problem: long, message: long, chips: [long, long])
         let controls = (0..<5).map { ActivityControl(id: "c\($0)", title: "C") }
-        let state = HomeActivityState(phase: .problem, headline: long, subtitle: long, value: .text(long), controls: controls, problem: problem).fitted()
+        let state = HomeActivityState(phase: .problem, headline: long, detail: long, value: .text(long), controls: controls, problem: problem).fitted()
         #expect(state.headline?.count == HomeActivityState.maxHeadlineLength && state.headline?.hasSuffix("…") == true)
-        #expect(state.subtitle?.count == HomeActivityState.maxSubtitleLength)
+        #expect(state.detail?.count == HomeActivityState.maxDetailLength)
         #expect(state.value?.text?.count == ActivityValue.maxTextLength)
         #expect(state.problem?.problem.count == ActivityProblem.maxProblemLength)
         #expect(state.problem?.message.count == ActivityProblem.maxMessageLength)
         #expect(state.problem?.chips.count == 1 && state.problem?.chips.first?.count == ActivityProblem.maxChipLength)
         #expect(state.controls.count == HomeActivityState.maxProblemControls, "a problem card keeps three")
+        #expect(HomeActivityState(notice: long).fitted().notice?.count == HomeActivityState.maxNoticeLength)
         let job = HomeActivityState(controls: controls).fitted()
         #expect(job.controls.count == HomeActivityState.maxControls, "a job card keeps two")
         #expect(HomeActivityState(headline: "short").fitted().headline == "short")

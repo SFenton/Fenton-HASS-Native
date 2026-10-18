@@ -27,7 +27,7 @@ final class LiveActivityJourneyTests: JourneyTestCase {
     /// The Lock Screen limit is 160 pt; a taller view is cut off by the system, so every card must fit.
     func testEveryCardFitsTheLockScreensHeightLimit() {
         var count = 0
-        for group in ["jobs", "complete", "vacuum", "hotflash", "states", "stack", "problems", "problems-flipped"] {
+        for group in ["jobs", "complete", "vacuums", "hotflash", "states", "stack", "problems", "problems-flipped"] {
             let app = launch(group, identifier: nil)
             let found = cards(in: app)
             XCTAssertFalse(found.isEmpty, "\(group) drew no cards")
@@ -182,16 +182,17 @@ final class LiveActivityJourneyTests: JourneyTestCase {
         for (size, regionWidth) in expected {
             let island = element("liveactivity.islandsize.\(size)", in: app)
             XCTAssertTrue(island.exists, size)
-            let trailing = island.descendants(matching: .any).matching(identifier: "liveactivity.island.trailing").firstMatch
-            let leading = island.descendants(matching: .any).matching(identifier: "liveactivity.island.leading").firstMatch
-            XCTAssertTrue(trailing.exists && leading.exists, "\(size) draws both regions")
+            let trailing = island.descendants(matching: .any).matching(identifier: "liveactivity.island.trailing.bounds").firstMatch
+            let leading = island.descendants(matching: .any).matching(identifier: "liveactivity.island.leading.bounds").firstMatch
+            let shape = island.descendants(matching: .any).matching(identifier: "liveactivity.island.shape").firstMatch
+            XCTAssertTrue(trailing.exists && leading.exists && shape.exists, "\(size) draws both regions")
             XCTAssertEqual(trailing.frame.width, regionWidth, accuracy: 1, "\(size) trailing region")
             XCTAssertEqual(leading.frame.width, regionWidth, accuracy: 1, "\(size) leading region")
-            let figure = trailing.staticTexts.firstMatch
+            let figure = island.descendants(matching: .any).matching(identifier: "liveactivity.island.trailing").staticTexts.firstMatch
             XCTAssertTrue(figure.exists, "\(size) has a figure")
             XCTAssertGreaterThanOrEqual(figure.frame.minX, trailing.frame.minX - 0.5, "\(size) figure leaves its region on the left")
             XCTAssertLessThanOrEqual(figure.frame.maxX, trailing.frame.maxX + 0.5, "\(size) figure leaves its region on the right")
-            XCTAssertLessThanOrEqual(trailing.frame.maxX, island.frame.maxX - 17, "\(size) the region stays inside the island")
+            XCTAssertLessThanOrEqual(trailing.frame.maxX, shape.frame.maxX - 17, "\(size) the region stays inside the island")
             // The same figure at its natural 22 pt width fits the region even before the 0.8 scale floor.
             let probe = element("liveactivity.probe.\(size)", in: app)
             XCTAssertTrue(probe.exists, "\(size) probe")
@@ -213,8 +214,8 @@ final class LiveActivityJourneyTests: JourneyTestCase {
     }
 
     func testProblemCardsPassAccessibilityAudit() throws {
-        let app = launch("vacuum")
-        try FentonHomeApp.audit(app) { self.launch("vacuum", arguments: FentonHomeApp.ax5) }
+        let app = launch("vacuums")
+        try FentonHomeApp.audit(app) { self.launch("vacuums", arguments: FentonHomeApp.ax5) }
         let problems = launch("problem-navigation-stuck")
         try FentonHomeApp.audit(problems) { self.launch("problem-navigation-stuck", arguments: FentonHomeApp.ax5) }
     }

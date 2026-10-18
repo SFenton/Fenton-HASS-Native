@@ -31,17 +31,17 @@ struct HomeLiveActivity: Widget {
         } dynamicIsland: { context in
             let card = ActivityCard(attributes: context.attributes, state: context.state, isStale: context.isStale)
             return DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) { HomeActivityIsland.ExpandedLeading(card: card) }
-                DynamicIslandExpandedRegion(.trailing) { HomeActivityIsland.ExpandedTrailing(card: card) }
+                DynamicIslandExpandedRegion(.leading) { HomeActivityIsland.ExpandedLeading(card: card).dynamicTypeSize(...DynamicTypeSize.xxxLarge) }
+                DynamicIslandExpandedRegion(.trailing) { HomeActivityIsland.ExpandedTrailing(card: card).dynamicTypeSize(...DynamicTypeSize.xxxLarge) }
                 // The centre stays empty (spec §8): the system sizes the leading and trailing regions for each camera.
                 DynamicIslandExpandedRegion(.bottom) {
-                    HomeActivityIsland.ExpandedBottom(card: card)
+                    HomeActivityIsland.ExpandedBottom(card: card).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                         .environment(\.activityActions, .intents)
                 }
             } compactLeading: {
                 HomeActivityIsland.CompactLeading(card: card)
             } compactTrailing: {
-                IslandCompactTrailing(card: card)
+                IslandCompactTrailing(card: card).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             } minimal: {
                 HomeActivityIsland.Minimal(card: card)
             }

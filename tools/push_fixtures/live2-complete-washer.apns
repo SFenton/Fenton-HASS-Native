@@ -9,8 +9,9 @@
       "controls": [],
       "value": {
         "kind": "text",
-        "text": "Done"
-      }
+        "text": "Complete"
+      },
+      "progress": 1.0
     },
     "relevance-score": 10.0,
     "stale-date": 1792251000

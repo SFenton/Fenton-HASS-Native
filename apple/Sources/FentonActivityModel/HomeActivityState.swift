@@ -15,8 +15,10 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
     public static let maxProblemControls = 3
     /// `headline` at most.
     public static let maxHeadlineLength = 32
-    /// `subtitle` at most.
-    public static let maxSubtitleLength = 32
+    /// `detail` at most.
+    public static let maxDetailLength = 32
+    /// `notice` at most.
+    public static let maxNoticeLength = 60
     /// Apple's limit for the whole push, static and dynamic attributes together.
     public static let maxPayloadBytes = 4096
 
@@ -26,8 +28,9 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
     public var phase: JobPhase
     /// Overrides the title line ("Vacuuming Kitchen"); nil shows the attribute `title`.
     public var headline: String?
-    /// One short line under the title (the hot flash card: "Your side · by Steph"). nil for every other job.
-    public var subtitle: String?
+    /// The small line under the title (the hot flash card: "Your side", "Whole bed", "Your side · by Steph"). nil for every
+    /// other job.
+    public var detail: String?
     /// The big figure.
     public var value: ActivityValue?
     /// 0…1; drives the ring when there is no time range, and a ``ActivityValue/Kind/percent`` value.
@@ -45,13 +48,13 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
 
     /// Creates a state.
     public init(version: Int = HomeActivityState.currentVersion, phase: JobPhase = .running, headline: String? = nil,
-                subtitle: String? = nil, value: ActivityValue? = nil, progress: Double? = nil,
+                detail: String? = nil, value: ActivityValue? = nil, progress: Double? = nil,
                 controls: [ActivityControl] = [], problem: ActivityProblem? = nil, pending: ActivityPending? = nil,
                 notice: String? = nil, url: String? = nil) {
         self.version = version
         self.phase = phase
         self.headline = headline
-        self.subtitle = subtitle
+        self.detail = detail
         self.value = value
         self.progress = progress
         self.controls = controls
@@ -63,7 +66,7 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case version = "v"
-        case phase, headline, subtitle, value, progress, controls, problem, pending, notice, url
+        case phase, headline, detail, value, progress, controls, problem, pending, notice, url
         // Phase 1 (v1) only.
         case jobs, focus
     }
@@ -81,7 +84,7 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
         version = declared ?? Self.currentVersion
         phase = try container.decodeIfPresent(JobPhase.self, forKey: .phase) ?? .running
         headline = try container.decodeIfPresent(String.self, forKey: .headline)
-        subtitle = try container.decodeIfPresent(String.self, forKey: .subtitle)
+        detail = try container.decodeIfPresent(String.self, forKey: .detail)
         value = try container.decodeIfPresent(ActivityValue.self, forKey: .value)
         progress = try container.decodeIfPresent(Double.self, forKey: .progress)
         controls = try container.decodeIfPresent([ActivityControl].self, forKey: .controls) ?? []
@@ -96,7 +99,7 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
         try container.encode(version, forKey: .version)
         try container.encode(phase, forKey: .phase)
         try container.encodeIfPresent(headline, forKey: .headline)
-        try container.encodeIfPresent(subtitle, forKey: .subtitle)
+        try container.encodeIfPresent(detail, forKey: .detail)
         try container.encodeIfPresent(value, forKey: .value)
         try container.encodeIfPresent(progress, forKey: .progress)
         try container.encode(controls, forKey: .controls)
@@ -136,7 +139,8 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
     public func fitted() -> HomeActivityState {
         var copy = self
         copy.headline = headline.map { Self.truncated($0, to: Self.maxHeadlineLength) }
-        copy.subtitle = subtitle.map { Self.truncated($0, to: Self.maxSubtitleLength) }
+        copy.detail = detail.map { Self.truncated($0, to: Self.maxDetailLength) }
+        copy.notice = notice.map { Self.truncated($0, to: Self.maxNoticeLength) }
         if var value = copy.value {
             value.text = value.text.map { Self.truncated($0, to: ActivityValue.maxTextLength) }
             copy.value = value

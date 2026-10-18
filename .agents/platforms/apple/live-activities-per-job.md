@@ -2,7 +2,7 @@
 
 > **What:** how S+H shows each running household job, and each device problem, as its own Live Activity, kept current by Home Assistant while the app is closed. It covers the wire contract, the `fenton_push` job engine, every job kind and problem code, stop and cancel flows, slots and ordering, the views, tests and the lane plan. **Read when:** building or changing Live Activities, the widget extension, the `fenton_push` engine, or the Home Assistant side.
 
-Status: spec, owner-approved design (Stephen, 2026-10-17), not built. It **supersedes** [live-activities.md](live-activities.md) §1 ("one activity, not many"), §3 (content state v1), §4 (presentation) and §6 (engine rules), and **retires** [live-activities-ha-automations.md](live-activities-ha-automations.md) once the engine ships. Everything else in those files (the token plumbing in §0, privacy, the Phase 1 targets) still holds.
+Status: spec, owner-approved design (Stephen, 2026-10-17). **The app lane (§11, §12) is built** on `claude/live-activities-v2-app` (see the app-lane notes at the end of §11); the engine and relay lane (§9) and the Home Assistant config (§10) are not. It **supersedes** [live-activities.md](live-activities.md) §1 ("one activity, not many"), §3 (content state v1), §4 (presentation) and §6 (engine rules), and **retires** [live-activities-ha-automations.md](live-activities-ha-automations.md) once the engine ships. Everything else in those files (the token plumbing in §0, privacy, the Phase 1 targets) still holds.
 
 Design source: the canvas **S+H Live Activity** (`https://claude.ai/artifact/ToY74UpYgCganecAfGTg3x`), boards 5 to 8: "Two jobs" and "Four jobs" stacks, "Corner mark follows your app icon", "Vacuum, one room per card", "Expanded island on every camera width", "Problem cards". The boards are the visual contract; this file is the behavioural one.
 
@@ -364,6 +364,20 @@ All from the canvas boards; Lock Screen first.
 | Settings | Write `appIconChoice` to the app group (`AppIconPickerModel` on apply, and at launch) |
 | Intents | Drop `FocusJobIntent`. `JobControlIntent(tag, control)` |
 | Gallery | `FENTON_GALLERY=live-activity` scenarios for every canvas card: fan, dishwasher countdown and percent, dryer estimated, vacuum running/mopping/drawn area/paused, every problem row (§5) with and without Done, Completing…, pending, pending-stale, notice, 4-card stack |
+
+### App-lane notes (built 2026-10-17, `claude/live-activities-v2-app`)
+
+Where the build chose or departed from the text above, so the engine lane and review can line up:
+
+- **Hot flash line.** §3 has no key for the short line ("Your side · by Steph"), so the content state carries an optional `subtitle` (≤ 32 characters). If the engine uses another key, change one `CodingKeys` entry in `HomeActivityState`.
+- **Compact island label.** The wire has no field for the one-word label ("Stuck", "Refill water"), so `ActivityProblem.compactLabel` maps the known codes in the app and falls back to "Help" (critical) or "Check" (warning). A new code ships its word with an app update.
+- **Corner mark knock-out.** `HouseHeartShape` (HassDesign) cuts the heart's ring out of the house, so it shows whatever is behind it: the card, plain or a problem gradient. The spec's "uses the card's background colour" is therefore true by construction and no colour is passed.
+- **Complete.** `phase: done` always reads **Complete**, whatever `value.text` says.
+- **Waiting.** `phase: waiting` shows `value.text` ("Starts 5:10 PM") with an empty ring.
+- **Text styles.** Titles and figures use the text styles that equal the spec's sizes at the default setting (headline 17, title 28, title 2 22), so the Lock Screen scales with Dynamic Type; the island caps at xxxLarge.
+- **Pending timestamps.** The app's write uses `update(_:alertConfiguration:timestamp:)` (iOS 17.2+) and keeps the card's relevance score. A failure that lands in the same second as the press can tie with the pending write and be dropped; the stale date then gives the buttons back.
+- **Scheduled activities.** `ActivityState.pending` (iOS 26) counts as active in `SystemLiveActivityClient`.
+- **Fixtures.** `tools/push_fixtures/live2-*.apns` replace the Phase 1 `live-*.apns`; `live2-v1-compat.apns` keeps the v1 decode covered.
 
 ## 12. Tests and verification
 

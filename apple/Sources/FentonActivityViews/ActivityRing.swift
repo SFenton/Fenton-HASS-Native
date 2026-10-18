@@ -9,6 +9,7 @@ struct ActivityRing: View {
     let card: ActivityCard
     var diameter: CGFloat = ActivityStyle.ringSize
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
+    @Environment(\.activityStaticTimerRing) private var staticTimerRing
 
     private var style: ActivityStyle { ActivityStyle(tint: card.tint) }
     private var lineWidth: CGFloat { max(3, diameter * 6 / 64) }
@@ -28,15 +29,15 @@ struct ActivityRing: View {
     private var ring: some View {
         switch card.ring {
         case let .timer(range):
-            ProgressView(timerInterval: range, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
-                .progressViewStyle(.circular)
-                .tint(accent)
+            if staticTimerRing {
+                fraction(elapsed(of: range))
+            } else {
+                ProgressView(timerInterval: range, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
+                    .progressViewStyle(.circular)
+                    .tint(accent)
+            }
         case let .fraction(value):
-            track
-            Circle().trim(from: 0, to: value)
-                .stroke(accent, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .padding(lineWidth / 2)
+            fraction(value)
         case .steady:
             Circle().stroke(accent, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)).padding(lineWidth / 2)
         case .track:
@@ -45,6 +46,22 @@ struct ActivityRing: View {
             Circle().fill(style.accent.opacity(0.18)).padding(lineWidth / 2)
             Circle().stroke(style.accent, lineWidth: lineWidth).padding(lineWidth / 2)
         }
+    }
+
+    private func fraction(_ value: Double) -> some View {
+        ZStack {
+            track
+            Circle().trim(from: 0, to: value)
+                .stroke(accent, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .padding(lineWidth / 2)
+        }
+    }
+
+    private func elapsed(of range: ClosedRange<Date>) -> Double {
+        // The card only builds a ring range with its end after its start.
+        let total = range.upperBound.timeIntervalSince(range.lowerBound)
+        return min(max(card.now.timeIntervalSince(range.lowerBound) / total, 0), 1)
     }
 
     /// The ring's empty track; Always-On drops it (spec §8).

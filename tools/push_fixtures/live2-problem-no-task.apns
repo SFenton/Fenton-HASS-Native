@@ -7,6 +7,10 @@
       "v": 2,
       "phase": "problem",
       "controls": [],
+      "value": {
+        "kind": "text",
+        "text": "Attention"
+      },
       "problem": {
         "severity": "warning",
         "code": "power.low_battery",

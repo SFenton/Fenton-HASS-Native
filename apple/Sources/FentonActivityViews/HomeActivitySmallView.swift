@@ -27,7 +27,7 @@ public struct HomeActivitySmallView: View {
                         .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
                         .lineLimit(1)
                 } else {
-                    ActivityFigure(card: card, font: .system(size: 17, weight: .semibold))
+                    ActivityFigure(card: card, font: .headline)
                 }
             }
         }

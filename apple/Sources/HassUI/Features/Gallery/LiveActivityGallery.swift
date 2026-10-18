@@ -10,7 +10,7 @@ import SwiftUI
 ///
 /// `FENTON_GALLERY_SCENARIO` picks the content:
 /// - a fixture name (`HomeActivityFixtures.allNames`): that card plus every island presentation and the small family;
-/// - a group (`HomeActivityFixtures.groups`: `stack`, `jobs`, `vacuum`, `hotflash`, `complete`, `states`, `problems`,
+/// - a group (`HomeActivityFixtures.groups`: `stack`, `jobs`, `vacuums`, `hotflash`, `complete`, `states`, `problems`,
 ///   `problems-flipped`): every card in it, one under the other, each named `liveactivity.card.<fixture>`;
 /// - `island-widths`: the expanded island for a long `H:MM:SS` figure on the narrowest, a standard and the widest camera
 ///   regions, to check nothing clips.
@@ -90,6 +90,8 @@ struct LiveActivityGallery: View {
             .padding(HassTokens.Spacing.l)
         }
         .environment(\.activityActions, actions)
+        // The system draws a time ring only inside a Live Activity; here it is the fraction elapsed when drawn.
+        .environment(\.activityStaticTimerRing, true)
         .navigationTitle("Live Activity")
     }
 

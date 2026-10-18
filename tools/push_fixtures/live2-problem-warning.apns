@@ -9,8 +9,7 @@
       "controls": [
         {
           "id": "resume",
-          "title": "Resume",
-          "role": "primary"
+          "title": "Resume"
         },
         {
           "id": "done",
@@ -18,6 +17,10 @@
           "role": "secondary"
         }
       ],
+      "value": {
+        "kind": "text",
+        "text": "Attention"
+      },
       "problem": {
         "severity": "warning",
         "code": "mop.clean_water_empty",

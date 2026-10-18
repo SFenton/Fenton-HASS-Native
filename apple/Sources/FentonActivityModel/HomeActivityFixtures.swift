@@ -53,7 +53,7 @@ public enum HomeActivityFixtures {
 
     /// Named groups the gallery shows together.
     public static let groups: [String: [String]] = [
-        "jobs": jobNames, "complete": completeNames, "vacuum": vacuumNames, "hotflash": hotFlashNames,
+        "jobs": jobNames, "complete": completeNames, "vacuums": vacuumNames, "hotflash": hotFlashNames,
         "states": stateNames, "stack": stackNames, "problems": problemNames, "problems-flipped": problemFlippedNames,
     ]
 
@@ -93,7 +93,7 @@ public enum HomeActivityFixtures {
             var state = initial
             state.phase = .paused
             state.value = .text("Paused")
-            state.controls = [ActivityControl(id: "resume", title: "Resume", role: .primary), ActivityControl(id: "stop", title: "Stop")]
+            state.controls = [ActivityControl(id: "resume", title: "Resume"), ActivityControl(id: "stop", title: "Stop")]
             return ActivityFixture(name: name, attributes: attributes, state: state)
         case "dishwasher-waiting":
             let (attributes, initial) = dishwasher(t)
@@ -121,7 +121,7 @@ public enum HomeActivityFixtures {
             var state = initial
             state.phase = .paused
             state.value = ActivityValue(kind: .countup, startTs: t - 1_000, pausedElapsedS: 760)
-            state.controls = [ActivityControl(id: "resume", title: "Resume", role: .primary), ActivityControl(id: "dock", title: "Dock")]
+            state.controls = [ActivityControl(id: "resume", title: "Resume"), ActivityControl(id: "dock", title: "Dock")]
             return ActivityFixture(name: name, attributes: attributes, state: state)
         case "hotflash-cooling":
             let (attributes, initial) = hotFlash(t, line: "Your side")
@@ -174,14 +174,14 @@ public enum HomeActivityFixtures {
     private static func fan(_ t: TimeInterval, end: TimeInterval, room: String = "guest", title: String = "Guest Bath Fan") -> Base {
         (HomeActivityAttributes(tag: "job.fan.\(room)", title: title, kind: "fan", symbol: "fan", tint: "air"),
          HomeActivityState(value: ActivityValue(kind: .countdown, startTs: t - 300, endTs: t + end),
-                           controls: [ActivityControl(id: "stop", title: "Stop", role: .primary)],
+                           controls: [ActivityControl(id: "stop", title: "Stop")],
                            url: "/sfenton-react-dash/home?path=\(room)-bathroom"))
     }
 
     private static func dishwasher(_ t: TimeInterval) -> Base {
         (HomeActivityAttributes(tag: "job.dishwasher", title: "Dishwasher", kind: "dishwasher", symbol: "dishwasher", tint: "cleaning"),
          HomeActivityState(value: ActivityValue(kind: .countdown, startTs: t - 8_000, endTs: t + 2_520),
-                           controls: [ActivityControl(id: "stop", title: "Stop", role: .primary)],
+                           controls: [ActivityControl(id: "stop", title: "Stop")],
                            url: "/sfenton-react-dash/home?path=kitchen"))
     }
 
@@ -193,22 +193,23 @@ public enum HomeActivityFixtures {
     private static func vacuum(_ t: TimeInterval, headline: String, elapsed: TimeInterval, tint: String) -> Base {
         (HomeActivityAttributes(tag: "job.vacuum.main_floor", title: "Main Floor Vacuum", kind: "vacuum", symbol: "vacuum", tint: tint),
          HomeActivityState(headline: headline, value: ActivityValue(kind: .countup, startTs: t - elapsed),
-                           controls: [ActivityControl(id: "pause", title: "Pause", role: .primary), ActivityControl(id: "dock", title: "Dock")],
+                           controls: [ActivityControl(id: "pause", title: "Pause"), ActivityControl(id: "dock", title: "Dock")],
                            url: "/sfenton-react-dash/home?path=vacuums"))
     }
 
     private static func hotFlash(_ t: TimeInterval, line: String, remaining: TimeInterval = 760) -> Base {
         (HomeActivityAttributes(tag: "job.hot_flash", title: "Hot Flash", kind: "hot_flash", symbol: "hot_flash", tint: "cooling"),
-         HomeActivityState(subtitle: line, value: ActivityValue(kind: .countdown, startTs: t - 140, endTs: t + remaining),
-                           controls: [ActivityControl(id: "stop", title: "Stop", role: .primary)],
+         HomeActivityState(detail: line, value: ActivityValue(kind: .countdown, startTs: t - 140, endTs: t + remaining),
+                           controls: [ActivityControl(id: "stop", title: "Stop")],
                            url: "/sfenton-react-dash/home?path=master-bedroom"))
     }
 
     private static func complete(_ base: Base) -> Base {
         var state = base.state
         state.phase = .done
-        state.value = .text("Done")
-        state.progress = nil
+        // The engine's Complete card: progress 1.0, no controls, value text "Complete".
+        state.value = .text("Complete")
+        state.progress = 1
         state.controls = []
         return (base.attributes, state)
     }
@@ -280,13 +281,13 @@ public enum HomeActivityFixtures {
     ]
 
     private static func problem(_ row: ProblemRow, hasTask: Bool, now: TimeInterval) -> Base {
-        var controls = row.buttons.enumerated().map { index, button in
-            ActivityControl(id: button.id, title: button.title, role: index == 0 ? .primary : .secondary)
-        }
+        // As the engine sends them: the first control carries no role (primary), the others say `secondary`.
+        var controls = row.buttons.map { ActivityControl(id: $0.id, title: $0.title) }
         if hasTask { controls.append(ActivityControl(id: "done", title: "Done")) }
         let content = ActivityProblem(severity: row.severity, code: row.code, icon: row.icon, problem: row.problem, message: row.message,
                                       chips: row.chips, taskId: hasTask ? "task-1042" : nil)
         return (HomeActivityAttributes(tag: row.tag, title: row.device, kind: row.kind, symbol: row.symbol, tint: "cleaning"),
-                HomeActivityState(phase: .problem, controls: controls, problem: content, url: "/sfenton-react-dash/home?path=vacuums"))
+                HomeActivityState(phase: .problem, value: .text(row.severity == .critical ? "Needs help" : "Attention"),
+                                controls: controls, problem: content, url: "/sfenton-react-dash/home?path=vacuums"))
     }
 }

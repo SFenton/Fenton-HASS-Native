@@ -68,7 +68,14 @@ public struct ActivityProblem: Codable, Hashable, Sendable {
         problem = try container.decodeIfPresent(String.self, forKey: .problem) ?? ""
         message = try container.decodeIfPresent(String.self, forKey: .message) ?? ""
         chips = try container.decodeIfPresent([String].self, forKey: .chips) ?? []
-        taskId = try container.decodeIfPresent(String.self, forKey: .taskId)
+        // Donetick ids are numbers; the wire may carry one as a string or as a JSON integer.
+        if let text = (try? container.decodeIfPresent(String.self, forKey: .taskId)) ?? nil {
+            taskId = text
+        } else if let number = (try? container.decodeIfPresent(Int.self, forKey: .taskId)) ?? nil {
+            taskId = String(number)
+        } else {
+            taskId = nil
+        }
     }
 
     public func encode(to encoder: any Encoder) throws {

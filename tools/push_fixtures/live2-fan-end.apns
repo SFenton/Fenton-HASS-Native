@@ -6,7 +6,11 @@
     "content-state": {
       "v": 2,
       "phase": "done",
-      "controls": []
+      "controls": [],
+      "value": {
+        "kind": "text",
+        "text": "Ended"
+      }
     },
     "dismissal-date": 1792249200
   },

@@ -4,7 +4,7 @@ import SwiftUI
 /// The job card (fan, dishwasher, dryer, washer, vacuum room, hot flash): a 64 pt ring with the glyph, a 17 pt title over a
 /// 28 pt figure, up to two buttons bottom-right, and the corner mark top-right
 /// (`.agents/platforms/apple/live-activities-per-job.md` §8). The title is one line; the figure is one line; neither
-/// has a subtitle except the hot flash's "Your side".
+/// has a detail except the hot flash's "Your side".
 ///
 /// Height is at most 160 pt at the default text size (`LiveActivityJourneyTests`); at accessibility sizes the figure
 /// wraps under the title and the buttons stack.
@@ -43,25 +43,25 @@ struct JobCardView: View {
     private var text: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(card.title)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.headline)
                 .foregroundStyle(ActivityStyle.primaryText)
                 .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                 .accessibilityLabel(card.spokenTitle)
-            if let subtitle = card.subtitle {
-                Text(subtitle)
-                    .font(.system(size: 13))
+            if let detail = card.detail {
+                Text(detail)
+                    .font(.footnote)
                     .foregroundStyle(ActivityStyle.secondaryText)
                     .lineLimit(1)
             }
             if let notice = card.notice {
                 Text(notice)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(ActivityStyle.noticeText)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier("liveactivity.notice")
             } else {
-                ActivityFigure(card: card, font: .system(size: 28, weight: .semibold))
+                ActivityFigure(card: card, font: .title.weight(.semibold))
             }
         }
         .padding(.trailing, showsMark ? 48 : 0)

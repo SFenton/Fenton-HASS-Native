@@ -9,8 +9,7 @@
       "controls": [
         {
           "id": "stop",
-          "title": "Stop",
-          "role": "primary"
+          "title": "Stop"
         }
       ],
       "value": {

@@ -9,8 +9,7 @@
       "controls": [
         {
           "id": "pause",
-          "title": "Pause",
-          "role": "primary"
+          "title": "Pause"
         },
         {
           "id": "dock",

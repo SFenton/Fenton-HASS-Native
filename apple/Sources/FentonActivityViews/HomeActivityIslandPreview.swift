@@ -61,6 +61,8 @@ public struct HomeActivityIslandPreview: View {
                 expanded
             }
         }
+        // The island's regions are the system's size, so its text does not grow past xxxLarge (the Lock Screen's does).
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("liveactivity.island.\(kind.rawValue)")
     }
@@ -71,11 +73,13 @@ public struct HomeActivityIslandPreview: View {
             HStack(spacing: 0) {
                 HomeActivityIsland.ExpandedLeading(card: card)
                     .frame(width: region, height: 36, alignment: .leading)
+                    .background { Self.bounds("liveactivity.island.leading.bounds") }
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("liveactivity.island.leading")
                 Color.clear.frame(width: cameraWidth, height: 36)
                 HomeActivityIsland.ExpandedTrailing(card: card)
                     .frame(width: region, height: 36, alignment: .trailing)
+                    .background { Self.bounds("liveactivity.island.trailing.bounds") }
                     .accessibilityElement(children: .contain)
                     .accessibilityIdentifier("liveactivity.island.trailing")
             }
@@ -86,5 +90,12 @@ public struct HomeActivityIslandPreview: View {
         .padding(EdgeInsets(top: 10, leading: 18, bottom: 14, trailing: 18))
         .frame(width: screenWidth - 22)
         .background(RoundedRectangle(cornerRadius: 42, style: .continuous).fill(Color.black))
+        .background { Self.bounds("liveactivity.island.shape") }
+    }
+
+    /// An empty element with the exact bounds of the view it backs, so the journeys can measure a region or the island itself:
+    /// a container's own accessibility frame is the union of its children, which hides how much room the region had.
+    private static func bounds(_ identifier: String) -> some View {
+        Color.clear.accessibilityElement().accessibilityIdentifier(identifier)
     }
 }

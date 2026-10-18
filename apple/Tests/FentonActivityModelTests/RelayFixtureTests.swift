@@ -65,11 +65,13 @@ struct RelayFixtureTests {
         #expect(value.kind == .countdown)
         let end = try #require(value.endDate)
         #expect(Calendar(identifier: .gregorian).component(.year, from: end) == 2026, "a Date read from 2001 would land in 1995")
-        #expect(state.controls == [ActivityControl(id: "stop", title: "Stop", role: .primary)])
+        #expect(state.controls == [ActivityControl(id: "stop", title: "Stop")], "the first control carries no role: it is primary")
         let card = ActivityCard(attributes: try attributes("fan-start"), state: state, now: Date(timeIntervalSince1970: 1_792_249_200))
         #expect(card.buttons.map(\.accessibilityLabel) == ["Stop Guest Bath Fan"])
         let ended = try aps("fan-end")
         #expect(ended["event"] as? String == "end" && ended["dismissal-date"] as? Double == ended["timestamp"] as? Double, "ends now")
+        let stub = try self.state("fan-end")
+        #expect(stub.phase == .done && stub.value?.text == "Ended", "an end carries the engine's stub content")
     }
 
     @Test func theDishwasherShowsACountdownOrAPercentage() throws {
@@ -90,15 +92,15 @@ struct RelayFixtureTests {
     @Test func finishedJobsAreComplete() throws {
         for name in ["complete-dishwasher", "complete-washer", "complete-dryer", "complete-hotflash"] {
             let state = try state(name)
-            #expect(state.phase == .done && state.controls.isEmpty, Comment(rawValue: name))
+            #expect(state.phase == .done && state.controls.isEmpty && state.progress == 1 && state.value?.text == "Complete", Comment(rawValue: name))
         }
     }
 
     @Test func hotFlashSaysWhoseSideItIs() throws {
         #expect(try state("hotflash-cooling").value?.text == "Cooling" && (try state("hotflash-cooling")).progress == 0.45)
         #expect(try state("hotflash-holding").value?.kind == .countdown)
-        #expect(try state("hotflash-bysteph").subtitle == "Your side · by Steph")
-        #expect(try state("hotflash-wholebed").subtitle == "Whole bed")
+        #expect(try state("hotflash-bysteph").detail == "Your side · by Steph")
+        #expect(try state("hotflash-wholebed").detail == "Whole bed")
         #expect(try attributes("hotflash-cooling").glyph == .hotFlash)
     }
 
@@ -115,6 +117,11 @@ struct RelayFixtureTests {
         let critical = try state("problem-critical")
         #expect(critical.phase == .problem && critical.problem?.severity == .critical && critical.problem?.taskId == "1042")
         #expect(critical.controls.map(\.id) == ["resume", "dock", "done"], "Done is last")
+        #expect(critical.controls.map(\.role) == [.secondary, .secondary, .secondary], "no role on the first, `secondary` on the rest")
+        let attention = try self.state("problem-warning")
+        #expect(critical.value?.text == "Needs help" && attention.value?.text == "Attention")
+        let card = ActivityCard(attributes: try attributes("vacuum-countup"), state: critical, now: Date(timeIntervalSince1970: 1_792_249_200))
+        #expect(card.problemIslandLabel == "Needs help")
         #expect(try aps("problem-critical")["alert"] != nil, "a critical update alerts")
         let warning = try state("problem-warning")
         #expect(warning.problem?.severity == .warning && warning.controls.last?.id == "done")
@@ -135,5 +142,45 @@ struct RelayFixtureTests {
         #expect(state.headline == "Dishwasher" && state.controls.map(\.id) == ["stop"] && state.value?.kind == .countdown)
         let attributes = try attributes("v1-compat")
         #expect(attributes == HomeActivityAttributes(tag: "fenton-home", title: "Home", kind: "home", symbol: "", tint: "neutral"))
+    }
+
+    // MARK: The relay lane's own set (`tools/push_fixtures/relay/`, copied from the relay repo's branch)
+
+    private static func relayNames() throws -> [String] {
+        try FileManager.default.contentsOfDirectory(atPath: root.appendingPathComponent("tools/push_fixtures/relay").path)
+            .filter { $0.hasPrefix("live2-") && $0.hasSuffix(".apns") }.sorted()
+    }
+
+    private func relayObject(_ file: String) throws -> [String: Any] {
+        let data = try Data(contentsOf: Self.root.appendingPathComponent("tools/push_fixtures/relay/\(file)"))
+        return try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    }
+
+    @Test func everyFixtureTheRelayGeneratesDecodesAndFits() throws {
+        let files = try Self.relayNames()
+        #expect(files.count >= 20, "the relay set is present")
+        for file in files {
+            let object = try relayObject(file)
+            let aps = try #require(object["aps"] as? [String: Any], Comment(rawValue: file))
+            let content = try #require(aps["content-state"], Comment(rawValue: file))
+            let state = try HomeActivityState.decode(JSONSerialization.data(withJSONObject: content))
+            #expect(state == state.fitted(), "\(file) is within the caps")
+            if let raw = aps["attributes"] {
+                let attributes = try JSONDecoder().decode(HomeActivityAttributes.self, from: JSONSerialization.data(withJSONObject: raw))
+                #expect(attributes.tag.hasPrefix("job.") || attributes.tag == "fenton-home", Comment(rawValue: file))
+                let card = ActivityCard(attributes: attributes, state: state, now: Date(timeIntervalSince1970: 1_792_249_200))
+                #expect(!card.title.isEmpty, Comment(rawValue: file))
+                #expect(card.glyph != .generic || attributes.symbol.isEmpty, "\(file) names a glyph this build draws")
+            }
+            let compact = try JSONSerialization.data(withJSONObject: object.filter { $0.key != "Simulator Target Bundle" })
+            #expect(compact.count < HomeActivityState.maxPayloadBytes, Comment(rawValue: file))
+        }
+    }
+
+    @Test func theRelaysProblemWithDoneKeepsItsNumericTask() throws {
+        let aps = try #require(try relayObject("live2-problem-with-done.apns")["aps"] as? [String: Any])
+        let state = try HomeActivityState.decode(JSONSerialization.data(withJSONObject: try #require(aps["content-state"])))
+        #expect(state.problem?.taskId == "4217" && state.controls.last?.id == "done")
+        #expect(state.value?.text == "Needs help")
     }
 }

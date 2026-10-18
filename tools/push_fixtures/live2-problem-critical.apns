@@ -9,8 +9,7 @@
       "controls": [
         {
           "id": "resume",
-          "title": "Resume",
-          "role": "primary"
+          "title": "Resume"
         },
         {
           "id": "dock",
@@ -23,6 +22,10 @@
           "role": "secondary"
         }
       ],
+      "value": {
+        "kind": "text",
+        "text": "Needs help"
+      },
       "problem": {
         "severity": "critical",
         "code": "navigation.stuck",
