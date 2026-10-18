@@ -261,10 +261,25 @@ Owner decision, 2026-10-17, from the "Paired tile and house colours" mockups (`P
 
 ## Loading and feedback
 
-- With a saved snapshot, Home shows it at once with a small "Updating" glass pill by Profile.
+- With a saved snapshot, Home shows it at once, with no spinner and no pill (owner, 2026-10-17); the Reconnecting chip appears only after the connection has been down 2 s ([launch and sign-in motion](#launch-and-sign-in-motion)).
 - With nothing saved, show one centred arc spinner on the wallpaper, with no empty cards, and then everything fades in together. Images are shown from the on-disk cache first.
 - **Spinners are the web's arc** (`DashboardPageLoading`), not the system petal indicator. The arc is a ring at 22% opacity with the top quarter at 96% and the right quarter at 72%. It turns once every 820 ms, linear, and takes the colour of the text around it. Sizes: 44pt with a 3pt ring for pages, 20pt for pills and rows, 16pt inline in buttons and subtitles. It is spoken as "Loading", or as the action it stands for, such as "Sending Open". With Reduce Motion on, it keeps turning at half speed, because a still arc reads as frozen. (Owner request, 2026-10-14.)
 - Optimistic taps change the tile at once. If Home Assistant doesn't confirm, the tile reverts and shows "Didn't respond" in red. Garage doors show Sending, Opening, Closing and Error states on their buttons.
+
+## Launch and sign-in motion
+
+Owner design, 2026-10-17 (canvas **S+H Launch and sign-in motion**; the app-wide rules are in [motion.md](motion.md)). Timings live in `MotionTokens` (HassDesign); everything respects Reduce Motion (cross-fades of about 0.35 s only; the spinner still turns). The sign-in screen itself: [auth](../platforms/apple/auth.md).
+
+| Moment | What happens |
+|---|---|
+| Launch, signed out (intro, ≈1.2 s, once per session) | The launch screen is the plain ground `#121722` (`LaunchBackground`). The glow fades up (0.5 s); the mark springs in (0.86 to 1.03 to 1, `emphasized`); the title and subtitle fade up 10 pt; the form rises 28 pt. No keyboard comes up |
+| Launch, signed in | No intro, no spinner: the launch ground cross-fades (0.2 s) onto the disk snapshot; live values update in place |
+| Sign In pressed | The capsule scales to 0.96; "Signing In…" with a white arc inside it; the fields dim to 50% |
+| Sign-in succeeds (arrival, ≈0.9 s, once per session) | The sign-in layer lifts 18 pt, fades and scales to 0.97; the house backdrop fades in from 1.06 to 1; the header fades up, the status chips slide in 30 pt from the right, the cards rise 16 pt with a 60 ms stagger (the first screenful), the tab bar rises from the bottom |
+| First sign-in, no snapshot | Tiles show their names and a soft pulsing bar where the value goes (`PendingValueBar`, opacity 0.35 to 1 over 1.4 s) until live data lands |
+| Connection lost | "Reconnecting…" chip under the header after 2 s down (`ReconnectingChip`) |
+
+Built from `RootView` (the launch ground, the sign-in layer's lift, `HomeArrival`), `LoginView` (the intro), `ArrivalMotion` (`.arrivalMotion(_:kind:index:)`, driven by `HomeArrival`, held back only while the moment plays), `ArrivalChromeProbe` (UIKit's navigation bar and tab bar, which SwiftUI cannot animate) and `MotionPolicy` (which moments have played this session; reset at sign-out). **Tile tap outline:** the brief asked for a faint outline on a tile until Home Assistant confirms its optimistic change. [Optimistic actions](../patterns/optimistic-actions.md) shows no state between the optimistic value and the live one and gives a control `isPending` for its own dimming; a pending outline would be a new `GlassTile` input every controller passes, so it is not added here (see that record).
 
 ## Open questions waiting on Stephen (defaults shown in the mockups)
 

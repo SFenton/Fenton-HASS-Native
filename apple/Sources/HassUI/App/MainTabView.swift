@@ -1,5 +1,6 @@
 import HassCore
 import HassDesign
+import HassTelemetry
 import SwiftUI
 
 /// Primary navigation, matching the web's `PRIMARY_NAV_ROUTES` (`routes.ts`).
@@ -15,6 +16,7 @@ struct MainTabView: View {
     @State private var windowTop: CGFloat = 0
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(HassConnection.self) private var connection: HassConnection?
+    @Environment(EntityStore.self) private var store: EntityStore?
     @Environment(PushCoordinator.self) private var push: PushCoordinator?
     @Environment(LocationCoordinator.self) private var location: LocationCoordinator?
 
@@ -55,11 +57,19 @@ struct MainTabView: View {
         .environment(\.shellChrome, chrome)
         .environment(\.backdropCanvas, canvas)
         .environment(\.headerEdgeCap, headerEdgeCap)
+        // The first sign-in, before any value has arrived: tiles keep their names and show a soft bar for the value.
+        .environment(\.valuesPending, store?.freshness == .empty)
+        // Connection lost for two seconds: a quiet chip under the header, until it is live again.
+        .reconnectingChip(headerEnd: headerEdgeCap ?? 0)
         // Direction G: pages sit on the dimmed house photo, so the signed-in shell is always dark. Sheets follow the
         // system appearance instead: `RootView` publishes it, and `hassSheet()` / `HassModal` apply it to themselves
         // (`.agents/design/direction-g.md`, Layers; plan decision 6).
         .preferredColorScheme(.dark)
-        .onAppear { navigator.selection = storedSelection }
+        .onAppear {
+            navigator.selection = storedSelection
+            // A relaunch draws the disk snapshot's values on this first frame: that is when the snapshot is shown.
+            if store?.freshness != .empty { Telemetry.endTracked(Telemetry.Name.snapshotShown) }
+        }
         // A scroll cost launch (`FENTON_SCROLLCOST_OPEN`) starts on the page it measures.
         .task { if let path = ScrollCostProbe.launchPath { navigator.open(PushDestination(dashboardPath: path)) } }
         .onChange(of: navigator.selection) { _, section in storedSelection = section }
@@ -190,6 +200,8 @@ private struct PageChrome: ViewModifier {
             .accessibilityHidden(while: isFlyoutOpen)
             .toolbar(style == .flyout ? .hidden : .automatic, for: .tabBar)
             .background(TabControllerAccessibilityHider(hidden: isFlyoutOpen))
+            // Holds the header and tab bar back while Home arrives after a sign-in (``HomeArrival``).
+            .background(ArrivalChromeProbe())
         #else
         content
             .headerEdgeFade()

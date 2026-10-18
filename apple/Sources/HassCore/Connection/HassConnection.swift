@@ -416,6 +416,13 @@ public final class HassConnection {
         let previous = status
         status = next
         PushTrace.shared.record("connection: \(previous) -> \(next)")
+        // Reconnect start to live: opens when the socket starts or fails, closes when it answers. A socket that is
+        // closed on purpose (background, sign-out) or refused abandons the interval rather than timing it.
+        switch next {
+        case .connecting, .waitingToReconnect: Telemetry.beginTracked(Telemetry.Name.reconnect)
+        case .connected: Telemetry.endTracked(Telemetry.Name.reconnect)
+        case .disconnected, .rejected: Telemetry.cancelTracked(Telemetry.Name.reconnect)
+        }
         if case .connected = next {
             NotificationCenter.default.post(name: Self.didBecomeReadyNotification, object: self)
         }

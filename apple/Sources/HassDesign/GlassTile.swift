@@ -38,6 +38,7 @@ public struct GlassTile<Accessory: View>: View {
     public typealias Kind = GlassTileKind
 
     @State private var accessoryWidth: CGFloat = 0
+    @Environment(\.valuesPending) private var valuesPending
 
     /// Creates a tile with a trailing accessory.
     public init(
@@ -142,6 +143,8 @@ public struct GlassTile<Accessory: View>: View {
     }
 
     private var accessibilityValue: String {
+        // The first sign-in, before any value has arrived: the soft bar says nothing, so the tile does.
+        if valuesPending, subtitle != nil || kind == .toggle { return "Loading" }
         if isUnavailable { return "Unavailable" }
         if isError { return subtitle ?? "Error" }
         if kind == .toggle { return isActive ? "On" : "Off" }
@@ -256,6 +259,7 @@ public struct GlassTileFace: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.tileTitleLines) private var reservedTitleLines
     @Environment(\.tileFinish) private var preferredFinish
+    @Environment(\.valuesPending) private var valuesPending
     @Environment(\.colorSchemeContrast) private var contrast
     @ScaledMetric(relativeTo: .subheadline) private var titleLineHeight = TileMetrics.titleLineHeight
     @ScaledMetric(relativeTo: .title3) private var glyphHeight = TileMetrics.glyphHeight
@@ -385,7 +389,10 @@ public struct GlassTileFace: View {
                 .foregroundStyle(primaryInk(style))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            if let subtitle {
+            if subtitle != nil, valuesPending {
+                // The first sign-in, before any value has arrived: the name is real, the value is a soft bar.
+                PendingValueBar()
+            } else if let subtitle {
                 Text(subtitle)
                     .font(.footnote)
                     .foregroundStyle(secondaryInk(style))

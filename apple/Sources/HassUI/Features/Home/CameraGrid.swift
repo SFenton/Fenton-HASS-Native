@@ -17,11 +17,13 @@ struct CameraGrid: View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
             RoomSectionHeader(title: "Cameras")
             DynamicGridLayout(minCellWidth: 160, maxColumns: 4) {
-                ForEach(HomeConfig.cameras) { camera in
+                ForEach(Array(HomeConfig.cameras.enumerated()), id: \.element.id) { index, camera in
                     Button { onOpen(camera) } label: {
                         CameraTile(camera: camera)
                     }
                     .buttonStyle(.plain)
+                    // After a sign-in the tiles rise one after another, the first screenful only (`HomeArrival`).
+                    .arrivalMotion(index: index + 1)
                     .accessibilityLabel("\(camera.title) camera")
                     .accessibilityValue(CameraTile.statusText((poolOverride ?? .shared).model(for: camera).state))
                     .accessibilityHint("Opens the camera")

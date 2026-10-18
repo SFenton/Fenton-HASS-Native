@@ -81,9 +81,6 @@ struct ClimatePage: View {
         .scrollTelemetry("Climate")
         .accessibilityIdentifier("climate.scroll")
         .navigationTitle("Climate")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) { FreshnessIndicator() }
-        }
         .sheet(item: $sheet) { request in
             ClimateSheet(controller: controller, request: request)
                 // Bottom edge: at the top a wrapped debug line covered the sheet's Back and Close on iPad.

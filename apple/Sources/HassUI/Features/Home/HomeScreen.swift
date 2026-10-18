@@ -30,9 +30,6 @@ struct HomeScreen: View {
         .accessibilityIdentifier("home.scroll")
         .navigationTitle("Home")
         .foodNavigation()
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) { FreshnessIndicator() }
-        }
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case let .chip(kind):
@@ -61,7 +58,9 @@ extension HomeScreen {
             HStack(alignment: .top, spacing: 0) {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
                     StatusRail { sheet = .chip($0) }
+                        .arrivalMotion(kind: .slideIn)
                     WeatherSummaryCard()
+                        .arrivalMotion(index: 0)
                         // Half a window wide: its hourly row pages by the compact count (nine hours in 400 pt
                         // truncated their labels on the unfolded Duo, 2026-10-15).
                         .environment(\.weatherCardIsNarrow, true)
@@ -79,7 +78,9 @@ extension HomeScreen {
         } else {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
                 StatusRail { sheet = .chip($0) }
+                        .arrivalMotion(kind: .slideIn)
                 WeatherSummaryCard()
+                    .arrivalMotion(index: 0)
                     .padding(.horizontal, HassTokens.Spacing.l)
                 GuestPresenceSection()
                     .padding(.horizontal, HassTokens.Spacing.l)
@@ -109,22 +110,6 @@ enum HomeSheet: Identifiable, Hashable {
         switch self {
         case let .chip(kind): "chip-\(kind.rawValue)"
         case let .camera(camera): "camera-\(camera.entityId)"
-        }
-    }
-}
-
-/// Quiet indicator shown while values come from the disk snapshot instead of the live connection.
-struct FreshnessIndicator: View {
-    @Environment(EntityStore.self) private var store
-
-    var body: some View {
-        if case .snapshot = store.freshness {
-            HStack(spacing: HassTokens.Spacing.xs) {
-                ArcSpinner(.inline).foregroundStyle(.secondary).accessibilityHidden(true)
-                Text("Updating").font(.caption).foregroundStyle(.secondary)
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Updating from Home Assistant")
         }
     }
 }
