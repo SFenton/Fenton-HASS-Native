@@ -86,7 +86,7 @@ final class SummaryJourneyTests: JourneyTestCase {
         assertTarget(signOut)
         signOut.tap()
         XCTAssertTrue(app.alerts["Sign Out of Home Assistant?"].waitForExistence(timeout: 5), "Sign Out confirms first")
-        app.alerts.buttons["Cancel"].tap()
+        app.alerts.buttons["Cancel"].tapUntilAlertCloses(in: app)
         XCTAssertTrue(app.alerts.firstMatch.waitForNonExistence(timeout: 3))
         XCTAssertTrue(signOut.exists, "Cancelling keeps the sheet and the session")
     }
@@ -185,7 +185,8 @@ final class SummaryJourneyTests: JourneyTestCase {
         // The cart asks how many; cancelling adds nothing.
         cart.tap()
         XCTAssertTrue(app.alerts["Add Cereal to Groceries"].waitForExistence(timeout: 5), "The cart asks for a quantity")
-        app.alerts.buttons["Cancel"].tap()
+        // A tap on an alert's button is sometimes lost while it settles; tap again until it closes.
+        app.alerts.buttons["Cancel"].tapUntilAlertCloses(in: app)
         XCTAssertTrue(app.alerts["Add Cereal to Groceries"].waitForNonExistence(timeout: 10), "Cancel closes the prompt")
 
         // The chevron opens the Food page's item editor.
@@ -289,6 +290,22 @@ final class SummaryJourneyTests: JourneyTestCase {
             sleep(1)
             keepScreenshot(app, screenshotName("light-\(tab.rawValue)"))
             try FentonHomeApp.audit(app)
+        }
+    }
+}
+
+private extension XCUIElement {
+    /// Taps an alert's button, then taps again (up to three taps) until the alert has closed: a tap that lands while an alert is
+    /// still settling is dropped on a loaded host.
+    func tapUntilAlertCloses(in app: XCUIApplication) {
+        for _ in 0..<3 {
+            tap()
+            let deadline = Date().addingTimeInterval(8)
+            while Date() < deadline {
+                if !app.alerts.firstMatch.exists { return }
+                usleep(250_000)
+            }
+            guard exists, isHittable else { return }
         }
     }
 }
