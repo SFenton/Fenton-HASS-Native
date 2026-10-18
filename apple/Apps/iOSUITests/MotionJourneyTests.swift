@@ -24,12 +24,11 @@ final class MotionJourneyTests: JourneyTestCase {
         return app
     }
 
-    /// Scrolls until `element` can be hit.
+    /// Scrolls until `element` can be hit, down first and then back up (the page is as long as the gallery).
     private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         let scroll = app.scrollViews.firstMatch
-        for _ in 0..<30 where !element.isHittable {
-            scroll.swipeUp(velocity: .slow)
-        }
+        for _ in 0..<30 where !element.isHittable { scroll.swipeUp(velocity: .slow) }
+        for _ in 0..<60 where !element.isHittable { scroll.swipeDown(velocity: .slow) }
         XCTAssertTrue(element.isHittable, "\(element) is not reachable")
     }
 
@@ -95,22 +94,29 @@ final class MotionJourneyTests: JourneyTestCase {
     func testToggleAllFlipsEveryComponentAndMovesNothing() {
         for reduceMotion in [false, true] {
             let app = launch(reduceMotion: reduceMotion)
-            var frames: [String: CGRect] = [:]
-            for id in Self.componentIDs { frames[id] = app.descendants(matching: .any)["motion.component.\(id)"].firstMatch.frame }
-            let all = app.buttons["motion.toggleAll"]
-            all.tap()
+            func component(_ id: String) -> XCUIElement { app.descendants(matching: .any)["motion.component.\(id)"].firstMatch }
+            // Off-screen components are not in the accessibility tree, so each is scrolled to before it is read. Scrolling moves
+            // positions, so the sizes (and the leading edge) are what must hold still.
+            var sizes: [String: CGSize] = [:]
             for id in Self.componentIDs {
-                let component = app.descendants(matching: .any)["motion.component.\(id)"].firstMatch
-                waitForValue(component, "On")
+                reveal(app.buttons["motion.toggle.\(id)"], in: app)
+                sizes[id] = component(id).frame.size
             }
+            let all = app.buttons["motion.toggleAll"]
+            reveal(all, in: app)
+            all.tap()
             sleep(1)
             for id in Self.componentIDs {
-                let component = app.descendants(matching: .any)["motion.component.\(id)"].firstMatch
-                assertSameFrame(frames[id] ?? .zero, component.frame, id)
+                reveal(app.buttons["motion.toggle.\(id)"], in: app)
+                waitForValue(component(id), "On")
+                XCTAssertEqual(component(id).frame.size.width, sizes[id]?.width ?? 0, accuracy: 0.5, "\(id) changed width")
+                XCTAssertEqual(component(id).frame.size.height, sizes[id]?.height ?? 0, accuracy: 0.5, "\(id) changed height")
             }
+            reveal(all, in: app)
             all.tap()
             for id in Self.componentIDs {
-                waitForValue(app.descendants(matching: .any)["motion.component.\(id)"].firstMatch, "Off")
+                reveal(app.buttons["motion.toggle.\(id)"], in: app)
+                waitForValue(component(id), "Off")
             }
         }
     }
