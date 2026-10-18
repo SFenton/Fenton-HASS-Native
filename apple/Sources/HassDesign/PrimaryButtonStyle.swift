@@ -35,12 +35,19 @@ private struct PrimaryButtonBody: View {
         configuration.label
             .font(.body.weight(.semibold))
             .multilineTextAlignment(.center)
-            .foregroundStyle(colors.label)
+            .stateForeground("PrimaryButton", colors.label)
             .padding(.horizontal, HassTokens.Spacing.xl)
             .padding(.vertical, HassTokens.Spacing.s)
             .frame(maxWidth: .infinity, minHeight: PrimaryButtonStyle.height)
-            .background(colors.fill, in: RoundedRectangle(cornerRadius: PrimaryButtonStyle.height / 2, style: .continuous))
+            .background {
+                RoundedRectangle(cornerRadius: PrimaryButtonStyle.height / 2, style: .continuous)
+                    .fill(colors.fill)
+                    .stateColorTransition("PrimaryButton", value: colors.fill)
+            }
             .contentShape(RoundedRectangle(cornerRadius: PrimaryButtonStyle.height / 2, style: .continuous))
-            .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+            // Enabling or disabling the button fades with `quick`; the press dim stays immediate.
+            .opacity(isEnabled ? 1 : 0.4)
+            .quickTransition("PrimaryButton", value: isEnabled)
+            .opacity(isEnabled && configuration.isPressed ? 0.8 : 1)
     }
 }

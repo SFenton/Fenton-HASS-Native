@@ -185,6 +185,8 @@ private struct HassSheetPresentation: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            // Sheet content is present on arrival; the probe times the system presentation (`.agents/design/motion.md` §10).
+            .measuresNavigation(.sheet, page: fitKey)
             .modifier(SheetAppearanceModifier(appearance: appearance))
             .presentationDragIndicator(.visible)
             // Opaque ground at every detent: a partial-height sheet is glass on iOS 26 and let a page's coloured tiles

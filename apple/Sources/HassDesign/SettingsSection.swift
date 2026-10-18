@@ -123,7 +123,7 @@ public struct SelectableOptionRow: View {
             HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
                 Image(systemName: symbol)
                     .font(.title3)
-                    .foregroundStyle(isSelected ? tint : .secondary)
+                    .stateForeground("SelectableOptionRow", isSelected ? tint : Color.secondary)
                     .frame(minWidth: 28)
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
                     Text(title)
@@ -140,6 +140,7 @@ public struct SelectableOptionRow: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(tint)
                     .opacity(isSelected ? 1 : 0)
+                    .quickTransition("SelectableOptionRow", value: isSelected)
             }
             .padding(HassTokens.Spacing.m)
             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
@@ -150,8 +151,10 @@ public struct SelectableOptionRow: View {
             .overlay {
                 RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
                     .strokeBorder(isSelected ? tint : .clear, lineWidth: 2)
+                    .stateColorTransition("SelectableOptionRow", value: isSelected)
             }
             .opacity(isDisabled ? 0.5 : 1)
+            .quickTransition("SelectableOptionRow", value: isDisabled)
             .contentShape(RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
         }
         .buttonStyle(.plain)

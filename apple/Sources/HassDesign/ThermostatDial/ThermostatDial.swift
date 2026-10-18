@@ -61,6 +61,8 @@ public struct ThermostatDial: View {
     private var geometry: ThermostatDialGeometry { configuration.geometry }
     private var displayed: ThermostatTargets? { editor.displayed(configuration) }
     private var activeHandle: ThermostatTargets.Handle? { editor.activeHandle }
+    /// What decides the marker's and handles' colours: the thermal status (heating, cooling, idle) and any value style.
+    private var colorKey: [AnyHashable] { [configuration.thermalStatus, configuration.valueStyle] }
 
     // MARK: - Body
 
@@ -84,7 +86,7 @@ public struct ThermostatDial: View {
         // as the height and the ring floated in a tall empty box.
         .aspectRatio(1, contentMode: .fit)
         .frame(maxWidth: size.maxSide + Self.gutter * 2)
-        .animation(reduceMotion || activeHandle != nil ? nil : .snappy(duration: 0.2), value: displayed)
+        .animation(reduceMotion || activeHandle != nil ? nil : MotionTokens.quick, value: displayed)
         .sensoryFeedback(.selection, trigger: displayed) { _, _ in activeHandle != nil }
         .onChange(of: rejection) { _, rejection in
             if let rejection { editor.rollBack(rejected: rejection.targets) }
@@ -104,6 +106,7 @@ public struct ThermostatDial: View {
                 ForEach(trails) { trail in
                     arc(from: trail.from, to: trail.to)
                         .stroke(Color(trail.tint), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                        .stateColorTransition("ThermostatDial", value: trail.tint)
                 }
             }
             if case let .range(low, high)? = displayed, !configuration.isUnavailable {
@@ -115,6 +118,7 @@ public struct ThermostatDial: View {
             if !configuration.isUnavailable, let current = configuration.current {
                 Circle()
                     .fill(configuration.valueStyle.map { Color($0.tint) } ?? ThermostatDialPalette.color(for: configuration.thermalStatus))
+                    .stateColorTransition("ThermostatDial", value: colorKey)
                     // A dark rim in both appearances: with adaptive ink it turns white in dark mode and the
                     // marker reads as another handle (white disc, colored rim).
                     .overlay { Circle().strokeBorder(ThermostatDialPalette.markerRim, lineWidth: 3) }
@@ -206,7 +210,7 @@ public struct ThermostatDial: View {
         let dragging = activeHandle == handle
         return Circle()
             .fill(.white)
-            .overlay { Circle().strokeBorder(color, lineWidth: 4) }
+            .overlay { Circle().strokeBorder(color, lineWidth: 4).stateColorTransition("ThermostatDial", value: colorKey) }
             .frame(width: 24, height: 24)
             .shadow(color: .black.opacity(dragging ? 0.3 : 0.2), radius: dragging ? 12 : 6, y: dragging ? 10 : 4)
             .background {

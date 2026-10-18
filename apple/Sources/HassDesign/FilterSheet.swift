@@ -141,6 +141,7 @@ public struct FilterOptionRow: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(HassTokens.Ink.action)
                     .opacity(isSelected ? 1 : 0)
+                    .quickTransition("FilterOptionRow", value: isSelected)
                     .accessibilityHidden(true)
             }
             .frame(minHeight: HassTokens.minTarget)
