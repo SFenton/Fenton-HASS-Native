@@ -3,19 +3,39 @@ import SwiftUI
 
 /// The three island presentations in a black capsule, for the gallery, the hosted tests and screenshots: the system
 /// draws the real island, so this is a stand-in with the real regions inside it.
+///
+/// The expanded stand-in lays the regions out the way the canvas does (board 7): the leading and trailing regions are the
+/// space beside the camera, `(island width − 36 − camera) / 2` each, and the title and buttons sit below in the full width.
+/// Passing a narrow or wide `screenWidth` and `cameraWidth` reproduces every iPhone, which is how the journeys check that
+/// an `H:MM:SS` figure is not clipped.
 public struct HomeActivityIslandPreview: View {
     /// Which presentation.
     public enum Kind: String, CaseIterable, Sendable {
         case compact, minimal, expanded
     }
 
-    private let state: HomeActivityState
+    /// The width of one of the two regions beside the camera, for a screen and camera (the island is inset 11 pt on each
+    /// side of the screen and 18 pt inside).
+    public static func regionWidth(screenWidth: CGFloat, cameraWidth: CGFloat) -> CGFloat {
+        ((screenWidth - 22) - 36 - cameraWidth) / 2
+    }
+
+    private let card: ActivityCard
     private let kind: Kind
+    private let screenWidth: CGFloat
+    private let cameraWidth: CGFloat
 
     /// Creates the preview.
-    public init(state: HomeActivityState, kind: Kind) {
-        self.state = state
+    /// - Parameters:
+    ///   - card: The activity's card.
+    ///   - kind: Which presentation.
+    ///   - screenWidth: The screen the expanded island sits on (402 by default).
+    ///   - cameraWidth: The camera cut-out between the two regions (126 by default; 104 on a narrower island).
+    public init(card: ActivityCard, kind: Kind, screenWidth: CGFloat = 402, cameraWidth: CGFloat = 126) {
+        self.card = card
         self.kind = kind
+        self.screenWidth = screenWidth
+        self.cameraWidth = cameraWidth
     }
 
     public var body: some View {
@@ -23,9 +43,9 @@ public struct HomeActivityIslandPreview: View {
             switch kind {
             case .compact:
                 HStack {
-                    HomeActivityIsland.CompactLeading(state: state)
+                    HomeActivityIsland.CompactLeading(card: card)
                     Spacer(minLength: 90)
-                    HomeActivityIsland.CompactTrailing(state: state)
+                    HomeActivityIsland.CompactTrailing(card: card)
                 }
                 .padding(.horizontal, 12)
                 .frame(width: 250, height: 36)
@@ -33,27 +53,38 @@ public struct HomeActivityIslandPreview: View {
             case .minimal:
                 // The system draws the real minimal view at about 36 pt; the stand-in is 44 pt so its accessibility
                 // element is a target a person could hit.
-                HomeActivityIsland.Minimal(state: state)
+                HomeActivityIsland.Minimal(card: card)
                     .frame(width: ActivityStyle.minimumHit, height: ActivityStyle.minimumHit)
                     .background(Circle().fill(Color.black))
                     .contentShape(Circle())
-                    .accessibilityElement(children: .combine)
             case .expanded:
-                VStack(spacing: 6) {
-                    HStack(alignment: .top) {
-                        HomeActivityIsland.ExpandedLeading(state: state)
-                        Spacer()
-                        HomeActivityIsland.ExpandedTrailing(state: state)
-                    }
-                    HomeActivityIsland.ExpandedCenter(state: state)
-                    HomeActivityIsland.ExpandedBottom(state: state)
-                }
-                .padding(16)
-                .frame(width: 370)
-                .background(RoundedRectangle(cornerRadius: 44, style: .continuous).fill(Color.black))
+                expanded
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("liveactivity.island.\(kind.rawValue)")
+    }
+
+    private var expanded: some View {
+        let region = Self.regionWidth(screenWidth: screenWidth, cameraWidth: cameraWidth)
+        return VStack(spacing: 8) {
+            HStack(spacing: 0) {
+                HomeActivityIsland.ExpandedLeading(card: card)
+                    .frame(width: region, height: 36, alignment: .leading)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("liveactivity.island.leading")
+                Color.clear.frame(width: cameraWidth, height: 36)
+                HomeActivityIsland.ExpandedTrailing(card: card)
+                    .frame(width: region, height: 36, alignment: .trailing)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("liveactivity.island.trailing")
+            }
+            HomeActivityIsland.ExpandedBottom(card: card)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("liveactivity.island.bottom")
+        }
+        .padding(EdgeInsets(top: 10, leading: 18, bottom: 14, trailing: 18))
+        .frame(width: screenWidth - 22)
+        .background(RoundedRectangle(cornerRadius: 42, style: .continuous).fill(Color.black))
     }
 }

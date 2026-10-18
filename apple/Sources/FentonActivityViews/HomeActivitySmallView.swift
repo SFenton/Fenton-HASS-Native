@@ -1,33 +1,36 @@
 import FentonActivityModel
 import SwiftUI
 
-/// The apple-watch Smart Stack and CarPlay presentation (`.small` supplemental family, iOS 18): the focused job's
-/// glyph, its countdown and "+N". No controls: buttons do nothing there until a device check says otherwise.
+/// The Apple Watch Smart Stack and CarPlay presentation (`.small` supplemental family, iOS 18): the glyph, the title and the
+/// figure. No controls: buttons do nothing there until a device check says otherwise (`.agents/platforms/apple/live-activities-per-job.md` §8).
 public struct HomeActivitySmallView: View {
-    private let state: HomeActivityState
+    private let card: ActivityCard
 
     /// Creates the view.
-    public init(state: HomeActivityState) { self.state = state }
+    public init(card: ActivityCard) { self.card = card }
 
     public var body: some View {
-        if let job = state.focusedJob {
-            HStack(spacing: 6) {
-                ActivityGlyph(job: job, size: 26)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(job.title)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(ActivityStyle.primaryText)
+        HStack(spacing: 8) {
+            if let problem = card.problem {
+                SeverityCircle(glyph: problem.glyph, severity: problem.severity, diameter: 30)
+            } else {
+                ActivityRing(card: card, diameter: 32)
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                Text(card.problem == nil ? card.title : card.deviceTitle)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(ActivityStyle.primaryText)
+                    .lineLimit(1)
+                if let problem = card.problem {
+                    Text(problem.problem)
+                        .font(.caption)
+                        .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
                         .lineLimit(1)
-                    ActivityTrailing(job: job, width: 56)
-                }
-                if state.jobs.count > 1 {
-                    Text("+\(state.jobs.count - 1)")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(ActivityStyle.secondaryText)
-                        .accessibilityLabel("\(state.jobs.count - 1) more")
+                } else {
+                    ActivityFigure(card: card, font: .system(size: 17, weight: .semibold))
                 }
             }
-            .accessibilityElement(children: .combine)
         }
+        .accessibilityElement(children: .combine)
     }
 }

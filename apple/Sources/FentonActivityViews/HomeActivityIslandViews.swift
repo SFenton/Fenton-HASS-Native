@@ -1,150 +1,159 @@
 import FentonActivityModel
 import SwiftUI
 
-/// The Dynamic Island's regions for the Home activity (`live-activities.md` §4). The widget extension places each in
-/// `DynamicIsland { ... }`; the gallery and the tests draw them in a black capsule.
+/// The Dynamic Island's regions for one activity (`.agents/platforms/apple/live-activities-per-job.md` §8). The widget
+/// extension places each in `DynamicIsland { ... }`; the gallery and the tests draw them in a black capsule.
 ///
-/// The island always shows the focused job (``HomeActivityState/focusedJob``); the ‹ › pager changes which.
+/// Only small things sit beside the camera: the ring (or severity circle) on the leading side and the figure at 22 pt on the
+/// trailing side, with **no fixed frames**. The system sizes the regions for each phone's camera, so nothing here measures
+/// a device. The title and the buttons go below the camera, in the full width. The centre region stays empty.
 public enum HomeActivityIsland {
-    /// Compact, leading: the focused job's glyph, with a count when other jobs run too.
+    /// Compact, leading: the 26 pt ring with the glyph; a problem shows the severity circle.
     public struct CompactLeading: View {
-        let state: HomeActivityState
+        let card: ActivityCard
 
-        public init(state: HomeActivityState) { self.state = state }
+        public init(card: ActivityCard) { self.card = card }
 
         public var body: some View {
-            if let job = state.focusedJob {
-                HStack(spacing: 2) {
-                    ActivityGlyph(job: job, size: 22)
-                    if state.jobs.count > 1 {
-                        Text("\(state.jobs.count)")
-                            .font(.caption2.weight(.bold))
-                            .monospacedDigit()
-                            .foregroundStyle(ActivityStyle.primaryText)
+            Group {
+                if let problem = card.problem {
+                    SeverityCircle(glyph: problem.glyph, severity: problem.severity, diameter: 24)
+                } else {
+                    ActivityRing(card: card, diameter: 26)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(card.problem == nil ? card.title : card.spokenSummary)
+        }
+    }
+
+    /// Compact, trailing: the figure at 15 pt, monospaced; a problem shows one word ("Stuck", "Refill water"). In a limited
+    /// width (`isDynamicIslandLimitedInWidth`, iOS 27) it is empty and only the leading side shows.
+    public struct CompactTrailing: View {
+        let card: ActivityCard
+        let isLimitedWidth: Bool
+
+        public init(card: ActivityCard, isLimitedWidth: Bool = false) {
+            self.card = card
+            self.isLimitedWidth = isLimitedWidth
+        }
+
+        public var body: some View {
+            if isLimitedWidth {
+                EmptyView()
+            } else if let problem = card.problem {
+                Text(problem.compactLabel)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            } else if card.isComplete {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ActivityStyle(tint: card.tint).accent)
+                    .accessibilityLabel("Complete")
+            } else {
+                ActivityFigure(card: card, font: .system(size: 15, weight: .semibold), alignment: .trailing)
+            }
+        }
+    }
+
+    /// Minimal: the ring alone, which fits a 28 pt circle; a problem shows the severity circle.
+    public struct Minimal: View {
+        let card: ActivityCard
+
+        public init(card: ActivityCard) { self.card = card }
+
+        public var body: some View {
+            Group {
+                if let problem = card.problem {
+                    SeverityCircle(glyph: problem.glyph, severity: problem.severity, diameter: 24)
+                } else {
+                    ActivityRing(card: card, diameter: 24)
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(card.problem == nil ? card.title : card.spokenSummary)
+        }
+    }
+
+    /// Expanded, leading (beside the camera): the 34 pt ring, or the 32 pt severity circle.
+    public struct ExpandedLeading: View {
+        let card: ActivityCard
+
+        public init(card: ActivityCard) { self.card = card }
+
+        public var body: some View {
+            Group {
+                if let problem = card.problem {
+                    SeverityCircle(glyph: problem.glyph, severity: problem.severity, diameter: 32)
+                } else {
+                    ActivityRing(card: card, diameter: 34)
+                }
+            }
+            .accessibilityHidden(true)
+        }
+    }
+
+    /// Expanded, trailing (beside the camera): the figure at 22 pt semibold, monospaced, one line, scaling down to 80%, with
+    /// no fixed width. A problem says "Needs help" or "Attention" instead.
+    public struct ExpandedTrailing: View {
+        let card: ActivityCard
+
+        public init(card: ActivityCard) { self.card = card }
+
+        public var body: some View {
+            if let problem = card.problem {
+                Text(problem.severity.islandLabel)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            } else if let notice = card.notice {
+                Text(notice)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(ActivityStyle.noticeText)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            } else {
+                ActivityFigure(card: card, font: .system(size: 22, weight: .semibold), alignment: .trailing)
+                    .accessibilityLabel(card.spokenFigure ?? "")
+            }
+        }
+    }
+
+    /// Expanded, bottom (below the camera, in the full width): the title or headline at 17 pt on one line, the problem line
+    /// under it on a problem card, and up to two buttons (or "Stopping…").
+    public struct ExpandedBottom: View {
+        let card: ActivityCard
+
+        public init(card: ActivityCard) { self.card = card }
+
+        public var body: some View {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(card.problem == nil ? card.title : card.deviceTitle)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(ActivityStyle.primaryText)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    if let problem = card.problem {
+                        Text(problem.problem)
+                            .font(.system(size: 14))
+                            .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
+                            .lineLimit(1)
+                    } else if let subtitle = card.subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 13))
+                            .foregroundStyle(ActivityStyle.secondaryText)
+                            .lineLimit(1)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(state.jobs.count > 1 ? "\(job.title), \(state.jobs.count) jobs running" : job.title)
-            }
-        }
-    }
-
-    /// Compact, trailing: the focused job's countdown, or its percentage. It has a fixed width so the island does not
-    /// resize each second; "Done" with a checkmark during the linger.
-    public struct CompactTrailing: View {
-        let state: HomeActivityState
-
-        public init(state: HomeActivityState) { self.state = state }
-
-        public var body: some View {
-            if let job = state.focusedJob {
-                ActivityTrailing(job: job, width: 48)
-                    .frame(maxWidth: 56, alignment: .trailing)
-            }
-        }
-    }
-
-    /// Minimal: the focused glyph inside a ring that fills itself as the job runs. It must fit a 28 pt circle.
-    public struct Minimal: View {
-        let state: HomeActivityState
-
-        public init(state: HomeActivityState) { self.state = state }
-
-        public var body: some View {
-            if let job = state.focusedJob {
-                let style = ActivityStyle(tint: job.tint)
-                ZStack {
-                    ring(job: job).tint(style.accent)
-                    Image(systemName: job.symbol)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(style.accent)
-                }
-                .frame(width: 24, height: 24)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(job.title)
-            }
-        }
-
-        @ViewBuilder
-        private func ring(job: ActivityJob) -> some View {
-            switch job.bar {
-            case let .timer(range):
-                ProgressView(timerInterval: range, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
-                    .progressViewStyle(.circular)
-            case let .fraction(value):
-                ProgressView(value: value).progressViewStyle(.circular)
-            case .full:
-                ProgressView(value: 1).progressViewStyle(.circular)
-            case .hidden:
-                Circle().stroke(ActivityStyle(tint: job.tint).accent.opacity(0.35), lineWidth: 2)
-            }
-        }
-    }
-
-    /// Expanded, leading: glyph and title.
-    public struct ExpandedLeading: View {
-        let state: HomeActivityState
-
-        public init(state: HomeActivityState) { self.state = state }
-
-        public var body: some View {
-            if let job = state.focusedJob {
-                HStack(spacing: 6) {
-                    ActivityGlyph(job: job, size: 30)
-                    Text(job.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(ActivityStyle.primaryText)
-                        .lineLimit(2)
-                }
-            }
-        }
-    }
-
-    /// Expanded, trailing: the large countdown.
-    public struct ExpandedTrailing: View {
-        let state: HomeActivityState
-
-        public init(state: HomeActivityState) { self.state = state }
-
-        public var body: some View {
-            if let job = state.focusedJob {
-                ActivityTrailing(job: job, emphasized: true, width: 96)
-            }
-        }
-    }
-
-    /// Expanded, center: the status line.
-    public struct ExpandedCenter: View {
-        let state: HomeActivityState
-
-        public init(state: HomeActivityState) { self.state = state }
-
-        public var body: some View {
-            if let job = state.focusedJob, !job.status.isEmpty {
-                Text(job.status)
-                    .font(.caption)
-                    .foregroundStyle(ActivityStyle.secondaryText)
-                    .lineLimit(1)
-            }
-        }
-    }
-
-    /// Expanded, bottom: the bar, then the controls and the pager.
-    public struct ExpandedBottom: View {
-        let state: HomeActivityState
-        let tag: String
-
-        public init(state: HomeActivityState, tag: String = HomeActivityAttributes.homeTag) {
-            self.state = state
-            self.tag = tag
-        }
-
-        public var body: some View {
-            if let job = state.focusedJob {
-                VStack(spacing: 4) {
-                    ActivityBar(job: job)
-                    ActivityFocusLine(state: state, tag: tag)
-                }
+                ActivityButtons(card: card, buttons: card.islandButtons)
+                    .fixedSize(horizontal: true, vertical: false)
             }
         }
     }
