@@ -396,6 +396,17 @@ struct LoginFlowTests {
         return LoginModel(mode: mode, store: RememberedAccountStore(defaults: defaults), makeFlow: flow)
     }
 
+    /// A field takes typed text once it has the keyboard, so it is pressed first (a window's first click only wakes it), and
+    /// both are tried again while a loaded Mac catches up.
+    func enter(_ text: String, into id: String, in driver: AXWindow, until check: @escaping () -> Bool) async -> Bool {
+        for _ in 0..<5 {
+            _ = await driver.press(id)
+            await driver.window.settle(0.3)
+            if await driver.type(text, into: id, attempts: 1, until: { _ in check() }) { return true }
+        }
+        return false
+    }
+
     @Test func typingBothFieldsEnablesSignInAndPressingItSignsIn() async throws {
         LoginStubProtocol.reset(LoginModelTests.granted)
         let model = try model { HassLoginFlow(server: $0, session: LoginStubProtocol.session()) }
@@ -408,15 +419,8 @@ struct LoginFlowTests {
         }
         #expect(!nodes.contains { $0.identifier == "login.server" || $0.identifier == "login.code" }, "no address and no code field")
         #expect(nodes.first { $0.identifier == "login.submit" }?.isEnabled == false, "Sign In waits for both fields")
-        // A field takes typed text once it has the keyboard, so each is pressed first.
-        // (The window's first click only wakes it.)
-        _ = await driver.press("login.username")
-        _ = await driver.press("login.username")
-        await driver.window.settle(0.5)
-        #expect(await driver.type("stephen", into: "login.username") { _ in model.username == "stephen" })
-        _ = await driver.press("login.password")
-        await driver.window.settle(0.5)
-        #expect(await driver.type("pw", into: "login.password") { _ in model.password == "pw" })
+        #expect(await enter("stephen", into: "login.username", in: driver) { model.username == "stephen" })
+        #expect(await enter("pw", into: "login.password", in: driver) { model.password == "pw" })
         #expect(await driver.press("login.submit") { _ in received != nil })
         #expect(received?.refreshToken == "R")
     }

@@ -213,20 +213,21 @@ struct SignInMotionTests {
     // MARK: Reconnecting chip
 
     @Test func theChipWaitsOutAShortOutageAndGoesWhenLive() async throws {
-        func draw(_ status: HassConnection.Status?, wait: TimeInterval) async throws -> NSBitmapImageRep {
+        func draw(_ status: HassConnection.Status?, delay: Duration, wait: TimeInterval = 1.5) async throws -> NSBitmapImageRep {
             let hosted = HostedWindow(
-                Color.black.modifier(ReconnectingOverlay(headerEnd: 40, statusOverride: status)),
+                Color.black.modifier(ReconnectingOverlay(headerEnd: 40, statusOverride: status, delay: delay)),
                 size: CGSize(width: 402, height: 300))
             defer { hosted.close() }
             await hosted.settle(wait)
             return try #require(hosted.snapshot())
         }
-        let live = try await draw(.connected(version: "x"), wait: 0.5)
-        let soon = try await draw(.waitingToReconnect, wait: 0.5)
-        #expect(!soon.differs(from: live), "no chip yet: the outage is under two seconds")
-        let later = try await draw(.waitingToReconnect, wait: 2.8)
-        #expect(later.differs(from: live), "the chip shows after two seconds down")
-        let none = try await draw(nil, wait: 2.8)
+        // The delay is shortened (the policy's own two seconds are tested on their own): long enough never to pass, and short.
+        let live = try await draw(.connected(version: "x"), delay: .milliseconds(50))
+        let soon = try await draw(.waitingToReconnect, delay: .seconds(600))
+        #expect(!soon.differs(from: live), "no chip yet: the outage has not lasted its delay")
+        let later = try await draw(.waitingToReconnect, delay: .milliseconds(50))
+        #expect(later.differs(from: live), "the chip shows once the outage has lasted its delay")
+        let none = try await draw(nil, delay: .milliseconds(50))
         #expect(!none.differs(from: live), "no connection (a gallery) shows nothing")
     }
 

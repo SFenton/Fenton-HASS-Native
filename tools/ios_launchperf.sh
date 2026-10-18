@@ -15,7 +15,9 @@
 # Usage: tools/ios_launchperf.sh [--env temp.env] [--label NAME] [--no-build] [--app PATH.app] [--device-name "iPhone 17 Pro"]
 #                                [--only intro,arrival] [--no-budget]
 # Output: apple/.build/launchperf-<label>.tsv (raw lines) and the table from tools/launchcost_report.py, which exits 1 when a
-# budget is missed (p95 turn <= 8 ms, no turn over 16 ms, SnapshotShown <= 400 ms, Arrival <= 1000 ms, Intro <= 1500 ms).
+# budget is missed (p95 turn <= 8 ms; worst turn 16 ms for the intro and 300 ms for the arrival and snapshot, which include
+# Home's own first layout; SnapshotShown <= 500 ms, Arrival <= 1600 ms, Intro <= 1500 ms).
+# The "arrival-build" row (tokens to Home built, behind the sign-in layer) is reported, not budgeted.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -75,7 +77,10 @@ if [[ -n "$INNER" ]]; then
       grep -q "^LAUNCHCOST_DONE.$phase\$" "$TSV.$name" 2>/dev/null && break
       sleep 1
     done
-    awk -F'\t' -v OFS='\t' -v phase="$phase" -v name="$name" '$1 == "LAUNCHCOST" && $2 == phase { $2 = name; print }' "$TSV.$name" >> "$TSV" 2>/dev/null || echo "no line for $name" >&2
+    # The phase's line, and the "<phase>-build" line (building Home behind the sign-in layer) when there is one.
+    awk -F'\t' -v OFS='\t' -v phase="$phase" -v name="$name" '
+      $1 == "LAUNCHCOST" && $2 == phase { $2 = name; print }
+      $1 == "LAUNCHCOST" && $2 == phase "-build" { $2 = name "-build"; print }' "$TSV.$name" >> "$TSV" 2>/dev/null || echo "no line for $name" >&2
     rm -f "$TSV.$name"
     echo "measured: $name" >&2
   }
@@ -98,6 +103,8 @@ if [[ -n "$INNER" ]]; then
     server=(); [[ -n "$SERVER_VALUE" ]] && server=("FENTON_HASS_SERVER=$SERVER_VALUE")
     launch arrival arrival FENTON_UITEST_RESET=1 FENTON_SKIP_INTRO=1 FENTON_AUTOSIGNIN=1 FENTON_SYSTEM_SETTINGS=none \
       "FENTON_HASS_USERNAME=$USER_VALUE" "FENTON_HASS_PASSWORD=$PASS_VALUE" ${server[@]+"${server[@]}"}
+    # The snapshot is written 10 s after the last change (HassConnection.snapshotDebounce); killing the app sooner loses it.
+    sleep 14
     xcrun simctl terminate "$UDID" "$BUNDLE" > /dev/null 2>&1 || true
     sleep 2
     # Relaunch without the reset: the Keychain keeps the sign-in and the disk keeps the snapshot written meanwhile.

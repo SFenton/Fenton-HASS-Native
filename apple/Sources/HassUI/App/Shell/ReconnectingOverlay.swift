@@ -9,6 +9,8 @@ struct ReconnectingOverlay: ViewModifier {
     var headerEnd: CGFloat
     /// Overrides the connection's own status (hosted tests).
     var statusOverride: HassConnection.Status?
+    /// How long the connection must have been down before the chip shows (hosted tests shorten it).
+    var delay: Duration = ReconnectingPolicy.delay
 
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -36,7 +38,7 @@ struct ReconnectingOverlay: ViewModifier {
                     showsChip = false
                     return
                 }
-                guard (try? await Task.sleep(for: ReconnectingPolicy.delay)) != nil else { return }
+                guard (try? await Task.sleep(for: delay)) != nil else { return }
                 showsChip = true
             }
     }

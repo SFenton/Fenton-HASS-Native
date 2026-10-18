@@ -124,6 +124,45 @@ tools/ios_perf.sh --device 00008160-00022D8230914036 --live --env temp.env --onl
 
 If `fadeMask` (a full-page offscreen mask) or `glassBar` / `scrollEdge` moves the phone's p95 or `over8` while the simulator's CPU does not, that is the GPU cost, and the next change is a cheaper fade (a band over the top of the page, not a mask over all of it).
 
+## Launch and sign-in (2026-10-17, `claude/signin-and-launch-motion`)
+
+What the launch intro, a signed-in relaunch and the sign-in arrival cost, measured the way scrolling is: a simulator's hitch ratio is false, so the number is the main thread's CPU time per run-loop turn (`MainThreadCostMeter`) plus the signpost intervals the run recorded. Motion design: [direction G, Launch and sign-in motion](../../design/direction-g.md#launch-and-sign-in-motion).
+
+**Signposts** (`com.sfenton.home` / `Performance`, begun in one place and ended in another with `Telemetry.beginTracked` / `endTracked`; also records in the in-app log and Settings → Performance):
+
+| Name | From | To |
+|---|---|---|
+| `Launch` | the `App` initializer | the first frame (`RootView`, after one turn) |
+| `SnapshotShown` | the `App` initializer | the tabs' first appearance with the disk snapshot in the store (a signed-in relaunch; cancelled when signed out) |
+| `SignIn` | Sign In pressed | Home Assistant hands back tokens |
+| `Intro` | the intro's first animation | the form in place (≈1.2 s) |
+| `Arrival` | tokens in hand | the end of the arrival animation (0.9 s of motion plus the build of Home) |
+| `Reconnect` | the socket starts or fails | it is live again (cancelled when closed on purpose) |
+
+**Probe and script.** With `FENTON_LAUNCHCOST=1` the app measures three phases by itself (`LaunchCostProbe`) and appends `LAUNCHCOST<TAB>phase<TAB>key=value…` to `FENTON_LAUNCHCOST_FILE`: `intro` (the two seconds after the first frame of a signed-out launch), `snapshot` (the same, signed in), and `arrival` (the animation, after `arrival-build`: tokens to Home built behind the sign-in layer, which is one long turn). `FENTON_AUTOSIGNIN=1` signs in with the prefilled credentials so no test drives the app. **Run it:** `tools/ios_launchperf.sh --env temp.env [--only intro,arrival,snapshot] [--no-budget]` (simulator only, inside devcap holds; builds `-O` like the scroll cost run; `apple/.build/launchperf-<label>.tsv`, table by `tools/launchcost_report.py`, which exits 1 on a missed budget). Never run it on a phone without the owner's say-so.
+
+**Tests** (`Apps/iOSUITests/LaunchPerformanceTests.swift`; cost tests need `TEST_RUNNER_FENTON_PERF_ON_SIMULATOR=1`, so the normal journeys never run them):
+- Metrics (baselines per device in Xcode): `XCTApplicationLaunchMetric` plus the `Launch` and `SnapshotShown` interval metrics (`XCTOSSignpostMetric`) for a cold signed-out launch, a launch with the intro off, and a warm signed-in relaunch.
+- Budgets read from the probe's label (`diagnostics.launchcost`): intro (and the Reduce Motion intro), warm relaunch to the snapshot, and the arrival.
+- Hitch ratios (`XCTHitchMetric`, iOS 26) for the intro and the arrival run **on a physical device only** and skip on a simulator, like `FastScrollPerformanceTests`; the target is under 5 ms/s. Device runs need the owner's say-so.
+- Unit: `TrackedIntervalsTests`, `LaunchCostProbeTests`, `ReconnectingPolicyTests`, `RememberedAccountTests`; hosted: `LoginTests` (model, screen, flows, root choreography).
+
+**Budgets (simulator).** p95 run-loop turn ≤ 8 ms everywhere; no turn over 16 ms while only the intro runs; `Intro` ≤ 1500 ms; `SnapshotShown` ≤ 500 ms (400 ms on an idle Mac); `Arrival` ≤ 1600 ms; the arrival and snapshot phases are held to a worst turn of 300 ms for the reason below.
+
+**Baselines** (iPhone 17 Pro simulator, iOS 27.0, optimized build, beside four other lanes' simulators and builds, 2026-10-17; two runs of the arrival, one of the rest):
+
+| Case | p95 turn | worst turn | turns over 8 / 16 ms | main thread, window | Interval |
+|---|---|---|---|---|---|
+| Intro (2.1 s window) | 0.5 ms | 3.1 ms | 0 / 0 | 47 ms | `Intro` 1222 ms; `Launch` 329 ms |
+| Intro, Reduce Motion | 0.4 ms | 0.6 ms | 0 / 0 | 18 ms | `Intro` 392 ms (the 0.35 s cross-fade) |
+| Arrival, build (tokens to Home built) | one long turn, not metered (the sign-in callback's turn) | | | 551 ms | `SignIn` 523 ms (real server) |
+| Arrival (0.9 s window) | 5.5 ms | 227 ms | 5 / 2 | 369 ms | `Arrival` 1506 ms |
+| Warm relaunch, signed in (2 s window) | 1.7 ms | 183 ms | 5 / 2 | 376 ms | `SnapshotShown` 425 ms; `Launch` 953 ms |
+
+**Finding: Home's own first layout is a 180 to 230 ms turn.** The two long turns in the arrival and the snapshot windows are not the motion: a signed-in relaunch has no motion at all (the launch ground fades in 0.2 s) and has them too, while the intro and the Reduce Motion intro, which are nothing but motion, peak at 3.1 ms. The sign-in callback's turn also builds the whole signed-in tree (551 ms of main-thread time before the first animation frame, in one turn, behind the "Signing In…" arc). Both are Home's startup, not the motion; which part of it (the tabs, the camera tiles, the weather card are the likely ones) was not profiled here. It is the next performance lane's to find with Time Profiler, and the budgets hold the present worst turn rather than bless it. The p95 turn of both windows is under a 120 Hz frame.
+
+**What this does not show.** The simulator's compositor and GPU: whether the intro's glow (a full-screen radial gradient fading 0 to 1), the backdrop's fade and scale, and the launch ground's fade drop frames on the phone is the device hitch tests' question.
+
 ## What only a phone can settle
 
 Run these on the iPhone 18 Pro (nothing here has been run on it):

@@ -26,9 +26,6 @@ struct TrackedIntervalsTests {
 
     @Test func aCancelledIntervalClosesWithoutALogEntry() {
         let intervals = TrackedIntervals()
-        let was = Telemetry.isEnabled
-        Telemetry.isEnabled = true
-        defer { Telemetry.isEnabled = was }
         func logged() -> Int { Telemetry.log.records.filter { $0.kind == "Reconnect" }.count }
         let before = logged()
         intervals.cancel(Telemetry.Name.reconnect) // not open: nothing happens
@@ -38,20 +35,12 @@ struct TrackedIntervalsTests {
         #expect(logged() == before)
     }
 
-    @Test func aFinishedIntervalLandsInTheInAppLogWhenRecording() {
+    @Test func aFinishedIntervalGoesThroughTelemetryEnd() {
+        // What `Telemetry.end` does with the length (the in-app log, while recording is on) is `TelemetryTests`' to check: that
+        // switch is shared state this suite leaves alone.
         let intervals = TrackedIntervals()
-        let was = Telemetry.isEnabled
-        Telemetry.isEnabled = true
-        defer { Telemetry.isEnabled = was }
-        func logged() -> Int { Telemetry.log.records.filter { $0.kind == "Arrival" && $0.durationMs != nil }.count }
-        let before = logged()
         intervals.begin(Telemetry.Name.arrival)
-        intervals.end(Telemetry.Name.arrival)
-        #expect(logged() == before + 1)
-        Telemetry.isEnabled = false
-        intervals.begin(Telemetry.Name.arrival)
-        intervals.end(Telemetry.Name.arrival)
-        #expect(logged() == before + 1, "nothing is logged while recording is off")
+        #expect((intervals.end(Telemetry.Name.arrival) ?? -1) >= 0)
     }
 
     @Test func theSharedFacadeBeginsEndsAndCancels() {

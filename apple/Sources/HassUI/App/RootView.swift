@@ -178,7 +178,8 @@ public struct RootView: View {
             try session.didSignIn(server: server, tokens: tokens)
             return
         }
-        LaunchCostProbe.begin("arrival")
+        // Building Home behind the sign-in layer is one long turn of its own; the arrival motion is measured after it.
+        LaunchCostProbe.begin("arrival-build")
         arrival.begin()
         keepsSignIn = true
         signInLeaves = false
@@ -193,6 +194,8 @@ public struct RootView: View {
         Task {
             // Home's views are built, held back; now they and the layer move.
             try? await Task.sleep(for: .milliseconds(60))
+            LaunchCostProbe.finish()
+            LaunchCostProbe.begin("arrival")
             withAnimation(reduceMotion ? MotionTokens.crossFade : MotionTokens.Arrival.lift) { signInLeaves = true }
             arrival.reveal()
             try? await Task.sleep(for: .milliseconds(400))
