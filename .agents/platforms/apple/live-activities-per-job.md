@@ -327,7 +327,7 @@ These replace the matching parts of §8.
   - **Top, beside the camera:** the job glyph (24 pt) on the left, and the house-and-heart corner mark (24 pt, tinted with the app icon choice, heart knocked out against black) on the right, mirroring it (owner, 2026-10-17).
   - **Below the camera:** the title over the value on the left, **both white** (title 16 pt semibold, value 32 pt semibold monospaced). Up to two buttons sit on the right, **in line** with that title-and-value block. Then a 5 pt progress **bar** in the job's tint, only when there is progress (countdowns and percent).
   - **Title wrapping:** long titles **wrap to two lines**. Live Activity views cannot animate on their own, so a scrolling title is impossible.
-  - **Paused:** the value dims to 55%.
+  - **Paused:** the word itself says so, and Resume replaces Pause. Text never dims or turns grey (owner, 2026-10-17).
   - **Implementation:** `.leading`, `.trailing` and `.bottom` regions with no fixed frames; the bottom region holds the block.
 - **Lock Screen = L4** (bars, no ring).
   - Row 1: the glyph (22 pt) in its tint, then the title (17 pt semibold; it wraps to two lines), with the corner mark (24 pt) top-right.
@@ -340,7 +340,7 @@ These replace the matching parts of §8.
 - **Vacuums: no time and no bar anywhere** (owner).
   - **Content:** the engine omits `value` and `progress` for vacuum cards.
   - **Small title:** the attribute title ("Main Floor Vacuum").
-  - **Big line (24 pt):** the `headline` ("Vacuuming Kitchen", "Paused in Kitchen", dimmed when paused).
+  - **Big line (24 pt):** the `headline` ("Vacuuming Kitchen", "Paused in Kitchen"; always white).
   - **Buttons** are 44 pt **round icon buttons** with spoken labels:
     - Pause: a white circle with a pause glyph; it becomes Resume, a play glyph, when paused.
     - Dock: a dark circle with a house glyph, labelled "Dock".
