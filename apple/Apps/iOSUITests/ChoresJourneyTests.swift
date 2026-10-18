@@ -38,19 +38,44 @@ final class ChoresJourneyTests: JourneyTestCase {
     /// Scrolls the page until `element` is hittable and clear of the floating Add bar and the gallery's
     /// last-call line (XCUITest calls an element under them hittable, but the tap lands on the overlay).
     @discardableResult
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication, clearOfBar: Bool = true) -> XCUIElement {
         func clear() -> Bool {
             guard element.exists, element.isHittable else { return false }
+            // `clearOfBar: false` asks only for a hittable element, for a row big enough that no scroll position puts all of
+            // it above the bar (the folded Duo's AX5 rows are 386 pt tall and the bar crosses the screen at y 430).
+            guard clearOfBar else { return true }
             let overlays = [app.buttons["fab.add"], app.staticTexts["gallery.lastCall"]].filter(\.exists)
             let top = overlays.map(\.frame.minY).min() ?? .greatestFiniteMagnitude
             return element.frame.maxY <= top
         }
-        for _ in 0..<60 where !clear() { // AX5 pages run many screens long, the folded Duo's the most (20 drags fell short).
-            // A short drag, not a fling, so the row stops where it lands and the next tap isn't eaten
-            // by deceleration.
+        // Content-up drags of a measured distance once the row is in the tree, and back down when it went past: a fixed
+        // 200 pt step jumped over the folded Duo's AX5 clear band (the Add bar sits at y 430, a row is 300 pt tall), and
+        // the lazy list then dropped the row for good. A short drag, not a fling, so the row stops where it lands and the
+        // next tap isn't eaten by deceleration.
+        func drag(contentUp distance: CGFloat) {
             let scroll = scroller(app)
-            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.7))
-                .press(forDuration: 0.05, thenDragTo: scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.4)))
+            let height = max(scroll.frame.height, 1)
+            let half = min(max(distance, -300), 420) / height / 2
+            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5 + half))
+                .press(forDuration: 0.05, thenDragTo: scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5 - half)))
+        }
+        for _ in 0..<80 where !clear() { // AX5 pages run many screens long, the folded Duo's the most (20 drags fell short).
+            // 400 pt, as the last-chore journey drags: 200 pt drags did not carry the folded Duo's AX5 page the 2,400 pt to
+            // the first row in 80 attempts.
+            guard element.exists else { drag(contentUp: 400); continue }
+            guard clearOfBar else { drag(contentUp: 200); continue } // In the tree but not hittable yet: carry on down.
+            let overlays = [app.buttons["fab.add"], app.staticTexts["gallery.lastCall"]].filter(\.exists)
+            let top = overlays.map(\.frame.minY).min() ?? .greatestFiniteMagnitude
+            let frame = element.frame
+            if frame.maxY > top {
+                drag(contentUp: min(max(frame.maxY - top + 12, 100), 300)) // Below the band: bring it up to the bar.
+            } else {
+                drag(contentUp: -120) // Under the header, or not hittable above the band: back down.
+            }
+        }
+        if !clear() {
+            let state = element.exists ? "exists hittable=\(element.isHittable) frame=\(element.frame)" : "not in the tree"
+            add(XCTAttachment(string: "\(state)\n" + app.debugDescription))
         }
         XCTAssertTrue(clear(), "\(element) never came into view")
         return element
@@ -273,8 +298,15 @@ final class ChoresJourneyTests: JourneyTestCase {
         let last = element("todo.item.15--fixture", in: app)
         // Until the last row exists (a lazy list only builds rows near the viewport, and the folded Duo's short screen needs
         // more than the 20 swipes the iPhone does), then a few more so the list is at its end.
-        for _ in 0..<80 where !last.exists { list.swipeUp(velocity: .fast) }
-        for _ in 0..<3 { list.swipeUp(velocity: .fast) }
+        // Dragged at the leading edge like `reveal`: `swipeUp` from the list's centre did not scroll it at all on the folded
+        // Duo (the dump after 80 swipes showed the top of the page, 2026-10-17).
+        func drag() {
+            list.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.8))
+                .press(forDuration: 0.05, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.2)))
+        }
+        for _ in 0..<80 where !last.exists { drag() }
+        for _ in 0..<3 { drag() }
+        if !last.exists { add(XCTAttachment(string: app.debugDescription)) }
         XCTAssertTrue(last.exists, "The last chore never appeared")
         let barTop = min(app.buttons["fab.add"].frame.minY, app.staticTexts["gallery.lastCall"].frame.minY)
         XCTAssertLessThanOrEqual(last.frame.maxY, barTop, "The last chore ends under the Add bar")
@@ -344,8 +376,14 @@ final class ChoresJourneyTests: JourneyTestCase {
         let sheets: [(name: String, page: String?, open: (XCUIApplication) -> Void, ready: String)] = [
             ("task-create", nil, { $0.buttons["fab.add"].tap() }, "task.save"),
             ("task-edit", nil, { app in
-                // Clear of the Add bar and the last-call line, which cover the row's pencil at AX5.
-                self.reveal(self.element("todo.edit.13--fixture", in: app), in: app).tap()
+                // The row's context-menu Edit, not its pencil: at AX5 the pencil sits mid-row, the folded Duo's rows are
+                // 386 pt tall and the Add bar and last-call line cross the screen at y 430, so no scroll position put the
+                // pencil clear of them (2026-10-17). The menu opens the same form.
+                let row = self.reveal(self.element("todo.item.13--fixture", in: app), in: app, clearOfBar: false)
+                row.press(forDuration: 1.2)
+                let edit = app.buttons["Edit"].firstMatch
+                XCTAssertTrue(edit.waitForExistence(timeout: 5), "The row's context menu has no Edit")
+                edit.tap()
             }, "task.name"),
             ("grocery-add", "groceries", { $0.buttons["fab.add"].tap() }, "grocery.add"),
             ("admin-todo-add", "to-do", { $0.buttons["fab.add"].tap() }, "adminTodo.add"),
