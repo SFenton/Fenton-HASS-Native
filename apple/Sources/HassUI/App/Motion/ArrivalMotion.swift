@@ -41,17 +41,22 @@ public extension View {
     /// It plays only while the session's ``MotionPolicy`` says `moment` has not played; afterwards, and for any item past
     /// the stagger cap, the view is simply there. Under Reduce Motion it cross-fades with no rise and no stagger. The moment's
     /// owner calls ``MotionPolicy/markPlayed(_:)`` once its last item has arrived.
+    ///
+    /// The signature matches the sign-in lane's (`claude/signin-and-launch-motion`), so the call sites it wrote compile with
+    /// either implementation: its `HomeArrival`-driven version replaces this one for Home's arrival.
     /// - Parameters:
     ///   - moment: The moment this view belongs to.
+    ///   - kind: `.rise` fades in and rises; `.slideIn` (the status chips) slides in from the right.
     ///   - index: The view's position in the moment's sequence (the first screenful only; later indexes appear at once).
-    func arrivalMotion(_ moment: MotionPolicy.Moment, index: Int = 0) -> some View {
-        modifier(ArrivalMotion(moment: moment, index: index))
+    func arrivalMotion(_ moment: Moment = .signInArrival, kind: ArrivalKind = .rise, index: Int = 0) -> some View {
+        modifier(ArrivalMotion(moment: moment, kind: kind, index: index))
     }
 }
 
-/// Implementation of ``SwiftUICore/View/arrivalMotion(_:index:)``.
+/// Implementation of ``SwiftUICore/View/arrivalMotion(_:kind:index:)``.
 private struct ArrivalMotion: ViewModifier {
-    var moment: MotionPolicy.Moment
+    var moment: Moment
+    var kind: ArrivalKind
     var index: Int
     @Environment(MotionPolicy.self) private var policy: MotionPolicy?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -64,11 +69,18 @@ private struct ArrivalMotion: ViewModifier {
         let pending = style != .instant && !arrived
         content
             .opacity(pending ? 0 : 1)
-            .offset(y: pending && style != .crossFade ? MotionTokens.arrivalRise : 0)
+            .offset(pending && style != .crossFade ? offset : .zero)
             // Scoped to `arrived`: nothing else in the view rides this animation, and a tap goes through at any point.
             .animation(ArrivalMotionPlan.animation(for: style), value: arrived)
             .onAppear {
                 if style != .instant { arrived = true }
             }
+    }
+
+    private var offset: CGSize {
+        switch kind {
+        case .rise: CGSize(width: 0, height: MotionTokens.arrivalRise)
+        case .slideIn: CGSize(width: MotionTokens.Arrival.slideDistance, height: 0)
+        }
     }
 }

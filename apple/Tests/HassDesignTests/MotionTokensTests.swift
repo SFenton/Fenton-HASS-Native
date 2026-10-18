@@ -28,4 +28,15 @@ struct MotionTokensTests {
         #expect(MotionTokens.arrivalDelay(index: 8) == nil)
         #expect(MotionTokens.arrivalDelay(index: -1) == nil)
     }
+
+    @Test func theSignInLanesNamesAgreeWithTheTokens() {
+        #expect(MotionTokens.quickDuration == 0.2 && MotionTokens.standardDuration == 0.3 && MotionTokens.stateDuration == 0.6)
+        #expect(MotionTokens.crossFade == MotionTokens.reducedMoment && MotionTokens.crossFadeDuration == 0.35)
+        #expect(MotionTokens.press == .easeOut(duration: 0.12))
+        #expect(MotionTokens.Arrival.staggerLimit <= MotionTokens.arrivalStaggerCap)
+        #expect(MotionTokens.Arrival.slideDistance == 30 && MotionTokens.Arrival.riseDistance == 16)
+        #expect(MotionTokens.Intro.formDelay > MotionTokens.Intro.titleDelay && MotionTokens.Intro.titleDelay > MotionTokens.Intro.markDelay)
+        #expect(MotionTokens.Intro.markPeak > 1 && MotionTokens.Intro.markStart < 1)
+        _ = [MotionTokens.Intro.glow, .markRise, .title, .form, MotionTokens.Arrival.lift, .backdrop]
+    }
 }

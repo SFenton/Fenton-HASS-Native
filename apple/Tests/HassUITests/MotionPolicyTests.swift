@@ -9,8 +9,8 @@ import Testing
 struct MotionPolicyTests {
     @Test func aMomentPlaysOnceThenIsRemembered() {
         let policy = MotionPolicy(reduceMotion: { false })
-        #expect(MotionPolicy.Moment.allCases == [.intro, .signInArrival])
-        for moment in MotionPolicy.Moment.allCases { #expect(!policy.hasPlayed(moment)) }
+        #expect(Moment.allCases == [.intro, .signInArrival])
+        for moment in Moment.allCases { #expect(!policy.hasPlayed(moment)) }
         policy.markPlayed(.signInArrival)
         #expect(policy.hasPlayed(.signInArrival))
         #expect(!policy.hasPlayed(.intro))
@@ -24,7 +24,7 @@ struct MotionPolicyTests {
         policy.markPlayed(.signInArrival)
         policy.reset()
         #expect(policy.played.isEmpty)
-        for moment in MotionPolicy.Moment.allCases { #expect(!policy.hasPlayed(moment)) }
+        for moment in Moment.allCases { #expect(!policy.hasPlayed(moment)) }
     }
 
     @Test func reduceMotionFollowsTheSourceWhenRefreshed() {

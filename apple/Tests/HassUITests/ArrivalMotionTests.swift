@@ -43,8 +43,10 @@ struct ArrivalMotionTests {
         let view = Color.red.frame(width: 40, height: 40)
         // No session: nothing to play, the view is there.
         #expect(ImageRenderer(content: view.arrivalMotion(.signInArrival, index: 2)).cgImage != nil)
+        #expect(ImageRenderer(content: view.arrivalMotion(kind: .slideIn)).cgImage != nil)
         let policy = MotionPolicy(reduceMotion: { false })
         #expect(ImageRenderer(content: view.arrivalMotion(.signInArrival).environment(policy)).cgImage != nil)
+        #expect(ImageRenderer(content: view.arrivalMotion(kind: .slideIn).environment(policy)).cgImage != nil)
         policy.markPlayed(.signInArrival)
         #expect(ImageRenderer(content: view.arrivalMotion(.signInArrival).environment(policy)).cgImage != nil)
     }

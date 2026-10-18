@@ -17,14 +17,6 @@ import AppKit
 @MainActor
 @Observable
 public final class MotionPolicy {
-    /// A one-time event that marks the app's entrance.
-    public enum Moment: String, CaseIterable, Hashable, Sendable {
-        /// The first-launch intro: glow, mark, title, form (signed out only).
-        case intro
-        /// The arrival into Home after signing in: the house photo, header, tiles in a stagger, the tab bar.
-        case signInArrival
-    }
-
     /// The moments that have played this session.
     public private(set) var played: Set<Moment> = []
 
