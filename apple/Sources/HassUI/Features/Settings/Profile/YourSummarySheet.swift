@@ -34,9 +34,11 @@ struct YourSummarySheet: View {
         _requested = State(initialValue: opening)
     }
 
-    /// The household resident viewing: the shared chores model's (the gallery's), else the remembered Home Assistant user.
+    /// The household resident viewing: a shared chores model's when the environment has one (the gallery's, which is
+    /// authoritative even for a guest), else the remembered Home Assistant user.
     private var viewer: ChoresConfig.Resident? {
-        chores?.viewer ?? ChoresConfig.Resident.forUserId(viewerUserId)
+        guard let chores else { return ChoresConfig.Resident.forUserId(viewerUserId) }
+        return chores.viewer
     }
 
     private var tabs: [SummaryTab] { SummaryTab.tabs(viewer: viewer) }

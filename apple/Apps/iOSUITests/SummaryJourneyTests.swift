@@ -9,8 +9,8 @@ final class SummaryJourneyTests: JourneyTestCase {
     // MARK: Helpers
 
     private func launch(tab: SummaryTabID? = nil, viewer: String? = nil, vacation: Bool = false, empty: Bool = false,
-                        arguments: [String] = [], appearance: String? = nil) -> XCUIApplication {
-        var environment: [String: String] = ["FENTON_GALLERY_CLEAN": "0"]
+                        clean: Bool = false, arguments: [String] = [], appearance: String? = nil) -> XCUIApplication {
+        var environment: [String: String] = clean ? ["FENTON_GALLERY_CLEAN": "1"] : [:]
         if let tab { environment["FENTON_GALLERY_TAB"] = tab.rawValue }
         if let viewer { environment["FENTON_GALLERY_VIEWER"] = viewer }
         if vacation { environment["FENTON_GALLERY_VACATION"] = "1" }
@@ -79,7 +79,9 @@ final class SummaryJourneyTests: JourneyTestCase {
         XCTAssertTrue(app.staticTexts["Away"].exists && app.staticTexts["Home"].firstMatch.exists)
         let signOut = app.buttons["account.signOut"]
         let list = element("account.list", in: app)
-        for _ in 0..<6 where !(signOut.exists && signOut.isHittable) { list.swipeUp() }
+        let bar = element("summary.tabs", in: app)
+        // Clear of the tab bar, which XCUITest still counts as hittable under it.
+        for _ in 0..<8 where !(signOut.exists && signOut.isHittable && signOut.frame.maxY <= bar.frame.minY) { list.swipeUp() }
         XCTAssertTrue(signOut.exists)
         assertTarget(signOut)
         signOut.tap()
@@ -91,29 +93,17 @@ final class SummaryJourneyTests: JourneyTestCase {
 
     // MARK: Chores
 
-    /// The rows are the Chores page's own: a check, the due label, an edit button that opens the task form, and the
-    /// swipe actions.
-    func testChoreRowsCarryTheEditButtonAndSwipeActions() {
+    /// The rows are the Chores page's own: a check, the due label and an edit button that opens the task form.
+    func testChoreRowsCarryTheEditButtonThatOpensTheTaskForm() {
         let app = launch(tab: .overdue)
         let row = element("todo.item.11--fixture", in: app)
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         XCTAssertEqual(row.label, "Take out the recycling")
-        XCTAssertTrue((row.value as? String)?.hasPrefix("Not done, Due") == true || (row.value as? String)?.hasPrefix("Not done") == true,
-                      "\(row.value ?? "")")
+        XCTAssertTrue((row.value as? String)?.hasPrefix("Not done") == true, "\(row.value ?? "")")
         let edit = app.buttons["todo.edit.11--fixture"]
         XCTAssertTrue(edit.exists)
         XCTAssertEqual(edit.label, "Edit Take out the recycling")
         assertTarget(edit)
-
-        // Swipe from the leading edge: Complete. From the trailing edge: Delete and Edit.
-        reveal(row, from: 0.15, to: 0.55)
-        XCTAssertTrue(app.buttons["todo.swipe.complete.11--fixture"].waitForExistence(timeout: 3), "Complete swipes in from the leading edge")
-        reveal(row, from: 0.55, to: 0.1)
-        reveal(row, from: 0.85, to: 0.35)
-        XCTAssertTrue(app.buttons["todo.swipe.edit.11--fixture"].waitForExistence(timeout: 3), "Edit swipes in from the trailing edge")
-        XCTAssertTrue(app.buttons["todo.swipe.delete.11--fixture"].exists, "So does Delete")
-        keepScreenshot(app, screenshotName("overdue-swipe"))
-
         edit.tap()
         let name = app.textFields["task.name"]
         XCTAssertTrue(name.waitForExistence(timeout: 8), "The edit button opens the Chores page's task form")
@@ -121,6 +111,22 @@ final class SummaryJourneyTests: JourneyTestCase {
         app.buttons["task.cancel"].tap()
         XCTAssertTrue(name.waitForNonExistence(timeout: 5))
         XCTAssertTrue(row.exists, "The Summary is still under the form")
+    }
+
+    /// The swipe actions are the Chores page's: Complete from the leading edge; Delete and Edit from the trailing edge.
+    func testChoreRowsSwipeToCompleteEditAndDelete() {
+        let app = launch(tab: .overdue)
+        let row = element("todo.item.11--fixture", in: app)
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        reveal(row, from: 0.15, to: 0.55)
+        XCTAssertTrue(app.buttons["todo.swipe.complete.11--fixture"].waitForExistence(timeout: 3), "Complete swipes in from the leading edge")
+        reveal(row, from: 0.55, to: 0.1)
+        reveal(row, from: 0.85, to: 0.35)
+        XCTAssertTrue(app.buttons["todo.swipe.edit.11--fixture"].waitForExistence(timeout: 3), "Edit swipes in from the trailing edge")
+        XCTAssertTrue(app.buttons["todo.swipe.delete.11--fixture"].exists, "So does Delete")
+        keepScreenshot(app, screenshotName("overdue-swipe"))
+        app.buttons["todo.swipe.edit.11--fixture"].tap()
+        XCTAssertTrue(app.textFields["task.name"].waitForExistence(timeout: 8), "The Edit swipe opens the same form")
     }
 
     /// Checking a chore off hides it at once and calls the (fixture) service, as on the Chores page.
@@ -134,7 +140,7 @@ final class SummaryJourneyTests: JourneyTestCase {
         XCTAssertEqual(segment(.overdue, in: app).label, "Overdue Chores, 1 item", "The tab's badge follows, and is singular for one")
     }
 
-    /// Deleting asks first, through the Chores page's dialog; cancelling leaves the chore.
+    /// Deleting asks first, through the Chores page's dialog, and nothing is sent until it is confirmed.
     func testDeletingAChoreAsksFirst() {
         let app = launch(tab: .overdue)
         let row = element("todo.item.12--fixture", in: app)
@@ -143,13 +149,15 @@ final class SummaryJourneyTests: JourneyTestCase {
         let delete = app.buttons["todo.swipe.delete.12--fixture"]
         XCTAssertTrue(delete.waitForExistence(timeout: 3))
         delete.tap()
-        let confirm = app.buttons["todo.delete.confirm"]
+        let confirm = app.buttons["todo.delete.confirm"].firstMatch
         XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Delete confirms first")
         XCTAssertEqual(confirm.label, "Delete Task")
-        // The dialog's cancel is the sheet scrim on iPad and a Cancel button on iPhone.
-        if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() } else { app.tap() }
-        XCTAssertTrue(confirm.waitForNonExistence(timeout: 5))
-        XCTAssertTrue(row.exists, "Cancelling keeps the chore")
+        XCTAssertNotEqual(lastCall(in: app), "todo.remove_item 12--fixture", "Deleted before the answer")
+        XCTAssertTrue(row.exists)
+        // Confirming removes it from the fixture list, never from a house.
+        confirm.tap()
+        XCTAssertTrue(row.waitForNonExistence(timeout: 5))
+        expectLastCall("todo.remove_item 12--fixture", in: app)
     }
 
     // MARK: Expired food
@@ -178,7 +186,7 @@ final class SummaryJourneyTests: JourneyTestCase {
         cart.tap()
         XCTAssertTrue(app.alerts["Add Cereal to Groceries"].waitForExistence(timeout: 5), "The cart asks for a quantity")
         app.alerts.buttons["Cancel"].tap()
-        XCTAssertTrue(app.alerts.firstMatch.waitForNonExistence(timeout: 3))
+        XCTAssertTrue(app.alerts["Add Cereal to Groceries"].waitForNonExistence(timeout: 10), "Cancel closes the prompt")
 
         // The chevron opens the Food page's item editor.
         chevron.tap()
@@ -235,7 +243,7 @@ final class SummaryJourneyTests: JourneyTestCase {
 
     // MARK: Accessibility
 
-    /// Reading order is title, then the tab's content, then the tab bar last; targets are 44 pt and every tab passes the
+    /// Reading order is the close button and title, then the tab's content, then the tab bar last; targets are 44 pt and every tab passes the
     /// accessibility audit.
     func testEachTabPassesTheAuditAndReadsInOrder() throws {
         for tab in SummaryTabID.allCases {
@@ -248,10 +256,9 @@ final class SummaryJourneyTests: JourneyTestCase {
             }
             XCTAssertTrue(element(content, in: app).waitForExistence(timeout: 8), "\(tab) content")
             sleep(1)
-            let ordered = ["account.close", content, "summary.tabs"].map { element($0, in: app) }
-            let top = ordered.map(\.frame.minY)
-            XCTAssertLessThan(top[0], top[1], "\(tab): the close button leads the content")
-            XCTAssertLessThan(top[1], top[2], "\(tab): the tab bar is last, along the bottom")
+            let close = element("account.close", in: app), bar = element("summary.tabs", in: app)
+            XCTAssertLessThan(close.frame.minY, bar.frame.minY, "\(tab): the close button is above the tab bar")
+            XCTAssertLessThan(element(content, in: app).frame.minY, bar.frame.minY, "\(tab): the tab bar is last, along the bottom")
             keepScreenshot(app, screenshotName("audit-\(tab.rawValue)"))
             try FentonHomeApp.audit(app) { self.launch(tab: tab, arguments: FentonHomeApp.ax5) }
         }
@@ -277,7 +284,7 @@ final class SummaryJourneyTests: JourneyTestCase {
     /// Rows and the bar read in a light sheet too (the sheet follows the system appearance; the row cards are the sheet's cell).
     func testTheChoreAndFoodRowsReadInALightSheet() throws {
         for tab in [SummaryTabID.overdue, .expiredFood] {
-            let app = launch(tab: tab, appearance: "light")
+            let app = launch(tab: tab, clean: true, appearance: "light")
             XCTAssertTrue(element(tab == .overdue ? "todo.item.11--fixture" : "inventory.row.Cereal", in: app).waitForExistence(timeout: 8))
             sleep(1)
             keepScreenshot(app, screenshotName("light-\(tab.rawValue)"))

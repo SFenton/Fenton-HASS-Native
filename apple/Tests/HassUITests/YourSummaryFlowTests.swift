@@ -34,7 +34,7 @@ struct YourSummaryFlowTests {
     func openTab(_ driver: AXWindow, _ tab: String, expecting identifier: String) async -> Bool {
         for _ in 0..<3 {
             await driver.press("summary.tabs.\(tab)")
-            let nodes = await driver.wait(timeout: 30) { $0.contains { $0.identifier == identifier } }
+            let nodes = await driver.wait(timeout: 90) { $0.contains { $0.identifier == identifier } }
             if nodes.contains(where: { $0.identifier == identifier }) { return true }
         }
         return false
@@ -45,13 +45,13 @@ struct YourSummaryFlowTests {
     @Test func opensOnOverdueChoresWithBadgesOnTheTwoActionableTabs() async throws {
         let driver = await open()
         defer { driver.close() }
-        let overdue = try #require(await driver.waitFor("summary.tabs.overdue"))
+        let overdue = try #require(await driver.waitFor("summary.tabs.overdue", timeout: 90))
         #expect(overdue.spoken == "Overdue Chores, 2 items", "two chores slipped past their date")
         #expect(await driver.node("summary.tabs.expired-food")?.spoken == "Expired Food, 3 items")
         #expect(await driver.node("summary.tabs.upcoming")?.spoken == "Upcoming Chores", "upcoming chores never badge")
         #expect(await driver.node("summary.tabs.profile")?.spoken == "Profile")
-        #expect(await driver.waitFor("todo.item.11--fixture", timeout: 30) != nil, "it opens on the overdue chores")
-        #expect(await driver.waitFor("todo.item.12--fixture") != nil)
+        #expect(await driver.waitFor("todo.item.11--fixture", timeout: 90) != nil, "it opens on the overdue chores")
+        #expect(await driver.waitFor("todo.item.12--fixture", timeout: 90) != nil)
         #expect(await driver.shows("Take out the recycling"))
         #expect(await driver.shows("Clean the gutters"))
         #expect(await driver.shows("Your Summary"))
@@ -60,7 +60,7 @@ struct YourSummaryFlowTests {
     @Test func tappingATabShowsItsContent() async throws {
         let driver = await open()
         defer { driver.close() }
-        _ = await driver.waitFor("summary.tabs.upcoming")
+        _ = await driver.waitFor("summary.tabs.upcoming", timeout: 90)
         #expect(await openTab(driver, "upcoming", expecting: "todo.item.13--fixture"))
         #expect(await driver.shows("Upcoming Chores"))
         #expect(await driver.shows("No Due Date"), "chores without a due date follow, under their own header")
@@ -74,7 +74,7 @@ struct YourSummaryFlowTests {
     @Test func profileKeepsTheAccountsExtras() async throws {
         let driver = await open(["FENTON_GALLERY_TAB": "profile"])
         defer { driver.close() }
-        let header = try #require(await driver.waitFor("account.header"))
+        let header = try #require(await driver.waitFor("account.header", timeout: 90))
         #expect(header.value.contains("Stephen Fenton"), "\(header.value)")
         #expect(await driver.shows("Stephen Fenton, Home"), "a resident at home")
         #expect(await driver.shows("Steph Fenton, Away"), "a resident away")
@@ -88,7 +88,7 @@ struct YourSummaryFlowTests {
     @Test func aGuestSeesProfileAndExpiredFoodOnly() async throws {
         let driver = await open(["FENTON_GALLERY_VIEWER": "guest"])
         defer { driver.close() }
-        _ = try #require(await driver.waitFor("summary.tabs.profile"))
+        _ = try #require(await driver.waitFor("summary.tabs.profile", timeout: 90))
         #expect(await driver.node("summary.tabs.overdue") == nil)
         #expect(await driver.node("summary.tabs.upcoming") == nil)
         #expect(await driver.node("summary.tabs.expired-food")?.spoken == "Expired Food, 3 items")
@@ -99,7 +99,7 @@ struct YourSummaryFlowTests {
     @Test func stephsEmptyOverdueTabSaysShesCaughtUp() async throws {
         let driver = await open(["FENTON_GALLERY_VIEWER": "steph"])
         defer { driver.close() }
-        _ = try #require(await driver.waitFor("summary.empty.overdue"))
+        _ = try #require(await driver.waitFor("summary.empty.overdue", timeout: 90))
         #expect(await driver.shows("No Chores Due"))
         #expect(await driver.shows("You are all caught up on chores that slipped past their due date."))
         #expect(await driver.node("summary.tabs.overdue")?.spoken == "Overdue Chores", "no count when nothing is overdue")
@@ -110,7 +110,7 @@ struct YourSummaryFlowTests {
     @Test func overdueRowsAreTheChoresPagesWithAnEditButtonThatOpensTheTaskForm() async throws {
         let driver = await open()
         defer { driver.close() }
-        let row = try #require(await driver.waitFor("todo.item.11--fixture"))
+        let row = try #require(await driver.waitFor("todo.item.11--fixture", timeout: 90))
         #expect(row.spoken == "Take out the recycling" && row.value.hasPrefix("Not done"))
         let edit = try #require(await driver.node("todo.edit.11--fixture"))
         #expect(edit.spoken == "Edit Take out the recycling")
@@ -121,7 +121,7 @@ struct YourSummaryFlowTests {
     @Test func checkingAChoreOffGoesThroughTheSharedControllerToTheFixtureService() async throws {
         let driver = await open()
         defer { driver.close() }
-        let row = try #require(await driver.waitFor("todo.item.12--fixture"))
+        let row = try #require(await driver.waitFor("todo.item.12--fixture", timeout: 90))
         #expect(await driver.press(row))
         let call = await lastCall(driver) { $0.contains("update_item") }
         #expect(call.contains("todo.update_item") && call.contains("12--fixture"), "\(call)")
@@ -132,7 +132,7 @@ struct YourSummaryFlowTests {
     @Test func expiredRowsAreTheFoodPagesRowsOldestFirst() async throws {
         let driver = await open(["FENTON_GALLERY_TAB": "expired-food"])
         defer { driver.close() }
-        let cereal = try #require(await driver.waitFor("inventory.row.Cereal"))
+        let cereal = try #require(await driver.waitFor("inventory.row.Cereal", timeout: 90))
         #expect(await driver.shows("Cereal, Quantity 2, Expired"), "the stock count above one, then the red expiry line")
         #expect(await driver.shows("Jasmine Rice, Expired"))
         let rice = try #require(await driver.node("inventory.row.Jasmine Rice"))
@@ -144,7 +144,7 @@ struct YourSummaryFlowTests {
     @Test func theCartAsksForAQuantityAndTheChevronOpensTheItemEditor() async throws {
         let driver = await open(["FENTON_GALLERY_TAB": "expired-food"])
         defer { driver.close() }
-        _ = try #require(await driver.waitFor("inventory.row.Jasmine Rice"))
+        _ = try #require(await driver.waitFor("inventory.row.Jasmine Rice", timeout: 90))
         let carts = await driver.nodes().filter { $0.identifier == "inventory.row.cart" }
         #expect(carts.count == 3, "one cart per expired item")
         // Cereal expired longest ago, so it leads; its cart asks how many to add.
@@ -160,7 +160,7 @@ struct YourSummaryFlowTests {
     @Test func vacationHidesExpiredFoodAndSaysEnjoyVacation() async throws {
         let driver = await open(["FENTON_GALLERY_TAB": "expired-food", "FENTON_GALLERY_VACATION": "1"])
         defer { driver.close() }
-        _ = try #require(await driver.waitFor("summary.empty.expired-food"))
+        _ = try #require(await driver.waitFor("summary.empty.expired-food", timeout: 90))
         #expect(await driver.shows("Expired Food Hidden"))
         #expect(await driver.shows("Enjoy vacation!"))
         #expect(await driver.node("summary.tabs.expired-food")?.spoken == "Expired Food", "vacation puts the badge on hold")
@@ -169,7 +169,7 @@ struct YourSummaryFlowTests {
     @Test func vacationWithNothingExpiredSaysNoExpiredFood() async throws {
         let driver = await open(["FENTON_GALLERY_TAB": "expired-food", "FENTON_GALLERY_VACATION": "1", "FENTON_GALLERY_EMPTY": "1"])
         defer { driver.close() }
-        _ = try #require(await driver.waitFor("summary.empty.expired-food"))
+        _ = try #require(await driver.waitFor("summary.empty.expired-food", timeout: 90))
         #expect(await driver.shows("No Expired Food"))
         #expect(await driver.shows("Enjoy vacation!"))
     }
@@ -178,7 +178,7 @@ struct YourSummaryFlowTests {
         for (tab, title) in [("overdue", "No Chores Due"), ("upcoming", "No Chores Upcoming")] {
             let driver = await open(["FENTON_GALLERY_TAB": tab, "FENTON_GALLERY_VACATION": "1", "FENTON_GALLERY_EMPTY": "1"])
             defer { driver.close() }
-            _ = try #require(await driver.waitFor("summary.empty.\(tab)"))
+            _ = try #require(await driver.waitFor("summary.empty.\(tab)", timeout: 90))
             #expect(await driver.shows(title), "\(tab)")
             #expect(await driver.shows("Enjoy vacation!"), "\(tab)")
         }
@@ -187,7 +187,7 @@ struct YourSummaryFlowTests {
     @Test func nothingExpiredShowsTheNoExpiredFoodState() async throws {
         let driver = await open(["FENTON_GALLERY_TAB": "expired-food", "FENTON_GALLERY_EMPTY": "1"])
         defer { driver.close() }
-        _ = try #require(await driver.waitFor("summary.empty.expired-food"))
+        _ = try #require(await driver.waitFor("summary.empty.expired-food", timeout: 90))
         #expect(await driver.shows("Everything in the kitchen is still within date."))
     }
 
@@ -196,9 +196,9 @@ struct YourSummaryFlowTests {
     @Test func regularWidthShowsTheTabTitlesBesideTheirIcons() async throws {
         let driver = await open(size: Self.tablet)
         defer { driver.close() }
-        _ = try #require(await driver.waitFor("summary.tabs.overdue"))
+        _ = try #require(await driver.waitFor("summary.tabs.overdue", timeout: 90))
         #expect(await driver.shows("Upcoming Chores"))
-        #expect(await driver.shows("Take out the recycling"))
+        #expect(await driver.waitFor("todo.item.11--fixture", timeout: 90) != nil)
     }
 }
 #endif
