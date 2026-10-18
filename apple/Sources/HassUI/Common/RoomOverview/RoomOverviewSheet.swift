@@ -14,11 +14,13 @@ struct RoomOverviewSheet: View {
     @Environment(EntityStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var path: [RoomGroup] = []
+    /// A room tile zooms into its room page (iOS 18 and later; a push before).
+    @Namespace private var rooms
 
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                RoomOverviewGrid(kind: kind) { path.append($0) }
+                RoomOverviewGrid(kind: kind, zoomNamespace: rooms) { path.append($0) }
                     .padding(HassTokens.Spacing.l)
                     .frame(maxWidth: 960)
                     .frame(maxWidth: .infinity)
@@ -32,6 +34,7 @@ struct RoomOverviewSheet: View {
             .navigationDestination(for: RoomGroup.self) { group in
                 RoomGroupDetailPage(kind: kind, group: group) { dismiss() }
                     .modalChrome()
+                    .zoomDestination(id: group.room, in: rooms)
             }
             .toolbar {
                 SheetCloseItem { dismiss() }

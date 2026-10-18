@@ -85,7 +85,11 @@ struct FoodNavigation: ViewModifier {
 /// uses the signed-in connection's recipe service. The hub's tiles push through its own destination.
 struct FoodEntryScreen: View {
     @Environment(HassConnection.self) private var connection: HassConnection?
-    @State private var models = FoodModels()
+    @Environment(\.sessionModels) private var session
+    @State private var ownModels = FoodModels()
+
+    /// The session's models, so a revisit shows Suggested Recipes at once; the page's own outside the shell.
+    private var models: FoodModels { session?.food ?? ownModels }
 
     var body: some View {
         FoodHubScreen(models: models)
@@ -104,11 +108,12 @@ struct FoodEntryScreen: View {
 struct FoodInventoryScreen: View {
     let space: InventorySpace
     @Environment(\.inventoryModels) private var injected
+    @Environment(\.sessionModels) private var session
     @Environment(HassConnection.self) private var connection: HassConnection?
     @State private var holder = InventoryModelsHolder()
 
     var body: some View {
-        InventoryDestinationScreen(route: .space(space), models: injected ?? connection.map(holder.models(for:)))
+        InventoryDestinationScreen(route: .space(space), models: injected ?? connection.map { session?.inventory(for: $0) ?? holder.models(for: $0) })
     }
 
     /// The inventory page for one of the hub's EverShelf locations (`FoodConfig.spaces`).

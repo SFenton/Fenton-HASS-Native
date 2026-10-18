@@ -48,6 +48,8 @@ public struct RootView: View {
             }
         }
         .observesDeviceSignals()
+        // The session's motion policy, for the intro, the arrival and anything that plays once (`.arrivalMotion`).
+        .environment(session.motion)
         // A tap on the Home Live Activity opens the focused job's page (`ActivityDeepLink`).
         .onOpenURL { session.push.openLiveActivity($0) }
         // A tapped Spotlight result (`SpotlightCatalog`): opens that page like a notification's link.
@@ -70,6 +72,10 @@ public struct RootView: View {
         // Scroll cost runs (`FENTON_SCROLLCOST=1`, any build): an invisible element a test or `tools/ios_perf.sh` drives.
         .overlay(alignment: .topTrailing) {
             if ScrollCostProbe.isEnabled { ScrollCostProbe() }
+        }
+        // Navigation cost runs (`FENTON_NAVPERF=1`): an invisible element `NavigationPerformanceTests` reads after it drives the app.
+        .overlay(alignment: .topLeading) {
+            if NavigationPerfProbe.isEnabled { NavigationPerfProbe() }
         }
         // The user's appearance for sheets: the shell and the galleries force dark for their pages, which hides it
         // from their own environment (`SystemAppearance`).

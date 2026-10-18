@@ -257,7 +257,7 @@ struct HouseBackdrop: View {
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-        .animation(.easeInOut(duration: 0.3), value: store?.image != nil)
+        .motionSafeAnimation(MotionTokens.standard, reduced: MotionTokens.quick, value: store?.image != nil)
     }
 }
 

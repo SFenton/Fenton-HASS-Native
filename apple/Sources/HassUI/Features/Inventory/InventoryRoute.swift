@@ -48,6 +48,7 @@ final class InventoryModelsHolder {
 
 struct InventoryDestinations: ViewModifier {
     @Environment(\.inventoryModels) private var injected
+    @Environment(\.sessionModels) private var session
     @Environment(HassConnection.self) private var connection: HassConnection?
     @State private var holder = InventoryModelsHolder()
     @State private var launchSpace: InventorySpace? = InventoryDestinations.requestedAtLaunch()
@@ -63,7 +64,7 @@ struct InventoryDestinations: ViewModifier {
     }
 
     private func screen(_ route: InventoryRoute) -> InventoryDestinationScreen {
-        InventoryDestinationScreen(route: route, models: injected ?? connection.map(holder.models(for:)))
+        InventoryDestinationScreen(route: route, models: injected ?? connection.map { session?.inventory(for: $0) ?? holder.models(for: $0) })
     }
 
     /// `FENTON_OPEN_INVENTORY=<space>` (debug builds only).

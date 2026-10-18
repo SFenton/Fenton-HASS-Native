@@ -30,6 +30,9 @@ final class ShellNavigator {
     /// Overdue chore count for the Chores badge (web `useDailyReportContext().overdueCount`);
     /// nil until the Chores feature provides it.
     var overdueChores: Int?
+    /// Per section, a counter bumped when a second tap on the selected tab (at its root) asks the page to scroll to its top
+    /// (``scrollsToTop(whenRequested:)``).
+    private(set) var scrollToTopRequests: [AppSection: Int] = [:]
     /// Bumped when the flyout closes without choosing a destination, so the Open Navigation button
     /// takes VoiceOver focus back (HIG VoiceOver: "Inform VoiceOver of visible content or layout changes").
     private(set) var focusReturnToken = 0
@@ -107,13 +110,38 @@ final class ShellNavigator {
         }
     }
 
-    /// Chooses a section from the flyout or tab bar. Choosing the current section pops it to its root
-    /// (the web's nav links always land on the section root).
+    /// What choosing the selected section did.
+    enum ReselectOutcome: Equatable {
+        /// The stack was deeper than its root and popped to it.
+        case poppedToRoot
+        /// The stack was at its root: the page was asked to scroll to its top.
+        case scrolledToTop
+    }
+
+    /// Chooses a section from the flyout. Choosing the current section is the standard second tap: it pops the stack to its
+    /// root, and once it is at the root it scrolls the page to the top (``reselect(_:)``).
     func select(_ section: AppSection) {
-        if section == selection {
-            paths[section] = NavigationPath()
-        }
-        selection = section
+        tabTapped(section)
         isFlyoutOpen = false
+    }
+
+    /// A tap on the tab bar: another section is a cut (no animation on the content); the selected one is ``reselect(_:)``.
+    func tabTapped(_ section: AppSection) {
+        if section == selection {
+            reselect(section)
+        } else {
+            selection = section
+        }
+    }
+
+    /// The standard second tap on the selected tab: the first tap pops to the root; at the root the next scrolls to the top.
+    @discardableResult
+    func reselect(_ section: AppSection) -> ReselectOutcome {
+        guard isAtRoot(section) else {
+            paths[section] = NavigationPath()
+            return .poppedToRoot
+        }
+        scrollToTopRequests[section, default: 0] += 1
+        return .scrolledToTop
     }
 }
