@@ -31,16 +31,15 @@ struct MotionGallery: View {
         }
         // On the scroll view only: an outer identifier would replace the Toggle all button's.
         .accessibilityIdentifier("motion.scroll")
-        // Always in reach, so a test (or a person) can flip everything from anywhere on the page.
-        .safeAreaInset(edge: .bottom) {
-            // The primary button's own fill and label: the system prominent style measured 2.8:1 on the dark page.
-            PrimaryButton("Toggle all") {
-                if onCases.count == Self.cases.count { onCases = [] } else { onCases = Set(Self.cases.map(\.id)) }
+        // In the navigation bar, always in reach and over nothing that scrolls: a bar of its own at the foot of the page put cards
+        // under a translucent material, which the contrast audit rightly measured as 3.0:1.
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Toggle All") {
+                    if onCases.count == Self.cases.count { onCases = [] } else { onCases = Set(Self.cases.map(\.id)) }
+                }
+                .accessibilityIdentifier("motion.toggleAll")
             }
-            .accessibilityIdentifier("motion.toggleAll")
-            .padding(.horizontal, HassTokens.Spacing.l)
-            .padding(.vertical, HassTokens.Spacing.s)
-            .background(.bar)
         }
         .navigationTitle("Motion")
     }
