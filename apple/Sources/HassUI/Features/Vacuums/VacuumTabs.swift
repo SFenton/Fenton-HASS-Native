@@ -342,21 +342,24 @@ struct VacuumRoomsTab: View {
                     Image(systemName: VacuumStyle.symbol(zone.icon))
                         .font(.title3)
                         // A locked card dims its glyph only; the title keeps its contrast (entity-tile pattern).
-                        .foregroundStyle(selected ? VacuumStyle.selectedInk : HassTokens.Ink.secondary)
+                        .stateForeground("VacuumRoomsTab", selected ? VacuumStyle.selectedInk : HassTokens.Ink.secondary)
                         .opacity(editable ? 1 : 0.5)
                     Spacer(minLength: HassTokens.Spacing.xs)
                     if let order { VacuumOrderBadge(order: order) }
                 }
                 Text(zone.title)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(ink)
+                    .stateForeground("VacuumRoomsTab", ink)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(HassTokens.Spacing.m)
             // Fills the row the grid proposes, so cards in a row match the tallest title.
             .frame(maxWidth: .infinity, minHeight: cardHeight, maxHeight: .infinity, alignment: .topLeading)
-            .background(selected ? VacuumStyle.selectedFill : HassTokens.Surface.sheetCell, in: VacuumStyle.cardShape)
+            .background {
+                VacuumStyle.cardShape.fill(selected ? VacuumStyle.selectedFill : HassTokens.Surface.sheetCell)
+                    .stateColorTransition("VacuumRoomsTab", value: selected)
+            }
             .contentShape(VacuumStyle.cardShape)
         }
         .buttonStyle(.plain)

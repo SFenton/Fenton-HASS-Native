@@ -37,7 +37,7 @@ struct ClimateNotice: View {
         HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
             Image(systemName: symbol)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(isWarning ? HassTokens.Ink.warning : HassTokens.Ink.action)
+                .stateForeground("ClimateNotice", isWarning ? HassTokens.Ink.warning : HassTokens.Ink.action)
                 .accessibilityHidden(true)
             Text(text)
                 .font(.subheadline)
@@ -48,6 +48,7 @@ struct ClimateNotice: View {
         .padding(.vertical, HassTokens.Spacing.m + 2)
         .padding(.horizontal, HassTokens.Spacing.l)
         .module(isWarning ? .dense : .thin)
+        .stateColorTransition("ClimateNotice", value: isWarning)
         .accessibilityElement(children: .combine)
     }
 }
@@ -74,7 +75,7 @@ struct ThermostatHubPill: View {
             HStack(spacing: HassTokens.Spacing.m) {
                 Image(systemName: ClimateStyle.symbol("mdi:thermostat"))
                     .font(.title2)
-                    .foregroundStyle(ClimateStyle.tint(action: action) ?? HassTokens.Surface.secondaryOnModule)
+                    .stateForeground("ThermostatHubPill", ClimateStyle.tint(action: action) ?? HassTokens.Surface.secondaryOnModule)
                     .frame(minWidth: 28)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {

@@ -103,9 +103,13 @@ struct GrillControls: View {
             HStack(spacing: HassTokens.Spacing.m) {
                 Image(systemName: "flame.fill")
                     .font(.title2)
-                    .foregroundStyle(controller.isOff ? HassTokens.Surface.secondaryInSheet : ColorFamily.cooking.ink)
+                    .stateForeground("GrillControls", controller.isOff ? HassTokens.Surface.secondaryInSheet : ColorFamily.cooking.ink)
                     .frame(width: HassTokens.minTarget, height: HassTokens.minTarget)
-                    .background(controller.isOff ? HassTokens.Surface.sheetCell : ColorFamily.cooking.fill ?? .clear, in: Circle())
+                    .background {
+                        Circle()
+                            .fill(controller.isOff ? HassTokens.Surface.sheetCell : ColorFamily.cooking.fill ?? .clear)
+                            .stateColorTransition("GrillControls", value: controller.isOff)
+                    }
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(controller.config.title).font(.headline).foregroundStyle(HassTokens.Ink.primary)

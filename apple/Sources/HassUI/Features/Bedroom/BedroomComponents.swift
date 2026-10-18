@@ -147,10 +147,13 @@ struct ChoiceGrid<Value: Hashable>: View {
                     Button { selection = option } label: {
                         Text(label(option))
                             .font(.subheadline.weight(selected ? .semibold : .regular))
-                            .foregroundStyle(selected ? Color.white : HassTokens.Ink.primary)
+                            .stateForeground("ChoiceGrid", selected ? Color.white : HassTokens.Ink.primary)
                             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                            .background(selected ? HassTokens.Ink.actionFill : HassTokens.Surface.sheetCell,
-                                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .background {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(selected ? HassTokens.Ink.actionFill : HassTokens.Surface.sheetCell)
+                                    .stateColorTransition("ChoiceGrid", value: selected)
+                            }
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(label(option))
@@ -183,9 +186,13 @@ struct WeekdayPicker: View {
                     } label: {
                         Text(day.shortLabel)
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(selected ? Color.white : HassTokens.Ink.primary)
+                            .stateForeground("WeekdayPicker", selected ? Color.white : HassTokens.Ink.primary)
                             .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                            .background(selected ? HassTokens.Ink.actionFill : HassTokens.Surface.sheetCell, in: Capsule())
+                            .background {
+                                Capsule()
+                                    .fill(selected ? HassTokens.Ink.actionFill : HassTokens.Surface.sheetCell)
+                                    .stateColorTransition("WeekdayPicker", value: selected)
+                            }
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(day.label)

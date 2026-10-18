@@ -184,12 +184,12 @@ struct TodoItemRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: ModuleRowMetrics.gap) {
                     Image(systemName: Self.checkSymbol(done: done))
                         .font(.body)
-                        .foregroundStyle(done ? AnyShapeStyle(.green) : AnyShapeStyle(HassTokens.Surface.secondaryOnModule))
+                        .stateForeground("TodoItemRow", done ? Color.green : HassTokens.Surface.secondaryOnModule)
                         .frame(width: checkColumn)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
                             .font(.body)
-                            .foregroundStyle(done ? HassTokens.Surface.secondaryOnModule : HassTokens.Ink.primary)
+                            .stateForeground("TodoItemRow", done ? HassTokens.Surface.secondaryOnModule : HassTokens.Ink.primary)
                             .strikethrough(done)
                             .fixedSize(horizontal: false, vertical: true)
                         if let due {
@@ -258,7 +258,7 @@ struct DueLabel: View {
         }
         .font(.subheadline)
         .monospacedDigit()
-        .foregroundStyle(Self.color(tone))
+        .stateForeground("DueLabel", Self.color(tone))
     }
 
     /// The text and glyph colour for a tone.

@@ -50,7 +50,6 @@ struct StatusChipButton: View {
     var tint: ChipTint? = nil
     /// `nil` draws an inert chip (no sheet), which is not a button.
     var action: (() -> Void)?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         if let action {
@@ -72,16 +71,14 @@ struct StatusChipButton: View {
                 .symbolVariant(fill != nil ? .fill : .none)
                 .font(.body.weight(.semibold))
                 // Colour only: the chip's width and glyph swap never ride this animation.
-                .animation(StatusChipStyle.colorAnimation(reduceMotion: reduceMotion)) {
-                    $0.foregroundStyle(fill?.glyphColor ?? HassTokens.Surface.secondaryOnModule)
-                }
+                .stateForeground("StatusChip", fill?.glyphColor ?? HassTokens.Surface.secondaryOnModule)
             VStack(alignment: .leading, spacing: 0) {
                 // Fixed inks: the chip's ground is always dark (a family fill or the module), whatever the scheme.
                 Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
                 // Full white on a fill: the 12% top highlight lifts the ground, and white at 92% measured 4.3:1 on the
                 // armed-home and cooking chips when the summary wrapped into it (folded Duo, 2026-10-14).
                 Text(summary).font(.caption)
-                    .foregroundStyle(fill != nil ? Color.white : HassTokens.Surface.secondaryOnModule)
+                    .stateForeground("StatusChip", fill != nil ? Color.white : HassTokens.Surface.secondaryOnModule)
                     .monospacedDigit()
             }
         }
@@ -113,25 +110,18 @@ enum StatusChipStyle {
     static func fillTint(_ family: ColorFamily?, isActive: Bool, tint: ChipTint?) -> ChipTint? {
         tint ?? fillFamily(family, isActive: isActive).flatMap { ChipTint(family: $0) }
     }
-
-    /// The colour cross-fade (HIG, Motion: quick and subtle). Reduce Motion keeps a shorter fade: a colour change moves
-    /// nothing, so it is the allowed substitute (`.agents/testing/apple/accessibility.md`, Reduce Motion).
-    static func colorAnimation(reduceMotion: Bool) -> Animation {
-        .easeInOut(duration: reduceMotion ? 0.2 : 0.6)
-    }
 }
 
 /// The chip's ground: the tint's fill with a slight top highlight, or the thin module when neutral. A colour change
 /// cross-fades inside the fill only, so the capsule's size (a longer state text) never slides.
 private struct StatusChipBackground: View {
     var tint: ChipTint?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Group {
             if let tint {
                 Color.clear
-                    .animation(StatusChipStyle.colorAnimation(reduceMotion: reduceMotion)) { $0.background(tint.fillColor) }
+                    .stateColor("StatusChip") { $0.background(tint.fillColor) }
                     .overlay { LinearGradient(colors: [.white.opacity(ChipTint.highlight), .clear], startPoint: .top, endPoint: .center) }
                     .clipShape(Capsule())
                     .transition(.opacity)
@@ -140,6 +130,6 @@ private struct StatusChipBackground: View {
                     .transition(.opacity)
             }
         }
-        .animation(StatusChipStyle.colorAnimation(reduceMotion: reduceMotion), value: tint != nil)
+        .stateColorTransition("StatusChip", value: tint)
     }
 }

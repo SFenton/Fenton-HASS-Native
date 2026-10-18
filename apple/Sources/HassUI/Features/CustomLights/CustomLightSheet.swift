@@ -179,6 +179,7 @@ struct OtherLightSwatch: View {
                         Circle().strokeBorder(HassTokens.Surface.secondaryInSheet, lineWidth: 1.5)
                     }
                 }
+                .stateColorTransition("OtherLightSwatch", value: rgb)
                 .frame(width: max(diameter, HassTokens.minTarget), height: max(diameter, HassTokens.minTarget))
                 Text(light.title)
                     .font(.footnote)

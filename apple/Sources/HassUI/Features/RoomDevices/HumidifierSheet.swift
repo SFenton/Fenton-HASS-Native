@@ -279,7 +279,7 @@ struct DeviceStatusPill: View {
             : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.s))
         layout {
             Image(systemName: SymbolMap.symbol(for: item.icon))
-                .foregroundStyle(Self.color(item.tone))
+                .stateForeground("DeviceStatusPill", Self.color(item.tone))
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title).font(.caption).foregroundStyle(HassTokens.Ink.secondary)
@@ -290,7 +290,11 @@ struct DeviceStatusPill: View {
         }
         .padding(HassTokens.Spacing.m)
         .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
-        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
+                .fill(HassTokens.Surface.sheetCell)
+                .stateColorTransition("DeviceStatusPill", value: item.tone)
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(item.title)
         .accessibilityValue(item.value)

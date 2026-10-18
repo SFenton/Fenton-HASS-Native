@@ -34,6 +34,7 @@ public struct ComponentGallery: View {
         case liveActivity = "live-activity"
         /// An empty page: only the wallpaper and its scrim (with `FENTON_BACKDROP_FIXTURE=1`), for screenshots.
         case backdrop
+        case motion
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -104,6 +105,7 @@ public struct ComponentGallery: View {
                     case .modalSizing: ModalSizingGallery()
                     case .liveActivity: LiveActivityGallery()
                     case .backdrop: BackdropOnlyPage()
+                    case .motion: MotionGallery()
                     case .rooms, .vacation, .food, .chores, .location, .settings: EmptyView()
                     }
                 }

@@ -54,6 +54,7 @@ struct WeatherBarChart: View {
                     let percent = WeatherPrecipitationTimeline.scaledPercent(values[index], domain: domain)
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
                         .fill(values[index] == nil ? HassTokens.Ink.onDark.opacity(0.18) : tint)
+                        .stateColorTransition("WeatherBarChart", value: values[index] == nil)
                         .frame(height: values[index] == nil ? 2 : max(percent > 0 ? 2 : 0, plotHeight * percent / 100))
                         .frame(maxWidth: .infinity)
                 }

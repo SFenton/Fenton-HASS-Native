@@ -134,6 +134,7 @@ struct LightingModeButton: View {
             ModuleRow(CustomLightsConfig.lightingModeTitle, symbol: "paintpalette") {
                 HStack(spacing: HassTokens.Spacing.s) {
                     GradientSwatch(colors: swatch.map(Color.init(rgb:)))
+                        .stateColorTransition("LightingModeButton", value: swatch)
                     Text(mode)
                         .foregroundStyle(HassTokens.Ink.action)
                         .fixedSize(horizontal: false, vertical: true)

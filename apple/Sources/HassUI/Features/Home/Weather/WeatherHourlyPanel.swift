@@ -10,7 +10,6 @@ struct WeatherHourlyPanel: View {
     @Binding var mode: WeatherHourlyMode
 
     @Environment(\.dynamicTypeSize) private var typeSize
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
             header
@@ -19,7 +18,7 @@ struct WeatherHourlyPanel: View {
                 .foregroundStyle(HassTokens.Ink.onDarkSecondary)
                 .accessibilityIdentifier("weather.hourly.subhead")
             content
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: mode)
+                .motionSafeAnimation(MotionTokens.quick, value: mode)
         }
         .weatherSurface()
         .accessibilityElement(children: .contain)

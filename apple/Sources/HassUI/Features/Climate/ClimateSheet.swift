@@ -443,6 +443,7 @@ struct EcoOptionDetail: View {
                                     .font(.body.weight(.semibold))
                                     .foregroundStyle(HassTokens.Ink.action)
                                     .opacity(isSelected ? 1 : 0)
+                                    .quickTransition("EcoOptionDetail", value: isSelected)
                                     .accessibilityHidden(true)
                             }
                             .contentShape(Rectangle())
