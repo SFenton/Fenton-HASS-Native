@@ -7,10 +7,10 @@ struct PerfSwitchesTests {
         #expect(PerfSwitches.parse(" backdrop , nonsense,") == [.backdrop])
         #expect(PerfSwitches.parse("") == [])
         #expect(PerfSwitches.parse(nil) == [])
+        #expect(PerfSwitches.parse("glassBar,scrollEdge") == [.glassBar, .scrollEdge])
     }
 
     @Test func aNormalLaunchHasEveryLayerOn() {
-        #expect(!PerfSwitches.isOff(.headerFade))
-        #expect(!PerfSwitches.isOff(.backdrop))
+        for layer in PerfSwitches.Layer.allCases { #expect(!PerfSwitches.isOff(layer)) }
     }
 }

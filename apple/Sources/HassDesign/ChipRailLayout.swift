@@ -41,11 +41,37 @@ public enum ChipRailMetrics {
     }
 
     /// The content size of the UIKit scroll view behind a compact rail: at least as wide as the scroll view (so a
-    /// short row still fills it and the chips sit at the leading edge) and as tall as the scroll view.
+    /// short row still fills it and nothing bounces) and as tall as the scroll view.
     /// - Parameters:
     ///   - natural: The chips' natural size.
     ///   - bounds: The scroll view's bounds.
     public static func hostedContentSize(natural: CGSize, bounds: CGSize) -> CGSize {
         CGSize(width: max(natural.width, bounds.width), height: bounds.height)
+    }
+
+    /// Where the hosted chips sit inside that content: at the leading edge, whatever the row's width.
+    ///
+    /// A hosting view wider than its content centres the content, so a row that fits (Security's two chips) drew
+    /// centred on the page instead of starting at the margin (owner, 2026-10-17). The hosted view is exactly the
+    /// row's natural width, so the chips start at the leading edge: the left in a left-to-right layout, the right in a
+    /// right-to-left one.
+    /// - Parameters:
+    ///   - natural: The chips' natural size.
+    ///   - bounds: The scroll view's bounds.
+    ///   - isRightToLeft: Whether the layout direction runs right to left.
+    public static func hostedContentFrame(natural: CGSize, bounds: CGSize, isRightToLeft: Bool = false) -> CGRect {
+        let content = hostedContentSize(natural: natural, bounds: bounds)
+        let width = min(natural.width, content.width)
+        return CGRect(x: isRightToLeft ? content.width - width : 0, y: 0, width: width, height: content.height)
+    }
+
+    /// The horizontal offset that shows a row's leading edge: zero left to right; at the far end right to left, where
+    /// the row starts at the right and a `UIScrollView` still counts offsets from the left.
+    /// - Parameters:
+    ///   - contentWidth: The scroll view's content width.
+    ///   - boundsWidth: The scroll view's width.
+    ///   - isRightToLeft: Whether the layout direction runs right to left.
+    public static func hostedLeadingOffset(contentWidth: CGFloat, boundsWidth: CGFloat, isRightToLeft: Bool) -> CGFloat {
+        isRightToLeft ? max(0, contentWidth - boundsWidth) : 0
     }
 }
