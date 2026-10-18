@@ -241,4 +241,8 @@ extension EnvironmentValues {
     @Entry var shellNavigationStyle: ShellNavigationStyle = .tabBar
     /// Where the shell puts its menu and Quick Links buttons (``ShellChrome``).
     @Entry var shellChrome = ShellChrome(showsMenuButton: false, titleInHeader: true)
+    /// The system moves bar items into a vertical bar (the iPhone Duo, folded or unfolded in landscape), set by
+    /// ``SwiftUI/View/observesDeviceSignals()`` from `toolbarVerticalEdge` (iOS 27.1). The header leaves out its fixed
+    /// spacer there: HIG Designing for iPhone Duo, "system spacing adapts, so don't add fixed spacing".
+    @Entry var shellInVerticalBar = false
 }
