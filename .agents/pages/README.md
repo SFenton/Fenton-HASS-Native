@@ -18,4 +18,5 @@ Full screen map: [dashboard inventory](https://claude.ai/code/artifact/bba4d82d-
 | Vacuums | `/vacuums` | [vacuums/spec.md](vacuums/spec.md) | Page, sheet and map ([ios.md](vacuums/ios.md)) |
 | Food & Recipes | `/food`, `/food/recipes` | [food/spec.md](food/spec.md) | Hub, Recipes grid, recipe detail ([ios.md](food/ios.md)) |
 | Rooms (16) | `/<room>` | [rooms/spec.md](rooms/spec.md) | Config-driven pages, Quick Links, room grid ([ios.md](rooms/ios.md)); room device sheets and the vacuum sheet wired in |
+| Your Summary (the header Profile button) | `#daily-report` | [settings/profile.md](settings/profile.md) | Four tabs: Profile, Overdue Chores, Upcoming Chores, Expired Food |
 | Vacation, Vacation Mode, Solo Trip | `vacation`, `vacation-mode`, `solo-trip` | [vacation/spec.md](vacation/spec.md) | Ported ([ios.md](vacation/ios.md)) |

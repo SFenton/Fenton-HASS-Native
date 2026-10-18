@@ -54,10 +54,7 @@ private struct ShellHeaderButtons: ViewModifier {
     /// the viewer is a known resident, as on the web.
     private var attentionCount: Int {
         guard let store, let viewer = ChoresConfig.Resident.forUserId(viewerUserId) else { return 0 }
-        let overdue = ProfileSummary.openCount(store.entity(ProfileSummary.lists(for: viewer).overdue.entityId).state)
-        let expired = ProfileSummary.expiredItems(store.entity(ProfileSummary.expiredFoodEntityId).state).count
-        let vacation = store.entity(ChoresConfig.vacationModeEntityId).state?.state == "on"
-        return ProfileSummary.badgeCount(overdue: overdue, expiredFood: expired, vacationMode: vacation)
+        return ProfileSummary.counts(viewer: viewer, store: store).attention
     }
 
     func body(content: Content) -> some View {
@@ -126,7 +123,7 @@ private struct ShellSheets: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: binding(\.accountSection)) { AccountSheet().hassSheet(.form, height: .full) }
+            .sheet(isPresented: binding(\.accountSection)) { YourSummarySheet().hassSheet(.form, height: .full) }
             .sheet(isPresented: binding(\.quickLinksSection), onDismiss: pushPending) {
                 QuickLinksSheet(caller: caller) { pending = $0 }
             }
@@ -143,7 +140,7 @@ private struct ShellSheets: ViewModifier {
 
 /// The profile button at the top trailing edge of every page (owner, 2026-10-13: "profile goes in top right"). It shows
 /// the signed-in user's initials, or a person symbol until the name is known, and opens the Account sheet
-/// (``AccountSheet``: the web's profile modal, Your Summary, with the account and Sign Out).
+/// (``YourSummarySheet``: the web's profile modal, Your Summary, with the account and Sign Out on its Profile tab).
 struct ProfileButton: View {
     /// The signed-in user's display name, when known.
     var name: String?

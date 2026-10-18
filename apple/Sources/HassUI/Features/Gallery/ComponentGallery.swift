@@ -31,6 +31,7 @@ public struct ComponentGallery: View {
         case systemAccessibility = "system-accessibility"
         case modalSizing = "modal-sizing"
         case liveActivity = "live-activity"
+        case profile
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -74,6 +75,9 @@ public struct ComponentGallery: View {
         } else if page == .location {
             // Presents its own sheet, which owns its navigation stack.
             LocationGallery()
+        } else if page == .profile {
+            // Presents its own sheet (Your Summary), which owns its navigation stack.
+            ProfileGallery()
         } else if page == .rooms {
             // Owns its stack so pushed rooms inherit the fixture store and caller.
             RoomsGallery()
@@ -100,7 +104,7 @@ public struct ComponentGallery: View {
                     case .systemAccessibility: SystemAccessibilityGallery()
                     case .modalSizing: ModalSizingGallery()
                     case .liveActivity: LiveActivityGallery()
-                    case .rooms, .vacation, .food, .chores, .location, .settings: EmptyView()
+                    case .rooms, .vacation, .food, .chores, .location, .settings, .profile: EmptyView()
                     }
                 }
                 // Direction G: a gallery page sits on the same dark house backdrop as the page it stands in for.

@@ -364,39 +364,45 @@ struct SettingsHostedTests {
         }
     }
 
-    /// The Account sheet renders the profile summary for a resident: people, chores and expired food from a populated
-    /// store, in vacation mode too. Not asserted by element (macOS builds no accessibility tree): it must lay out and
-    /// settle with every section drawn.
-    @Test func accountSheetRendersTheProfileSummary() async {
+    /// The Summary sheet renders every tab for a resident from a populated store, in vacation mode too, and for a guest. Not
+    /// asserted by element (macOS builds no accessibility tree here): it must lay out and settle with every tab drawn.
+    @Test func summarySheetRendersEveryTab() async {
         let saved = UserDefaults.standard.string(forKey: ChoresModel.viewerDefaultsKey)
-        UserDefaults.standard.set(ChoresConfig.Resident.stephen.haUserId, forKey: ChoresModel.viewerDefaultsKey)
         defer { UserDefaults.standard.set(saved, forKey: ChoresModel.viewerDefaultsKey) }
         let (session, connection) = offlineEnvironment()
         let lists = ProfileSummary.lists(for: .stephen)
         let expired = EntityState(entityId: ProfileSummary.expiredFoodEntityId, state: "1", attributes: ["expired_list": .array([
             .object(["name": .string("Milk"), "expiry_date": .string("2020-01-01"), "location": .string("frigo")]),
         ])])
-        for vacation in [false, true] {
-            connection.store.replaceAll([
-                EntityState(entityId: "person.stephen", state: "home", attributes: ["friendly_name": .string("Stephen")]),
-                EntityState(entityId: "person.steph", state: "not_home", attributes: ["friendly_name": .string("Steph")]),
-                EntityState(entityId: lists.overdue.entityId, state: "2"),
-                EntityState(entityId: lists.dueToday.entityId, state: "0"),
-                EntityState(entityId: lists.noDueDate.entityId, state: "0"),
-                EntityState(entityId: ChoresConfig.vacationModeEntityId, state: vacation ? "on" : "off"),
-                expired,
-            ])
-            let hosted = HostedWindow(
-                AccountSheet()
-                    .environment(ShellNavigator())
-                    .environment(connection)
-                    .environment(connection.store)
-                    .environment(session),
-                size: CGSize(width: 500, height: 900)
-            )
-            await hosted.settle()
-            #expect(hosted.window.contentView != nil)
-            hosted.close()
+        let viewers: [(userId: String?, tabs: [SummaryTab])] = [
+            (ChoresConfig.Resident.stephen.haUserId, SummaryTab.allCases), (nil, [.profile, .expiredFood]),
+        ]
+        for viewer in viewers {
+            UserDefaults.standard.set(viewer.userId, forKey: ChoresModel.viewerDefaultsKey)
+            for vacation in [false, true] {
+                connection.store.replaceAll([
+                    EntityState(entityId: "person.stephen", state: "home", attributes: ["friendly_name": .string("Stephen")]),
+                    EntityState(entityId: "person.steph", state: "not_home", attributes: ["friendly_name": .string("Steph")]),
+                    EntityState(entityId: lists.overdue.entityId, state: "2"),
+                    EntityState(entityId: lists.dueToday.entityId, state: "0"),
+                    EntityState(entityId: lists.noDueDate.entityId, state: "0"),
+                    EntityState(entityId: ChoresConfig.vacationModeEntityId, state: vacation ? "on" : "off"),
+                    expired,
+                ])
+                for tab in viewer.tabs {
+                    let hosted = HostedWindow(
+                        YourSummarySheet(opening: tab)
+                            .environment(ShellNavigator())
+                            .environment(connection)
+                            .environment(connection.store)
+                            .environment(session),
+                        size: CGSize(width: 500, height: 900)
+                    )
+                    await hosted.settle()
+                    #expect(hosted.window.contentView != nil)
+                    hosted.close()
+                }
+            }
         }
     }
 
@@ -426,11 +432,11 @@ struct SettingsHostedTests {
         #expect(!navigator.isAtRoot(.settings))
     }
 
-    /// The Account sheet renders (the signed-in header, Location where reported, Sign Out).
-    @Test func accountSheetRenders() async {
+    /// The Summary sheet renders at regular width (the Profile tab: the signed-in header, Location where reported, Sign Out).
+    @Test func summarySheetRendersAtRegularWidth() async {
         let (session, connection) = offlineEnvironment()
         let hosted = HostedWindow(
-            AccountSheet()
+            YourSummarySheet(opening: .profile)
                 .environment(\.horizontalSizeClass, .regular)
                 .environment(ShellNavigator())
                 .environment(connection)
