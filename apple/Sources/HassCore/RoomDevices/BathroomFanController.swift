@@ -6,6 +6,10 @@ import Observation
 /// Every command goes through the fan's script with a `command` field; Home Assistant runs the timer, lock and
 /// auto-unlock logic. Power, lock, timer-pending and auto-unlock show optimistically and clear on any live change
 /// or after 2 s, like the web.
+///
+/// **No auto-unlock choice** (owner, 2026-10-17): the fan always unlocks when its timer ends, so a timer starts with
+/// `auto_unlock: true` and the web's "Auto-disable lock" checkbox is not ported. The script's `timer_auto_unlock`
+/// command is left in Home Assistant untouched; the app just never sends it.
 @MainActor
 @Observable
 public final class BathroomFanController {
@@ -21,11 +25,6 @@ public final class BathroomFanController {
 
     /// The timer length picked in the sheet (local until Set).
     public var selectedMinutes = BathroomFanController.defaultTimerMinutes
-    /// The auto-unlock choice while no timer runs (web `inactiveAutoUnlock`); dropped whenever the lock/timer
-    /// situation changes, so it resets to "on when locked".
-    private var idleAutoUnlock: Bool?
-    @ObservationIgnored private var observedSituation = ""
-
     /// Creates a controller.
     public init(config: BathroomFanConfig, store: EntityStore, caller: any HassServiceCalling,
                 scheduler: any RevertScheduler = TaskRevertScheduler()) {
@@ -34,25 +33,6 @@ public final class BathroomFanController {
         for id in config.optimisticEntityIds { rules[id] = .liveChange }
         commands = RoomDeviceCommands(store: store, caller: caller, rules: rules, scheduler: scheduler) { [store] id in
             DeviceState.binaryFlag(store.entity(id).state?.state)
-        }
-        observedSituation = situationKey
-        observeSituation()
-    }
-
-    /// Drops the idle auto-unlock choice when the lock or timer changes, live or optimistically.
-    private func observeSituation() {
-        withObservationTracking {
-            _ = situationKey
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                let key = self.situationKey
-                if key != self.observedSituation {
-                    self.observedSituation = key
-                    self.idleAutoUnlock = nil
-                }
-                self.observeSituation()
-            }
         }
     }
 
@@ -63,38 +43,46 @@ public final class BathroomFanController {
     public var powerAvailable: Bool { commands.live(config.powerEntityId) != "unavailable" }
     public var lockAvailable: Bool { commands.live(config.lockEntityId) != "unavailable" }
     public var timerAvailable: Bool { commands.live(config.pendingEntityId) != "unavailable" }
-    var liveAutoUnlockAvailable: Bool { commands.live(config.autoUnlockEntityId) != "unavailable" }
 
     public var powerOn: Bool { flag(config.powerEntityId) == "on" }
     public var locked: Bool { flag(config.lockEntityId) == "on" }
     public var timerPending: Bool { flag(config.pendingEntityId) == "on" }
-    /// Home Assistant's auto-unlock flag (meaningful while a timer runs).
+    /// Home Assistant's auto-unlock flag (set while a timer runs on a locked fan); read only to clear it optimistically.
     public var autoUnlock: Bool { flag(config.autoUnlockEntityId) == "on" }
 
-    private var situationKey: String { "\(locked ? "locked" : "unlocked"):\(timerPending ? "active" : "idle")" }
-
-    /// The auto-unlock checkbox's value: Home Assistant's while a timer runs, else the local choice
-    /// (defaults to on while locked).
-    public var displayedAutoUnlock: Bool {
-        if timerPending { return autoUnlock }
-        if let idleAutoUnlock, observedSituation == situationKey { return idleAutoUnlock }
-        return locked
-    }
-
-    /// Whether the checkbox can be changed.
-    public var autoUnlockAvailable: Bool { timerPending ? liveAutoUnlockAvailable : true }
-
-    /// The checkbox shows only while locked and the fan is on or timed.
-    public var showsAutoUnlock: Bool { locked && (powerOn || timerPending) }
-
-    /// Set is enabled only while the fan is on.
-    public var canStartTimer: Bool { powerAvailable && powerOn && timerAvailable }
+    /// A timer can start whenever the fan and the timer helper are available: starting one turns the fan on if it is
+    /// off (the script's `timer_start` ends with `switch.turn_on`, verified in `scripts.yaml` 2026-10-17).
+    public var canStartTimer: Bool { powerAvailable && timerAvailable }
 
     /// The subtitle for the power tile and the room tile: On, Off or Unavailable.
     public var powerStateText: String { powerAvailable ? (powerOn ? "On" : "Off") : "Unavailable" }
 
     /// Locked, Unlocked or Unavailable.
     public var lockStateText: String { lockAvailable ? (locked ? "Locked" : "Unlocked") : "Unavailable" }
+
+    // MARK: - Room tile text
+
+    /// The room tile's one short status line (owner, 2026-10-17): `On`, `Off`, `Off in 12:30` while a timer runs, or
+    /// `Unavailable`. The lock is never in the text; its button shows it.
+    public func tileStatusText(at now: Date) -> String {
+        guard powerAvailable else { return "Unavailable" }
+        guard powerOn else { return "Off" }
+        if let remaining = remainingSeconds(at: now), remaining > 0 { return "Off in \(Self.formatRemaining(remaining))" }
+        return "On"
+    }
+
+    /// What VoiceOver reads for the room tile: `on, off in 12 minutes, locked`. The lock is spoken here because the
+    /// text no longer carries it.
+    public func tileSpokenValue(at now: Date) -> String {
+        guard powerAvailable else { return "Unavailable" }
+        var parts = [powerOn ? "on" : "off"]
+        if powerOn, let remaining = remainingSeconds(at: now), remaining > 0 { parts.append("off in \(Self.spokenRoughly(remaining))") }
+        if lockAvailable && locked { parts.append("locked") }
+        return parts.joined(separator: ", ")
+    }
+
+    /// Whether the room tile shows a countdown, so the view only runs a per-second clock while one is pending.
+    public var showsCountdown: Bool { powerAvailable && powerOn && timerPending && deadline != nil }
 
     // MARK: - Timer
 
@@ -111,6 +99,29 @@ public final class BathroomFanController {
         return max(0, Int(deadline.timeIntervalSince(now).rounded(.up)))
     }
 
+    /// The length the running timer was started with, in seconds: the `timer` entity's `duration` attribute
+    /// (`0:30:00`), else the shortest offered length that still covers what is left.
+    public func totalSeconds(at now: Date) -> Int? {
+        guard let remaining = remainingSeconds(at: now) else { return nil }
+        if let text = commands.entity(config.timerEntityId)?.attributes["duration"]?.string,
+           let seconds = Self.parseDuration(text), seconds >= remaining, seconds > 0 { return seconds }
+        let covering = Self.timerMinutes.first { $0 * 60 >= remaining } ?? Self.timerMinutes.last ?? 60
+        return covering * 60
+    }
+
+    /// How much of the running timer is left, 1 at the start and 0 at the end, or `nil` when no timer runs.
+    public func remainingFraction(at now: Date) -> Double? {
+        guard let remaining = remainingSeconds(at: now), let total = totalSeconds(at: now), total > 0 else { return nil }
+        return min(1, max(0, Double(remaining) / Double(total)))
+    }
+
+    /// Parses Home Assistant's `H:MM:SS` (or `MM:SS`) duration text.
+    static func parseDuration(_ text: String) -> Int? {
+        let parts = text.split(separator: ":").map { Int($0.split(separator: ".").first ?? "") }
+        guard !parts.isEmpty, parts.count <= 3, !parts.contains(nil) else { return nil }
+        return parts.compactMap { $0 }.reduce(0) { $0 * 60 + $1 }
+    }
+
     /// `05:00` or `01:00:00` (web `formatTimerRemaining`).
     public static func formatRemaining(_ seconds: Int) -> String {
         let seconds = max(0, seconds)
@@ -121,6 +132,36 @@ public final class BathroomFanController {
     /// `5 minutes` … `1 hour`.
     public static func durationTitle(_ minutes: Int) -> String {
         minutes == 60 ? "1 hour" : "\(minutes) minutes"
+    }
+
+    /// A segment's title in the timer row: `5m` ... `1h`.
+    public static func segmentTitle(_ minutes: Int) -> String { minutes == 60 ? "1h" : "\(minutes)m" }
+
+    /// The timer button's title: `Turn Off in 10 Minutes`, `Turn Off in 1 Hour`.
+    public static func startButtonTitle(_ minutes: Int) -> String {
+        minutes == 60 ? "Turn Off in 1 Hour" : "Turn Off in \(minutes) Minutes"
+    }
+
+    /// `4 minutes 5 seconds`, for the sheet's running timer.
+    public static func spokenRemaining(_ seconds: Int) -> String {
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .full
+        formatter.allowedUnits = [.hour, .minute, .second]
+        return formatter.string(from: TimeInterval(max(0, seconds))) ?? formatRemaining(seconds)
+    }
+
+    /// `12 minutes`, `1 hour 5 minutes` or `40 seconds`: whole minutes while a minute or more is left, so the room
+    /// tile's value does not change every second under VoiceOver.
+    public static func spokenRoughly(_ seconds: Int) -> String {
+        let seconds = max(0, seconds)
+        let formatter = DateComponentsFormatter()
+        formatter.unitsStyle = .full
+        guard seconds >= 60 else {
+            formatter.allowedUnits = [.second]
+            return formatter.string(from: TimeInterval(seconds)) ?? "\(seconds) seconds"
+        }
+        formatter.allowedUnits = [.hour, .minute]
+        return formatter.string(from: TimeInterval(seconds / 60 * 60)) ?? "\(seconds / 60) minutes"
     }
 
     /// Parses `2026-10-11 14:30:00` (or with a `T`) in the device's time zone, like the web's `Date.parse`.
@@ -159,15 +200,17 @@ public final class BathroomFanController {
         commands.perform(script(["command": .string("lock"), "locked": .bool(lock)]), intents: intents)
     }
 
-    /// Starts the off timer with ``selectedMinutes``; auto-unlock applies only while locked.
+    /// Starts the off timer with ``selectedMinutes``. The script turns the fan on if it is off, and always releases the
+    /// lock when the timer ends (`auto_unlock: true`; the app has no choice to turn that off).
     public func startTimer() {
-        guard powerOn, timerAvailable else { return }
-        let enabled = locked && displayedAutoUnlock
+        guard canStartTimer else { return }
+        var intents = [intent(config.pendingEntityId, true), intent(config.autoUnlockEntityId, locked)]
+        if !powerOn { intents.append(intent(config.powerEntityId, true)) }
         commands.perform(script([
-            "auto_unlock": .bool(enabled),
+            "auto_unlock": .bool(true),
             "command": .string("timer_start"),
             "minutes": .number(Double(Self.normalizedMinutes(selectedMinutes))),
-        ]), intents: [intent(config.pendingEntityId, true), intent(config.autoUnlockEntityId, enabled)])
+        ]), intents: intents)
     }
 
     /// Cancels the pending timer.
@@ -175,17 +218,5 @@ public final class BathroomFanController {
         guard timerPending, timerAvailable else { return }
         commands.perform(script(["command": .string("timer_cancel")]),
                          intents: [intent(config.pendingEntityId, false), intent(config.autoUnlockEntityId, false)])
-    }
-
-    /// Changes the auto-unlock checkbox: on the server while a timer runs, locally otherwise.
-    public func setAutoUnlock(_ enabled: Bool) {
-        guard timerPending else {
-            observedSituation = situationKey
-            idleAutoUnlock = enabled
-            return
-        }
-        guard locked, liveAutoUnlockAvailable, enabled != autoUnlock else { return }
-        commands.perform(script(["command": .string("timer_auto_unlock"), "enabled": .bool(enabled)]),
-                         intents: [intent(config.autoUnlockEntityId, enabled)])
     }
 }
