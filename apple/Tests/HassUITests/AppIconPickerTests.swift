@@ -424,7 +424,9 @@ struct AppIconFlowTests {
         defer { driver.close() }
         #expect(await driver.waitFor("settings.vacation") != nil, "the list is up")
         #expect(await driver.node("settings.appIcon") == nil)
-        #expect(!(await driver.shows("Appearance")), "The empty section has no header either")
+        // Appearance keeps its header and Background Blur; only the App Icon row goes.
+        #expect(await driver.shows("Appearance"))
+        #expect(await driver.node("settings.backdropBlur") != nil, "Background Blur stays where icons cannot switch")
     }
 }
 #endif

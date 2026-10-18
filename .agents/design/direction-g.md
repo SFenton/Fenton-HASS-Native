@@ -17,7 +17,7 @@ It never comes from custom chrome, custom surfaces or a custom palette.
 
 | Layer | Look | Where |
 |---|---|---|
-| Wallpaper | The house photo (`/local/images/house.webp`), blurred 20, saturation 1.1, scaled 1.06, under a dark scrim. The scrim runs 0.44 → 0.40 (28%) → 0.42 (50%) → 0.52 → 0.64 from top to bottom; the top third stays at 0.40 or more so white titles and headers pass 4.5:1 over a light sky (2026-10-14 audit). Decode it once at screen size, blur it once and cache the bitmap; never run a live `.blur` per frame. | Every tab root and pushed page, on every platform. Never in sheets. |
+| Wallpaper | The house photo (`/local/images/house.webp`), blurred 16.8 pt (the web's `blur(16px)` under its `scale(1.05)`, owner 2026-10-17: "less blur on the background image. Get us closer to web"; the user can change it in Settings → Appearance → Background Blur, 0 to 33.6 pt), saturation 1.1, scaled 1.06, under a dark scrim. The scrim runs 0.44 → 0.45 (28%) → 0.46 (50%) → 0.52 → 0.64 from top to bottom; the top half stays at 0.44 or more so white titles and headers pass 4.5:1 over a light sky (2026-10-14 audit; raised from 0.40 and 0.42 on 2026-10-17, when the web-matched blur kept more of the roofline's detail: the 30 to 40% band measured 4.3:1 at the old stops, 4.96:1 at these, on the house photo at the default blur). Render it once at the window's pixel size (blurred in points, not in image pixels), cache the bitmap in memory and on disk, and never run a live `.blur` per frame ([page-backdrop](../patterns/page-backdrop.md) R8). | Every tab root and pushed page, on every platform. Never in sheets. |
 | Modules on the wallpaper | `systemGray6` dark at 55% with a 30pt background blur (thin material); built as `#1C1C1E` at 66% with no live blur, because the wallpaper is already blurred and a backdrop layer per tile cost GPU time (and crashed the simulator's render server, 2026-10-14). 26pt radius, no rim or bevel, white text. A module that carries red or orange status text (overdue chores, expired food, an error tile) uses the denser `rgba(20,20,22,.78)` so that text stays readable over the lit windows. | Cards, inset lists and tiles on pages. These are content-layer materials and never `.glassEffect` (HIG must). |
 | Sheets | System sheet in the **system appearance** (owner decision, 2026-10-15). Dark: `#1C1C1E` ground, `#2C2C2E` cells and tiles. Light: `#F2F2F7` ground (`systemGroupedBackground`), white cells and tiles (`secondarySystemGroupedBackground`), label ink. The presenting page scales back and dims. | Every modal, except the ones that are dark by design (below). |
 | Liquid Glass | System glass. iOS 17–25 fall back to `.ultraThinMaterial` capsules. | Navigation only: the tab bar, the Quick Links and Profile header circles, toolbar circles (Back, Close, Cancel, Save), bottom section controls and page bottom toolbars. |
@@ -60,7 +60,7 @@ Pages are always dark-styled because they sit on the dimmed photo, the way Apple
 - **Destructive, error and overdue:** `#FF6961`. Soon or warning: `#FFB340`. Count badges: `#D93025`.
 - **Colour families** (owner request, 2026-10-14): every kind of device has one colour, used for glyphs, chips and filled tiles, never for chrome.
   - Off tiles stay dark, with the glyph in the family colour mixed 72% with grey.
-  - On tiles fill with the family colour (a slight top highlight) and white ink, with subtitles at 92% white. Every fill passes 4.5:1 with white.
+  - On tiles fill with the family colour (tinted glass since 2026-10-17: the fill at 78% over a dark underlay on a page, a soft top highlight, a lit hairline; see Tile finish) and white ink, with subtitles at 92% white. Every fill passes 4.5:1 with white.
   - Lights keep the warm lit tile. Power uses bright yellow with dark ink.
   - Red is never a family: alerts are a red glyph and red state on any tile.
   - **Thermostats and bed sides keep a family when off** (owner, 2026-10-15; mockup fc-families): heating and cooling fill as above. An idle or off thermostat draws the off face with the Heating glyph when its HVAC mode is `heat`, else the Cooling glyph. A bed side that is on fills whatever its level (owner, 2026-10-16: "Beds are on right now but still no colors"): Heating at or above zero, Cooling below; an off side draws the off face with that family's glyph. Bed cards read the side's level and power through `BedSideController`, never the climate entity, whose state says `heat` whatever the pod does. Never grey, except an unavailable bed side. One rule: `HassDesign/ThermostatTileFace`.
@@ -140,9 +140,63 @@ People have no colour of their own. **Rooms do** (owner reversal, 2026-10-16: "r
 
 White passes 4.5:1 on every fill and no two links on the sheet are within 0.05 OKLab (`QuickLinkPaletteTests`). The chore lists' quick links (Chores tab) are the Chores lane's.
 
-## Tile finish (proposals, owner choice pending)
+## Tile finish: tinted glass (owner decision, 2026-10-17)
 
-Owner, 2026-10-16: "Ideate on a more 'frosted' tile look like we have on the web; subtle but looks less childish? Consult the design agents and HIG." Three proposals sit beside the shipped solid finish in the gallery (`FENTON_GALLERY=direction-g`, Tile Finish; `-directionGOrder finish`, `-directionGFinish solid|tintedGlass|frostedModule|webPort`, also a "Finish" section in the gallery sheet, which follows `FENTON_APPEARANCE`). `HassDesign/TileFinish` is an environment value (`.tileFinish(_:)`); **nothing ships a finish other than `solid` until Stephen picks one**.
+Owner, 2026-10-16: "Ideate on a more 'frosted' tile look like we have on the web; subtle but looks less childish? Consult the design agents and HIG." Three proposals were built beside the solid finish (#105). **Owner, 2026-10-17: option A, Tinted Glass, rolled out app-wide as the default finish for every tile.** B (Frosted Module) and C (Web Port) were deleted with their tokens; this section and the #105 PR keep them for reference. `HassDesign/TileFinish` has two cases: `tintedGlass` (shipped) and `solid` (the Reduce Transparency and Increase Contrast fallback, `TileFinish.effective`). The gallery (`FENTON_GALLERY=direction-g`, Tile Finish; `-directionGOrder finish`, `-directionGFinish tintedGlass|solid`, also a "Finish" section in the gallery sheet, which follows `FENTON_APPEARANCE`) shows both on the same tiles.
+
+**What ships.** One token set (`TileFinish.Tokens.tintedGlass(on:)`), one ground (`TintedGlassGround`), one hairline (`TintedGlassRim`), one gradient (`TintedGlassSheen`), all inside `GlassTileFace`, so every tile gets it: families, the lit tile, power, room fills, Quick Links (including the chore list links), the Food and Security tiles, selection tiles, progress bands, and `BrightnessTile`. Chosen controls that are not a `GlassTile` (the alarm mode buttons) take `.tintedGlassEdge(cornerRadius:)`.
+
+| Token | Tinted glass |
+|---|---|
+| `underlay` (`#1C1C1E`, the off ground) | 0.66 |
+| `fillUnderlay` (beneath a fill, page) | 0.50 |
+| `fillOpacity` (white-ink fills) | 0.78 on a page, 1 in a sheet |
+| `sheen` top white / bottom black | 0.14 / 0.08 (clear at 46% of the height) |
+| `rim` top / bottom white | 0.32 / 0.06, 1 pt |
+| radius | 22 (`Radius.tile`) |
+
+**Faces.**
+- *Off, tinted, error:* the thin module (the underlay alone) or the dense module for an error, then the sheen and the rim. The off glyph keeps 88% of its family colour (72% on solid) and is lifted toward white until it reads 3:1 on the lightest ground a glyph can sit on (`ColorFamily.offGlyphRGB(_:under:)`: the muted Food families needed it, 2.85 before). State text on a page takes `Surface.secondaryOnWallpaper` (85%).
+- *On (family fill) and room, Quick Link and chore-list fills:* the fill at 78% over the underlay on a page; opaque in a sheet. `FinishColor.flatten` composites the two into one colour.
+- *Lit (lights) and power:* opaque with dark ink in every place, because a translucent light fill over a dark wallpaper only gets darker. They take the sheen and the rim.
+- *Progress bands* (vacuum, dishwasher): unchanged, over the glass fill.
+- *Sheets:* no wallpaper to show through, so fills are opaque and keep the sheen and the rim. A white cell in a light sheet has nothing for a highlight to work on: no sheen, and the hairline is the sheet's separator colour. A room or Quick Link fill in a sheet gets only the bottom shade (no highlight): white ink on those fills is within 0.2 of 4.5:1 flat, so a highlight over the title would break it.
+- *Reduce Transparency or Increase Contrast:* the solid finish (opaque fills, the module tint, no rim), checked by pixels in `TilesRound2JourneyTests`.
+
+**Measured** (iPhone 17 Pro simulator, optimized build, `tools/ios_scrollcost.sh`; CPU instructions while scrolling, so read the ratios, not the totals):
+
+Before (solid, main at c67a3d5) and after (tinted glass), the same optimized build recipe, one busy Mac, `--section gallery`:
+
+| Surface | Instr. before | Instr. after | Main-thread ms before / after | p95 ms before / after | Turns over 8 ms before / after |
+|---|---|---|---|---|---|
+| 300-tile grid (stress) | 4729 M | 5158 M (+9%) | 1963 / 2348 | 6.01 / 5.25 | 7 / 0 |
+| Chores | 1779 M | 1800 M (+1%) | 1103 / 976 | 3.65 / 3.47 | 2 / 0 |
+| Food hub | 1071 M | 1011 M (-6%) | 1014 / 952 | 3.78 / 3.87 | 0 / 0 |
+| Climate (Rooms tab, tiles) | 1304 M | 924 M (-29%) | 1292 / 885 | 5.19 / 2.06 | 0 / 0 |
+
+The page rows move with whatever else the Mac was running (Climate fell 29% with no change to its layout), so read the grid as the upper bound and the pages as "no regression". A room page, Kitchen and Security fit one screen on the fixtures and have nothing to scroll. The same-build A/B on the grid (`--section finish`, `FENTON_TILE_FINISH`, `FENTON_TILE_FINISH_OMIT`) isolates the finish:
+
+| Variant | Instructions while scrolling | Main-thread ms | p95 ms | Turns over 8 ms |
+|---|---|---|---|---|
+| Solid (fallback) | 4360 M | 1955 | 4.61 | 5 |
+| Tinted glass | 4971 M (+14%) | 2102 (+8%) | 4.77 | 2 |
+| without sheen | 4828 M (+11%) | 2163 | 5.14 | 10 |
+| without rim | 4708 M (+8%) | 2151 | 5.01 | 2 |
+| without sheen or rim | 4332 M (-1%) | 1975 | 4.61 | 4 |
+
+Sheen and rim together are the whole cost (+14% instructions, +8% main-thread CPU on 300 tiles; a real page has 10 to 40, under 1% of one core). No turn passes 8 ms on any page; the 300-tile grid's worst turn (a first-layout turn) is 22 to 27 ms in every variant, solid included. Both layers stay. No finish adds a backdrop or offscreen pass; the simulator cannot show GPU cost, so run the phone A/B (`--disable`) before a Release build ships.
+
+**Contrast** (`TileFinishTests`: rendered pixels of `TintedGlassGround` for every family fill, the 16 rooms, the Quick Link fills (Rooms, Custom Lights, Security by alarm mode and unknown), the chore and Food families, the off, lit, power and error faces, at the heights text sits, on the wallpaper's lightest region (sRGB grey 0.46, the lightest under which white text still reads 4.5:1) and darkest (`#111723`), and in a dark and a light sheet). The tests enforce 4.5:1 for titles and state text, 3:1 for glyphs and the Chores count numeral; the worst cases are:
+
+| Place | Title | State | Error text | Off glyph |
+|---|---|---|---|---|
+| Page, white-ink fill | 4.90 | 4.95 | n/a | n/a |
+| Page, off face | 9.75 | 7.45 | 5.14 | 3.05 or better after the lift |
+| Sheet, white-ink fill (rooms flat) | 4.71 | 4.7 or better | n/a | n/a |
+
+(The figures are the same stacks computed outside the tests, `scratchpad/lane-glass/contrast_model.py`, within a rounding of the rendered pixels. Earlier proposals' table, for reference: solid 4.71 / 4.66 / 5.12 / 3.56, A 5.09 / 5.09 / 4.67 / 3.24, B 10.31 / 6.94 / 4.80 / 4.12, C 5.91 / 5.91 / 5.41 / 3.24; the new run also covers the top of the tile, where the highlight sits.)
+
+### The proposals that were not chosen
 
 **What the web does** (`ha-sfenton-react-dash@f5a7bf9`): a tile is `background: var(--tile-color)` (a family colour at 0.1 to 0.6 alpha, the neutral and off tiles `rgba(255,255,255,0.1)`) over `backdrop-filter: blur(15px) saturate(1.08)`, with `box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.08)` and a 32 px radius (`src/components/core/GlassTile.module.css:11-15`; `src/components/core/Card.module.css:15-18`, radius 30, 28 compact). Cards add an `::after` sheen: `linear-gradient(135deg, rgba(255,255,255,0.13), transparent 44%)` plus a vertical `rgba(255,255,255,0.02)` to `rgba(0,0,0,0.12)` (`Card.module.css:53-61`), a 1 px `text-shadow` on the title (`:110`) and a white icon with a drop shadow (`:88`). The page behind is the photo at `blur(16px) saturate(1.04) brightness(.76)` (`src/components/shell/AppShell.module.css:62-65`). So the web's frost is a milky veil, a lit hairline and a diagonal sheen over a blurred photo. Colour is a tint wash, not a solid fill.
 
@@ -175,29 +229,7 @@ Owner, 2026-10-16: "Ideate on a more 'frosted' tile look like we have on the web
 - **B Frosted Module.** One neutral frosted module for every state. The family colour moves to a glyph disc (filled when on, a shallow well when off) and a coloured hairline and corner wash when on; text is the off face's white. Closest to Apple Home, and the calmest page, but "on" no longer fills the tile, which departs from the owner's coloured, filled tiles (2026-10-14 families; 2026-10-16 "icons should be filled/white").
 - **C Web Port.** The web's structure at the strength contrast allows: milky veil on off, the tint at 84% rather than 60%, a diagonal sheen, 28 pt radius, the title shadow. Reads as A with rounder corners and a stronger sheen; the closest to the web.
 
-**Measured** (iPhone 17 Pro simulator, optimized build, 300-tile grid scrolled 8 s twice, `tools/ios_scrollcost.sh --section finish`; the Mac was busy, so read the ratios, not the totals):
-
-| Finish | CPU instructions while scrolling | Main-thread CPU | p95 turn | Turns over 8 ms |
-|---|---|---|---|---|
-| Solid | 4.73 G | 2.47 s | 5.9 ms | 7 |
-| A Tinted Glass | 5.60 G (+18%) | 2.74 s (+11%) | 6.7 ms | 7 |
-| B Frosted Module | 5.82 G (+23%) | 2.62 s (+6%) | 6.1 ms | 4 |
-| C Web Port | 5.95 G (+26%) | 2.98 s (+21%) | 7.1 ms | 12 |
-
-A second run measured the same order (A +23%, B +25%, C +26% instructions). Taking one layer off A: no sheen 5.41 G, no rim 5.35 G, neither 4.93 G (+4% on solid), so the sheen and the hairline are about 8 to 10% each. A real page has 10 to 40 tiles, not 300: about 3.6 M instructions per tile over the whole 16 s probe, under 1% of one core for a room page. No finish adds a backdrop or offscreen pass (the simulator cannot show GPU cost; run the phone A/B `--disable` before shipping one).
-
-**Contrast** (rendered pixels, `TileFinishTests`, every family and room fill, the off face and the error face, on the wallpaper's lightest region (sRGB grey 0.46, the lightest ground under which white text still reads 4.5:1) and its darkest (`#111723`)): worst case for title, state, error text and off glyph. All pass; solid is the baseline.
-
-| Finish | Title | State | Error text | Off glyph |
-|---|---|---|---|---|
-| Solid | 4.71 | 4.66 | 5.12 | 3.56 |
-| A | 5.09 | 5.09 | 4.67 | 3.24 |
-| B | 10.31 | 6.94 | 4.80 | 4.12 |
-| C | 5.91 | 5.91 | 5.41 | 3.24 |
-
-The journeys audit every finish on the page, at AX5 and in a light sheet (`TilesRound2JourneyTests`), and check that Reduce Transparency draws the shipped pixels.
-
-**Recommendation: A, Tinted Glass.** It answers "subtle, less childish" with edge light and depth while keeping the glanceable family-colour fill the owner asked for (Von Restorff; Similarity). Contrast and Reduce Transparency are as safe as solid. If a cost has to come off, drop A's sheen (about 8% fewer instructions on the stress grid) and keep the hairline, which carries most of the "edge" read. B is the pick only if Stephen prefers a calmer, Apple-Home-like page over a colour-filled one; C adds corner radius and a stronger sheen for the highest cost and little visual distance from A.
+The #105 measurements of the three proposals (300-tile grid, instructions while scrolling): solid 4.73 G, A 5.60 G (+18%), B 5.82 G (+23%), C 5.95 G (+26%); taking the sheen off A saved about 8%, the rim about 10%. A was chosen for subtlety (edge and depth, the glanceable family fill kept), B would have moved the colour to a glyph disc (calmer, Apple-Home-like, but "on" no longer fills the tile) and C added a stronger sheen and 28 pt corners for the highest cost and little visual distance from A.
 
 ## Type
 
@@ -281,4 +313,4 @@ Owner decision, 2026-10-17, from the "Paired tile and house colours" mockups (`P
 - **Remote apps:** placeholder icons, not real app icons.
 - **Library:** kept as a storage choice.
 - **Swipe actions:** used for row Edit and Delete.
-- **Tile finish:** shipped solid; the three frosted proposals (A recommended) wait in the gallery, Tile Finish.
+- **Tile finish:** decided 2026-10-17: Tinted Glass (option A) ships for every tile; solid is the Reduce Transparency fallback (Tile finish).

@@ -5,9 +5,10 @@ import SwiftUI
 /// draws the real island, so this is a stand-in with the real regions inside it.
 ///
 /// The expanded stand-in lays the regions out the way the canvas does (board 7): the leading and trailing regions are the
-/// space beside the camera, `(island width − 36 − camera) / 2` each, and the title and buttons sit below in the full width.
-/// Passing a narrow or wide `screenWidth` and `cameraWidth` reproduces every iPhone, which is how the journeys check that
-/// an `H:MM:SS` figure is not clipped.
+/// space beside the camera, `(island width − 36 − camera) / 2` each, and the title, value and buttons sit below in the full
+/// width. Passing a narrow or wide `screenWidth` and `cameraWidth` reproduces every iPhone, which is how the journeys check
+/// that an `H:MM:SS` value is not clipped. The compact stand-in exposes the trailing side's exact bounds, which the journeys
+/// compare with the width of its hidden template (a rigid width, not the width the island offers).
 public struct HomeActivityIslandPreview: View {
     /// Which presentation.
     public enum Kind: String, CaseIterable, Sendable {
@@ -24,6 +25,7 @@ public struct HomeActivityIslandPreview: View {
     private let kind: Kind
     private let screenWidth: CGFloat
     private let cameraWidth: CGFloat
+    private let exposesCompactBounds: Bool
 
     /// Creates the preview.
     /// - Parameters:
@@ -31,7 +33,10 @@ public struct HomeActivityIslandPreview: View {
     ///   - kind: Which presentation.
     ///   - screenWidth: The screen the expanded island sits on (402 by default).
     ///   - cameraWidth: The camera cut-out between the two regions (126 by default; 104 on a narrower island).
-    public init(card: ActivityCard, kind: Kind, screenWidth: CGFloat = 402, cameraWidth: CGFloat = 126) {
+    ///   - exposesCompactBounds: Add an accessibility element with the compact trailing side's exact bounds, for the journey that
+    ///     compares it with its template. Off elsewhere: an element that small fails the accessibility audit's hit-area check.
+    public init(card: ActivityCard, kind: Kind, screenWidth: CGFloat = 402, cameraWidth: CGFloat = 126, exposesCompactBounds: Bool = false) {
+        self.exposesCompactBounds = exposesCompactBounds
         self.card = card
         self.kind = kind
         self.screenWidth = screenWidth
@@ -46,6 +51,7 @@ public struct HomeActivityIslandPreview: View {
                     HomeActivityIsland.CompactLeading(card: card)
                     Spacer(minLength: 90)
                     HomeActivityIsland.CompactTrailing(card: card)
+                        .background { if exposesCompactBounds { Self.bounds("liveactivity.compact.trailing.bounds") } }
                 }
                 .padding(.horizontal, 12)
                 .frame(width: 250, height: 36)

@@ -12,8 +12,10 @@ import SwiftUI
 /// - a fixture name (`HomeActivityFixtures.allNames`): that card plus every island presentation and the small family;
 /// - a group (`HomeActivityFixtures.groups`: `stack`, `jobs`, `vacuums`, `hotflash`, `complete`, `states`, `problems`,
 ///   `problems-flipped`): every card in it, one under the other, each named `liveactivity.card.<fixture>`;
-/// - `island-widths`: the expanded island for a long `H:MM:SS` figure on the narrowest, a standard and the widest camera
-///   regions, to check nothing clips.
+/// - `island-widths`: the expanded island for a long `H:MM:SS` value on the narrowest, a standard and the widest camera
+///   regions, to check nothing clips;
+/// - `compact-widths`: the compact island for an `MM:SS` time, an `H:MM:SS` time and two vacuum words, each beside a probe of
+///   its hidden template, to check the trailing side's width is the template's and not the width the island offers.
 ///
 /// Launch with `FENTON_GALLERY=live-activity`; the default scenario is `stack` (four cards, the cap).
 struct LiveActivityGallery: View {
@@ -35,14 +37,20 @@ struct LiveActivityGallery: View {
     @State private var lastAction = "none"
     private let isGroup: Bool
     private let showsIslandWidths: Bool
+    private let showsCompactWidths: Bool
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         let name = environment["FENTON_GALLERY_SCENARIO"] ?? "stack"
         showsIslandWidths = name == "island-widths"
+        showsCompactWidths = name == "compact-widths"
         isGroup = HomeActivityFixtures.groups[name] != nil
-        let loaded = showsIslandWidths
-            ? [HomeActivityFixtures.fixture("fan-long")].compactMap { $0 }
-            : HomeActivityFixtures.fixtures(fromLaunchValue: name)
+        let loaded = if showsIslandWidths {
+            [HomeActivityFixtures.fixture("fan-long")].compactMap { $0 }
+        } else if showsCompactWidths {
+            ["dishwasher", "dishwasher-long", "vacuum", "vacuum-long"].compactMap { HomeActivityFixtures.fixture($0) }
+        } else {
+            HomeActivityFixtures.fixtures(fromLaunchValue: name)
+        }
         _fixtures = State(initialValue: loaded.isEmpty ? HomeActivityFixtures.fixtures(fromLaunchValue: "stack") : loaded)
     }
 
@@ -59,13 +67,30 @@ struct LiveActivityGallery: View {
                                 HomeActivityIslandPreview(card: fixture.card(), kind: .expanded, screenWidth: size.screen, cameraWidth: size.camera)
                                     .accessibilityIdentifier("liveactivity.islandsize.\(size.id)")
                             }
-                            // The same figure at its natural width: the journey checks it fits the region without elision.
+                            // The same value at its natural 32 pt width: the journey checks it fits beside the buttons without elision.
                             Text("1:04:42")
-                                .font(.system(size: 22, weight: .semibold))
+                                .font(.system(size: 32, weight: .semibold))
                                 .monospacedDigit()
                                 .fixedSize()
                                 .foregroundStyle(HassTokens.Ink.secondary)
                                 .accessibilityIdentifier("liveactivity.probe.\(size.id)")
+                        }
+                    }
+                } else if showsCompactWidths {
+                    ForEach(fixtures) { fixture in
+                        section(fixture.name) {
+                            HomeActivityIslandPreview(card: fixture.card(), kind: .compact, exposesCompactBounds: true)
+                        }
+                    }
+                    section("Template widths") {
+                        HStack(spacing: HassTokens.Spacing.l) {
+                            ForEach(["00:00", "0:00:00"], id: \.self) { template in
+                                Text(template)
+                                    .font(ActivityStyle.compactTimeFont)
+                                    .fixedSize()
+                                    .foregroundStyle(HassTokens.Ink.secondary)
+                                    .accessibilityIdentifier("liveactivity.probe.compact.\(template.count == 5 ? "short" : "hours")")
+                            }
                         }
                     }
                 } else if isGroup {

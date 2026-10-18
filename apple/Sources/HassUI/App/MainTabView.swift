@@ -11,7 +11,6 @@ import SwiftUI
 struct MainTabView: View {
     @SceneStorage("selectedTab") private var storedSelection: AppSection = .home
     @State private var navigator = ShellNavigator()
-    @State private var canvas: CGSize = .zero
     @State private var windowTop: CGFloat = 0
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(HassConnection.self) private var connection: HassConnection?
@@ -38,14 +37,6 @@ struct MainTabView: View {
         }
         // Also behind the root, where no page draws: under the tab bar and the home indicator.
         .background { HouseBackdrop() }
-        // The window's full size, which the page backdrop photo fills on every page (``HouseBackdrop``).
-        .background {
-            // Measured inside the safe area and grown by its insets: an `ignoresSafeArea()` here measured the
-            // safe-area rect (402 x 778 on an iPhone 18 Pro) and left the wallpaper ending above the tab bar.
-            Color.clear.onGeometryChange(for: CGSize.self) {
-                BackdropCanvas.size(container: $0.size, insets: $0.safeAreaInsets)
-            } action: { canvas = $0 }
-        }
         // The status bar's height, for where the inline navigation bar ends (``headerEdgeCap``).
         .background {
             Color.clear.onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top.rounded() } action: { windowTop = $0 }
@@ -53,7 +44,8 @@ struct MainTabView: View {
         .environment(navigator)
         .environment(\.shellNavigationStyle, style)
         .environment(\.shellChrome, chrome)
-        .environment(\.backdropCanvas, canvas)
+        // The window's full size, which the page backdrop wallpaper is rendered for and fills on every page.
+        .backdropCanvasProvider()
         .environment(\.headerEdgeCap, headerEdgeCap)
         // Direction G: pages sit on the dimmed house photo, so the signed-in shell is always dark. Sheets follow the
         // system appearance instead: `RootView` publishes it, and `hassSheet()` / `HassModal` apply it to themselves
