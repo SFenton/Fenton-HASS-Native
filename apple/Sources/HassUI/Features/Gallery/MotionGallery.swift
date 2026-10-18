@@ -25,12 +25,10 @@ struct MotionGallery: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-                Button {
+                // The primary button's own fill and label: the system prominent style measured 2.8:1 on the dark page.
+                PrimaryButton("Toggle all") {
                     if onCases.count == Self.cases.count { onCases = [] } else { onCases = Set(Self.cases.map(\.id)) }
-                } label: {
-                    Text("Toggle all").frame(minHeight: HassTokens.minTarget)
                 }
-                .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("motion.toggleAll")
                 ForEach(Self.cases) { card($0) }
             }
