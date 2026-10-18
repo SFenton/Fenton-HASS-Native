@@ -158,6 +158,20 @@ Tab switches, pushes, pops, sheets and zooms are timed by the app itself, the wa
 
   The app reports through `diagnostics.navperf` (`FENTON_NAVPERF=1`, `NavigationPerfProbe`): a test posts `com.sfenton.home.navperf.reset` before, and `...report` after, so the report itself never disturbs a measurement.
 - **Device** (`testDeviceNavigationTransitionMetrics`, `testDeviceZoomTransitionMetrics`): `XCTOSSignpostMetric.navigationTransitionMetric` plus the app's own `Push`, `Pop`, `SheetPresent`, `SheetDismiss`, `ZoomOpen` and `ZoomClose` signposts, ten iterations. They skip on a simulator and need the owner's say-so before anyone runs them on the phone. Target: hitch ratio under 5 ms/s.
+- **First numbers (2026-10-18, simulators on a Mac running about 400 load average, so wall times are inflated; the turn costs are CPU and are not).** iPhone 17 Pro / iPhone Duo / iPad Pro 11 (iOS 27), live house for the tab and zoom rows, Rooms gallery for push and sheet. First frame and settled are p50 / p95 in ms; turn is the transition's p95 and worst run-loop turn.
+
+  | Surface | iPhone | iPhone Duo | iPad |
+  |---|---|---|---|
+  | Tab revisit, first frame | 67 / 71 | 3 / 89 | (flyout) |
+  | Tab cycle, first frame (turn p95 / worst) | 94 / 220 (15.6) | 78 / 116 (9.2) | (flyout) |
+  | Tab first visit, first frame | 304 / 481 | 325 / 468 | (flyout) |
+  | Push room, first frame / settled | 89 / 201, 563 / 673 | 93 / 251, 580 / 736 | 78 / 218, 570 / 712 |
+  | Push turn p95 / worst | 0.8 / 10.5 | 0.6 / 3.2 | 0.9 / 11.6 |
+  | Sheet present, settled | 610 / 817 | 626 / 903 | 600 / 726 |
+  | Sheet dismiss turn p95 / worst | 0.3 / 23.3 | 0.4 / 22.8 | 0.2 / 15.0 |
+  | Zoom open, settled | 960 / 1002 (first run) | 944 / 974 | 958 / 988 |
+
+  Against the budgets: transitions cost the main thread very little (turn p95 under 1.3 ms everywhere), but a sheet dismissal's longest turn (22 to 23 ms on the phones) and one tab-revisit turn (15.6 ms iPhone) break the 16 ms rule, and push and sheet "settled" p95 sit above 600 ms (the system animations are about 0.5 s plus the build). `Pop` and `ZoomClose` are not recorded yet (see `patterns/motion.md`, Departures).
 - **Adding a navigation surface:** give it a `measuresNavigation` (or a `MotionPolicy.measure`) and a row in `NavigationPerformanceTests` ([patterns/motion.md](../../patterns/motion.md)).
 
 ## What only a phone can settle
