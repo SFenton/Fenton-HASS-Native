@@ -31,3 +31,6 @@ build/
 
 # Review screenshots are never committed (owner, 2026-10-13; .agents/testing/apple/devices.md).
 screenshots/
+
+# LLVM coverage output
+*.profraw
