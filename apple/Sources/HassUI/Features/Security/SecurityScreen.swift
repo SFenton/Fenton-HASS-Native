@@ -85,9 +85,6 @@ struct SecurityPage: View {
         .scrollTelemetry("Security")
         .accessibilityIdentifier("security.scroll")
         .navigationTitle("Security")
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) { FreshnessIndicator() }
-        }
         .sheet(item: $sheet) { sheet in
             switch sheet {
             case .system:

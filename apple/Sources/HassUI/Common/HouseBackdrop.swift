@@ -229,9 +229,14 @@ struct HouseBackdrop: View {
     @Environment(HouseBackdropStore.self) private var store: HouseBackdropStore?
     @Environment(\.backdropCanvas) private var canvas
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.homeArrival) private var arrival
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
+        // After a sign-in the photo fades in from 1.06 to 1 as the sign-in layer lifts away (`HomeArrival`); otherwise it is
+        // already there. Reduce Motion cross-fades without the scale.
+        let arrived = arrival?.isRevealed ?? true
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 HouseBackdropStyle.base
@@ -257,6 +262,9 @@ struct HouseBackdrop: View {
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+        .scaleEffect(arrived || reduceMotion ? 1 : MotionTokens.Arrival.backdropScale)
+        .opacity(arrived ? 1 : 0)
+        .animation(reduceMotion ? MotionTokens.crossFade : MotionTokens.Arrival.backdrop, value: arrived)
         .animation(.easeInOut(duration: 0.3), value: store?.image != nil)
     }
 }
