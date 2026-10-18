@@ -96,9 +96,23 @@ public final class TelemetryLog: Sendable {
         return samples.compactMapValues(TelemetryStats.init)
     }
 
+    /// Stats per transition phase: `<kind>.<phase>` and `<kind>.<phase>@<page>`, for the records ``Telemetry/lap(_:phase:)`` and
+    /// ``Telemetry/record(_:page:phase:value:)`` write (`TabSwitch.firstFrame`, `Push.settled@Room`, `Push.worstTurn`).
+    public var phaseStats: [String: TelemetryStats] {
+        var samples: [String: [Double]] = [:]
+        for record in records {
+            guard let detail = record.detail, Telemetry.Phase(rawValue: detail) != nil,
+                  let sample = record.durationMs ?? record.value else { continue }
+            samples["\(record.kind).\(detail)", default: []].append(sample)
+            if let page = record.page { samples["\(record.kind).\(detail)@\(page)", default: []].append(sample) }
+        }
+        return samples.compactMapValues(TelemetryStats.init)
+    }
+
     /// Everything, for the export file.
     public func export(environment: [String: String] = [:], now: Date = .now) -> TelemetryExport {
-        TelemetryExport(exportedAt: now, environment: environment, counters: counters, stats: stats, scroll: scroll, records: records)
+        TelemetryExport(exportedAt: now, environment: environment, counters: counters, stats: stats, phases: phaseStats, scroll: scroll,
+                        records: records)
     }
 
     /// The export as pretty-printed JSON.

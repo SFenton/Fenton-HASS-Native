@@ -40,6 +40,36 @@ public enum Telemetry {
         public static let scroll: StaticString = "Scroll"
         /// A frame that missed its deadline.
         public static let hitch: StaticString = "Hitch"
+        /// A tab switch, from the tap to the destination's first frame (`.agents/design/motion.md` §10).
+        public static let tabSwitch: StaticString = "TabSwitch"
+        /// A push, from the destination being built to its first frame and to the system transition settling.
+        public static let push: StaticString = "Push"
+        /// A pop (back button or edge swipe), from the page starting to leave until it is gone.
+        public static let pop: StaticString = "Pop"
+        /// A sheet presenting, from its content being built to the presentation settling.
+        public static let sheetPresent: StaticString = "SheetPresent"
+        /// A sheet dismissing.
+        public static let sheetDismiss: StaticString = "SheetDismiss"
+        /// A zoom transition opening (iOS 18 and later).
+        public static let zoomOpen: StaticString = "ZoomOpen"
+        /// A zoom transition closing.
+        public static let zoomClose: StaticString = "ZoomClose"
+        /// The first-launch intro moment.
+        public static let intro: StaticString = "Intro"
+        /// The sign-in arrival moment.
+        public static let arrival: StaticString = "Arrival"
+    }
+
+    /// The part of a transition a record measures, stored in the record's `detail` (``TelemetryLog/phaseStats``).
+    public enum Phase: String, CaseIterable, Sendable {
+        /// From the intent to the destination's first frame.
+        case firstFrame
+        /// From the intent until the transition has completed.
+        case settled
+        /// The 95th percentile run-loop turn during the transition, in milliseconds (``MainThreadCostMeter``).
+        case p95Turn
+        /// The longest run-loop turn during the transition, in milliseconds.
+        case worstTurn
     }
 
     /// `UserDefaults` key for the Performance screen's recording switch.
@@ -106,6 +136,24 @@ public enum Telemetry {
             log.record(TelemetryRecord(kind: "\(interval.name)", page: interval.page, durationMs: ms, value: value, detail: detail))
         }
         return ms
+    }
+
+    /// Records how long an interval has run, without ending it (a transition's first frame).
+    /// - Returns: The elapsed milliseconds.
+    @discardableResult
+    public static func lap(_ interval: Interval, phase: Phase) -> Double {
+        signposter.emitEvent(interval.name, "\(phase.rawValue, privacy: .public)")
+        let ms = (ContinuousClock.now - interval.start).milliseconds
+        if isEnabled {
+            log.record(TelemetryRecord(kind: "\(interval.name)", page: interval.page, durationMs: ms, detail: phase.rawValue))
+        }
+        return ms
+    }
+
+    /// Records a number that belongs to a phase of a named interval (a transition's worst run-loop turn).
+    public static func record(_ name: StaticString, page: String?, phase: Phase, value: Double) {
+        guard isEnabled else { return }
+        log.record(TelemetryRecord(kind: "\(name)", page: page, value: value, detail: phase.rawValue))
     }
 
     /// Times a synchronous block.
