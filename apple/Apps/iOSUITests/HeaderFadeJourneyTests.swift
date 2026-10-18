@@ -14,8 +14,9 @@ final class HeaderFadeJourneyTests: JourneyTestCase {
         app.launchEnvironment.merge(environment) { _, new in new }
         app.launchArguments += arguments
         app.launch()
-        let page = element(scroll, in: app)
-        XCTAssertTrue(page.waitForExistence(timeout: 30), "\(gallery) did not open")
+        XCTAssertTrue(element(scroll, in: app).waitForExistence(timeout: 30), "\(gallery) did not open")
+        // Swiped through the window: the identified element can scroll out of the accessibility tree with its content.
+        let page = app.windows.firstMatch
         let probe = element("diagnostics.headerFade", in: app)
         XCTAssertTrue(probe.waitForExistence(timeout: 10), "The fade's scroll observer did not find the page's scroll view")
         return (app, page, probe)
