@@ -68,6 +68,31 @@ struct SheetFitTests {
         #expect(accepted == [320, 380])
     }
 
+    @Test func aPhoneFitsToItsContentAndSafeAreasNotItsOwnHeight() {
+        // The bathroom fan sheet's trace (iPhone 17 Pro, 2026-10-17): content 328, a 314 pt scroller that did not grow with
+        // the sheet, safe areas 70 and 34. Counting the sheet's own height asked for 14 pt more each time, up to large.
+        let model = SheetFitModel()
+        model.setSafeInsets(top: 70, bottom: 34)
+        for sheet: CGFloat in [451, 465, 479, 778] {
+            model.setSheetHeight(sheet)
+            model.report(SheetFit.Reading(content: 328, viewport: 314), from: UUID())
+        }
+        #expect(model.contentHeight == 432, "Content plus the safe areas, however tall the sheet is")
+    }
+
+    @Test func aRegularWidthSheetCountsItsHeaderBelowTheScroller() {
+        // An iPad form sheet whose scroller sits below a 90 pt header and reports no top inset.
+        let pad = SheetFitModel()
+        pad.usesSheetEstimate = true
+        pad.setSheetHeight(500)
+        pad.report(SheetFit.Reading(content: 300, viewport: 410), from: UUID())
+        #expect(pad.contentHeight == 390)
+        let phone = SheetFitModel()
+        phone.setSheetHeight(500)
+        phone.report(SheetFit.Reading(content: 300, viewport: 410), from: UUID())
+        #expect(phone.contentHeight == 300, "A phone does not use the sheet estimate")
+    }
+
     @Test func aRememberedHeightIsTheStartingPoint() {
         let model = SheetFitModel(initial: 410)
         #expect(model.contentHeight == 410)
