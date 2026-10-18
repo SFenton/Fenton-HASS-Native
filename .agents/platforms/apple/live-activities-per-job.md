@@ -314,7 +314,7 @@ All from the canvas boards; Lock Screen first.
 - **Watch `.small`:** the glyph, title and value; no controls.
 - **Accessibility.** Each card is one element plus its buttons. Controls read "Stop Guest Bath Fan", "Pause Main Floor Vacuum". Count-up values read "running for 12 minutes". Test at AX5 on iPhone, iPhone Duo and iPad, with 44 pt targets.
 
-### 8a. Refinements after the first device test (owner, 2026-10-17; canvas boards 12–15)
+### 8a. Refinements after the first device test (owner, 2026-10-17; canvas boards 12–16)
 
 These replace the matching parts of §8.
 
@@ -324,7 +324,7 @@ These replace the matching parts of §8.
   - **Limited width:** when `isDynamicIslandLimitedInWidth` is set (iOS 27; also the iPhone 18 Pro with two activities), trailing is empty.
   - **No time:** cards with no time (vacuum) show `short` (below) at 13 pt, capped at 56 pt and ending in "…".
 - **Expanded = E2c.**
-  - **Top, beside the camera:** the job glyph (24 pt) on the left.
+  - **Top, beside the camera:** the job glyph (24 pt) on the left, and the house-and-heart corner mark (24 pt, tinted with the app icon choice, heart knocked out against black) on the right, mirroring it (owner, 2026-10-17).
   - **Below the camera:** the title over the value on the left, **both white** (title 16 pt semibold, value 32 pt semibold monospaced). Up to two buttons sit on the right, **in line** with that title-and-value block. Then a 5 pt progress **bar** in the job's tint, only when there is progress (countdowns and percent).
   - **Title wrapping:** long titles **wrap to two lines**. Live Activity views cannot animate on their own, so a scrolling title is impossible.
   - **Paused:** the value dims to 55%.
