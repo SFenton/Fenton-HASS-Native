@@ -31,7 +31,7 @@ Owner, 2026-10-18: "make sure background color changes are animated, and that ev
 | Component | State that changes its look | Today | Status | Fix at | Test |
 |---|---|---|---|---|---|
 | `GlassTile` / `GlassTileFace` | isActive, isError, isUnavailable, family, fillRGB, wash, level | Nothing animates | Fix | `GlassTileFace` ground, ink, glyph and rim under one `.stateColorTransition(value: TileColorKey)`, built from those inputs | `GlassTileMotionTests` (key changes when each input changes; transition bound) |
-| `FrostedGround` / `FrostedRim` | finish, wash, level, levelTint | Nothing animates | Inherits | `GlassTileFace` | covered above |
+| `TintedGlassGround` / `TintedGlassRim` (and the solid ground) | finish, wash, level, levelTint | Nothing animates | Inherits | `GlassTileFace` puts the ground (Tinted Glass or solid) and the rim under its transition | covered above |
 | `BrightnessTile` | shown, isDragging, tint | Level animates (0.2 snappy); tint does not | Fix | Keep the level band on `quick`; tint through `GlassTileFace` | `BrightnessTileTests` |
 | `StatusPill` | tone | Nothing animates | Fix | Icon colour and capsule fill | `StatusPillMotionTests` |
 | `StatusChipButton` (Home, Rooms) | isFilled, family, tint | Animates at 0.6 s, the approved reference | OK, move to token | Replace `StatusChipStyle.colorAnimation` with `MotionTokens.state` | existing chip tests, plus a token assertion |
@@ -104,7 +104,7 @@ Owner, 2026-10-18: "make sure background color changes are animated, and that ev
 | **Rooms** `RoomCardTile`, `QuickLinkTile` | active, alarm fill | `GlassTile` | Inherits | `GlassTileFace` (fillRGB is part of the key) | — |
 | **Rooms** `RoomChip` | filled | `StatusChipButton` | OK | — | — |
 | **Security** `SecurityDoorTile`, `LockTile`, `GarageDoorTile` | open/closed, locked/jammed | `GlassTile` | Inherits | `GlassTileFace`; lock glyph `.symbolEffect(.replace)` | `SecurityTilesTests` |
-| **Security** `AlarmModeButton` | selected, mode | Fill and ink jump | Fix | `state` | `SecuritySystemSheetTests` |
+| **Security** `AlarmModeButton` | selected, mode | Fill and ink jump | Fix | `state` (the selected fill carries `.tintedGlassEdge`, which fades with it) | `SecuritySystemSheetTests` |
 | **Security** `AlarmPanel` | alarm state, triggered | Overlay jumps | Fix | `state` (no pulse: the triggered colour holds steady) | `SecuritySystemSheetTests` |
 | **Settings** `HouseholdToggleTile`, `GlassStateTile` | active | `GlassTile` | Inherits | `GlassTileFace` | — |
 | **Settings** `AppIconChoiceButton` | selected | Check jumps | Fix | `quick` | `AppIconTests` |

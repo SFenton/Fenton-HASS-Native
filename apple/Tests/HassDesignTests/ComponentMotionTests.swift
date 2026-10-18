@@ -25,8 +25,10 @@ struct ComponentMotionTests {
         #expect(audit(face(isActive: true)).contains("GlassTile"))
         #expect(audit(face(isActive: true, family: .lights)).contains("GlassTile"))
         #expect(audit(GlassTile(title: "T", symbol: "lock", family: .contact, isActive: true, kind: .command) {}).contains("GlassTile"))
-        #expect(audit(face().environment(\.tileFinish, .frostedModule)).contains("GlassTile"))
+        // Both finishes: Tinted Glass, and the solid Reduce Transparency fallback.
+        #expect(audit(face().environment(\.tileFinish, .solid)).contains("GlassTile"))
         #expect(audit(face().environment(\.tileFinish, .tintedGlass)).contains("GlassTile"))
+        #expect(audit(face(isActive: true).environment(\.tileFinish, .solid)).contains("GlassTile"))
         #expect(audit(face(family: nil)).contains("GlassTile"))
     }
 
