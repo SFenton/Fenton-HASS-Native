@@ -84,6 +84,16 @@ struct GalleryLaunchMatrixTests {
         await run(launches)
     }
 
+    @Test func shellHeaderGalleryDrawsEveryProfileState() async {
+        var launches: [Launch] = []
+        for (profile, badge) in [("Stephen Fenton", "0"), ("Stephen Fenton", "3"), ("Stephen Fenton", "12"), ("none", "0"), ("none", "3")] {
+            launches.append(Launch(page: .shellHeader, environment: ["FENTON_GALLERY_PROFILE": profile, "FENTON_GALLERY_BADGE": badge]))
+        }
+        launches.append(Launch(page: .shellHeader, environment: ["FENTON_GALLERY_SCHEME": "light", "FENTON_GALLERY_PLAIN": "1"]))
+        launches.append(Launch(page: .shellHeader, environment: ["FENTON_GALLERY_PUSHED": "1", "FENTON_GALLERY_BADGE": "3"]))
+        await run(launches)
+    }
+
     @Test func mediaRemotesOpenOnEveryTab() async {
         var launches: [Launch] = []
         for remote in MediaRemotes.all {

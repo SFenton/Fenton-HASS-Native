@@ -33,10 +33,11 @@ final class ShellJourneyTests: JourneyTestCase {
         XCTAssertTrue(links.exists, "\(page) has no Quick Links button", file: file, line: line)
         XCTAssertEqual(profile.label, "Profile", file: file, line: line)
         XCTAssertEqual(links.label, "Quick Links", file: file, line: line)
-        // XCUITest reports a glass bar item's frame 6 to 8 pt inside the 44 pt circle (38 and 36 measured, 2026-10-16); the
-        // 44 pt hit area is proven by tapping the circle's edge in ``testHeaderCirclesHaveA44PointHitArea``.
+        // XCUITest reports a glass bar item's frame several points inside the 44 pt circle (Quick Links' system glass: 29 x 36
+        // measured 2026-10-18; Profile's disc 44 wide and 38 tall); the 44 pt hit area is proven by tapping the circle's edge in
+        // ``testHeaderCirclesHaveA44PointHitArea``, and the sizes by pixels in `HeaderButtonsJourneyTests`.
         for button in [profile, links] {
-            XCTAssertGreaterThanOrEqual(min(button.frame.width, button.frame.height), 36, button.label, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(min(button.frame.width, button.frame.height), 28, button.label, file: file, line: line)
         }
         XCTAssertFalse(links.frame.intersects(profile.frame.insetBy(dx: 2, dy: 2)), "\(page): the buttons overlap", file: file, line: line)
         // The folded Duo moves bar items into its vertical rail, which takes Quick Links out of the top row (system
@@ -138,8 +139,9 @@ final class ShellJourneyTests: JourneyTestCase {
         XCTAssertFalse(app.buttons["nav.quickLinks"].exists, "Quick Links is still a flyout row")
     }
 
-    /// Each circle is a 44 pt target: a tap 19 pt left of its centre (outside the 36 to 38 pt frame XCUITest reports, inside
-    /// the 22 pt radius) still opens its sheet.
+    /// Each button is a 44 pt target: a tap 19 pt left of its centre (outside the 29 to 38 pt frame XCUITest reports, inside
+    /// the 22 pt radius) still opens its sheet. Profile's frame includes its badge, so its centre is where the frame's
+    /// centre is, not the disc's, and 19 pt left still lands on the disc.
     func testHeaderCirclesHaveA44PointHitArea() throws {
         let app = try FentonHomeApp.launchSignedIn()
         for (id, sheetClose) in [("quickLinks.open", "quickLinks.close"), ("nav.profile", "account.close")] {
