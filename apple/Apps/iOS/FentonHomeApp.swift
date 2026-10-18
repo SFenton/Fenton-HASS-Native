@@ -33,8 +33,8 @@ final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
         LocationLaunchPolicy.isEnabled(isPresenceDevice: LocationReporter.deviceIsPresenceDevice)
             ? LocationCoordinator.system(mobileApp: push.mobileApp) : nil
 
-    /// The Home Live Activity: tokens for Home Assistant, the foreground start, and the activity's buttons
-    /// (`.agents/platforms/apple/live-activities.md`). Created with the delegate so a button pressed on the Lock Screen,
+    /// The Live Activities: tokens for Home Assistant, sign-out, and the cards' buttons
+    /// (`.agents/platforms/apple/live-activities-per-job.md`). Created with the delegate so a button pressed on the Lock Screen,
     /// which launches the app in the background, finds its handler.
     private(set) lazy var liveActivities = LiveActivityLaunchPolicy.isEnabled()
         ? LiveActivityCoordinator(client: SystemLiveActivityClient(), mobileApp: push.mobileApp)
@@ -51,6 +51,8 @@ final class FentonHomeAppDelegate: NSObject, UIApplicationDelegate {
         UNUserNotificationCenter.current().delegate = self
         // The Live Activity's buttons run in this process, launched in the background: install their handler first.
         LiveActivityIntentRuntime.install(liveActivities.isEnabled ? liveActivities.intentHandler : nil)
+        // The card's corner mark follows the app icon: share the installed choice with the widget extension.
+        AppIconAppGroupSync.writeInstalledChoice()
         // App Shortcuts open pages through the same request a notification's link makes.
         AppShortcutRouter.install { [push] destination in push.open(destination) }
         if let location { Task { await location.resume() } }

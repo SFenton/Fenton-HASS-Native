@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import FentonActivityModel
 import Foundation
 @preconcurrency import HAKit
 import HassCore
@@ -41,14 +42,14 @@ struct IconFailure: LocalizedError {
 @MainActor
 struct AppIconPickerModelTests {
     @Test func startsOnTheInstalledIcon() {
-        #expect(AppIconPickerModel(platform: FakeIconSystem().platform).selected == .navySky)
-        #expect(AppIconPickerModel(platform: FakeIconSystem(name: "AppIcon-PlumLilac").platform).selected == .plumLilac)
-        #expect(AppIconPickerModel(platform: FakeIconSystem(name: "AppIcon-Gone").platform).selected == .navySky, "An icon an update removed")
+        #expect(AppIconPickerModel(platform: FakeIconSystem().platform, iconStore: ActivityAppIconStore(defaults: nil)).selected == .navySky)
+        #expect(AppIconPickerModel(platform: FakeIconSystem(name: "AppIcon-PlumLilac").platform, iconStore: ActivityAppIconStore(defaults: nil)).selected == .plumLilac)
+        #expect(AppIconPickerModel(platform: FakeIconSystem(name: "AppIcon-Gone").platform, iconStore: ActivityAppIconStore(defaults: nil)).selected == .navySky, "An icon an update removed")
     }
 
     @Test func choosingAnAlternateInstallsItsNameAndMovesTheCheck() async {
         let system = FakeIconSystem()
-        let model = AppIconPickerModel(platform: system.platform)
+        let model = AppIconPickerModel(platform: system.platform, iconStore: ActivityAppIconStore(defaults: nil))
         await model.select(.tealMint)
         #expect(system.requested == ["AppIcon-TealMint"])
         #expect(model.selected == .tealMint)
@@ -56,9 +57,29 @@ struct AppIconPickerModelTests {
         #expect(!model.isChanging && model.failureMessage == nil)
     }
 
+    @Test func everyInstalledChoiceIsSharedWithTheLiveActivityThroughTheAppGroup() async throws {
+        let suite = "test.appiconpicker.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ActivityAppIconStore(defaults: defaults)
+        let system = FakeIconSystem()
+        let model = AppIconPickerModel(platform: system.platform, iconStore: store)
+        await model.select(.burgundyRose)
+        #expect(store.choice == "burgundyRose")
+        await model.select(.navySky)
+        #expect(store.choice == "navySky", "restoring the default writes it too")
+        system.failure = IconFailure()
+        await model.select(.tealMint)
+        #expect(store.choice == "navySky", "a refused change leaves the stored choice alone")
+        // The launch sync writes whatever is installed.
+        AppIconAppGroupSync.write(platform: FakeIconSystem(name: "AppIcon-PlumLilac").platform, store: store)
+        #expect(store.choice == "plumLilac")
+        AppIconAppGroupSync.writeInstalledChoice()
+    }
+
     @Test func choosingTheDefaultPassesNilToRestoreIt() async {
         let system = FakeIconSystem(name: "AppIcon-MidnightGold")
-        let model = AppIconPickerModel(platform: system.platform)
+        let model = AppIconPickerModel(platform: system.platform, iconStore: ActivityAppIconStore(defaults: nil))
         await model.select(.navySky)
         #expect(system.requested == [nil])
         #expect(model.selected == .navySky)
@@ -66,7 +87,7 @@ struct AppIconPickerModelTests {
 
     @Test func choosingTheInstalledIconDoesNothing() async {
         let system = FakeIconSystem()
-        let model = AppIconPickerModel(platform: system.platform)
+        let model = AppIconPickerModel(platform: system.platform, iconStore: ActivityAppIconStore(defaults: nil))
         await model.select(.navySky)
         #expect(system.requested.isEmpty)
     }
@@ -74,7 +95,7 @@ struct AppIconPickerModelTests {
     @Test func aRefusalKeepsTheSelectionAndRaisesTheAlert() async {
         let system = FakeIconSystem()
         system.failure = IconFailure()
-        let model = AppIconPickerModel(platform: system.platform)
+        let model = AppIconPickerModel(platform: system.platform, iconStore: ActivityAppIconStore(defaults: nil))
         await model.select(.burgundyRose)
         #expect(model.selected == .navySky)
         #expect(model.failureMessage == "The icon wasn't changed to Burgundy + Rose. The system said no.")
@@ -91,7 +112,7 @@ struct AppIconPickerModelTests {
 
     @Test func aTapDuringAChangeIsIgnored() async {
         let system = FakeIconSystem()
-        let model = AppIconPickerModel(platform: system.platform)
+        let model = AppIconPickerModel(platform: system.platform, iconStore: ActivityAppIconStore(defaults: nil))
         async let first: Void = model.select(.indigoPeriwinkle)
         async let second: Void = model.select(.forestGreen)
         _ = await (first, second)
@@ -100,9 +121,9 @@ struct AppIconPickerModelTests {
 
     @Test func supportIsReadOnceFromTheSystem() {
         let system = FakeIconSystem()
-        #expect(AppIconPickerModel(platform: system.platform).isSupported)
+        #expect(AppIconPickerModel(platform: system.platform, iconStore: ActivityAppIconStore(defaults: nil)).isSupported)
         system.supports = false
-        #expect(!AppIconPickerModel(platform: system.platform).isSupported)
+        #expect(!AppIconPickerModel(platform: system.platform, iconStore: ActivityAppIconStore(defaults: nil)).isSupported)
     }
 
     @Test func theStoreBuildsTheModelOnceAndReadsTheSystemOnce() {

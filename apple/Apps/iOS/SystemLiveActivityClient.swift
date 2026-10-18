@@ -26,8 +26,15 @@ struct SystemLiveActivityClient: LiveActivityClient {
         }
     }
 
-    func update(id: String, state: HomeActivityState, staleDate: Date?) async {
-        await Self.activity(id)?.update(ActivityContent(state: state, staleDate: staleDate))
+    func update(id: String, state: HomeActivityState, staleDate: Date?, relevanceScore: Double, timestamp: Date) async {
+        let content = ActivityContent(state: state, staleDate: staleDate, relevanceScore: relevanceScore)
+        guard let activity = Self.activity(id) else { return }
+        if #available(iOS 17.2, *) {
+            // ActivityKit drops an update older than the content it holds: the stamp is whole seconds, never in the future.
+            await activity.update(content, alertConfiguration: nil, timestamp: timestamp)
+        } else {
+            await activity.update(content)
+        }
     }
 
     func end(id: String, state: HomeActivityState?, dismissal: LiveActivityDismissal) async {
@@ -109,16 +116,17 @@ struct SystemLiveActivityClient: LiveActivityClient {
 
     private static func record(_ activity: Activity<HomeActivityAttributes>) -> LiveActivityRecord {
         LiveActivityRecord(id: activity.id, attributes: activity.attributes, state: activity.content.state,
-                           lifecycle: lifecycle(activity.activityState))
+                           lifecycle: lifecycle(activity.activityState), relevanceScore: activity.content.relevanceScore)
     }
 
     private static func lifecycle(_ state: ActivityState) -> LiveActivityLifecycle {
-        switch state {
-        case .active: .active
-        case .stale: .stale
-        case .ended: .ended
-        case .dismissed: .dismissed
-        @unknown default: .ended
-        }
+        // iOS 26 added `.pending` (an activity scheduled to start later). It exists and takes updates, so it counts as
+        // active. Compared rather than switched on: a `case` cannot carry an availability check, and a switch without
+        // `.pending` warns on the iOS 27 SDK while one with it does not build for iOS 17.
+        if #available(iOS 26.0, *), state == .pending { return .active }
+        if state == .active { return .active }
+        if state == .stale { return .stale }
+        if state == .dismissed { return .dismissed }
+        return .ended
     }
 }

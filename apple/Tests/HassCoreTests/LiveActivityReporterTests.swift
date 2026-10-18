@@ -5,7 +5,7 @@ import Testing
 
 @MainActor
 struct LiveActivityTokenReporterTests {
-    private let now = LiveActivityFixtures.now
+    private let now = Date(timeIntervalSince1970: 1_792_249_200)
 
     private final class Registered: @unchecked Sendable {
         private let lock = NSLock()
@@ -24,7 +24,8 @@ struct LiveActivityTokenReporterTests {
         return (reporter, client, webhook, registered)
     }
 
-    private let state = HomeActivityState(jobs: [ActivityJob(id: "dishwasher", kind: "dishwasher", title: "Dishwasher", status: "")])
+    private let state = HomeActivityState(value: ActivityValue(kind: .countup, startTs: 1_792_248_900))
+    private let attributes = HomeActivityAttributes(tag: "job.dryer", title: "Dryer", kind: "dryer", symbol: "dryer", tint: "cleaning")
 
     @Test func theStartTokenGoesToTheRegistrationAndOffRemovesIt() async {
         let (reporter, client, _, registered) = make()
@@ -57,19 +58,19 @@ struct LiveActivityTokenReporterTests {
         let (reporter, client, webhook, _) = make()
         reporter.start()
         #expect(await eventually { client.isWatching })
-        let local = client.startFromPush(state: state)
+        let local = client.startFromPush(attributes: attributes, state: state)
         // The same activity seen twice is followed once.
         reporter.observe(local)
         #expect(await eventually { client.isWatching(activity: local.id) })
         client.emitPushToken(id: local.id, "dd04")
-        let expected = RecordingActivityWebhook.Sent.token(tag: "fenton-home", token: "dd04", expiresAt: now.addingTimeInterval(8 * 3600))
+        let expected = RecordingActivityWebhook.Sent.token(tag: "job.dryer", token: "dd04", expiresAt: now.addingTimeInterval(8 * 3600))
         #expect(await eventually { webhook?.sent == [expected] })
         reporter.stop()
     }
 
     @Test func anActivityAlreadyRunningAtLaunchIsFollowed() async {
         let (reporter, client, webhook, _) = make()
-        let existing = client.startFromPush(state: state)
+        let existing = client.startFromPush(attributes: attributes, state: state)
         reporter.start()
         #expect(await eventually { client.isWatching(activity: existing.id) })
         client.emitPushToken(id: existing.id, "ee05")
@@ -81,12 +82,11 @@ struct LiveActivityTokenReporterTests {
         let (reporter, client, webhook, _) = make()
         reporter.start()
         #expect(await eventually { client.isWatching })
-        let record = client.startFromPush(state: state)
+        let record = client.startFromPush(attributes: attributes, state: state)
         #expect(await eventually { client.isWatching(activity: record.id) })
         client.emitLifecycle(id: record.id, .dismissed)
         #expect(await eventually { webhook?.sent.count == 2 })
-        #expect(webhook?.sent == [.dismissed(tag: "fenton-home"),
-                                  .event(LiveActivityEventType.dismissed, ["tag": "fenton-home", "jobs": "dishwasher"])])
+        #expect(webhook?.sent == [.dismissed(tag: "job.dryer"), .event(LiveActivityEventType.dismissed, ["tag": "job.dryer"])])
         reporter.stop()
     }
 
@@ -94,19 +94,44 @@ struct LiveActivityTokenReporterTests {
         let (reporter, client, webhook, _) = make()
         reporter.start()
         #expect(await eventually { client.isWatching })
-        let record = client.startFromPush(state: state)
+        let record = client.startFromPush(attributes: attributes, state: state)
         #expect(await eventually { client.isWatching(activity: record.id) })
         client.emitLifecycle(id: record.id, .stale)
         client.emitLifecycle(id: record.id, .ended)
-        #expect(await eventually { webhook?.sent == [.dismissed(tag: "fenton-home")] })
+        #expect(await eventually { webhook?.sent == [.dismissed(tag: "job.dryer")] })
         reporter.stop()
+    }
+
+    @Test func endingEveryActivityLocallyTellsHomeAssistantAboutEach() async {
+        let (reporter, client, webhook, _) = make()
+        reporter.start()
+        #expect(await eventually { client.isWatching })
+        let first = client.startFromPush(attributes: attributes, state: state)
+        let second = client.startFromPush(attributes: HomeActivityAttributes(tag: "job.fan.guest", title: "Guest Bath Fan", kind: "fan"), state: state)
+        #expect(await eventually { client.isWatching(activity: first.id) && client.isWatching(activity: second.id) })
+        await reporter.endAll()
+        #expect(webhook?.sent == [.dismissed(tag: "job.dryer"), .dismissed(tag: "job.fan.guest")], "one report per card, and no swipe-away event")
+        let ended = client.calls.compactMap { call -> LiveActivityDismissal? in
+            if case let .end(_, _, dismissal) = call { return dismissal }
+            return nil
+        }
+        #expect(ended == [.immediate, .immediate])
+        for _ in 0..<100 { await Task.yield() }
+        #expect(webhook?.sent.count == 2, "the lifecycle watchers do not report the same ends again")
+    }
+
+    @Test func endingEverythingWithoutARegistrationStillEndsTheCards() async {
+        let (reporter, client, _, _) = make(webhook: nil)
+        _ = client.startFromPush(attributes: attributes, state: state)
+        await reporter.endAll()
+        #expect(client.calls.count == 1)
     }
 
     @Test func nothingIsSentWithoutARegistration() async {
         let (reporter, client, _, _) = make(webhook: nil)
         reporter.start()
         #expect(await eventually { client.isWatching })
-        let record = client.startFromPush(state: state)
+        let record = client.startFromPush(attributes: attributes, state: state)
         #expect(await eventually { client.isWatching(activity: record.id) })
         client.emitPushToken(id: record.id, "ff06")
         client.emitLifecycle(id: record.id, .dismissed)
@@ -117,69 +142,74 @@ struct LiveActivityTokenReporterTests {
 }
 
 struct HomeActivityActionHandlerTests {
-    private let state = HomeActivityState(focus: "dishwasher", jobs: [
-        ActivityJob(id: "dishwasher", kind: "dishwasher", title: "Dishwasher", status: "Eco 50° · 62%",
-                    symbol: "dishwasher", tint: "cleaning", controls: [ActivityControl(id: "stop", title: "Stop", role: .destructive)]),
-        ActivityJob(id: "fan.master", kind: "bathroom_fan", title: "Master Bath Fan", status: "Off in",
-                    symbol: "fan", tint: "air", controls: [ActivityControl(id: "cancel_timer", title: "Cancel Timer")]),
-    ])
+    private let now = Date(timeIntervalSince1970: 1_792_249_200.7)
+    private let attributes = HomeActivityAttributes(tag: "job.fan.guest", title: "Guest Bath Fan", kind: "fan", symbol: "fan", tint: "air")
+    private let state = HomeActivityState(value: ActivityValue(kind: .countdown, startTs: 1_792_248_900, endTs: 1_792_249_482),
+                                          controls: [ActivityControl(id: "stop", title: "Stop", role: .primary)])
 
-    private func make(webhook: RecordingActivityWebhook? = RecordingActivityWebhook())
+    private func make(webhook: RecordingActivityWebhook? = RecordingActivityWebhook(), timeout: Duration = .seconds(10))
         -> (HomeActivityActionHandler, FakeLiveActivityClient, RecordingActivityWebhook?, LiveActivityRecord) {
         let client = FakeLiveActivityClient()
-        let record = client.startFromPush(state: state)
-        return (HomeActivityActionHandler(client: client, webhook: { webhook }), client, webhook, record)
+        let record = client.startFromPush(attributes: attributes, state: state, relevanceScore: 77)
+        let now = now
+        return (HomeActivityActionHandler(client: client, webhook: { webhook }, now: { now }, timeout: timeout), client, webhook, record)
     }
 
-    @Test func pagingFocusesLocallyAndTellsHomeAssistant() async {
+    @Test func aControlWritesThePendingStateThenFiresTheEvent() async {
         let (handler, client, webhook, record) = make()
-        #expect(await handler.handle(.focus(tag: "fenton-home", job: "fan.master")))
+        #expect(await handler.handle(.control(tag: "job.fan.guest", control: "stop")))
         let updated = client.activities[0].state
-        #expect(updated.focus == "fan.master" && updated.url == "/sfenton-react-dash/home?path=master-bathroom")
-        #expect(webhook?.sent == [.event(LiveActivityEventType.focus, ["tag": "fenton-home", "job": "fan.master"])])
-        // Focusing what is already focused does nothing.
-        let before = client.calls.count
-        #expect(await handler.handle(.focus(tag: "fenton-home", job: "fan.master")))
-        #expect(client.calls.count == before && record.id == "act-1")
+        #expect(updated.pending == ActivityPending(control: "stop", label: "Stopping…", sinceTs: 1_792_249_200))
+        #expect(client.calls == [.update(id: record.id, updated, staleDate: Date(timeIntervalSince1970: 1_792_249_220), relevanceScore: 77,
+                                         timestamp: Date(timeIntervalSince1970: 1_792_249_200))])
+        #expect(webhook?.sent == [.event(LiveActivityEventType.action, ["tag": "job.fan.guest", "job": "fan.guest", "control": "stop"])])
     }
 
-    @Test func aControlShowsStoppingThenFiresTheEvent() async {
-        let (handler, client, webhook, _) = make()
-        #expect(await handler.handle(.control(tag: "fenton-home", job: "dishwasher", control: "stop")))
-        let job = client.activities[0].state.jobs[0]
-        #expect(job.phase == .stopping && job.controls.isEmpty)
-        #expect(webhook?.sent == [.event(LiveActivityEventType.action, ["tag": "fenton-home", "job": "dishwasher", "control": "stop"])])
+    @Test func theTimestampIsAWholeSecondNeverInTheFuture() async {
+        let (handler, client, _, _) = make()
+        _ = await handler.handle(.control(tag: "job.fan.guest", control: "stop"))
+        guard case let .update(_, _, staleDate, _, timestamp) = client.calls[0] else { Issue.record("no update"); return }
+        #expect(timestamp.timeIntervalSince1970 == timestamp.timeIntervalSince1970.rounded(.down))
+        #expect(timestamp <= now)
+        #expect(staleDate == timestamp.addingTimeInterval(20))
     }
 
-    @Test func aFailedControlPutsTheButtonBackWithAReason() async {
+    @Test func aFailedControlWritesTheContentBackWithANotice() async {
         let (handler, client, webhook, _) = make()
         webhook?.fails = true
-        #expect(await handler.handle(.control(tag: "fenton-home", job: "dishwasher", control: "stop")) == false)
-        let job = client.activities[0].state.jobs[0]
-        #expect(job.phase == .running && job.controls.map(\.id) == ["stop"] && job.status == "Couldn't reach Home")
+        #expect(await handler.handle(.control(tag: "job.fan.guest", control: "stop")) == false)
+        let restored = client.activities[0].state
+        #expect(restored.pending == nil && restored.notice == "Couldn't reach Home" && restored.offers(control: "stop"))
+        guard case let .update(_, _, staleDate, relevance, timestamp) = client.calls[1] else { Issue.record("no restore"); return }
+        #expect(staleDate == nil && relevance == 77 && timestamp >= Date(timeIntervalSince1970: 1_792_249_200) && timestamp <= now)
         let noRegistration = make(webhook: nil)
-        #expect(await noRegistration.0.handle(.control(tag: "fenton-home", job: "dishwasher", control: "stop")) == false)
+        #expect(await noRegistration.0.handle(.control(tag: "job.fan.guest", control: "stop")) == false)
+        #expect(noRegistration.1.activities[0].state.notice == "Couldn't reach Home")
     }
 
-    @Test func anUnknownControlJobOrActivityIsRefused() async {
+    @Test func aWebhookThatNeverAnswersTimesOut() async {
+        let (handler, client, webhook, _) = make(timeout: .milliseconds(30))
+        webhook?.delay = .seconds(5)
+        #expect(await handler.handle(.control(tag: "job.fan.guest", control: "stop")) == false)
+        #expect(client.activities[0].state.notice == "Couldn't reach Home")
+    }
+
+    @Test func anUnknownControlOrActivityIsRefused() async {
         let (handler, client, webhook, _) = make()
-        #expect(await handler.handle(.control(tag: "fenton-home", job: "dishwasher", control: "launch")) == false)
-        #expect(await handler.handle(.control(tag: "fenton-home", job: "gone", control: "stop")) == false)
-        #expect(await handler.handle(.focus(tag: "other", job: "dishwasher")) == false)
+        #expect(await handler.handle(.control(tag: "job.fan.guest", control: "launch")) == false)
+        #expect(await handler.handle(.control(tag: "job.fan.master", control: "stop")) == false)
         #expect(client.calls.isEmpty && webhook?.sent.isEmpty == true, "nothing was changed or sent")
     }
 
-    @Test func pagingToAnUnlistedJobChangesNothing() async {
-        let (handler, client, webhook, _) = make()
-        #expect(await handler.handle(.focus(tag: "fenton-home", job: "gone")))
-        #expect(client.calls.isEmpty && webhook?.sent.isEmpty == true)
+    @Test func anEndedActivityIsNotWritten() async {
+        let (handler, client, _, record) = make()
+        client.emitLifecycle(id: record.id, .ended)
+        #expect(await handler.handle(.control(tag: "job.fan.guest", control: "stop")) == false)
+        #expect(client.calls.isEmpty)
     }
 
-    @Test func pagingStillWorksWhenHomeAssistantCannotBeReached() async {
-        let (handler, client, webhook, _) = make()
-        webhook?.fails = true
-        #expect(await handler.handle(.focus(tag: "fenton-home", job: "fan.master")))
-        #expect(client.activities[0].state.focus == "fan.master")
+    @Test func theActionHasItsTag() {
+        #expect(LiveActivityAction.control(tag: "job.dryer", control: "x").tag == "job.dryer")
     }
 }
 

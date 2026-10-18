@@ -2,7 +2,7 @@ import FentonActivityModel
 import Foundation
 
 /// The webhook commands the Live Activity feature sends to Home Assistant's `mobile_app` registration
-/// (`.agents/platforms/apple/live-activities.md` §5, §6; core `mobile_app/live_activity/webhook.py`).
+/// (`.agents/platforms/apple/live-activities-per-job.md` §7; core `mobile_app/live_activity/webhook.py`).
 public protocol LiveActivityWebhookSending: Sendable {
     /// `live_activity_token`: the activity's update token, which `mobile_app` stores per `tag` until `expiresAt`.
     func reportToken(tag: String, token: String, expiresAt: Date) async throws
@@ -12,13 +12,11 @@ public protocol LiveActivityWebhookSending: Sendable {
     func fireEvent(_ type: String, data: [String: String]) async throws
 }
 
-/// Event types the app fires (`live-activities.md` §5, §6). Home Assistant stamps each with the registration's user.
+/// Event types the app fires (`live-activities-per-job.md` §7). Home Assistant stamps each with the registration's user.
 public enum LiveActivityEventType {
-    /// A job's button: `{tag, job, control}`.
+    /// A card's button: `{tag, job, control}`; `job` is the tag without its `job.` prefix.
     public static let action = "fenton_live_activity_action"
-    /// ‹ or ›: `{tag, job}`; the engine keeps that focus for this device in later pushes.
-    public static let focus = "fenton_live_activity_focus"
-    /// The person swiped the activity away: `{tag, jobs}` (comma-separated job ids).
+    /// The person swiped the activity away: `{tag}`.
     public static let dismissed = "fenton_live_activity_dismissed"
 }
 

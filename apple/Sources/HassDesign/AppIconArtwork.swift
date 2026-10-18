@@ -161,7 +161,7 @@ public struct AppIconArtwork: View {
     // MARK: - Geometry (100-unit glyph coordinates)
 
     /// The house with its four-pane window cut out (even-odd fill).
-    static let house: Path = {
+    nonisolated static let house: Path = {
         var path = Path()
         path.move(to: CGPoint(x: 50, y: 12))
         path.addLine(to: CGPoint(x: 90, y: 44))
@@ -182,7 +182,7 @@ public struct AppIconArtwork: View {
     }()
 
     /// The heart, drawn in a 100-unit box before it is scaled to 0.40 and moved to (55, 60).
-    static let heart: Path = {
+    nonisolated static let heart: Path = {
         var path = Path()
         path.move(to: CGPoint(x: 50, y: 88))
         path.addCurve(to: CGPoint(x: 8, y: 34), control1: CGPoint(x: 20, y: 66), control2: CGPoint(x: 8, y: 50))

@@ -8,7 +8,7 @@ public final class FakeLiveActivityClient: LiveActivityClient, @unchecked Sendab
     /// What the app asked ActivityKit to do.
     public enum Call: Equatable, Sendable {
         case request(HomeActivityState, staleDate: Date?)
-        case update(id: String, HomeActivityState, staleDate: Date?)
+        case update(id: String, HomeActivityState, staleDate: Date?, relevanceScore: Double, timestamp: Date)
         case end(id: String, HomeActivityState?, LiveActivityDismissal)
     }
 
@@ -87,10 +87,11 @@ public final class FakeLiveActivityClient: LiveActivityClient, @unchecked Sendab
 
     /// A push starts an activity while the app is closed.
     @discardableResult
-    public func startFromPush(attributes: HomeActivityAttributes = HomeActivityAttributes(), state: HomeActivityState) -> LiveActivityRecord {
+    public func startFromPush(attributes: HomeActivityAttributes = HomeActivityAttributes(), state: HomeActivityState,
+                              relevanceScore: Double = 0) -> LiveActivityRecord {
         let (record, sinks) = lock.withLock { () -> (LiveActivityRecord, [AsyncStream<LiveActivityRecord>.Continuation]) in
             counter += 1
-            let record = LiveActivityRecord(id: "act-\(counter)", attributes: attributes, state: state)
+            let record = LiveActivityRecord(id: "act-\(counter)", attributes: attributes, state: state, relevanceScore: relevanceScore)
             records.append(record)
             return (record, activitySinks)
         }
@@ -136,9 +137,9 @@ public final class FakeLiveActivityClient: LiveActivityClient, @unchecked Sendab
         return startFromPush(attributes: attributes, state: state)
     }
 
-    public func update(id: String, state: HomeActivityState, staleDate: Date?) async {
+    public func update(id: String, state: HomeActivityState, staleDate: Date?, relevanceScore: Double, timestamp: Date) async {
         lock.withLock {
-            recordedCalls.append(.update(id: id, state, staleDate: staleDate))
+            recordedCalls.append(.update(id: id, state, staleDate: staleDate, relevanceScore: relevanceScore, timestamp: timestamp))
             if let index = records.firstIndex(where: { $0.id == id }) { records[index].state = state }
         }
     }
@@ -182,6 +183,8 @@ public final class RecordingActivityWebhook: LiveActivityWebhookSending, @unchec
     private var recorded: [Sent] = []
     /// Make every send throw.
     public var fails = false
+    /// Make every send wait this long before it records (a webhook that never answers).
+    public var delay: Duration?
 
     /// Creates a recorder.
     public init() {}
@@ -190,15 +193,22 @@ public final class RecordingActivityWebhook: LiveActivityWebhookSending, @unchec
     public var sent: [Sent] { lock.withLock { recorded } }
 
     public func reportToken(tag: String, token: String, expiresAt: Date) async throws {
+        try await wait()
         try record(.token(tag: tag, token: token, expiresAt: expiresAt))
     }
 
     public func reportDismissed(tag: String) async throws {
+        try await wait()
         try record(.dismissed(tag: tag))
     }
 
     public func fireEvent(_ type: String, data: [String: String]) async throws {
+        try await wait()
         try record(.event(type, data))
+    }
+
+    private func wait() async throws {
+        if let delay { try await Task.sleep(for: delay) }
     }
 
     private func record(_ item: Sent) throws {

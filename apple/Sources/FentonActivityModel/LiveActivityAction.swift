@@ -1,17 +1,15 @@
 import Foundation
 
-/// A button press on the Home activity, as the App Intents in `apple/Apps/Shared/LiveActivityIntents.swift` hand it
-/// to the app (`.agents/platforms/apple/live-activities.md` §5).
+/// A button press on a job card, as the App Intent in `apple/Apps/Shared/LiveActivityIntents.swift` hands it to the app
+/// (`.agents/platforms/apple/live-activities-per-job.md` §7).
 public enum LiveActivityAction: Hashable, Sendable {
-    /// ‹ or ›: show this job in the Dynamic Island and offer its controls.
-    case focus(tag: String, job: String)
-    /// A job's button.
-    case control(tag: String, job: String, control: String)
+    /// A card's button: the activity (by tag) and the control id.
+    case control(tag: String, control: String)
 
     /// The activity the press belongs to.
     public var tag: String {
         switch self {
-        case let .focus(tag, _), let .control(tag, _, _): tag
+        case let .control(tag, _): tag
         }
     }
 }
