@@ -45,7 +45,7 @@ Sources:
 | **Tile → its own page or viewer** (room, camera, recipe) | Zoom (iOS 18+) | Zoom, every time | It is navigation feedback, like the push |
 | **Modal sheet** | System sheet; the content is there on arrival | Same | Standard |
 | **Network-backed page or sheet with nothing saved** | Loading gate: spinner after 150 ms (`.page` profile per the owner: ≥1 s, then 500 ms out), content fades in and rises 4 pt | Saved results show at once; fresh data swaps in quietly | Animate only what had nothing to show |
-| **Live value change** | Numbers roll, colours cross-fade (0.2–0.25 s) | Same | Change |
+| **Live value change** | Numbers roll (0.2 s); background and tint colours cross-fade (`state`, 0.6 s) | Same | Change |
 | **User action** (toggle, complete, delete, reorder) | Optimistic change at once; rows insert or remove with the standard list animation | Same | Change the user caused |
 | **Resume, reconnect, snapshot load** | Nothing animates | Nothing | Presence |
 
@@ -108,7 +108,7 @@ Exceptions must be written into this file with the owner's say-so. None exist to
 
 ## 6. Live updates and user actions
 - **Numbers:** `contentTransition(.numericText(value:))` with `MotionTokens.quick`.
-- **Tile state colours:** cross-fade with `MotionTokens.state` (0.25 s ease-in-out).
+- **Background colour changes are always animated (owner, 2026-10-18).** Whenever a component's background, fill, tint, rim or material colour changes because its state changed (house-caused or user-caused), it cross-fades with `MotionTokens.state` through `.stateColorTransition(value:)`. That covers tiles lit/unlit, chips filled/unfilled, pills changing tone, selected segments and day chips, alarm panels turning triggered, button active states and more. The timing is the status chip's, which the owner approved (0.6 s ease-in-out, 0.2 s under Reduce Motion). Only the colour animates; layout never rides along. Every component and its status is listed in [motion-components.md](motion-components.md).
 - **Layout:** live updates never move layout. No re-sorting a grid because a value changed, and no resizing tiles. If an order must change (a new chore assigned), apply it without animation unless the person caused it.
 - **User actions:**
   - The optimistic change happens at once ([optimistic-actions](../patterns/optimistic-actions.md)).
@@ -121,7 +121,7 @@ Exceptions must be written into this file with the owner's say-so. None exist to
 | Token | Value | For |
 |---|---|---|
 | `quick` | `.easeOut(duration: 0.2)` | Numbers, small fades, button state |
-| `state` | `.easeInOut(duration: 0.25)` | Tile and chip colour changes |
+| `state` | `.easeInOut(duration: 0.6)`, reduced `.easeInOut(duration: 0.2)` | Every background, fill, tint and rim colour change (the status chip's approved timing) |
 | `standard` | `.smooth(duration: 0.3)` (no bounce) | Layout a person caused: rows in or out, expanding sections |
 | `emphasized` | `.spring(response: 0.5, dampingFraction: 0.8)` | The house-and-heart mark in the intro, nothing else |
 | `arrivalStagger` | 0.06 s per item, first screenful only (≤8 items) | The sign-in arrival |
@@ -129,7 +129,7 @@ Exceptions must be written into this file with the owner's say-so. None exist to
 | Navigation | system | Push, sheet, zoom, tab |
 
 **Never:**
-- durations over 0.4 s, except the two moments;
+- durations over 0.4 s, except the two moments and colour cross-fades (`state`): nothing moves in a colour fade, so it never delays a tap;
 - `bounce` above 0.15;
 - `repeatForever`, except spinners and pending pulses.
 
@@ -143,6 +143,7 @@ Read `accessibilityReduceMotion`, through `motionSafeAnimation` or `MotionPolicy
 | Zoom | The system already turns it into a cross-fade; nothing to add |
 | Push, sheet | The system handles them |
 | Numbers | The numeric transition is allowed (it is a content change). Under Reduce Motion it can become a plain cross-fade |
+| Colour changes | Still cross-fade (colour is not motion), at 0.2 s |
 | Pulses and spinners | Spinners keep turning (they carry meaning). Placeholder pulses become static |
 
 ## 9. Overkill: what we don't do
@@ -152,7 +153,7 @@ Read `accessibilityReduceMotion`, through `motionSafeAnimation` or `MotionPolicy
 3. **Entrance animations for content that was already there:** cached pages, snapshot loads, resume, reconnect.
 4. **Bouncy springs on content:** tiles that overshoot, cards that wobble.
 5. **Decorating the system transitions:** custom push curves, parallax headers on push, 3D flips, hero animations on things that aren't thumbnails.
-6. **Long durations:** anything over 0.4 s outside the two moments, and any chained sequence that makes you wait to tap.
+6. **Long durations:** anything that moves for over 0.4 s outside the two moments, and any chained sequence that makes you wait to tap.
 7. **Blocking input during animation:** every transition is interruptible, and taps during the arrival go through.
 8. **Animated backgrounds:** moving gradients, animated blur radii, particle effects, shimmer sweeps. They are expensive (offscreen passes every frame) and noisy.
 9. **Live updates that move layout:** re-sorting, resizing or jumping while the person is reading.
@@ -212,6 +213,7 @@ Motion is instrumented like scrolling. Every rule above has a number that can re
 2. Is it presence or change? Presence doesn't animate.
 3. Does it use system navigation (`NavigationStack`, `hassSheet`, zoom helpers), with no custom transitions?
 4. Does it use `MotionTokens` and `motionSafeAnimation`, with no raw durations and no `.animation(_:)` without a value?
+5a. Does every state-driven background or tint colour go through `.stateColorTransition(value:)`, with a row in [motion-components.md](motion-components.md) and its test?
 5. Does it respect Reduce Motion? Test it with Reduce Motion on.
 6. Does it add or update the signpost and keep within the budgets in §10? Is the perf test updated?
 7. Does it stay interruptible, with nothing blocking taps?

@@ -9,6 +9,8 @@ Status: specified 2026-10-18. Being built on `claude/motion-system` (see PROGRES
 | Component | Where | Does |
 |---|---|---|
 | `MotionTokens` | `HassDesign/Motion/MotionTokens.swift` | The only animation values: `quick`, `state`, `standard`, `emphasized`, `arrivalStagger`. Call sites never write a duration. |
+| `.stateColorTransition(value:)` | `HassDesign/Motion/StateColorTransition.swift` | The only way a state-driven background, fill, tint, rim or ink colour animates: `MotionTokens.state`, scoped to the colour layer, Reduce Motion aware. Records itself in `MotionAudit` (debug and test) so tests can prove each component uses it. Every component and its status: [design/motion-components.md](../design/motion-components.md). |
+| `MotionGallery` | `HassUI/Features/Gallery/MotionGallery.swift` | Every component with a state, with Toggle state and Toggle all, for visual checks and UX tests |
 | `motionSafeAnimation(_:reduced:value:)` | `HassDesign/MotionSafeAnimation.swift` (exists) | Every implicit animation; Reduce Motion aware |
 | `MotionPolicy` | `HassUI/App/Motion/MotionPolicy.swift` (`@Observable`, one per session, in the environment) | Remembers which moments have played this session (`hasPlayed(.signInArrival)`, `markPlayed`), and resets on sign-out. Exposes `reduceMotion`. Wraps measurement (`measure(.push(page))`). |
 | `.arrivalMotion(_:index:)` | `HassUI/App/Motion/ArrivalMotion.swift` | Plays a moment's entrance for one view (fade and rise, staggered by `index`), only if the moment hasn't played this session and Reduce Motion is off. Otherwise it renders at once, or cross-fades under Reduce Motion. |
@@ -26,6 +28,7 @@ Status: specified 2026-10-18. Being built on `claude/motion-system` (see PROGRES
   Use `MotionTokens` with `motionSafeAnimation` or `withAnimation(MotionTokens.x)`.
 - **No entrance animations in `onAppear`** for content that came from `EntityStore` or a cache.
 - **Tab switches and sheet-tab switches are cuts.**
+- **Background colour changes always animate,** through `.stateColorTransition(value:)`. A new component, or a new state on one, gets a row in [design/motion-components.md](../design/motion-components.md), a unit test and a gallery entry in the same PR.
 - **Zoom only for tiles that are what they open** ([design/motion.md §4.3](../design/motion.md)).
 - **Every new navigation surface** gets its `NavigationTelemetry` interval and a row in `NavigationPerformanceTests`.
 
