@@ -199,7 +199,14 @@ final class RoomDevicesJourneyTests: XCTestCase {
         XCTAssertTrue(element("activity.save", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["This activity overlaps another activity on Monday."].waitForExistence(timeout: 5),
                       "A new weekday night overlaps the existing one")
-        XCTAssertFalse(element("activity.save", in: app).isEnabled)
+        // The saved editor's Save can still be in the tree while its page pops (iPad landscape, 2026-10-17): wait for the
+        // new editor's to be the only one, then read it.
+        let saves = app.descendants(matching: .any).matching(identifier: "activity.save")
+        let deadline = Date().addingTimeInterval(10)
+        while saves.count > 1, Date() < deadline { usleep(200_000) }
+        XCTAssertEqual(saves.count, 1, "The previous editor's Save stayed in the tree")
+        if saves.firstMatch.isEnabled { add(XCTAttachment(string: app.debugDescription)) }
+        XCTAssertFalse(saves.firstMatch.isEnabled, "Save stays off while the activity overlaps another")
     }
 
     /// Two columns only on iPad landscape and unfolded Duo landscape; iPhone and every portrait are one column.
