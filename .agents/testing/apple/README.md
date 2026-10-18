@@ -7,7 +7,7 @@
 | [strategy.md](strategy.md) | Phases, accessibility tests with every change, certification gates |
 | [accessibility.md](accessibility.md) | Audit rules and evidence |
 | [devices.md](devices.md) | iPhone, iPhone Duo, iPad matrix and how to run it |
-| [performance.md](performance.md) | Fast-scroll tests on a physical device, telemetry and targets |
+| [performance.md](performance.md) | Fast-scroll tests on a physical device, navigation cost (`tools/ios_navperf.sh`), telemetry and targets |
 | [ha-companion.md](ha-companion.md) | The official Home Assistant app on our simulators, for comparison |
 
 ## Order-independent tests

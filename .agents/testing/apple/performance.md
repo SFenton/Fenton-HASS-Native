@@ -141,6 +141,25 @@ No difference outside the run-to-run noise (a first run in a hold reads a bogus 
 
 The render itself (`BackdropRenderer.render`, a 1024 x 684 photo, a 402 x 874 pt window at 3x, on the Mac's GPU): 5 ms at 0% (1206 x 2622 px), under 2 ms at 50% and 100% (302 x 656 px, a quarter of the resolution), always off the main thread. A slider drag renders as fast as renders finish, with 140 ms between them.
 
+## Navigation (simulator and device)
+
+Tab switches, pushes, pops, sheets and zooms are timed by the app itself, the way scrolling is ([motion](../../design/motion.md) §10, [telemetry](../../patterns/telemetry.md)).
+
+- **What is measured.** `NavigationMeasurement` (HassTelemetry) times one transition from its intent to its first frame and to settled, and meters the main thread meanwhile (`MainThreadCostMeter`: the transition's p95 and longest run-loop turn). Names: `TabSwitch`, `Push`, `Pop`, `SheetPresent`, `SheetDismiss`, `ZoomOpen`, `ZoomClose`.
+  - **Tab switch:** the intent is the tab tap (`MotionPolicy.measureCut`); first frame and settled are the next display tick, because a cut has no animation.
+  - **Push, pop, sheet, zoom:** `measuresNavigation` (`pageChrome`, `hassSheet`, `zoomDestination`) puts a zero-size view controller in the page. The page being built is the intent; `viewWillAppear` plus the next display tick is the first frame; `viewDidAppear` is settled (and the same on the way out). A non-animated appearance (cold launch, restored path, tab becoming visible) is not a transition and records nothing.
+- **In the app:** Settings → Performance → Navigation shows p50, p95 and the worst turn per surface. Export Telemetry carries them as `phases` (`Push.settled@Room`) next to the raw records.
+- **Simulator budgets** (CPU only; simulator hitch ratios and GPU cost are false): each transition's p95 run-loop turn at most 8 ms, none over 16 ms; a tab tap to its first frame at most 50 ms (p95); push and sheet tap to settled at most 600 ms.
+- **Run it:** `tools/ios_navperf.sh [--env temp.env] [--only iphone|duo|ipad] [--test testTabCycleStaysWithinBudget]`. It builds once under a `build` hold, then runs `NavigationPerformanceTests` on the iPhone, iPhone Duo and iPad simulators, each in its own devcap hold, and prints one row per surface (p50 and p95 for first frame and settled, p95 and worst turn). Raw rows: `apple/.build/navperf-<label>.tsv`.
+- **The tests** (`Apps/iOSUITests/NavigationPerformanceTests.swift`), skipped unless `TEST_RUNNER_FENTON_PERF_ON_SIMULATOR=1`:
+  - tab cycle (each tab x 3) and Home revisit x 10 (live, navigation only);
+  - push and pop a room page x 10 and sheet open and close x 10 (the Rooms gallery: fixtures, no house);
+  - zoom open and close a room tile x 10 (live; the push fallback before iOS 18).
+
+  The app reports through `diagnostics.navperf` (`FENTON_NAVPERF=1`, `NavigationPerfProbe`): a test posts `com.sfenton.home.navperf.reset` before, and `...report` after, so the report itself never disturbs a measurement.
+- **Device** (`testDeviceNavigationTransitionMetrics`, `testDeviceZoomTransitionMetrics`): `XCTOSSignpostMetric.navigationTransitionMetric` plus the app's own `Push`, `Pop`, `SheetPresent`, `SheetDismiss`, `ZoomOpen` and `ZoomClose` signposts, ten iterations. They skip on a simulator and need the owner's say-so before anyone runs them on the phone. Target: hitch ratio under 5 ms/s.
+- **Adding a navigation surface:** give it a `measuresNavigation` (or a `MotionPolicy.measure`) and a row in `NavigationPerformanceTests` ([patterns/motion.md](../../patterns/motion.md)).
+
 ## What only a phone can settle
 
 Run these on the iPhone 18 Pro (nothing here has been run on it):

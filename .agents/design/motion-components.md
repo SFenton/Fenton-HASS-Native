@@ -135,3 +135,40 @@ Owner, 2026-10-18: "make sure background color changes are animated, and that ev
 3. **Motion gallery** (`Features/Gallery/MotionGallery.swift`). Every component in this file with a state appears with a "Toggle state" control and a "Toggle all" control, under Reduce Motion both on and off. People use it to watch the fades. UX and accessibility tests on iPhone, Duo and iPad toggle each component and assert that its accessibility value changes, its targets stay ≥44 pt and its frame doesn't move. The frame check holds the "no layout rides along" rule.
 4. **Lint.** `tools/lint_motion.sh` flags a state-driven `.background`, `.fill` or `.foregroundStyle` whose argument is a ternary on state, inside a component listed as Fix or OK here, without `.stateColorTransition` in the same view. The allowlist names a reason for each entry.
 5. **Perf.** Toggling all components on the gallery stays inside the run-loop budget in [motion.md §10](motion.md) (p95 ≤ 8 ms). A colour cross-fade on a scrolled-off component costs nothing.
+
+## Implementation status (motion lane, `claude/motion-system`)
+
+Every row above is built except the ones marked **open**. The audit name is what `MotionAudit` records and the named test asserts; the Motion gallery id is the row's card on `FENTON_GALLERY=motion`.
+
+| Row | Status | Audit name | Test | Gallery id |
+|---|---|---|---|---|
+| `GlassTile` / `GlassTileFace` (and the 17 inheriting tiles) | Done: ground, rim, ink, glyph and tinted stroke under `TileColorKey`; lock-style symbols replace (`.symbolEffect(.replace)`) | `GlassTile` | `ComponentMotionTests` (key per input, transition bound) | `glassTile`, `glassTileLight`, `glassTileError` |
+| `BrightnessTile` | Done: tint through the face; level band on `quick` | `GlassTile` | `ComponentMotionTests` | `brightnessTile` |
+| `StatusPill` | Done: icon and capsule | `StatusPill` | `ComponentMotionTests` | `statusPill` |
+| `StatusChipButton` | Done: `MotionTokens.state`, `colorAnimation` removed | `StatusChip` | `MotionComponentsTests` | `statusChip` |
+| `PrimaryButton` | Done: disabled opacity on `quick` | `PrimaryButton` | `ComponentMotionTests` | `primaryButton` |
+| `ModuleRowButtonStyle`, `ModuleRow` inks | Done: instant down, `quick` release; glyph and subtitle inks fade | `ModuleRowButtonStyle`, `ModuleRow` | `ComponentMotionTests` | `sprinklerControllerRow` |
+| `SelectableOptionRow` | Done: stroke `state`, check `quick` | `SelectableOptionRow` | `ComponentMotionTests` | `selectableOptionRow` |
+| `FilterOptionRow`, `OptionPickerSheet` rows | Done: check `quick` | `FilterOptionRow`, `OptionPickerSheet` | `ComponentMotionTests` | `filterOptionRow` |
+| `FloatingActionBar` | Done: glass tint, glyph | `FloatingActionBar` | `ComponentMotionTests` | `floatingActionBar` |
+| `ThermostatDial` | Done: marker, handles, trails | `ThermostatDial` | `ComponentMotionTests` | open (needs a dial configuration; the thermostat-dial gallery shows it) |
+| `CachedImage`, `NavigationFlyout`, `HouseBackdrop`, weather panels, `CameraLiveView`, `TodoPageView`, inventory and recipes split | Done: moved onto tokens | n/a | `tools/lint_motion.sh` | n/a |
+| `ProfileButton` badge | **Open**: the header lane owns `ShellHeader`; add the 0.2 s fade after `claude/header-profile-fill` merges | | `ProfileButtonTests` | |
+| `ChoiceGrid`, `WeekdayPicker` | Done | `ChoiceGrid`, `WeekdayPicker` | `MotionComponentsTests` | `choiceGrid`, `weekdayPicker` |
+| `CameraControlButton` | Done: glyph and tint overlay | `CameraControlButton` | `MotionComponentsTests` | `cameraControl` |
+| `TodoItemRow`, `DueLabel` | Done: check, title and due inks | `TodoItemRow`, `DueLabel` | `MotionComponentsTests` | `dueLabel` |
+| `ClimateNotice`, `ThermostatHubPill` | Done | `ClimateNotice`, `ThermostatHubPill` | `MotionComponentsTests` (`ClimateNotice`); the pill needs a `ClimateController` | `climateNotice` |
+| `ClimateToggleRow`, `HubPicker` | System toggle and menu: nothing of ours to fade | | | |
+| `EcoOptionDetail` | Done: check `quick` | `EcoOptionDetail` | needs a `ClimateController` | open |
+| `LightingModeButton`, `OtherLightSwatch` | Done | `LightingModeButton`, `OtherLightSwatch` | `MotionComponentsTests` | `lightingMode` |
+| `GroceryAction` | Done: the button/confirmation swap fades, the check replaces | `GroceryAction` | needs a `RecipeDetailModel` | open |
+| `WeatherBarChart`, `WeatherPagedCarousel` | Done | `WeatherBarChart`, `WeatherPagedCarousel` | `MotionComponentsTests` (`WeatherBarChart`) | open |
+| `InventoryRow` | Done: selected wash | `InventoryRow` | needs an `InventoryModels` | open |
+| `PowerButton` (`RemoteButtonIcon`) | Done | `RemoteButtonIcon` | needs a `MediaRemoteController` | open |
+| `GrillControls` flame badge, `DeviceStatusPill` | Done | `GrillControls`, `DeviceStatusPill` | `MotionComponentsTests` | `deviceStatusPill` |
+| `AlarmModeButton`, `AlarmPanel` | Done: fill, ink, triggered wash (steady, no pulse) | `AlarmModeButton`, `AlarmPanel` | `MotionComponentsTests` | `alarmMode` |
+| `AppIconChoiceButton` | Done: ring | `AppIconChoiceButton` | `MotionComponentsTests` | open |
+| `DayPicker`, `SprinklerRow` | Done | `DayPicker`, `SprinklerRow` | `MotionComponentsTests` | `dayPicker`, `sprinklerRow` |
+| `VacationChecklistRow` | Done | `VacationChecklistRow` | `MotionComponentsTests` | `vacationChecklistRow` |
+| `VacuumRoomsTab` cards, `VacuumAreaEditor` tools | Done | `VacuumRoomsTab`, `VacuumAreaEditor` | need a `VacuumController` | open |
+| `VacuumStatusChip` | Done | `VacuumStatusChip` | `MotionComponentsTests` | `vacuumStatusChip` |
