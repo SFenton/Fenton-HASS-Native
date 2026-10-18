@@ -88,8 +88,12 @@ public final class MotionPolicy {
     }
 
     /// Times a transition that is a cut (a tab switch): its first frame and its settling are the next display tick.
-    public func measureCut(_ transition: NavigationTransition) {
+    /// - Parameter onSettled: Called once the tick has passed and the measurement is recorded (tests).
+    public func measureCut(_ transition: NavigationTransition, onSettled: (@MainActor () -> Void)? = nil) {
         let measurement = measure(transition)
-        NextFrame.perform { measurement.settled() }
+        NextFrame.perform {
+            measurement.settled()
+            onSettled?()
+        }
     }
 }

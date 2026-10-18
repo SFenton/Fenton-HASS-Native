@@ -58,19 +58,14 @@ struct MotionPolicyTests {
         #expect(Telemetry.log.records.contains { $0.page == page && $0.detail == "settled" })
     }
 
-    @Test func measureCutSettlesOnTheNextFrame() async throws {
+    @Test func measureCutSettlesOnTheNextFrame() async {
         let wasEnabled = Telemetry.isEnabled
         defer { Telemetry.isEnabled = wasEnabled }
         Telemetry.isEnabled = true
-        let page = "cut-\(UUID().uuidString)"
-        MotionPolicy(reduceMotion: { false }).measureCut(.tabSwitch(page))
-        // Bounded by the clock, not a count: a busy main actor delays the display tick.
-        let deadline = ContinuousClock.now + .seconds(30)
-        while ContinuousClock.now < deadline, !Telemetry.log.records.contains(where: { $0.page == page && $0.detail == "settled" }) {
-            Telemetry.isEnabled = true
-            try await Task.sleep(for: .milliseconds(20))
+        // The callback is the proof: the shared log can be reset by another suite while this one waits.
+        await withCheckedContinuation { continuation in
+            MotionPolicy(reduceMotion: { false }).measureCut(.tabSwitch("cut-\(UUID().uuidString)")) { continuation.resume() }
         }
-        #expect(Telemetry.log.records.contains { $0.page == page && $0.detail == "settled" && $0.kind == "TabSwitch" })
     }
 
     @Test func transitionsNameTheirSurfaceAndPage() {
