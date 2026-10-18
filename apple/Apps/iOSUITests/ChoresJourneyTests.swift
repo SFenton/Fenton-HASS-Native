@@ -63,7 +63,14 @@ final class ChoresJourneyTests: JourneyTestCase {
             // 400 pt, as the last-chore journey drags: 200 pt drags did not carry the folded Duo's AX5 page the 2,400 pt to
             // the first row in 80 attempts.
             guard element.exists else { drag(contentUp: 400); continue }
-            guard clearOfBar else { drag(contentUp: 200); continue } // In the tree but not hittable yet: carry on down.
+            // In the tree but not hittable yet: put its centre a third of the way down the list, above the Add bar and the
+            // last-call line whatever the row's height, from whichever side it is on.
+            if !clearOfBar {
+                let list = scroller(app).frame
+                let delta = element.frame.midY - (list.minY + list.height * 0.3)
+                drag(contentUp: abs(delta) < 30 ? 60 : min(max(delta, -300), 300))
+                continue
+            }
             let overlays = [app.buttons["fab.add"], app.staticTexts["gallery.lastCall"]].filter(\.exists)
             let top = overlays.map(\.frame.minY).min() ?? .greatestFiniteMagnitude
             let frame = element.frame
@@ -301,8 +308,13 @@ final class ChoresJourneyTests: JourneyTestCase {
             list.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.8))
                 .press(forDuration: 0.05, thenDragTo: list.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.2)))
         }
-        for _ in 0..<80 where !last.exists { drag() }
-        for _ in 0..<3 { drag() }
+        // Both gestures each round: the swipe is what scrolls iPhone and iPad (a leading-edge drag did not reach the end
+        // on the iPhone), the drag is what scrolls the folded Duo.
+        for _ in 0..<60 where !last.exists {
+            list.swipeUp(velocity: .fast)
+            if !last.exists { drag() }
+        }
+        for _ in 0..<3 { list.swipeUp(velocity: .fast) }
         if !last.exists { add(XCTAttachment(string: app.debugDescription)) }
         XCTAssertTrue(last.exists, "The last chore never appeared")
         let barTop = min(app.buttons["fab.add"].frame.minY, app.staticTexts["gallery.lastCall"].frame.minY)
