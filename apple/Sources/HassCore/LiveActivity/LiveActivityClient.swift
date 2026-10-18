@@ -20,7 +20,7 @@ public enum LiveActivityLifecycle: String, Sendable, Equatable {
 public struct LiveActivityRecord: Sendable, Equatable, Identifiable {
     /// ActivityKit's id.
     public var id: String
-    /// The attributes' tag: the key Home Assistant's `mobile_app` stores the update token under.
+    /// The attributes' tag (`job.fan.guest`): the key Home Assistant's `mobile_app` stores the update token under.
     public var tag: String
     /// The attributes.
     public var attributes: HomeActivityAttributes
@@ -28,14 +28,19 @@ public struct LiveActivityRecord: Sendable, Equatable, Identifiable {
     public var state: HomeActivityState
     /// Where it is.
     public var lifecycle: LiveActivityLifecycle
+    /// The relevance score Home Assistant last set (it orders the Dynamic Island and the Lock Screen). The app keeps it
+    /// when it writes its own optimistic state, so a press never re-ranks the card.
+    public var relevanceScore: Double
 
     /// Creates a record.
-    public init(id: String, attributes: HomeActivityAttributes, state: HomeActivityState, lifecycle: LiveActivityLifecycle = .active) {
+    public init(id: String, attributes: HomeActivityAttributes, state: HomeActivityState, lifecycle: LiveActivityLifecycle = .active,
+                relevanceScore: Double = 0) {
         self.id = id
         tag = attributes.tag
         self.attributes = attributes
         self.state = state
         self.lifecycle = lifecycle
+        self.relevanceScore = relevanceScore
     }
 }
 
@@ -55,14 +60,16 @@ public protocol LiveActivityClient: Sendable {
     /// The person allows Live Activities for this app (Settings, Face ID & Passcode, Live Activities too).
     var areActivitiesEnabled: Bool { get }
 
-    /// Every Home activity the system still holds, including ones a push started while the app was closed.
+    /// Every job activity the system still holds, including ones a push started while the app was closed.
     func current() async -> [LiveActivityRecord]
 
     /// Starts an activity with `pushType: .token`, so Home Assistant can update it.
     func request(attributes: HomeActivityAttributes, state: HomeActivityState, staleDate: Date?) async throws -> LiveActivityRecord
 
-    /// Updates an activity's content.
-    func update(id: String, state: HomeActivityState, staleDate: Date?) async
+    /// Updates an activity's content. `timestamp` is whole seconds, never in the future (``ActivityClock/wholeSecond(_:)``):
+    /// ActivityKit drops an update older than the content it holds, and the engine's confirmation must be newer than this
+    /// write. `relevanceScore` is kept from the record.
+    func update(id: String, state: HomeActivityState, staleDate: Date?, relevanceScore: Double, timestamp: Date) async
 
     /// Ends an activity, optionally with its last content (the "Done" row).
     func end(id: String, state: HomeActivityState?, dismissal: LiveActivityDismissal) async
@@ -93,7 +100,7 @@ public struct InertLiveActivityClient: LiveActivityClient {
     public func request(attributes: HomeActivityAttributes, state: HomeActivityState, staleDate: Date?) async throws -> LiveActivityRecord {
         throw LiveActivityError.disabled
     }
-    public func update(id: String, state: HomeActivityState, staleDate: Date?) async {}
+    public func update(id: String, state: HomeActivityState, staleDate: Date?, relevanceScore: Double, timestamp: Date) async {}
     public func end(id: String, state: HomeActivityState?, dismissal: LiveActivityDismissal) async {}
     public func pushToStartTokens() -> AsyncStream<String> { AsyncStream { $0.finish() } }
     public func activityUpdates() -> AsyncStream<LiveActivityRecord> { AsyncStream { $0.finish() } }

@@ -27,7 +27,7 @@ public final class AppSession {
     /// Location reporting in shadow mode; nil on iPad and in launches that don't report (``LocationLaunchPolicy``).
     @ObservationIgnored public let location: LocationCoordinator?
 
-    /// The Home Live Activity: tokens for Home Assistant and the foreground start (nil in tests that don't need it).
+    /// The Live Activities: tokens for Home Assistant, button presses and sign-out (nil in tests that do not need it).
     @ObservationIgnored public let liveActivities: LiveActivityCoordinator?
 
     /// The app's pages in system search; filled when a session starts and emptied at sign-out.
@@ -117,7 +117,7 @@ public final class AppSession {
         let lifecycle = ConnectionLifecycle(connection: connection)
         self.tokens = tokens
         push.sessionStarted(server: server) { try await tokens.validAccessToken() }
-        liveActivities?.sessionStarted(store: connection.store)
+        liveActivities?.sessionStarted()
         // Created before the phase changes so the first signed-in frame already has the cached photo.
         backdrop = HouseBackdropStore.session(for: server)
         phase = .signedIn(connection, lifecycle)

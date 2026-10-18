@@ -20,76 +20,49 @@ private func eventually(_ condition: @MainActor () -> Bool) async -> Bool {
     return condition()
 }
 
-private func dishwasher(_ operation: String = "run", progress: String = "62") -> [EntityState] {
-    [
-        EntityState(entityId: "sensor.dishwasher_operation_state", state: operation, lastChanged: now.addingTimeInterval(-3_600)),
-        EntityState(entityId: "sensor.dishwasher_program_finish_time", state: ISO8601DateFormatter().string(from: now.addingTimeInterval(2_400))),
-        EntityState(entityId: "sensor.dishwasher_program_progress", state: progress),
-        EntityState(entityId: "select.dishwasher_active_program", state: "dishcare_dishwasher_program_eco_50"),
-        EntityState(entityId: "binary_sensor.dishwasher_remote_control", state: "on"),
-    ]
-}
-
 private func json(_ request: URLRequest) -> [String: Any] {
     (request.httpBody.flatMap { try? JSONSerialization.jsonObject(with: $0) } as? [String: Any]) ?? [:]
 }
 
-/// The Home Live Activity for a session: tokens for Home Assistant, the foreground start, sign-out.
+private let fan = HomeActivityAttributes(tag: "job.fan.guest", title: "Guest Bath Fan", kind: "fan", symbol: "fan", tint: "air")
+private let fanState = HomeActivityState(value: ActivityValue(kind: .countdown, startTs: 1_792_248_900, endTs: 1_792_249_482),
+                                         controls: [ActivityControl(id: "stop", title: "Stop")])
+
+/// The Live Activities for a session: tokens for Home Assistant, button presses, sign-out.
 @MainActor
 struct LiveActivityCoordinatorTests {
     private func make(enabled: Bool = true, transport: StubHTTPTransport = StubHTTPTransport([]))
-        -> (LiveActivityCoordinator, FakeLiveActivityClient, MobileAppCoordinator, EntityStore) {
+        -> (LiveActivityCoordinator, FakeLiveActivityClient, MobileAppCoordinator) {
         let client = FakeLiveActivityClient()
         let mobileApp = MobileAppCoordinator(device: device, store: InMemoryMobileAppRegistrationStore(), transport: transport)
         let coordinator = LiveActivityCoordinator(client: client, mobileApp: mobileApp, isEnabled: enabled, now: { now })
-        return (coordinator, client, mobileApp, EntityStore())
+        return (coordinator, client, mobileApp)
     }
 
-    @Test func aRunningDishwasherStartsUpdatesAndEndsTheActivityWhileTheAppIsOpen() async {
-        let (coordinator, client, _, entities) = make()
-        coordinator.sessionStarted(store: entities)
-        entities.replaceAll(dishwasher(), freshness: .live)
-        #expect(await eventually { client.activities.count == 1 })
-        #expect(client.activities[0].state.jobs.first?.id == "dishwasher")
-
-        entities.apply([EntityState(entityId: "sensor.dishwasher_program_progress", state: "75")])
-        #expect(await eventually { client.activities[0].state.jobs.first?.status == "Eco 50° · 75%" })
-
-        entities.apply([EntityState(entityId: "sensor.dishwasher_operation_state", state: "finished")])
-        #expect(await eventually { client.activities[0].lifecycle == .ended })
+    @Test func aSessionStartsWatchingTokensAndStartsNothingItself() async {
+        let (coordinator, client, _) = make()
+        coordinator.sessionStarted()
+        #expect(await eventually { client.isWatching })
+        #expect(client.activities.isEmpty && client.calls.isEmpty, "the engine starts cards; the app never does")
         await coordinator.sessionEnded()
     }
 
-    @Test func theDiskSnapshotOfAColdLaunchStartsNothing() async {
-        let (coordinator, client, _, entities) = make()
-        coordinator.sessionStarted(store: entities)
-        entities.replaceAll(dishwasher(), freshness: .snapshot(savedAt: now.addingTimeInterval(-9_000)))
-        for _ in 0..<50 { await Task.yield() }
-        try? await Task.sleep(for: .milliseconds(50))
-        #expect(client.activities.isEmpty, "a dishwasher that finished hours ago must not start an activity")
-        entities.replaceAll(dishwasher(), freshness: .live)
-        #expect(await eventually { client.activities.count == 1 })
+    @Test func signingOutEndsEveryCardAndStopsWatching() async {
+        let (coordinator, client, _) = make()
+        coordinator.sessionStarted()
+        #expect(await eventually { client.isWatching })
+        client.startFromPush(attributes: fan, state: fanState)
+        client.startFromPush(attributes: HomeActivityAttributes(tag: "job.dryer", title: "Dryer", kind: "dryer"), state: fanState)
         await coordinator.sessionEnded()
-    }
-
-    @Test func signingOutEndsTheActivityAndStopsFollowing() async {
-        let (coordinator, client, _, entities) = make()
-        coordinator.sessionStarted(store: entities)
-        entities.replaceAll(dishwasher(), freshness: .live)
-        #expect(await eventually { client.activities.count == 1 })
-        await coordinator.sessionEnded()
-        #expect(client.activities[0].lifecycle == .dismissed)
-        entities.apply([EntityState(entityId: "sensor.dishwasher_program_progress", state: "90")])
-        try? await Task.sleep(for: .milliseconds(50))
-        #expect(client.activities.count == 1, "nothing follows the entities after sign-out")
+        #expect(client.activities.allSatisfy { $0.lifecycle == .dismissed })
+        #expect(client.calls.count == 2)
     }
 
     @Test func aDisabledCoordinatorDoesNothing() async {
-        let (coordinator, client, _, entities) = make(enabled: false)
-        coordinator.sessionStarted(store: entities)
-        entities.replaceAll(dishwasher(), freshness: .live)
+        let (coordinator, client, _) = make(enabled: false)
+        coordinator.sessionStarted()
         try? await Task.sleep(for: .milliseconds(50))
-        #expect(client.activities.isEmpty && !client.isWatching)
+        #expect(!client.isWatching)
         let inert = LiveActivityCoordinator.inert(mobileApp: MobileAppCoordinator(device: device, store: InMemoryMobileAppRegistrationStore()))
         #expect(!inert.isEnabled)
         await coordinator.sessionEnded()
@@ -97,12 +70,12 @@ struct LiveActivityCoordinatorTests {
 
     @Test func thePushToStartTokenReachesHomeAssistantWithTheRegistration() async throws {
         let transport = StubHTTPTransport([(200, configJSON), (201, #"{"webhook_id":"w1"}"#), (200, configJSON), (200, "{}")])
-        let (coordinator, client, mobileApp, entities) = make(transport: transport)
+        let (coordinator, client, mobileApp) = make(transport: transport)
         mobileApp.sessionStarted(server: server) { "token" }
         #expect(mobileApp.begin(userID: "u1", userName: nil))
         #expect(mobileApp.setPushToken("ab"))
         await mobileApp.sync()
-        coordinator.sessionStarted(store: entities)
+        coordinator.sessionStarted()
         #expect(await eventually { client.isWatching })
         client.emitStartToken("cd01")
         #expect(await eventually { transport.requests.count == 4 })
@@ -119,15 +92,14 @@ struct LiveActivityCoordinatorTests {
         let mobileApp = MobileAppCoordinator(device: device, store: InMemoryMobileAppRegistrationStore([registration], active: registration),
                                              transport: transport)
         let coordinator = LiveActivityCoordinator(client: client, mobileApp: mobileApp, now: { now })
-        client.startFromPush(state: HomeActivityState(focus: "dishwasher", jobs: [
-            ActivityJob(id: "dishwasher", kind: "dishwasher", title: "Dishwasher", status: "", controls: [ActivityControl(id: "stop", title: "Stop")]),
-        ]))
-        let handled = await coordinator.intentHandler.handle(.control(tag: "fenton-home", job: "dishwasher", control: "stop"))
+        client.startFromPush(attributes: fan, state: fanState)
+        let handled = await coordinator.intentHandler.handle(.control(tag: "job.fan.guest", control: "stop"))
         #expect(handled)
         let sent = try #require(transport.requests.first)
         #expect(sent.url?.path == "/api/webhook/w1")
         let event = try #require((json(sent)["data"] as? [String: Any]))
         #expect(event["event_type"] as? String == "fenton_live_activity_action")
+        #expect((event["event_data"] as? [String: String]) == ["tag": "job.fan.guest", "job": "fan.guest", "control": "stop"])
     }
 }
 
@@ -179,9 +151,9 @@ struct LiveActivityRegistrationTests {
 
 @MainActor
 struct LiveActivityLinkTests {
-    @Test func aTapOnTheActivityOpensTheFocusedJobsPage() throws {
+    @Test func aTapOnTheActivityOpensTheJobsPage() throws {
         let push = PushCoordinator.inert()
-        let state = HomeActivityFixtures.state(.dishwasher, now: now)
+        let state = try #require(HomeActivityFixtures.fixture("dishwasher", now: now)).state
         let url = try #require(ActivityDeepLink.url(for: state))
         #expect(push.openLiveActivity(url))
         #expect(push.pendingRequest?.destination == PushDestination(dashboardPath: "kitchen"))

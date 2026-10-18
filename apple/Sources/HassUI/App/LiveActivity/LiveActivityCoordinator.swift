@@ -3,16 +3,17 @@ import Foundation
 import HassCore
 import Observation
 
-/// The Home Live Activity for the signed-in session (`.agents/platforms/apple/live-activities.md`).
+/// The Live Activities for the signed-in session (`.agents/platforms/apple/live-activities-per-job.md` §2).
 ///
+/// Home Assistant's `fenton_push` engine is the only writer of job content, so this coordinator does only what the phone
+/// must:
 /// - **Tokens**: reports the push-to-start token with the registration and each activity's update token to Home
-///   Assistant (``LiveActivityTokenReporter``), so the server can start and update the activity while the app is closed.
-/// - **Foreground**: while the app is open, watches the dishwasher and bathroom fan timer entities through
-///   ``EntityStore`` and starts, updates and ends the activity locally (``HomeActivityDirector``). One state path:
-///   the entities come from the store the whole app reads, never a second socket.
+///   Assistant (``LiveActivityTokenReporter``), so the server can start and update cards while the app is closed.
+/// - **Buttons**: hands the card's button presses to ``HomeActivityActionHandler`` (``intentHandler``).
+/// - **Sign-out**: ends every card (``sessionEnded()``).
 ///
-/// Created with the app delegate and started with each session; ended with the sign-out so nothing of the signed-in
-/// person stays on a Lock Screen.
+/// It starts nothing locally and reads no entities: the foreground director, the planner and the job deriver are gone.
+/// Created with the app delegate and started with each session.
 @MainActor
 @Observable
 public final class LiveActivityCoordinator {
@@ -21,10 +22,7 @@ public final class LiveActivityCoordinator {
 
     @ObservationIgnored private let client: any LiveActivityClient
     @ObservationIgnored private let mobileApp: MobileAppCoordinator
-    @ObservationIgnored private let director: HomeActivityDirector
     @ObservationIgnored private let reporter: LiveActivityTokenReporter
-    @ObservationIgnored private var store: EntityStore?
-    @ObservationIgnored private var generation = 0
 
     /// Creates a coordinator.
     /// - Parameters:
@@ -37,7 +35,6 @@ public final class LiveActivityCoordinator {
         self.client = client
         self.mobileApp = mobileApp
         self.isEnabled = isEnabled
-        director = HomeActivityDirector(client: client, now: now)
         reporter = LiveActivityTokenReporter(
             client: client, webhook: mobileApp.activityWebhookProvider(),
             registerStartToken: { [mobileApp] token in await mobileApp.registerStartActivityToken(token) }, now: now)
@@ -55,60 +52,22 @@ public final class LiveActivityCoordinator {
 
     // MARK: - Session
 
-    /// A session started: report tokens, and follow the entities.
-    /// - Parameter store: The session's entity store.
-    public func sessionStarted(store: EntityStore) {
+    /// A session started: report tokens.
+    public func sessionStarted() {
         guard isEnabled else { return }
-        self.store = store
-        generation += 1
         reporter.start()
-        observe(generation: generation)
-        Task { [director] in
-            for record in await client.current() { director.adopt(record) }
-        }
-        reconcileIfLive()
     }
 
-    /// Signing out: stop reporting and end the activity.
+    /// Signing out: end every card, telling Home Assistant about each, and stop reporting.
     public func sessionEnded() async {
-        generation += 1
-        store = nil
-        reporter.stop()
-        await director.endAll()
-    }
-
-    // MARK: - Following the entities
-
-    /// Re-evaluates once the store holds live data; the disk snapshot a cold launch restores must not start an
-    /// activity for a dishwasher that finished hours ago.
-    func reconcileIfLive() {
-        guard let store, store.freshness == .live else { return }
-        Task { [director, weak store] in
-            guard let store else { return }
-            await director.reconcile(entity: { store.value($0) })
-        }
-    }
-
-    private func observe(generation: Int) {
-        guard let store else { return }
-        let ids = director.watchedEntityIDs
-        withObservationTracking {
-            _ = store.freshness
-            for id in ids { _ = store.entity(id).state }
-        } onChange: { [weak self] in
-            Task { @MainActor [weak self] in
-                guard let self, self.generation == generation else { return }
-                self.reconcileIfLive()
-                self.observe(generation: generation)
-            }
-        }
+        await reporter.endAll()
     }
 }
 
 /// Whether Live Activities run in this launch.
 public enum LiveActivityLaunchPolicy {
     /// Off for debug UI journeys (a test token, a reset launch, or the component gallery) unless
-    /// `FENTON_LIVE_ACTIVITY` is set, so a journey never starts activities from the real house's dishwasher.
+    /// `FENTON_LIVE_ACTIVITY` is set, so a journey never reacts to the real house.
     public static func isEnabled(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
         #if DEBUG
         if !(environment["FENTON_LIVE_ACTIVITY"] ?? "").isEmpty { return true }

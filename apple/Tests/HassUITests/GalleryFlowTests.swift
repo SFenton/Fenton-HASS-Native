@@ -69,18 +69,17 @@ struct GalleryFlowTests {
 
     // MARK: Live Activity
 
-    @Test func theActivityPagesBetweenJobsAndStopShowsStopping() async throws {
-        let driver = await withLaunch(environment: ["FENTON_GALLERY_SCENARIO": "three"]) { await page(.liveActivity) }
+    @Test func aButtonOnTheStackShowsPendingInPlaceOfItself() async throws {
+        let driver = await withLaunch(environment: ["FENTON_GALLERY_SCENARIO": "stack"]) { await page(.liveActivity) }
         defer { driver.close() }
         func said(_ text: String) -> ([AXWindow.Node]) -> Bool { { nodes in nodes.last { $0.identifier == "gallery.lastCall" }?.value.contains(text) == true } }
-        let next = try #require(await driver.node(label: "Next job"))
-        #expect(await driver.press(next, until: said("focus dishwasher")), "› from the Master Bath Fan wraps to the dishwasher")
-        #expect(await driver.press(try #require(await driver.node(label: "Previous job")), until: said("focus fan.master")))
-        #expect(await driver.press(try #require(await driver.node(label: "Cancel Timer Master Bath Fan")), until: said("cancel_timer fan.master")))
+        let stop = try #require(await driver.node(label: "Stop Guest Bath Fan"))
+        #expect(await driver.press(stop, until: said("stop job.fan.guest")))
         func isStopping(_ node: AXWindow.Node) -> Bool { [node.label, node.title, node.value].contains { $0.contains("Stopping") } }
         let stopping = await driver.wait { $0.contains(where: isStopping) }
-        #expect(stopping.contains(where: isStopping), "the optimistic state replaces the button")
-        #expect(!stopping.contains { $0.spoken == "Cancel Timer Master Bath Fan" })
+        #expect(stopping.contains(where: isStopping), "the pending label replaces the button")
+        #expect(!stopping.contains { $0.spoken == "Stop Guest Bath Fan" })
+        #expect(stopping.contains { $0.spoken == "Stop Dishwasher" }, "the other cards keep their buttons")
     }
 
     // MARK: Floating actions

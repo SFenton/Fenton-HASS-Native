@@ -73,11 +73,14 @@ struct GalleryLaunchMatrixTests {
         await run(launches)
     }
 
-    @Test func liveActivityGalleryDrawsEachScenario() async {
-        var launches = HomeActivityFixtures.Scenario.allCases.map {
-            Launch(page: .liveActivity, environment: ["FENTON_GALLERY_SCENARIO": $0.rawValue])
+    @Test func liveActivityGalleryDrawsEachFixtureGroupAndTheIslandWidths() async {
+        var launches = HomeActivityFixtures.groups.keys.sorted().map {
+            Launch(page: .liveActivity, environment: ["FENTON_GALLERY_SCENARIO": $0])
         }
-        launches.append(Launch(page: .liveActivity, environment: ["FENTON_GALLERY_SCENARIO": "six"], size: Self.tablet))
+        launches += ["fan", "vacuum-paused", "problem-navigation-stuck", "island-widths", "nothing-at-all"].map {
+            Launch(page: .liveActivity, environment: ["FENTON_GALLERY_SCENARIO": $0])
+        }
+        launches.append(Launch(page: .liveActivity, environment: ["FENTON_GALLERY_SCENARIO": "stack"], size: Self.tablet))
         await run(launches)
     }
 
