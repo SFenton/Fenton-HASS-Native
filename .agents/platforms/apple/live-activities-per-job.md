@@ -314,6 +314,40 @@ All from the canvas boards; Lock Screen first.
 - **Watch `.small`:** the glyph, title and value; no controls.
 - **Accessibility.** Each card is one element plus its buttons. Controls read "Stop Guest Bath Fan", "Pause Main Floor Vacuum". Count-up values read "running for 12 minutes". Test at AX5 on iPhone, iPhone Duo and iPad, with 44 pt targets.
 
+### 8a. Refinements after the first device test (owner, 2026-10-17; canvas boards 12–15)
+
+These replace the matching parts of §8.
+
+- **Compact (bug).** `Text(timerInterval:)` reports the width of its widest possible value, so an uncapped countdown stretched the compact island almost edge to edge. This is a known iOS behaviour, and Apple's Clock is exempt. The trailing time gets a **rigid** width:
+  - **Template:** a hidden, monospaced template string ("00:00", or "0:00:00" when the range is an hour or more), with the live timer in an overlay; `lineLimit(1)` and `minimumScaleFactor(0.8)`. `maxWidth` is not enough.
+  - **Size:** 13–15 pt semibold, in the job's tint. Leading is the 24–26 pt ring.
+  - **Limited width:** when `isDynamicIslandLimitedInWidth` is set (iOS 27; also the iPhone 18 Pro with two activities), trailing is empty.
+  - **No time:** cards with no time (vacuum) show `short` (below) at 13 pt, capped at 56 pt and ending in "…".
+- **Expanded = E2c.**
+  - **Top, beside the camera:** the job glyph (24 pt) on the left.
+  - **Below the camera:** the title over the value on the left, **both white** (title 16 pt semibold, value 32 pt semibold monospaced). Up to two buttons sit on the right, **in line** with that title-and-value block. Then a 5 pt progress **bar** in the job's tint, only when there is progress (countdowns and percent).
+  - **Title wrapping:** long titles **wrap to two lines**. Live Activity views cannot animate on their own, so a scrolling title is impossible.
+  - **Paused:** the value dims to 55%.
+  - **Implementation:** `.leading`, `.trailing` and `.bottom` regions with no fixed frames; the bottom region holds the block.
+- **Lock Screen = L4** (bars, no ring).
+  - Row 1: the glyph (22 pt) in its tint, then the title (17 pt semibold; it wraps to two lines), with the corner mark (24 pt) top-right.
+  - Row 2: the value (32 pt semibold monospaced), with the buttons on the right in the same row.
+  - Row 3: the 5 pt bar, only when there is progress.
+  - No row holds only a button. The card is about 96–110 pt.
+  - Hot flash puts `detail` in row 1 ("Hot Flash · Your side").
+  - Complete: a checkmark glyph, "Complete" in the tint and a full bar.
+  - Problem cards keep their own layout (§8).
+- **Vacuums: no time and no bar anywhere** (owner).
+  - **Content:** the engine omits `value` and `progress` for vacuum cards.
+  - **Small title:** the attribute title ("Main Floor Vacuum").
+  - **Big line (24 pt):** the `headline` ("Vacuuming Kitchen", "Paused in Kitchen", dimmed when paused).
+  - **Buttons** are 44 pt **round icon buttons** with spoken labels:
+    - Pause: a white circle with a pause glyph; it becomes Resume, a play glyph, when paused.
+    - Dock: a dark circle with a house glyph, labelled "Dock".
+  - **Compact** shows the vacuum glyph and `short`; minimal shows the glyph.
+- **New content key `short`** (String?, ≤ 10): the compact island's trailing word when there is no time. The engine sets the room ("Kitchen"), "Paused" or "Area".
+- **General rule:** a card with no `value` shows `headline` as its big line under the title.
+
 ## 9. `fenton_push` changes (repo `SFenton/ha-fenton-push`)
 
 1. **`live_jobs.py` engine** (the Phase 2 engine in live-activities.md §7, re-scoped per job):
