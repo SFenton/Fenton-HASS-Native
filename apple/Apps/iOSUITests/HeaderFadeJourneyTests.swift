@@ -38,7 +38,12 @@ final class HeaderFadeJourneyTests: JourneyTestCase {
                       "Scrolling did not move the fade (\(probe.value as? String ?? "nil"))")
         for _ in 0..<3 { page.swipeUp(velocity: .fast) }
         XCTAssertEqual(offset(probe), 41, "The fade stops at the ramp however far the page scrolls")
-        for _ in 0..<8 { page.swipeDown(velocity: .fast) }
+        // Stops at the top: one more downward swipe there would dismiss a sheet.
+        for _ in 0..<8 {
+            if offset(probe) == 0 { break }
+            page.swipeDown(velocity: .fast)
+            sleep(1) // let it settle before reading, so a swipe never lands on the top
+        }
         XCTAssertTrue(waitFor("0", probe), "The fade returns to rest at the top (\(probe.value as? String ?? "nil"))")
     }
 
