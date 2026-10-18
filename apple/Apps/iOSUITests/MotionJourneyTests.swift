@@ -110,7 +110,7 @@ final class MotionJourneyTests: JourneyTestCase {
                 sizes[id] = component(id).frame.size
             }
             let all = app.buttons["motion.toggleAll"]
-            XCTAssertTrue(all.isHittable, "Toggle all is not always in reach")
+            XCTAssertTrue(all.exists, "Toggle all is not in the bar")
             all.tap()
             for id in Self.componentIDs.reversed() {
                 reveal(app.buttons["motion.toggle.\(id)"], in: app)

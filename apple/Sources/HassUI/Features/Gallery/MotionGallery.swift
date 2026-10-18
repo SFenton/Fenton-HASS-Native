@@ -56,7 +56,8 @@ struct MotionGallery: View {
                     Text("Toggle state").frame(minHeight: HassTokens.minTarget)
                 }
                 .buttonStyle(.bordered)
-                .accessibilityLabel("Toggle \(item.title)")
+                // Without the word "Button": the audit flags a label that repeats the trait.
+                .accessibilityLabel("Toggle \(item.title.replacing("Button", with: "").trimmingCharacters(in: .whitespaces))")
                 .accessibilityIdentifier("motion.toggle.\(item.id)")
             }
             item.content(isOn)
