@@ -19,7 +19,7 @@ struct DirectionGGallery: View {
     private let layoutsOnly = UserDefaults.standard.string(forKey: "directionGOrder") == "layouts"
     /// `-directionGOrder finish` shows only the tile finish comparison, so a journey audits and a capture sees it unscrolled.
     private let finishOnly = UserDefaults.standard.string(forKey: "directionGOrder") == "finish"
-    /// `-directionGFinish webPort` limits the finish comparison to one proposal (`solid`, `tintedGlass`, `frostedModule`, `webPort`).
+    /// `-directionGFinish solid` limits the finish comparison to one finish (`tintedGlass`, the shipped one, or `solid`, the fallback).
     private let onlyFinish = UserDefaults.standard.string(forKey: "directionGFinish").flatMap(TileFinish.init(rawValue:))
     /// `-directionGLayout row` limits the comparison to one arrangement, so all six sample tiles fit on screen.
     private let onlyLayout = UserDefaults.standard.string(forKey: "directionGLayout").flatMap(TileLayout.init(rawValue:))
@@ -154,8 +154,9 @@ struct DirectionGGallery: View {
         }
     }
 
-    /// The three frosted proposals beside the shipped solid finish, on the same tiles (``TileFinish``): off, on in a family
-    /// colour, lit, dark ink on a bright fill, an error, a room and a long name. Proposals only; the owner picks.
+    /// The shipped tinted glass finish beside the solid one it falls back to with Reduce Transparency or Increase Contrast, on
+    /// the same tiles (``TileFinish``): off, on in a family colour, lit, dark ink on a bright fill, an error, a room and a
+    /// long name.
     private var finishes: some View {
         section("Tile Finish") {
             ForEach(TileFinish.allCases.filter { onlyFinish == nil || $0 == onlyFinish }) { finish in
@@ -233,7 +234,7 @@ struct DirectionGGallery: View {
     }
 }
 
-/// The tiles every finish is judged on: off, on in a family colour, lit, bright with dark ink, an error, a room, a long name
+/// The tiles the finishes are judged on: off, on in a family colour, lit, bright with dark ink, an error, a room, a long name
 /// and a coloured navigation tile, drawn with one ``TileFinish``. On a page they sit on the wallpaper; in a sheet, on the cell.
 private struct FinishSampleGrid: View {
     var finish: TileFinish
@@ -280,7 +281,7 @@ private struct DirectionGGallerySheet: View {
         }
     }
 
-    /// `-directionGFinish webPort` limits the sheet's finish comparison to one proposal.
+    /// `-directionGFinish solid` limits the sheet's finish comparison to one finish.
     private let onlyFinish = UserDefaults.standard.string(forKey: "directionGFinish").flatMap(TileFinish.init(rawValue:))
 
     /// `-directionGSheetSection Families` picks the first section, so a journey audits each one at launch.
@@ -338,7 +339,7 @@ private struct DirectionGGallerySheet: View {
         .equalHeightTiles()
     }
 
-    /// The tile finish proposals on the sheet's cells (`-directionGFinish <raw>` limits them to one).
+    /// The tile finishes on the sheet's cells (`-directionGFinish <raw>` limits them to one).
     private var finishes: some View {
         ForEach(TileFinish.allCases.filter { onlyFinish == nil || $0 == onlyFinish }) { finish in
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {

@@ -161,10 +161,10 @@ struct GalleryLaunchTests {
         #expect(animated.distinctColors > 3)
     }
 
-    /// The Tile Finish section: every proposal on the page alone, all four stacked, and in the sheet (`-directionGFinish` picks one),
-    /// each drawing its own look.
+    /// The Tile Finish section: the shipped tinted glass and the solid fallback on the page alone, both stacked, and in the sheet
+    /// (`-directionGFinish` picks one), each drawing its own look.
     @Test func directionGDrawsEveryTileFinishOnThePageAndInTheSheet() async throws {
-        let finishes = ["solid", "tintedGlass", "frostedModule", "webPort"]
+        let finishes = ["tintedGlass", "solid"]
         var pages: [NSBitmapImageRep] = []
         var sheets: [NSBitmapImageRep] = []
         for finish in finishes {
@@ -177,11 +177,11 @@ struct GalleryLaunchTests {
         }
         for image in pages + sheets { #expect(image.distinctColors > 3) }
         for index in 1..<finishes.count {
-            #expect(pages[index].differs(from: pages[0]), "\(finishes[index]) draws differently from the shipped finish on a page")
-            #expect(sheets[index].differs(from: sheets[0]), "\(finishes[index]) draws differently from the shipped finish in a sheet")
+            #expect(pages[index].differs(from: pages[0]), "\(finishes[index]) draws differently from tinted glass on a page")
+            #expect(sheets[index].differs(from: sheets[0]), "\(finishes[index]) draws differently from tinted glass in a sheet")
         }
         let stacked = try await withLaunch(defaults: ["directionGOrder": "finish"]) { try #require(await draw(.directionG, settle: 0.8)) }
-        #expect(stacked.differs(from: pages[0]), "all four finishes stack in one page")
+        #expect(stacked.differs(from: pages[0]), "both finishes stack in one page")
         let allInSheet = try await withLaunch(defaults: ["directionGSheet": "open", "directionGSheetSection": "Finish"]) {
             try #require(await draw(.directionG, settle: 1.2))
         }

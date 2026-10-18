@@ -26,16 +26,14 @@ Vacuum sheet: zones|FENTON_GALLERY=vacuums FENTON_GALLERY_VACUUM=valetudo_exalte
 Humidifier sheet|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=controls FENTON_GALLERY_CLEAN=1
 Humidifier schedules|FENTON_GALLERY=room-devices FENTON_GALLERY_DEVICE=humidifier FENTON_GALLERY_TAB=schedules FENTON_GALLERY_CLEAN=1
 
-# Tile finish proposals (`--section finish`; `--section all` skips it): the same tile-heavy pages with each finish
-# (`FENTON_TILE_FINISH`, Debug builds; `.agents/design/direction-g.md`, Tile finish).
+# Tile finish (`--section finish`; `--section all` skips it): the same tile-heavy pages with the shipped tinted glass and the solid
+# fallback (`FENTON_TILE_FINISH`, Debug builds; `.agents/design/direction-g.md`, Tile finish), and tinted glass with a layer left out.
 [finish]
 Grid solid|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=solid
-Grid A tintedGlass|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass
-Grid B frostedModule|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=frostedModule
-Grid C webPort|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=webPort
-Grid A without sheen|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=sheen
-Grid A without rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=rim
-Grid A without sheen or rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=sheen,rim
+Grid tintedGlass|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass
+Grid tintedGlass without sheen|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=sheen
+Grid tintedGlass without rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=rim
+Grid tintedGlass without sheen or rim|FENTON_GALLERY=performance FENTON_GALLERY_PERF=grid FENTON_TILE_FINISH=tintedGlass FENTON_TILE_FINISH_OMIT=sheen,rim
 
 # The wallpaper's cost (--section backdrop; --section all skips it): the same pages with the fixture house photo
 # behind them (FENTON_BACKDROP_FIXTURE=1, Debug builds; the gallery draws the shell's backdrop store), so the wallpaper

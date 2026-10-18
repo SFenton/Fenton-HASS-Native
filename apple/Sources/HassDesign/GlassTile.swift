@@ -279,7 +279,7 @@ public struct GlassTileFace: View {
 
     public var body: some View {
         let style = style
-        let shape = RoundedRectangle(cornerRadius: finish.tokens(on: surface).cornerRadius, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous)
         let layout = layout
         content(style, layout)
             // The chevron is vertically centred on the tile in every arrangement (owner, 2026-10-16), so the text
@@ -303,7 +303,7 @@ public struct GlassTileFace: View {
             }
             .overlay {
                 if finish != .solid {
-                    FrostedRim(finish: finish, style: style, surface: surface, appearance: appearance)
+                    TintedGlassRim(style: style, surface: surface, appearance: appearance)
                 }
             }
             .overlay {
@@ -328,44 +328,7 @@ public struct GlassTileFace: View {
 
     /// The glyph: decorative, because the title names the tile. Symbols carry built-in labels ("Humidifier"), which the
     /// audit then flagged as clipped text on iPad (glyph wider than its frame).
-    @ViewBuilder
     private func glyph(_ style: TileFaceStyle, layout: TileLayout) -> some View {
-        if finish.usesGlyphDisc {
-            discGlyph(style)
-        } else {
-            plainGlyph(style, layout: layout)
-        }
-    }
-
-    /// Finish B: the glyph sits on a disc that carries the family colour, so the tile itself can stay one neutral module.
-    private func discGlyph(_ style: TileFaceStyle) -> some View {
-        let fill: Color = switch style {
-        case let .filled(family): family.fill ?? Color(rgb: family.spec.glyph)
-        case let .colored(rgb): Color(rgb: rgb)
-        case .lit: LitTile.bandBottom
-        case .error: Color(rgb: appearance.errorRGB).opacity(0.2)
-        case .off, .tinted: Color.black.opacity(appearance == .light ? TileFinish.offDiscShade.light : TileFinish.offDiscShade.dark)
-        }
-        let ink: Color = switch style {
-        case let .filled(family): family.ink
-        case .colored: RoomPalette.ink
-        case .lit: LitTile.glyph
-        default: glyphColor(style)
-        }
-        return Image(systemName: symbol)
-            .font(.body)
-            .symbolVariant(isActive || style.isColored ? .fill : .none)
-            .foregroundStyle(ink)
-            .frame(width: Self.discDiameter, height: Self.discDiameter)
-            .background(fill, in: Circle())
-            .opacity(isUnavailable ? 0.5 : 1)
-            .accessibilityHidden(true)
-    }
-
-    /// The glyph disc's diameter under finish B: 34 pt, which also fixes the row layout's glyph column.
-    static let discDiameter: CGFloat = 34
-
-    private func plainGlyph(_ style: TileFaceStyle, layout: TileLayout) -> some View {
         Image(systemName: symbol)
             .font(layout == .row ? .title2 : .title3)
             // Filled for an active tile and for a coloured navigation tile; an off tile keeps the outline.
@@ -394,7 +357,6 @@ public struct GlassTileFace: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .modifier(FinishTextShadow(finish: finish, surface: surface))
     }
 
     @ViewBuilder
@@ -403,7 +365,7 @@ public struct GlassTileFace: View {
         case .row:
             HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
                 glyph(style, layout: layout)
-                    .frame(width: finish.usesGlyphDisc ? Self.discDiameter : Self.rowGlyphWidth)
+                    .frame(width: Self.rowGlyphWidth)
                 text(style, spacing: 2)
             }
         case .anchoredBottom:
@@ -455,7 +417,7 @@ public struct GlassTileFace: View {
         switch style {
         case .off:
             isEnabled ? (family.map { family in
-                finish == .solid ? family.offGlyph : Color(rgb: family.offGlyphRGB(appearance.scheme, keep: finish.offGlyphKeep))
+                finish == .solid ? family.offGlyph : Color(rgb: family.offGlyphRGB(appearance.scheme, under: finish))
             } ?? muted) : muted
         case .lit: LitTile.glyph
         case let .filled(family): family.ink
@@ -465,14 +427,8 @@ public struct GlassTileFace: View {
         }
     }
 
-    /// The style whose inks the text takes: finish B keeps the module neutral, so its text is the off face's (white, or the
-    /// label colour in a light sheet) whatever the state; an error keeps its red.
-    private func inkStyle(_ style: TileFaceStyle) -> TileFaceStyle {
-        finish.usesGlyphDisc && style != .error ? .off : style
-    }
-
     private func primaryInk(_ style: TileFaceStyle) -> Color {
-        switch inkStyle(style) {
+        switch style {
         case .lit: LitTile.ink
         case let .filled(family): family.ink
         case .colored: RoomPalette.ink
@@ -481,7 +437,7 @@ public struct GlassTileFace: View {
     }
 
     private func secondaryInk(_ style: TileFaceStyle) -> Color {
-        switch inkStyle(style) {
+        switch style {
         case .lit: LitTile.secondaryInk
         case let .filled(family): family.secondaryInk
         case .colored: RoomPalette.ink
@@ -492,7 +448,7 @@ public struct GlassTileFace: View {
         default:
             if appearance == .light { wash != nil ? HassTokens.Ink.secondary : HassTokens.Surface.secondaryInSheet }
             else if wash != nil { HassTokens.Surface.secondaryOnWash }
-            // A frosted ground is a little lighter than the thin module, so its state text takes the denser wallpaper ink.
+            // A tinted glass ground is a little lighter than the thin module, so its state text takes the denser wallpaper ink.
             else if finish != .solid, surface == .page { HassTokens.Surface.secondaryOnWallpaper }
             else { HassTokens.Surface.secondaryOnModule }
         }
@@ -505,8 +461,8 @@ public struct GlassTileFace: View {
         if finish == .solid {
             solidGround(style)
         } else {
-            FrostedGround(finish: finish, style: style, surface: surface, appearance: appearance, tint: tint, wash: wash,
-                          level: level, levelTint: levelTint)
+            TintedGlassGround(style: style, surface: surface, appearance: appearance, tint: tint, wash: wash,
+                              level: level, levelTint: levelTint)
         }
     }
 

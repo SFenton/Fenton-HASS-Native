@@ -215,7 +215,8 @@ struct AlarmModeButton: View {
             .frame(maxWidth: .infinity, minHeight: 64, maxHeight: .infinity)
             .background {
                 if isSelected, let fill = ColorFamily.security(alarmState: mode.state)?.fill {
-                    shape.fill(fill)
+                    // A chosen mode is a filled tile: the same edge and sheen as the tiles (``TileFinish``).
+                    shape.fill(fill).tintedGlassEdge(cornerRadius: HassTokens.Spacing.l)
                 } else if onAlarm {
                     shape.fill(HassTokens.Ink.primary.opacity(0.14))
                 } else {
