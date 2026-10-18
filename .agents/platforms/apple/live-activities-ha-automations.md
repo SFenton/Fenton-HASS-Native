@@ -1,5 +1,7 @@
 # Live Activities: Home Assistant automations (Phase 1, applied)
 
+> **Retiring.** The per-job design in [live-activities-per-job.md](live-activities-per-job.md) moves all of this into the `fenton_push` engine; remove the package once that ships (§10 there). **Fixed 2026-10-17:** the script below decoded `jobs` twice (`tojson`, then `from_json` on what Home Assistant had already turned back into a list), so every run failed and no push ever left Home Assistant. That is why a card stayed on "Stopping…". `jobs` is used as a list now.
+
 > **What:** the automations that let Home Assistant start, update and end the Home Live Activity while the app is closed, and answer its buttons, before the `fenton_push` job engine (Phase 2) exists. **Read when:** the owner applies them, or Phase 2 replaces them. **Applied 2026-10-17** at the owner's request as `/config/packages/fenton_live_activity.yaml` (a new package file; no existing file changed), with `ha-fenton-push` updated to `386af92` through HACS and Home Assistant restarted. Edit that package, not `automations.yaml`/`scripts.yaml`; validate with `ha core check` and reload automations and scripts. Target today: `notify.mobile_app_stephen_s_iphone_fenton` (the only S+H install).
 
 They use only what is verified in [live-activities.md](live-activities.md) §0: core `mobile_app` routes a `notify` call with `data.live_update: true` and `data.tag` to a **start** (the phone's push-to-start token), an **update** (the activity's token) or, for `clear_notification`, an **end**; `ha-fenton-push` (Phase 1 branch `live-activities-phase1`) turns the `data.fenton_activity` block into the activity's content. Install that integration version first; without it the block is ignored and the post is dropped.
@@ -56,7 +58,7 @@ script:
             {{ ns.out | tojson }}
       - choose:
           # Nothing is running and nothing is finishing: end the activity.
-          - conditions: "{{ jobs | from_json | length == 0 }}"
+          - conditions: "{{ jobs | length == 0 }}"
             sequence:
               - action: notify.mobile_app_stephen_s_iphone_fenton
                 data:
@@ -67,15 +69,15 @@ script:
           - action: notify.mobile_app_stephen_s_iphone_fenton
             data:
               title: Home
-              message: "{{ (jobs | from_json)[0].title }} · {{ (jobs | from_json)[0].status }}"
+              message: "{{ jobs[0].title }} · {{ jobs[0].status }}"
               data:
                 tag: fenton-home
                 live_update: true
                 live_alert: "{{ alert }}"
                 fenton_activity:
-                  focus: "{{ (jobs | from_json)[0].id }}"
+                  focus: "{{ jobs[0].id }}"
                   url: "/sfenton-react-dash/home?path=kitchen"
-                  jobs: "{{ jobs | from_json }}"
+                  jobs: "{{ jobs }}"
 ```
 
 Notes:

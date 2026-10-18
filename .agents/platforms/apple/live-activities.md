@@ -1,5 +1,7 @@
 # Live Activities (spec)
 
+> **Superseded in part (2026-10-17):** one Live Activity **per job** replaces the single Home activity. [live-activities-per-job.md](live-activities-per-job.md) replaces §1 ("one activity, not many"), §3 (content state), §4 (presentation) and §6 (engine rules) here. §0, §2's token plumbing, §5's control map, §8's entity survey and §10 still apply.
+
 > **What:** how Fenton Home shows running household jobs (dishwasher, fan timers, laundry and more) as one Live Activity on the Lock Screen, Dynamic Island, StandBy, Apple Watch, CarPlay and the Mac, kept current by Home Assistant over APNs while the app is closed. **Read when:** implementing or changing Live Activities, the widget extension, the `fenton_push` job engine, or their contract.
 
 Status: spec (owner request, Stephen, 2026-10-17). **Phase 1 (the pipe) is built** on `claude/live-activities-phase1` and `SFenton/ha-fenton-push#4`, and not yet checked on a phone; §0 holds what Phase 1 verified and decided, and where it departs from the text below. Phases 2 to 4 are not started. The current Apple SDK is iOS 27 / Xcode 27.1 and the deployment target is iOS 17.0. Home Assistant is 2026.10.1.
