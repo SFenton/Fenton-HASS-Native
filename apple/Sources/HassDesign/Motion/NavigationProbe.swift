@@ -53,11 +53,17 @@ private struct MeasuresNavigation: ViewModifier {
     var kind: NavigationKind
     var page: String
     @Environment(\.navigationKind) private var environmentKind
+    #if os(iOS)
+    @State private var handle = ProbeHandle()
+    #endif
 
     func body(content: Content) -> some View {
         #if os(iOS)
         // A zoom destination says so through the environment; a plain push inherits `.push`.
-        content.background { NavigationProbe(kind: kind == .push ? environmentKind : kind, page: page).allowsHitTesting(false) }
+        content
+            .background { NavigationProbe(kind: kind == .push ? environmentKind : kind, page: page, handle: handle).allowsHitTesting(false) }
+            // SwiftUI's own word that the page is going: UIKit may not forward the disappearance to the probe on a pop.
+            .onDisappear { handle.controller?.pageDisappeared() }
         #else
         content
         #endif
@@ -70,14 +76,24 @@ private struct MeasuresNavigation: ViewModifier {
 private struct NavigationProbe: UIViewControllerRepresentable {
     var kind: NavigationKind
     var page: String
+    var handle: ProbeHandle
 
     func makeUIViewController(context: Context) -> NavigationProbeController {
-        NavigationProbeController(kind: kind, page: page)
+        let controller = NavigationProbeController(kind: kind, page: page)
+        handle.controller = controller
+        return controller
     }
 
     func updateUIViewController(_ controller: NavigationProbeController, context: Context) {
         controller.kind = kind
+        handle.controller = controller
     }
+}
+
+/// Lets the page's SwiftUI side reach the probe's controller.
+@MainActor
+final class ProbeHandle {
+    weak var controller: NavigationProbeController?
 }
 
 /// The probe's view controller. It never trusts the `animated` flag of its own appearance callbacks: SwiftUI adds it to the
@@ -88,6 +104,8 @@ final class NavigationProbeController: UIViewController {
     var kind: NavigationKind
     private let page: String
     private var tracker: TransitionTracker?
+    /// Whether the way out is already being timed (UIKit and SwiftUI both report it).
+    private var timesLeaving = false
 
     init(kind: NavigationKind, page: String) {
         self.kind = kind
@@ -113,8 +131,15 @@ final class NavigationProbeController: UIViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        guard isLeaving else { return }
-        // The page itself is going away (popped or dismissed): time that transition instead.
+        pageDisappeared()
+    }
+
+    /// The page is going away: if it is the page itself (popped or dismissed), time that transition. Called from UIKit's
+    /// `viewWillDisappear` and from SwiftUI's `onDisappear`, whichever arrives first.
+    func pageDisappeared() {
+        guard isLeaving, !timesLeaving else { return }
+        timesLeaving = true
+        // The page itself is going away: time that transition instead of the one that brought it here.
         tracker?.cancel()
         tracker = TransitionTracker(controller: self, measurement: .begin(kind.disappear, page: page))
         tracker?.start()
