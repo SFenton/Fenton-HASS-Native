@@ -25,11 +25,12 @@ struct MotionGallery: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-                Button("Toggle all") {
+                Button {
                     if onCases.count == Self.cases.count { onCases = [] } else { onCases = Set(Self.cases.map(\.id)) }
+                } label: {
+                    Text("Toggle all").frame(minHeight: HassTokens.minTarget)
                 }
                 .buttonStyle(.borderedProminent)
-                .frame(minHeight: HassTokens.minTarget)
                 .accessibilityIdentifier("motion.toggleAll")
                 ForEach(Self.cases) { card($0) }
             }
@@ -45,11 +46,12 @@ struct MotionGallery: View {
             HStack {
                 Text(item.title).font(.headline).foregroundStyle(HassTokens.Ink.primary)
                 Spacer()
-                Button("Toggle state") {
+                Button {
                     if isOn { onCases.remove(item.id) } else { onCases.insert(item.id) }
+                } label: {
+                    Text("Toggle state").frame(minHeight: HassTokens.minTarget)
                 }
                 .buttonStyle(.bordered)
-                .frame(minHeight: HassTokens.minTarget)
                 .accessibilityLabel("Toggle \(item.title)")
                 .accessibilityIdentifier("motion.toggle.\(item.id)")
             }
