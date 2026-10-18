@@ -34,7 +34,8 @@ struct LiveActivityViewsTests {
 
     /// A card from each layout and state, for the checks that need not run for every name.
     nonisolated static let representatives = ["fan", "fan-long", "dishwasher-percent", "dishwasher-paused", "dishwasher-waiting", "dryer", "dryer-estimated",
-                                  "washer-complete", "vacuum", "vacuum-paused", "hotflash-cooling", "hotflash-bysteph", "fan-pending",
+                                  "washer-complete", "vacuum", "vacuum-paused", "vacuum-long", "dishwasher-long", "fan-xlong", "hotflash-cooling",
+                                  "hotflash-bysteph", "hotflash-stephen-bysteph", "fan-pending",
                                   "fan-pending-stale", "fan-notice", "problem-navigation-stuck", "problem-mop-clean_water_empty",
                                   "problem-vendor-unknown_error_88", "problem-completing", "problem-power-low_battery"]
 
@@ -77,10 +78,13 @@ struct LiveActivityViewsTests {
     @Test func aPausedCardAndADimmedCardDrawDifferentlyFromTheirNormalSelves() async {
         let normal = await render(HomeActivityLockScreenView(card: card("vacuum")))
         let paused = await render(HomeActivityLockScreenView(card: card("vacuum-paused")))
-        let dimmed = await render(HomeActivityLockScreenView(card: card("vacuum")).environment(\.isLuminanceReduced, true))
-        #expect(normal != nil && paused != nil && dimmed != nil)
-        if let normal, let dimmed { #expect(normal.differs(from: dimmed), "Always-On hides the ring track") }
-        if let normal, let paused { #expect(normal.differs(from: paused)) }
+        #expect(normal != nil && paused != nil)
+        if let normal, let paused { #expect(normal.differs(from: paused), "Paused says so in words and swaps Pause for Resume") }
+        // Always-On hides a ring's empty track (the Lock Screen has no ring; the Smart Stack and the island do).
+        let size = CGSize(width: 200, height: 60)
+        let ring = await render(HomeActivitySmallView(card: card("dishwasher-percent")), size: size)
+        let dimmed = await render(HomeActivitySmallView(card: card("dishwasher-percent")).environment(\.isLuminanceReduced, true), size: size)
+        if let ring, let dimmed { #expect(ring.differs(from: dimmed), "Always-On hides the ring track") }
     }
 
     @Test func eachRingAndFigureKindDraws() async {
@@ -123,6 +127,43 @@ struct LiveActivityViewsTests {
             let image = await render(HomeActivityIsland.CompactTrailing(card: card(name)), size: CGSize(width: 90, height: 40))
             #expect(image != nil, Comment(rawValue: name))
         }
+    }
+
+    /// `Text(timerInterval:)` reports the width of its widest possible value; the compact time must not (spec §8a).
+    private func width(_ view: some View) -> CGFloat {
+        NSHostingView(rootView: view.fixedSize()).fittingSize.width
+    }
+
+    @Test func theCompactTimeIsExactlyAsWideAsItsHiddenTemplate() {
+        let font = ActivityStyle.compactTimeFont
+        let short = width(Text("00:00").font(font))
+        let hours = width(Text("0:00:00").font(font))
+        #expect(hours > short)
+        #expect(abs(width(HomeActivityIsland.CompactTrailing(card: card("dishwasher"))) - short) < 1, "42:00 takes the MM:SS template")
+        #expect(abs(width(HomeActivityIsland.CompactTrailing(card: card("dishwasher-long"))) - hours) < 1, "1:04:42 takes the H:MM:SS template")
+        #expect(abs(width(HomeActivityIsland.CompactTrailing(card: card("fan"))) - short) < 1)
+        #expect(abs(width(HomeActivityIsland.CompactTrailing(card: card("dryer"))) - short) < 1, "a count-up too")
+    }
+
+    @Test func aCompactWordIsCappedAt56PointsAndTruncates() {
+        #expect(width(HomeActivityIsland.CompactTrailing(card: card("vacuum"))) <= ActivityCard.compactLabelWidth + 0.5)
+        var long = card("vacuum").state
+        long.short = "Kitchenette"
+        let capped = HomeActivityIsland.CompactTrailing(card: ActivityCard(attributes: card("vacuum").attributes, state: long, now: Self.now))
+        #expect(width(capped) <= ActivityCard.compactLabelWidth + 0.5, "ends in an ellipsis rather than widening the island")
+        #expect(width(HomeActivityIsland.CompactTrailing(card: card("vacuum-paused"))) > 20)
+    }
+
+    @Test func theCompactIslandDrawsEveryTrailingKindAndAGlyphOnlyLeadingForAVacuum() async {
+        for name in ["vacuum", "vacuum-paused", "dishwasher-percent", "hotflash-cooling", "fan", "dryer", "washer-complete", "problem-navigation-stuck"] {
+            let trailing = await render(HomeActivityIsland.CompactTrailing(card: card(name)), size: CGSize(width: 90, height: 40))
+            let leading = await render(HomeActivityIsland.CompactLeading(card: card(name)), size: CGSize(width: 40, height: 40))
+            #expect(trailing != nil && leading != nil, Comment(rawValue: name))
+        }
+        var bare = card("vacuum").state
+        bare.short = nil
+        let empty = HomeActivityIsland.CompactTrailing(card: ActivityCard(attributes: card("vacuum").attributes, state: bare, now: Self.now))
+        #expect(width(empty) < 1, "no time and no word: nothing beside the camera")
     }
 
     @Test func theIslandRegionsHaveTheWidthsOfTheCanvas() {
@@ -230,7 +271,7 @@ struct ActivityStyleTests {
         let card = blend(rgb(0x17181E), ActivityStyle.cardOpacity, over: (255, 255, 255))
         #expect(contrast((255, 255, 255), card) >= 4.5, "primary text")
         #expect(contrast(blend((255, 255, 255), 0.78, over: card), card) >= 4.5, "secondary text")
-        #expect(contrast(blend((255, 255, 255), 0.55, over: card), card) >= 3, "a paused time (large text)")
+        // Status text is always white, paused or not (owner, 2026-10-17): there is no dimmed colour to check.
     }
 
     @Test(arguments: ["cleaning", "air", "water", "cooling", "neutral", "bogus"])
@@ -262,7 +303,8 @@ struct ActivityStyleTests {
         let problem = HomeActivityFixtures.fixture("problem-navigation-stuck")!.card()
         _ = ActivityStyle.ground(for: job)
         _ = ActivityStyle.ground(for: problem)
-        #expect(ActivityStyle.lockScreenHeightLimit == 160 && ActivityStyle.minimumHit == 44 && ActivityStyle.ringSize == 64 && ActivityStyle.markSize == 40)
+        #expect(ActivityStyle.lockScreenHeightLimit == 160 && ActivityStyle.minimumHit == 44 && ActivityStyle.ringSize == 64
+                && ActivityStyle.markSize == 24 && ActivityStyle.problemMarkSize == 40 && ActivityStyle.barHeight == 5)
     }
 }
 #endif

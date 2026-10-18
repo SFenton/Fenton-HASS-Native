@@ -56,9 +56,46 @@ public struct ActivityCard: Equatable, Sendable {
         public var isPrimary: Bool
         /// What VoiceOver reads: "Stop Guest Bath Fan".
         public var accessibilityLabel: String
+        /// The glyph of a vacuum's 44 pt round icon button (Pause, Resume, Dock); nil for a text pill.
+        public var icon: Icon?
 
         public var id: String { control.id }
+
+        /// A round icon button's glyph.
+        public enum Icon: Equatable, Sendable {
+            case pause, play, dock
+        }
     }
+
+    /// The thin bar under the value: a time range that fills itself, a reported fraction, or a finished job's full bar.
+    public enum Bar: Equatable, Sendable {
+        case timer(ClosedRange<Date>)
+        case fraction(Double)
+        case full
+    }
+
+    /// What the compact island's trailing side holds (spec §8a). A time gets a rigid width (``compactTemplate(hours:)``) so
+    /// the island stays compact; a word is capped at ``compactLabelWidth``.
+    public enum CompactTrailing: Equatable, Sendable {
+        /// A live time, drawn over a hidden template of this text ("00:00" or "0:00:00").
+        case timer(template: String)
+        /// A word: the card's `short`, a percentage, or a text value.
+        case label(String)
+        /// A problem's one word ("Stuck").
+        case problem(String)
+        /// A finished job's check.
+        case complete
+        /// Nothing.
+        case none
+    }
+
+    /// The widest a compact word grows, in points.
+    public static let compactLabelWidth: Double = 56
+    /// A count-up this old (seconds) gets the `H:MM:SS` template, since it reaches an hour before the next push.
+    public static let hoursTemplateAfter: Double = 3000
+
+    /// The hidden text whose width the compact island's time takes: "0:00:00" from an hour on, else "00:00".
+    public static func compactTemplate(hours: Bool) -> String { hours ? "0:00:00" : "00:00" }
 
     // MARK: - Inputs
 
@@ -85,13 +122,27 @@ public struct ActivityCard: Equatable, Sendable {
     public var tag: String { attributes.tag }
     /// The device ("Main Floor Vacuum").
     public var deviceTitle: String { attributes.title }
-    /// The title line: the headline when the engine sent one ("Vacuuming Kitchen"), else the device.
+    /// The title line. It is the device ("Main Floor Vacuum"), except for an older engine's card that has both a time and a
+    /// headline, which the headline still names.
     public var title: String {
-        guard let headline = state.headline, !headline.isEmpty else { return attributes.title }
+        guard let headline = state.headline, !headline.isEmpty, figure != .none else { return attributes.title }
         return headline
     }
-    /// The short line under the title (the hot flash card), or nil.
+    /// A card with no `value` shows its `headline` as the big line under the title ("Vacuuming Kitchen", "Paused in
+    /// Kitchen"), in white even when paused (spec §8a). nil when the card has a figure, is complete, or sent no headline.
+    public var bigLine: String? {
+        guard figure == .none, let headline = state.headline, !headline.isEmpty else { return nil }
+        return headline
+    }
+    /// The small line beside the title (the hot flash card), or nil.
     public var detail: String? { state.detail.flatMap { $0.isEmpty ? nil : $0 } }
+    /// The Lock Screen's first line: the title, then ` · ` and the detail when there is one ("Hot Flash · Your side").
+    public var headerLine: String {
+        guard let detail else { return title }
+        return "\(title) · \(detail)"
+    }
+    /// The one word the compact island shows when the card has no time, or nil.
+    public var short: String? { state.short.flatMap { $0.isEmpty ? nil : $0 } }
     /// The device glyph.
     public var glyph: ActivityGlyph { attributes.glyph }
     /// The `ColorFamily` raw value that tints the card.
@@ -138,7 +189,18 @@ public struct ActivityCard: Equatable, Sendable {
         let limit = problem == nil ? HomeActivityState.maxControls : HomeActivityState.maxProblemControls
         return state.controls.prefix(limit).enumerated().map { index, control in
             Button(control: control, isPrimary: index == 0 || control.role == .primary,
-                   accessibilityLabel: "\(control.title) \(attributes.title)")
+                   accessibilityLabel: "\(control.title) \(attributes.title)", icon: icon(for: control))
+        }
+    }
+
+    /// A vacuum's job card draws Pause, Resume and Dock as round icon buttons; everything else is a text pill.
+    private func icon(for control: ActivityControl) -> Button.Icon? {
+        guard style == .job, glyph == .vacuum else { return nil }
+        switch control.id {
+        case "pause": return .pause
+        case "resume": return .play
+        case "dock": return .dock
+        default: return nil
         }
     }
 
@@ -182,7 +244,36 @@ public struct ActivityCard: Equatable, Sendable {
         return .track
     }
 
+    /// The 5 pt bar under the value, only when the card has progress: a countdown, a percentage, a reported fraction, or a
+    /// finished job's full bar. Count-ups and cards with no value have none.
+    public var bar: Bar? {
+        switch ring {
+        case let .timer(range): .timer(range)
+        case let .fraction(value): .fraction(value)
+        case .complete: .full
+        case .steady, .track: nil
+        }
+    }
+
+    /// Whether the glyph sits in a ring (the compact and minimal island, the Smart Stack). A card with no time and no
+    /// progress draws its glyph alone.
+    public var showsRing: Bool { ring != .track }
+
     // MARK: - Island
+
+    /// What the compact island's trailing side holds.
+    public var compactTrailing: CompactTrailing {
+        if let problem { return .problem(problem.compactLabel) }
+        switch figure {
+        case .complete: return .complete
+        case let .countdown(_, showsHours, _): return .timer(template: Self.compactTemplate(hours: showsHours))
+        case let .countup(start): return .timer(template: Self.compactTemplate(hours: now.timeIntervalSince(start) >= Self.hoursTemplateAfter))
+        case let .frozen(seconds): return .timer(template: Self.compactTemplate(hours: seconds >= 3600))
+        case let .percent(value): return .label(short ?? "\(value)%")
+        case let .text(text): return .label(short ?? text)
+        case .none: return short.map { CompactTrailing.label($0) } ?? CompactTrailing.none
+        }
+    }
 
     /// What the expanded island's trailing region says for a problem: the engine's value text ("Needs help" or "Attention"),
     /// else the severity's own word.
@@ -199,10 +290,10 @@ public struct ActivityCard: Equatable, Sendable {
     /// frozen time. The figure itself stays a live `Text`, so the combined element reads the current time.
     public var spokenTitle: String {
         switch figure {
-        case .countup: "\(title), running for"
-        case .frozen: "\(title), paused at"
-        case let .countdown(_, _, estimated): estimated ? "\(title), about" : "\(title), time left"
-        default: title
+        case .countup: "\(headerLine), running for"
+        case .frozen: "\(headerLine), paused at"
+        case let .countdown(_, _, estimated): estimated ? "\(headerLine), about" : "\(headerLine), time left"
+        default: headerLine
         }
     }
 
@@ -216,6 +307,7 @@ public struct ActivityCard: Equatable, Sendable {
         }
         var parts = [title]
         if let detail { parts.append(detail) }
+        if let bigLine { parts.append(bigLine) }
         if let phrase = spokenFigure { parts.append(phrase) }
         return parts.joined(separator: ", ")
     }

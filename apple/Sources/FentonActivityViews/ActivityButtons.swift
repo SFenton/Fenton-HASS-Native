@@ -2,7 +2,8 @@ import FentonActivityModel
 import SwiftUI
 
 /// A card's buttons: up to two pills (three on a problem card), the first white and the rest dark, each a 44 pt target
-/// named for its device ("Stop Guest Bath Fan"). While a press waits for Home Assistant the pills give way to its label
+/// named for its device ("Stop Guest Bath Fan"). A vacuum's Pause, Resume and Dock are 44 pt round icon buttons instead
+/// (pause and play glyphs on white, a house on dark), still named in words. While a press waits for Home Assistant the pills give way to its label
 /// ("Stopping…"); once that state is stale they return with a small "Not confirmed" beside them.
 struct ActivityButtons: View {
     let card: ActivityCard
@@ -10,6 +11,9 @@ struct ActivityButtons: View {
     let buttons: [ActivityCard.Button]
     /// Chips for the leading side of the row (a problem card's "Error 88").
     var chips: [String] = []
+    /// Whether the row takes the full width and pushes the buttons to the trailing edge. A card that puts the buttons beside
+    /// its value (the Lock Screen row, the island's bottom block) turns this off and lets the value take the width.
+    var fillsRow = true
     @Environment(\.activityActions) private var actions
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -17,7 +21,7 @@ struct ActivityButtons: View {
         if let label = card.pendingLabel {
             HStack(spacing: 8) {
                 chipRow
-                Spacer(minLength: 0)
+                if fillsRow { Spacer(minLength: 0) }
                 Text(label)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(ActivityStyle.secondaryText)
@@ -36,7 +40,7 @@ struct ActivityButtons: View {
                 HStack(spacing: 8) {
                     chipRow
                     status
-                    Spacer(minLength: 0)
+                    if fillsRow { Spacer(minLength: 0) }
                     ForEach(buttons) { button in pill(button) }
                 }
             }
@@ -70,8 +74,24 @@ struct ActivityButtons: View {
     }
 
     private func pill(_ button: ActivityCard.Button) -> some View {
-        actions.control(card.tag, button.control, AnyView(label(button)))
+        actions.control(card.tag, button.control, AnyView(button.icon.map { iconLabel(button, $0) } ?? AnyView(label(button))))
             .accessibilityLabel(button.accessibilityLabel)
+    }
+
+    /// The vacuum's round button: a 44 pt circle with a glyph (the spoken label is on the button, not the glyph).
+    private func iconLabel(_ button: ActivityCard.Button, _ icon: ActivityCard.Button.Icon) -> AnyView {
+        let symbol = switch icon {
+        case .pause: "pause.fill"
+        case .play: "play.fill"
+        case .dock: "house.fill"
+        }
+        return AnyView(
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(button.isPrimary ? ActivityStyle.primaryButtonText : ActivityStyle.primaryText)
+                .frame(width: ActivityStyle.minimumHit, height: ActivityStyle.minimumHit)
+                .background(Circle().fill(button.isPrimary ? ActivityStyle.primaryButtonFill : ActivityStyle.secondaryButtonFill))
+                .contentShape(Circle()))
     }
 
     private func label(_ button: ActivityCard.Button) -> some View {

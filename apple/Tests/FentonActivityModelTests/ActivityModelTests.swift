@@ -193,17 +193,29 @@ struct ActivityPendingAndClockTests {
 struct HomeActivityStateTests {
     @Test func aV2StateDecodesEveryKey() throws {
         let state = try ActivityFixtures.json("""
-        {"v":2,"phase":"paused","headline":"Paused in Kitchen","detail":"Your side","value":{"kind":"countup","start_ts":1792248440},
+        {"v":2,"phase":"paused","headline":"Paused in Kitchen","short":"Paused","detail":"Your side","value":{"kind":"countup","start_ts":1792248440},
          "progress":0.5,"controls":[{"id":"resume","title":"Resume","role":"primary"}],"notice":"n","url":"/p"}
         """)
         #expect(state.version == 2 && state.phase == .paused && state.headline == "Paused in Kitchen" && state.detail == "Your side")
         #expect(state.progress == 0.5 && state.controls.count == 1 && state.notice == "n" && state.url == "/p")
-        #expect(state.problem == nil && state.pending == nil)
+        #expect(state.problem == nil && state.pending == nil && state.short == "Paused")
+    }
+
+    @Test func shortIsOptionalOnTheWireAndRoundTrips() throws {
+        let bare = try ActivityFixtures.json(#"{"v":2,"headline":"Vacuuming Kitchen"}"#)
+        #expect(bare.short == nil, "a push from before `short` still decodes")
+        let kitchen = HomeActivityState(headline: "Vacuuming Kitchen", short: "Kitchen")
+        let object = try #require(JSONSerialization.jsonObject(with: kitchen.encoded()) as? [String: Any])
+        #expect(object["short"] as? String == "Kitchen", "snake_case key `short`")
+        #expect(try HomeActivityState.decode(kitchen.encoded()) == kitchen)
+        #expect(try JSONSerialization.jsonObject(with: HomeActivityState().encoded()) is [String: Any])
+        let none = try #require(JSONSerialization.jsonObject(with: HomeActivityState().encoded()) as? [String: Any])
+        #expect(none["short"] == nil, "null keys are omitted")
     }
 
     @Test func aBareStateHasDefaults() throws {
         let state = try ActivityFixtures.json(#"{}"#)
-        #expect(state.version == 2 && state.phase == .running && state.controls.isEmpty && state.value == nil)
+        #expect(state.version == 2 && state.phase == .running && state.controls.isEmpty && state.value == nil && state.short == nil)
         #expect(try ActivityFixtures.json(#"{"v":2,"controls":null}"#).controls.isEmpty)
     }
 
@@ -230,6 +242,8 @@ struct HomeActivityStateTests {
         let job = HomeActivityState(controls: controls).fitted()
         #expect(job.controls.count == HomeActivityState.maxControls, "a job card keeps two")
         #expect(HomeActivityState(headline: "short").fitted().headline == "short")
+        #expect(HomeActivityState(short: "Living Room Closet").fitted().short?.count == HomeActivityState.maxShortLength)
+        #expect(HomeActivityState(short: "Kitchen").fitted().short == "Kitchen")
         #expect(HomeActivityState.truncated("abc", to: 1) == "abc", "a limit of one cannot hold an ellipsis")
         #expect(HomeActivityAttributes(title: long).fitted().title.count == HomeActivityAttributes.maxTitleLength)
     }

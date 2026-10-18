@@ -1,9 +1,10 @@
 import XCTest
 
-/// The Live Activity cards in the debug gallery (`live-activity`): the Lock Screen card, the Dynamic Island stand-ins and
-/// the small family, over fixtures, with their buttons, on iPhone, iPhone Duo and iPad
-/// (`.agents/platforms/apple/live-activities-per-job.md` §8, §12). Names, roles, reading order, 44 pt targets, AX5 layout,
-/// the 160 pt height limit and the expanded island's clipping check.
+/// The Live Activity cards in the debug gallery (`live-activity`): the Lock Screen card (L4), the Dynamic Island stand-ins
+/// (compact, minimal, expanded E2c) and the small family, over fixtures, with their buttons, on iPhone, iPhone Duo and iPad
+/// (`.agents/platforms/apple/live-activities-per-job.md` §8, §8a, §12). Names, roles, reading order, 44 pt targets, AX5 layout,
+/// the 160 pt height limit with two-line titles, the vacuum's round buttons, the compact island's rigid width and the expanded
+/// island's clipping check.
 @MainActor
 final class LiveActivityJourneyTests: JourneyTestCase {
     private func launch(_ scenario: String, arguments: [String] = [], identifier: String? = nil) -> XCUIApplication {
@@ -51,6 +52,82 @@ final class LiveActivityJourneyTests: JourneyTestCase {
         XCTAssertGreaterThan(count, 60, "every fixture card was measured")
     }
 
+    /// Long titles wrap to two lines (a card cannot scroll its title), still inside the 160 pt limit; the vacuum's long headline
+    /// wraps too.
+    func testLongTitlesWrapToTwoLinesAndStillFit() {
+        let short = launch("fan", identifier: "liveactivity.lockscreen")
+        let shortCard = element("liveactivity.lockscreen", in: short)
+        let shortTitle = shortCard.descendants(matching: .any).matching(identifier: "liveactivity.title").firstMatch
+        XCTAssertTrue(shortTitle.exists)
+        let oneLine = shortTitle.frame.height
+        for (scenario, label) in [("fan-xlong", "Master Bedroom Closet Exhaust Fan"), ("hotflash-stephen-bysteph", "Hot Flash · Stephen's side · by Steph")] {
+            let app = launch(scenario, identifier: "liveactivity.lockscreen")
+            let card = element("liveactivity.lockscreen", in: app)
+            let title = card.descendants(matching: .any).matching(identifier: "liveactivity.title").firstMatch
+            XCTAssertTrue(title.label.hasPrefix(label), "\(scenario): \(title.label)")
+            XCTAssertGreaterThan(title.frame.height, oneLine * 1.6, "\(scenario) wraps to a second line instead of truncating")
+            XCTAssertLessThanOrEqual(card.frame.height, 160, "\(scenario) is \(Int(card.frame.height)) pt tall")
+            // The corner mark stays top-right and the title does not run under it.
+            XCTAssertLessThanOrEqual(title.frame.maxX, card.frame.maxX - 16 - 24, scenario)
+            keepScreenshot(app, "live-activity-\(scenario)-\(layout)")
+            app.terminate()
+        }
+        let closet = launch("vacuum-long", identifier: "liveactivity.lockscreen")
+        let vacuum = element("liveactivity.lockscreen", in: closet)
+        let big = vacuum.descendants(matching: .any).matching(identifier: "liveactivity.value").firstMatch
+        XCTAssertTrue(big.label.contains("Vacuuming Master Bedroom Closet"), big.label)
+        XCTAssertLessThanOrEqual(vacuum.frame.height, 160)
+        keepScreenshot(closet, "live-activity-vacuum-long-\(layout)")
+    }
+
+    /// Row 1 is the glyph, the title and the mark; row 2 the value with the buttons beside it; row 3 the bar only with progress.
+    func testTheLockScreenRowsAreInOrderAndTheBarNeedsProgress() {
+        let fan = launch("fan", identifier: "liveactivity.lockscreen")
+        let lock = element("liveactivity.lockscreen", in: fan)
+        let title = lock.descendants(matching: .any).matching(identifier: "liveactivity.title").firstMatch
+        let value = lock.descendants(matching: .any).matching(identifier: "liveactivity.value").firstMatch
+        let stop = lock.buttons["Stop Guest Bath Fan"]
+        let bar = lock.descendants(matching: .any).matching(identifier: "liveactivity.bar").firstMatch
+        XCTAssertTrue(title.exists && value.exists && stop.exists && bar.exists)
+        XCTAssertLessThanOrEqual(title.frame.maxY, value.frame.minY + 1, "the title is row 1, the value row 2")
+        XCTAssertLessThan(value.frame.minX, stop.frame.minX, "the button sits right of the value")
+        XCTAssertLessThanOrEqual(abs(stop.frame.midY - value.frame.midY), 12, "the button is in the value's row")
+        XCTAssertGreaterThanOrEqual(bar.frame.minY, max(value.frame.maxY, stop.frame.maxY) - 8, "the bar is row 3")
+        let laundry = launch("dryer", identifier: "liveactivity.lockscreen")
+        XCTAssertFalse(element("liveactivity.lockscreen", in: laundry).descendants(matching: .any).matching(identifier: "liveactivity.bar").firstMatch.exists,
+                       "a count-up has no progress, so no bar")
+    }
+
+    // MARK: Vacuum
+
+    /// A vacuum has no time and no bar anywhere, and its Pause, Resume and Dock are 44 pt round icon buttons with spoken labels.
+    func testAVacuumHasNoTimeAndNoBarAndRoundNamedButtons() {
+        for (scenario, primary, big) in [("vacuum", "Pause", "Vacuuming Kitchen"), ("vacuum-paused", "Resume", "Paused in Kitchen")] {
+            let app = launch(scenario, identifier: "liveactivity.lockscreen")
+            let lock = element("liveactivity.lockscreen", in: app)
+            let first = lock.buttons["\(primary) Main Floor Vacuum"], dock = lock.buttons["Dock Main Floor Vacuum"]
+            XCTAssertTrue(first.exists && dock.exists, scenario)
+            for button in [first, dock] {
+                assertTarget(button)
+                XCTAssertEqual(button.frame.width, button.frame.height, accuracy: 1, "\(button.label) is round (a square target)")
+            }
+            XCTAssertLessThan(first.frame.minX, dock.frame.minX, "\(primary) reads first")
+            XCTAssertFalse(lock.staticTexts[primary].exists, "an icon button has no text pill")
+            let value = lock.descendants(matching: .any).matching(identifier: "liveactivity.value").firstMatch
+            XCTAssertEqual(value.label, big, scenario)
+            let times = lock.staticTexts.matching(NSPredicate(format: "label MATCHES '.*\\d+:\\d\\d.*'"))
+            XCTAssertEqual(times.count, 0, "\(scenario) shows no time")
+            XCTAssertFalse(lock.descendants(matching: .any).matching(identifier: "liveactivity.bar").firstMatch.exists, "\(scenario) shows no bar")
+            XCTAssertLessThan(lock.frame.height, 125, "\(scenario) is \(Int(lock.frame.height)) pt tall")
+            keepScreenshot(app, "live-activity-\(scenario)-\(layout)")
+            app.terminate()
+        }
+        // A press still reaches the control map by id.
+        let app = launch("vacuum", identifier: "liveactivity.lockscreen")
+        element("liveactivity.lockscreen", in: app).buttons["Pause Main Floor Vacuum"].tap()
+        XCTAssertEqual(lastAction(app), "pause job.vacuum.main_floor")
+    }
+
     // MARK: Names, roles and order
 
     /// Buttons are named for their device, are at least 44 pt, and read in order with Done last.
@@ -93,7 +170,8 @@ final class LiveActivityJourneyTests: JourneyTestCase {
         XCTAssertGreaterThan(dryer.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Dryer, running for'")).count, 0,
                              "a count-up reads \"running for\"")
         let vacuum = launch("vacuum-paused")
-        XCTAssertGreaterThan(vacuum.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Paused in Kitchen, paused at'")).count, 0)
+        XCTAssertGreaterThan(vacuum.descendants(matching: .any).matching(NSPredicate(format: "label == 'Main Floor Vacuum'")).count, 0, "the device is the title")
+        XCTAssertGreaterThan(vacuum.descendants(matching: .any).matching(NSPredicate(format: "label == 'Paused in Kitchen'")).count, 0, "the headline is the big line")
         XCTAssertTrue(vacuum.buttons["Resume Main Floor Vacuum"].exists && vacuum.buttons["Dock Main Floor Vacuum"].exists)
         let hot = launch("hotflash-bysteph")
         XCTAssertGreaterThan(hot.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'Hot Flash' AND label CONTAINS 'Your side · by Steph'")).count, 0)
@@ -145,7 +223,8 @@ final class LiveActivityJourneyTests: JourneyTestCase {
 
     /// At the largest text size nothing runs off the screen, the figure wraps under the title and the targets hold.
     func testLargestTextSizeKeepsEveryCardOnScreenAndTheTargets() {
-        for scenario in ["fan", "vacuum", "hotflash-cooling", "problem-navigation-stuck", "problem-vendor-unknown_error_88"] {
+        for scenario in ["fan", "vacuum", "vacuum-long", "fan-xlong", "dishwasher-long", "hotflash-stephen-bysteph", "hotflash-cooling",
+                         "problem-navigation-stuck", "problem-vendor-unknown_error_88"] {
             let app = launch(scenario, arguments: FentonHomeApp.ax5, identifier: "liveactivity.lockscreen")
             let window = app.windows.firstMatch.frame
             let lock = element("liveactivity.lockscreen", in: app)
@@ -180,9 +259,9 @@ final class LiveActivityJourneyTests: JourneyTestCase {
         }
     }
 
-    /// The expanded island on the smallest, a standard and the largest camera region with an `H:MM:SS` figure: only the ring
-    /// and the figure sit beside the camera, the figure stays inside its region, and its natural width fits the region
-    /// without elision.
+    /// The expanded island (E2c) on the smallest, a standard and the largest camera region with an `H:MM:SS` value: only the glyph
+    /// and the corner mark sit beside the camera, the value sits below it in the full width beside the buttons without being
+    /// clipped, and the bar spans the block.
     func testTheExpandedIslandNeverClipsALongTimeOnEveryCameraWidth() {
         let app = launch("island-widths", identifier: "liveactivity.islandsize.older-pro")
         let expected: [String: CGFloat] = ["older-pro": 104.5, "narrow-camera": 120, "pro-max": 128]
@@ -195,22 +274,76 @@ final class LiveActivityJourneyTests: JourneyTestCase {
             XCTAssertTrue(trailing.exists && leading.exists && shape.exists, "\(size) draws both regions")
             XCTAssertEqual(trailing.frame.width, regionWidth, accuracy: 1, "\(size) trailing region")
             XCTAssertEqual(leading.frame.width, regionWidth, accuracy: 1, "\(size) leading region")
-            let figure = island.descendants(matching: .any).matching(identifier: "liveactivity.island.trailing").staticTexts.firstMatch
-            XCTAssertTrue(figure.exists, "\(size) has a figure")
-            XCTAssertGreaterThanOrEqual(figure.frame.minX, trailing.frame.minX - 0.5, "\(size) figure leaves its region on the left")
-            XCTAssertLessThanOrEqual(figure.frame.maxX, trailing.frame.maxX + 0.5, "\(size) figure leaves its region on the right")
             XCTAssertLessThanOrEqual(trailing.frame.maxX, shape.frame.maxX - 17, "\(size) the region stays inside the island")
-            // The same figure at its natural 22 pt width fits the region even before the 0.8 scale floor.
-            let probe = element("liveactivity.probe.\(size)", in: app)
-            XCTAssertTrue(probe.exists, "\(size) probe")
-            XCTAssertLessThanOrEqual(probe.frame.width, regionWidth, "\(size): \"1:04:42\" at 22 pt is \(Int(probe.frame.width)) pt, the region \(regionWidth)")
-            // The title and buttons are below the camera, not beside it.
+            // Beside the camera: the glyph and the mark only, no text.
+            let beside = island.descendants(matching: .any).matching(identifier: "liveactivity.island.trailing").staticTexts
+            XCTAssertEqual(beside.count, 0, "\(size) nothing but the corner mark beside the camera on the right")
+            XCTAssertEqual(island.descendants(matching: .any).matching(identifier: "liveactivity.island.leading").staticTexts.count, 0, "\(size) nor on the left")
+            // Below the camera: title over value, buttons on the right, bar under both.
             let bottom = island.descendants(matching: .any).matching(identifier: "liveactivity.island.bottom").firstMatch
             XCTAssertTrue(bottom.exists)
             XCTAssertGreaterThan(bottom.frame.minY, trailing.frame.maxY - 1, "\(size) the bottom region sits under the camera row")
+            let value = bottom.descendants(matching: .any).matching(identifier: "liveactivity.value").firstMatch
+            let title = bottom.descendants(matching: .any).matching(identifier: "liveactivity.title").firstMatch
+            let stop = bottom.buttons.firstMatch
+            XCTAssertTrue(value.exists && title.exists && stop.exists, size)
+            XCTAssertLessThanOrEqual(title.frame.maxY, value.frame.minY + 1, "\(size) the title is over the value")
+            XCTAssertLessThanOrEqual(value.frame.maxX, stop.frame.minX + 0.5, "\(size) the value stops before the buttons")
+            XCTAssertGreaterThanOrEqual(value.frame.minX, shape.frame.minX, size)
+            XCTAssertLessThanOrEqual(stop.frame.maxX, shape.frame.maxX - 17, "\(size) the buttons stay inside the island")
+            XCTAssertLessThanOrEqual(abs(stop.frame.midY - value.frame.midY), 30, "\(size) the buttons are in line with the title-and-value block")
+            // The value at its natural 32 pt width fits the room beside the buttons before any scaling.
+            let probe = element("liveactivity.probe.\(size)", in: app)
+            XCTAssertTrue(probe.exists, "\(size) probe")
+            XCTAssertLessThanOrEqual(probe.frame.width, value.frame.width, "\(size): \"1:04:42\" at 32 pt is \(Int(probe.frame.width)) pt, the room \(Int(value.frame.width))")
+            let bar = bottom.descendants(matching: .any).matching(identifier: "liveactivity.bar").firstMatch
+            XCTAssertTrue(bar.exists, "\(size) a countdown has a bar")
+            XCTAssertGreaterThanOrEqual(bar.frame.minY, value.frame.maxY - 8, "\(size) the bar is under the block")
             for button in bottom.buttons.allElementsBoundByIndex { assertTarget(button) }
         }
         keepScreenshot(app, "live-activity-island-widths-\(layout)")
+    }
+
+    /// The compact island's time is as wide as its hidden template ("00:00", or "0:00:00" from an hour), not as wide as the room
+    /// the island offers, and a vacuum's word is capped at 56 pt.
+    func testTheCompactTimeHasTheWidthOfItsTemplateNotTheRoomTheIslandOffers() {
+        let app = launch("compact-widths", identifier: "liveactivity.probe.compact.short")
+        let short = element("liveactivity.probe.compact.short", in: app).frame.width
+        let hours = element("liveactivity.probe.compact.hours", in: app).frame.width
+        XCTAssertGreaterThan(hours, short + 4, "the H:MM:SS template is wider")
+        let trailing = app.descendants(matching: .any).matching(identifier: "liveactivity.compact.trailing.bounds").allElementsBoundByIndex
+        XCTAssertEqual(trailing.count, 4, "MM:SS, H:MM:SS, and two vacuum words")
+        guard trailing.count == 4 else { return }
+        XCTAssertEqual(trailing[0].frame.width, short, accuracy: 1, "42:00 takes the 00:00 template width")
+        XCTAssertEqual(trailing[1].frame.width, hours, accuracy: 1, "1:04:42 takes the 0:00:00 template width")
+        // The stand-in leaves 112 pt beside its ring; a time that reported its widest possible width would take all of it.
+        XCTAssertLessThan(trailing[0].frame.width, 60)
+        XCTAssertLessThan(trailing[1].frame.width, 70)
+        for index in [2, 3] {
+            XCTAssertLessThanOrEqual(trailing[index].frame.width, 56.5, "a word is capped at 56 pt")
+            XCTAssertGreaterThan(trailing[index].frame.width, 20)
+        }
+        keepScreenshot(app, "live-activity-compact-widths-\(layout)")
+    }
+
+    /// A vacuum in the expanded island: glyph and mark beside the camera, the headline as the big line, round buttons, no bar.
+    func testTheExpandedVacuumHasRoundButtonsAndNoBar() {
+        let app = launch("vacuum", identifier: "liveactivity.lockscreen")
+        let expanded = element("liveactivity.island.expanded", in: app)
+        XCTAssertTrue(expanded.exists)
+        let pause = expanded.buttons["Pause Main Floor Vacuum"], dock = expanded.buttons["Dock Main Floor Vacuum"]
+        XCTAssertTrue(pause.exists && dock.exists)
+        for button in [pause, dock] {
+            assertTarget(button)
+            XCTAssertEqual(button.frame.width, button.frame.height, accuracy: 1, button.label)
+        }
+        XCTAssertEqual(expanded.descendants(matching: .any).matching(identifier: "liveactivity.value").firstMatch.label, "Vacuuming Kitchen")
+        XCTAssertFalse(expanded.descendants(matching: .any).matching(identifier: "liveactivity.bar").firstMatch.exists)
+        let compact = element("liveactivity.island.compact", in: app)
+        XCTAssertTrue(compact.exists)
+        XCTAssertGreaterThan(compact.staticTexts["Kitchen"].frame.width, 0, "the compact island says the room")
+        app.swipeUp()
+        keepScreenshot(app, "live-activity-vacuum-island-\(layout)")
     }
 
     // MARK: Accessibility audit

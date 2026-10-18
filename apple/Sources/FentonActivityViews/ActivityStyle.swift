@@ -29,8 +29,6 @@ public struct ActivityStyle: Sendable, Equatable {
     public static let primaryText = Color.white
     /// Supporting text: 78% white, 4.5:1 or better on ``cardFill`` over any wallpaper (`ActivityStyleTests`).
     public static let secondaryText = Color.white.opacity(0.78)
-    /// A paused card's figure (spec §8: "frozen time at 55% white").
-    public static let pausedText = Color.white.opacity(0.55)
     /// A notice in place of the figure ("Couldn't reach Home").
     public static let noticeText = Color(rgb: 0xFFD59A)
 
@@ -107,8 +105,21 @@ public struct ActivityStyle: Sendable, Equatable {
     public static let buttonHeight: CGFloat = 36
     /// The job card's ring.
     public static let ringSize: CGFloat = 64
-    /// The corner mark (house and heart).
-    public static let markSize: CGFloat = 40
+    /// The corner mark (house and heart) on a job card and beside the island's camera (spec §8a).
+    public static let markSize: CGFloat = 24
+    /// The corner mark on a problem card, which keeps its own layout.
+    public static let problemMarkSize: CGFloat = 40
+    /// The glyph in the Lock Screen's first line.
+    public static let headerGlyphSize: CGFloat = 22
+    /// The glyph beside the island's camera.
+    public static let islandGlyphSize: CGFloat = 24
+    /// The thin bar under the value.
+    public static let barHeight: CGFloat = 5
+    /// The compact island's time: 15 pt semibold at the default size (spec: 13 to 15), monospaced. A text style rather than a
+    /// fixed size, so the template under it and the live text scale together and the width stays the template's.
+    public static let compactTimeFont: Font = .subheadline.weight(.semibold).monospacedDigit()
+    /// The compact island's word (a vacuum's `short`): 13 pt semibold at the default size.
+    public static let compactLabelFont: Font = .footnote.weight(.semibold)
     /// The problem card's severity circle.
     public static let severityCircle: CGFloat = 44
     /// The card's corner radius.

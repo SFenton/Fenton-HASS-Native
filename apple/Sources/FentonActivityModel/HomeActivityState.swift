@@ -19,6 +19,8 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
     public static let maxDetailLength = 32
     /// `notice` at most.
     public static let maxNoticeLength = 60
+    /// `short` at most: the one word the compact island shows when a card has no time.
+    public static let maxShortLength = 10
     /// Apple's limit for the whole push, static and dynamic attributes together.
     public static let maxPayloadBytes = 4096
 
@@ -31,8 +33,11 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
     /// The small line under the title (the hot flash card: "Your side", "Whole bed", "Your side · by Steph"). nil for every
     /// other job.
     public var detail: String?
-    /// The big figure.
+    /// The big figure. nil on a vacuum card, whose big line is the ``headline``.
     public var value: ActivityValue?
+    /// The compact island's trailing word when the card has no time ("Kitchen", "Paused", "Area"), at most
+    /// ``maxShortLength`` characters. nil when the card has a time.
+    public var short: String?
     /// 0…1; drives the ring when there is no time range, and a ``ActivityValue/Kind/percent`` value.
     public var progress: Double?
     /// Up to ``maxControls`` buttons (``maxProblemControls`` on a problem card).
@@ -48,7 +53,7 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
 
     /// Creates a state.
     public init(version: Int = HomeActivityState.currentVersion, phase: JobPhase = .running, headline: String? = nil,
-                detail: String? = nil, value: ActivityValue? = nil, progress: Double? = nil,
+                detail: String? = nil, value: ActivityValue? = nil, short: String? = nil, progress: Double? = nil,
                 controls: [ActivityControl] = [], problem: ActivityProblem? = nil, pending: ActivityPending? = nil,
                 notice: String? = nil, url: String? = nil) {
         self.version = version
@@ -56,6 +61,7 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
         self.headline = headline
         self.detail = detail
         self.value = value
+        self.short = short
         self.progress = progress
         self.controls = controls
         self.problem = problem
@@ -66,7 +72,7 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case version = "v"
-        case phase, headline, detail, value, progress, controls, problem, pending, notice, url
+        case phase, headline, detail, value, short, progress, controls, problem, pending, notice, url
         // Phase 1 (v1) only.
         case jobs, focus
     }
@@ -86,6 +92,7 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
         headline = try container.decodeIfPresent(String.self, forKey: .headline)
         detail = try container.decodeIfPresent(String.self, forKey: .detail)
         value = try container.decodeIfPresent(ActivityValue.self, forKey: .value)
+        short = try container.decodeIfPresent(String.self, forKey: .short)
         progress = try container.decodeIfPresent(Double.self, forKey: .progress)
         controls = try container.decodeIfPresent([ActivityControl].self, forKey: .controls) ?? []
         problem = try container.decodeIfPresent(ActivityProblem.self, forKey: .problem)
@@ -101,6 +108,7 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
         try container.encodeIfPresent(headline, forKey: .headline)
         try container.encodeIfPresent(detail, forKey: .detail)
         try container.encodeIfPresent(value, forKey: .value)
+        try container.encodeIfPresent(short, forKey: .short)
         try container.encodeIfPresent(progress, forKey: .progress)
         try container.encode(controls, forKey: .controls)
         try container.encodeIfPresent(problem, forKey: .problem)
@@ -134,13 +142,14 @@ public struct HomeActivityState: Codable, Hashable, Sendable {
 
     // MARK: - Budget
 
-    /// The state trimmed to the wire budget: strings capped (headline 32, problem 40, message 90, chip 20, value text 16),
+    /// The state trimmed to the wire budget: strings capped (headline 32, short 10, problem 40, message 90, chip 20, value text 16),
     /// controls at most 2 (3 on a problem card), chips at most 1.
     public func fitted() -> HomeActivityState {
         var copy = self
         copy.headline = headline.map { Self.truncated($0, to: Self.maxHeadlineLength) }
         copy.detail = detail.map { Self.truncated($0, to: Self.maxDetailLength) }
         copy.notice = notice.map { Self.truncated($0, to: Self.maxNoticeLength) }
+        copy.short = short.map { Self.truncated($0, to: Self.maxShortLength) }
         if var value = copy.value {
             value.text = value.text.map { Self.truncated($0, to: ActivityValue.maxTextLength) }
             copy.value = value

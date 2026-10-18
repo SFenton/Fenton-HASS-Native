@@ -35,7 +35,7 @@ struct ProblemCardView: View {
         )
         .overlay { ContainerRelativeShape().strokeBorder(colors.hairline, lineWidth: 1) }
         .overlay(alignment: .topTrailing) {
-            if showsMark { CornerMark().padding(.top, 12).padding(.trailing, 14) }
+            if showsMark { CornerMark(size: ActivityStyle.problemMarkSize).padding(.top, 12).padding(.trailing, 14) }
         }
         .accessibilityElement(children: .contain)
     }
