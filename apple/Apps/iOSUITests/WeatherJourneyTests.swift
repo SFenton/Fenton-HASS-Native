@@ -34,7 +34,9 @@ final class WeatherJourneyTests: XCTestCase {
         try FentonHomeApp.audit(app, ax5Page: ax5Page, presenter: presenter)
     }
 
-    private func waitFor(_ element: XCUIElement, _ format: String, _ argument: String, timeout: TimeInterval = 5) -> Bool {
+    /// Waits on the state, up to 15 s: a mode switch on the folded Duo under load took longer than the 5 s this allowed
+    /// (the label read "Now wind 8 mph gusts 14 mph" a moment after the wait gave up, 2026-10-17).
+    private func waitFor(_ element: XCUIElement, _ format: String, _ argument: String, timeout: TimeInterval = 15) -> Bool {
         let matches = XCTNSPredicateExpectation(predicate: NSPredicate(format: format, argument), object: element)
         return XCTWaiter().wait(for: [matches], timeout: timeout) == .completed
     }

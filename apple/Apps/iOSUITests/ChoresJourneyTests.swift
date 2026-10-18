@@ -45,7 +45,7 @@ final class ChoresJourneyTests: JourneyTestCase {
             let top = overlays.map(\.frame.minY).min() ?? .greatestFiniteMagnitude
             return element.frame.maxY <= top
         }
-        for _ in 0..<20 where !clear() { // AX5 pages run many screens long.
+        for _ in 0..<60 where !clear() { // AX5 pages run many screens long, the folded Duo's the most (20 drags fell short).
             // A short drag, not a fling, so the row stops where it lands and the next tap isn't eaten
             // by deceleration.
             let scroll = scroller(app)
@@ -270,8 +270,11 @@ final class ChoresJourneyTests: JourneyTestCase {
     func testLastChoreScrollsClearOfTheAddBar() {
         let app = launch(arguments: FentonHomeApp.ax5)
         let list = scroller(app)
-        for _ in 0..<20 { list.swipeUp(velocity: .fast) }
         let last = element("todo.item.15--fixture", in: app)
+        // Until the last row exists (a lazy list only builds rows near the viewport, and the folded Duo's short screen needs
+        // more than the 20 swipes the iPhone does), then a few more so the list is at its end.
+        for _ in 0..<80 where !last.exists { list.swipeUp(velocity: .fast) }
+        for _ in 0..<3 { list.swipeUp(velocity: .fast) }
         XCTAssertTrue(last.exists, "The last chore never appeared")
         let barTop = min(app.buttons["fab.add"].frame.minY, app.staticTexts["gallery.lastCall"].frame.minY)
         XCTAssertLessThanOrEqual(last.frame.maxY, barTop, "The last chore ends under the Add bar")

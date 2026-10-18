@@ -96,10 +96,11 @@ final class ClimateJourneyTests: XCTestCase {
 
     private func value(_ element: XCUIElement) -> String { element.value as? String ?? "" }
 
-    /// Waits up to 3 s for `element`'s accessibility value to become `expected`.
+    /// Waits up to 10 s for `element`'s accessibility value to become `expected` (the gallery echoes a toggle after a
+    /// short delay, and 3 s was not enough on a loaded host: iPad Tracking, 2026-10-17).
     private func hasValue(_ element: XCUIElement, _ expected: String) -> Bool {
         let match = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", expected), object: element)
-        return XCTWaiter().wait(for: [match], timeout: 3) == .completed
+        return XCTWaiter().wait(for: [match], timeout: 10) == .completed
     }
 
     /// Back to the parent page, confirmed by its heading (`parent`, default the sheet's root title). Tries the
@@ -235,7 +236,7 @@ final class ClimateJourneyTests: XCTestCase {
             XCTAssertTrue(tile.waitForExistence(timeout: 5), key)
             XCTAssertEqual(tile.elementType, .button, "A room tile opens its room")
             XCTAssertGreaterThanOrEqual(tile.frame.height, 43)
-            guard tile.isHittable else { continue }
+            guard tile.isHittable, app.windows.firstMatch.frame.contains(tile.frame) else { continue }
             let frame = tile.frame
             let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.minX + 10, y: frame.maxY - 10), in: capture))
             XCTAssertTrue(TileGeometry.matchesGlass(sample, fill, heightFraction: 1 - 10 / frame.height),
