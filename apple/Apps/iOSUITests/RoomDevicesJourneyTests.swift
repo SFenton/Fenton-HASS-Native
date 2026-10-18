@@ -289,7 +289,7 @@ final class RoomDevicesJourneyTests: XCTestCase {
         let deadline = Date().addingTimeInterval(10)
         while saves.count > 1, Date() < deadline { usleep(200_000) }
         XCTAssertEqual(saves.count, 1, "The previous editor's Save stayed in the tree")
-        if saves.firstMatch.isEnabled { add(XCTAttachment(string: app.debugDescription)) }
+        if saves.firstMatch.isEnabled { self.add(XCTAttachment(string: app.debugDescription)) } // `add` is the Add Activity row above.
         XCTAssertFalse(saves.firstMatch.isEnabled, "Save stays off while the activity overlaps another")
     }
 
