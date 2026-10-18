@@ -369,7 +369,7 @@ All from the canvas boards; Lock Screen first.
 
 Where the build chose or departed from the text above, so the engine lane and review can line up:
 
-- **Hot flash line.** §3 has no key for the short line ("Your side · by Steph"), so the content state carries an optional `subtitle` (≤ 32 characters). If the engine uses another key, change one `CodingKeys` entry in `HomeActivityState`.
+- **Hot flash line.** The small 13 pt line ("Your side", "Whole bed", "Your side · by Steph") is the content-state key `detail` (≤ 32), agreed with the relay lane (relay PR #5); the title is the attribute `title` ("Hot Flash") and `headline` is nil. `notice` is capped at 60, a problem's `value` is text "Needs help" or "Attention" (the island's trailing label), a Complete card carries `progress: 1.0`, no controls and value text "Complete", an end stub is `{v: 2, phase: done, value: text "Ended"}`, the first control has no `role` and the rest are `secondary`, and `task_id` may be a string or an integer.
 - **Compact island label.** The wire has no field for the one-word label ("Stuck", "Refill water"), so `ActivityProblem.compactLabel` maps the known codes in the app and falls back to "Help" (critical) or "Check" (warning). A new code ships its word with an app update.
 - **Corner mark knock-out.** `HouseHeartShape` (HassDesign) cuts the heart's ring out of the house, so it shows whatever is behind it: the card, plain or a problem gradient. The spec's "uses the card's background colour" is therefore true by construction and no colour is passed.
 - **Complete.** `phase: done` always reads **Complete**, whatever `value.text` says.

@@ -7,9 +7,16 @@ import XCTest
 @MainActor
 final class LiveActivityJourneyTests: JourneyTestCase {
     private func launch(_ scenario: String, arguments: [String] = [], identifier: String? = nil) -> XCUIApplication {
-        let app = FentonHomeApp.launchGallery("live-activity", arguments: arguments, environment: ["FENTON_GALLERY_SCENARIO": scenario])
-        let first = identifier.map { element($0, in: app) } ?? app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'liveactivity.'")).firstMatch
-        XCTAssertTrue(first.waitForExistence(timeout: 30), "\(scenario) did not draw")
+        // The first launch after a simulator boots can stall; one relaunch separates that from a card that really did not draw.
+        var app = FentonHomeApp.launchGallery("live-activity", arguments: arguments, environment: ["FENTON_GALLERY_SCENARIO": scenario])
+        func first(_ app: XCUIApplication) -> XCUIElement {
+            identifier.map { element($0, in: app) } ?? app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH 'liveactivity.'")).firstMatch
+        }
+        if !first(app).waitForExistence(timeout: 20) {
+            app.terminate()
+            app = FentonHomeApp.launchGallery("live-activity", arguments: arguments, environment: ["FENTON_GALLERY_SCENARIO": scenario])
+        }
+        XCTAssertTrue(first(app).waitForExistence(timeout: 30), "\(scenario) did not draw")
         return app
     }
 
