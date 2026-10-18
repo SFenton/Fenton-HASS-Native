@@ -9,6 +9,11 @@ import UserNotifications
 struct FentonHomeApp: App {
     @UIApplicationDelegateAdaptor(FentonHomeAppDelegate.self) private var appDelegate
 
+    init() {
+        // Launch to first frame and to the snapshot are timed from here (`Telemetry.beginTracked`).
+        AppSession.beginLaunchMeasurement()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView(session: appDelegate.session)
