@@ -33,9 +33,16 @@ final class MotionJourneyTests: JourneyTestCase {
     }
 
     private func waitForValue(_ element: XCUIElement, _ value: String, file: StaticString = #filePath, line: UInt = #line) {
-        let predicate = NSPredicate(format: "value == %@", value)
-        let result = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: predicate, object: element)], timeout: 5)
-        XCTAssertEqual(result, .completed, "\(element.identifier) is '\(String(describing: element.value))', expected '\(value)'", file: file, line: line)
+        // Polled, with the element looked up again each time: a predicate expectation kept a stale snapshot of a card the scroll
+        // had just moved.
+        let deadline = Date().addingTimeInterval(10)
+        var last = ""
+        repeat {
+            last = (element.value as? String) ?? "nil"
+            if last == value { return }
+            usleep(200_000)
+        } while Date() < deadline
+        XCTFail("\(element.identifier) is '\(last)', expected '\(value)'", file: file, line: line)
     }
 
     private func assertSameFrame(_ before: CGRect, _ after: CGRect, _ name: String, file: StaticString = #filePath, line: UInt = #line) {
