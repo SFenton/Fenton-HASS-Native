@@ -19,8 +19,8 @@ struct TodoPageView<Header: View>: View {
     @State private var reloadVersion = 0
     /// The task a swipe or menu asked to delete, until the confirmation answers.
     @State private var deletion: TodoDeletion?
-    /// Where the list's plain rows start, for the quick links header to line up with (``AlignedToListMargins``).
-    @State private var rowOrigin: CGFloat?
+    /// How wide the list's plain rows are, for the quick links header to line up with (``AlignedToListMargins``).
+    @State private var rowMetrics = TodoRowMetrics()
 
     var body: some View {
         let sections = TodoPageLayout.sections(for: page, viewerUserId: model.viewerUserId, store: store, todos: model.todos)
@@ -36,7 +36,7 @@ struct TodoPageView<Header: View>: View {
                 Section {} header: {
                     header()
                         .textCase(nil)
-                        .modifier(AlignedToListMargins(rowOrigin: rowOrigin))
+                        .modifier(AlignedToListMargins())
                 }
             }
             if TodoPageLayout.showsEmptyState(sections) {
@@ -54,8 +54,7 @@ struct TodoPageView<Header: View>: View {
             }
         }
         .groupedListStyle()
-        .coordinateSpace(.named(TodoListSpace.name))
-        .environment(\.reportsRowOrigin) { rowOrigin = $0 }
+        .environment(\.todoRowMetrics, rowMetrics)
         .environment(\.defaultMinListRowHeight, 1)
         // Chores animate away when completed and back in if the call fails (owner, 2026-10-16). Under Reduce Motion the
         // rows fade instead of sliding (HIG Motion).

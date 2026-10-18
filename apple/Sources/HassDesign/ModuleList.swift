@@ -79,6 +79,7 @@ public struct ModuleRowBackground: View {
     private let density: ModuleDensity
     private let isFirst: Bool
     private let isLast: Bool
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     /// Creates a row background.
     /// - Parameters:
@@ -93,12 +94,13 @@ public struct ModuleRowBackground: View {
 
     public var body: some View {
         let radius = HassTokens.Radius.module
-        Color.clear
-            .module(density, cornerRadius: 0)
-            .clipShape(UnevenRoundedRectangle(
-                topLeadingRadius: isFirst ? radius : 0, bottomLeadingRadius: isLast ? radius : 0,
-                bottomTrailingRadius: isLast ? radius : 0, topTrailingRadius: isFirst ? radius : 0, style: .continuous
-            ))
+        // The shape is the fill, not a clip over a square one: a clip is a mask layer, which the render server draws in an
+        // offscreen pass for every row on screen, on every frame of a scroll.
+        UnevenRoundedRectangle(
+            topLeadingRadius: isFirst ? radius : 0, bottomLeadingRadius: isLast ? radius : 0,
+            bottomTrailingRadius: isLast ? radius : 0, topTrailingRadius: isFirst ? radius : 0, style: .continuous
+        )
+        .fill(ModuleBackground.tint(density, reduceTransparency: reduceTransparency))
     }
 }
 

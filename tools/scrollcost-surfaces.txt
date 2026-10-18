@@ -13,6 +13,8 @@ Theater Room|FENTON_GALLERY=rooms FENTON_GALLERY_OFFLINE=1 FENTON_GALLERY_CLEAN=
 Climate|FENTON_GALLERY=climate FENTON_GALLERY_CLEAN=1
 Security|FENTON_GALLERY=security FENTON_GALLERY_CLEAN=1
 Chores|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1
+Chores (long house)|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12
+Settings|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1
 Food hub|FENTON_GALLERY=food FENTON_GALLERY_ROUTE=hub
 Recipes|FENTON_GALLERY=food FENTON_GALLERY_ROUTE=recipes
 Pantry|FENTON_GALLERY=inventory FENTON_GALLERY_SPACE=pantry FENTON_GALLERY_CLEAN=1
@@ -40,6 +42,7 @@ Live Home|LIVE=1 FENTON_SCROLLCOST_OPEN=home
 Live Security|LIVE=1 FENTON_SCROLLCOST_OPEN=security
 Live Climate|LIVE=1 FENTON_SCROLLCOST_OPEN=thermostat
 Live Chores|LIVE=1 FENTON_SCROLLCOST_OPEN=chores
+Live Settings|LIVE=1 FENTON_SCROLLCOST_OPEN=settings
 Live Living Room|LIVE=1 FENTON_SCROLLCOST_OPEN=living-room
 Live Master Bedroom|LIVE=1 FENTON_SCROLLCOST_OPEN=master-bedroom
 Live Kitchen|LIVE=1 FENTON_SCROLLCOST_OPEN=kitchen
@@ -51,3 +54,24 @@ Live Vacuums|LIVE=1 FENTON_SCROLLCOST_OPEN=vacuums
 Live Food hub|LIVE=1 FENTON_OPEN_FOOD=hub
 Live Recipes|LIVE=1 FENTON_OPEN_FOOD=recipes
 Live Pantry|LIVE=1 FENTON_OPEN_INVENTORY=pantry
+
+# Layer A/B (`--section layers`; `--section all` skips it): the same page with one layer turned off (`FENTON_PERF_DISABLE`,
+# `HassDesign/PerfSwitches.swift`). The simulator shows what a layer costs the main thread; what it costs the GPU needs the
+# same surfaces on a phone (`--device`, `--disable`).
+[layers]
+Settings (layers baseline)|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1
+Chores long (layers baseline)|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12
+Settings without headerFade|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=headerFade
+Settings without fadeMask|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=fadeMask
+Settings without fadeReaders|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=fadeReaders
+Settings without fadeScroll|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=fadeScroll
+Settings without fadeGeometry|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=fadeGeometry
+Settings without backdrop|FENTON_GALLERY=settings FENTON_GALLERY_CLEAN=1 FENTON_PERF_DISABLE=backdrop
+Chores long without headerFade|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=headerFade
+Chores long without fadeMask|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=fadeMask
+Chores long without fadeReaders|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=fadeReaders
+Chores long without fadeScroll|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=fadeScroll
+Chores long without fadeGeometry|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=fadeGeometry
+Chores long without glassBar|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=glassBar
+Chores long without scrollEdge|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=scrollEdge
+Chores long without backdrop|FENTON_GALLERY=chores FENTON_GALLERY_CLEAN=1 FENTON_GALLERY_CHORES=12 FENTON_PERF_DISABLE=backdrop

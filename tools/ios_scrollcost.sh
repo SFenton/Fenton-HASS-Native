@@ -10,7 +10,7 @@
 #
 # Simulator (default): builds the app optimized (-O, the Release code path with the debug gallery still in), runs every
 # surface on one iPhone simulator inside a devcap hold, and prints a table.
-#   tools/ios_scrollcost.sh [--section gallery|live|finish|all] [--only "Living Room,Live Home"] [--env temp.env]
+#   tools/ios_scrollcost.sh [--section gallery|live|finish|layers|all] [--only "Living Room,Live Home"] [--env temp.env]
 #                           [--label NAME] [--compare BASE.tsv] [--no-build] [--app PATH.app] [--disable headerFade,backdrop]
 #                           [--delay SECONDS] [--device-name "iPhone 17 Pro"]
 #   [live] surfaces sign in with the TOKEN from --env (Debug builds only); [gallery] surfaces need nothing.
@@ -77,7 +77,7 @@ surface_lines() {
     [[ -z "$line" || "$line" == \#* ]] && continue
     if [[ "$line" == \[*\] ]]; then current="${line//[\[\]]/}"; continue; fi
     [[ "$want" != all && "$current" != "$want" ]] && continue
-    [[ "$want" == all && "$current" == finish ]] && continue # The tile finish A/B runs only on request.
+    [[ "$want" == all && ( "$current" == finish || "$current" == layers ) ]] && continue # The A/B sections run only on request.
     if [[ -n "$ONLY" ]]; then
       local name="${line%%|*}" keep=""
       IFS=',' read -ra picks <<< "$ONLY"
