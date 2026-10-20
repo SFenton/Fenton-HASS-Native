@@ -180,3 +180,27 @@ private final class TrackerAPI: HassCommandSending {
         }
     }
 }
+
+@MainActor
+struct PresenceGuardTests {
+    @Test func simulatorsAndJourneysNeverWriteToHomeAssistant() async throws {
+        let saved = MobileAppRegistration(server: server, userID: "u1", webhookID: "w1")
+        let user = HassUser(id: "u1", name: nil, isOwner: true, isAdmin: true)
+        for (enabled, allowed) in [(false, true), (true, false), (false, false)] {
+            let mobileApp = MobileAppCoordinator(device: device, store: InMemoryMobileAppRegistrationStore([saved], active: saved),
+                                                 transport: StubHTTPTransport([]), isEnabled: enabled, allowsRegistration: allowed)
+            let api = GuardAPI()
+            await mobileApp.linkPresence(user: user, api: api)
+            try await mobileApp.unlinkPresence(user: user, api: api)
+            await mobileApp.locationWithdrawn()
+            await mobileApp.locationRestored()
+            #expect(api.calls == 0, "enabled \(enabled), allowed \(allowed)")
+        }
+    }
+}
+
+@MainActor
+private final class GuardAPI: HassCommandSending {
+    var calls = 0
+    func command(_ type: String, data: [String: any Sendable]) async throws -> JSONValue { calls += 1; return .null }
+}

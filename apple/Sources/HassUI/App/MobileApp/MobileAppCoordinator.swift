@@ -153,7 +153,7 @@ public final class MobileAppCoordinator {
     ///   - user: The signed-in user.
     ///   - api: The websocket.
     public func linkPresence(user: HassUser, api: any HassCommandSending) async {
-        guard let registration else { return }
+        guard isEnabled, allowsRegistration, let registration else { return }
         linkContext = (user, api)
         let key = registration.webhookID + "|" + user.id
         guard linkedKey != key else { return }
@@ -166,7 +166,8 @@ public final class MobileAppCoordinator {
     /// Takes this phone's tracker off the signed-in user's person (``PresenceLinker/unlink(webhookID:user:api:)``).
     /// - Throws: When Home Assistant doesn't confirm, so sign-out can stay signed in.
     public func unlinkPresence(user: HassUser, api: any HassCommandSending) async throws {
-        guard let webhookID = registration?.webhookID ?? store.active?.webhookID else { return }
+        // Journeys and simulators never write to the person or entity registry.
+        guard isEnabled, allowsRegistration, let webhookID = registration?.webhookID ?? store.active?.webhookID else { return }
         try await PresenceLinker.unlink(webhookID: webhookID, user: user, api: api)
         linkedKey = nil
         presenceLink = nil
