@@ -139,11 +139,23 @@ final class ChoresFixtureService: TodoServicing {
         self.failsCompletion = failsCompletion
     }
 
+    /// Entities other galleries keep alongside the lists (people, sensors, Vacation Mode), so a check-off's refresh of the
+    /// list counts doesn't drop them. A state here replaces the default for the same entity id.
+    var extraStates: [EntityState] = []
+
     /// One entity per configured list; its state is the open-item count, like Home Assistant's todo entities.
     func entityStates() -> [EntityState] {
         let ids = Set(ChoresConfig.pages.flatMap(\.lists).map(\.entityId))
-        return ids.map { EntityState(entityId: $0, state: String(lists[$0, default: []].filter { $0.status != .completed }.count)) }
-            + [EntityState(entityId: ChoresConfig.vacationModeEntityId, state: "off")]
+            .union(ChoresConfig.Resident.allCases.flatMap { ProfileSummary.lists(for: $0).all.map(\.entityId) })
+        let extras = Set(extraStates.map(\.entityId))
+        let defaults = ids.filter { !extras.contains($0) }.map { EntityState(entityId: $0, state: String(openCount(entityId: $0))) }
+            + (extras.contains(ChoresConfig.vacationModeEntityId) ? [] : [EntityState(entityId: ChoresConfig.vacationModeEntityId, state: "off")])
+        return defaults + extraStates
+    }
+
+    /// Open items on a list.
+    func openCount(entityId: String) -> Int {
+        lists[entityId, default: []].filter { $0.status != .completed }.count
     }
 
     func todoItems(entityId: String) async throws -> [TodoItem] { lists[entityId, default: []] }

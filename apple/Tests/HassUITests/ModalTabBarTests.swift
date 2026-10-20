@@ -1,5 +1,6 @@
 @testable import HassUI
 import HassCore
+import HassDesign
 import SwiftUI
 import Testing
 
@@ -41,12 +42,51 @@ struct ModalTabBarTests {
         #expect(Style.form(hasSymbols: false, compactWidth: false, accessibilitySize: true) == .menu)
     }
 
+    // MARK: Badges
+
+    @Test func aBarWithBadgesDrawsItsOwnSegmentsWhateverTheWidth() {
+        typealias Style = ModalTabBarStyle
+        #expect(Style.form(hasSymbols: true, hasBadges: true, compactWidth: true, accessibilitySize: false) == .badged, "iPhone: icons with badges")
+        #expect(Style.form(hasSymbols: true, hasBadges: true, compactWidth: false, accessibilitySize: false) == .badgedWithTitles, "iPad: icon over title")
+        #expect(Style.form(hasSymbols: false, hasBadges: true, compactWidth: true, accessibilitySize: false) == .badgedWithTitles, "No icons: titles")
+        #expect(Style.form(hasSymbols: true, hasBadges: true, compactWidth: true, accessibilitySize: true) == .menu, "AX sizes: the menu")
+        #expect(Style.form(hasSymbols: true, hasBadges: false, compactWidth: true, accessibilitySize: false) == .icons, "No badges: the system control")
+    }
+
+    @Test func badgesCapAtNinePlusAndAreSpokenAfterTheName() {
+        #expect(ModalTabBarStyle.badgeText(0) == nil)
+        #expect(ModalTabBarStyle.badgeText(3) == "3")
+        #expect(ModalTabBarStyle.badgeText(9) == "9")
+        #expect(ModalTabBarStyle.badgeText(10) == "9+")
+        #expect(ModalTabBarStyle.accessibilityTitle("Overdue Chores", badge: 3) == "Overdue Chores, 3 items")
+        #expect(ModalTabBarStyle.accessibilityTitle("Overdue Chores", badge: 1) == "Overdue Chores, 1 item")
+        #expect(ModalTabBarStyle.accessibilityTitle("Overdue Chores", badge: 0) == "Overdue Chores")
+    }
+
+    @Test func segmentsAreAtLeast44PointsTall() {
+        #expect(ModalTabBarStyle.iconSegmentHeight >= 44)
+        #expect(ModalTabBarStyle.titledSegmentHeight >= 44)
+    }
+
+    private func badgedBar() -> some View {
+        ModalTabBar(tabs: Section.allCases, label: "Remote sections", title: \.rawValue, symbol: { _ in "circle" },
+                    badge: { $0 == .controls ? 12 : $0 == .apps ? 2 : 0 }, selection: .constant(.apps), identifier: "test.tabs")
+            .frame(width: 360)
+    }
+
+    @Test func rendersBadgedSegmentsAndTheirMenu() {
+        #expect(ImageRenderer(content: badgedBar()).cgImage != nil)
+        #expect(ImageRenderer(content: badgedBar().environment(\.horizontalSizeClass, .regular)).cgImage != nil)
+        #expect(ImageRenderer(content: badgedBar().dynamicTypeSize(.accessibility5)).cgImage != nil)
+    }
+
     @Test func everyModalSectionHasAnIconFromTheWeb() {
         for tab in MediaRemoteTab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
         for tab in HumidifierTab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
         for tab in BedSideSheet.Tab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
         for tab in WakeLightSheet.Tab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
         for tab in ClimateConfig.Tab.allCases { #expect(ModalTabSymbols.symbol(for: tab) != "circle", "\(tab)") }
+        for tab in SummaryTab.allCases { #expect(SymbolMap.symbol(for: tab.mdiIcon) != "circle", "\(tab)") }
         #expect(ModalTabSymbols.mdi(for: MediaRemoteTab.hueSync) == "mdi:lightbulb-multiple")
         #expect(ModalTabSymbols.mdi(for: ClimateConfig.Tab.rooms) == "mdi:home-thermometer")
         #expect(ModalTabSymbols.mdi(for: BedSideSheet.Tab.alarms) == "mdi:alarm")

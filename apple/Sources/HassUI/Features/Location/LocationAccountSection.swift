@@ -2,10 +2,10 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// The Account sheet's Location section (`.agents/pages/settings/location.md`, Entry points): Share Location with the
+/// The Summary sheet's Profile-tab Location section (`.agents/pages/settings/location.md`, Entry points): Share Location with the
 /// permission state, which opens ``LocationPermissionView``, and the toggle that arms reporting on this install.
 ///
-/// Phones only: ``AccountSheet`` shows it when the session has a ``LocationCoordinator``, which an iPad never has.
+/// Phones only: ``YourSummarySheet``'s Profile tab shows it when the session has a ``LocationCoordinator``, which an iPad never has.
 /// HIG: [Toggles](https://developer.apple.com/design/human-interface-guidelines/toggles) (a switch in a list row for
 /// an on/off setting, its effect in the footer) and [Privacy](https://developer.apple.com/design/human-interface-guidelines/privacy)
 /// (the permission screen, not the system alert, is the way in).
