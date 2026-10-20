@@ -86,7 +86,26 @@ struct InventoryScreen: View {
         .sheet(item: $presentation.sheet) { sheet in
             InventorySheetContent(sheet: sheet, model: model, models: models)
         }
-        .inventoryRowActions(presentation, model: model)
+        .sheet(item: $presentation.sheetEditor) { editor in
+            InventoryItemEditor(model: editor, style: .sheet) { presentation.editing = nil }
+        }
+        .alert(presentation.prompt?.title ?? "", isPresented: promptShown, presenting: presentation.prompt) { prompt in
+            TextField("Quantity", text: $presentation.promptText)
+                .numericEntryField()
+                .accessibilityIdentifier("inventory.prompt.field")
+            Button("Cancel", role: .cancel) {}
+            Button(prompt.confirmTitle) { Task { await presentation.submit(prompt, in: model) } }
+        } message: { prompt in
+            Text(prompt.message)
+        }
+        .confirmationDialog(
+            presentation.confirmDelete.map { "Delete \($0.name) from the \(space.phrase)?" } ?? "",
+            isPresented: Binding(get: { presentation.confirmDelete != nil }, set: { if !$0 { presentation.confirmDelete = nil } }),
+            titleVisibility: .visible,
+            presenting: presentation.confirmDelete
+        ) { item in
+            Button("Delete", role: .destructive) { Task { await model.delete(item) } }
+        }
         .motionSafeAnimation(.default, reduced: .easeInOut(duration: 0.2), value: canSplit && editing != nil)
     }
 
@@ -206,6 +225,10 @@ struct InventoryScreen: View {
     }
 
     // MARK: - Presentation
+
+    private var promptShown: Binding<Bool> {
+        Binding(get: { presentation.prompt != nil }, set: { if !$0 { presentation.prompt = nil } })
+    }
 
     private func updateSplit(_ size: CGSize) {
         presentation.updateSplit(size, isRegularWidth: sizeClass == .regular)
