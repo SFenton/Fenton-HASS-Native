@@ -226,3 +226,54 @@ final class WallpaperJourneyTests: JourneyTestCase {
         assertCovered(app, "after-foreground-scrolled")
     }
 }
+
+// MARK: - Push frames
+
+/// The page a push opens, and the page it covers, draw the wallpaper through the whole slide (`page-backdrop.md` R2).
+///
+/// Owner, 2026-10-20 (screen recordings): opening a page flashed black. The page sliding out has a negative window
+/// position, and the photo was shifted by it, which pulled the photo off the edge still showing. The journey taps a
+/// Settings row and takes screenshots back to back through the push, sampling both side columns; with the bright
+/// fixture photo, a sample as dark as the plain base is a frame with no wallpaper. A screenshot takes about 0.1 s and
+/// the push lasts about 0.35 s, so this catches the flash only on some frames; the simulator recording in the pull
+/// request shows every frame.
+@MainActor
+final class PushFlickerJourneyTests: JourneyTestCase {
+    private static let base = [17.0, 23.0, 35.0]
+
+    private func darkSamples(_ capture: RenderedContrast.Capture, window: CGRect) -> [String] {
+        [window.minX + 3, window.maxX - 3].flatMap { x in
+            (1..<8).compactMap { row -> String? in
+                let point = CGPoint(x: x, y: window.minY + window.height * Double(row) / 8)
+                guard let rgb = RenderedContrast.rgb(at: point, in: capture) else { return nil }
+                let dark = zip([rgb.red, rgb.green, rgb.blue], Self.base).allSatisfy { Double($0) <= $1 + 6 }
+                return dark ? "x \(Int(x)) row \(row) rgb [\(rgb.red), \(rgb.green), \(rgb.blue)]" : nil
+            }
+        }
+    }
+
+    func testSettingsTopicDrawsWallpaperThroughThePush() throws {
+        let app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_BACKDROP_FIXTURE": "1"], readyIdentifier: "nav.profile")
+        openSection("settings", title: "Settings", in: app)
+        let list = element("settings.list", in: app)
+        XCTAssertTrue(list.waitForExistence(timeout: 15), "Settings did not appear")
+        sleep(2)
+        let target = element("settings.topic.guests", in: app)
+        for _ in 0..<8 where !(target.exists && target.isHittable) { list.swipeUp(velocity: .slow) }
+        XCTAssertTrue(target.isHittable, "Guest Controls never came into view")
+        let window = app.windows.firstMatch.frame
+        target.tap()
+        var frames = 0
+        var dark: [String] = []
+        let deadline = Date().addingTimeInterval(2)
+        while Date() < deadline {
+            guard let capture = RenderedContrast.Capture.screen() else { break }
+            frames += 1
+            let found = darkSamples(capture, window: window)
+            if !found.isEmpty { dark.append("frame \(frames): \(found.joined(separator: "; "))") }
+        }
+        XCTAssertTrue(app.buttons["BackButton"].waitForExistence(timeout: 15), "Guest Controls did not open")
+        XCTAssertGreaterThan(frames, 1, "no frames captured")
+        XCTAssertTrue(dark.isEmpty, "dark frames during the push (\(layout), \(frames) frames): \(dark.joined(separator: " | "))")
+    }
+}
