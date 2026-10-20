@@ -75,7 +75,7 @@ final class TileLayoutJourneyTests: JourneyTestCase {
         let kitchen = tile("row", "Kitchen", in: row)
         let rowFrame = kitchen.frame
         let rowContent = try XCTUnwrap(TileGeometry.content(in: rowFrame, capture: try capture()), "row: no content")
-        XCTAssertEqual(rowContent.midY, rowFrame.midY, accuracy: 4, "row content is vertically centred")
+        XCTAssertEqual(rowContent.midY, rowFrame.midY, accuracy: 4, "row content is vertically centred (content \(rowContent), tile \(rowFrame))")
 
         let anchored = launch("anchoredBottom")
         let tile2 = tile("anchoredBottom", "Kitchen", in: anchored)

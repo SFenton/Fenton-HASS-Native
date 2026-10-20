@@ -62,7 +62,13 @@ final class ChoresJourneyTests: JourneyTestCase {
         for _ in 0..<80 where !clear() { // AX5 pages run many screens long, the folded Duo's the most (20 drags fell short).
             // 400 pt, as the last-chore journey drags: 200 pt drags did not carry the folded Duo's AX5 page the 2,400 pt to
             // the first row in 80 attempts.
-            guard element.exists else { drag(contentUp: 400); continue }
+            guard element.exists else {
+                // Both gestures, as the last-chore journey does: the leading-edge drag is what scrolls the folded Duo and
+                // `swipeUp` is what scrolls the iPhone (80 drags left the iPhone's AX5 page at its top, 2026-10-20).
+                drag(contentUp: 400)
+                if !element.exists { scroller(app).swipeUp(velocity: .fast) }
+                continue
+            }
             // In the tree but not hittable yet: put its centre a third of the way down the list, above the Add bar and the
             // last-call line whatever the row's height, from whichever side it is on.
             if !clearOfBar {

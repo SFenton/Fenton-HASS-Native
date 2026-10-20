@@ -26,7 +26,8 @@ final class FeedbackJourneyTests: JourneyTestCase {
     private func feedbackRow(_ app: XCUIApplication, _ kind: String) -> XCUIElement {
         let row = app.buttons["settings.feedback.\(kind)"]
         _ = app.buttons["settings.homeAssistant"].waitForExistence(timeout: 10)
-        for _ in 0..<10 where !(row.exists && row.isHittable) {
+        // The list grew (App Icon, Backdrop blur): ten slow swipes stopped above the last rows.
+        for _ in 0..<40 where !(row.exists && row.isHittable) {
             app.settingsList.swipeUp(velocity: .slow)
         }
         return row

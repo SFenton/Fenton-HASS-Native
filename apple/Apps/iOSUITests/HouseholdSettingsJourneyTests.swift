@@ -285,6 +285,7 @@ final class HouseholdSettingsJourneyTests: JourneyTestCase {
         showSettingsTab(app)
         for page in ["specialDeviceModes", "guests", "machE", "admin"] {
             let row = app.buttons["settings.topic.\(page)"]
+            app.revealSettingsRow(row)
             XCTAssertTrue(row.waitForExistence(timeout: 5), "\(page) row missing")
             XCTAssertGreaterThanOrEqual(row.frame.height, 43)
             row.tap()
