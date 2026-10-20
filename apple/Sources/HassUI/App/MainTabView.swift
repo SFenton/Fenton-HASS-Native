@@ -18,7 +18,6 @@ struct MainTabView: View {
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
     @AppStorage(AppIconBadgeSync.enabledKey) private var showsIconBadge = true
     @Environment(HassConnection.self) private var connection: HassConnection?
-    @Environment(EntityStore.self) private var store: EntityStore?
     @Environment(PushCoordinator.self) private var push: PushCoordinator?
     @Environment(LocationCoordinator.self) private var location: LocationCoordinator?
 
