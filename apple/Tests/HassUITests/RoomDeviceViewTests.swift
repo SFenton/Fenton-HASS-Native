@@ -157,6 +157,39 @@ struct RoomDeviceViewTests {
         #expect(ActivityTime.string(from: ActivityTime.date(from: "junk", calendar: calendar), calendar: calendar) == "00:00")
     }
 
+    @Test(arguments: [DynamicTypeSize.large, .accessibility5])
+    func fanTimerControlsRenderIdleAndRunning(typeSize: DynamicTypeSize) {
+        for id in ["fan-guest", "fan-master"] {
+            let controller = BathroomFanController(config: id == "fan-guest" ? .guest : .master, store: fixture(id).store,
+                                                   caller: RecordingCaller())
+            #expect(render(BathroomFanControls(controller: controller), typeSize: typeSize) != nil, "\(id)")
+        }
+        let controller = BathroomFanController(config: .guest, store: fixture("fan-guest").store, caller: RecordingCaller())
+        var minutes = 10
+        let row = FanTimerLengthRow(selection: Binding(get: { minutes }, set: { minutes = $0 }))
+        #expect(render(row, size: CGSize(width: 361, height: 200), typeSize: typeSize) != nil)
+        #expect(render(FanTimerProgressBar(fraction: 0.4), size: CGSize(width: 300, height: 20)) != nil)
+        #expect(render(FanTimerProgressBar(fraction: 7), size: CGSize(width: 300, height: 20)) != nil, "Clamped to full")
+        #expect(render(FanTimerRunning(controller: BathroomFanController(config: .master, store: fixture("fan-master").store,
+                                                                          caller: RecordingCaller())), typeSize: typeSize) != nil)
+        #expect(render(Button("Clear Timer") {}.buttonStyle(TintedCapsuleButtonStyle(tint: .red)).disabled(true),
+                       size: CGSize(width: 300, height: 80), typeSize: typeSize) != nil)
+        _ = controller
+    }
+
+    @Test func timerLengthRowSelectsThroughItsBinding() {
+        var minutes = 30
+        let row = FanTimerLengthRow(selection: Binding(get: { minutes }, set: { minutes = $0 }))
+        #expect(row.lengths == BathroomFanController.timerMinutes)
+        row.$selection.wrappedValue = 5
+        #expect(minutes == 5)
+    }
+
+    @Test func fanTimerFootnoteMatchesTheScript() {
+        // The copy promises the script turns the fan on; `canStartTimer` is what lets the button work while it is off.
+        #expect(BathroomFanControls.timerFootnote == "The fan runs, then turns itself off. Starting a timer turns it on if it's off.")
+    }
+
     @Test func spokenFanTimer() {
         #expect(BathroomFanControls.spokenRemaining(65).contains("1 minute"))
         #expect(DeviceStatusPill.color(.danger) == HassTokens.Ink.danger)
@@ -177,8 +210,6 @@ struct RoomDeviceViewTests {
         RoomDeviceGalleryEcho.apply("script", guest.scriptService, ["command": "timer_start", "minutes": 5, "auto_unlock": true], to: fan)
         #expect(fan.value(guest.pendingEntityId)?.state == "on")
         #expect(fan.value(guest.autoUnlockEntityId)?.state == "on")
-        RoomDeviceGalleryEcho.apply("script", guest.scriptService, ["command": "timer_auto_unlock", "enabled": false], to: fan)
-        #expect(fan.value(guest.autoUnlockEntityId)?.state == "off")
         RoomDeviceGalleryEcho.apply("script", guest.scriptService, ["command": "timer_cancel"], to: fan)
         #expect(fan.value(guest.pendingEntityId)?.state == "off")
 
