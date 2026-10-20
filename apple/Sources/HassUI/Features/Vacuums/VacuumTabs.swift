@@ -131,7 +131,7 @@ struct VacuumControlsTab: View {
             }
         } else if !controller.status.primaryAvailable || controller.status.currentIssue.status == .present {
             VacuumSection(VacuumFormat.state(controller.state)) {
-                Text(controller.status.currentIssue.raw ?? "Home Assistant does not have a current status for the vacuum.")
+                Text(controller.status.currentIssue.raw.map(VacuumFormat.issue) ?? "Home Assistant does not have a current status for the vacuum.")
                     .font(.body)
                     .foregroundStyle(HassTokens.Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)
