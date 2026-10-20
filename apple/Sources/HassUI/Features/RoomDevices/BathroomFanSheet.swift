@@ -2,8 +2,13 @@ import HassCore
 import HassDesign
 import SwiftUI
 
-/// The bathroom fan sheet (web `BathroomFanModalContent.tsx`): power and automation-lock toggles, an off timer,
-/// and while locked, whether the timer also releases the lock.
+/// The bathroom fan sheet (web `BathroomFanModalContent.tsx`): Power and Lock tiles, and an off timer.
+///
+/// Owner design, 2026-10-17 (pattern: `.agents/patterns/room-device-sheets.md`): Power is the air (teal) family and Lock
+/// the security blue, so the two read apart at a glance. The timer is a row of six lengths and one button that turns
+/// the fan off after the chosen time (and on first, if it is off); a running timer is a big orange countdown with a
+/// thin progress bar and a Clear Timer button. There is no "Auto-disable lock" choice: the fan always unlocks when
+/// its timer ends.
 public struct BathroomFanSheet: View {
     @State private var controller: BathroomFanController
 
@@ -37,9 +42,13 @@ public struct BathroomFanSheet: View {
 struct BathroomFanControls: View {
     @Bindable var controller: BathroomFanController
 
+    /// The idle timer's footnote. True to the fan script: `timer_start` ends with `switch.turn_on`.
+    static let timerFootnote = "The fan runs, then turns itself off. Starting a timer turns it on if it's off."
+
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
-            // Both switches belong to the fan, so both use its air family (direction G, Colour families).
+            // Power is the fan's air teal; Lock is the security blue (direction G, Colour families), so the two tiles
+            // are told apart by colour as well as by glyph and name.
             DeviceTileGrid(maxColumns: 2) {
                 GlassTile(title: "Power", subtitle: controller.powerStateText, symbol: "power", family: .air,
                           isActive: controller.powerOn && controller.powerAvailable, isUnavailable: !controller.powerAvailable) {
@@ -47,7 +56,7 @@ struct BathroomFanControls: View {
                 }
                 .accessibilityIdentifier("fan.power")
                 GlassTile(title: "Lock", subtitle: controller.lockStateText, symbol: controller.locked ? "lock.fill" : "lock.open",
-                          family: .air, isActive: controller.locked && controller.lockAvailable,
+                          family: .securityHome, isActive: controller.locked && controller.lockAvailable,
                           isUnavailable: !controller.lockAvailable) {
                     controller.setLocked(!controller.locked)
                 }
@@ -56,85 +65,14 @@ struct BathroomFanControls: View {
 
             DeviceSection(title: "Timer") {
                 if controller.timerPending {
-                    pendingTimer
+                    FanTimerRunning(controller: controller)
                 } else {
-                    timerPicker
+                    FanTimerPicker(controller: controller)
                 }
-                if controller.showsAutoUnlock {
-                    Toggle("Auto-disable lock", isOn: Binding(get: { controller.displayedAutoUnlock },
-                                                              set: { controller.setAutoUnlock($0) }))
-                        .font(.body)
-                        .foregroundStyle(HassTokens.Ink.primary)
-                        .disabled(!controller.autoUnlockAvailable)
-                        .frame(minHeight: HassTokens.minTarget)
-                        .accessibilityIdentifier("fan.autoUnlock")
-                }
-            }
-        }
-    }
-
-    /// Duration menu, then Set as the sheet's one primary button (web `SelectActionField`; direction G, Controls:
-    /// Primary buttons).
-    private var timerPicker: some View {
-        VStack(alignment: .leading, spacing: HassTokens.Spacing.m) { durationMenu; setButton }
-    }
-
-    private var durationMenu: some View {
-        Picker("Timer length", selection: $controller.selectedMinutes) {
-            ForEach(BathroomFanController.timerMinutes, id: \.self) { minutes in
-                Text(BathroomFanController.durationTitle(minutes)).tag(minutes)
-            }
-        }
-        .pickerStyle(.menu)
-        .frame(minHeight: HassTokens.minTarget)
-        .accessibilityIdentifier("fan.timerLength")
-    }
-
-    private var setButton: some View {
-        Button("Set Timer") { controller.startTimer() }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(!controller.canStartTimer)
-            .accessibilityIdentifier("fan.setTimer")
-    }
-
-    /// Remaining time and Clear (web `TimerRow`), counting down each second.
-    private var pendingTimer: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            let remaining = controller.remainingSeconds(at: context.date)
-            let text = remaining.map(BathroomFanController.formatRemaining) ?? "Unavailable"
-            HStack(spacing: HassTokens.Spacing.m) {
-                Label {
-                    Text(text).font(.title3.weight(.semibold)).monospacedDigit()
-                } icon: {
-                    Image(systemName: "timer")
-                }
-                .foregroundStyle(HassTokens.Ink.primary)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Timer")
-                .accessibilityValue(remaining.map(Self.spokenRemaining) ?? "Unavailable")
-                .accessibilityIdentifier("fan.remaining")
-                Spacer(minLength: 0)
-                // Destructive text, as in a list row (direction G, Colour: destructive `#FF6961`).
-                Button(role: .destructive) { controller.cancelTimer() } label: {
-                    // The frame and shape sit inside the label so the whole 44 pt target takes the tap.
-                    Text("Clear")
-                        .foregroundStyle(HassTokens.Ink.danger)
-                        .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.plain)
-                    .disabled(!controller.timerAvailable)
-                    .accessibilityLabel("Clear timer")
-                    .accessibilityIdentifier("fan.clearTimer")
             }
         }
     }
 
     /// `4 minutes 5 seconds` for VoiceOver.
-    static func spokenRemaining(_ seconds: Int) -> String {
-        let formatter = DateComponentsFormatter()
-        formatter.unitsStyle = .full
-        formatter.allowedUnits = [.hour, .minute, .second]
-        return formatter.string(from: TimeInterval(seconds)) ?? BathroomFanController.formatRemaining(seconds)
-    }
+    static func spokenRemaining(_ seconds: Int) -> String { BathroomFanController.spokenRemaining(seconds) }
 }

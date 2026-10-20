@@ -109,10 +109,20 @@ enum RoomsFixtures {
         }
         for state in MediaRemoteFixtures.states { byId[state.entityId] = state }
         // Device sheets wired from room cards: the room device lane's fixtures (fans off and unlocked).
-        let devices = BathroomFanConfig.all.flatMap { RoomDeviceFixture.fanStates($0, power: "off", locked: false, pending: false, now: Date()) }
+        // The Guest Bathroom fan is off and unlocked; the Master's is on, locked and timed (12:34 left), so the room
+        // pages show the "Off in 12:34" status and a lit lock. `FENTON_GALLERY_SCENARIO=fan-unavailable` makes the
+        // Guest fan's entities unavailable (no buttons, "Unavailable").
+        let fanScenario = ProcessInfo.processInfo.environment["FENTON_GALLERY_SCENARIO"]
+        let devices = RoomDeviceFixture.fanStates(.guest, power: "off", locked: false, pending: false, now: Date())
+            + RoomDeviceFixture.fanStates(.master, power: "on", locked: true, pending: true, now: Date())
             + AirPurifierConfig.all.flatMap { RoomDeviceFixture.purifierStates($0, mode: "Auto", percentage: 33) }
             + RoomDeviceFixture.grillStates
         for state in devices { byId[state.entityId] = state }
+        if fanScenario == "fan-unavailable" {
+            for state in RoomDeviceFixture.fanStates(.guest, power: "off", locked: false, pending: false, now: Date()) {
+                byId[state.entityId] = EntityState(entityId: state.entityId, state: "unavailable", attributes: [:])
+            }
+        }
         // Wake light and both bed sides with schedules (the bedroom lane's fixtures).
         for state in BedroomFixtures.states(.default) { byId[state.entityId] = state }
 
