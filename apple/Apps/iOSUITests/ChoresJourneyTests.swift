@@ -317,7 +317,14 @@ final class ChoresJourneyTests: JourneyTestCase {
             list.swipeUp(velocity: .fast)
             if !last.exists { drag() }
         }
-        for _ in 0..<3 { list.swipeUp(velocity: .fast) }
+        // Then to the end with both gestures until the row stops moving (the folded Duo ignores `swipeUp`, so three swipes
+        // left the row under the bar there).
+        var previous = CGFloat.nan
+        for _ in 0..<12 where last.exists && last.frame.maxY != previous {
+            previous = last.frame.maxY
+            list.swipeUp(velocity: .fast)
+            drag()
+        }
         if !last.exists { add(XCTAttachment(string: app.debugDescription)) }
         XCTAssertTrue(last.exists, "The last chore never appeared")
         let barTop = min(app.buttons["fab.add"].frame.minY, app.staticTexts["gallery.lastCall"].frame.minY)
