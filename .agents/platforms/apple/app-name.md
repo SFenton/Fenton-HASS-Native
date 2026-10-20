@@ -23,7 +23,7 @@
 - **`mobile_app` registration** (`PushApp.appName = "Fenton Home"`, `deviceNameSuffix = " · Fenton"`). `app_name` is only sent at `POST /api/mobile_app/registrations`; the later `update_registration` webhook cannot change it, and a new registration would add a second device and a second `notify.mobile_app_…` service next to the automations that call the first. Home Assistant shows the app as "Fenton Home" until the device is removed and the app signs in again; that is by design. Change it only together with a migration that removes the old device.
 - **Home Assistant side:** the "Fenton Home Feedback" integration, `ha-fenton-push`, the `FentonHome` user agent and the repo name.
 - **Code identifiers:** the `FentonHome` scheme, product module and test targets, `HassCore`, `HassUI`, `HassDesign`.
-- The sign-in screen never named the app, and still does not.
+- ~~The sign-in screen never named the app.~~ Resolved (owner, 2026-10-17): the sign-in screen shows **S+H** (spoken "S and H") under the house-and-heart mark ([auth](auth.md), Sign-in screen).
 
 ## Finding the app by other names
 

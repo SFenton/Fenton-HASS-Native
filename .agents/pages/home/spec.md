@@ -28,7 +28,8 @@ Sheets: [room-overview-sheet](../../patterns/room-overview-sheet.md) (source `ha
 
 | State | Behavior |
 |---|---|
-| Snapshot only (cold launch, offline) | Render saved values; quiet "Updating…" indicator |
+| Snapshot only (cold launch, offline) | Render saved values at once, no spinner; the "Reconnecting…" chip only after 2 s without a connection |
+| First sign-in (no snapshot yet) | Tiles show names and a soft pulsing bar for the value until live data lands |
 | Live | Values update in place |
 | Entity missing or `unavailable` | Chip shows "Unavailable", dimmed, still opens its sheet |
 

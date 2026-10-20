@@ -41,6 +41,7 @@ public struct GlassTile<Accessory: View>: View {
     /// What tapping the tile does.
     public typealias Kind = GlassTileKind
 
+    @Environment(\.valuesPending) private var valuesPending
     @State private var accessorySize: CGSize = .zero
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -170,6 +171,8 @@ public struct GlassTile<Accessory: View>: View {
     }
 
     private var accessibilityValue: String {
+        // The first sign-in, before any value has arrived: the soft bar says nothing, so the tile does.
+        if valuesPending, subtitle != nil || kind == .toggle { return "Loading" }
         if let spokenValue { return spokenValue }
         if isUnavailable { return "Unavailable" }
         if isError { return subtitle ?? "Error" }
@@ -288,6 +291,7 @@ public struct GlassTileFace: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.tileTitleLines) private var reservedTitleLines
     @Environment(\.tileFinish) private var preferredFinish
+    @Environment(\.valuesPending) private var valuesPending
     @Environment(\.tileSubtitleSingleLine) private var subtitleSingleLine
     @Environment(\.colorSchemeContrast) private var contrast
     @ScaledMetric(relativeTo: .subheadline) private var titleLineHeight = TileMetrics.titleLineHeight
@@ -382,7 +386,10 @@ public struct GlassTileFace: View {
                 .foregroundStyle(primaryInk(style))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            if let subtitle {
+            if subtitle != nil, valuesPending {
+                // The first sign-in, before any value has arrived: the name is real, the value is a soft bar.
+                PendingValueBar()
+            } else if let subtitle {
                 Text(subtitle)
                     .font(.footnote)
                     .foregroundStyle(secondaryInk(style))

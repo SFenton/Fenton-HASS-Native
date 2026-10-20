@@ -29,7 +29,7 @@ final class ShellNavigator {
         didSet { UserDefaults.standard.set(profileName, forKey: Self.profileNameKey) }
     }
     /// Defaults key for ``profileName``.
-    nonisolated static let profileNameKey = "shell.profileName"
+    nonisolated static let profileNameKey = RememberedAccountStore.nameKey
     /// Overdue chore count for the Chores badge (web `useDailyReportContext().overdueCount`);
     /// nil until the Chores feature provides it.
     var overdueChores: Int?
