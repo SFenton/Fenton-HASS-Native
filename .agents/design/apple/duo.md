@@ -16,4 +16,4 @@
 
 ## Duo rail (owner, 2026-10-20)
 
-No hamburger on the Duo (folded or vertical rail). In the vertical rail Quick Links and Profile sit in one shared glass group (`ToolbarItemGroup`, Profile as its monogram, no fixed spacer), replacing the two circles of 2026-10-18. See [direction-g](../direction-g.md).
+No hamburger on the Duo (folded or vertical rail). In the vertical rail Quick Links and Profile sit in one shared glass group (`ToolbarItemGroup`, Profile as the person symbol, no fixed spacer (a monogram custom view does not move into the rail: measured 68 pt off the column; owner to confirm)), replacing the two circles of 2026-10-18. See [direction-g](../direction-g.md).

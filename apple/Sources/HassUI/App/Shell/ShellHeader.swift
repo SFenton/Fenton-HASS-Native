@@ -92,7 +92,7 @@ struct ShellHeaderItems: ToolbarContent {
     var body: some ToolbarContent {
         if #available(iOS 26.0, macOS 26.0, *), ShellHeaderGrouping.resolve(inVerticalBar: inVerticalBar) == .oneGroup {
             // Owner, 2026-10-20: on the Duo's vertical rail the two buttons share one glass blob. One item group is one
-            // glass shape; the monogram sits on the group's glass as a 32 pt disc, and no spacer is added (HIG Designing for iPhone Duo).
+            // glass shape; the person symbol (a monogram custom view stays in the horizontal bar, measured) shares the glass, and no spacer is added (HIG Designing for iPhone Duo).
             ToolbarItemGroup(placement: .primaryAction) {
                 QuickLinksButton(action: openQuickLinks)
                 ProfileButton(name: profileName, attentionCount: attentionCount, grouped: true, action: openAccount)
@@ -202,8 +202,8 @@ struct ProfileButton: View {
     var name: String?
     /// Overdue chores plus expired food, badged on the avatar ("9+" past nine) and spoken with its value.
     var attentionCount = 0
-    /// The button sits in a shared glass group (the Duo's vertical rail): the monogram is a 32 pt disc on the group's
-    /// glass, with no hidden-glass overhang.
+    /// The button sits in the Duo's shared glass group in the vertical rail. A monogram (a custom view) does not move into
+    /// the rail (measured: it stayed 68 pt off the rail's column), so the group shows the person symbol instead.
     var grouped = false
     var action: () -> Void
 
@@ -282,8 +282,8 @@ struct ProfileButton: View {
     // MARK: Body
 
     var body: some View {
-        let presentation = Presentation.resolve(name: name)
-        let metrics = grouped ? Metrics(diameter: 32, overhang: 0, ringed: false) : Metrics.current
+        let presentation = grouped ? Presentation.symbol : Presentation.resolve(name: name)
+        let metrics = Metrics.current
         Button(action: action) { label(for: presentation, metrics: metrics) }
             .overlay(alignment: .topTrailing) { badge(metrics: metrics) }
             .accessibilityShowsLargeContentViewer {

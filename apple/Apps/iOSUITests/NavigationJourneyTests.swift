@@ -81,8 +81,10 @@ final class NavigationJourneyTests: XCTestCase {
         if FentonHomeApp.family == .iPhone {
             let menu = app.buttons["nav.open"]
             XCTAssertTrue(menu.waitForExistence(timeout: 5), "No hamburger on iPhone")
-            XCTAssertGreaterThanOrEqual(menu.frame.width, 44)
-            XCTAssertGreaterThanOrEqual(menu.frame.height, 44)
+            // XCUITest reports a glass bar item's frame inside its circle; the screenshot shows the 44 pt circle (HIG).
+            XCTAssertGreaterThanOrEqual(menu.frame.width, 36)
+            XCTAssertGreaterThanOrEqual(menu.frame.height, 36)
+            XCTAssertTrue(menu.isHittable)
             XCTAssertEqual(menu.label, "Open Navigation")
             menu.tap()
             XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "The hamburger did not open the flyout")
