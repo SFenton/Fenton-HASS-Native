@@ -230,6 +230,7 @@ final class ShellJourneyTests: JourneyTestCase {
             shoot(app, "title-regular")
             return
         }
+        XCTAssertEqual(app.buttons["nav.open"].exists, FentonHomeApp.family == .iPhone, "Hamburger only on iPhone")
         let large = title.frame
         XCTAssertLessThan(abs(large.midY - profile.frame.midY), 20, "The title is not in the buttons' row")
         XCTAssertGreaterThan(large.height, 30, "The title is not large at the top")
@@ -244,7 +245,12 @@ final class ShellJourneyTests: JourneyTestCase {
             let inline = collapsed.frame
             XCTAssertLessThan(inline.height, large.height - 8, "The title did not shrink on scroll")
             XCTAssertLessThan(abs(inline.midY - profile.frame.midY), 20, "The inline title left the buttons' row")
-            XCTAssertGreaterThan(inline.minX, large.minX + 40, "The inline title did not centre")
+            // With the hamburger (iPhone) the bar keeps the inline title leading beside it; without it the title centres.
+            if app.buttons["nav.open"].exists {
+                XCTAssertLessThan(inline.maxX, app.buttons["nav.open"].frame.minX, "The inline title runs under the buttons")
+            } else {
+                XCTAssertGreaterThan(inline.minX, large.minX + 40, "The inline title did not centre")
+            }
         } else {
             XCTAssertEqual(FentonHomeApp.family, .iPhoneDuo, "The title vanished on scroll")
         }

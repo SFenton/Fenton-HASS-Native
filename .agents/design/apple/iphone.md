@@ -8,3 +8,7 @@
 - The title shares the header row with the circles: `toolbarTitleDisplayMode(.inlineLarge)` from `pageChrome()` draws the large title leading in the bar and collapses it to a centred inline title on scroll (HIG Toolbars, iOS: a large title "by default becomes standard while scrolling and returns to large at the top"). A pushed page with a Back button keeps the system large title below the bar. Sub-pages push with the system Back button. A page shows Back or the tab bar root, never a second menu (web UX contract, page headers).
 - Web hash modals (`#lights-overview`, `#security-system`, cameras) become SwiftUI sheets with `.presentationDetents([.medium, .large])`; camera viewers use `.large` only.
 - Respect safe areas with system layout; never hard-code notch or Dynamic Island insets (web safe-area contract).
+
+## Hamburger (owner, 2026-10-20)
+
+The leading Open Navigation button is back on iPhone (44 pt, VoiceOver "Open Navigation", hint "Opens the navigation menu"), opening the existing `NavigationFlyout`. Tab-bar accessories may follow. Quick Links and Profile stay two separate circles, 12 pt apart. See [direction-g](../direction-g.md).

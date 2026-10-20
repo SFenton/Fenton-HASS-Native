@@ -335,3 +335,8 @@ Built from `RootView` (the launch ground, the sign-in layer's lift, `HomeArrival
 - **Library:** kept as a storage choice.
 - **Swipe actions:** used for row Edit and Delete.
 - **Tile finish:** decided 2026-10-17: Tinted Glass (option A) ships for every tile; solid is the Reduce Transparency fallback (Tile finish).
+
+### Owner decision, 2026-10-20: iPhone hamburger back, Duo rail one glass group
+
+- **Hamburger on iPhone.** The leading Open Navigation button (`nav.open`, `line.3.horizontal`, 44 pt, label "Open Navigation", opens `NavigationFlyout`) returns on the iPhone tab-bar layout, because tab-bar accessories may be added later. It was dropped in #103 (2026-10-16) when Settings became a fifth tab. iPhone only: not on the iPhone Duo's vertical rail, not on a compact iPad window; iPad regular width keeps it as before. The flyout edge swipe stays off on iPhone (the edge is the system Back swipe). `ShellChrome.resolve(style:isPhone:inVerticalBar:)`.
+- **Duo rail: one blob.** Quick Links and Profile share a single grouped glass shape in the vertical rail (`ToolbarItemGroup`, person symbol for Profile (owner, 2026-10-20; the monogram stays in the horizontal bar), no spacer; `ShellHeaderGrouping.oneGroup`). iPhone's top bar keeps two separate circles 12 pt apart.

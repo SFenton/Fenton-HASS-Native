@@ -17,6 +17,7 @@ struct MainTabView: View {
     @Environment(EntityStore.self) private var store: EntityStore?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
     @AppStorage(AppIconBadgeSync.enabledKey) private var showsIconBadge = true
+    @Environment(\.shellInVerticalBar) private var inVerticalBar
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(PushCoordinator.self) private var push: PushCoordinator?
     @Environment(LocationCoordinator.self) private var location: LocationCoordinator?
@@ -25,7 +26,17 @@ struct MainTabView: View {
         ShellNavigationStyle.resolve(isRegularWidth: horizontalSizeClass == .regular)
     }
 
-    private var chrome: ShellChrome { .resolve(style: style) }
+    private var chrome: ShellChrome {
+        .resolve(style: style, isPhone: Self.isPhone, inVerticalBar: inVerticalBar)
+    }
+
+    private static var isPhone: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
+    }
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -34,7 +45,7 @@ struct MainTabView: View {
                 .modifier(OverdueChoresBadge())
                 // While the flyout is open its scrim covers the content; hide the content from VoiceOver too.
                 .accessibilityHidden(while: navigator.isFlyoutOpen)
-                .flyoutEdgeSwipe(navigator, isEnabled: chrome.showsMenuButton)
+                .flyoutEdgeSwipe(navigator, isEnabled: chrome.edgeSwipe)
             if chrome.showsMenuButton {
                 NavigationFlyout()
             }
@@ -73,8 +84,8 @@ struct MainTabView: View {
             navigator.open(request.destination, anchor: request.anchor)
             push?.didOpen(request)
         }
-        .onChange(of: style) { _, newStyle in
-            if newStyle == .tabBar, !chrome.showsMenuButton { navigator.dismissFlyout() }
+        .onChange(of: chrome.showsMenuButton) { _, _ in
+            if !chrome.showsMenuButton { navigator.dismissFlyout() }
         }
         // Again once connected: a lookup before the socket is up fails, and the cached name stays meanwhile.
         .task(id: isConnected) { await loadProfileName() }

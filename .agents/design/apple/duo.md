@@ -13,3 +13,7 @@
   - Verified on the `iPhone Duo (HASS)` simulator unfolded in landscape (2026-10-16): Home splits with the chips stopping short of the hinge, the weather card on compact paging (its hourly row pages by the compact count in the half-width column, nine hours squeezed 400 pt), cameras 2 x 2 in the trailing half and the Quick Links circle bottom trailing (`AdaptiveLayoutJourneyTests.testHomeSplitsOnTheHingeOnlyWhenUnfoldedInLandscape`). Unfolded portrait and the partly folded pose were not run.
   - **A rule for anything that reads the hinge:** measure the full-width frame *outside* any padding that depends on the hinge. `ChipRail` first measured inside its own trailing padding, so the inset shrank the frame it was computed from, flipped every layout pass and pinned the main thread at 100% CPU on the unfolded Duo (journeys timed out with "Unable to perform work on main run loop"). The unit tests cannot see that; only the unfolded simulator did.
 - Window changes (fold, unfold, rotate) move an open detail between the trailing pane and a push, one run-loop turn after the window update, unanimated.
+
+## Duo rail (owner, 2026-10-20)
+
+No hamburger on the Duo (folded or vertical rail). In the vertical rail Quick Links and Profile sit in one shared glass group (`ToolbarItemGroup`, Profile as the person symbol, no fixed spacer (owner, 2026-10-20; a monogram custom view stays in the horizontal bar, so the rail group shows the symbol)), replacing the two circles of 2026-10-18. See [direction-g](../direction-g.md).
