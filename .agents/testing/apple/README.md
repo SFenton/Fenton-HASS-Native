@@ -21,7 +21,7 @@ A full `swift test` runs every `@MainActor` suite in one process, interleaved on
 
 ## Driving hosted windows (2026-10-16)
 
-The UX bar is 95%, which needs the code behind taps, sheets and rows to run, not only the first screen. Three tools in `apple/Tests/HassUITests` do that on the macOS host:
+The UX bar is 95%, which needs the code behind taps, sheets and rows to run, not only the first screen. Three tools in `apple/Tests/HassUITests` do that on the Mac host (a test runner only; macOS is not a supported platform, so there is no Mac UI, journey or checklist step):
 
 - **Launch switches** (`withLaunch(environment:defaults:)` in `GalleryLaunchTests.swift`). Set the `FENTON_GALLERY_*` variables and launch arguments the journeys pass, host `ComponentGallery` in a real window and check what it drew (`HostedWindow.snapshot()`, `distinctColors`, `differs(from:)`). `GalleryLaunchMatrixTests` opens every sheet, tab, scenario and fixture each gallery offers and checks the sheet is up. A lazy `List` builds only the rows in view, so `scrollThrough()` wheel-scrolls the window or sheet to run the rows below the fold. Add a launch to the matrix when a gallery gains a switch.
 - **`AXWindow`** (`AXDriver.swift`). Hosts a view and drives it through the accessibility tree: find by `accessibilityIdentifier` or label, `press`, `type(_:into:)`, read values and enabled state, and wait on them (`wait`, `waitFor`, `text(_:where:)`). It needs the test host to be a regular application and the process to be trusted for accessibility (`AXWindow.isAvailable`): flow suites carry `.enabled(if: AXWindow.isAvailable)`, so on a machine without that permission they skip and the coverage gate reads low rather than passing without them.
