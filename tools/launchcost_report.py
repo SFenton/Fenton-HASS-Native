@@ -6,10 +6,10 @@ and prints one row per case: main-thread turn cost (p95, worst, turns over 8 and
 
 Budgets (simulator, main-thread CPU per run-loop turn; hitch ratios from a simulator mean nothing, see
 .agents/testing/apple/performance.md): p95 turn <= 8 ms in every case. The intro cases (nothing but the intro runs) also allow no
-turn over 16 ms. The arrival and snapshot cases include Home's own first layout, which has a 180 to 230 ms turn of its own on the
-simulator (not the motion's: the snapshot case has no motion), so their worst turn is held to 300 ms until that is fixed.
-Intervals: warm launch to the snapshot (SnapshotShown) <= 500 ms (400 ms on an idle Mac); the arrival (Arrival, 0.9 s of motion plus
-the build of Home behind the sign-in layer) <= 1600 ms; the intro (Intro) <= 1500 ms.
+turn over 16 ms (design/motion.md section 10). The arrival and snapshot cases include Home's own first layout, which has a 150 to
+270 ms turn of its own on the simulator (not the motion's: the snapshot case has no motion); it is reported as a miss, not excused.
+Intervals: warm launch to the snapshot (SnapshotShown) <= 400 ms; the arrival (Arrival, tokens to the end of the motion) <= 1000 ms;
+the intro (Intro) <= 1500 ms.
 
 Usage: launchcost_report.py FILE.tsv [--no-budget]   (exit 1 when a budget is missed)
 """
@@ -18,9 +18,9 @@ import sys
 P95 = 8.0
 WORST = 16.0
 # Cases that include Home's own first layout: held to this worst turn until Home's startup is fixed.
-HOME_WORST = 300.0
+HOME_WORST = WORST  # .agents/design/motion.md section 10: no turn over 16 ms in any case
 HOME_CASES = ("arrival", "snapshot")
-INTERVAL_BUDGETS = {"SnapshotShown_ms": 500.0, "Arrival_ms": 1600.0, "Intro_ms": 1500.0}
+INTERVAL_BUDGETS = {"SnapshotShown_ms": 400.0, "Arrival_ms": 1000.0, "Intro_ms": 1500.0}
 COLUMNS = ["p95_ms", "worst_ms", "over8", "over16", "main_ms", "turns", "Launch_ms", "SnapshotShown_ms", "SignIn_ms", "Intro_ms", "Arrival_ms"]
 
 

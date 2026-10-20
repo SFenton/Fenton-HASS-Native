@@ -72,6 +72,7 @@ if [[ -n "$INNER" ]]; then
     local args=("SIMCTL_CHILD_FENTON_LAUNCHCOST=1" "SIMCTL_CHILD_FENTON_TELEMETRY=1" "SIMCTL_CHILD_FENTON_LAUNCHCOST_FILE=$TSV.$name")
     for kv in "$@"; do args+=("SIMCTL_CHILD_$kv"); done
     rm -f "$TSV.$name"
+    local began=$SECONDS
     env "${args[@]}" xcrun simctl launch "$UDID" "$BUNDLE" > /dev/null
     for _ in $(seq 1 120); do
       grep -q "^LAUNCHCOST_DONE.$phase\$" "$TSV.$name" 2>/dev/null && break
@@ -82,7 +83,7 @@ if [[ -n "$INNER" ]]; then
       $1 == "LAUNCHCOST" && $2 == phase { $2 = name; print }
       $1 == "LAUNCHCOST" && $2 == phase "-build" { $2 = name "-build"; print }' "$TSV.$name" >> "$TSV" 2>/dev/null || echo "no line for $name" >&2
     rm -f "$TSV.$name"
-    echo "measured: $name" >&2
+    echo "measured: $name (waited $((SECONDS - began)) s for its line)" >&2
   }
   fresh() { # a clean install: no saved sign-in, no snapshot, default settings
     xcrun simctl terminate "$UDID" "$BUNDLE" > /dev/null 2>&1 || true
