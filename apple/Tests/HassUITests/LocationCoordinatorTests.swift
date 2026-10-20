@@ -37,7 +37,7 @@ private func paths(_ transport: StubHTTPTransport) -> [String] {
 
 // MARK: - Location
 
-/// Shadow-mode location: starts on a webhook and permission, only when armed; offers the screen once.
+/// Location: starts on a webhook and permission, with no switch; offers the screen once.
 @MainActor
 struct LocationCoordinatorTests {
     struct Harness {
@@ -49,14 +49,13 @@ struct LocationCoordinatorTests {
         let defaults: UserDefaults
     }
 
-    func harness(_ permission: LocationPermission, armed: Bool = true, replies: [StubHTTPTransport.Reply] = [],
+    func harness(_ permission: LocationPermission, replies: [StubHTTPTransport.Reply] = [],
                  saved: MobileAppRegistration? = nil, defaults: UserDefaults = freshDefaults()) -> Harness {
         let platform = FakeLocationPlatform(permission)
         let transport = StubHTTPTransport(replies)
         let store = InMemoryMobileAppRegistrationStore(saved.map { [$0] } ?? [], active: saved)
         let mobileApp = MobileAppCoordinator(device: device, store: store, transport: transport)
-        let location = LocationCoordinator(platform: platform, mobileApp: mobileApp, isReportingArmed: armed,
-                                           transport: transport, batteryLevel: { 64 }, defaults: defaults)
+        let location = LocationCoordinator(platform: platform, mobileApp: mobileApp,         transport: transport, batteryLevel: { 64 }, defaults: defaults)
         return Harness(platform: platform, transport: transport, store: store, mobileApp: mobileApp, location: location,
                        defaults: defaults)
     }
@@ -76,39 +75,6 @@ struct LocationCoordinatorTests {
         await h.mobileApp.sessionEnded()
         await eventually { !h.location.reporter.isRunning }
         #expect(!h.location.reporter.isRunning)
-    }
-
-    @Test func notArmedNeverReports() async {
-        let saved = MobileAppRegistration(server: server, userID: "u1", webhookID: "w1")
-        let h = harness(LocationPermission(authorization: .always), armed: false, saved: saved)
-        await h.location.resume()
-        await h.location.didBecomeActive()
-        #expect(!h.location.reporter.isRunning)
-        #expect(h.transport.requests.isEmpty)
-        #expect(!h.location.isReportingArmed)
-    }
-
-    @Test func theToggleArmsAndDisarmsAndPersists() async {
-        let saved = MobileAppRegistration(server: server, userID: "u1", webhookID: "w1")
-        let h = harness(LocationPermission(authorization: .always), armed: false,
-                        replies: [(200, zonesJSON), (200, "{}")], saved: saved)
-        h.platform.fixes = [fix]
-        await h.location.resume()
-        #expect(!h.location.reporter.isRunning)
-
-        await h.location.setReportingArmed(true).value
-        #expect(h.location.isReportingArmed)
-        #expect(LocationLaunchPolicy.isReportingArmed(environment: [:], defaults: h.defaults), "saved for the next launch")
-        #expect(h.location.reporter.isRunning)
-        #expect(paths(h.transport) == ["/api/webhook/w1 get_zones", "/api/webhook/w1 update_location"])
-
-        await h.location.setReportingArmed(true).value
-        #expect(paths(h.transport).count == 2, "arming again does nothing")
-
-        await h.location.setReportingArmed(false).value
-        #expect(!h.location.isReportingArmed)
-        #expect(!h.location.reporter.isRunning)
-        #expect(!LocationLaunchPolicy.isReportingArmed(environment: [:], defaults: h.defaults))
     }
 
     @Test func resumesOnTheSavedWebhookWithoutASync() async {

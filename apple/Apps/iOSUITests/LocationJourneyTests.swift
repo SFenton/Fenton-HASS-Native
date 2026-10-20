@@ -172,19 +172,17 @@ final class LocationShadowJourneyTests: JourneyTestCase {
 }
 
 /// The Account sheet's Location section after a real sign-in (`.agents/pages/settings/location.md`, Entry points):
-/// on phones Share Location shows the permission and opens the permission screen, and Report to Home Assistant
-/// starts off, arms, warns while access is off, and stays armed after a relaunch; iPad has no Location section. The
-/// launch never registers (a test token and the simulator keep `mobile_app` registration off), so arming sends
-/// nothing to Home Assistant.
+/// on phones Share Location shows the permission and opens the permission screen, and there is no Report switch:
+/// access off warns that nothing is sent; iPad has no Location section. The launch never registers (a test token and
+/// the simulator keep `mobile_app` registration off), so nothing reaches Home Assistant.
 @MainActor
 final class LocationAccountJourneyTests: JourneyTestCase {
     private let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
 
-    /// Signs in with location on; the first launch resets the toggle off and waits for the after-sign-in offer on
-    /// phones, later ones keep the saved toggle.
+    /// Signs in with location on; the first launch waits for the after-sign-in offer on
+    /// phones, later ones skip it.
     private func launchSignedIn(arguments: [String] = [], first: Bool) throws -> XCUIApplication {
-        var environment = ["FENTON_LOCATION": "1"]
-        if first { environment["FENTON_LOCATION_REPORT"] = "0" }
+        let environment = ["FENTON_LOCATION": "1"]
         return try FentonHomeApp.launchSignedIn(arguments: arguments, environment: environment,
                                                 readyIdentifier: first && FentonHomeApp.family != .iPad ? "location.title" : nil)
     }
@@ -196,18 +194,7 @@ final class LocationAccountJourneyTests: JourneyTestCase {
         return app
     }
 
-    /// Turns a switch to `on`, waiting for its value; a tap while the sheet settles can be dropped, so it taps once more.
-    private func flip(_ toggle: XCUIElement, on: Bool, file: StaticString = #filePath, line: UInt = #line) {
-        let want = on ? "1" : "0"
-        let flipped = NSPredicate(format: "value == %@", want)
-        for _ in 0..<2 where toggle.value as? String != want {
-            toggle.switches.firstMatch.tap()
-            _ = XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: flipped, object: toggle)], timeout: 5)
-        }
-        XCTAssertEqual(toggle.value as? String, want, file: file, line: line)
-    }
-
-    func testShareLocationAndTheReportToggleOnPhonesOnly() throws {
+    func testShareLocationHasNoReportToggleOnPhonesOnly() throws {
         guard FentonHomeApp.family != .iPad else {
             // No reset here: the iPad never asks, and resetting its authorization timed out on the iOS 27 simulator.
             let app = try relaunchToAccount(first: true)
@@ -235,28 +222,17 @@ final class LocationAccountJourneyTests: JourneyTestCase {
         XCTAssertEqual(row.label, "Share Location")
         XCTAssertEqual(row.value as? String, "Off")
         XCTAssertGreaterThanOrEqual(row.frame.height, 44)
-        let toggle = app.switches["account.location.report"]
-        XCTAssertTrue(toggle.exists, "No Report toggle")
-        XCTAssertEqual(toggle.value as? String, "0", "Reporting is off by default")
-        XCTAssertGreaterThanOrEqual(toggle.frame.height, 44)
+        XCTAssertFalse(app.switches["account.location.report"].exists, "Reporting has no switch: it follows the permission")
         let warning = app.descendants(matching: .any)["account.location.warning"]
-        XCTAssertFalse(warning.exists, "No warning while off")
-        keepScreenshot(app, "location-account-1-off-\(layout)")
-
-        flip(toggle, on: true)
-        XCTAssertTrue(warning.waitForExistence(timeout: 5), "Armed with access off warns")
+        XCTAssertTrue(warning.waitForExistence(timeout: 5), "Access off says nothing is sent")
         XCTAssertTrue(warning.label.hasPrefix("Warning: Location access is off"), warning.label)
-        keepScreenshot(app, "location-account-2-armed-\(layout)")
+        keepScreenshot(app, "location-account-1-off-\(layout)")
         try FentonHomeApp.audit(app) { try self.relaunchToAccount(arguments: FentonHomeApp.ax5) }
         let large = try relaunchToAccount(arguments: FentonHomeApp.ax5)
         keepScreenshot(large, "location-account-2-armed-ax5-\(layout)")
         large.terminate()
 
-        // Armed survives a relaunch without the debug override.
         app = try relaunchToAccount()
-        let armed = app.switches["account.location.report"]
-        XCTAssertTrue(armed.waitForExistence(timeout: 5))
-        XCTAssertEqual(armed.value as? String, "1", "The toggle persists per install")
 
         // Share Location opens the permission screen at its current stage; Close comes back to Account.
         app.buttons["account.location"].tap()
@@ -265,8 +241,18 @@ final class LocationAccountJourneyTests: JourneyTestCase {
         keepScreenshot(app, "location-account-3-screen-\(layout)")
         app.buttons["location.close"].tap()
         XCTAssertTrue(app.buttons["account.location"].waitForExistence(timeout: 5))
+    }
 
-        flip(armed, on: false)
-        XCTAssertFalse(app.descendants(matching: .any)["account.location.warning"].waitForExistence(timeout: 2))
+    /// A sign-out the server can't confirm shows the alert and stays signed in (a stub: `FENTON_SIGNOUT_FAIL`).
+    func testFailedSignOutShowsTheAlertAndStaysSignedIn() throws {
+        let app = try FentonHomeApp.launchSignedIn(environment: ["FENTON_SIGNOUT_FAIL": "1"])
+        app.openAccountSheet()
+        let signOut = app.buttons["account.signOut"]
+        XCTAssertTrue(signOut.waitForExistence(timeout: 5))
+        signOut.tap()
+        app.buttons["account.signOut.confirm"].firstMatch.tap()
+        XCTAssertTrue(app.alerts["Sign Out couldn't complete. Try again."].waitForExistence(timeout: 5), "No failure alert")
+        app.alerts["Sign Out couldn't complete. Try again."].buttons["OK"].firstMatch.tap()
+        XCTAssertTrue(app.buttons["account.signOut"].exists, "Still signed in")
     }
 }

@@ -146,6 +146,27 @@ public final class AppSession {
         expiredAccount = nil
     }
 
+    /// Why a confirmed sign-out stayed signed in.
+    public struct SignOutFailure: Error, Equatable {}
+
+    /// Signs out only once Home Assistant confirms this phone is off the user's person (already off counts). Any
+    /// failure throws and leaves the session signed in, so the caller shows its alert and the person can retry.
+    /// Debug builds take `FENTON_SIGNOUT_FAIL=1` to fail without a server (journeys).
+    public func confirmedSignOut() async throws {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["FENTON_SIGNOUT_FAIL"] == "1" { throw SignOutFailure() }
+        #endif
+        if case let .signedIn(connection, _) = phase, location != nil {
+            do {
+                let user = try await connection.currentUser()
+                try await push.mobileApp.unlinkPresence(user: user, api: connection)
+            } catch {
+                throw SignOutFailure()
+            }
+        }
+        signOut()
+    }
+
     /// Signs out: stops pushes to this phone, then revokes the refresh token; clears the Keychain, cache and
     /// store. Home Assistant gets the empty push registration before the token is revoked (contract v1, rule 2).
     public func signOut() {

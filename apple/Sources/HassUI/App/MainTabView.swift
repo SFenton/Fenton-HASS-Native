@@ -19,6 +19,7 @@ struct MainTabView: View {
     @Environment(EntityStore.self) private var store: EntityStore?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
     @AppStorage(AppIconBadgeSync.enabledKey) private var showsIconBadge = true
+    @Environment(\.shellInVerticalBar) private var inVerticalBar
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(PushCoordinator.self) private var push: PushCoordinator?
     @Environment(LocationCoordinator.self) private var location: LocationCoordinator?
@@ -28,7 +29,17 @@ struct MainTabView: View {
         ShellNavigationStyle.resolve(isRegularWidth: horizontalSizeClass == .regular)
     }
 
-    private var chrome: ShellChrome { .resolve(style: style) }
+    private var chrome: ShellChrome {
+        .resolve(style: style, isPhone: Self.isPhone, inVerticalBar: inVerticalBar)
+    }
+
+    private static var isPhone: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .phone
+        #else
+        false
+        #endif
+    }
 
     var body: some View {
         ZStack(alignment: .leading) {
@@ -37,7 +48,7 @@ struct MainTabView: View {
                 .modifier(OverdueChoresBadge())
                 // While the flyout is open its scrim covers the content; hide the content from VoiceOver too.
                 .accessibilityHidden(while: navigator.isFlyoutOpen)
-                .flyoutEdgeSwipe(navigator, isEnabled: chrome.showsMenuButton)
+                .flyoutEdgeSwipe(navigator, isEnabled: chrome.edgeSwipe)
             if chrome.showsMenuButton {
                 NavigationFlyout()
             }
@@ -77,11 +88,13 @@ struct MainTabView: View {
             navigator.open(request.destination, anchor: request.anchor)
             push?.didOpen(request)
         }
-        .onChange(of: style) { _, newStyle in
-            if newStyle == .tabBar, !chrome.showsMenuButton { navigator.dismissFlyout() }
+        .onChange(of: chrome.showsMenuButton) { _, _ in
+            if !chrome.showsMenuButton { navigator.dismissFlyout() }
         }
         // Again once connected: a lookup before the socket is up fails, and the cached name stays meanwhile.
         .task(id: isConnected) { await loadProfileName() }
+        // Home Assistant creates the phone's tracker on its first location update, so link again once one is accepted.
+        .task(id: location?.reporter.lastReportDate != nil) { await linkPresenceAfterReport() }
         // The app icon shows the Profile button's count (`.agents/platforms/apple/badge.md`).
         .task(id: IconBadgeKey(count: ShellAttention.count(store: store, viewerUserId: viewerUserId), enabled: showsIconBadge)) {
             await AppIconBadgeSync.shared.update(count: ShellAttention.count(store: store, viewerUserId: viewerUserId))
@@ -167,6 +180,13 @@ struct MainTabView: View {
         return false
     }
 
+    /// Tries the person link again after the first location update, when the first attempt found no tracker yet.
+    private func linkPresenceAfterReport() async {
+        guard let connection, let location, location.reporter.lastReportDate != nil,
+              push?.mobileApp.presenceLink?.isLinked != true, let user = try? await connection.currentUser() else { return }
+        await push?.mobileApp.linkPresence(user: user, api: connection)
+    }
+
     /// Reads the signed-in user for the profile button (the cached name shows until it arrives) and for the
     /// `mobile_app` registration, which is per Home Assistant user; then offers location once the notification
     /// alert is answered, so the two never stack.
@@ -177,6 +197,9 @@ struct MainTabView: View {
         // the Chores model reads and writes the same key.
         UserDefaults.standard.set(user.id, forKey: ChoresModel.viewerDefaultsKey)
         await push?.didConnect(userID: user.id, userName: user.name)
+        // A phone that reports location follows its signed-in user: its tracker goes on that user's person. An iPad
+        // never does (one left at home would mark its person home).
+        if location != nil { await push?.mobileApp.linkPresence(user: user, api: connection) }
         location?.offerPermissionIfNeeded()
     }
 }

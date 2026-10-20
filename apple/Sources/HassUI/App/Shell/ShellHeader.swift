@@ -26,6 +26,7 @@ private struct SectionRootChrome: ViewModifier {
                         } label: {
                             Label("Open Navigation", systemImage: "line.3.horizontal")
                         }
+                        .accessibilityHint("Opens the navigation menu")
                         .accessibilityIdentifier("nav.open")
                         .accessibilityFocused($buttonFocused)
                     }
@@ -79,7 +80,7 @@ private struct ShellHeaderButtons: ViewModifier {
 /// overhanging the hidden-glass padding so the disc fills exactly the circle the glass would have drawn
 /// (``ProfileButton/Metrics``); without a name it is the person symbol on the bar's standard glass circle
 /// (``ProfileButton/Presentation``). Measured on the iPhone 17 Pro simulator (iOS 27): Quick Links' glass 44 pt, the disc
-/// 44 pt, 12 pt between them. In the Duo's vertical bar no spacer is added (``EnvironmentValues/shellInVerticalBar``), and before
+/// 44 pt, 12 pt between them. In the Duo's vertical bar (owner, 2026-10-20) both share one glass group and no spacer is added (``EnvironmentValues/shellInVerticalBar``), and before
 /// iOS 26 the bar draws no glass, so each button draws its own material circle and no spacer is added.
 struct ShellHeaderItems: ToolbarContent {
     var profileName: String?
@@ -89,17 +90,21 @@ struct ShellHeaderItems: ToolbarContent {
     @Environment(\.shellInVerticalBar) private var inVerticalBar
 
     var body: some ToolbarContent {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: openQuickLinks) }
-            // The Duo's vertical bar spaces its own items: no fixed spacer there (FestivalNativeApps
-            // `RootChromeTrailingGroups.separatesAccount`).
-            if !inVerticalBar {
-                ToolbarSpacer(.fixed, placement: .primaryAction)
+        if #available(iOS 26.0, macOS 26.0, *), ShellHeaderGrouping.resolve(inVerticalBar: inVerticalBar) == .oneGroup {
+            // Owner, 2026-10-20: on the Duo's vertical rail the two buttons share one glass blob. One item group is one
+            // glass shape; the person symbol (a monogram custom view stays in the horizontal bar, measured) shares the glass, and no spacer is added (HIG Designing for iPhone Duo).
+            ToolbarItemGroup(placement: .primaryAction) {
+                QuickLinksButton(action: openQuickLinks)
+                ProfileButton(name: profileName, attentionCount: attentionCount, grouped: true, action: openAccount)
             }
+        } else if #available(iOS 26.0, macOS 26.0, *) {
+            ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: openQuickLinks) }
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+            ProfileHeaderItem(name: profileName, attentionCount: attentionCount, action: openAccount)
         } else {
             ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: openQuickLinks) }
+            ProfileHeaderItem(name: profileName, attentionCount: attentionCount, action: openAccount)
         }
-        ProfileHeaderItem(name: profileName, attentionCount: attentionCount, action: openAccount)
     }
 }
 
@@ -187,6 +192,9 @@ struct ProfileButton: View {
     var name: String?
     /// Overdue chores plus expired food, badged on the avatar ("9+" past nine) and spoken with its value.
     var attentionCount = 0
+    /// The button sits in the Duo's shared glass group in the vertical rail. A monogram (a custom view) does not move into
+    /// the rail (measured: it stayed 68 pt off the rail's column), so the group shows the person symbol instead.
+    var grouped = false
     var action: () -> Void
 
     /// The monogram's fill (the light-mode action blue, 5.6:1 under white).
@@ -264,9 +272,10 @@ struct ProfileButton: View {
     // MARK: Body
 
     var body: some View {
-        let presentation = Presentation.resolve(name: name)
-        Button(action: action) { label(for: presentation, metrics: .current) }
-            .overlay(alignment: .topTrailing) { badge(metrics: .current) }
+        let presentation = grouped ? Presentation.symbol : Presentation.resolve(name: name)
+        let metrics = Metrics.current
+        Button(action: action) { label(for: presentation, metrics: metrics) }
+            .overlay(alignment: .topTrailing) { badge(metrics: metrics) }
             .accessibilityShowsLargeContentViewer {
                 Label("Profile", systemImage: "person.crop.circle")
             }

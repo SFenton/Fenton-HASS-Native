@@ -59,7 +59,7 @@ struct ShellModelsTests {
             device: { MobileAppDevice(marketingVersion: "1", build: "2", name: "iPhone", model: "iPhone18,1", osVersion: "27.2",
                                       deviceID: "v", apnsEnvironment: .sandbox) },
             store: InMemoryMobileAppRegistrationStore([], active: nil), transport: transport)
-        let location = LocationCoordinator(platform: platform, mobileApp: mobileApp, isReportingArmed: false, transport: transport,
+        let location = LocationCoordinator(platform: platform, mobileApp: mobileApp, transport: transport,
                                            batteryLevel: { 64 }, defaults: defaults())
         let hosted = HostedWindow(Color.black.locationReporting(location), size: CGSize(width: 402, height: 874))
         defer { hosted.close() }

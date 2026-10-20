@@ -14,6 +14,9 @@ public final class MobileAppCoordinator {
     /// The registration this session synced; nil until the first sync succeeds, and after sign-out.
     public private(set) var registration: MobileAppRegistration?
 
+    /// What the last attempt to put this phone's tracker on the signed-in user's person did; nil before one.
+    public private(set) var presenceLink: PresenceLinkOutcome?
+
     /// Register at all. Off for UI journeys signed in with a test token, so they never add `mobile_app` devices
     /// to the real server.
     public let isEnabled: Bool
@@ -33,6 +36,10 @@ public final class MobileAppCoordinator {
     @ObservationIgnored private var startActivityToken: String?
     /// The running sync, so a token arriving mid-sync waits for it instead of racing it.
     @ObservationIgnored private var syncTask: Task<Void, Never>?
+    /// The registration and user the person link last succeeded for, so a reconnect doesn't repeat it.
+    @ObservationIgnored private var linkedKey: String?
+    /// The user and websocket of the last link, so a permission change can unlink and relink without a screen.
+    @ObservationIgnored private var linkContext: (user: HassUser, api: any HassCommandSending)?
     @ObservationIgnored private var listeners: [@MainActor (MobileAppRegistration?) -> Void] = []
 
     /// Creates a coordinator.
@@ -73,6 +80,8 @@ public final class MobileAppCoordinator {
     ///   - accessToken: Valid access tokens for it.
     func sessionStarted(server: HassServer, accessToken: @escaping @Sendable () async throws -> String) {
         userID = nil
+        linkedKey = nil
+        presenceLink = nil
         setRegistration(nil)
         let client = HomeAssistantPushClient(server: server, accessToken: accessToken, transport: transport)
         registrar = MobileAppRegistrar(server: server, client: client, store: store, device: device(),
@@ -138,11 +147,52 @@ public final class MobileAppCoordinator {
         await task.value
     }
 
+    /// Adds this phone's `device_tracker` to the signed-in user's person (``PresenceLinker``), once per registration and
+    /// user while it holds. Call after each sync; every outcome shows in ``presenceLink``.
+    /// - Parameters:
+    ///   - user: The signed-in user.
+    ///   - api: The websocket.
+    public func linkPresence(user: HassUser, api: any HassCommandSending) async {
+        guard isEnabled, allowsRegistration, let registration else { return }
+        linkContext = (user, api)
+        let key = registration.webhookID + "|" + user.id
+        guard linkedKey != key else { return }
+        let outcome = await PresenceLinker.link(webhookID: registration.webhookID, user: user, api: api)
+        guard self.registration == registration else { return }
+        presenceLink = outcome
+        linkedKey = outcome.isLinked ? key : nil
+    }
+
+    /// Takes this phone's tracker off the signed-in user's person (``PresenceLinker/unlink(webhookID:user:api:)``).
+    /// - Throws: When Home Assistant doesn't confirm, so sign-out can stay signed in.
+    public func unlinkPresence(user: HassUser, api: any HassCommandSending) async throws {
+        // Journeys and simulators never write to the person or entity registry.
+        guard isEnabled, allowsRegistration, let webhookID = registration?.webhookID ?? store.active?.webhookID else { return }
+        try await PresenceLinker.unlink(webhookID: webhookID, user: user, api: api)
+        linkedKey = nil
+        presenceLink = nil
+    }
+
+    /// Location was turned off: the phone can no longer say where it is, so take it off the person rather than leave a
+    /// stale "home". Best effort; the next enable links again.
+    public func locationWithdrawn() async {
+        guard let context = linkContext else { return }
+        try? await unlinkPresence(user: context.user, api: context.api)
+    }
+
+    /// Location was turned back on: put the phone back on its person when it isn't.
+    public func locationRestored() async {
+        guard let context = linkContext else { return }
+        await linkPresence(user: context.user, api: context.api)
+    }
+
     /// Signing out: clear Home Assistant's push details for this phone (before the refresh token is revoked).
     func sessionEnded() async {
         let registrar = registrar
         self.registrar = nil
         userID = nil
+        linkedKey = nil
+        presenceLink = nil
         setRegistration(nil)
         await registrar?.signOut()
     }

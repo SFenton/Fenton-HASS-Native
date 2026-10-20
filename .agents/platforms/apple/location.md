@@ -2,7 +2,7 @@
 
 > **What:** how the app reports location and device sensors to Home Assistant through `mobile_app`. **Read when:** touching `HassCore/MobileApp`, `HassCore/Location` or the location permission screen.
 
-Plan and rationale: the owner's "Location, Home/Away and device sensors" report (2026-10-14). Today the official Home Assistant app is the household's only presence source; this app runs in shadow until its tracker has matched the official one on real trips.
+Plan and rationale: the owner's "Location, Home/Away and device sensors" report (2026-10-14), and the 2026-10-20 report that made reporting unconditional and added the person link.
 
 ## Shape
 
@@ -16,6 +16,7 @@ Plan and rationale: the owner's "Location, Home/Away and device sensors" report 
 | `CoreLocationPlatform` | same, iOS only | `CLLocationManager` + iOS 17 `CLMonitor` |
 | `LocationPermissionView` | `HassUI/Features/Location` | The explainer and permission steps ([page](../../pages/settings/location.md)) |
 | `LocationCoordinator`, `LocationLaunchPolicy`, `LocationPermissionPresenter` | `HassUI/App/Location` | Starts and stops the reporter with the registration and permission; offers the screen once after sign-in |
+| `PresenceLinker`, `PresenceLinkOutcome`, `HassCommandSending` | `HassCore/MobileApp` | Adds this phone's tracker to the signed-in user's person (below) |
 
 One `mobile_app` registration per phone, shared with push ([mobile-app](mobile-app.md)), so each phone is one Home Assistant device. Webhook calls carry no token (the id addresses the registration) and never use the websocket: they are one-off exchanges, not entity state.
 
@@ -45,14 +46,35 @@ Names, unique ids, state strings and icons mirror `home-assistant/iOS` (`Sources
 
 The brief's shorthand ids (`ssid`, `region entered`) were replaced by the official ones above (2026-10-14).
 
-## Shadow mode (Phase 2, 2026-10-15)
+## Reporting and the person link (2026-10-20)
 
-- **Phones only.** The app delegate creates `LocationCoordinator` at launch when `LocationLaunchPolicy.isEnabled` (not on iPad; not in test-token, reset or gallery launches unless `FENTON_LOCATION=1`). An iPad never shows the permission screen: its copy says "This phone".
-- **Offer once.** After sign-in, once the notification alert is answered (`MainTabView.loadProfileName`), the permission screen is offered once per install while there is something to ask (Not Set, or While Using before the Always alert). iOS shows the Always alert once; afterwards While Using offers Settings and Close (`canAskForAlways`), so the screen never traps anyone.
-- **Start and stop.** The reporter starts when reporting is armed, a webhook exists (this session's sync, or one saved by an earlier launch, so a background relaunch for a zone event can report without the websocket) and the permission is While Using or Always. Each return to the foreground sends a `Launch` fix. Sign-out stops it. A 410 syncs once, which registers again, and reporting resumes on the new webhook.
-- **Only the app's own tracker.** Nothing links the tracker to a person or changes Home Assistant config.
-- **Not armed by default.** Reporting is off on every install until the person turns on **Report to Home Assistant** in the Your Summary sheet's Profile tab Location section (`LocationAccountSection`, iPhone and Duo only), which calls `LocationCoordinator.setReportingArmed` and persists `location.reportingArmed`; arming starts the reporter when a webhook and permission allow it, disarming stops it. Debug builds also take `FENTON_LOCATION_REPORT=1` (or `0`) at launch, which persists so the toggle shows it. A fix from an armed phone moves a person only if the app's tracker is in that person's tracker list ([presence inventory](presence-inventory.md)); `person.stephen_fenton` tracks only `device_tracker.iphone_18_pro` since 2026-10-15.
-- **Open:** device readers and sensors (Phase 3); the Account sheet row; a zone relaunch only reopens the zone monitor after `get_zones` answers, so an offline relaunch can miss that crossing.
+Owner report: got home with the official app uninstalled and this app was not marked home despite Share Location Always and Report to Home Assistant on. Root causes, fixed here:
+
+1. **Reporting was gated behind a hidden switch.** `LocationCoordinator.startIfReady` returned unless `isReportingArmed` (`location.reportingArmed`, default false) was set. The switch is gone: whenever a webhook exists and the permission is While Using or Always, the reporter runs.
+2. **Nothing linked the tracker to a person.** Home Assistant follows only the `device_trackers` listed on a person; the app registered `device_tracker.<name>` but never touched the person. `PresenceLinker` now does (below).
+3. **Background reporting was already wired** (`UIBackgroundModes: location`, significant changes, `CLMonitor` zones from `get_zones`, `update_location` on each event; usage strings in `project.yml`) but was dead while disarmed. It needs Always and Precise Location; While Using reports one fix per foreground only.
+
+- **Phones only.** The app delegate creates `LocationCoordinator` at launch when `LocationLaunchPolicy.isEnabled` (not on iPad; not in test-token, reset or gallery launches unless `FENTON_LOCATION=1`). An iPad never shows the permission screen or links a person.
+- **Offer once.** After sign-in, once the notification alert is answered (`MainTabView.loadProfileName`), the permission screen is offered once per install while there is something to ask.
+- **Start and stop.** The reporter starts when a webhook exists (this session's sync, or one saved by an earlier launch, so a background relaunch for a zone event reports without the websocket) and the permission is While Using or Always. Each return to the foreground sends a `Launch` fix. Sign-out stops it. A 410 syncs once, which registers again.
+- **No toggle.** Reporting follows the permission; the Profile tab shows Share Location only.
+
+### Presence link (`PresenceLinker`, `HassCore/MobileApp`)
+
+On every sign-in (`MainTabView.loadProfileName`, after the registration sync) and again after the first accepted location update (Home Assistant creates the tracker lazily), `MobileAppCoordinator.linkPresence` runs `PresenceLinker.link` over the websocket:
+
+1. `config/entity_registry/list`: find the `mobile_app` `device_tracker` whose `unique_id` is this registration's webhook id; if it is disabled, enable it (`config/entity_registry/update`).
+2. `person/list`: find the person whose `user_id` is the signed-in user.
+3. If the tracker isn't in that person's `device_trackers`, `person/update` with the existing list plus the tracker (append only; nothing else sent). Already listed: no call.
+
+The registration itself already belongs to the signed-in user (the registrations API registers as the token's user). Outcomes (`PresenceLinkOutcome`) show in Share Location's section as an `InlineAlert`: `needsAdmin` (these commands are admin-only; owners and admins are tried, others skip without sending), `noPerson` (no UI-managed person has this user; YAML persons can't be edited), `trackerMissing`, `failed`. A linked or already-linked result is silent and isn't repeated for the same registration and user in a session; unlinked outcomes retry at the next connection or first report.
+
+### Turning location off, on, and signing out (2026-10-20)
+
+- **Off** (denied, restricted, no longer authorized): the reporter stops and the phone's tracker is taken off the person. Why: Home Assistant keeps a tracker's last state, so a phone that can no longer report would hold "home" for good and block the person's other trackers from being believed. Removing it (only this tracker) lets the others decide. Best effort.
+- **On again**: the reporter starts at once (fresh `Launch` update, zones re-planned) and the tracker is linked again.
+- **Sign-out** waits for `PresenceLinker.unlink` (`AppSession.confirmedSignOut`). Already unlinked, no person, or no tracker counts as success so retries never stick; any failure shows "Sign Out couldn't complete. Try again." and stays signed in. The `mobile_app` registration stays (webhook saved, push cleared as before), so the next sign-in as that user reuses the device. Non-admin users never linked anything and sign out directly. Journeys stub the failure with `FENTON_SIGNOUT_FAIL=1`.
+- Skipped: Mac steps (macOS is no longer a target; the macOS-only `AppSessionTests` are untouched).
 
 ## Inventory
 

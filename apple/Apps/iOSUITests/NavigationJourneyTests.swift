@@ -77,7 +77,22 @@ final class NavigationJourneyTests: XCTestCase {
             XCTAssertTrue(tab(title, in: app).exists, "\(title) tab missing")
         }
         XCTAssertFalse(app.tabBars.buttons["Quick Links"].exists, "Quick Links is a header button, not a tab")
-        XCTAssertFalse(app.buttons["nav.open"].exists, "Menu button in compact width")
+        // Owner, 2026-10-20: the hamburger is back on iPhone, not on the Duo's vertical rail.
+        if FentonHomeApp.family == .iPhone {
+            let menu = app.buttons["nav.open"]
+            XCTAssertTrue(menu.waitForExistence(timeout: 5), "No hamburger on iPhone")
+            // XCUITest reports a glass bar item's frame inside its circle; the screenshot shows the 44 pt circle (HIG).
+            XCTAssertGreaterThanOrEqual(menu.frame.width, 36)
+            XCTAssertGreaterThanOrEqual(menu.frame.height, 36)
+            XCTAssertTrue(menu.isHittable)
+            XCTAssertEqual(menu.label, "Open Navigation")
+            menu.tap()
+            XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "The hamburger did not open the flyout")
+            app.buttons["nav.flyout.scrim"].tap()
+            XCTAssertTrue(flyout(app).waitForNonExistence(timeout: 3))
+        } else {
+            XCTAssertFalse(app.buttons["nav.open"].exists, "Menu button on the Duo's rail")
+        }
         XCTAssertTrue(app.buttons["nav.profile"].isHittable, "No profile button on the section root")
         // Quick Links opens as a sheet over Home and returns to it unchanged.
         app.buttons["quickLinks.open"].tap()

@@ -156,6 +156,7 @@ struct ShellChromeTests {
     @Test func menuButtonOnlyUnderTheFlyoutAndTheTitleSharesTheHeaderWithoutIt() {
         // Quick Links and Profile are header buttons on every page; only the menu button and the title placement vary.
         #expect(ShellChrome.resolve(style: .tabBar) == ShellChrome(showsMenuButton: false, titleInHeader: true))
+        #expect(ShellChrome.resolve(style: .tabBar, isPhone: true).showsMenuButton)
         #expect(ShellChrome.resolve(style: .flyout) == ShellChrome(showsMenuButton: true, titleInHeader: false))
     }
 
@@ -291,5 +292,30 @@ struct ShellChromeTests {
                                           isActive: active, tint: ChipTint.fromWeb(0xFFD700), action: nil)
             #expect(ImageRenderer(content: tinted).cgImage != nil)
         }
+    }
+}
+
+/// The iPhone hamburger and the Duo's one-blob header (owner, 2026-10-20).
+struct ShellHamburgerTests {
+    @Test func iPhoneTabBarShowsTheMenuButtonButNotTheEdgeSwipe() {
+        let chrome = ShellChrome.resolve(style: .tabBar, isPhone: true)
+        #expect(chrome.showsMenuButton)
+        #expect(chrome.titleInHeader)
+        #expect(!chrome.edgeSwipe)
+    }
+
+    @Test func duoRailAndCompactIPadHaveNoMenuButton() {
+        #expect(!ShellChrome.resolve(style: .tabBar, isPhone: true, inVerticalBar: true).showsMenuButton)
+        #expect(!ShellChrome.resolve(style: .tabBar, isPhone: false).showsMenuButton)
+    }
+
+    @Test func flyoutStyleKeepsTheMenuButtonAndEdgeSwipe() {
+        let chrome = ShellChrome.resolve(style: .flyout, isPhone: false)
+        #expect(chrome.showsMenuButton && chrome.edgeSwipe && !chrome.titleInHeader)
+    }
+
+    @Test func headerGroupsOnlyInTheVerticalBar() {
+        #expect(ShellHeaderGrouping.resolve(inVerticalBar: false) == .twoCircles)
+        #expect(ShellHeaderGrouping.resolve(inVerticalBar: true) == .oneGroup)
     }
 }

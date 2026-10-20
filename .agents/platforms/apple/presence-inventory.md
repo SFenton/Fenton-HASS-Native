@@ -113,3 +113,7 @@ Nine registrations. Debug builds register with a `debug_` identifier prefix. The
 - **Simulators are linked to Stephen.** `simulator_965a` is on his person. A simulator that reports a location (for example a simulated drive) can move him. Unlink simulator trackers, or keep the simulator on the no-report path, before the reporter is turned on.
 - **Hard-coded tracker.** `household_journey_evidence_recorder` triggers on `device_tracker.iphone_18_pro` directly, so it will not see the native tracker even after it is linked. Journey automations work from person state otherwise.
 - **iPad and old phone stay unlinked.** The iPad (`ipad`) must not be linked to a person (see the `isPresenceDevice` rule in [location.md](location.md)); `iphone_17_pro` is Stephen's previous phone and is stale.
+
+## Update 2026-10-20
+
+The app now reports whenever location is allowed and adds its tracker to the signed-in user's person on sign-in (admin or owner; see [location](location.md), Presence link). Shadow mode and the Report toggle are gone, so a simulator or a second phone signed in as an admin is linked to that person too: keep simulators off the registration path (`MobileAppRegistrationPolicy`).
