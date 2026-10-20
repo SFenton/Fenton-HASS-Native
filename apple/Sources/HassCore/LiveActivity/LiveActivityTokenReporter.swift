@@ -23,6 +23,7 @@ public final class LiveActivityTokenReporter {
     private var lastStartToken: String?
     /// Activities whose end ``endAll()`` already reported, so their lifecycle watcher does not report it again.
     private var reportedEnded: Set<String> = []
+    private var followedTags: [String: String] = [:]
     private var enabled = true
 
     /// Creates a reporter.
@@ -67,6 +68,7 @@ public final class LiveActivityTokenReporter {
         perActivity.values.joined().forEach { $0.cancel() }
         tasks = []
         perActivity = [:]
+        followedTags = [:]
     }
 
     func startTokenChanged(_ token: String) async {
@@ -83,6 +85,7 @@ public final class LiveActivityTokenReporter {
     /// Follows one activity: its update token, and its end.
     func observe(_ record: LiveActivityRecord) {
         guard perActivity[record.id] == nil else { return }
+        supersede(record)
         let tag = record.tag, id = record.id
         perActivity[id] = [
             Task { [weak self, client] in
@@ -94,6 +97,17 @@ public final class LiveActivityTokenReporter {
                 }
             },
         ]
+    }
+
+    /// One card per tag: a newer activity with the tag of one still showing (an error card the engine restarted) replaces
+    /// it, so the Lock Screen never stacks two for the same device. The older one is reported ended, silently.
+    private func supersede(_ record: LiveActivityRecord) {
+        let older = perActivity.keys.filter { $0 != record.id && followedTags[$0] == record.tag }
+        followedTags[record.id] = record.tag
+        for id in older {
+            reportedEnded.insert(id)
+            Task { [client] in await client.end(id: id, state: nil, dismissal: .immediate) }
+        }
     }
 
     private func report(tag: String, token: String) async {
@@ -114,6 +128,7 @@ public final class LiveActivityTokenReporter {
         }
         perActivity[id]?.forEach { $0.cancel() }
         perActivity[id] = nil
+        followedTags[id] = nil
     }
 
     /// Ends every live activity at once and tells Home Assistant about each (`live_activity_dismissed`), then stops

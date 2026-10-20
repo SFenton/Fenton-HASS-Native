@@ -388,6 +388,36 @@ struct VacuumControllerTests {
         #expect(resumable.runtimeActions.allSatisfy { $0.isDisabled }, "buttons wait for the flag to clear")
     }
 
+    @Test func returnHomeFromAnErrorStaysOptimisticThroughALiveFlap() async {
+        let (vacuum, store, caller, scheduler, _) = make([main.entityId: "error", main.errorEntityId: "Cannot reach target"])
+        vacuum.run(.dock)
+        await vacuum.waitForCalls()
+        #expect(caller.calls.last?.service == "return_to_base")
+        #expect(vacuum.state == "returning")
+        confirm(vacuum, store, main.entityId, "idle")
+        #expect(vacuum.state == "returning", "a state the robot passes through does not drop the tap's result")
+        confirm(vacuum, store, main.entityId, "returning")
+        #expect(vacuum.state == "returning")
+        confirm(vacuum, store, main.entityId, "docked")
+        #expect(vacuum.state == "docked")
+        scheduler.fire(VacuumController.optimisticRevert)
+    }
+
+    @Test func returnHomeFromAnErrorRevertsWhenNothingConfirms() async {
+        let (vacuum, _, _, scheduler, _) = make([main.entityId: "error", main.errorEntityId: "Cannot reach target"])
+        vacuum.run(.dock)
+        await vacuum.waitForCalls()
+        #expect(vacuum.state == "returning")
+        scheduler.fire(VacuumController.optimisticRevert)
+        #expect(vacuum.state == "error")
+    }
+
+    @Test func robotErrorTextReadsInPlainWords() {
+        #expect(VacuumFormat.issue("Cannot reach target") == "Can't reach its room. A door may be closed. Open it, then tap Resume.")
+        #expect(VacuumFormat.issue("  cannot reach target ") == VacuumFormat.issue("Cannot reach target"))
+        #expect(VacuumFormat.issue("Stuck") == "Stuck")
+    }
+
     @Test func locateAndEmptyBin() async {
         let (vacuum, _, caller, _, _) = make()
         vacuum.locate()

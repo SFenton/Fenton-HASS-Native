@@ -162,6 +162,7 @@ public final class AppSession {
             // Nothing of the signed-in person stays on a Lock Screen.
             await liveActivities?.sessionEnded()
             await push.sessionEnded()
+            await AppIconBadgeSync.shared.clear()
             if let stored { await HassLoginFlow.revoke(server: stored.server, refreshToken: stored.refreshToken) }
         }
     }

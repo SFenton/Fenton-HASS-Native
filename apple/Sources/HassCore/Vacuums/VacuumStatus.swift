@@ -385,6 +385,16 @@ public struct VacuumVisual: Equatable, Sendable {
 // MARK: - Formatting
 
 public enum VacuumFormat {
+    /// The robot's own error text in words a person can act on; text without a friendly form reads as it came. The
+    /// Live Activity's problem card words the same codes ("Can't reach its room"), so the sheet and the card agree.
+    public static func issue(_ raw: String) -> String {
+        switch raw.trimmed.lowercased() {
+        case "cannot reach target", "can't reach target", "unable to reach target", "target unreachable":
+            "Can't reach its room. A door may be closed. Open it, then tap Resume."
+        default: raw
+        }
+    }
+
     /// A state for display (`formatStateValue`).
     public static func state(_ value: String?, fallback: String = "Unavailable") -> String {
         guard let value, !value.isEmpty else { return fallback }

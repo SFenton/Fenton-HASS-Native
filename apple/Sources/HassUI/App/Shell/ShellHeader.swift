@@ -53,8 +53,7 @@ private struct ShellHeaderButtons: ViewModifier {
     /// Overdue chores plus expired food (``ProfileSummary/badgeCount(overdue:expiredFood:vacationMode:)``); zero until
     /// the viewer is a known resident, as on the web.
     private var attentionCount: Int {
-        guard let store, let viewer = ChoresConfig.Resident.forUserId(viewerUserId) else { return 0 }
-        return ProfileSummary.counts(viewer: viewer, store: store).attention
+        ShellAttention.count(store: store, viewerUserId: viewerUserId)
     }
 
     func body(content: Content) -> some View {

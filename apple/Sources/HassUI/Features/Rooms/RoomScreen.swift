@@ -107,6 +107,8 @@ struct RoomPageContent: View {
                content: remoteSheet)
         .sheet(isPresented: $showsQuickLinks, onDismiss: quickLinksDismissed, content: quickLinksSheet)
         .sheet(item: $deviceModal, onDismiss: deviceSheetDismissed, content: deviceSheet)
+        .task { openLinkedSheet() }
+        .onChange(of: shellNavigator?.pendingSheet) { openLinkedSheet() }
         .onChange(of: viewerIsAdmin, initial: true) { _, isAdmin in bedroom?.wakeLight.canEdit = isAdmin }
         .homeRouteDestination($route)
     }
@@ -151,6 +153,13 @@ struct RoomPageContent: View {
         RoomDeviceModalSheet(modal: modal, store: controller.store, caller: controller.caller, connection: connection) { side in
             if let bedroom { queuedModal = .bed(bedroom, side: side, tab: .alarms) }
         }
+    }
+
+    /// Opens the card a link's `#anchor` names (a Live Activity tap on a vacuum opens its sheet).
+    func openLinkedSheet() {
+        guard let anchor = shellNavigator?.takeSheet(forPage: page.id),
+              let card = page.allCards.first(where: { $0.sheet == anchor }) else { return }
+        open(card)
     }
 
     /// Opens a sheet queued while the last one was closing.

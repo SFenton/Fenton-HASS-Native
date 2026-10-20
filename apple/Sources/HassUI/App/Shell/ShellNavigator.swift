@@ -18,6 +18,9 @@ final class ShellNavigator {
     var quickLinksSection: AppSection?
     /// The section whose stack is presenting the Account sheet (the header's Profile button), or nil.
     var accountSection: AppSection?
+    /// A sheet a link asked a room page to open (a Live Activity tap on a vacuum): the page and the card's `sheet`.
+    /// The room page takes it with ``takeSheet(forPage:)`` once it is on screen.
+    private(set) var pendingSheet: PendingSheet?
     /// The flyout is showing.
     private(set) var isFlyoutOpen = false
     /// The signed-in user's display name for the profile button, kept between launches so the button never
@@ -92,8 +95,9 @@ final class ShellNavigator {
 
     /// Opens the page a notification points at, on its section's root (web `primaryNavPathForRoute`). A Home page
     /// is pushed on Home's root; a route the app has no page for opens Home.
-    func open(_ destination: PushDestination) {
+    func open(_ destination: PushDestination, anchor: String? = nil) {
         isFlyoutOpen = false
+        pendingSheet = nil
         switch destination {
         case let .section(section):
             let target = AppSection(section)
@@ -102,9 +106,17 @@ final class ShellNavigator {
         case let .homePage(path):
             var stack = NavigationPath()
             if let route = HomeRoute(pushPath: path) { stack.append(route) }
+            if let anchor, case .room? = HomeRoute(pushPath: path) { pendingSheet = PendingSheet(page: path, anchor: anchor) }
             paths[.home] = stack
             selection = .home
         }
+    }
+
+    /// The sheet a link asked `page` to open, once; nil for another page or none.
+    func takeSheet(forPage page: String) -> String? {
+        guard let pending = pendingSheet, pending.page == page else { return nil }
+        pendingSheet = nil
+        return pending.anchor
     }
 
     /// Chooses a section from the flyout or tab bar. Choosing the current section pops it to its root

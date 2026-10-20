@@ -84,6 +84,7 @@ public final class OptimisticOverlay {
     @ObservationIgnored private var generations: [String: Int] = [:]
     @ObservationIgnored private var timers: [String: any ScheduledWork] = [:]
     @ObservationIgnored private var lastLive: [String: String?] = [:]
+    @ObservationIgnored private var ruleOverrides: [String: ClearRule] = [:]
 
     /// Creates an overlay for the given keys.
     /// - Parameters:
@@ -111,11 +112,14 @@ public final class OptimisticOverlay {
 
     /// Shows `value` for `key` until confirmed or `revertAfter` passes. Committing the live value clears any
     /// pending one instead.
+    /// - Parameter rule: Clears this commit by `rule` instead of the key's own (a robot in an error state flaps
+    ///   through other states while it tries the command; only the confirmation or the revert time ends the value).
     /// - Returns: The commit's generation (pass it to ``reset(_:generation:)`` to undo only this commit), or
     ///   `nil` when the key is not tracked.
     @discardableResult
-    public func commit(_ key: String, value: String, live: String?, revertAfter: Duration) -> Int? {
+    public func commit(_ key: String, value: String, live: String?, revertAfter: Duration, clearing rule: ClearRule? = nil) -> Int? {
         guard isTracked(key) else { return nil }
+        ruleOverrides[key] = rule
         if lastLive[key] == nil { lastLive[key] = .some(live) }
         let generation = (generations[key] ?? 0) + 1
         generations[key] = generation
@@ -146,7 +150,7 @@ public final class OptimisticOverlay {
 
     /// Reports the live value. A change confirms (or, for ``ClearRule/liveChange``, clears) the pending value.
     public func liveChanged(_ key: String, to live: String?) {
-        guard let rule = rules[key] else { return }
+        guard let rule = ruleOverrides[key] ?? rules[key] else { return }
         guard let previous = lastLive[key] else {
             lastLive[key] = .some(live)
             return
