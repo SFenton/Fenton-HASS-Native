@@ -28,6 +28,7 @@ struct YourSummarySheet: View {
     @State private var requested: SummaryTab?
     @State private var confirmsSignOut = false
     @State private var signOutFailed = false
+    @State private var isSigningOut = false
     @State private var showsLocationPermission = false
 
     /// - Parameter opening: The tab to open on, when it is not the viewer's default (tests and the gallery).
@@ -83,7 +84,10 @@ struct YourSummarySheet: View {
 
     private func signOut() {
         guard let session else { return }
+        guard !isSigningOut else { return }
+        isSigningOut = true
         Task {
+            defer { isSigningOut = false }
             do {
                 try await session.confirmedSignOut()
                 dismiss()

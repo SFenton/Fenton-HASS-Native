@@ -36,6 +36,7 @@ struct HomeAssistantSettingsView: View {
     @State private var userError = false
     @State private var confirmsSignOut = false
     @State private var signOutFailed = false
+    @State private var isSigningOut = false
     @State private var path: [WebPage] = []
 
     /// Creates the modal; `user` seeds the account rows (hosted tests and previews).
@@ -179,7 +180,10 @@ struct HomeAssistantSettingsView: View {
     }
 
     private func signOut() {
+        guard !isSigningOut else { return }
+        isSigningOut = true
         Task {
+            defer { isSigningOut = false }
             do {
                 try await session.confirmedSignOut()
                 dismiss()
