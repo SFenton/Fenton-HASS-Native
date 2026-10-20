@@ -87,8 +87,18 @@ final class HeaderButtonsJourneyTests: JourneyTestCase {
         }
         XCTAssertEqual(FentonHomeApp.family, .iPhoneDuo, "Only the Duo has a vertical rail")
         XCTAssertLessThan(abs(links.midX - profile.midX), 6, "Not in one column")
-        let gap = max(profile.minY - links.maxY, links.minY - profile.maxY)
-        XCTAssertLessThan(gap, 6, "Quick Links and Profile are separate circles, not one group (gap \(gap))")
+        // XCUITest frames sit inside the glass, so read the screenshot: on the plain black page the point midway between
+        // the two buttons is glass (not black) in one blob, and black between two separate circles.
+        let screenshot = app.screenshot()
+        guard let image = screenshot.image.cgImage, let data = image.dataProvider?.data, let bytes = CFDataGetBytePtr(data) else {
+            return XCTFail("No screenshot pixels")
+        }
+        let scale = CGFloat(image.width) / app.windows.firstMatch.frame.width
+        let x = Int(((links.midX + profile.midX) / 2) * scale)
+        let y = Int(((links.maxY + profile.minY) / 2) * scale)
+        let offset = y * image.bytesPerRow + x * (image.bitsPerPixel / 8)
+        let brightness = Int(bytes[offset]) + Int(bytes[offset + 1]) + Int(bytes[offset + 2])
+        XCTAssertGreaterThan(brightness, 30, "Black between the buttons: two separate circles, not one glass group")
         shoot(app, "rail-group")
     }
 
@@ -109,15 +119,11 @@ final class HeaderButtonsJourneyTests: JourneyTestCase {
         XCTAssertGreaterThanOrEqual(min(profile.frame.width, profile.frame.height), 36)
         shoot(app, "named-plain")
         guard isHorizontal(app) else {
-            // The folded Duo's rail takes Quick Links in; the monogram, a custom view, stays in the top bar (it cannot go
-            // vertical). The disc is still 44 pt, and the two do not overlap.
-            if !isUnfolded(app) { XCTAssertNotEqual(links.frame.minY, profile.frame.minY, "The rail stacks the buttons") }
+            // Owner, 2026-10-20: in the Duo's rail both buttons share one glass group, so Profile is the person symbol
+            // there (the monogram custom view cannot join the rail); the two stack and do not overlap.
             if !isUnfolded(app) {
-                if let disc = pixels(app).disc {
-                    XCTAssertEqual(disc.width, 44, accuracy: 1, "The monogram is not 44 pt in the Duo's rail layout")
-                } else {
-                    XCTFail("No monogram disc in the screenshot")
-                }
+                XCTAssertNotEqual(links.frame.minY, profile.frame.minY, "The rail stacks the buttons")
+                XCTAssertNil(pixels(app).disc, "A monogram disc drew outside the rail group")
             }
             return
         }
