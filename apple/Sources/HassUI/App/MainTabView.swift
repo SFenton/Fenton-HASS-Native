@@ -13,6 +13,9 @@ struct MainTabView: View {
     @State private var navigator = ShellNavigator()
     @State private var windowTop: CGFloat = 0
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(EntityStore.self) private var store: EntityStore?
+    @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
+    @AppStorage(AppIconBadgeSync.enabledKey) private var showsIconBadge = true
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(PushCoordinator.self) private var push: PushCoordinator?
     @Environment(LocationCoordinator.self) private var location: LocationCoordinator?
@@ -66,6 +69,10 @@ struct MainTabView: View {
         }
         // Again once connected: a lookup before the socket is up fails, and the cached name stays meanwhile.
         .task(id: isConnected) { await loadProfileName() }
+        // The app icon shows the Profile button's count (`.agents/platforms/apple/badge.md`).
+        .task(id: IconBadgeKey(count: ShellAttention.count(store: store, viewerUserId: viewerUserId), enabled: showsIconBadge)) {
+            await AppIconBadgeSync.shared.update(count: ShellAttention.count(store: store, viewerUserId: viewerUserId))
+        }
     }
 
     /// The root tab view: one `TabView` for every system, the glass floating bar on iOS 26 and the standard bar before
@@ -241,3 +248,6 @@ private struct TabControllerAccessibilityHider: UIViewRepresentable {
     }
 }
 #endif
+
+/// Re-runs the icon badge task when the count or the setting changes.
+private struct IconBadgeKey: Equatable { var count: Int; var enabled: Bool }
