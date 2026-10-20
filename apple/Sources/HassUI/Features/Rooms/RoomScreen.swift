@@ -108,7 +108,7 @@ struct RoomPageContent: View {
         .sheet(isPresented: $showsQuickLinks, onDismiss: quickLinksDismissed, content: quickLinksSheet)
         .sheet(item: $deviceModal, onDismiss: deviceSheetDismissed, content: deviceSheet)
         .task { openLinkedSheet() }
-        .onChange(of: shellNavigator?.pendingSheet?.anchor) { openLinkedSheet() }
+        .onChange(of: shellNavigator?.pendingSheet) { openLinkedSheet() }
         .onChange(of: viewerIsAdmin, initial: true) { _, isAdmin in bedroom?.wakeLight.canEdit = isAdmin }
         .homeRouteDestination($route)
     }

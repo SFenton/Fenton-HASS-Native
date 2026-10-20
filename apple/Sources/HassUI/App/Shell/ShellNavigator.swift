@@ -20,7 +20,7 @@ final class ShellNavigator {
     var accountSection: AppSection?
     /// A sheet a link asked a room page to open (a Live Activity tap on a vacuum): the page and the card's `sheet`.
     /// The room page takes it with ``takeSheet(forPage:)`` once it is on screen.
-    private(set) var pendingSheet: (page: String, anchor: String)?
+    private(set) var pendingSheet: PendingSheet?
     /// The flyout is showing.
     private(set) var isFlyoutOpen = false
     /// The signed-in user's display name for the profile button, kept between launches so the button never
@@ -106,7 +106,7 @@ final class ShellNavigator {
         case let .homePage(path):
             var stack = NavigationPath()
             if let route = HomeRoute(pushPath: path) { stack.append(route) }
-            if let anchor, case .room? = HomeRoute(pushPath: path) { pendingSheet = (path, anchor) }
+            if let anchor, case .room? = HomeRoute(pushPath: path) { pendingSheet = PendingSheet(page: path, anchor: anchor) }
             paths[.home] = stack
             selection = .home
         }
