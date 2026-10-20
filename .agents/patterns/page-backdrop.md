@@ -19,7 +19,7 @@ Owner, 2026-10-13: "No background image (blurred) of the house like web? Image s
 
 ## Tests
 
-`PushFlickerJourneyTests` (same file): taps a Settings row and samples the side columns of back-to-back screenshots through the push for base-colored pixels. Sparse at about 6 frames per push, so a guard; a simulator recording frame by frame is the proof.
+`shiftHoldsNegativePositionsAtZero` (in `HouseBackdropTests`) guards the push flash; a UI journey sampled too few frames of the 0.35 s push to fail on the bug, so there is none.
 
 `Apps/iOSUITests/WallpaperJourneyTests.swift` (iPhone, folded Duo, iPad portrait and landscape): launches with `FENTON_BACKDROP_FIXTURE=1` (debug builds: `HouseBackdropStore.session(for:)` serves a bright synthetic photo from a throwaway folder, so wallpaper is tellable from the plain base whatever the house photo is), samples the four corners and four edge midpoints of a screenshot, and fails on any as dark as the base. It covers every tab root, Quick Links, a room page, Food and Media, each at the top and scrolled to the bottom, and Home after backgrounding the app and returning.
 
