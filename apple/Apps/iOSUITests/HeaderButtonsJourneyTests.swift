@@ -73,6 +73,25 @@ final class HeaderButtonsJourneyTests: JourneyTestCase {
         usleep(400_000)
     }
 
+    // MARK: - Grouping
+
+    /// Owner, 2026-10-20: on the Duo's vertical rail Quick Links and Profile share one glass blob (their frames touch or
+    /// overlap, one column); on iPhone and iPad they stay two circles 12 pt apart.
+    func testDuoRailSharesOneGlassGroup() throws {
+        let app = launch(profile: "Stephen Fenton")
+        let links = app.buttons["quickLinks.open"].frame
+        let profile = app.buttons["nav.profile"].frame
+        if isHorizontal(app) {
+            XCTAssertGreaterThanOrEqual(abs(profile.minX - links.maxX), 4, "Two circles expected outside the rail")
+            return
+        }
+        XCTAssertEqual(FentonHomeApp.family, .iPhoneDuo, "Only the Duo has a vertical rail")
+        XCTAssertLessThan(abs(links.midX - profile.midX), 6, "Not in one column")
+        let gap = max(profile.minY - links.maxY, links.minY - profile.maxY)
+        XCTAssertLessThan(gap, 6, "Quick Links and Profile are separate circles, not one group (gap \(gap))")
+        shoot(app, "rail-group")
+    }
+
     // MARK: - Named profile
 
     /// The monogram disc is 44 pt, is the whole button (no glass ring around it), sits 12 pt from Quick Links' 44 pt glass

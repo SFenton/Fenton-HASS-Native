@@ -119,13 +119,24 @@ struct ShellChrome: Equatable, Sendable {
     /// The page title sits in the header row beside the trailing buttons (``HeaderTitleStyle``): where nothing but
     /// the trailing buttons shares the row, which is every window without the menu button.
     var titleInHeader: Bool
+    /// The leading edge swipe opens the flyout. Off on iPhone, where the edge belongs to the system Back swipe.
+    var edgeSwipe: Bool
+
+    init(showsMenuButton: Bool, titleInHeader: Bool, edgeSwipe: Bool? = nil) {
+        self.showsMenuButton = showsMenuButton
+        self.titleInHeader = titleInHeader
+        self.edgeSwipe = edgeSwipe ?? showsMenuButton
+    }
 
     /// Resolves the chrome.
     /// - Parameter style: The root navigation style.
-    static func resolve(style: ShellNavigationStyle) -> ShellChrome {
+    ///   - isPhone: The device is an iPhone. Owner, 2026-10-20: the menu button returns on iPhone (tab-bar accessories
+    ///     may follow), but not on the iPhone Duo's vertical rail, and not on a compact iPad window.
+    ///   - inVerticalBar: The system has moved bar items into the Duo's vertical bar.
+    static func resolve(style: ShellNavigationStyle, isPhone: Bool = false, inVerticalBar: Bool = false) -> ShellChrome {
         switch style {
-        case .flyout: ShellChrome(showsMenuButton: true, titleInHeader: false)
-        case .tabBar: ShellChrome(showsMenuButton: false, titleInHeader: true)
+        case .flyout: ShellChrome(showsMenuButton: true, titleInHeader: false, edgeSwipe: true)
+        case .tabBar: ShellChrome(showsMenuButton: isPhone && !inVerticalBar, titleInHeader: true, edgeSwipe: false)
         }
     }
 }

@@ -194,3 +194,4 @@ apple/Tests/**                                             → tests for your ow
 ## 2026-10-20 App icon badge
 
 The app icon badge now mirrors the Profile button's attention count (`AppIconBadgeSync`, `.agents/platforms/apple/badge.md`); cleared on sign-out; Settings toggle "Show count on app icon". While the app is closed the icon keeps its last value; keeping it fresh needs Fenton Push to send `aps.badge` (proposed in the PR, server not changed).
+- 2026-10-20: iPhone hamburger and Duo rail group (`claude/iphone-hamburger`, owner decision). `nav.open` returns on iPhone (not on the Duo's vertical rail, iPad unchanged) and opens `NavigationFlyout`; on the Duo's vertical rail Quick Links and Profile share one glass group; the iPhone top bar keeps two circles 12 pt apart. Tests: `ShellHamburgerTests`, `HeaderButtonsJourneyTests`, `ShellJourneyTests`, `NavigationJourneyTests`. See [direction-g](.agents/design/direction-g.md).

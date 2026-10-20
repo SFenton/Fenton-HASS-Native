@@ -230,6 +230,7 @@ final class ShellJourneyTests: JourneyTestCase {
             shoot(app, "title-regular")
             return
         }
+        XCTAssertEqual(app.buttons["nav.open"].exists, FentonHomeApp.family == .iPhone, "Hamburger only on iPhone")
         let large = title.frame
         XCTAssertLessThan(abs(large.midY - profile.frame.midY), 20, "The title is not in the buttons' row")
         XCTAssertGreaterThan(large.height, 30, "The title is not large at the top")
