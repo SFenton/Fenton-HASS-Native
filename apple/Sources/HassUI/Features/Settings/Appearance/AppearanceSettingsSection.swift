@@ -10,6 +10,7 @@ struct AppearanceSettingsSection: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.tileSurface) private var surface
     @Environment(HouseBackdropStore.self) private var backdrop: HouseBackdropStore?
+    @AppStorage(AppIconBadgeSync.enabledKey) private var showsIconBadge = true
     @State private var store = AppIconPickerModelStore()
     /// The setting where there is no backdrop store (the debug galleries): the same saved value, nothing to re-render.
     @State private var standalone = BackdropBlurSettings()
@@ -18,6 +19,8 @@ struct AppearanceSettingsSection: View {
         let model = store.model(for: platform)
         Section {
             BackdropBlurRows(settings: backdrop?.blur ?? standalone)
+            Toggle("Show count on app icon", isOn: $showsIconBadge)
+                .accessibilityIdentifier("settings.iconBadge")
             if model.isSupported {
                 AppIconSettingsRow(model: model)
             }
