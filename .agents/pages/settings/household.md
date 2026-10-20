@@ -1,6 +1,6 @@
 # Settings: household pages (Admin, Special Device Modes, Guest Controls, Mach-E)
 
-> **What:** the household topics in Settings (inside the Account sheet) and the Admin sheets. **Read when:** changing `HassUI/Features/Settings/Household`, `HassCore/Settings` or `HouseholdSettingsConfig`.
+> **What:** the household topics in Settings (its own tab) and the Admin sheets. **Read when:** changing `HassUI/Features/Settings/Household`, `HassCore/Settings` or `HouseholdSettingsConfig`.
 
 ## Web source
 

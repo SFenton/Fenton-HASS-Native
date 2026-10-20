@@ -166,6 +166,8 @@ struct TodoItemRow: View {
 
     /// The check column's width, scaled with the title so the title stays on the module's hairline inset.
     @ScaledMetric(relativeTo: .body) private var checkColumn: CGFloat = ModuleRowMetrics.glyphWidth
+    /// On the wallpaper the secondary ink is fixed light; in a sheet (the Summary's chore tabs) it follows the sheet.
+    @Environment(\.tileSurface) private var surface
 
     /// The glyph for an open and a done task.
     static func checkSymbol(done: Bool) -> String { done ? "checkmark.circle.fill" : "circle" }
@@ -184,12 +186,12 @@ struct TodoItemRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: ModuleRowMetrics.gap) {
                     Image(systemName: Self.checkSymbol(done: done))
                         .font(.body)
-                        .foregroundStyle(done ? AnyShapeStyle(.green) : AnyShapeStyle(HassTokens.Surface.secondaryOnModule))
+                        .foregroundStyle(done ? AnyShapeStyle(.green) : AnyShapeStyle(surface.secondaryInk))
                         .frame(width: checkColumn)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
                             .font(.body)
-                            .foregroundStyle(done ? HassTokens.Surface.secondaryOnModule : HassTokens.Ink.primary)
+                            .foregroundStyle(done ? surface.secondaryInk : HassTokens.Ink.primary)
                             .strikethrough(done)
                             .fixedSize(horizontal: false, vertical: true)
                         if let due {
@@ -220,7 +222,7 @@ struct TodoItemRow: View {
                 Button(action: onEdit) {
                     Image(systemName: Self.editSymbol)
                         .font(.title3)
-                        .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+                        .foregroundStyle(surface.secondaryInk)
                         .frame(minWidth: HassTokens.minTarget, minHeight: HassTokens.minTarget)
                         .contentShape(Rectangle())
                 }
@@ -247,6 +249,7 @@ struct TodoItemRow: View {
 struct DueLabel: View {
     var text: String
     var tone: TodoItem.DueTone
+    @Environment(\.tileSurface) private var surface
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.xs) {
@@ -258,13 +261,13 @@ struct DueLabel: View {
         }
         .font(.subheadline)
         .monospacedDigit()
-        .foregroundStyle(Self.color(tone))
+        .foregroundStyle(Self.color(tone, surface: surface))
     }
 
-    /// The text and glyph colour for a tone.
-    static func color(_ tone: TodoItem.DueTone) -> Color {
+    /// The text and glyph colour for a tone on a surface (a sheet's secondary ink follows its appearance).
+    static func color(_ tone: TodoItem.DueTone, surface: TileSurface = .page) -> Color {
         switch tone {
-        case .future: HassTokens.Surface.secondaryOnModule
+        case .future: surface.secondaryInk
         case .overdueHours: HassTokens.Ink.warning
         case .overdueLong: HassTokens.Ink.error
         }

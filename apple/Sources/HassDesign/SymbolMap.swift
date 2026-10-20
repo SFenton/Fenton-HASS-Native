@@ -134,6 +134,9 @@ public enum SymbolMap {
         "mdi:lightbulb-off": "lightbulb.slash",
         "mdi:pause-circle": "pause.circle",
         "mdi:alert-circle": "exclamationmark.circle",
+        // Your Summary tabs (`SummaryTab`): SF Symbols has no slashed fork and knife, so Expired Food takes the plain one.
+        "mdi:account-circle": "person.crop.circle",
+        "mdi:food-off-outline": "fork.knife",
         "mdi:air-purifier": "air.purifier",
         "mdi:ev-station": "ev.charger",
         "mdi:car-door-lock": "lock",

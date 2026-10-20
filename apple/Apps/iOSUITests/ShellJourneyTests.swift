@@ -192,20 +192,21 @@ final class ShellJourneyTests: JourneyTestCase {
 
     // MARK: - Profile modal (decision 3)
 
-    /// The Account sheet is the web's Your Summary: who is signed in, then the summary sections (people, the viewer's
-    /// chores, expired food), then Sign Out. Location stays on phones.
-    func testAccountSheetShowsTheProfileSummary() throws {
+    /// The Profile button opens the web's Your Summary on the live house, read-only: it opens on the summary (a resident's
+    /// Overdue Chores), carries the four tabs, and keeps the account (who is signed in, who is home, Sign Out) on Profile.
+    func testSummarySheetOpensOnTheSummaryAndKeepsTheAccountOnProfile() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        app.openAccountSheet()
+        app.openAccountSheet(tab: nil)
+        XCTAssertTrue(app.buttons["summary.tabs.profile"].waitForExistence(timeout: 5) || app.buttons["summary.tabs"].exists,
+                      "No tab bar in the Summary sheet")
+        XCTAssertFalse(element("account.header", in: app).exists, "The sheet opened on Profile, not the summary")
+        shoot(app, "summary-opening")
+        app.selectSummaryTab(.profile)
         XCTAssertTrue(element("account.header", in: app).waitForExistence(timeout: 5), "No account header")
         XCTAssertFalse(app.buttons["account.settings"].exists, "Settings row in the Account sheet")
         shoot(app, "account-top")
-        let expired = app.staticTexts["Expired Food"]
         let signOut = app.buttons["account.signOut"]
         let list = element("account.list", in: app)
-        for _ in 0..<10 where !(expired.exists && expired.isHittable) { list.swipeUp() }
-        XCTAssertTrue(expired.exists, "The summary has no Expired Food section")
-        shoot(app, "account-food")
         for _ in 0..<10 where !(signOut.exists && signOut.isHittable) { list.swipeUp() }
         XCTAssertTrue(signOut.exists, "No Sign Out")
         assertTarget(signOut)

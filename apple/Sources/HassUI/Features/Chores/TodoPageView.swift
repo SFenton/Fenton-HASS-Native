@@ -79,19 +79,7 @@ struct TodoPageView<Header: View>: View {
             sheetContent(sheet)
                 .hassSheet(.form, fitKey: "todo.\(sheet.id)")
         }
-        .confirmationDialog(
-            deletion.map { "Delete \($0.item.displayTitle)?" } ?? "",
-            isPresented: Binding(get: { deletion != nil }, set: { if !$0 { deletion = nil } }),
-            titleVisibility: .visible,
-            presenting: deletion
-        ) { deletion in
-            Button(deletion.isGrocery ? "Delete Item" : "Delete Task", role: .destructive) {
-                Task { await deletion.controller.remove(deletion.item) }
-            }
-            .accessibilityIdentifier("todo.delete.confirm")
-        } message: { _ in
-            Text("This can't be undone.")
-        }
+        .todoDeletionDialog($deletion)
     }
 
     private var emptyState: some View {
@@ -110,8 +98,8 @@ struct TodoPageView<Header: View>: View {
     /// DoneTick rows edit through the task form (only rows whose uid carries a task id); admin To-Do rows rename.
     private func editAction(for list: ChoresConfig.TodoList, item: TodoItem) -> (() -> Void)? {
         if page.isDonetick {
-            guard let taskId = item.donetickTaskId, let uid = item.uid else { return nil }
-            return { sheet = .editTask(DonetickEditTarget(itemUid: uid, taskId: taskId, todoEntityId: list.entityId)) }
+            guard let target = DonetickEditTarget(item: item, listEntityId: list.entityId) else { return nil }
+            return { sheet = .editTask(target) }
         }
         guard page.editsAdminTodo else { return nil }
         return { sheet = .renameTodo(AdminTodoEditTarget(itemUid: item.uid, originalTitle: item.summary ?? "", todoEntityId: list.entityId)) }
@@ -167,6 +155,19 @@ struct DonetickEditTarget: Hashable, Sendable {
     var itemUid: String
     var taskId: Int
     var todoEntityId: String
+
+    init(itemUid: String, taskId: Int, todoEntityId: String) {
+        self.itemUid = itemUid
+        self.taskId = taskId
+        self.todoEntityId = todoEntityId
+    }
+
+    /// The target for a DoneTick row (only rows whose uid carries a task id can be edited), else `nil`. The Chores pages
+    /// and the Summary sheet open the same form from it.
+    init?(item: TodoItem, listEntityId: String) {
+        guard let taskId = item.donetickTaskId, let uid = item.uid else { return nil }
+        self.init(itemUid: uid, taskId: taskId, todoEntityId: listEntityId)
+    }
 }
 
 /// An admin to-do opened for renaming (web `AdminTodoEditTarget`).
@@ -181,6 +182,26 @@ struct TodoDeletion {
     var controller: TodoListController
     var item: TodoItem
     var isGrocery: Bool
+}
+
+extension View {
+    /// The confirmation a swipe, menu or VoiceOver delete asks before removing a task. One dialog for the Chores pages and
+    /// the Summary sheet's chore tabs.
+    func todoDeletionDialog(_ deletion: Binding<TodoDeletion?>) -> some View {
+        confirmationDialog(
+            deletion.wrappedValue.map { "Delete \($0.item.displayTitle)?" } ?? "",
+            isPresented: Binding(get: { deletion.wrappedValue != nil }, set: { if !$0 { deletion.wrappedValue = nil } }),
+            titleVisibility: .visible,
+            presenting: deletion.wrappedValue
+        ) { deletion in
+            Button(deletion.isGrocery ? "Delete Item" : "Delete Task", role: .destructive) {
+                Task { await deletion.controller.remove(deletion.item) }
+            }
+            .accessibilityIdentifier("todo.delete.confirm")
+        } message: { _ in
+            Text("This can't be undone.")
+        }
+    }
 }
 
 /// Reloads a list when its entity changes or a sheet saved.
@@ -207,17 +228,22 @@ enum TodoPageLayout {
     /// The page's lists the viewer can see, with whether each is drawn (web `TodoSection` visibility).
     @MainActor
     static func sections(for page: ChoresConfig.Page, viewerUserId: String?, store: EntityStore, todos: TodoStore) -> [Section] {
-        page.lists.compactMap { list in
-            let entity = store.entity(list.entityId).state
-            guard list.isVisible(to: viewerUserId, openItems: entity) else { return nil }
-            let controller = todos.controller(for: list.entityId)
-            // The entity's state is its open-item count; zero hides the list before any fetch.
-            let mayHaveItems = entity.map { $0.isUnavailable || ($0.numericState ?? 0) > 0 } ?? true
-            if !mayHaveItems { return Section(list: list, controller: controller, isShown: false, isSettled: true) }
-            guard controller.items != nil else { return Section(list: list, controller: controller, isShown: true, isSettled: false) }
-            let hasItems = !controller.visibleItems(hideCompleted: list.hideCompleted).isEmpty
-            return Section(list: list, controller: controller, isShown: hasItems, isSettled: true)
-        }
+        page.lists.compactMap { section(for: $0, viewerUserId: viewerUserId, store: store, todos: todos) }
+    }
+
+    /// One list as the page sees it, or `nil` when the viewer doesn't see it. The Summary sheet's chore tabs read their
+    /// lists through this too, so a list shows and hides by the same rule on every surface.
+    @MainActor
+    static func section(for list: ChoresConfig.TodoList, viewerUserId: String?, store: EntityStore, todos: TodoStore) -> Section? {
+        let entity = store.entity(list.entityId).state
+        guard list.isVisible(to: viewerUserId, openItems: entity) else { return nil }
+        let controller = todos.controller(for: list.entityId)
+        // The entity's state is its open-item count; zero hides the list before any fetch.
+        let mayHaveItems = entity.map { $0.isUnavailable || ($0.numericState ?? 0) > 0 } ?? true
+        if !mayHaveItems { return Section(list: list, controller: controller, isShown: false, isSettled: true) }
+        guard controller.items != nil else { return Section(list: list, controller: controller, isShown: true, isSettled: false) }
+        let hasItems = !controller.visibleItems(hideCompleted: list.hideCompleted).isEmpty
+        return Section(list: list, controller: controller, isShown: hasItems, isSettled: true)
     }
 
     /// Everything that makes a row appear or leave, so one implicit animation covers a completion, its rollback, a

@@ -215,5 +215,22 @@ struct GalleryLaunchMatrixTests {
         }
         await run(launches)
     }
+
+    /// Your Summary opens on every tab for each viewer, in Vacation Mode and empty, on a phone and a tablet.
+    @Test func yourSummaryOpensOnEveryTabViewerAndState() async {
+        var launches: [Launch] = []
+        for tab in SummaryTab.allCases {
+            for viewer in ["stephen", "steph", "guest"] {
+                launches.append(Launch(page: .profile, environment: ["FENTON_GALLERY_TAB": tab.rawValue, "FENTON_GALLERY_VIEWER": viewer], opensSheet: true))
+            }
+            for extra in [["FENTON_GALLERY_VACATION": "1"], ["FENTON_GALLERY_EMPTY": "1"], ["FENTON_GALLERY_VACATION": "1", "FENTON_GALLERY_EMPTY": "1"]] {
+                launches.append(Launch(page: .profile, environment: extra.merging(["FENTON_GALLERY_TAB": tab.rawValue]) { a, _ in a }, opensSheet: true))
+            }
+            launches.append(Launch(page: .profile, environment: ["FENTON_GALLERY_TAB": tab.rawValue, "FENTON_GALLERY_CHORES": "12"],
+                                   opensSheet: true, size: Self.tablet))
+        }
+        launches.append(Launch(page: .profile, environment: ["FENTON_GALLERY_CLEAN": "1"], opensSheet: true))
+        await run(launches)
+    }
 }
 #endif
