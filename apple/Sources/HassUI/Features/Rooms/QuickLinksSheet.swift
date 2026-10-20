@@ -14,19 +14,30 @@ struct QuickLinksButton: View {
     var action: () -> Void
 
     var body: some View {
-        // A custom image on its own glass circle, like Profile beside it (``SwiftUI/View/headerCircle()``): the system sizes
-        // a bar item built from a `Label` itself and ignores a frame (it measured 39 x 36).
+        // A plain image: on iOS 26 the bar draws the 44 pt glass circle (measured 2026-10-18), so a bar item built from
+        // an `Image` is a standard glass glyph. Before iOS 26 the bar draws nothing, so the circle is a material one.
         Button(action: action) {
             Image(systemName: Self.symbol)
                 .font(.body.weight(.medium))
                 .foregroundStyle(.primary)
-                .headerCircle()
+                .modifier(PreGlassCircle())
         }
         .accessibilityLabel(QuickLinks.title)
         .accessibilityShowsLargeContentViewer {
             Label(QuickLinks.title, systemImage: Self.symbol)
         }
         .accessibilityIdentifier("quickLinks.open")
+    }
+}
+
+/// The material circle behind the symbol before iOS 26; on iOS 26 the bar's own glass is the circle.
+private struct PreGlassCircle: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            content
+        } else {
+            content.headerCircle()
+        }
     }
 }
 

@@ -25,6 +25,7 @@ private struct DuoSignalProbe27: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .environment(\.shellInVerticalBar, edge != nil)
             .onChange(of: edge, initial: true) { _, newEdge in
                 HingePresence.shared.record(hinge: nil, hasVerticalBar: newEdge != nil)
             }
