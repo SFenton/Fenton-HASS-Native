@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "FentonHomeApple",
+    // `.macOS` exists only so `swift test` runs on the host Mac. macOS is not a supported product platform.
     platforms: [.iOS(.v17), .watchOS(.v10), .macOS(.v14)],
     products: [
         .library(name: "HassTelemetry", targets: ["HassTelemetry"]),
