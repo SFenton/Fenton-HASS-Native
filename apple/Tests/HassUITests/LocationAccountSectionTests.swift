@@ -50,10 +50,10 @@ struct LocationAccountSectionTests {
         }
     }
 
-    @Test func theAccountSheetShowsTheSectionOnlyWithACoordinator() async {
-        // A phone's session has a coordinator; an iPad's has none, so its Account sheet has no Location section.
+    @Test func theProfileTabShowsTheSectionOnlyWithACoordinator() async {
+        // A phone's session has a coordinator; an iPad's has none, so its Profile tab has no Location section.
         for location in [coordinator(.notDetermined, armed: false), nil] {
-            let hosted = HostedView(AccountSheet().environment(ShellNavigator()).environment(location),
+            let hosted = HostedView(YourSummarySheet(opening: .profile).environment(ShellNavigator()).environment(location),
                                     size: LocationPermissionViewTests.phone, typeSize: .large)
             await hosted.settle()
             #expect(hosted.fingerprint != 0)

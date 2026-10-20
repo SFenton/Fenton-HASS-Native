@@ -113,7 +113,8 @@ struct RoomDeviceFixture: Identifiable {
             entity(fan.pendingEntityId, pending ? "on" : "off"),
             entity(fan.autoUnlockEntityId, pending && locked ? "on" : "off"),
             entity(fan.deadlineEntityId, "2026-10-11 12:00:00", ["timestamp": .number(deadline.timeIntervalSince1970)]),
-            entity(fan.timerEntityId, pending ? "active" : "idle"),
+            // The running timer was started for 15 minutes (the entity's `duration`), so the sheet's bar is mostly full.
+            entity(fan.timerEntityId, pending ? "active" : "idle", ["duration": .string("0:15:00")]),
         ]
     }
 
@@ -241,12 +242,13 @@ enum RoomDeviceGalleryEcho {
             let deadline = Date().addingTimeInterval((number("minutes") ?? 30) * 60)
             set(fan.deadlineEntityId, "2026-10-11 12:00:00", ["timestamp": .number(deadline.timeIntervalSince1970)])
             set(fan.pendingEntityId, "on", [:])
+            // The script ends with switch.turn_on, so a timer started on an off fan turns it on.
+            set(fan.powerEntityId, "on", [:])
+            set(fan.timerEntityId, "active", ["duration": .string(String(format: "0:%02d:00", Int(number("minutes") ?? 30)))])
             set(fan.autoUnlockEntityId, data["auto_unlock"] as? Bool == true ? "on" : "off", [:])
         case "timer_cancel":
             set(fan.pendingEntityId, "off", [:])
             set(fan.autoUnlockEntityId, "off", [:])
-        case "timer_auto_unlock":
-            set(fan.autoUnlockEntityId, data["enabled"] as? Bool == true ? "on" : "off", [:])
         default: break
         }
     }

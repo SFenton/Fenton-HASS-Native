@@ -5,7 +5,7 @@ import Foundation
 /// Source: `ha-sfenton-react-dash@f5a7bf9:src/components/hass/DailyReportModal.tsx`, `dailyReportModal.ts` (the badge
 /// and context), `src/constants/dailyReport.ts` (tabs, per-resident lists, titles) and `expiryDate.ts` (the local
 /// calendar's idea of "expired"). The web shows it in a modal behind its header Profile button; the app's Profile
-/// button opens the Account sheet, which carries the same content (owner, 2026-10-16).
+/// button opens the Your Summary sheet, which carries the same content in four tabs (``SummaryTab``; owner, 2026-10-17).
 public enum ProfileSummary {
     // MARK: - Entities
 

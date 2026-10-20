@@ -3,7 +3,9 @@ import SwiftUI
 /// The shared entity tile (pattern: `.agents/patterns/entity-tile.md`).
 ///
 /// Pure UI: callers pass values and an action, never a store. An optional trailing accessory (the bathroom fan's
-/// lock and power buttons) sits in the tile's top-trailing corner as its own controls, outside the tile's button.
+/// lock and power buttons) sits as its own controls outside the tile's button, vertically centred on the trailing
+/// edge and always clear of the disclosure chevron: rail, a gap, then the chevron. At accessibility text sizes the
+/// rail moves below the text instead.
 public struct GlassTile<Accessory: View>: View {
     // MARK: - Inputs
 
@@ -31,14 +33,17 @@ public struct GlassTile<Accessory: View>: View {
     public var progressTint: Color?
     /// Identifier for the tile's own control only (``tileIdentifier(_:)``).
     private var identifier: String?
+    /// VoiceOver's value when the subtitle alone is not what to speak (the fan's "on, off in 12 minutes, locked").
+    private var spokenValue: String?
     public var action: () -> Void
     private let accessory: Accessory
 
     /// What tapping the tile does.
     public typealias Kind = GlassTileKind
 
-    @State private var accessoryWidth: CGFloat = 0
     @Environment(\.valuesPending) private var valuesPending
+    @State private var accessorySize: CGSize = .zero
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     /// Creates a tile with a trailing accessory.
     public init(
@@ -78,11 +83,26 @@ public struct GlassTile<Accessory: View>: View {
     // MARK: - Body
 
     public var body: some View {
-        ZStack(alignment: .topTrailing) {
+        if Accessory.self == EmptyView.self {
+            tile
+        } else {
+            railed
+        }
+    }
+
+    /// Whether the accessory rail drops below the text (accessibility sizes) instead of sitting at the trailing edge.
+    private var railBelow: Bool { typeSize.isAccessibilitySize }
+
+    /// The tile with its accessory rail. Trailing: vertically centred, to the left of the chevron's slot, so the two
+    /// never overlap (the Power button once sat under the chevron). Accessibility sizes: bottom-leading, under the text.
+    private var railed: some View {
+        ZStack(alignment: railBelow ? .bottomLeading : .trailing) {
             tile
             accessory
-                .padding([.top, .trailing], HassTokens.Spacing.s)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { accessoryWidth = $0 }
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { accessorySize = $0 }
+                .padding(.trailing, railBelow ? 0 : HassTokens.Spacing.m + (kind == .navigate ? GlassTileFace.chevronReserve : 0))
+                .padding(.leading, railBelow ? HassTokens.Spacing.m : 0)
+                .padding(.bottom, railBelow ? HassTokens.Spacing.m : 0)
         }
     }
 
@@ -102,7 +122,8 @@ public struct GlassTile<Accessory: View>: View {
             level: progress,
             levelTint: progressTint,
             wash: wash,
-            trailingInset: accessoryWidth
+            trailingInset: railBelow || accessorySize.width == 0 ? 0 : accessorySize.width + HassTokens.Spacing.s,
+            bottomInset: railBelow && accessorySize.height > 0 ? accessorySize.height + HassTokens.Spacing.s : 0
         )
         if kind == .state {
             face
@@ -134,6 +155,13 @@ public struct GlassTile<Accessory: View>: View {
         return tile
     }
 
+    /// Speaks `value` instead of the subtitle as the tile's VoiceOver value (a tile whose text is shortened for the eye).
+    public func tileAccessibilityValue(_ value: String) -> GlassTile {
+        var tile = self
+        tile.spokenValue = value
+        return tile
+    }
+
     private var traits: AccessibilityTraits {
         switch kind {
         case .toggle: .isToggle
@@ -145,6 +173,7 @@ public struct GlassTile<Accessory: View>: View {
     private var accessibilityValue: String {
         // The first sign-in, before any value has arrived: the soft bar says nothing, so the tile does.
         if valuesPending, subtitle != nil || kind == .toggle { return "Loading" }
+        if let spokenValue { return spokenValue }
         if isUnavailable { return "Unavailable" }
         if isError { return subtitle ?? "Error" }
         if kind == .toggle { return isActive ? "On" : "Off" }
@@ -229,11 +258,13 @@ public struct GlassTileFace: View {
     var wash: Color?
     /// Room kept free at the trailing edge for an accessory.
     var trailingInset: CGFloat = 0
+    /// Room kept free at the bottom for an accessory rail that sits under the text (accessibility sizes).
+    var bottomInset: CGFloat = 0
 
     /// Creates a tile face.
     public init(title: String, subtitle: String? = nil, symbol: String, tint: Color, family: ColorFamily? = nil,
                 fillRGB: UInt32? = nil, isActive: Bool, isUnavailable: Bool = false, isError: Bool = false, showsChevron: Bool = false,
-                level: Double? = nil, levelTint: Color? = nil, wash: Color? = nil, trailingInset: CGFloat = 0) {
+                level: Double? = nil, levelTint: Color? = nil, wash: Color? = nil, trailingInset: CGFloat = 0, bottomInset: CGFloat = 0) {
         self.title = title
         self.subtitle = subtitle
         self.symbol = symbol
@@ -248,6 +279,7 @@ public struct GlassTileFace: View {
         self.levelTint = levelTint
         self.wash = wash
         self.trailingInset = trailingInset
+        self.bottomInset = bottomInset
     }
 
     @Environment(\.isEnabled) private var isEnabled
@@ -260,6 +292,7 @@ public struct GlassTileFace: View {
     @Environment(\.tileTitleLines) private var reservedTitleLines
     @Environment(\.tileFinish) private var preferredFinish
     @Environment(\.valuesPending) private var valuesPending
+    @Environment(\.tileSubtitleSingleLine) private var subtitleSingleLine
     @Environment(\.colorSchemeContrast) private var contrast
     @ScaledMetric(relativeTo: .subheadline) private var titleLineHeight = TileMetrics.titleLineHeight
     @ScaledMetric(relativeTo: .title3) private var glyphHeight = TileMetrics.glyphHeight
@@ -290,6 +323,7 @@ public struct GlassTileFace: View {
             // keeps clear of it instead of running under.
             .padding(.trailing, showsChevron ? Self.chevronReserve : 0)
             .padding(.trailing, trailingInset)
+            .padding(.bottom, bottomInset)
             // Text wraps and the tile grows at large Dynamic Type instead of truncating. In an equal-height grid the face
             // also fills the row height it is offered.
             .frame(maxWidth: .infinity, minHeight: minContentHeight(layout), maxHeight: fillsHeight ? .infinity : nil,
@@ -360,6 +394,9 @@ public struct GlassTileFace: View {
                     .font(.footnote)
                     .foregroundStyle(secondaryInk(style))
                     .monospacedDigit()
+                    // One short line that shrinks a little before it truncates (the bathroom fan: "Off in 12:30").
+                    .lineLimit(subtitleSingleLine ? 1 : nil)
+                    .minimumScaleFactor(subtitleSingleLine ? 0.85 : 1)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -559,7 +596,23 @@ public extension EnvironmentValues {
     }
 }
 
+private struct TileSubtitleSingleLineKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+public extension EnvironmentValues {
+    /// Whether tile subtitles stay on one line, shrinking to 85% before they truncate (``View/tileSingleLineSubtitle()``).
+    var tileSubtitleSingleLine: Bool {
+        get { self[TileSubtitleSingleLineKey.self] }
+        set { self[TileSubtitleSingleLineKey.self] = newValue }
+    }
+}
+
 public extension View {
+    /// Keeps the subtitle of tiles inside to one line (a live status such as "Off in 12:30"), scaling down to 85% before
+    /// it truncates, at every text size.
+    func tileSingleLineSubtitle() -> some View { environment(\.tileSubtitleSingleLine, true) }
+
     /// Lets tiles inside fill the height a ``DynamicGridLayout`` with `equalRowHeights` gives them, so every tile in
     /// the grid matches the tallest (pattern: `.agents/patterns/dynamic-grid.md`).
     func equalHeightTiles() -> some View { environment(\.tileFillsHeight, true) }

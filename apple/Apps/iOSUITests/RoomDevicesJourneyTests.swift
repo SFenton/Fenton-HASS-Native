@@ -3,6 +3,11 @@ import XCTest
 /// The room device sheets in the debug gallery (fixture state, recording service caller; nothing reaches the
 /// house): what each control sends, semantics, layout per pose, accessibility audits and screenshots on iPhone,
 /// iPhone Duo and iPad (`.agents/patterns/room-device-sheets.md`).
+/// The fan timer's lengths in minutes (`BathroomFanController.timerMinutes`).
+private enum BathroomLengths {
+    static let all = [5, 10, 15, 20, 30, 60]
+}
+
 @MainActor
 final class RoomDevicesJourneyTests: XCTestCase {
     override func setUp() { continueAfterFailure = false }
@@ -16,8 +21,9 @@ final class RoomDevicesJourneyTests: XCTestCase {
 
     /// Opens a gallery fixture's sheet and waits for `ready` to be hittable.
     private func launch(_ device: String, ready: String, tab: String = "controls", clean: Bool = false,
-                        arguments: [String] = []) -> XCUIApplication {
+                        appearance: String? = nil, arguments: [String] = []) -> XCUIApplication {
         let app = FentonHomeApp.makeApp()
+        if let appearance { app.launchEnvironment["FENTON_APPEARANCE"] = appearance }
         app.launchEnvironment["FENTON_GALLERY"] = "room-devices"
         app.launchEnvironment["FENTON_GALLERY_DEVICE"] = device
         app.launchEnvironment["FENTON_GALLERY_TAB"] = tab
@@ -63,6 +69,13 @@ final class RoomDevicesJourneyTests: XCTestCase {
         XCTAssertTrue(element.isHittable, "\(element) never came into view")
     }
 
+    /// A 44 pt control inside a content-fitted sheet. iOS draws the inset (non-large) sheet's content at 0.955x (384 of 402 pt
+    /// wide on iPhone), so a 44 pt target measures 42 pt there; the large sheet draws it at full size.
+    private func assertSheetTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertGreaterThanOrEqual(element.frame.height, 41.5, element.label, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(element.frame.width, 41.5, element.label, file: file, line: line)
+    }
+
     private func assertTarget(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
         XCTAssertGreaterThanOrEqual(element.frame.width, 43, element.label, file: file, line: line)
         XCTAssertGreaterThanOrEqual(element.frame.height, 43, element.label, file: file, line: line)
@@ -70,39 +83,110 @@ final class RoomDevicesJourneyTests: XCTestCase {
 
     // MARK: - Bathroom fan
 
-    /// Power and lock are toggles; the timer starts from the picker and Set sends the script command.
+    /// Power and lock are toggles; the timer starts from the segmented row and one button, which works while the fan is off
+    /// (the script turns it on).
     func testFanTogglesAndTimer() {
         let app = launch("fan-guest", ready: "fan.power")
         let power = element("fan.power", in: app)
         XCTAssertEqual(power.value as? String, "Off")
         assertTarget(power)
-        XCTAssertFalse(element("fan.setTimer", in: app).isEnabled, "Set needs the fan on")
+        let set = element("fan.setTimer", in: app)
+        reveal(set, in: app)
+        XCTAssertTrue(set.isEnabled, "Starting a timer turns the fan on, so the button needs no running fan")
+        XCTAssertEqual(set.label, "Turn Off in 30 Minutes")
+        XCTAssertFalse(app.staticTexts["Auto-disable lock"].exists)
+        XCTAssertFalse(element("fan.autoUnlock", in: app).exists, "The auto-unlock choice is gone")
         power.tap()
         expectCall("script.guest_bathroom_fan_command command=power target_power=on", in: app)
         XCTAssertEqual(power.value as? String, "On")
         element("fan.lock", in: app).tap()
         expectCall("script.guest_bathroom_fan_command command=lock locked=true", in: app)
-        let autoUnlock = element("fan.autoUnlock", in: app)
-        XCTAssertTrue(autoUnlock.waitForExistence(timeout: 5), "Locked and on shows the auto-unlock choice")
-        let set = element("fan.setTimer", in: app)
+        XCTAssertFalse(element("fan.autoUnlock", in: app).exists, "Locked and on no longer shows an auto-unlock choice")
         reveal(set, in: app)
+        let ten = element("fan.timerOption.10", in: app)
+        ten.tap()
+        XCTAssertTrue(ten.isSelected)
+        XCTAssertEqual(set.label, "Turn Off in 10 Minutes")
         set.tap()
-        expectCall("script.guest_bathroom_fan_command auto_unlock=true command=timer_start minutes=30", in: app)
+        expectCall("script.guest_bathroom_fan_command auto_unlock=true command=timer_start minutes=10", in: app)
         XCTAssertTrue(element("fan.remaining", in: app).waitForExistence(timeout: 5), "Counts down")
     }
 
-    /// A running timer counts down and Clear cancels it.
+    /// Starting a timer on an off fan turns it on (the echo, like the script, switches it on).
+    func testTimerOnAnOffFanTurnsItOn() {
+        let app = launch("fan-guest", ready: "fan.power")
+        let power = element("fan.power", in: app)
+        XCTAssertEqual(power.value as? String, "Off")
+        let set = element("fan.setTimer", in: app)
+        reveal(set, in: app)
+        element("fan.timerOption.60", in: app).tap()
+        XCTAssertEqual(set.label, "Turn Off in 1 Hour")
+        set.tap()
+        expectCall("script.guest_bathroom_fan_command auto_unlock=true command=timer_start minutes=60", in: app)
+        XCTAssertTrue(element("fan.remaining", in: app).waitForExistence(timeout: 5))
+        XCTAssertEqual(power.value as? String, "On")
+    }
+
+    /// Six lengths, each a 44 pt target; the chosen one is selected; the footnote says what the button does.
+    func testTimerLengthRowAndFootnote() {
+        let app = launch("fan-guest", ready: "fan.power")
+        let set = element("fan.setTimer", in: app)
+        reveal(set, in: app)
+        let expected = [5: "5 minutes", 10: "10 minutes", 15: "15 minutes", 20: "20 minutes", 30: "30 minutes", 60: "1 hour"]
+        var previousX: CGFloat = -1
+        for minutes in expected.keys.sorted() {
+            let option = element("fan.timerOption.\(minutes)", in: app)
+            XCTAssertTrue(option.exists, "\(minutes)")
+            XCTAssertEqual(option.label, expected[minutes])
+            assertSheetTarget(option)
+            XCTAssertGreaterThan(option.frame.minX, previousX, "In order, left to right")
+            previousX = option.frame.minX
+        }
+        XCTAssertTrue(element("fan.timerOption.30", in: app).isSelected, "30 minutes is the default")
+        XCTAssertTrue(app.staticTexts["The fan runs, then turns itself off. Starting a timer turns it on if it's off."].exists)
+    }
+
+    /// A running timer counts down in orange and Clear Timer cancels it. Master is on, locked and timed.
     func testFanClearsARunningTimer() {
         let app = launch("fan-master", ready: "fan.power")
         let remaining = element("fan.remaining", in: app)
         XCTAssertTrue(remaining.exists)
         XCTAssertTrue((remaining.value as? String ?? "").contains("minute"), "Spoken as a duration: \(remaining.value ?? "")")
+        XCTAssertGreaterThanOrEqual(remaining.frame.height, 40, "A 40 pt countdown")
         XCTAssertEqual(element("fan.lock", in: app).value as? String, "On")
+        XCTAssertFalse(element("fan.autoUnlock", in: app).exists, "No auto-unlock choice while locked and timed")
+        XCTAssertFalse(element("fan.timerOption.5", in: app).exists, "The length row is hidden while a timer runs")
         let clear = element("fan.clearTimer", in: app)
         reveal(clear, in: app)
+        XCTAssertEqual(clear.label, "Clear Timer")
+        assertSheetTarget(clear)
         clear.tap()
         expectCall("script.master_bathroom_fan_command command=timer_cancel", in: app)
         XCTAssertTrue(element("fan.setTimer", in: app).waitForExistence(timeout: 5))
+    }
+
+    /// Power is the air teal and Lock the security blue, so the two read apart at a glance (both on in Master).
+    func testPowerAndLockTilesAreDistinctColours() throws {
+        let app = launch("fan-master", ready: "fan.power", clean: true)
+        let power = element("fan.power", in: app)
+        let lock = element("fan.lock", in: app)
+        let capture = try XCTUnwrap(RenderedContrast.Capture.screen())
+        let teal = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: power.frame.minX + 8, y: power.frame.maxY - 8), in: capture))
+        let blue = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: lock.frame.minX + 8, y: lock.frame.maxY - 8), in: capture))
+        XCTAssertTrue(TileGeometry.matches(teal, 0x006E62, tolerance: 14), "Power fills with the air teal: \(teal)")
+        XCTAssertTrue(TileGeometry.matches(blue, 0x1565C0, tolerance: 14), "Lock fills with the security blue: \(blue)")
+        keepScreenshot(app, "fan-sheet-running-\(FentonHomeApp.family)")
+    }
+
+    /// The sheet reads in the light appearance too (a dark selected segment, a deeper timer orange).
+    func testFanSheetPassesAuditInLight() throws {
+        for device in ["fan-guest", "fan-master"] {
+            let app = launch(device, ready: "fan.power", clean: true, appearance: "light")
+            try FentonHomeApp.audit(app) {
+                self.launch(device, ready: "fan.power", clean: true, appearance: "light", arguments: FentonHomeApp.ax5)
+            }
+            keepScreenshot(app, "fan-sheet-light-\(device)-\(FentonHomeApp.family)")
+        }
     }
 
     // MARK: - Air quality
@@ -236,6 +320,7 @@ final class RoomDevicesJourneyTests: XCTestCase {
     }
 
     func testFanPassesAudit() throws { try audit("fan-master", ready: "fan.power") }
+    func testIdleFanPassesAudit() throws { try audit("fan-guest", ready: "fan.power") }
     func testPurifierPassesAudit() throws { try audit("purifier-auto", ready: "purifier.mode") }
     // The header, not a card: at AX5 the cards start below the folded iPhone Duo's fold.
     func testGrillPassesAudit() throws { try audit("grill", ready: "grill.header") }
@@ -247,6 +332,19 @@ final class RoomDevicesJourneyTests: XCTestCase {
     func testLargestTextKeepsControlsReachable() {
         let fan = launch("fan-guest", ready: "fan.power", arguments: FentonHomeApp.ax5)
         reveal(element("fan.setTimer", in: fan), in: fan)
+        // The six lengths wrap to a grid and stay 44 pt targets that fit the width.
+        let window = fan.windows.firstMatch.frame
+        for minutes in BathroomLengths.all {
+            let option = element("fan.timerOption.\(minutes)", in: fan)
+            XCTAssertTrue(option.exists, "\(minutes)")
+            XCTAssertGreaterThanOrEqual(option.frame.height, 43)
+            XCTAssertLessThanOrEqual(option.frame.maxX, window.maxX + 1, "\(minutes)m fits the width")
+        }
+        let timed = launch("fan-master", ready: "fan.power", arguments: FentonHomeApp.ax5)
+        let remaining = element("fan.remaining", in: timed)
+        reveal(remaining, in: timed)
+        XCTAssertLessThanOrEqual(remaining.frame.maxX, timed.windows.firstMatch.frame.maxX + 1, "The countdown fits at AX5")
+        reveal(element("fan.clearTimer", in: timed), in: timed)
         let humidifier = launch("humidifier", ready: "humidifier.power", arguments: FentonHomeApp.ax5)
         reveal(element("humidifier.display", in: humidifier), in: humidifier)
     }
@@ -255,7 +353,7 @@ final class RoomDevicesJourneyTests: XCTestCase {
 
     /// Every sheet in the current pose (iPad: both orientations), named `device-<fixture>-<tab>-<orientation>`.
     func testCaptureDeviceScreens() {
-        let shots = [("fan-master", "fan.power", "controls"), ("purifier-auto", "purifier.mode", "controls"),
+        let shots = [("fan-guest", "fan.power", "controls"), ("fan-master", "fan.power", "controls"), ("purifier-auto", "purifier.mode", "controls"),
                      ("grill", "grill.header", "controls"), ("humidifier", "humidifier.power", "controls"),
                      ("humidifier", "humidifier.power", "schedules"), ("humidifier", "humidifier.power", "info"),
                      ("humidifier-fault", "humidifier.power", "controls")]

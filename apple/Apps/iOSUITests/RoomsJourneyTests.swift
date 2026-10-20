@@ -14,9 +14,11 @@ final class RoomsJourneyTests: XCTestCase {
 
     // MARK: - Helpers
 
-    private func launch(room: String? = nil, quickLinks: Bool = false, clean: Bool = false, arguments: [String] = []) -> XCUIApplication {
+    private func launch(room: String? = nil, quickLinks: Bool = false, clean: Bool = false, scenario: String? = nil,
+                        arguments: [String] = []) -> XCUIApplication {
         let app = FentonHomeApp.makeApp()
         app.launchEnvironment["FENTON_GALLERY"] = "rooms"
+        if let scenario { app.launchEnvironment["FENTON_GALLERY_SCENARIO"] = scenario }
         app.launchEnvironment["FENTON_GALLERY_OFFLINE"] = "1"
         if let room { app.launchEnvironment["FENTON_GALLERY_ROOM"] = room }
         if quickLinks { app.launchEnvironment["FENTON_GALLERY_QUICK_LINKS"] = "1" }
@@ -168,6 +170,143 @@ final class RoomsJourneyTests: XCTestCase {
         XCTAssertTrue(element("device.sheet.purifier", in: living).waitForExistence(timeout: 10), "Air Purifier opens the air quality sheet")
     }
 
+    // MARK: - Bathroom fan tile (owner design, 2026-10-17)
+
+    /// The fan tile and its two buttons by the fan's power entity.
+    private func fanButtons(_ power: String, in app: XCUIApplication) -> (tile: XCUIElement, lock: XCUIElement, power: XCUIElement) {
+        (element("room.card.Fan", in: app), app.switches["room.fan.\(power).lock"], app.switches["room.fan.\(power).power"])
+    }
+
+    /// The chevron's ink, measured clear of the rail's own edge (the rail ends 32 pt in from the tile's edge).
+    private func chevronBounds(of tile: XCUIElement) throws -> CGRect {
+        let capture = try XCTUnwrap(RenderedContrast.Capture.screen())
+        let frame = tile.frame
+        let background = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: frame.maxX - 18, y: frame.minY + 6), in: capture))
+        let region = CGRect(x: frame.maxX - 29, y: frame.minY + 14, width: 25, height: frame.height - 28)
+        return try XCTUnwrap(TileGeometry.inkBounds(in: region, background: background, capture: capture), "No chevron drawn")
+    }
+
+    /// The Power button no longer sits under the chevron: the rail is vertically centred, its circles are 44 pt, and
+    /// the chevron has its own slot to the right of them. Off/unlocked (Guest) and on/locked/timed (Master).
+    func testFanRailIsCentredAndClearOfTheChevron() throws {
+        let cases: [(room: String, power: String, lit: Bool)] = [
+            ("guest-bathroom", "switch.guest_bathroom_fan_switch_top", false),
+            ("master-bathroom", "switch.master_bathroom_fan_switch_top", true),
+        ]
+        for fan in cases {
+            let app = launch(room: fan.room, clean: true)
+            let (tile, lock, power) = fanButtons(fan.power, in: app)
+            reveal(power, in: app)
+            for button in [lock, power] {
+                assertTarget(button)
+                XCTAssertEqual(button.frame.width, button.frame.height, accuracy: 1, "\(fan.room): a circle")
+                XCTAssertEqual(button.frame.midY, tile.frame.midY, accuracy: 2, "\(fan.room): centred on the tile")
+            }
+            XCTAssertLessThan(lock.frame.maxX, power.frame.minX, "Lock then Power, not overlapping")
+            let chevron = try chevronBounds(of: tile)
+            XCTAssertFalse(power.frame.intersects(chevron), "\(fan.room): the chevron is not under Power")
+            XCTAssertGreaterThanOrEqual(chevron.minX - power.frame.maxX, 6, "\(fan.room): spacing before the chevron")
+            XCTAssertEqual(chevron.midY, tile.frame.midY, accuracy: 3, "\(fan.room): the chevron stays centred")
+            // Active: a solid white circle. Inactive: a translucent one, never white.
+            let capture = try XCTUnwrap(RenderedContrast.Capture.screen())
+            for button in [lock, power] {
+                let sample = try XCTUnwrap(TileGeometry.rgb(at: CGPoint(x: button.frame.minX + 5, y: button.frame.midY), in: capture))
+                if fan.lit {
+                    XCTAssertTrue(TileGeometry.matches(sample, 0xFFFFFF, tolerance: 12), "\(fan.room) \(button.label) is solid white: \(sample)")
+                } else {
+                    XCTAssertLessThan(sample.r, 160, "\(fan.room) \(button.label) is translucent, not white: \(sample)")
+                }
+            }
+            keepScreenshot(app, "fan-tile-\(fan.room)-\(FentonHomeApp.family)")
+        }
+    }
+
+    /// One short status line, with the lock spoken rather than written: VoiceOver reads "on, off in 12 minutes, locked".
+    func testFanTileValueSpeaksPowerTimerAndLock() {
+        let master = launch(room: "master-bathroom")
+        let tile = element("room.card.Fan", in: master)
+        reveal(tile, in: master)
+        let value = tile.value as? String ?? ""
+        XCTAssertTrue(value.hasPrefix("on, off in 1") && value.hasSuffix(" minutes, locked"), "Spoken value: \(value)")
+        XCTAssertEqual(master.switches["room.fan.switch.master_bathroom_fan_switch_top.lock"].value as? String, "On")
+        XCTAssertEqual(master.switches["room.fan.switch.master_bathroom_fan_switch_top.power"].value as? String, "On")
+        let guest = launch(room: "guest-bathroom")
+        let off = element("room.card.Fan", in: guest)
+        reveal(off, in: guest)
+        XCTAssertEqual(off.value as? String, "off")
+        XCTAssertEqual(guest.switches["room.fan.switch.guest_bathroom_fan_switch_top.lock"].value as? String, "Off")
+    }
+
+    /// An unavailable fan shows no buttons (no dead controls) and says so; the tile still opens its sheet.
+    func testUnavailableFanHidesItsButtons() {
+        let app = launch(room: "guest-bathroom", scenario: "fan-unavailable")
+        let tile = element("room.card.Fan", in: app)
+        reveal(tile, in: app)
+        XCTAssertEqual(tile.value as? String, "Unavailable")
+        XCTAssertFalse(app.switches["room.fan.switch.guest_bathroom_fan_switch_top.power"].exists)
+        XCTAssertFalse(app.switches["room.fan.switch.guest_bathroom_fan_switch_top.lock"].exists)
+        keepScreenshot(app, "fan-tile-unavailable-\(FentonHomeApp.family)")
+    }
+
+    /// Regular width puts the fan in the two-column grid next to the vent; a phone keeps the full-width lead row.
+    func testFanTileJoinsTheTwoColumnGridOnIPad() {
+        let orientations: [UIDeviceOrientation] = FentonHomeApp.family == .iPad ? [.portrait, .landscapeLeft] : [.unknown]
+        for orientation in orientations {
+            if orientation != .unknown { XCUIDevice.shared.orientation = orientation }
+            let app = launch(room: "guest-bathroom", clean: true)
+            let fan = element("room.card.Fan", in: app)
+            let vent = element("room.card.Vent", in: app)
+            reveal(fan, in: app)
+            let window = app.windows.firstMatch.frame
+            if FentonHomeApp.family == .iPad {
+                XCTAssertLessThan(fan.frame.width, window.width * 0.6, "Not a full-width lead row on iPad (\(orientation.rawValue))")
+                XCTAssertEqual(fan.frame.minY, vent.frame.minY, accuracy: 2, "The vent shares the fan's row")
+                XCTAssertLessThan(fan.frame.maxX, vent.frame.minX)
+                XCTAssertEqual(fan.frame.height, vent.frame.height, accuracy: 1, "Equal heights in the grid")
+                keepScreenshot(app, "fan-tile-grid-ipad-\(orientation == .landscapeLeft ? "landscape" : "portrait")")
+            } else if FentonHomeApp.family == .iPhone {
+                XCTAssertGreaterThan(fan.frame.width, window.width * 0.85, "A phone keeps the full-width lead row")
+            }
+        }
+    }
+
+    /// At the largest text the buttons drop below the status, stay circles no larger than 66 pt, and stay in the tile.
+    func testFanRailMovesBelowTheTextAtAX5() {
+        let app = launch(room: "master-bathroom", arguments: FentonHomeApp.ax5)
+        let (tile, lock, power) = fanButtons("switch.master_bathroom_fan_switch_top", in: app)
+        reveal(power, in: app)
+        for button in [lock, power] {
+            XCTAssertGreaterThanOrEqual(button.frame.width, 43)
+            XCTAssertLessThanOrEqual(button.frame.width, 67, "The circle is capped, so the glyph cannot outgrow it")
+            XCTAssertEqual(button.frame.width, button.frame.height, accuracy: 1)
+            XCTAssertTrue(tile.frame.insetBy(dx: -1, dy: -1).contains(button.frame), "Inside the tile")
+        }
+        XCTAssertGreaterThan(power.frame.minY, tile.frame.midY, "Below the status text, not wrapped beside it")
+        XCTAssertLessThan(lock.frame.minX, tile.frame.midX, "Leading, under the text")
+        XCTAssertLessThan(lock.frame.maxX, power.frame.minX)
+        keepScreenshot(app, "fan-tile-ax5-\(FentonHomeApp.family)")
+    }
+
+    /// Opened from its room tile (the real route), the fan sheet is as tall as its content: no band of empty ground under
+    /// the last control. Idle (Guest) and timed (Master).
+    func testFanSheetHeightFitsItsContentFromTheTile() {
+        for (room, last) in [("guest-bathroom", "fan.setTimer"), ("master-bathroom", "fan.clearTimer")] {
+            let app = launch(room: room, clean: true)
+            let tile = element("room.card.Fan", in: app)
+            reveal(tile, in: app)
+            tile.tap()
+            let control = element(last, in: app)
+            XCTAssertTrue(control.waitForExistence(timeout: 10), "\(room): the fan sheet opened")
+            sleep(2) // The detent settles after the first measurement.
+            keepScreenshot(app, "fan-sheet-from-tile-\(room)-\(FentonHomeApp.family)")
+            XCTAssertTrue(control.isHittable, "\(room): the last control is on screen without scrolling")
+            let window = app.windows.firstMatch.frame
+            // The footnote (idle) sits a little below the button; the button is last while timed.
+            let bottom = room == "guest-bathroom" ? control.frame.maxY + 60 : control.frame.maxY
+            XCTAssertLessThanOrEqual(window.maxY - bottom, 100, "\(room): empty ground under the last control")
+        }
+    }
+
     /// Master Bedroom: the wake light and each bed open the Bedroom lane's sheets (fixture state, gallery caller).
     func testMasterBedroomOpensWakeLightAndBedSheets() {
         let app = launch(room: "master-bedroom")
@@ -281,6 +420,8 @@ final class RoomsJourneyTests: XCTestCase {
 
     func testLivingRoomPassesAudit() throws { try audit(room: "living-room") }
     func testGuestBathroomPassesAudit() throws { try audit(room: "guest-bathroom") }
+    /// The fan on, locked and timed, with its countdown and lit buttons.
+    func testMasterBathroomPassesAudit() throws { try audit(room: "master-bathroom") }
     func testMasterBedroomPassesAudit() throws { try audit(room: "master-bedroom") }
     func testMusicRoomPassesAudit() throws { try audit(room: "music-room") }
     func testKitchenPassesAudit() throws { try audit(room: "kitchen") }

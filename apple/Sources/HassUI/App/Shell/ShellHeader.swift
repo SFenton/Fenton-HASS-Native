@@ -54,46 +54,81 @@ private struct ShellHeaderButtons: ViewModifier {
     /// the viewer is a known resident, as on the web.
     private var attentionCount: Int {
         guard let store, let viewer = ChoresConfig.Resident.forUserId(viewerUserId) else { return 0 }
-        let overdue = ProfileSummary.openCount(store.entity(ProfileSummary.lists(for: viewer).overdue.entityId).state)
-        let expired = ProfileSummary.expiredItems(store.entity(ProfileSummary.expiredFoodEntityId).state).count
-        let vacation = store.entity(ChoresConfig.vacationModeEntityId).state?.state == "on"
-        return ProfileSummary.badgeCount(overdue: overdue, expiredFood: expired, vacationMode: vacation)
+        return ProfileSummary.counts(viewer: viewer, store: store).attention
     }
 
     func body(content: Content) -> some View {
         content.toolbar {
             if let navigator {
-                HeaderCircleItem { QuickLinksButton { navigator.openQuickLinks() } }
-                HeaderCircleItem {
-                    ProfileButton(name: navigator.profileName, attentionCount: attentionCount) { navigator.openAccount() }
-                }
+                ShellHeaderItems(
+                    profileName: navigator.profileName,
+                    attentionCount: attentionCount,
+                    openQuickLinks: { navigator.openQuickLinks() },
+                    openAccount: { navigator.openAccount() }
+                )
             }
         }
     }
 }
 
-/// One trailing header item drawn as its own glass circle (``SwiftUI/View/headerCircle()``).
+/// The shell's two trailing header items, Quick Links then Profile (owner, 2026-10-18, option A: FestivalNativeApps
+/// parity, HIG Toolbars "Item groupings").
 ///
-/// iOS 26 would draw one shared glass capsule behind adjacent bar items and tint a custom view (the monogram's disc
-/// measured 2.7:1 under its white initials once the glass lightened it), so the system's background is off and each
-/// button draws its own glass: two circles, a fixed 44 pt target, a monogram on its own fill. Earlier systems draw no bar
-/// background, so the same circle shows there on a thin material.
-private struct HeaderCircleItem<Content: View>: ToolbarContent {
-    @ViewBuilder var content: Content
+/// On iOS 26 the bar draws Quick Links' glass circle itself and a `ToolbarSpacer(.fixed)` separates it from Profile, the way
+/// FestivalNativeApps separates its page tools from its account group: the two stay separate circles and the bar never
+/// merges them into one capsule. Profile with a known name is its own filled 44 pt disc with the bar's shared glass hidden,
+/// overhanging the hidden-glass padding so the disc fills exactly the circle the glass would have drawn
+/// (``ProfileButton/Metrics``); without a name it is the person symbol on the bar's standard glass circle
+/// (``ProfileButton/Presentation``). Measured on the iPhone 17 Pro simulator (iOS 27): Quick Links' glass 44 pt, the disc
+/// 44 pt, 12 pt between them. In the Duo's vertical bar no spacer is added (``EnvironmentValues/shellInVerticalBar``), and before
+/// iOS 26 the bar draws no glass, so each button draws its own material circle and no spacer is added.
+struct ShellHeaderItems: ToolbarContent {
+    var profileName: String?
+    var attentionCount = 0
+    var openQuickLinks: () -> Void
+    var openAccount: () -> Void
+    @Environment(\.shellInVerticalBar) private var inVerticalBar
 
     var body: some ToolbarContent {
         if #available(iOS 26.0, macOS 26.0, *) {
-            ToolbarItem(placement: .primaryAction) { content }
-                .sharedBackgroundVisibility(.hidden)
+            ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: openQuickLinks) }
+            // The Duo's vertical bar spaces its own items: no fixed spacer there (FestivalNativeApps
+            // `RootChromeTrailingGroups.separatesAccount`).
+            if !inVerticalBar {
+                ToolbarSpacer(.fixed, placement: .primaryAction)
+            }
         } else {
-            ToolbarItem(placement: .primaryAction) { content }
+            ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: openQuickLinks) }
+        }
+        ProfileHeaderItem(name: profileName, attentionCount: attentionCount, action: openAccount)
+    }
+}
+
+/// The Profile bar item: hides the bar's shared glass while the monogram is its own disc (iOS 26), and keeps the
+/// system glass behind the person symbol.
+private struct ProfileHeaderItem: ToolbarContent {
+    var name: String?
+    var attentionCount: Int
+    var action: () -> Void
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            ToolbarItem(placement: .primaryAction) {
+                ProfileButton(name: name, attentionCount: attentionCount, action: action)
+            }
+            .sharedBackgroundVisibility(ProfileButton.Presentation.resolve(name: name).sharedBackground)
+        } else {
+            ToolbarItem(placement: .primaryAction) {
+                ProfileButton(name: name, attentionCount: attentionCount, action: action)
+            }
         }
     }
 }
 
 extension View {
-    /// A 44 pt navigation-layer circle: Liquid Glass on iOS 26, thin material before (HIG Toolbars, Materials), and a
-    /// circular hit area (HIG Buttons: at least 44 pt).
+    /// A 44 pt navigation-layer circle for a bar item that has no glass of its own: thin material before iOS 26 (HIG Toolbars,
+    /// Materials), with a circular hit area (HIG Buttons: at least 44 pt). On iOS 26 the bar draws each item's glass circle,
+    /// so the header buttons only use this before then.
     func headerCircle() -> some View {
         frame(width: HassTokens.minTarget, height: HassTokens.minTarget)
             .navigationGlass(in: Circle())
@@ -126,7 +161,7 @@ private struct ShellSheets: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .sheet(isPresented: binding(\.accountSection)) { AccountSheet().hassSheet(.form, height: .full) }
+            .sheet(isPresented: binding(\.accountSection)) { YourSummarySheet().hassSheet(.form, height: .full) }
             .sheet(isPresented: binding(\.quickLinksSection), onDismiss: pushPending) {
                 QuickLinksSheet(caller: caller) { pending = $0 }
             }
@@ -142,8 +177,12 @@ private struct ShellSheets: ViewModifier {
 // MARK: - Profile
 
 /// The profile button at the top trailing edge of every page (owner, 2026-10-13: "profile goes in top right"). It shows
-/// the signed-in user's initials, or a person symbol until the name is known, and opens the Account sheet
-/// (``AccountSheet``: the web's profile modal, Your Summary, with the account and Sign Out).
+/// the signed-in user's initials on a 44 pt disc that is the whole button, or a person symbol until the name is known,
+/// and opens the Account sheet (``YourSummarySheet``: the web's profile modal, Your Summary, with the account and Sign Out on
+/// its Profile tab).
+///
+/// Owner 2026-10-18, option A: the avatar takes its whole container, the way FestivalNativeApps' `RootProfileButton` does
+/// (FST issue #311); Quick Links stays a separate glass circle beside it (``ShellHeaderItems``).
 struct ProfileButton: View {
     /// The signed-in user's display name, when known.
     var name: String?
@@ -168,50 +207,134 @@ struct ProfileButton: View {
         return [name, attention].compactMap { $0 }.joined(separator: ", ")
     }
 
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                // The glass is its own layer under the monogram: inside the glass effect the disc was lightened until its
-                // white initials measured 2.7:1.
-                Color.clear.headerCircle()
-                if let initials = Self.initials(name) {
-                    Text(initials)
-                        .font(.footnote.weight(.semibold))
-                        // A bar item keeps its size; the Large Content Viewer shows it bigger (HIG Toolbars,
-                        // Accessibility), so the initials stop growing past the disc.
-                        .dynamicTypeSize(...DynamicTypeSize.xLarge)
-                        .foregroundStyle(.white)
-                        .lineLimit(1)
-                        .frame(width: 32, height: 32)
-                        // Fixed deep blue: white text stays above 5:1 in light and dark mode.
-                        .background(ProfileButton.fill, in: Circle())
-                } else {
-                    Image(systemName: "person.crop.circle")
-                        .font(.title3)
-                        .foregroundStyle(.primary)
-                }
-            }
-            .frame(width: HassTokens.minTarget, height: HassTokens.minTarget)
+    // MARK: Presentation
+
+    /// How the button draws for a name (FestivalNativeApps `RootProfileButton.Presentation`).
+    enum Presentation: Equatable {
+        /// The initials on the button's own filled disc.
+        case monogram(String)
+        /// The person symbol on the bar's standard glass circle, until the name is known.
+        case symbol
+
+        /// Resolves the presentation: a name with letters is a monogram, anything else the symbol.
+        static func resolve(name: String?) -> Presentation {
+            ProfileButton.initials(name).map(Presentation.monogram) ?? .symbol
         }
-        .overlay(alignment: .topTrailing) {
-            if let text = ProfileSummary.badgeText(attentionCount) {
-                Text(text)
-                    .font(.caption2.weight(.bold))
+
+        /// The toolbar item's shared Liquid Glass (iOS 26): hidden behind the monogram, so no ring shows around the
+        /// disc; the symbol keeps the system glass like every other bar glyph.
+        var sharedBackground: Visibility {
+            if case .monogram = self { return .hidden }
+            return .automatic
+        }
+    }
+
+    /// The disc's size and how far it draws past its layout width.
+    struct Metrics: Equatable {
+        /// The disc's diameter in points.
+        let diameter: CGFloat
+        /// Points the disc draws past its layout width on each side (the bar's hidden-glass padding), so it fills the
+        /// glass circle's place.
+        let overhang: CGFloat
+        /// A 44 pt material circle shows behind the disc (before iOS 26, where the bar draws no glass).
+        let ringed: Bool
+
+        /// The padding a bar puts on each side of an item whose shared glass is hidden (measured by FestivalNativeApps on
+        /// iOS 26.5, and again here).
+        static let hiddenGlassPadding: CGFloat = 10
+
+        /// Resolves the metrics for the bar the button sits in.
+        /// - Parameter liquidGlassBar: The bar draws a glass circle per item (iOS 26).
+        /// - Returns: With Liquid Glass, a 44 pt disc ``HassTokens/minTarget`` that overhangs the padding so it is the
+        ///   whole circle. Before iOS 26, today's look: the 32 pt disc inside Quick Links' 44 pt material circle (the bar
+        ///   has no glass to fill), so both circles stay one size. FestivalNativeApps draws a 30 pt outlined disc
+        ///   there; we keep ours because the neighbouring Quick Links circle is the same 44 pt material.
+        static func resolve(liquidGlassBar: Bool) -> Metrics {
+            liquidGlassBar
+                ? Metrics(diameter: HassTokens.minTarget, overhang: hiddenGlassPadding, ringed: false)
+                : Metrics(diameter: 32, overhang: 0, ringed: true)
+        }
+
+        /// The metrics for the running system.
+        static var current: Metrics {
+            if #available(iOS 26.0, macOS 26.0, *) { return resolve(liquidGlassBar: true) }
+            return resolve(liquidGlassBar: false)
+        }
+    }
+
+    // MARK: Body
+
+    var body: some View {
+        let presentation = Presentation.resolve(name: name)
+        Button(action: action) { label(for: presentation, metrics: .current) }
+            .overlay(alignment: .topTrailing) { badge(metrics: .current) }
+            .accessibilityShowsLargeContentViewer {
+                Label("Profile", systemImage: "person.crop.circle")
+            }
+            .accessibilityLabel("Profile")
+            .accessibilityValue(Self.accessibilityValue(name: name, attentionCount: attentionCount))
+            .accessibilityHint("Opens your summary and account")
+            .accessibilityIdentifier("nav.profile")
+    }
+
+    @ViewBuilder
+    private func label(for presentation: Presentation, metrics: Metrics) -> some View {
+        switch presentation {
+        case let .monogram(initials):
+            ZStack {
+                // Before iOS 26 the 44 pt material circle shows behind the disc, like Quick Links beside it.
+                if metrics.ringed { Color.clear.headerCircle() }
+                Text(initials)
+                    // 16 pt semibold at the default size, white on the fixed blue (5.6:1). A bar item keeps its size; the
+                    // Large Content Viewer shows it bigger (HIG Toolbars, Accessibility), so the initials stop growing
+                    // past the disc.
+                    .font(.callout.weight(.semibold))
                     .dynamicTypeSize(...DynamicTypeSize.xLarge)
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 5)
-                    .frame(minWidth: 16, minHeight: 16)
-                    .background(HassTokens.Ink.badge, in: Capsule())
-                    .offset(x: 4, y: -2)
-                    .accessibilityHidden(true)
+                    .lineLimit(1)
+                    .frame(width: metrics.diameter, height: metrics.diameter)
+                    // Fixed deep blue: white text stays above 5:1 in light and dark mode.
+                    .background(ProfileButton.fill, in: Circle())
             }
+            .frame(width: HassTokens.minTarget, height: HassTokens.minTarget)
+            // The bar pads a glass-less item on each side; drawing past the layout width fills that padding.
+            .padding(.horizontal, -metrics.overhang)
+        case .symbol:
+            // On a glass bar the system sizes the symbol's circle (44 pt); a frame made it a 56 pt-wide capsule.
+            Image(systemName: "person.crop.circle")
+                .font(.title3)
+                .foregroundStyle(.primary)
+                .modifier(SymbolCircle(ringed: metrics.ringed))
         }
-        .accessibilityShowsLargeContentViewer {
-            Label("Profile", systemImage: "person.crop.circle")
+    }
+
+    /// The attention badge on the disc's top-trailing edge.
+    @ViewBuilder
+    private func badge(metrics: Metrics) -> some View {
+        if let text = ProfileSummary.badgeText(attentionCount) {
+            Text(text)
+                .font(.caption2.weight(.bold))
+                .dynamicTypeSize(...DynamicTypeSize.xLarge)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 5)
+                .frame(minWidth: 16, minHeight: 16)
+                .background(HassTokens.Ink.badge, in: Capsule())
+                // Relative to the layout box, which is `overhang` narrower than the disc on each side.
+                .offset(x: 4 + metrics.overhang, y: -2)
+                .accessibilityHidden(true)
         }
-        .accessibilityLabel("Profile")
-        .accessibilityValue(Self.accessibilityValue(name: name, attentionCount: attentionCount))
-        .accessibilityHint("Opens your summary and account")
-        .accessibilityIdentifier("nav.profile")
+    }
+}
+
+/// The material circle behind the person symbol before iOS 26; on iOS 26 the bar's own glass is the circle.
+private struct SymbolCircle: ViewModifier {
+    var ringed: Bool
+
+    func body(content: Content) -> some View {
+        if ringed {
+            content.headerCircle()
+        } else {
+            content
+        }
     }
 }

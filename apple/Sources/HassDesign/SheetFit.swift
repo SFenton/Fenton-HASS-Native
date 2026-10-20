@@ -157,13 +157,22 @@ public final class SheetFitModel {
         recompute()
     }
 
-    /// The larger of two estimates, so the sheet is never too short: the content plus the larger of the scroller's
-    /// insets and the page's safe areas, and the sheet's height minus the scroller's viewport plus its content.
+    /// Whether the sheet-minus-scroller estimate counts (regular width, where the scroller sits below the header).
+    /// Set by the presenting sheet from its size class.
+    public var usesSheetEstimate = false
+
+    /// The content plus the larger of the scroller's insets and the page's safe areas; at regular width also the larger of
+    /// that and the sheet's height minus the scroller's viewport plus its content, so the sheet is never too short.
     private func recompute() {
         guard let reading else { return }
         var wanted = SheetFit.wantedHeight(contentHeight: reading.content, topInset: max(reading.topInset, safeTop),
                                            bottomInset: max(reading.bottomInset, safeBottom)).rounded()
-        if let sheetHeight, reading.viewport > 0 {
+        // The sheet-minus-scroller estimate is for a scroller laid out below the header (iPad's form sheet). On a phone
+        // the scroller runs under the header and the safe areas above are the chrome, and counting the sheet's own height
+        // there made a ratchet: a scroller that does not grow with the sheet reads the same viewport at every height, so
+        // each taller sheet asked for 14 pt more until it reached large (the bathroom fan sheet, 2026-10-17: 400 pt of
+        // blank ground under a 330 pt page).
+        if usesSheetEstimate, let sheetHeight, reading.viewport > 0 {
             wanted = max(wanted, SheetFit.wantedHeight(sheetHeight: sheetHeight, viewportHeight: reading.viewport,
                                                        contentHeight: reading.content).rounded())
         }
@@ -272,6 +281,7 @@ private struct FittedSheet<Content: View>: View {
     var fitKey: String
     @State private var model: SheetFitModel
     @State private var available: CGFloat
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     init(content: Content, fitKey: String) {
         self.content = content
@@ -286,6 +296,7 @@ private struct FittedSheet<Content: View>: View {
     var body: some View {
         content
             .environment(\.sheetFit, model)
+            .onChange(of: sizeClass, initial: true) { model.usesSheetEstimate = sizeClass == .regular }
             .presentationDetents(Self.detents(for: SheetFit.detent(contentHeight: model.contentHeight, availableHeight: available)))
             .background { LargeDetentProbe(height: $available) }
             .background {
