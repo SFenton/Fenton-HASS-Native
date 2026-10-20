@@ -146,7 +146,11 @@ struct LoginView: View {
         Button(action: submit) {
             HStack(spacing: HassTokens.Spacing.s) {
                 if model.isWorking {
-                    ArcSpinner(.inline).accessibilityHidden(true)
+                    ArcSpinner(.inline)
+                        // A turning arc keeps XCUITest from ever seeing the app idle (each tap then waits a minute), so
+                        // journeys hold it still; the button's label and value still say it is busy.
+                        .environment(\.arcSpinnersPaused, ProcessInfo.processInfo.environment["FENTON_UITEST_RESET"] == "1")
+                        .accessibilityHidden(true)
                 }
                 Text(model.buttonTitle)
             }

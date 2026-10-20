@@ -164,7 +164,7 @@ What the launch intro, a signed-in relaunch and the sign-in arrival cost, measur
 - Hitch ratios (`XCTHitchMetric`, iOS 26) for the intro and the arrival run **on a physical device only** and skip on a simulator, like `FastScrollPerformanceTests`; the target is under 5 ms/s. Device runs need the owner's say-so.
 - Unit: `TrackedIntervalsTests`, `LaunchCostProbeTests`, `ReconnectingPolicyTests`, `RememberedAccountTests`; hosted: `LoginTests` (model, screen, flows, root choreography).
 
-**Budgets (simulator).** p95 run-loop turn ≤ 8 ms everywhere; no turn over 16 ms while only the intro runs; `Intro` ≤ 1500 ms; `SnapshotShown` ≤ 500 ms (400 ms on an idle Mac); `Arrival` ≤ 1600 ms; the arrival and snapshot phases are held to a worst turn of 300 ms for the reason below.
+**Budgets (simulator, from design/motion.md section 10).** p95 run-loop turn ≤ 8 ms and no turn over 16 ms in any phase; `Intro` ≤ 1500 ms; `SnapshotShown` ≤ 400 ms; `Arrival` ≤ 1000 ms. Current misses (iPhone, Duo, iPad simulators): Arrival 1.4 to 2.4 s and first-layout turns of 80 to 270 ms on Home (SwiftUI's first NavigationStack and container-background layout; deferring sections did not help); SnapshotShown 386 to 445 ms. Intro meets every budget. Hitch metrics are device-only and are written but not run.
 
 **Baselines** (iPhone 17 Pro simulator, iOS 27.0, optimized build, beside four other lanes' simulators and builds, 2026-10-17; two runs of the arrival, one of the rest):
 
