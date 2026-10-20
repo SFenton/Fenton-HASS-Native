@@ -109,8 +109,11 @@ final class MotionJourneyTests: JourneyTestCase {
                 reveal(app.buttons["motion.toggle.\(id)"], in: app)
                 sizes[id] = component(id).frame.size
             }
+            // The bar item drops out of the accessibility tree once the page has been scrolled to the foot (the tree then shows an
+            // empty Toolbar), so the page goes back to the top, where the bar is whole, before the button is read.
+            reveal(app.buttons["motion.toggle.\(Self.componentIDs[0])"], in: app)
             let all = app.descendants(matching: .any)["motion.toggleAll"].firstMatch
-            XCTAssertTrue(all.exists, "Toggle all is not in the bar")
+            XCTAssertTrue(all.waitForExistence(timeout: 5), "Toggle all is not in the bar")
             all.tap()
             for id in Self.componentIDs.reversed() {
                 reveal(app.buttons["motion.toggle.\(id)"], in: app)
