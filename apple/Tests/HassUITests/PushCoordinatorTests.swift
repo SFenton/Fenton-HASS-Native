@@ -224,6 +224,27 @@ struct PushNavigationTests {
         #expect(navigator.isAtRoot(.home))
     }
 
+    @Test func aLinkAnchorRidesTheRequest() {
+        let push = PushCoordinator(platform: PlatformProbe().platform, store: InMemoryMobileAppRegistrationStore(), transport: StubHTTPTransport([]))
+        push.sessionStarted(server: server) { "token" }
+        push.open(link: "/sfenton-react-dash/home?path=music-room#robot-vacuum")
+        #expect(push.pendingRequest?.destination == .homePage("music-room"))
+        #expect(push.pendingRequest?.anchor == "robot-vacuum")
+    }
+
+    @Test func aVacuumLinkOpensItsRoomAndSheet() {
+        let navigator = ShellNavigator(selection: .climate)
+        navigator.open(.homePage("music-room"), anchor: "robot-vacuum")
+        #expect(navigator.selection == .home)
+        #expect(navigator.paths[.home]?.count == 1)
+        #expect(navigator.takeSheet(forPage: "theater-room") == nil)
+        #expect(navigator.takeSheet(forPage: "music-room") == "robot-vacuum")
+        #expect(navigator.takeSheet(forPage: "music-room") == nil, "a sheet opens once")
+        navigator.open(.homePage("music-room"), anchor: "robot-vacuum")
+        navigator.open(.homePage("garage"))
+        #expect(navigator.takeSheet(forPage: "music-room") == nil, "a later link without an anchor drops it")
+    }
+
     @Test func homeRoutesForNotificationPaths() {
         #expect(HomeRoute(pushPath: "garage") == .room("garage"))
         #expect(HomeRoute(pushPath: "grocery-list") == .groceryList)

@@ -145,9 +145,9 @@ public final class PushCoordinator {
     /// Opens a notification link: an app page, Home Assistant's own page, or another site.
     func open(link: String) {
         switch PushLink(link, server: server) {
-        case let .dashboard(path, _)?:
+        case let .dashboard(path, anchor)?:
             requestID += 1
-            pendingRequest = PushNavigationRequest(id: requestID, destination: PushDestination(dashboardPath: path))
+            pendingRequest = PushNavigationRequest(id: requestID, destination: PushDestination(dashboardPath: path), anchor: anchor)
         case let .homeAssistant(path)?:
             if let server { platform.openExternal(server.url(path)) }
         case let .external(url)?:

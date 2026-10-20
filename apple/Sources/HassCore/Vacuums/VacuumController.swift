@@ -429,7 +429,10 @@ public final class VacuumController {
 
     private func commitAndCall(_ next: String, _ service: String) {
         guard status.policyMode != .none else { return }
-        commitOverlay(vacuum.entityId, next, revert: Self.optimisticRevert)
+        // A robot in an error state flaps through other states while it tries the command, and the first change would
+        // drop the optimistic value (the tap looked ignored): hold it until confirmed or reverted.
+        let rule: OptimisticOverlay.ClearRule? = liveState == "error" ? .confirmation : nil
+        overlay.commit(vacuum.entityId, value: next, live: liveState, revertAfter: Self.optimisticRevert, clearing: rule)
         perform(ServiceCall("vacuum", service, target: vacuum.entityId))
     }
 

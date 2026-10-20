@@ -102,6 +102,28 @@ struct LiveActivityTokenReporterTests {
         reporter.stop()
     }
 
+    @Test func aNewActivityWithTheSameTagReplacesTheOldOne() async {
+        let (reporter, client, webhook, _) = make()
+        reporter.start()
+        #expect(await eventually { client.isWatching })
+        let vacuum = HomeActivityAttributes(tag: "job.vacuum.music_room", title: "Music Room Vacuum", kind: "vacuum")
+        let first = client.startFromPush(attributes: vacuum, state: state)
+        #expect(await eventually { client.isWatching(activity: first.id) })
+        let second = client.startFromPush(attributes: vacuum, state: state)
+        #expect(await eventually { client.isWatching(activity: second.id) })
+        #expect(await eventually {
+            client.calls.contains { if case let .end(id, _, _) = $0 { id == first.id } else { false } }
+        })
+        let endedIDs = client.calls.compactMap { call -> String? in
+            if case let .end(id, _, _) = call { return id }
+            return nil
+        }
+        #expect(endedIDs == [first.id], "only the older card ends")
+        for _ in 0..<100 { await Task.yield() }
+        #expect(webhook?.sent.isEmpty == true, "the token the new card shares is not dropped")
+        reporter.stop()
+    }
+
     @Test func endingEveryActivityLocallyTellsHomeAssistantAboutEach() async {
         let (reporter, client, webhook, _) = make()
         reporter.start()

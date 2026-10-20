@@ -221,7 +221,7 @@ struct VacuumStatusSummary: View {
                 InlineAlert("Error Source Unavailable: The current vacuum error status cannot be confirmed because its error source is unavailable.")
             }
             if status.currentIssue.status == .present, let raw = status.currentIssue.raw {
-                InlineAlert("Current Issue: \(raw)")
+                InlineAlert("Current Issue: \(VacuumFormat.issue(raw))")
             }
             ForEach(status.activeConditions, id: \.code) { condition in
                 InfoBox(title: "Home Assistant Condition", message: VacuumStatusResolver.conditionText(condition))

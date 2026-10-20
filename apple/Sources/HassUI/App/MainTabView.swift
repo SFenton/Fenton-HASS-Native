@@ -61,7 +61,7 @@ struct MainTabView: View {
         // A notification's page: also on appear, for a tap that launched the app.
         .onChange(of: push?.pendingRequest, initial: true) { _, request in
             guard let request else { return }
-            navigator.open(request.destination)
+            navigator.open(request.destination, anchor: request.anchor)
             push?.didOpen(request)
         }
         .onChange(of: style) { _, newStyle in
