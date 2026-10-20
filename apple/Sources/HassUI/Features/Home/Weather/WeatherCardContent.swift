@@ -83,52 +83,79 @@ struct WeatherCardContent: View {
 
     // MARK: - Header
 
+    /// The glyph and the reading, one button. The reading never truncates: it keeps its full width (`fixedSize`) and the
+    /// header reflows around it.
+    private func hero(current: WeatherCurrent, night: Bool, stacked: Bool) -> some View {
+        Button { isPresented = true } label: {
+            // Stacked, the glyph sits above the numeral, so "54°" keeps the card's width.
+            let layout = stacked
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.xs))
+                : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.m))
+            layout {
+                WeatherGlyph(condition: current.drawnCondition, night: night, size: glyphSize)
+                Text(current.degreeText)
+                    // Capped: past this a three-digit reading no longer fits the folded Duo's card at AX5.
+                    .font(.system(size: min(numeralSize, Self.maxNumeralSize), weight: .thin))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .frame(minHeight: HassTokens.minTarget)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Self.openLabel(current))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("home.weather.card")
+    }
+
+    private func conditionColumn(alignment: HorizontalAlignment) -> some View {
+        let text: TextAlignment = alignment == .leading ? .leading : .trailing
+        return VStack(alignment: alignment, spacing: 2) {
+            HStack(spacing: HassTokens.Spacing.xs) {
+                Text(currentConditionLabel)
+                    .font(.headline)
+                    .multilineTextAlignment(text)
+                    .fixedSize(horizontal: false, vertical: true)
+                Image(systemName: WeatherSymbols.disclosure)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+            }
+            // The card button already reads the condition.
+            .accessibilityHidden(true)
+            todayRange
+        }
+    }
+
+    private var currentConditionLabel: String {
+        WeatherCurrent(entity: entities.entity(WeatherEntities.weather).state).conditionLabel
+    }
+
+    /// Side by side while the reading and the condition fit on one line; otherwise the condition drops under the reading
+    /// (and wraps there), so no Dynamic Type size can squeeze the temperature into "4…".
     @ViewBuilder
     private func header(current: WeatherCurrent, night: Bool) -> some View {
-        let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
-            : AnyLayout(HStackLayout(alignment: .center, spacing: HassTokens.Spacing.m))
-        layout {
-            Button { isPresented = true } label: {
-                // At accessibility sizes the glyph sits above the numeral, so "54°" keeps the card's width.
-                let hero = typeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.xs))
-                    : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.m))
-                hero {
-                    WeatherGlyph(condition: current.drawnCondition, night: night, size: glyphSize)
-                    Text(current.degreeText)
-                        // Capped: past this a three-digit reading no longer fits the folded Duo's card at AX5.
-                        .font(.system(size: min(numeralSize, Self.maxNumeralSize), weight: .thin))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        // The condition wraps first; the reading never truncates.
-                        .layoutPriority(1)
-                }
-                .frame(minHeight: HassTokens.minTarget)
-                .contentShape(.rect)
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                hero(current: current, night: night, stacked: true)
+                conditionColumn(alignment: .leading)
             }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Self.openLabel(current))
-            .accessibilityAddTraits(.isButton)
-            .accessibilityIdentifier("home.weather.card")
-            if !typeSize.isAccessibilitySize { Spacer(minLength: HassTokens.Spacing.s) }
-            VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 2) {
-                HStack(spacing: HassTokens.Spacing.xs) {
-                    Text(current.conditionLabel)
-                        .font(.headline)
-                        .multilineTextAlignment(typeSize.isAccessibilitySize ? .leading : .trailing)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Image(systemName: WeatherSymbols.disclosure)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
+                    hero(current: current, night: night, stacked: false)
+                    Spacer(minLength: HassTokens.Spacing.s)
+                    conditionColumn(alignment: .trailing).fixedSize(horizontal: true, vertical: false)
                 }
-                // The card button already reads the condition.
-                .accessibilityHidden(true)
-                todayRange
+                VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                    hero(current: current, night: night, stacked: false)
+                    conditionColumn(alignment: .leading)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Today

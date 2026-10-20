@@ -139,7 +139,14 @@ struct RoomPageContent: View {
 
     func cardSheet(_ card: RoomCard) -> some View {
         RoomCardSheet(controller: controller, card: card)
-            .hassSheet(.page, height: .full) // Navigates room to lights to a light
+            // Only a lights card pushes pages (room to lights to a light); occupancy, climate, contacts and item cards fit.
+            .hassSheet(.page, height: Self.pushesPages(controller.sheet(for: card)) ? .full : .fitted)
+    }
+
+    /// Whether a card's sheet navigates deeper: the lights group pushes a light page, so it needs the full height.
+    static func pushesPages(_ content: RoomSheetContent) -> Bool {
+        if case .lights = content { return true }
+        return false
     }
 
     func remoteSheet(_ selection: RemoteSelection) -> some View {

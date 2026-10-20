@@ -29,9 +29,8 @@ struct RemoteAppsTab: View {
     }
 }
 
-/// One app tile (direction G, n4 remote apps and room Quick App Launch): the artwork on a rounded square, the app's
-/// name under it, and "Playing" with a media-pink ring while it runs. Unavailable dims only the artwork, so the
-/// name keeps its contrast.
+/// One app tile (direction G, n4 remote apps and room Quick App Launch): the artwork on a rounded square with no
+/// caption (the accessibility label names it), and "Playing" with a media-pink ring while it runs. Unavailable dims the artwork.
 struct AppTile: View {
     var app: MediaRemoteApp
     var display: MediaRemoteController.AppDisplay
@@ -60,12 +59,6 @@ struct AppTile: View {
                                        lineWidth: display.isActive ? 3 : 1)
                 }
                 .opacity(display.isUnavailable ? 0.4 : 1)
-                Text(app.title)
-                    .font(.subheadline)
-                    // White on a room page's module; the label colour in the remote sheet, in either appearance.
-                    .foregroundStyle(surface == .sheet ? HassTokens.Ink.primary : HassTokens.Ink.onDark)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
                 if display.isActive {
                     Text("Playing")
                         .font(.footnote)

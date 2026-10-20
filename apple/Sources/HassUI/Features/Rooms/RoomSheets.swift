@@ -15,7 +15,8 @@ struct RoomCardSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.l) {
-                    if let subtitle = controller.sheetSubtitle(for: card) {
+                    // Where the nav bar cannot show a subtitle (before iOS 26) it stays in the content.
+                    if !SheetSubtitle.isShown, let subtitle = controller.sheetSubtitle(for: card) {
                         Text(subtitle)
                             .font(.subheadline)
                             .foregroundStyle(HassTokens.Ink.secondary)
@@ -30,6 +31,7 @@ struct RoomCardSheet: View {
             .modalChrome()
             .navigationTitle(controller.sheetTitle(for: card))
             .inlineNavigationTitle()
+            .sheetSubtitle(controller.sheetSubtitle(for: card))
             .toolbar { SheetCloseItem { dismiss() } }
         }
         .accessibilityIdentifier("room.sheet.\(card.sheet ?? card.title)")

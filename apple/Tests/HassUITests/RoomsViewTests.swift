@@ -47,6 +47,26 @@ struct RoomsViewTests {
         }
     }
 
+    @Test func onlyTheLightsCardSheetPushesPagesSoTheRestFit() {
+        let store = EntityStore()
+        store.replaceAll(RoomsFixtures.states)
+        var sawLights = false, sawFitted = false
+        for room in RoomsConfig.pages {
+            let controller = RoomController(page: room, store: store, caller: RecordingCaller())
+            for card in room.allCards where card.sheet != nil {
+                let content = controller.sheet(for: card)
+                if case .lights = content {
+                    sawLights = true
+                    #expect(RoomPageContent.pushesPages(content))
+                } else {
+                    sawFitted = true
+                    #expect(!RoomPageContent.pushesPages(content), "\(room.id) \(card.title)")
+                }
+            }
+        }
+        #expect(sawLights && sawFitted)
+    }
+
     @Test func everyCardSheetRenders() {
         let store = EntityStore()
         store.replaceAll(RoomsFixtures.states)
