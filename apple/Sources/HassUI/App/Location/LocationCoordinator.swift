@@ -5,17 +5,14 @@ import Observation
 import UIKit
 #endif
 
-/// Location reporting for the signed-in session, in shadow mode (`.agents/platforms/apple/location.md`).
+/// Location reporting for the signed-in session (`.agents/platforms/apple/location.md`).
 ///
 /// Phones only: the app creates one only when ``LocationLaunchPolicy`` allows it, never on iPad. It reports to the
-/// app's own `mobile_app` device tracker through the shared registration and links nothing to a person; the
-/// official Home Assistant app stays the household's presence source until this tracker has matched it.
+/// app's own `mobile_app` device tracker through the shared registration; ``MobileAppCoordinator/linkPresence(user:api:)``
+/// puts that tracker on the signed-in user's person.
 ///
-/// - Starts the ``LocationReporter`` once reporting is armed, a webhook exists (this session's sync, or one saved by
-///   an earlier launch) and the permission allows it; stops on sign-out.
-/// - Reporting is off by default, so shadow mode never moves a person whose tracker list still holds this app's
-///   tracker (`presence-inventory.md`). The Account sheet's Location toggle arms it per install
-///   (``setReportingArmed(_:)``, persisted under ``LocationLaunchPolicy/armedKey``).
+/// - Starts the ``LocationReporter`` whenever a webhook exists (this session's sync, or one saved by an earlier
+///   launch) and the permission allows it; there is no separate switch. Stops on sign-out.
 /// - Offers the permission screen once per install, after sign-in.
 /// - A deleted registration (410) syncs once more, which registers again, and reporting resumes on the new webhook.
 @MainActor
@@ -29,9 +26,8 @@ public final class LocationCoordinator {
     /// stage sends people to Settings.
     public private(set) var hasAskedForAlways: Bool
 
-    /// Whether location updates are sent at all; the permission screen works either way. Change it with
-    /// ``setReportingArmed(_:)``.
-    public private(set) var isReportingArmed: Bool
+    /// What the last attempt to put this phone on its person did, for Settings.
+    public var mobileAppPresenceLink: PresenceLinkOutcome? { mobileApp.presenceLink }
 
     @ObservationIgnored private let mobileApp: MobileAppCoordinator
     @ObservationIgnored private let defaults: UserDefaults
@@ -48,23 +44,21 @@ public final class LocationCoordinator {
     ///   - platform: Core Location, or a fake in tests.
     ///   - mobileApp: The shared registration.
     ///   - transport: HTTP to Home Assistant.
-    ///   - isReportingArmed: Send location updates at launch; off leaves only the permission screen.
     ///   - batteryLevel: The battery percentage sent with each update.
     ///   - defaults: Where the once-per-install flags live.
-    public init(platform: any LocationPlatform, mobileApp: MobileAppCoordinator, isReportingArmed: Bool,
+    public init(platform: any LocationPlatform, mobileApp: MobileAppCoordinator,
                 transport: any FeedbackHTTPTransport = URLSessionFeedbackTransport(),
                 batteryLevel: @escaping @MainActor () -> Int? = { nil }, defaults: UserDefaults = .standard) {
         let client = MobileAppWebhookClient(source: mobileApp.webhookSource, transport: transport)
         reporter = LocationReporter(platform: platform, client: client, isPresenceDevice: true, batteryLevel: batteryLevel)
         self.mobileApp = mobileApp
-        self.isReportingArmed = isReportingArmed
         self.defaults = defaults
         hasAskedForAlways = defaults.bool(forKey: Self.askedForAlwaysKey)
         mobileApp.onRegistrationChange { [weak self] registration in
             Task { await self?.registrationChanged(registration) }
         }
-        reporter.onPermissionChange = { [weak self] _ in
-            Task { await self?.startIfReady() }
+        reporter.onPermissionChange = { [weak self] permission in
+            Task { await self?.permissionChanged(permission) }
         }
     }
 
@@ -87,32 +81,23 @@ public final class LocationCoordinator {
         }
     }
 
-    /// Arms or disarms reporting on this install, from the Account sheet's toggle: saves the choice, then starts
-    /// the reporter (when a webhook and permission allow it) or stops it.
-    /// - Parameter armed: Send location updates.
-    /// - Returns: The start or stop, for callers that wait on it (tests); the toggle doesn't.
-    @discardableResult
-    public func setReportingArmed(_ armed: Bool) -> Task<Void, Never> {
-        guard armed != isReportingArmed else { return Task {} }
-        isReportingArmed = armed
-        defaults.set(armed, forKey: LocationLaunchPolicy.armedKey)
-        return Task { [weak self] in
-            guard let self else { return }
-            if armed { await startIfReady() } else { await reporter.stop() }
-        }
-    }
-
-    /// ``isReportingArmed`` as a writable property, for the Account sheet's toggle (`$location.armsReporting`).
-    public var armsReporting: Bool {
-        get { isReportingArmed }
-        set { setReportingArmed(newValue) }
-    }
-
     /// Whether a webhook exists to send to.
     private var hasWebhook: Bool { mobileApp.registration != nil || mobileApp.savedWebhookExists }
 
+    /// Off (denied, restricted, or no longer precise enough to say home): stop and take the phone off its person so
+    /// it doesn't hold a stale "home". On: start at once (a fresh update, zones again) and put it back on.
+    func permissionChanged(_ permission: LocationPermission) async {
+        if permission.isAuthorized {
+            await startIfReady()
+            await mobileApp.locationRestored()
+        } else {
+            await reporter.stop()
+            await mobileApp.locationWithdrawn()
+        }
+    }
+
     func startIfReady() async {
-        guard isReportingArmed, hasWebhook, reporter.permission.isAuthorized, !reporter.isRunning else { return }
+        guard hasWebhook, reporter.permission.isAuthorized, !reporter.isRunning else { return }
         await reporter.start()
         await recoverIfGone()
     }
@@ -169,8 +154,7 @@ public extension LocationCoordinator {
     /// the main thread, so a relaunch for a zone event reopens the zone monitor.
     static func system(mobileApp: MobileAppCoordinator) -> LocationCoordinator {
         UIDevice.current.isBatteryMonitoringEnabled = true
-        return LocationCoordinator(platform: CoreLocationPlatform(), mobileApp: mobileApp,
-                                   isReportingArmed: LocationLaunchPolicy.isReportingArmed(), batteryLevel: {
+        return LocationCoordinator(platform: CoreLocationPlatform(), mobileApp: mobileApp, batteryLevel: {
             let level = UIDevice.current.batteryLevel
             return level < 0 ? nil : Int((level * 100).rounded())
         })

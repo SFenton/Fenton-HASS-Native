@@ -35,6 +35,8 @@ struct HomeAssistantSettingsView: View {
     @State private var user: HassUser?
     @State private var userError = false
     @State private var confirmsSignOut = false
+    @State private var signOutFailed = false
+    @State private var isSigningOut = false
     @State private var path: [WebPage] = []
 
     /// Creates the modal; `user` seeds the account rows (hosted tests and previews).
@@ -112,6 +114,9 @@ struct HomeAssistantSettingsView: View {
                 .foregroundStyle(Self.destructiveInk)
                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 .accessibilityIdentifier("haSettings.signOut")
+                .alert("Sign Out couldn't complete. Try again.", isPresented: $signOutFailed) {
+                    Button("OK", role: .cancel) {}
+                }
                 .confirmationDialog(
                     "Sign out of Home Assistant?",
                     isPresented: $confirmsSignOut,
@@ -175,8 +180,17 @@ struct HomeAssistantSettingsView: View {
     }
 
     private func signOut() {
-        dismiss()
-        session.signOut()
+        guard !isSigningOut else { return }
+        isSigningOut = true
+        Task {
+            defer { isSigningOut = false }
+            do {
+                try await session.confirmedSignOut()
+                dismiss()
+            } catch {
+                signOutFailed = true
+            }
+        }
     }
 
     // MARK: - Formatting (unit-tested)

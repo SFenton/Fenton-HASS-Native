@@ -42,3 +42,9 @@ extension HassConnection {
         }
     }
 }
+
+extension HassConnection: HassCommandSending {
+    public func command(_ type: String, data: [String: any Sendable]) async throws -> JSONValue {
+        try await requestJSON(type, data: data)
+    }
+}
