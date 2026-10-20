@@ -60,7 +60,7 @@ Owner, 2026-10-18: "make sure background color changes are animated, and that ev
 | `RoomOverviewTile`, `AirQualityRoomTile` | active, AQI tint | Through `GlassTile` | Inherits | `GlassTileFace` | — |
 | `LightGroupTile` | on/off, rgb | Dimmable via `BrightnessTile`; the other branch via `GlassTile` | Inherits | `GlassTileFace` | — |
 | `NavigationFlyout` | open | Spring 0.3 | OK, move to token | `standard` | existing |
-| `ProfileButton` | name known, attention count | Badge appears instantly | Fix | Badge opacity `quick` (header lane owns the layout) | `ProfileButtonTests` |
+| `ProfileButton` | name known, attention count | Badge appears instantly | Fix | Badge colour fade via shared `stateColorTransition` (pending: PR #122 not yet on main; opacity `quick` until then); header lane owns the layout | `ProfileButtonTests` |
 | `QuickLinksButton` | none | — | Static | — | — |
 
 ## Features

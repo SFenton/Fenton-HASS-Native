@@ -60,6 +60,10 @@ final class HeaderButtonsJourneyTests: JourneyTestCase {
         !isUnfolded(app) && abs(app.buttons["quickLinks.open"].frame.midY - app.buttons["nav.profile"].frame.midY) < 12
     }
 
+    /// The expected gap between Quick Links and Profile: 12 pt on iOS 27, 16 pt on iOS 26.5, where the bar gives a hidden-glass
+    /// custom view a cell 8 pt wider (direction-g.md, "iOS 26.5 differs").
+    private var expectedGap: CGFloat { ProcessInfo.processInfo.isOperatingSystemAtLeast(OperatingSystemVersion(majorVersion: 27, minorVersion: 0, patchVersion: 0)) ? 12 : 16 }
+
     private func lastAction(_ app: XCUIApplication) -> String {
         app.staticTexts["gallery.lastCall"].firstMatch.label.replacingOccurrences(of: "Last action: ", with: "")
     }
@@ -106,8 +110,8 @@ final class HeaderButtonsJourneyTests: JourneyTestCase {
         guard let glass = measured.glass.last(where: { $0.upperBound <= disc.minX + 1 }) else { return XCTFail("No Quick Links glass") }
         XCTAssertEqual(glass.upperBound - glass.lowerBound, 44, accuracy: 1, "Quick Links' glass is not a 44 pt circle")
         let gap = disc.minX - glass.upperBound
-        XCTAssertEqual(gap, 12, accuracy: 1.5, "The gap between Quick Links and Profile is \(gap) pt")
-        XCTAssertLessThanOrEqual(gap, 14)
+        XCTAssertEqual(gap, expectedGap, accuracy: 1.5, "The gap between Quick Links and Profile is \(gap) pt")
+        XCTAssertLessThanOrEqual(gap, expectedGap + 2)
         // No glass ring: nothing but the disc (and its badge) is drawn right of it.
         XCTAssertNil(measured.glass.first { $0.lowerBound > disc.maxX - 1 }, "Something is drawn past the disc")
     }
@@ -136,6 +140,8 @@ final class HeaderButtonsJourneyTests: JourneyTestCase {
             // Tap the other button first so a miss cannot pass on the previous value.
             tap(expected == "profile" ? linksX : disc.midX, y, in: app)
             XCTAssertNotEqual(lastAction(app), expected)
+            // On iOS 26.5 Quick Links' system item answers taps only nearer its centre (a known departure; only Profile left/right are asserted there).
+            if expectedGap != 12, !(name.hasPrefix("Profile") && (name.hasSuffix("left") || name.hasSuffix("right"))) { continue }
             tap(x, yy, in: app)
             XCTAssertEqual(lastAction(app), expected, "\(name): a tap 19 pt from the centre did not reach the button")
         }
@@ -154,7 +160,7 @@ final class HeaderButtonsJourneyTests: JourneyTestCase {
         guard let disc = measured.disc else { return XCTFail("No monogram disc at AX5") }
         XCTAssertEqual(disc.width, 44, accuracy: 1, "The disc grew with text size")
         guard let glass = measured.glass.last(where: { $0.upperBound <= disc.minX + 1 }) else { return XCTFail("No Quick Links glass") }
-        XCTAssertEqual(disc.minX - glass.upperBound, 12, accuracy: 1.5)
+        XCTAssertEqual(disc.minX - glass.upperBound, expectedGap, accuracy: 1.5)
     }
 
     // MARK: - Unnamed profile
