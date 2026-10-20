@@ -27,6 +27,7 @@ struct YourSummarySheet: View {
     /// The tab the reader picked, or the one the sheet was asked to open on; nil until then (the viewer decides the default).
     @State private var requested: SummaryTab?
     @State private var confirmsSignOut = false
+    @State private var signOutFailed = false
     @State private var showsLocationPermission = false
 
     /// - Parameter opening: The tab to open on, when it is not the viewer's default (tests and the gallery).
@@ -63,6 +64,10 @@ struct YourSummarySheet: View {
                         LocationPermissionSheet(location: location) { showsLocationPermission = false }
                     }
                 }
+                .alert("Sign Out couldn't complete. Try again.", isPresented: $signOutFailed) {
+                    Button("OK", role: .cancel) {}
+                        .accessibilityIdentifier("account.signOut.failed.ok")
+                }
                 .alert("Sign Out of Home Assistant?", isPresented: $confirmsSignOut) {
                     Button("Sign Out", role: .destructive) { signOut() }
                         .accessibilityIdentifier("account.signOut.confirm")
@@ -77,7 +82,14 @@ struct YourSummarySheet: View {
     }
 
     private func signOut() {
-        dismiss()
-        session?.signOut()
+        guard let session else { return }
+        Task {
+            do {
+                try await session.confirmedSignOut()
+                dismiss()
+            } catch {
+                signOutFailed = true
+            }
+        }
     }
 }

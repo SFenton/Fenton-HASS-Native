@@ -99,4 +99,84 @@ struct MobileAppCoordinatorTests {
         #expect(!mobileApp.setPushToken("ab"))
         #expect(mobileApp.setPushToken("cd"))
     }
+
+    @Test func linksThePersonOncePerRegistrationAndRetriesWhileUnlinked() async {
+        let transport = StubHTTPTransport([(404, ""), (201, #"{"webhook_id":"w1"}"#), (200, "{}")])
+        let mobileApp = MobileAppCoordinator(device: device, store: InMemoryMobileAppRegistrationStore(), transport: transport)
+        let user = HassUser(id: "u1", name: "Stephen", isOwner: false, isAdmin: true)
+        let api = LinkAPI()
+        await mobileApp.linkPresence(user: user, api: api)
+        #expect(api.calls == 0 && mobileApp.presenceLink == nil, "nothing before a registration")
+
+        mobileApp.sessionStarted(server: server) { "token" }
+        _ = mobileApp.begin(userID: "u1", userName: nil)
+        await mobileApp.sync()
+        api.trackerExists = false
+        await mobileApp.linkPresence(user: user, api: api)
+        #expect(mobileApp.presenceLink == .trackerMissing)
+        api.trackerExists = true
+        await mobileApp.linkPresence(user: user, api: api)
+        #expect(mobileApp.presenceLink == .linked(person: "Stephen"))
+        let calls = api.calls
+        await mobileApp.linkPresence(user: user, api: api)
+        #expect(api.calls == calls, "a linked registration isn't linked again")
+
+        await mobileApp.sessionEnded()
+        #expect(mobileApp.presenceLink == nil)
+    }
+}
+
+@MainActor
+private final class LinkAPI: HassCommandSending {
+    var trackerExists = true
+    var calls = 0
+    func command(_ type: String, data: [String: any Sendable]) async throws -> JSONValue {
+        calls += 1
+        switch type {
+        case "config/entity_registry/list":
+            return .array(trackerExists ? [.object(["platform": .string("mobile_app"), "unique_id": .string("w1"),
+                                                    "entity_id": .string("device_tracker.x")])] : [])
+        case "person/list":
+            return .object(["storage": .array([.object(["id": .string("p"), "name": .string("Stephen"), "user_id": .string("u1"),
+                                                        "device_trackers": .array([])])])])
+        default: return .null
+        }
+    }
+}
+
+@MainActor
+struct PresenceLifecycleTests {
+    @Test func withdrawnUnlinksAndRestoredRelinks() async {
+        let transport = StubHTTPTransport([(404, ""), (201, #"{"webhook_id":"w1"}"#)])
+        let mobileApp = MobileAppCoordinator(device: device, store: InMemoryMobileAppRegistrationStore(), transport: transport)
+        let api = TrackerAPI()
+        mobileApp.sessionStarted(server: server) { "t" }
+        _ = mobileApp.begin(userID: "u1", userName: nil)
+        await mobileApp.sync()
+        await mobileApp.linkPresence(user: HassUser(id: "u1", name: nil, isOwner: false, isAdmin: true), api: api)
+        #expect(api.trackers == ["device_tracker.x"])
+        await mobileApp.locationWithdrawn()
+        #expect(api.trackers.isEmpty)
+        await mobileApp.locationRestored()
+        #expect(api.trackers == ["device_tracker.x"])
+        await mobileApp.locationWithdrawn()
+        await mobileApp.locationWithdrawn()
+        #expect(api.trackers.isEmpty, "removing twice is fine")
+    }
+}
+
+@MainActor
+private final class TrackerAPI: HassCommandSending {
+    var trackers: [String] = []
+    func command(_ type: String, data: [String: any Sendable]) async throws -> JSONValue {
+        switch type {
+        case "config/entity_registry/list":
+            return .array([.object(["platform": .string("mobile_app"), "unique_id": .string("w1"), "entity_id": .string("device_tracker.x")])])
+        case "person/list":
+            return .object(["storage": .array([.object(["id": .string("p"), "name": .string("S"), "user_id": .string("u1"),
+                                                        "device_trackers": .array(trackers.map(JSONValue.string))])])])
+        case "person/update": trackers = data["device_trackers"] as? [String] ?? []; return .null
+        default: return .null
+        }
+    }
 }

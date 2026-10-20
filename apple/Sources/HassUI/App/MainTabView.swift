@@ -78,6 +78,8 @@ struct MainTabView: View {
         }
         // Again once connected: a lookup before the socket is up fails, and the cached name stays meanwhile.
         .task(id: isConnected) { await loadProfileName() }
+        // Home Assistant creates the phone's tracker on its first location update, so link again once one is accepted.
+        .task(id: location?.reporter.lastReportDate != nil) { await linkPresenceAfterReport() }
         // The app icon shows the Profile button's count (`.agents/platforms/apple/badge.md`).
         .task(id: IconBadgeKey(count: ShellAttention.count(store: store, viewerUserId: viewerUserId), enabled: showsIconBadge)) {
             await AppIconBadgeSync.shared.update(count: ShellAttention.count(store: store, viewerUserId: viewerUserId))
@@ -145,6 +147,13 @@ struct MainTabView: View {
         return false
     }
 
+    /// Tries the person link again after the first location update, when the first attempt found no tracker yet.
+    private func linkPresenceAfterReport() async {
+        guard let connection, let location, location.reporter.lastReportDate != nil,
+              push?.mobileApp.presenceLink?.isLinked != true, let user = try? await connection.currentUser() else { return }
+        await push?.mobileApp.linkPresence(user: user, api: connection)
+    }
+
     /// Reads the signed-in user for the profile button (the cached name shows until it arrives) and for the
     /// `mobile_app` registration, which is per Home Assistant user; then offers location once the notification
     /// alert is answered, so the two never stack.
@@ -155,6 +164,9 @@ struct MainTabView: View {
         // the Chores model reads and writes the same key.
         UserDefaults.standard.set(user.id, forKey: ChoresModel.viewerDefaultsKey)
         await push?.didConnect(userID: user.id, userName: user.name)
+        // A phone that reports location follows its signed-in user: its tracker goes on that user's person. An iPad
+        // never does (one left at home would mark its person home).
+        if location != nil { await push?.mobileApp.linkPresence(user: user, api: connection) }
         location?.offerPermissionIfNeeded()
     }
 }
