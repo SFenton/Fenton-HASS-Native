@@ -108,16 +108,6 @@ struct ShellHeaderItems: ToolbarContent {
     }
 }
 
-/// How the two header buttons group (pure, so it is unit tested).
-enum ShellHeaderGrouping: Equatable {
-    /// Two separate glass circles with a 12 pt gap: the iPhone top bar and iPad.
-    case twoCircles
-    /// One shared glass blob: the iPhone Duo's vertical rail (owner, 2026-10-20).
-    case oneGroup
-
-    static func resolve(inVerticalBar: Bool) -> ShellHeaderGrouping { inVerticalBar ? .oneGroup : .twoCircles }
-}
-
 /// The Profile bar item: hides the bar's shared glass while the monogram is its own disc (iOS 26), and keeps the
 /// system glass behind the person symbol.
 private struct ProfileHeaderItem: ToolbarContent {
