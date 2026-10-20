@@ -10,6 +10,7 @@
 | Add or change a control | [skills/add-control](skills/add-control/SKILL.md) |
 | Touch shared behavior (grids, tiles, chips, sheets) | [patterns/README.md](patterns/README.md), then [audit/README.md](audit/README.md) for known duplicates |
 | Restyle a screen, tile, chip, sheet or spinner | [design/direction-g.md](design/direction-g.md), build order in [design/direction-g-plan.md](design/direction-g-plan.md) |
+| Add or change any animation, transition, navigation path, sheet or loading state | [design/motion.md](design/motion.md) (when to animate and when not), components in [patterns/motion.md](patterns/motion.md) |
 | The app icon or its alternates (Settings → App Icon) | [design/direction-g.md](design/direction-g.md) (App icon); regenerate the PNGs with `tools/render_app_icons.sh` |
 | A design choice the owner hasn't made | [skills/design-decision](skills/design-decision/SKILL.md) |
 | Write or review SwiftUI | [.claude/skills/swiftui-pro](../.claude/skills/swiftui-pro/SKILL.md), applied per [workflow/swiftui-pro.md](workflow/swiftui-pro.md) |
