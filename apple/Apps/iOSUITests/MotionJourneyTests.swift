@@ -98,34 +98,53 @@ final class MotionJourneyTests: JourneyTestCase {
         for id in Self.componentIDs { toggle(id, in: app) }
     }
 
+    /// Back to the top of the page, where the bar item is in the accessibility tree.
+    private func scrollToTop(_ app: XCUIApplication) {
+        let scroll = app.scrollViews.firstMatch
+        let first = app.buttons["motion.toggle.\(Self.componentIDs[0])"]
+        for _ in 0..<40 where !first.isHittable { scroll.swipeDown(velocity: .fast) }
+        XCTAssertTrue(first.isHittable, "The top of the page is not reachable")
+    }
+
+    /// One pass down the page from the top: each component is visited once, as it scrolls into reach.
+    private func sweep(_ app: XCUIApplication, _ visit: (String) -> Void) {
+        let scroll = app.scrollViews.firstMatch
+        var pending = Self.componentIDs
+        var swipes = 0
+        while !pending.isEmpty {
+            let here = pending.filter { app.buttons["motion.toggle.\($0)"].isHittable }
+            for id in here { visit(id) }
+            pending.removeAll { here.contains($0) }
+            if pending.isEmpty { break }
+            swipes += 1
+            if swipes > 60 { XCTFail("Not reachable: \(pending)"); return }
+            scroll.swipeUp(velocity: .default)
+        }
+    }
+
     func testToggleAllFlipsEveryComponentAndMovesNothing() {
         for reduceMotion in [false, true] {
             let app = launch(reduceMotion: reduceMotion)
             func component(_ id: String) -> XCUIElement { app.descendants(matching: .any)["motion.component.\(id)"].firstMatch }
-            // Off-screen components are not in the accessibility tree, so each is scrolled to before it is read, down the page, up
-            // it, and down again. Scrolling moves positions, so the sizes are what must hold still.
+            // Off-screen components are not in the accessibility tree, so each is read as it scrolls into reach, in one pass down
+            // the page per state. Scrolling moves positions, so the sizes are what must hold still.
             var sizes: [String: CGSize] = [:]
-            for id in Self.componentIDs {
-                reveal(app.buttons["motion.toggle.\(id)"], in: app)
-                sizes[id] = component(id).frame.size
+            sweep(app) { sizes[$0] = component($0).frame.size }
+            // The bar item drops out of the accessibility tree at the foot of the page, so it is read and tapped from the top.
+            func tapAll() {
+                scrollToTop(app)
+                let all = app.descendants(matching: .any)["motion.toggleAll"].firstMatch
+                XCTAssertTrue(all.waitForExistence(timeout: 5), "Toggle all is not in the bar")
+                all.tap()
             }
-            // The bar item drops out of the accessibility tree once the page has been scrolled to the foot (the tree then shows an
-            // empty Toolbar), so the page goes back to the top, where the bar is whole, before the button is read.
-            reveal(app.buttons["motion.toggle.\(Self.componentIDs[0])"], in: app)
-            let all = app.descendants(matching: .any)["motion.toggleAll"].firstMatch
-            XCTAssertTrue(all.waitForExistence(timeout: 5), "Toggle all is not in the bar")
-            all.tap()
-            for id in Self.componentIDs.reversed() {
-                reveal(app.buttons["motion.toggle.\(id)"], in: app)
+            tapAll()
+            sweep(app) { id in
                 waitForValue(component(id), "On")
                 XCTAssertEqual(component(id).frame.size.width, sizes[id]?.width ?? 0, accuracy: 0.5, "\(id) changed width")
                 XCTAssertEqual(component(id).frame.size.height, sizes[id]?.height ?? 0, accuracy: 0.5, "\(id) changed height")
             }
-            all.tap()
-            for id in Self.componentIDs {
-                reveal(app.buttons["motion.toggle.\(id)"], in: app)
-                waitForValue(component(id), "Off")
-            }
+            tapAll()
+            sweep(app) { waitForValue(component($0), "Off") }
         }
     }
 
