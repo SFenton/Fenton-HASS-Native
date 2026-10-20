@@ -229,9 +229,14 @@ struct HouseBackdrop: View {
     @Environment(HouseBackdropStore.self) private var store: HouseBackdropStore?
     @Environment(\.backdropCanvas) private var canvas
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.homeArrival) private var arrival
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
+        // After a sign-in the photo fades in from 1.06 to 1 as the sign-in layer lifts away (`HomeArrival`); otherwise it is
+        // already there. Reduce Motion cross-fades without the scale.
+        let arrived = arrival?.isRevealed ?? true
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 HouseBackdropStyle.base
@@ -243,9 +248,11 @@ struct HouseBackdrop: View {
                         .aspectRatio(contentMode: .fill)
                         .frame(width: size.width, height: size.height)
                         // Shift by this page's window position without re-running the body each transition frame.
+                        // A page sliding out has a negative position; see `shift`.
                         .visualEffect { content, proxy in
                             let origin = proxy.frame(in: .global).origin
-                            return content.offset(x: -origin.x, y: -origin.y)
+                            let shift = HouseBackdropStyle.shift(origin: origin)
+                            return content.offset(x: -shift.x, y: -shift.y)
                         }
                         .transition(.opacity)
                     HouseBackdropStyle.scrimView(increasedContrast: contrast == .increased)
@@ -257,6 +264,9 @@ struct HouseBackdrop: View {
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+        .scaleEffect(arrived || reduceMotion ? 1 : MotionTokens.Arrival.backdropScale)
+        .opacity(arrived ? 1 : 0)
+        .animation(reduceMotion ? MotionTokens.crossFade : MotionTokens.Arrival.backdrop, value: arrived)
         .motionSafeAnimation(MotionTokens.standard, reduced: MotionTokens.quick, value: store?.image != nil)
     }
 }
@@ -265,6 +275,13 @@ struct HouseBackdrop: View {
 enum HouseBackdropStyle {
     /// Under the photo, and the whole backdrop with Reduce Transparency: the web shell's `#111723`.
     static let base = Color(red: 17 / 255, green: 23 / 255, blue: 35 / 255)
+
+    /// The page's window position the photo is shifted by: `origin` with negative values held at zero. A page sliding
+    /// out (the outgoing page of a push moves left, partly off screen) has a negative origin, and shifting the photo
+    /// by it pulled the photo off the edge that still shows, leaving a strip of plain base color (a black flash).
+    static func shift(origin: CGPoint) -> CGPoint {
+        CGPoint(x: max(origin.x, 0), y: max(origin.y, 0))
+    }
 
     /// How far the photo is magnified past the window, so the blur's soft edges stay off screen. Baked into the render
     /// (``BackdropRenderSpec/scale``), not applied by the view.

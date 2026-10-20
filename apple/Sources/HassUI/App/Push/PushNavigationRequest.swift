@@ -8,4 +8,12 @@ public struct PushNavigationRequest: Equatable, Sendable {
     public var id: Int
     /// The page.
     public var destination: PushDestination
+    /// The link's `#anchor`: the sheet to open on the page (a room card's `sheet`), or nil.
+    public var anchor: String?
+
+    public init(id: Int, destination: PushDestination, anchor: String? = nil) {
+        self.id = id
+        self.destination = destination
+        self.anchor = anchor
+    }
 }

@@ -4,7 +4,7 @@
 
 ```bash
 cd apple
-swift test                  # Core, Design and hosted UI tests on the macOS host
+swift test                  # Core, Design and hosted UI tests on the Mac host (test runner only; macOS is not a supported platform, so never build or run the app for Mac)
 xcodegen generate           # regenerates FentonHome.xcodeproj from project.yml (the project file is git-ignored)
 xcodebuild -project FentonHome.xcodeproj -scheme FentonHome -destination 'platform=iOS Simulator,name=iPhone 16 Pro' build
 ```

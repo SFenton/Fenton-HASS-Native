@@ -73,13 +73,16 @@ public struct ModuleList<Content: View>: View {
 
 /// A module's share of one row, for a real `List` whose rows need system swipe actions (a `ScrollView` can't have them
 /// before iOS 27): the density's tint with the module's corners rounded on the first row's top and the last row's bottom,
-/// so the rows read as one inset card (`.listRowBackground(ModuleRowBackground(...))`). Pair it with
+/// so the rows read as one inset card (`.listRowBackground(ModuleRowBackground(...))`). In a sheet
+/// (``SwiftUICore/EnvironmentValues/tileSurface`` is `.sheet`) the card is the sheet's cell colour instead, like
+/// ``ModuleList``, so the same rows serve a page and a sheet. Pair it with
 /// ``SwiftUICore/View/moduleRowSeparator(isFirst:inset:)`` for the hairline.
 public struct ModuleRowBackground: View {
     private let density: ModuleDensity
     private let isFirst: Bool
     private let isLast: Bool
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.tileSurface) private var surface
 
     /// Creates a row background.
     /// - Parameters:
@@ -100,7 +103,7 @@ public struct ModuleRowBackground: View {
             topLeadingRadius: isFirst ? radius : 0, bottomLeadingRadius: isLast ? radius : 0,
             bottomTrailingRadius: isLast ? radius : 0, topTrailingRadius: isFirst ? radius : 0, style: .continuous
         )
-        .fill(ModuleBackground.tint(density, reduceTransparency: reduceTransparency))
+        .fill(surface == .sheet ? HassTokens.Surface.sheetCell : ModuleBackground.tint(density, reduceTransparency: reduceTransparency))
     }
 }
 

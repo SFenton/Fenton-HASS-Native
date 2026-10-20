@@ -10,7 +10,7 @@ Requires Xcode 27.1+ (iPhone Duo SDK) and [XcodeGen](https://github.com/yonaskol
 
 ```bash
 cd apple
-swift test                 # HassCore and HassDesign unit tests (macOS host)
+swift test                 # HassCore and HassDesign unit tests (runs on the Mac host only as a test runner; macOS is not a supported app platform)
 xcodegen generate          # writes FentonHome.xcodeproj
 open FentonHome.xcodeproj  # run the FentonHome scheme on an iPhone or iPad simulator
 ```

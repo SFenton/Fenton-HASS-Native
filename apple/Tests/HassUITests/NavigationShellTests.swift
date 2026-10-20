@@ -207,6 +207,56 @@ struct ShellChromeTests {
         #expect(ImageRenderer(content: ProfileButton(name: "Stephen Fenton") {}).cgImage != nil)
         #expect(ImageRenderer(content: ProfileButton(name: nil) {}).cgImage != nil)
         #expect(ImageRenderer(content: ProfileButton(name: "Stephen Fenton", attentionCount: 12) {}).cgImage != nil)
+        #expect(ImageRenderer(content: ProfileButton(name: nil, attentionCount: 3) {}).cgImage != nil)
+    }
+
+    // MARK: Profile presentation (owner, 2026-10-18, option A)
+
+    @Test func aKnownNameIsAMonogramAndNoNameIsTheSymbol() {
+        #expect(ProfileButton.Presentation.resolve(name: "Stephen Fenton") == .monogram("SF"))
+        #expect(ProfileButton.Presentation.resolve(name: "steph") == .monogram("S"))
+        #expect(ProfileButton.Presentation.resolve(name: nil) == .symbol)
+        #expect(ProfileButton.Presentation.resolve(name: "") == .symbol)
+        #expect(ProfileButton.Presentation.resolve(name: "  ") == .symbol)
+    }
+
+    @Test func theMonogramHidesTheBarsGlassAndTheSymbolKeepsIt() {
+        #expect(ProfileButton.Presentation.monogram("SF").sharedBackground == .hidden)
+        #expect(ProfileButton.Presentation.symbol.sharedBackground == .automatic)
+    }
+
+    @Test func theLiquidGlassDiscIs44PointsAndOverhangsTheHiddenGlassPadding() {
+        let metrics = ProfileButton.Metrics.resolve(liquidGlassBar: true)
+        #expect(metrics.diameter == HassTokens.minTarget)
+        #expect(metrics.diameter == 44)
+        #expect(metrics.overhang == ProfileButton.Metrics.hiddenGlassPadding)
+        #expect(!metrics.ringed, "no glass ring around the disc")
+        // The layout width plus the bar's padding on each side is exactly the glass circle's 44 pt.
+        #expect(metrics.diameter - 2 * metrics.overhang + 2 * ProfileButton.Metrics.hiddenGlassPadding == metrics.diameter)
+    }
+
+    @Test func beforeLiquidGlassTheDiscKeepsTodaysLookInsideTheMaterialCircle() {
+        let metrics = ProfileButton.Metrics.resolve(liquidGlassBar: false)
+        #expect(metrics.diameter == 32)
+        #expect(metrics.overhang == 0)
+        #expect(metrics.ringed)
+        #expect(metrics.diameter < HassTokens.minTarget, "the 44 pt material circle is the target, not the disc")
+    }
+
+    @Test func theRunningSystemResolvesToTheLiquidGlassMetrics() {
+        // The test host runs a system with Liquid Glass (macOS 26+); an older host draws the classic metrics.
+        if #available(macOS 26.0, iOS 26.0, *) {
+            #expect(ProfileButton.Metrics.current == ProfileButton.Metrics.resolve(liquidGlassBar: true))
+        } else {
+            #expect(ProfileButton.Metrics.current == ProfileButton.Metrics.resolve(liquidGlassBar: false))
+        }
+    }
+
+    @Test func theMonogramKeepsWhiteOnTheBlueAbove4Point5() {
+        // WCAG relative luminance of the fixed fill under white initials (16 pt semibold is not large text).
+        func linear(_ channel: Double) -> Double { channel <= 0.03928 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4) }
+        let fill = 0.2126 * linear(0.0) + 0.7152 * linear(0.40) + 0.0722 * linear(0.80)
+        #expect(1.05 / (fill + 0.05) >= 4.5)
     }
 
     @Test func profileButtonSpeaksWhoAndWhatNeedsAttention() {

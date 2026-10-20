@@ -22,6 +22,9 @@ struct InventoryRow: View {
 
     @ScaledMetric(relativeTo: .body) private var buttonSize: CGFloat = 44
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The page's module is dark; in a sheet (the Summary's Expired Food tab) the card is the sheet's cell and the
+    /// secondary ink follows the sheet.
+    @Environment(\.tileSurface) private var surface
 
     var body: some View {
         let batches = model.batches(for: item).count
@@ -87,7 +90,7 @@ struct InventoryRow: View {
                     .font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .foregroundStyle(InventoryTone.color(tone))
+            .foregroundStyle(InventoryTone.color(tone, surface: surface))
             if let error = model.rowErrors[item.id] {
                 Text(error)
                     .font(.footnote)
@@ -106,7 +109,7 @@ struct InventoryRow: View {
         if let quantity = item.shownQuantity {
             Text(InventoryFormat.quantity(quantity))
                 .font(.body.monospacedDigit())
-                .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+                .foregroundStyle(surface.secondaryInk)
                 .padding(.trailing, HassTokens.Spacing.xs)
                 .accessibilityHidden(true)
         }
@@ -129,7 +132,7 @@ struct InventoryRow: View {
                 Button(action: onEdit) {
                     Image(systemName: "chevron.forward")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+                        .foregroundStyle(surface.secondaryInk)
                         .frame(width: buttonSize, height: buttonSize)
                         .contentShape(Rectangle())
                 }
@@ -175,11 +178,12 @@ struct InventoryRowBackground: View {
     var isFirst: Bool
     var isLast: Bool
     var selected: Bool
+    @Environment(\.tileSurface) private var surface
 
     var body: some View {
         let radius = HassTokens.Radius.module
-        Color.clear
-            .module(.dense, cornerRadius: 0)
+        // The dense module on the wallpaper, the sheet's cell colour in a sheet (as ``ModuleRowBackground`` does).
+        ground
             .overlay {
                 HassTokens.Ink.action.opacity(selected ? 0.18 : 0)
                     .stateColorTransition("InventoryRow", value: selected)
@@ -189,16 +193,25 @@ struct InventoryRowBackground: View {
                 bottomTrailingRadius: isLast ? radius : 0, topTrailingRadius: isFirst ? radius : 0, style: .continuous
             ))
     }
+
+    @ViewBuilder
+    private var ground: some View {
+        if surface == .sheet {
+            HassTokens.Surface.sheetCell
+        } else {
+            Color.clear.module(.dense, cornerRadius: 0)
+        }
+    }
 }
 
 /// Expiry tone colours: G's orange `#FFB340` (soon) and red `#FF6961` (expired) on dark, from ``HassTokens/Ink``, which
 /// keep 4.5:1 on the dense module and in sheets. A glyph carries the tone too, so colour isn't the only cue.
 enum InventoryTone {
-    static func color(_ tone: ExpiryInfo.Tone?) -> Color {
+    static func color(_ tone: ExpiryInfo.Tone?, surface: TileSurface = .page) -> Color {
         switch tone {
         case .expired: HassTokens.Ink.error
         case .soon: HassTokens.Ink.warning
-        case nil: HassTokens.Surface.secondaryOnModule
+        case nil: surface.secondaryInk
         }
     }
 

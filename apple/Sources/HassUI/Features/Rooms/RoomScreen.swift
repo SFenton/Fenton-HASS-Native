@@ -107,6 +107,8 @@ struct RoomPageContent: View {
                content: remoteSheet)
         .sheet(isPresented: $showsQuickLinks, onDismiss: quickLinksDismissed, content: quickLinksSheet)
         .sheet(item: $deviceModal, onDismiss: deviceSheetDismissed, content: deviceSheet)
+        .task { openLinkedSheet() }
+        .onChange(of: shellNavigator?.pendingSheet) { openLinkedSheet() }
         .onChange(of: viewerIsAdmin, initial: true) { _, isAdmin in bedroom?.wakeLight.canEdit = isAdmin }
         .homeRouteDestination($route)
     }
@@ -151,6 +153,13 @@ struct RoomPageContent: View {
         RoomDeviceModalSheet(modal: modal, store: controller.store, caller: controller.caller, connection: connection) { side in
             if let bedroom { queuedModal = .bed(bedroom, side: side, tab: .alarms) }
         }
+    }
+
+    /// Opens the card a link's `#anchor` names (a Live Activity tap on a vacuum opens its sheet).
+    func openLinkedSheet() {
+        guard let anchor = shellNavigator?.takeSheet(forPage: page.id),
+              let card = page.allCards.first(where: { $0.sheet == anchor }) else { return }
+        open(card)
     }
 
     /// Opens a sheet queued while the last one was closing.
@@ -227,6 +236,14 @@ struct RoomSectionView: View {
     var bedroom: BedroomDevices?
     var onOpen: (RoomCard) -> Void
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    /// Whether a lead row's lead card joins the two-column grid instead of spanning the page: a bathroom fan at regular
+    /// width (owner, 2026-10-17: a 1,300 pt tile on iPad). On a phone the fan keeps its full-width lead row, which is
+    /// what gives its text, two buttons and chevron room.
+    static func leadJoinsGrid(_ section: RoomSection, regularWidth: Bool) -> Bool {
+        regularWidth && section.cards.first?.control == .bathroomFan
+    }
 
     /// App launchers, and a page's only section, span both section columns (web `ResponsiveSectionItem span`).
     static func isFullWidth(_ section: RoomSection, sectionCount: Int) -> Bool {
@@ -245,6 +262,8 @@ struct RoomSectionView: View {
                 grid(section.cards)
             case .twoColumnFill:
                 grid(section.cards, columns: 2)
+            case .leadRow where Self.leadJoinsGrid(section, regularWidth: sizeClass == .regular):
+                grid(section.cards, columns: 2, spansPage: false)
             case .leadRow:
                 if let lead = section.cards.first {
                     card(lead)
@@ -265,10 +284,10 @@ struct RoomSectionView: View {
     /// width, so they reflow to one column at accessibility sizes (a fixed two columns clipped single long words such
     /// as "Humidifier" at AX5 on iPad, HIG: Typography). Tiles in a grid share one height, set by the tallest
     /// (direction G, Controls: Tiles).
-    private func grid(_ cards: [RoomCard], columns: Int? = nil) -> some View {
+    private func grid(_ cards: [RoomCard], columns: Int? = nil, spansPage: Bool = true) -> some View {
         DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: columns ?? 4, equalRowHeights: true) {
             ForEach(cards) { item in
-                card(item).gridSpan(item.isFullWidth ? 4 : 1)
+                card(item).gridSpan(spansPage && item.isFullWidth ? 4 : 1)
             }
         }
         .equalHeightTiles()

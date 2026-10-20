@@ -1,5 +1,6 @@
 import Foundation
 import HassCore
+import HassTelemetry
 import Observation
 
 /// Signed-in state for the whole app.
@@ -14,6 +15,24 @@ public final class AppSession {
 
     /// Current phase.
     public private(set) var phase: Phase = .signedOut
+
+    /// Opens the launch intervals (`Telemetry.beginTracked`): the app calls it as early as it can, from its `App` initializer, so the
+    /// first frame and the snapshot are timed from process start rather than from the first view.
+    public nonisolated static func beginLaunchMeasurement() {
+        Telemetry.beginTracked(Telemetry.Name.launch)
+        Telemetry.beginTracked(Telemetry.Name.snapshotShown)
+    }
+
+    /// Whether a session is running (the phase is ``Phase/signedIn(_:_:)``).
+    public var isSignedIn: Bool {
+        if case .signedIn = phase { return true }
+        return false
+    }
+
+    /// Who was signed in when the session ended because Home Assistant rejected the refresh token, so sign-in can say
+    /// "Welcome back, Stephen" and ask for the password alone. Nil after a deliberate sign-out, a fresh install, or Use a
+    /// Different Account.
+    public private(set) var expiredAccount: RememberedAccount?
 
     /// The blurred house photo behind every page, for the signed-in server (``HouseBackdrop``).
     @ObservationIgnored private(set) var backdrop: HouseBackdropStore?
@@ -39,6 +58,7 @@ public final class AppSession {
 
     @ObservationIgnored private let tokenStore: TokenStore
     @ObservationIgnored private let snapshotCache: EntitySnapshotCache
+    @ObservationIgnored private let remembered: RememberedAccountStore
 
     /// Creates the session, resuming a saved sign-in if one exists. Restoring is synchronous and
     /// network-free, so the first frame already shows the cached Home screen.
@@ -50,12 +70,16 @@ public final class AppSession {
     ///   - liveActivities: The app's Live Activity coordinator (the app delegate's, so its buttons work at launch).
     ///   - spotlight: Where the app's pages are indexed; inert unless the app passes ``CoreSpotlightIndexer``.
     ///   - motion: The session's motion policy; tests inject one with a fake Reduce Motion source.
+    ///   - remembered: Where the last username and the person's name are kept (``expiredAccount``).
     public init(tokenStore: TokenStore = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup),
                 snapshotCache: EntitySnapshotCache = .init(), push: PushCoordinator = .inert(),
                 location: LocationCoordinator? = nil, liveActivities: LiveActivityCoordinator? = nil,
-                spotlight: any SpotlightIndexing = InertSpotlightIndexer(), motion: MotionPolicy = MotionPolicy()) {
+                spotlight: any SpotlightIndexing = InertSpotlightIndexer(),
+                motion: MotionPolicy = MotionPolicy(),
+                remembered: RememberedAccountStore = RememberedAccountStore()) {
         self.spotlight = spotlight
         self.motion = motion
+        self.remembered = remembered
         self.tokenStore = tokenStore
         self.snapshotCache = snapshotCache
         self.push = push
@@ -68,6 +92,13 @@ public final class AppSession {
             tokenStore.clear()
             snapshotCache.clear()
             LocationCoordinator.resetOffers()
+            remembered.forget()
+        }
+        // FENTON_EXPIRED_ACCOUNT=<username>|<name> starts signed out as if that account's session had just ended, so
+        // journeys can look at the welcome back sign-in.
+        if let value = ProcessInfo.processInfo.environment["FENTON_EXPIRED_ACCOUNT"], tokenStore.load() == nil {
+            let parts = value.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+            expiredAccount = RememberedAccount(username: parts[0], name: parts.count > 1 && !parts[1].isEmpty ? parts[1] : nil)
         }
         // FENTON_HASS_TOKEN signs in with a long-lived access token for this launch only (never saved),
         // so journeys can run against the real server without a password.
@@ -90,7 +121,29 @@ public final class AppSession {
     /// Completes sign-in with fresh tokens.
     public func didSignIn(server: HassServer, tokens: AuthTokens) throws {
         try tokenStore.save(StoredCredentials(server: server, refreshToken: tokens.refreshToken))
+        expiredAccount = nil
         start(server: server, tokens: TokenManager(store: tokenStore, initial: tokens))
+    }
+
+    /// Ends the session because Home Assistant rejected the token, and keeps who it was for the sign-in's welcome back (a
+    /// silent blank form told the person nothing). With no remembered username (a phone signed in before the app kept one)
+    /// the plain sign-in shows.
+    public func sessionExpired() {
+        let account = remembered.account
+        signOut()
+        expiredAccount = account
+    }
+
+    /// Reacts to the connection's status: a refused token ends the session (``sessionExpired()``); every other status
+    /// is the connection's own business.
+    public func connectionStatusChanged(_ status: HassConnection.Status) {
+        if status == .rejected { sessionExpired() }
+    }
+
+    /// Forgets the account a rejected session left behind (Use a Different Account): the next sign-in asks for a username.
+    public func forgetExpiredAccount() {
+        remembered.forget()
+        expiredAccount = nil
     }
 
     /// Signs out: stops pushes to this phone, then revokes the refresh token; clears the Keychain, cache and
@@ -108,6 +161,7 @@ public final class AppSession {
         UserDefaults.standard.removeObject(forKey: ChoresModel.viewerDefaultsKey)
         tokens = nil
         backdrop = nil
+        motion.reset()
         spotlight.removeAll()
         // A second sign-in plays its arrival again, and the signed-out screen its intro.
         motion.reset()
@@ -117,6 +171,7 @@ public final class AppSession {
             // Nothing of the signed-in person stays on a Lock Screen.
             await liveActivities?.sessionEnded()
             await push.sessionEnded()
+            await AppIconBadgeSync.shared.clear()
             if let stored { await HassLoginFlow.revoke(server: stored.server, refreshToken: stored.refreshToken) }
         }
     }

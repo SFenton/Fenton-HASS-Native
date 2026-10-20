@@ -30,6 +30,8 @@ enum FentonHomeApp {
         let app = XCUIApplication()
         // The settings belong to the simulator, so every launch states them: none unless a journey asks.
         app.launchEnvironment["FENTON_SYSTEM_SETTINGS"] = "none"
+        // The sign-in intro (1.2 s) is only for the journeys that are about it (`SignInJourneyTests`, `LaunchPerformanceTests`).
+        app.launchEnvironment["FENTON_SKIP_INTRO"] = "1"
         if let redact = ProcessInfo.processInfo.environment["FENTON_REDACT_PRIVATE"] {
             app.launchEnvironment["FENTON_REDACT_PRIVATE"] = redact
         }
@@ -84,10 +86,8 @@ enum FentonHomeApp {
         app.launch()
         let submit = app.buttons["login.submit"]
         XCTAssertTrue(app.textFields["login.username"].waitForExistence(timeout: 10), "Sign-in did not appear")
-        // At AX5 on a short screen (the folded iPhone Duo) Sign In sits below the fold.
-        // Drag in the form's leading gutter: a swipe that starts on the multi-line server field
-        // scrolls the field's own text, not the form.
-        let form = app.collectionViews.firstMatch
+        // At AX5 on a short screen (the folded iPhone Duo) Sign In sits below the fold: the form scrolls.
+        let form = app.scrollViews.firstMatch
         for _ in 0..<6 where !(submit.exists && submit.isHittable) {
             form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.85))
                 .press(forDuration: 0.05, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.25)))

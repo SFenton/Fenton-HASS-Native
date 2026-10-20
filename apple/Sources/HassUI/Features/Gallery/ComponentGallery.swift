@@ -32,9 +32,11 @@ public struct ComponentGallery: View {
         case systemAccessibility = "system-accessibility"
         case modalSizing = "modal-sizing"
         case liveActivity = "live-activity"
+        case profile
         /// An empty page: only the wallpaper and its scrim (with `FENTON_BACKDROP_FIXTURE=1`), for screenshots.
         case backdrop
         case motion
+        case shellHeader = "shell-header"
     }
 
     /// The page requested at launch, if any. Always `nil` in release builds.
@@ -78,6 +80,12 @@ public struct ComponentGallery: View {
         } else if page == .location {
             // Presents its own sheet, which owns its navigation stack.
             LocationGallery()
+        } else if page == .shellHeader {
+            // Owns its stack, so the header buttons sit in the real navigation bar and a pushed page shows Back.
+            ShellHeaderGallery()
+        } else if page == .profile {
+            // Presents its own sheet (Your Summary), which owns its navigation stack.
+            ProfileGallery()
         } else if page == .rooms {
             // Owns its stack so pushed rooms inherit the fixture store and caller.
             RoomsGallery()
@@ -106,7 +114,7 @@ public struct ComponentGallery: View {
                     case .liveActivity: LiveActivityGallery()
                     case .backdrop: BackdropOnlyPage()
                     case .motion: MotionGallery()
-                    case .rooms, .vacation, .food, .chores, .location, .settings: EmptyView()
+                    case .rooms, .vacation, .food, .chores, .location, .settings, .shellHeader, .profile: EmptyView()
                     }
                 }
                 // Direction G: a gallery page sits on the same dark house backdrop as the page it stands in for.

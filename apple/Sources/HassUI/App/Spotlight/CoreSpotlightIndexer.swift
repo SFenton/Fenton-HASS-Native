@@ -25,7 +25,9 @@ public final class CoreSpotlightIndexer: SpotlightIndexing {
     public func indexPages(_ entries: [SpotlightEntry]) {
         // One batch replaces the last: delete the domain, then index, so a page dropped from the catalog disappears.
         // Failures are ignored; the next session start indexes again.
-        Task { [index] in
+        // Detached: a plain `Task` here would inherit the main actor, and building the items renders a PNG thumbnail per page,
+        // which cost the main thread about 50 ms inside the launch and arrival windows (`tools/ios_launchperf.sh`).
+        Task.detached(priority: .utility) { [index] in
             try? await index.deleteSearchableItems(withDomainIdentifiers: [SpotlightCatalog.domainIdentifier])
             try? await index.indexSearchableItems(entries.map(Self.item))
         }
@@ -39,7 +41,7 @@ public final class CoreSpotlightIndexer: SpotlightIndexing {
 
     /// The searchable item for an entry.
     /// - Parameter entry: The page.
-    static func item(for entry: SpotlightEntry) -> CSSearchableItem {
+    nonisolated static func item(for entry: SpotlightEntry) -> CSSearchableItem {
         let attributes = CSSearchableItemAttributeSet(contentType: .content)
         attributes.title = entry.title
         attributes.displayName = entry.title
@@ -54,7 +56,7 @@ public final class CoreSpotlightIndexer: SpotlightIndexing {
 
     #if canImport(UIKit)
     /// An SF Symbol on the app's blue, as the result's icon.
-    private static func thumbnail(symbol: String) -> Data? {
+    private nonisolated static func thumbnail(symbol: String) -> Data? {
         let size = CGSize(width: 120, height: 120)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.pngData { context in
