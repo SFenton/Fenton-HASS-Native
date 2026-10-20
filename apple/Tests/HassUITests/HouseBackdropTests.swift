@@ -508,6 +508,14 @@ struct HouseBackdropTests {
         }
         #expect(HouseBackdropStyle.increasedContrastBoost > 0)
     }
+
+    /// A page sliding out of a push has a negative window position; the photo's shift never goes negative, or the photo
+    /// would slide off the edge still showing and leave plain base color there (the black flash, 2026-10-20).
+    @Test func shiftHoldsNegativePositionsAtZero() {
+        #expect(HouseBackdropStyle.shift(origin: CGPoint(x: -134, y: 0)) == .zero)
+        #expect(HouseBackdropStyle.shift(origin: CGPoint(x: -1, y: -20)) == .zero)
+        #expect(HouseBackdropStyle.shift(origin: CGPoint(x: 402, y: 30)) == CGPoint(x: 402, y: 30))
+    }
 }
 
 /// CGImage is immutable; this carries the stub's images into the stream task.
