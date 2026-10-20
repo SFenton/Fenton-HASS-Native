@@ -9,8 +9,13 @@ import os
 /// is not, does nothing.
 final class TrackedIntervals: Sendable {
     private let open = OSAllocatedUnfairLock<[String: Telemetry.Interval]>(initialState: [:])
+    private let finish: @Sendable (Telemetry.Interval) -> Double
 
-    init() {}
+    /// - Parameter finish: Ends an interval and returns its length; the app's is ``Telemetry/end(_:value:detail:)``, which
+    ///   records in the shared in-app log (tests pass one that does not, so they never disturb other suites' counts).
+    init(finish: @escaping @Sendable (Telemetry.Interval) -> Double = { Telemetry.end($0) }) {
+        self.finish = finish
+    }
 
     func begin(_ name: StaticString) {
         open.withLock { open in
@@ -23,7 +28,7 @@ final class TrackedIntervals: Sendable {
     @discardableResult
     func end(_ name: StaticString) -> Double? {
         guard let interval = open.withLock({ $0.removeValue(forKey: "\(name)") }) else { return nil }
-        return Telemetry.end(interval)
+        return finish(interval)
     }
 
     /// Closes the signpost without a log record: what it timed was abandoned.

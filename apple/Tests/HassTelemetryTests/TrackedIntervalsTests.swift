@@ -11,8 +11,13 @@ struct TrackedIntervalsTests {
                  "\(Telemetry.Name.arrival)", "\(Telemetry.Name.reconnect)"] == ["Launch", "SnapshotShown", "SignIn", "Arrival", "Reconnect"])
     }
 
+    /// Reads the interval's own clock and leaves the shared log alone.
+    private func quiet() -> TrackedIntervals {
+        TrackedIntervals { (ContinuousClock.now - $0.start).milliseconds }
+    }
+
     @Test func anIntervalEndsOnceAndReportsItsLength() async throws {
-        let intervals = TrackedIntervals()
+        let intervals = quiet()
         #expect(intervals.end(Telemetry.Name.signIn) == nil, "ending an interval that never began does nothing")
         intervals.begin(Telemetry.Name.signIn)
         #expect(intervals.isOpen(Telemetry.Name.signIn))
@@ -24,31 +29,35 @@ struct TrackedIntervalsTests {
         #expect(intervals.end(Telemetry.Name.signIn) == nil, "a second end does nothing")
     }
 
-    @Test func aCancelledIntervalClosesWithoutALogEntry() {
-        let intervals = TrackedIntervals()
-        func logged() -> Int { Telemetry.log.records.filter { $0.kind == "Reconnect" }.count }
-        let before = logged()
+    @Test func aCancelledIntervalClosesWithoutEndingIt() {
+        let ended = Counter()
+        let intervals = TrackedIntervals { _ in ended.bump(); return 0 }
         intervals.cancel(Telemetry.Name.reconnect) // not open: nothing happens
         intervals.begin(Telemetry.Name.reconnect)
         intervals.cancel(Telemetry.Name.reconnect)
         #expect(!intervals.isOpen(Telemetry.Name.reconnect))
-        #expect(logged() == before)
+        #expect(ended.value == 0, "a cancelled interval is never ended, so it is never recorded")
     }
 
-    @Test func aFinishedIntervalGoesThroughTelemetryEnd() {
-        // What `Telemetry.end` does with the length (the in-app log, while recording is on) is `TelemetryTests`' to check: that
-        // switch is shared state this suite leaves alone.
-        let intervals = TrackedIntervals()
+    @Test func aFinishedIntervalIsEndedOnce() {
+        let ended = Counter()
+        let intervals = TrackedIntervals { _ in ended.bump(); return 7 }
         intervals.begin(Telemetry.Name.arrival)
-        #expect((intervals.end(Telemetry.Name.arrival) ?? -1) >= 0)
+        #expect(intervals.end(Telemetry.Name.arrival) == 7)
+        #expect(intervals.end(Telemetry.Name.arrival) == nil)
+        #expect(ended.value == 1)
+    }
+
+    private final class Counter: @unchecked Sendable {
+        private(set) var value = 0
+        func bump() { value += 1 }
     }
 
     @Test func theSharedFacadeBeginsEndsAndCancels() {
+        // Begin and cancel only: ending records in the shared log, which `TelemetryTests` counts.
         Telemetry.cancelTracked(Telemetry.Name.launch)
         Telemetry.beginTracked(Telemetry.Name.launch)
         #expect(Telemetry.isTracked(Telemetry.Name.launch))
-        #expect(Telemetry.endTracked(Telemetry.Name.launch) != nil)
-        Telemetry.beginTracked(Telemetry.Name.launch)
         Telemetry.cancelTracked(Telemetry.Name.launch)
         #expect(!Telemetry.isTracked(Telemetry.Name.launch))
     }
