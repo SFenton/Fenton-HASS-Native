@@ -164,7 +164,8 @@ final class HomePagesJourneyTests: XCTestCase {
         expectCall("light.turn_on brightness=255 color_temp_kelvin=2000 entity_id=light.front_door_bollard_1 transition=1", in: app)
         tap("customLight.brightness", in: app)
         expectCall("light.turn_off entity_id=light.front_door_bollard_1", in: app)
-        app.navigationBars.buttons["Close"].firstMatch.tap()
+        // Not through `navigationBars`: the folded Duo's rail takes the bar's Close into its own toolbar.
+        app.buttons["Close"].firstMatch.tap()
         tap("customLights.resetAll", in: app)
         expectCall("light.turn_on brightness=255 color_temp_kelvin=2000 entity_id=light.front_yard_lights transition=1", in: app)
     }

@@ -31,7 +31,8 @@ final class VacuumJourneyTests: XCTestCase {
         let anchor = vacuum == nil ? element("vacuums.tile.\(Self.mainFloor)", in: app) : element("vacuum.tabs", in: app)
         XCTAssertTrue(anchor.waitForExistence(timeout: 30), "Vacuums did not open")
         // The section bar floats at the bottom of the sheet during the presentation; the Close button proves it settled.
-        let settled = vacuum == nil ? anchor : app.navigationBars.buttons["Close"].firstMatch
+        // Not through `navigationBars`: the folded Duo's rail takes the bar's Close into its own toolbar.
+        let settled = vacuum == nil ? anchor : app.buttons["Close"].firstMatch
         XCTAssertTrue(settled.wait(for: \.isHittable, toEqual: true, timeout: 10), "Still presenting")
         sleep(1) // Mid-animation frames fail contrast and clipping.
         return app
@@ -141,6 +142,7 @@ final class VacuumJourneyTests: XCTestCase {
                 picker.tap()
                 shown = button.waitForExistence(timeout: 5) || menuItem.waitForExistence(timeout: 2)
             }
+            if !shown { add(XCTAttachment(string: app.debugDescription)) }
             XCTAssertTrue(shown, "No \(title) menu item")
             (button.exists ? button : menuItem).tap()
         }

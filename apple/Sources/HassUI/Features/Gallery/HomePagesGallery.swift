@@ -7,7 +7,8 @@ import SwiftUI
 /// Gallery pages for the Media, Custom Lights and Sprinklers pages: each page on fixture state with a recording
 /// service caller, so journeys, audits and screenshots run signed out and never touch the house.
 ///
-/// Launch options: `FENTON_GALLERY_REMOTE=<id>` opens a remote from Media; `FENTON_GALLERY_LIGHT=<entity>` opens a
+/// Launch options: `FENTON_GALLERY_REMOTE=<id>` opens a remote from Media (on the tab `FENTON_GALLERY_TAB=<tab>` names,
+/// Controls by default); `FENTON_GALLERY_LIGHT=<entity>` opens a
 /// custom light's sheet and `FENTON_GALLERY_PICKER=1` the lighting modes; `FENTON_GALLERY_SPRINKLER=<id>` opens a
 /// controller and `FENTON_GALLERY_DETAIL=water-<zone>|schedule-<zone>` a page in it. `FENTON_GALLERY_CLEAN=1` hides the
 /// last-call line for screenshots.
@@ -32,7 +33,8 @@ struct HomePageGallery: View {
             switch kind {
             case .media:
                 MediaScreen(store: store, caller: recorder, imageServer: nil,
-                            openRemote: environment["FENTON_GALLERY_REMOTE"].flatMap(MediaRemotes.config(id:)))
+                            openRemote: environment["FENTON_GALLERY_REMOTE"].flatMap(MediaRemotes.config(id:)),
+                            initialTab: environment["FENTON_GALLERY_TAB"].flatMap(MediaRemoteTab.init(rawValue:)) ?? .controls)
             case .customLights:
                 CustomLightsScreen(store: store, caller: recorder,
                                    openLight: CustomLightsConfig.lights.first { $0.entityId == environment["FENTON_GALLERY_LIGHT"] },

@@ -34,7 +34,9 @@ final class WeatherJourneyTests: XCTestCase {
         try FentonHomeApp.audit(app, ax5Page: ax5Page, presenter: presenter)
     }
 
-    private func waitFor(_ element: XCUIElement, _ format: String, _ argument: String, timeout: TimeInterval = 5) -> Bool {
+    /// Waits on the state, up to 15 s: a mode switch on the folded Duo under load took longer than the 5 s this allowed
+    /// (the label read "Now wind 8 mph gusts 14 mph" a moment after the wait gave up, 2026-10-17).
+    private func waitFor(_ element: XCUIElement, _ format: String, _ argument: String, timeout: TimeInterval = 15) -> Bool {
         let matches = XCTNSPredicateExpectation(predicate: NSPredicate(format: format, argument), object: element)
         return XCTWaiter().wait(for: [matches], timeout: timeout) == .completed
     }
@@ -116,12 +118,14 @@ final class WeatherJourneyTests: XCTestCase {
         XCTAssertTrue(carousel.waitForExistence(timeout: 15))
         XCTAssertTrue(element("home.weather.hour.0", in: app).waitForExistence(timeout: 8))
         let pages = element("home.weather.pages", in: app)
+        // A swipe moves one page or more (a fast one under load carried on to page 3), so the journey asks for "off the
+        // first page" and then swipes back until the first page shows, instead of assuming exactly one page each way.
         carousel.swipeLeft()
-        XCTAssertTrue(waitFor(pages, "value BEGINSWITH %@", "Page 2"), "The indicator stayed on \(String(describing: pages.value))")
+        XCTAssertTrue(waitFor(pages, "NOT (value BEGINSWITH %@)", "Page 1"), "The indicator stayed on \(String(describing: pages.value))")
         XCTAssertFalse(app.buttons["Close"].exists, "Scrolling opened the sheet")
         XCTAssertFalse(element("weather.sheet", in: app).exists)
-        carousel.swipeRight()
-        XCTAssertTrue(waitFor(pages, "value BEGINSWITH %@", "Page 1"))
+        for _ in 0..<4 where !waitFor(pages, "value BEGINSWITH %@", "Page 1", timeout: 3) { carousel.swipeRight() }
+        XCTAssertTrue(waitFor(pages, "value BEGINSWITH %@", "Page 1"), "The indicator stayed on \(String(describing: pages.value))")
     }
 
     /// Wide layouts add previous and next buttons; the first page's Previous is disabled.

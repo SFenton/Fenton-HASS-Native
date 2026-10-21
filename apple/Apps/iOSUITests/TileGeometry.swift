@@ -81,9 +81,29 @@ enum TileGeometry {
 
     /// The glyph and text ink inside a flat-filled tile, clear of the chevron column.
     static func content(in frame: CGRect, capture: RenderedContrast.Capture, reservesChevron: Bool = true) -> CGRect? {
-        guard let background = rgb(at: CGPoint(x: frame.minX + 8, y: frame.maxY - 8), in: capture) else { return nil }
-        let region = CGRect(x: frame.minX + 6, y: frame.minY + 4,
-                            width: frame.width - 12 - (reservesChevron ? 30 : 0), height: frame.height - 8)
-        return inkBounds(in: region, background: background, capture: capture)
+        // Clear of the rounded corners and the lit rim (inside them the capture shows the page behind, which reads as ink).
+        let region = CGRect(x: frame.minX + 14, y: frame.minY + 8,
+                            width: frame.width - 28 - (reservesChevron ? 22 : 0), height: frame.height - 16)
+        // Tinted glass shades the tile top to bottom (white highlight, black shade), so one background sample near the
+        // bottom reads the highlight as ink. Each row is compared with the fill beside the region in that same row.
+        let scale = capture.scale
+        let sampleX = region.maxX + 2
+        let minY = max(0, Int(region.minY * scale)), maxY = min(capture.height, Int(region.maxY * scale))
+        let minX = max(0, Int(region.minX * scale)), maxX = min(capture.width, Int(region.maxX * scale))
+        guard minX < maxX, minY < maxY, let _ = rgb(at: CGPoint(x: sampleX, y: region.minY), in: capture) else { return nil }
+        var left = Int.max, right = -1, top = Int.max, bottom = -1
+        for y in minY..<maxY {
+            guard let background = rgb(at: CGPoint(x: sampleX, y: CGFloat(y) / scale), in: capture) else { continue }
+            for x in minX..<maxX {
+                let i = (y * capture.width + x) * 4
+                let delta = abs(Int(capture.pixels[i]) - background.r) + abs(Int(capture.pixels[i + 1]) - background.g)
+                    + abs(Int(capture.pixels[i + 2]) - background.b)
+                guard delta > 150 else { continue }
+                left = min(left, x); right = max(right, x); top = min(top, y); bottom = max(bottom, y)
+            }
+        }
+        guard right >= 0 else { return nil }
+        return CGRect(x: CGFloat(left) / scale, y: CGFloat(top) / scale,
+                      width: CGFloat(right - left + 1) / scale, height: CGFloat(bottom - top + 1) / scale)
     }
 }
