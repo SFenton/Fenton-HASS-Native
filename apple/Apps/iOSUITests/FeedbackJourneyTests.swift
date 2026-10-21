@@ -27,8 +27,10 @@ final class FeedbackJourneyTests: JourneyTestCase {
         let row = app.buttons["settings.feedback.\(kind)"]
         _ = app.buttons["settings.homeAssistant"].waitForExistence(timeout: 10)
         // The list grew (App Icon, Backdrop blur): ten slow swipes stopped above the last rows.
-        for _ in 0..<40 where !(row.exists && row.isHittable) {
-            app.settingsList.swipeUp(velocity: .slow)
+        // Clear of the bottom edge too: at ax5 a hittable row can sit under the tab bar's hit area.
+        let list = app.settingsList
+        for _ in 0..<40 where !(row.exists && row.isHittable && row.frame.maxY < list.frame.maxY - 100) {
+            list.swipeUp(velocity: .slow)
         }
         return row
     }
@@ -40,6 +42,11 @@ final class FeedbackJourneyTests: JourneyTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 5), "Feedback row \(kind) not found")
         assertTarget(row)
         row.tap()
+        if !app.buttons["feedback.submit"].waitForExistence(timeout: 5) {
+            // The row can still be settling after the last swipe: scroll it clear again and retry once.
+            let again = feedbackRow(app, kind)
+            if again.exists, again.isHittable { again.tap() }
+        }
         XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5), "Feedback form did not open")
         sleep(1) // Let the sheet finish presenting.
     }

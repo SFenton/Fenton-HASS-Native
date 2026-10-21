@@ -406,8 +406,14 @@ final class ChoresJourneyTests: JourneyTestCase {
                 // pencil clear of them (2026-10-17). The menu opens the same form.
                 let row = self.reveal(self.element("todo.item.13--fixture", in: app), in: app, clearOfBar: false)
                 row.press(forDuration: 1.2)
-                let edit = app.buttons["Edit"].firstMatch
-                XCTAssertTrue(edit.waitForExistence(timeout: 5), "The row's context menu has no Edit")
+                // iOS 27 may expose menu entries as menu items or buttons, so match by label across both.
+                let edit = app.descendants(matching: .any).matching(NSPredicate(format: "label == 'Edit' AND (elementType == %d OR elementType == %d)", XCUIElement.ElementType.button.rawValue, XCUIElement.ElementType.menuItem.rawValue)).firstMatch
+                if !edit.waitForExistence(timeout: 5) {
+                    // The press can land on the row's own controls and open no menu (2026-10-20): the row's trailing swipe
+                    // Edit opens the same form.
+                    self.revealTrailingActions(of: row)
+                }
+                XCTAssertTrue(edit.waitForExistence(timeout: 5), "The row has no Edit in its context menu or swipe actions")
                 edit.tap()
             }, "task.name"),
             ("grocery-add", "groceries", { $0.buttons["fab.add"].tap() }, "grocery.add"),

@@ -156,6 +156,7 @@ final class FastScrollPerformanceTests: XCTestCase {
     /// The rail scrolls sideways (the first chip moves off its start) and swipes in both directions leave the page standing.
     /// Compact width only (iPhone, folded Duo): a regular-width rail wraps, so there is nothing to scroll and no `chipRail.scroll`.
     func testChipRailSwipesWithoutLosingContent() throws {
+        guard FentonHomeApp.family != .iPad else { throw XCTSkip("A regular-width chip rail wraps: nothing scrolls, so there is no rail to swipe") }
         let (app, _) = launch(Self.chipRailPage)
         let rail = app.descendants(matching: .any)["chipRail.scroll"].firstMatch
         XCTAssertTrue(rail.waitForExistence(timeout: 10), "The chip rail did not open")
