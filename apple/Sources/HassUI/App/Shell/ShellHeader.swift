@@ -341,6 +341,7 @@ struct ProfileButton: View {
         if isOffline {
             Image(systemName: "icloud.slash")
                 .font(.system(size: 9, weight: .bold))
+                .dynamicTypeSize(...DynamicTypeSize.xLarge)
                 .foregroundStyle(.white)
                 .frame(width: 18, height: 18)
                 .background(Color(white: 0.28), in: Circle())
