@@ -16,11 +16,20 @@ private struct SectionRootChrome: ViewModifier {
     @Environment(\.shellChrome) private var chrome
     @AccessibilityFocusState private var buttonFocused: Bool
 
+    /// The menu button is the leading-most bar item: `.navigation` would be pushed trailing by an inline-large title.
+    private static var menuPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarLeading
+        #else
+        .navigation
+        #endif
+    }
+
     func body(content: Content) -> some View {
         content
             .toolbar {
                 if chrome.showsMenuButton {
-                    ToolbarItem(placement: .navigation) {
+                    ToolbarItem(placement: Self.menuPlacement) {
                         Button {
                             navigator?.openFlyout()
                         } label: {
