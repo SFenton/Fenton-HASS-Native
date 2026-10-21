@@ -101,7 +101,9 @@ final class NavigationJourneyTests: XCTestCase {
         app.buttons["quickLinks.close"].tap()
         XCTAssertTrue(app.buttons["home.chip.lights"].waitForExistence(timeout: 5))
         open("settings", title: "Settings", in: app)
-        app.buttons["settings.topic.specialDeviceModes"].tap()
+        let modes = app.buttons["settings.topic.specialDeviceModes"]
+        for _ in 0..<6 where !(modes.exists && modes.isHittable) { app.settingsList.swipeUp() }
+        modes.tap()
         XCTAssertTrue(app.navigationBars["Special Device Modes"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["split.close"].exists, "Compact width split")
         goBack(in: app)
@@ -123,7 +125,9 @@ final class NavigationJourneyTests: XCTestCase {
         // The pushed topic page too.
         app = try FentonHomeApp.launchSignedIn()
         open("settings", title: "Settings", in: app)
-        app.buttons["settings.topic.specialDeviceModes"].tap()
+        let modes = app.buttons["settings.topic.specialDeviceModes"]
+        for _ in 0..<6 where !(modes.exists && modes.isHittable) { app.settingsList.swipeUp() }
+        modes.tap()
         XCTAssertTrue(app.navigationBars["Special Device Modes"].waitForExistence(timeout: 5))
         sleep(1)
         try FentonHomeApp.audit(app) {
@@ -138,7 +142,9 @@ final class NavigationJourneyTests: XCTestCase {
         }
         app = try FentonHomeApp.launchSignedIn()
         open("settings", title: "Settings", in: app)
-        app.buttons["settings.topic.specialDeviceModes"].tap()
+        let topic = app.buttons["settings.topic.specialDeviceModes"]
+        for _ in 0..<6 where !(topic.exists && topic.isHittable) { app.settingsList.swipeUp() }
+        topic.tap()
         XCTAssertTrue(app.navigationBars["Special Device Modes"].waitForExistence(timeout: 5))
         goBack(in: app)
         XCTAssertTrue(app.buttons["settings.topic.specialDeviceModes"].waitForExistence(timeout: 5))
