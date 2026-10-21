@@ -30,6 +30,11 @@ public final class HassConnection {
     /// Current status.
     public private(set) var status: Status = .disconnected
 
+    /// There is no network path (Airplane mode, no Wi-Fi or cellular). While true the socket is closed and HAKit's
+    /// retry backoff is not running; the UI shows an offline state instead of "Reconnecting…", and the socket reopens
+    /// the moment a path returns (``setOnline(_:)``).
+    public private(set) var isOffline = false
+
     /// The server this connection talks to.
     public let server: HassServer
 
@@ -61,6 +66,7 @@ public final class HassConnection {
     /// The app wants the socket open (between ``connect(subscribingToStates:)`` and ``disconnect()``).
     @ObservationIgnored var wantsConnection = false
     @ObservationIgnored private var routeTask: Task<Void, Never>?
+    @ObservationIgnored private let reachability: (any NetworkReachability)?
     /// Gauges for what this connection registers (`ResourceCensus`).
     @ObservationIgnored private var census: ResourceCensus.Registration?
 
@@ -77,7 +83,7 @@ public final class HassConnection {
     ///   - snapshotCache: Disk snapshot of entity states.
     ///   - route: Uses the home network address at home (``LocalServerRoute``); nil always uses the public URL.
     public convenience init(server: HassServer, tokens: TokenManager, store: EntityStore, snapshotCache: EntitySnapshotCache = .init(),
-                            route: LocalServerRoute? = nil) {
+                            route: LocalServerRoute? = nil, reachability: (any NetworkReachability)? = nil) {
         let configuration = HAConnectionConfiguration(
             connectionInfo: { HassConnection.connectionInfo(server: server, route: route) },
             fetchAuthToken: { completion in
@@ -94,14 +100,15 @@ public final class HassConnection {
         self.init(
             server: server, store: store, snapshotCache: snapshotCache,
             connection: HAKit.connection(configuration: configuration, connectAutomatically: false),
-            route: route
+            route: route, reachability: reachability
         )
     }
 
     /// Creates a connection over a given HAKit connection (tests pass `HAMockConnection`).
     init(server: HassServer, store: EntityStore, snapshotCache: EntitySnapshotCache = .init(), connection: HAConnection,
-         route: LocalServerRoute? = nil) {
+         route: LocalServerRoute? = nil, reachability: (any NetworkReachability)? = nil) {
         self.server = server
+        self.reachability = reachability
         self.store = store
         self.snapshotCache = snapshotCache
         self.connection = connection
@@ -122,6 +129,13 @@ public final class HassConnection {
 
         route?.startWatching { [weak self] in
             Task { @MainActor in self?.networkDidChange() }
+        }
+
+        if let reachability {
+            isOffline = !reachability.isOnline
+            reachability.start { [weak self] online in
+                Task { @MainActor in self?.setOnline(online) }
+            }
         }
 
         census = ResourceCensus.shared.register { [weak self] in self?.liveResources ?? [:] }
@@ -156,8 +170,10 @@ public final class HassConnection {
     ///   sends a command (a camera's stream) passes false, so it stays inside its memory limit.
     public func connect(subscribingToStates: Bool = true) {
         wantsConnection = true
-        connection.connect()
-        refreshRoute()
+        if !isOffline {
+            connection.connect()
+            refreshRoute()
+        }
         guard subscribingToStates, statesSubscription == nil else { return }
         statesSubscription = connection.caches.states().subscribe(Self.statesHandler(for: self))
     }
@@ -171,6 +187,25 @@ public final class HassConnection {
         statesSubscription?.cancel()
         statesSubscription = nil
         connection.disconnect()
+    }
+
+    /// Applies a network path change. Offline closes the socket so HAKit stops retrying with backoff; online reopens it at
+    /// once (no waiting out a backoff) and re-checks the route. A no-op unless the state changed.
+    func setOnline(_ online: Bool) {
+        guard isOffline == online else { return }
+        isOffline = !online
+        PushTrace.shared.record("connection: network \(online ? "online" : "offline")")
+        guard wantsConnection else { return }
+        if online {
+            connection.disconnect()
+            connection.connect()
+            refreshRoute()
+        } else {
+            routeTask?.cancel()
+            routeTask = nil
+            connection.disconnect()
+        }
+        refreshStatus()
     }
 
     /// Saves the snapshot immediately (entering background).
@@ -218,7 +253,7 @@ public final class HassConnection {
     /// Disconnects first rather than letting `connect()` swap sockets: HAKit's swap leaves the old socket's delegate
     /// in place, so its late close event could tear down the new socket.
     private func applyRoute() {
-        guard wantsConnection else { return }
+        guard wantsConnection, !isOffline else { return }
         Telemetry.count(route?.isLocal == true ? "connection.route.local" : "connection.route.public")
         connection.disconnect()
         connection.connect()

@@ -135,3 +135,62 @@ struct HassConnectionLivenessTests {
         #expect(connection.status == .disconnected, "Only a connection the app wants is replaced")
     }
 }
+
+// MARK: - Offline
+
+private final class FakeReachability: NetworkReachability, @unchecked Sendable {
+    var isOnline: Bool
+    var onChange: (@Sendable (Bool) -> Void)?
+    init(online: Bool) { isOnline = online }
+    func start(_ onChange: @escaping @Sendable (Bool) -> Void) { self.onChange = onChange }
+    func set(_ online: Bool) { isOnline = online; onChange?(online) }
+}
+
+@MainActor
+struct HassConnectionOfflineTests {
+    private func make(online: Bool) -> (HassConnection, HAMockConnection, FakeReachability) {
+        let mock = HAMockConnection()
+        let cache = EntitySnapshotCache(fileURL: FileManager.default.temporaryDirectory.appending(path: "offline-\(UUID()).json"))
+        let net = FakeReachability(online: online)
+        return (HassConnection(server: .fentonHome, store: EntityStore(), snapshotCache: cache, connection: mock, reachability: net), mock, net)
+    }
+
+    private func settle() async { try? await Task.sleep(for: .milliseconds(80)) }
+
+    @Test func launchingOfflineDoesNotOpenTheSocket() async {
+        let (connection, mock, _) = make(online: false)
+        connection.connect(subscribingToStates: false)
+        await settle()
+        #expect(connection.isOffline)
+        #expect(mock.state == .disconnected(reason: .disconnected))
+        #expect(!ReconnectingPolicy.showsReconnecting(connection.status, isOffline: connection.isOffline))
+    }
+
+    @Test func losingThePathClosesTheSocketSoBackoffStops() async {
+        let (connection, mock, net) = make(online: true)
+        connection.connect(subscribingToStates: false)
+        mock.setState(.ready(version: "2026.10"), waitForQueue: false)
+        await settle()
+        net.set(false)
+        await settle()
+        #expect(connection.isOffline)
+        #expect(mock.state == .disconnected(reason: .disconnected), "closed on purpose, not waiting to retry")
+        connection.reconnect()
+        #expect(mock.state == .disconnected(reason: .disconnected), "no reconnect spin while offline")
+    }
+
+    @Test func aReturningPathReconnectsAtOnce() async {
+        let (connection, mock, net) = make(online: false)
+        connection.connect(subscribingToStates: false)
+        await settle()
+        net.set(true)
+        await settle()
+        #expect(!connection.isOffline)
+        #expect(mock.state != .disconnected(reason: .disconnected), "connecting without waiting out a backoff")
+    }
+
+    @Test func offlineIsNotReconnecting() {
+        #expect(ReconnectingPolicy.showsReconnecting(.waitingToReconnect, isOffline: false))
+        #expect(!ReconnectingPolicy.showsReconnecting(.waitingToReconnect, isOffline: true))
+    }
+}

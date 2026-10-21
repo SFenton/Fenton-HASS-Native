@@ -13,9 +13,10 @@ import XCTest
 final class HeaderButtonsJourneyTests: JourneyTestCase {
     // MARK: - Helpers
 
-    private func launch(profile: String? = nil, badge: Int = 0, scheme: String = "dark", pushed: Bool = false, plain: Bool = true,
+    private func launch(profile: String? = nil, badge: Int = 0, offline: Bool = false, scheme: String = "dark", pushed: Bool = false, plain: Bool = true,
                         arguments: [String] = []) -> XCUIApplication {
         var environment = ["FENTON_GALLERY_BADGE": "\(badge)", "FENTON_GALLERY_SCHEME": scheme]
+        if offline { environment["FENTON_GALLERY_OFFLINE"] = "1" }
         if let profile { environment["FENTON_GALLERY_PROFILE"] = profile }
         if pushed { environment["FENTON_GALLERY_PUSHED"] = "1" }
         if plain { environment["FENTON_GALLERY_PLAIN"] = "1" }
@@ -245,6 +246,21 @@ final class HeaderButtonsJourneyTests: JourneyTestCase {
                 shoot(plain, "\(state)-plain-\(scheme)")
             }
         }
+    }
+
+    // MARK: - Offline
+
+    /// No network path: Profile carries an "Offline" badge (bottom-right); online it has none. Screenshots go to
+    /// `FENTON_SHOTS_DIR` as `<layout>-header-online.png` and `<layout>-header-offline.png`.
+    func testOfflineBadgeShowsOnlyWithoutANetworkPath() {
+        let online = launch(profile: "Stephen Fenton")
+        XCTAssertFalse(((online.buttons["nav.profile"].value as? String) ?? "").contains("Offline"), "no badge while online")
+        shoot(online, "header-online")
+        online.terminate()
+        let offline = launch(profile: "Stephen Fenton", offline: true)
+        // The badge is part of the Profile button for VoiceOver: its value ends with "Offline".
+        XCTAssertTrue(((offline.buttons["nav.profile"].value as? String) ?? "").contains("Offline"), "offline badge is announced")
+        shoot(offline, "header-offline")
     }
 }
 

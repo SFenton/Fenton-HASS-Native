@@ -17,4 +17,10 @@ public enum ReconnectingPolicy {
         case .disconnected, .connecting, .waitingToReconnect: true
         }
     }
+
+    /// Whether the chip says "Reconnecting…": the connection is down but a network path exists. With no path the app is
+    /// offline, which is its own state (``HassConnection/isOffline``) and never a retry.
+    public static func showsReconnecting(_ status: HassConnection.Status, isOffline: Bool) -> Bool {
+        !isOffline && isDown(status)
+    }
 }
