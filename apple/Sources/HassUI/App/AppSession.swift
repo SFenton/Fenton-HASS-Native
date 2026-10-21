@@ -191,7 +191,8 @@ public final class AppSession {
     private func start(server: HassServer, tokens: TokenManager) {
         // At home the socket uses Home Assistant's home network address instead of the public URL (LocalServerRoute).
         let route = LocalServerRoute.isEnabled() ? LocalServerRoute(server: server) : nil
-        let connection = HassConnection(server: server, tokens: tokens, store: EntityStore(), snapshotCache: snapshotCache, route: route)
+        let connection = HassConnection(server: server, tokens: tokens, store: EntityStore(), snapshotCache: snapshotCache, route: route,
+                                        reachability: SystemNetworkReachability())
         let lifecycle = ConnectionLifecycle(connection: connection)
         self.tokens = tokens
         push.sessionStarted(server: server) { try await tokens.validAccessToken() }
