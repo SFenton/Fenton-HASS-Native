@@ -297,16 +297,23 @@ struct ShellChromeTests {
 
 /// The iPhone hamburger and the Duo's one-blob header (owner, 2026-10-20).
 struct ShellHamburgerTests {
-    @Test func iPhoneTabBarShowsTheMenuButtonButNotTheEdgeSwipe() {
+    @Test func iPhoneTabBarShowsTheMenuButtonAndTheEdgeSwipe() {
         let chrome = ShellChrome.resolve(style: .tabBar, isPhone: true)
         #expect(chrome.showsMenuButton)
         #expect(!chrome.titleInHeader)
-        #expect(!chrome.edgeSwipe)
+        #expect(chrome.edgeSwipe)
     }
 
     @Test func duoRailAndCompactIPadKeepTheTitleInTheHeader() {
         #expect(ShellChrome.resolve(style: .tabBar, isPhone: true, inVerticalBar: true).titleInHeader)
         #expect(ShellChrome.resolve(style: .tabBar, isPhone: false).titleInHeader)
+    }
+
+    @Test func edgeSwipeFollowsTheMenuButton() {
+        for (isPhone, rail) in [(true, false), (true, true), (false, false)] {
+            let chrome = ShellChrome.resolve(style: .tabBar, isPhone: isPhone, inVerticalBar: rail)
+            #expect(chrome.edgeSwipe == chrome.showsMenuButton)
+        }
     }
 
     @Test func duoRailAndCompactIPadHaveNoMenuButton() {
