@@ -85,6 +85,7 @@ Exceptions must be written into this file with the owner's say-so. None exist to
 **Don't use it for:**
 - a row in a list (push);
 - a chip opening an overview sheet (sheet);
+- anything inside a sheet, such as a room tile in the room overview sheet: the zoom hides the sheet's content while its backdrop stays blurred, then the page appears (owner, 2026-10-22). Pushes inside a sheet are plain pushes;
 - device tiles that open control sheets (sheet: the tile is a control, not a thumbnail of the sheet);
 - buttons.
 
