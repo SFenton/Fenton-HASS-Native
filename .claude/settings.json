@@ -10,6 +10,15 @@
             "command": "f=\"$CLAUDE_PROJECT_DIR/tools/hooks/no_poll.py\"; [ -f \"$f\" ] || exit 0; exec python3 \"$f\""
           }
         ]
+      },
+      {
+        "matcher": "Agent|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$CLAUDE_PROJECT_DIR/tools/hooks/agent_model.py\"; [ -f \"$f\" ] || exit 0; exec python3 \"$f\""
+          }
+        ]
       }
     ],
     "PostToolUse": [

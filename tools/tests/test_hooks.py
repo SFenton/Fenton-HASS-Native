@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "hooks"))
+import agent_model  # noqa: E402
 import context_guard  # noqa: E402
 import no_poll  # noqa: E402
 
@@ -60,6 +61,39 @@ class NoPollTests(unittest.TestCase):
         self.assertEqual(run_hook({"tool_name": "Read", "tool_input": {"file_path": "x"}})[0], 0)
         with mock.patch.object(sys, "stdin", io.StringIO("not json")):
             self.assertEqual(no_poll.main(), 0)
+
+
+def run_agent_hook(tool_input, tool_name="Agent"):
+    err = io.StringIO()
+    with mock.patch.object(sys, "stdin", io.StringIO(json.dumps({"tool_name": tool_name, "tool_input": tool_input}))), redirect_stderr(err):
+        return agent_model.main(), err.getvalue()
+
+
+class AgentModelTests(unittest.TestCase):
+    def test_lane_agents_and_cheap_models_pass(self):
+        for spec in ({"subagent_type": "coder"}, {"subagent_type": "menial"}, {"subagent_type": "Explore"},
+                     {"subagent_type": "Plan"}, {"subagent_type": "general-purpose", "model": "sonnet"},
+                     {"model": "haiku"}, {"subagent_type": "general-purpose", "model": "gh/claude-sonnet-5.5"}):
+            with self.subTest(spec=spec):
+                self.assertEqual(run_agent_hook({**spec, "prompt": "do it"})[0], 0)
+
+    def test_inherited_or_explicit_opus_is_refused(self):
+        for spec in ({"subagent_type": "general-purpose"}, {}, {"model": "opus"}, {"subagent_type": "coder", "model": "opus"},
+                     {"subagent_type": "general-purpose", "model": "gh/claude-opus-5.5"}):
+            with self.subTest(spec=spec):
+                status, message = run_agent_hook({**spec, "prompt": "do it"})
+                self.assertEqual(status, 2)
+                self.assertIn("coder", message)
+
+    def test_opus_ok_in_the_prompt_allows_the_final_reviewer(self):
+        self.assertEqual(run_agent_hook({"subagent_type": "general-purpose", "model": "opus",
+                                         "prompt": "Review the diff. opus-ok: final review"})[0], 0)
+
+    def test_other_tools_and_bad_input_pass(self):
+        self.assertEqual(run_agent_hook({"command": "ls"}, tool_name="Bash")[0], 0)
+        self.assertEqual(run_agent_hook({"subagent_type": "general-purpose"}, tool_name="Task")[0], 2)
+        with mock.patch.object(sys, "stdin", io.StringIO("nope")):
+            self.assertEqual(agent_model.main(), 0)
 
 
 def write_transcript(path, usages):
