@@ -7,7 +7,11 @@
 # device gate plus a `simulator` slot (tools/devcap.py, shared with FestivalNativeApps). When the Mac is
 # full the script waits its turn; `python3 tools/devcap.py status` shows who holds what.
 #
-# Usage: tools/ios_uitest.sh [--env path/to/temp.env] [--only iphone|duo|ipad] [--appearance light|dark] [extra xcodebuild args]
+# Usage: tools/ios_uitest.sh [--env path/to/temp.env] [--only iphone|duo|ipad] [--appearance light|dark] [--quick] [extra xcodebuild args]
+#   --quick skips `xcodegen` when project.yml is unchanged and skips the compile when nothing under apple/Sources, apple/Apps,
+#   project.yml or Package.* is newer than the last successful build here (same build settings). Use it when iterating on one
+#   test; a filtered run (-only-testing) also gets a 25-minute device hold instead of 60 (FENTON_DEVCAP_HOLD overrides both).
+#   Run it through `tools/bg_run.py LABEL -- tools/ios_uitest.sh …` with run_in_background and end the turn: you get a digest, not a log.
 #   --appearance draws every sheet in that appearance (FENTON_APPEARANCE; pages stay dark). Without it sheets follow the
 #   simulator's own setting.
 set -euo pipefail
@@ -16,12 +20,14 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 ENV_FILE=""
 ONLY=""
+QUICK=0
 EXTRA=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --env) ENV_FILE="$2"; shift 2 ;;
     --only) ONLY="$2"; shift 2 ;;
     --appearance) export TEST_RUNNER_FENTON_APPEARANCE="$2"; shift 2 ;;
+    --quick) QUICK=1; shift ;;
     *) EXTRA+=("$1"); shift ;;
   esac
 done
@@ -57,7 +63,6 @@ if [[ -n "$ENV_FILE" ]]; then
   [[ -n "$SERVER" ]] && export TEST_RUNNER_FENTON_HASS_SERVER="$SERVER"
 fi
 
-DEVCAP=(python3 "$ROOT/tools/devcap.py" run --hold "${FENTON_DEVCAP_HOLD:-3600}")
 # Build settings (NAME=value) also apply to the compile; test options (-only-testing:…) only to the runs.
 SETTINGS=()
 for arg in ${EXTRA[@]+"${EXTRA[@]}"}; do
@@ -68,6 +73,18 @@ FULL_SUITE=1
 for arg in ${EXTRA[@]+"${EXTRA[@]}"}; do
   [[ "$arg" == -only-testing* || "$arg" == -skip-testing* ]] && FULL_SUITE=0
 done
+# A hung run holds simulator slots until the hold ends; a filtered run that outlasts 25 minutes is hung.
+DEFAULT_HOLD=3600
+[[ $FULL_SUITE == 0 ]] && DEFAULT_HOLD=1500
+DEVCAP=(python3 "$ROOT/tools/devcap.py" run --hold "${FENTON_DEVCAP_HOLD:-$DEFAULT_HOLD}")
+
+# True when any file under the given paths is newer than the stamp (or there is no stamp).
+changed_since() {
+  local stamp="$1"; shift
+  [[ -f "$stamp" ]] || return 0
+  [[ -n "$(find "$@" -type f -newer "$stamp" 2>/dev/null | head -n 1)" ]]
+}
+BUILD_STAMP="$ROOT/apple/.build/uitest-built.stamp"
 
 # Runs one family's journeys inside its devcap hold. The simulator stays booted (warm) afterwards so the
 # lane's next run skips the boot; it still counts against the simulator slots, and devcap shuts it down
@@ -86,10 +103,23 @@ export -f run_family
 export ROOT
 
 cd "$ROOT/apple"
-xcodegen generate --quiet
-"${DEVCAP[@]}" --pool build --purpose "Fenton uitest build ($LANE)" -- \
-  xcodebuild build-for-testing -project FentonHome.xcodeproj -scheme FentonHome \
-    -destination 'generic/platform=iOS Simulator' ${SETTINGS[@]+"${SETTINGS[@]}"}
+if [[ $QUICK == 1 && -f FentonHome.xcodeproj/project.pbxproj && ! FentonHome.xcodeproj/project.pbxproj -ot project.yml ]]; then
+  echo "== quick: project.yml unchanged, skipping xcodegen"
+else
+  xcodegen generate --quiet
+fi
+SETTINGS_KEY="${SETTINGS[*]-}"
+if [[ $QUICK == 1 && -f "$BUILD_STAMP" && "$(cat "$BUILD_STAMP")" == "$SETTINGS_KEY" ]] \
+   && ! changed_since "$BUILD_STAMP" "$ROOT/apple/Sources" "$ROOT/apple/Apps" "$ROOT/apple/project.yml" "$ROOT/apple/Package.swift" "$ROOT/apple/Package.resolved"; then
+  echo "== quick: nothing changed since the last build, skipping the compile"
+else
+  # The stamp keeps the time the build started, so an edit made while it compiled still counts as a change.
+  rm -f "$BUILD_STAMP"; mkdir -p "$(dirname "$BUILD_STAMP")"; printf '%s' "$SETTINGS_KEY" > "$BUILD_STAMP.pending"
+  "${DEVCAP[@]}" --pool build --purpose "Fenton uitest build ($LANE)" -- \
+    xcodebuild build-for-testing -project FentonHome.xcodeproj -scheme FentonHome \
+      -destination 'generic/platform=iOS Simulator' ${SETTINGS[@]+"${SETTINGS[@]}"}
+  mv "$BUILD_STAMP.pending" "$BUILD_STAMP"
+fi
 STATUS=0
 for family in iphone duo ipad; do
   [[ -n "$ONLY" && "$ONLY" != "$family" ]] && continue

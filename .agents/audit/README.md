@@ -10,6 +10,7 @@ Ran at `d9548ba` and `5c78202` with four read-only reviewers, then checked by Op
 | [ui.md](ui.md) | Views, tokens and gallery fakes in `HassUI` and `HassDesign` |
 | [swiftui-pro.md](swiftui-pro.md) | The [SwiftUI Pro](../workflow/swiftui-pro.md) rules over `apple/Sources` |
 | [tests.md](tests.md) | Journeys, test doubles, gallery recorders, `tools/` |
+| [token-burn-2026-10-22.md](token-burn-2026-10-22.md) | Where Claude usage went Oct 10 to 22 (polling, long sessions, model routing, test loop) and the fixes |
 
 ## Verdict
 
