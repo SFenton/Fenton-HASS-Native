@@ -59,7 +59,7 @@ struct RoundButtonStyle: ButtonStyle {
                 .contentShape(Circle())
                 .scaleEffect(configuration.isPressed && !reduceMotion ? 0.94 : 1)
                 .opacity(isEnabled ? (configuration.isPressed && reduceMotion ? 0.7 : 1) : 0.4)
-                .motionSafeAnimation(.snappy(duration: 0.12), reduced: .easeInOut(duration: 0.1), value: configuration.isPressed)
+                .motionSafeAnimation(MotionTokens.quick, reduced: MotionTokens.quick, value: configuration.isPressed)
         }
     }
 }
@@ -101,7 +101,8 @@ struct RemoteButtonIcon: View {
                 .font(button.icon == "mdi:circle" ? .footnote : font)
                 .fontWeight(.semibold)
                 .rotationEffect(.degrees(button.iconRotationDegrees))
-                .foregroundStyle(color)
+                // The power key's on and off colours cross-fade (`.agents/design/motion-components.md`, `PowerButton`).
+                .stateForeground("RemoteButtonIcon", color)
                 .accessibilityHidden(true)
         } else {
             // The SHIELD select button is blank; keep a body so the button keeps its size.

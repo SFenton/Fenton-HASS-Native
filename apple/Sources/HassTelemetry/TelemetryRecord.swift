@@ -88,6 +88,8 @@ public struct TelemetryExport: Codable, Sendable {
     public var counters: [String: Int]
     /// Stats per record kind, and per kind and page as `kind@page`.
     public var stats: [String: TelemetryStats]
+    /// Navigation phases (`Push.settled`, `TabSwitch.firstFrame@Home`, `Push.worstTurn`): see ``TelemetryLog/phaseStats``.
+    public var phases: [String: TelemetryStats]
     /// Scroll smoothness per page.
     public var scroll: [String: ScrollStats]
     /// The most recent samples, oldest first.

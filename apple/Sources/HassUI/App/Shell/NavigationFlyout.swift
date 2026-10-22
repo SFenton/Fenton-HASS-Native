@@ -23,7 +23,7 @@ struct NavigationFlyout: View {
                     .transition(reduceMotion ? .opacity : .move(edge: .leading))
             }
         }
-        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(duration: 0.3), value: navigator.isFlyoutOpen)
+        .motionSafeAnimation(MotionTokens.standard, reduced: MotionTokens.quick, value: navigator.isFlyoutOpen)
         .onChange(of: navigator.isFlyoutOpen) { _, isOpen in
             if isOpen { headingFocused = true }
         }

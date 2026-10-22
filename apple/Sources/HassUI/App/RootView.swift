@@ -56,6 +56,8 @@ public struct RootView: View {
             }
         }
         .observesDeviceSignals()
+        // The session's motion policy, for the intro, the arrival and anything that plays once (`.arrivalMotion`).
+        .environment(session.motion)
         // A tap on the Home Live Activity opens the focused job's page (`ActivityDeepLink`).
         .onOpenURL { session.push.openLiveActivity($0) }
         // A tapped Spotlight result (`SpotlightCatalog`): opens that page like a notification's link.
@@ -79,6 +81,10 @@ public struct RootView: View {
         .overlay(alignment: .topTrailing) {
             if ScrollCostProbe.isEnabled { ScrollCostProbe() }
         }
+        // Navigation cost runs (`FENTON_NAVPERF=1`): an invisible element `NavigationPerformanceTests` reads after it drives the app.
+        .overlay(alignment: .topLeading) {
+            if NavigationPerfProbe.isEnabled { NavigationPerfProbe() }
+        }
         // Launch cost runs (`FENTON_LAUNCHCOST=1`, any build): an invisible element a test reads the last measurement from.
         .overlay(alignment: .bottomTrailing) {
             if LaunchCostProbe.isEnabled { LaunchCostProbeElement() }
@@ -97,7 +103,6 @@ public struct RootView: View {
         // from their own environment (`SystemAppearance`).
         .publishesSystemAppearance()
         .environment(\.homeArrival, arrival)
-        .environment(session.motion)
         .onAppear(perform: firstFrame)
         .task {
             // Telemetry (`.agents/patterns/telemetry.md`): MetricKit's daily reports, and the image cache kept

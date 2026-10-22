@@ -179,6 +179,7 @@ struct OtherLightSwatch: View {
                         Circle().strokeBorder(HassTokens.Surface.secondaryInSheet, lineWidth: 1.5)
                     }
                 }
+                .stateColorTransition("OtherLightSwatch", value: rgb)
                 .frame(width: max(diameter, HassTokens.minTarget), height: max(diameter, HassTokens.minTarget))
                 // The names read in secondary ink (0.72), not the sheet's weaker secondary (0.6): beside a red swatch the
                 // "Bollard 2" name measured 4.46:1 rendered on the iPad dark sheet (2026-10-17).

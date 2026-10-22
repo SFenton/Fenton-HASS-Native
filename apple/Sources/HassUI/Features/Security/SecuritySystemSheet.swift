@@ -107,7 +107,10 @@ struct AlarmPanel: View {
                 .opacity(unavailable ? 0.5 : 1)
                 .frame(width: badgeSize, height: badgeSize)
                 // Unknown or hidden: a fixed mid grey under the white glyph, on a dark module and a white cell alike.
-                .background(family?.fill ?? Color(rgb: Self.neutralBadge), in: Circle())
+                .background {
+                    Circle().fill(family?.fill ?? Color(rgb: Self.neutralBadge))
+                        .stateColorTransition("AlarmPanel", value: family)
+                }
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -117,7 +120,7 @@ struct AlarmPanel: View {
                     .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle)
                     .font(.subheadline)
-                    .foregroundStyle(subtitleInk(triggered: triggered))
+                    .stateForeground("AlarmPanel", subtitleInk(triggered: triggered))
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -149,12 +152,20 @@ struct AlarmPanel: View {
         switch surface {
         case .sheet:
             shape.fill(HassTokens.Surface.sheetCell)
-                // Fainter over a white cell, so the secondary ink on it keeps 4.5:1.
-                .overlay { if triggered { shape.fill(alarm.opacity(scheme == .light ? 0.16 : 0.42)) } }
+                // Fainter over a white cell, so the secondary ink on it keeps 4.5:1. The triggered colour holds steady: it
+                // fades in and out (`MotionTokens.state`) and never pulses.
+                .overlay {
+                    shape.fill(alarm.opacity(triggered ? (scheme == .light ? 0.16 : 0.42) : 0))
+                        .stateColorTransition("AlarmPanel", value: triggered)
+                }
         case .page:
             Color.clear
                 .module(triggered ? .dense : .thin)
-                .overlay { if triggered { shape.fill(alarm.opacity(reduceTransparency ? 0.6 : 0.42)) } }
+                .overlay {
+                    shape.fill(alarm.opacity(triggered ? (reduceTransparency ? 0.6 : 0.42) : 0))
+                        .stateColorTransition("AlarmPanel", value: triggered)
+                }
+                .stateColorTransition("AlarmPanel", value: triggered)
         }
     }
 
@@ -183,6 +194,12 @@ struct AlarmPanel: View {
 
 /// One alarm mode: glyph over a short label, filled with the mode's colour family while selected (direction G
 /// mockup n3; web `SecurityCard`). At least 64 pt tall, with equal heights across the row.
+/// What decides an alarm mode button's ground: selected, or sitting on the sounding alarm's wash.
+struct AlarmModeLook: Equatable {
+    var isSelected: Bool
+    var onAlarm: Bool
+}
+
 struct AlarmModeButton: View {
     var mode: SecurityConfig.AlarmMode
     var isSelected: Bool
@@ -209,19 +226,22 @@ struct AlarmModeButton: View {
             }
             // White on a selected mode's fill; the label colour on the unselected ground (page, or a sheet in either
             // appearance).
-            .foregroundStyle(isSelected ? Color.white : HassTokens.Ink.primary)
+            .stateForeground("AlarmModeButton", isSelected ? Color.white : HassTokens.Ink.primary)
             .padding(.vertical, HassTokens.Spacing.s)
             .padding(.horizontal, HassTokens.Spacing.xs)
             .frame(maxWidth: .infinity, minHeight: 64, maxHeight: .infinity)
             .background {
-                if isSelected, let fill = ColorFamily.security(alarmState: mode.state)?.fill {
-                    // A chosen mode is a filled tile: the same edge and sheen as the tiles (``TileFinish``).
-                    shape.fill(fill).tintedGlassEdge(cornerRadius: HassTokens.Spacing.l)
-                } else if onAlarm {
-                    shape.fill(HassTokens.Ink.primary.opacity(0.14))
-                } else {
-                    shape.fill(.fill.tertiary)
+                Group {
+                    if isSelected, let fill = ColorFamily.security(alarmState: mode.state)?.fill {
+                        // A chosen mode is a filled tile: the same edge and sheen as the tiles (``TileFinish``).
+                        shape.fill(fill).tintedGlassEdge(cornerRadius: HassTokens.Spacing.l)
+                    } else if onAlarm {
+                        shape.fill(HassTokens.Ink.primary.opacity(0.14))
+                    } else {
+                        shape.fill(.fill.tertiary)
+                    }
                 }
+                .stateColorTransition("AlarmModeButton", value: AlarmModeLook(isSelected: isSelected, onAlarm: onAlarm))
             }
             .contentShape(shape)
         }

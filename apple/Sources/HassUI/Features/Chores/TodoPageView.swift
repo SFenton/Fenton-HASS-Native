@@ -58,7 +58,7 @@ struct TodoPageView<Header: View>: View {
         .environment(\.defaultMinListRowHeight, 1)
         // Chores animate away when completed and back in if the call fails (owner, 2026-10-16). Under Reduce Motion the
         // rows fade instead of sliding (HIG Motion).
-        .motionSafeAnimation(.default, reduced: .easeInOut(duration: 0.2), value: TodoPageLayout.animationKey(shown))
+        .motionSafeAnimation(MotionTokens.standard, reduced: MotionTokens.quick, value: TodoPageLayout.animationKey(shown))
         .background {
             // Every visible list loads, drawn or not, so a hidden list reappears when its entity says
             // it has items again.

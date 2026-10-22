@@ -10,7 +10,6 @@ import SwiftUI
 struct WeatherCompass: View {
     /// Where the wind comes from, in degrees; `nil` for calm or unknown.
     var sourceDegrees: Double?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var angle: Double?
 
     var body: some View {
@@ -42,7 +41,7 @@ struct WeatherCompass: View {
             if let angle {
                 WindNeedle()
                     .rotationEffect(.degrees(angle))
-                    .animation(reduceMotion ? nil : .smooth(duration: Double(WeatherPresentation.dataTransitionMs) / 1000), value: angle)
+                    .motionSafeAnimation(MotionTokens.standard, value: angle)
             }
         }
         .aspectRatio(1, contentMode: .fit)

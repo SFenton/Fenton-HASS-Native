@@ -140,7 +140,7 @@ struct SuggestedRecipesCarousel: View {
         .accessibilityValue("\((page ?? 0) + 1) of \(pageCount)")
         .accessibilityAdjustableAction { direction in
             // Reduce Motion: jump to the page rather than scrolling the carousel across.
-            withAnimation(reduceMotion ? nil : .default) { page = Self.adjusted(page, direction, pageCount: pageCount) }
+            withAnimation(reduceMotion ? nil : MotionTokens.standard) { page = Self.adjusted(page, direction, pageCount: pageCount) }
         }
         .accessibilityIdentifier("food.suggestions.pages")
     }

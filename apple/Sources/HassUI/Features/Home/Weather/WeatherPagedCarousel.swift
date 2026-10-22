@@ -66,6 +66,7 @@ struct WeatherPagedCarousel<Cell: View>: View {
             ForEach(0..<paging.pageCount, id: \.self) { index in
                 Capsule()
                     .fill(index == current ? HassTokens.Ink.onDark : HassTokens.Ink.onDark.opacity(0.45))
+                    .quickTransition("WeatherPagedCarousel", value: index == current)
                     .frame(width: index == current ? 18 : 7, height: 7)
             }
         }
@@ -110,6 +111,7 @@ struct WeatherPagedCarousel<Cell: View>: View {
         .buttonStyle(.plain)
         .disabled(disabled)
         .opacity(disabled ? 0.4 : 1)
+        .quickTransition("WeatherPagedCarousel", value: disabled)
         .accessibilityLabel(label)
         .accessibilityIdentifier("\(identifier).\(id)")
     }

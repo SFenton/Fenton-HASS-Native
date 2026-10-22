@@ -374,7 +374,9 @@ struct GroceryAction: View {
             switch model.grocery {
             case let .added(message):
                 HStack(spacing: HassTokens.Spacing.s) {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.green).accessibilityHidden(true)
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.green)
+                        .contentTransition(.symbolEffect(.replace))
+                        .accessibilityHidden(true)
                     Text("Added to Grocery List").foregroundStyle(HassTokens.Ink.primary)
                 }
                 .font(.headline)
@@ -414,6 +416,8 @@ struct GroceryAction: View {
                 }
             }
         }
+        // The button swaps for the confirmation with a cross-fade (`MotionTokens.state`, scoped to this stack).
+        .stateColorTransition("GroceryAction", value: model.grocery)
         .onChange(of: model.grocery) { _, state in
             #if os(iOS)
             switch state {

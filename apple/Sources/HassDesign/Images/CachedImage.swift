@@ -66,7 +66,7 @@ public struct CachedImage<Placeholder: View>: View {
         // The fade belongs to this subtree. It used to be `withAnimation` around the state write, which put everything
         // that changed in that update, the card around the photo included, in an animating transaction (a card grid
         // creating cards as it scrolls spent a sixth of its busiest turns in animatable frames and the opacity transition).
-        .animation(.easeOut(duration: 0.2), value: shownKey)
+        .animation(MotionTokens.quick, value: shownKey)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onGeometryChange(for: Int.self) { proxy in
             ImagePipeline.bucket(Int(max(proxy.size.width, proxy.size.height) * displayScale))

@@ -8,7 +8,6 @@ struct WeatherDailyPanel: View {
     var current: WeatherCurrent
     var mode: WeatherHourlyMode
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
@@ -38,7 +37,7 @@ struct WeatherDailyPanel: View {
                         WeatherDayRow(forecast: forecast, index: index, all: feed.forecasts, current: current, mode: mode)
                     }
                 }
-                .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: mode)
+                .motionSafeAnimation(MotionTokens.quick, value: mode)
             }
         }
         .weatherSurface()

@@ -283,6 +283,7 @@ public struct GlassTileFace: View {
     }
 
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.tileFillsHeight) private var fillsHeight
     @Environment(\.tileSurface) private var surface
     @Environment(\.colorScheme) private var scheme
@@ -329,12 +330,12 @@ public struct GlassTileFace: View {
             .frame(maxWidth: .infinity, minHeight: minContentHeight(layout), maxHeight: fillsHeight ? .infinity : nil,
                    alignment: layout == .stackedTop || layout == .anchoredBottom ? .topLeading : .leading)
             .padding(HassTokens.Spacing.m)
-            .background { ground(style).clipShape(shape) }
+            .background { ground(style).clipShape(shape).stateColorTransition("GlassTile", value: colorKey) }
             .overlay(alignment: .trailing) {
                 if showsChevron {
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
-                        .foregroundStyle(secondaryInk(style).opacity(0.8))
+                        .stateForeground("GlassTile", secondaryInk(style).opacity(0.8))
                         .padding(.trailing, HassTokens.Spacing.m)
                         .accessibilityHidden(true)
                 }
@@ -342,15 +343,43 @@ public struct GlassTileFace: View {
             .overlay {
                 if finish != .solid {
                     TintedGlassRim(style: style, surface: surface, appearance: appearance)
+                        .stateColorTransition("GlassTile", value: colorKey)
                 }
             }
             .overlay {
-                if style == .tinted {
-                    shape.strokeBorder(tintGlyph.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
-                        .opacity(isUnavailable ? 0.5 : 1)
+                Group {
+                    if style == .tinted {
+                        shape.strokeBorder(tintGlyph.opacity(isEnabled ? 0.5 : 0.25), lineWidth: 1)
+                            .opacity(isUnavailable ? 0.5 : 1)
+                    }
                 }
+                .stateColorTransition("GlassTile", value: colorKey)
             }
             .contentShape(shape)
+    }
+
+    /// What decides the tile's colours: a change cross-fades its ground and rim (``SwiftUICore/View/stateColorTransition(_:value:)``)
+    /// and its ink and glyph (``SwiftUICore/View/stateForeground(_:_:)``), together. Built from the inputs the face resolves
+    /// from (design: `.agents/design/motion-components.md`, `GlassTile`).
+    ///
+    /// The level is in it only as whether a band is drawn: its width is progress, not state colour, and animating it with the
+    /// 0.6 s colour fade would make a dragged brightness lag the finger (``BrightnessTile`` animates its level on `quick`).
+    struct TileColorKey: Equatable {
+        var isActive: Bool
+        var isError: Bool
+        var isUnavailable: Bool
+        var family: ColorFamily?
+        var fillRGB: UInt32?
+        var wash: Color?
+        var tint: Color
+        var levelTint: Color?
+        var hasLevel: Bool
+    }
+
+    /// The tile's ``TileColorKey``.
+    var colorKey: TileColorKey {
+        TileColorKey(isActive: isActive, isError: isError, isUnavailable: isUnavailable, family: family, fillRGB: fillRGB,
+                     wash: wash, tint: tint, levelTint: levelTint, hasLevel: (level ?? 0) > 0)
     }
 
     /// The content height the tile keeps: the layout's minimum, or room for the reserved title lines at this text size.
@@ -371,7 +400,9 @@ public struct GlassTileFace: View {
             .font(layout == .row ? .title2 : .title3)
             // Filled for an active tile and for a coloured navigation tile; an off tile keeps the outline.
             .symbolVariant(isActive || style.isColored ? .fill : .none)
-            .foregroundStyle(glyphColor(style))
+            // A symbol that changes with state (lock to unlock, play to pause) replaces itself instead of jumping.
+            .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+            .stateForeground("GlassTile", glyphColor(style))
             // Unavailable dims the glyph and the tinted stroke only. The title and "Unavailable" keep 4.5:1
             // and the ground stays full strength, so wallpaper never shows through behind white text: a
             // whole-face fade left the text at 2.4:1 (signed-in Security tab before states arrived, 2026-10-14).
@@ -383,7 +414,7 @@ public struct GlassTileFace: View {
         VStack(alignment: .leading, spacing: spacing) {
             Text(title)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(primaryInk(style))
+                .stateForeground("GlassTile", primaryInk(style))
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if subtitle != nil, valuesPending {
@@ -392,7 +423,7 @@ public struct GlassTileFace: View {
             } else if let subtitle {
                 Text(subtitle)
                     .font(.footnote)
-                    .foregroundStyle(secondaryInk(style))
+                    .stateForeground("GlassTile", secondaryInk(style))
                     .monospacedDigit()
                     // One short line that shrinks a little before it truncates (the bathroom fan: "Off in 12:30").
                     .lineLimit(subtitleSingleLine ? 1 : nil)

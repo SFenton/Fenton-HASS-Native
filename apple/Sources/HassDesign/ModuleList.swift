@@ -196,7 +196,7 @@ public struct ModuleRow<Accessory: View>: View {
             if let symbol {
                 Image(systemName: symbol)
                     .font(.body.weight(.medium))
-                    .foregroundStyle(glyph ?? secondaryInk)
+                    .stateForeground("ModuleRow", glyph ?? secondaryInk)
                     .opacity(glyphOpacity)
                     .frame(width: glyphWidth)
                     .accessibilityHidden(true)
@@ -209,7 +209,7 @@ public struct ModuleRow<Accessory: View>: View {
                 if let subtitle {
                     Text(subtitle)
                         .font(.footnote)
-                        .foregroundStyle(subtitleInk ?? secondaryInk)
+                        .stateForeground("ModuleRow", subtitleInk ?? secondaryInk)
                         .monospacedDigit()
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -268,7 +268,11 @@ public struct ModuleRowButtonStyle: ButtonStyle {
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
             // White on a page and in a dark sheet, black in a light one: the label colour at 10%.
-            .background { if configuration.isPressed { HassTokens.Ink.primary.opacity(0.10) } }
+            // Down at once, released with `quick` (`.agents/design/motion-components.md`).
+            .background {
+                Rectangle().fill(HassTokens.Ink.primary.opacity(configuration.isPressed ? 0.10 : 0))
+                    .quickTransition("ModuleRowButtonStyle", value: configuration.isPressed, instant: configuration.isPressed)
+            }
     }
 }
 

@@ -176,14 +176,14 @@ struct SprinklerRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.m) {
             Image(systemName: symbol)
-                .foregroundStyle(isActive ? SprinklerStyle.water : HassTokens.Ink.secondary)
+                .stateForeground("SprinklerRow", isActive ? SprinklerStyle.water : HassTokens.Ink.secondary)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).foregroundStyle(HassTokens.Ink.primary)
                 // A watering zone's state reads in the water colour (`#4CC9F0` on the sheet cell is 8:1).
                 Text(lines.joined(separator: " · "))
                     .font(.subheadline)
-                    .foregroundStyle(isActive ? SprinklerStyle.water : HassTokens.Ink.secondary)
+                    .stateForeground("SprinklerRow", isActive ? SprinklerStyle.water : HassTokens.Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -449,8 +449,11 @@ struct DayPicker: View {
                     .font(.subheadline.weight(.semibold))
                     .frame(minWidth: HassTokens.minTarget, maxWidth: .infinity, minHeight: HassTokens.minTarget)
                     // Chosen days fill with the water colour and dark text, as the primary button (direction G).
-                    .foregroundStyle(on ? HassTokens.Surface.sheetGround : HassTokens.Ink.primary)
-                    .background(on ? SprinklerStyle.water : Color.secondary.opacity(0.15), in: Circle())
+                    .stateForeground("DayPicker", on ? HassTokens.Surface.sheetGround : HassTokens.Ink.primary)
+                    .background {
+                        Circle().fill(on ? SprinklerStyle.water : Color.secondary.opacity(0.15))
+                            .stateColorTransition("DayPicker", value: on)
+                    }
             }
             .buttonStyle(.borderless)
             .accessibilityLabel(SprinklerFormat.dayNames[day])

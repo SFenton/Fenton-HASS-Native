@@ -65,7 +65,7 @@ struct OnDemandSplitStack<Item: Hashable, Root: View, Detail: View, Placeholder:
             NavigationStack(path: $path) {
                 root()
                     .sectionRootChrome()
-                    .pageChrome()
+                    .pageChrome(measuring: nil)
                     .navigationDestination(item: pushBinding(isSplit: geometry != nil)) { item in
                         detail(item).pageChrome()
                     }
@@ -79,7 +79,7 @@ struct OnDemandSplitStack<Item: Hashable, Root: View, Detail: View, Placeholder:
                     .transition(reduceMotion ? .opacity : .move(edge: .trailing))
             }
         }
-        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(duration: 0.35), value: openItem)
+        .motionSafeAnimation(MotionTokens.standard, reduced: MotionTokens.quick, value: openItem)
         // Measure the space offered, not the HStack: with fixed pane widths the HStack keeps its split
         // width after a rotation to portrait, so the split never turned off (it overflowed the window).
         // `minWidth: 0` too: without it a flexible frame still grows to its child's width.
@@ -135,7 +135,7 @@ struct OnDemandSplitStack<Item: Hashable, Root: View, Detail: View, Placeholder:
                     placeholder()
                 }
             }
-            .pageChrome()
+            .pageChrome(measuring: nil)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("split.trailing")

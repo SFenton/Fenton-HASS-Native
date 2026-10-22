@@ -41,7 +41,7 @@ public struct StatusPill: View {
     public var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s) {
             Image(systemName: symbol)
-                .foregroundStyle(Self.color(tone))
+                .stateForeground("StatusPill", Self.color(tone))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
@@ -60,7 +60,11 @@ public struct StatusPill: View {
         }
         .padding(HassTokens.Spacing.m)
         .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
-        .background(fill, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
+        .background {
+            RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous)
+                .fill(fill)
+                .stateColorTransition("StatusPill", value: tone)
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(label)
         .accessibilityValue(Self.accessibilityValue(value: value, detail: detail))

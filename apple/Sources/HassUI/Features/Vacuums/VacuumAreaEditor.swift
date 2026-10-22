@@ -79,9 +79,12 @@ struct VacuumAreaEditor: View {
             Label(title, systemImage: symbol)
                 .font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
-                .foregroundStyle(active ? Color.white : HassTokens.Ink.primary)
+                .stateForeground("VacuumAreaEditor", active ? Color.white : HassTokens.Ink.primary)
                 // The live tool fills with the action blue (direction G); the others are grey capsules.
-                .background(active ? AnyShapeStyle(HassTokens.Ink.actionFill) : VacuumStyle.secondaryFill, in: Capsule())
+                .background {
+                    Capsule().fill(active ? AnyShapeStyle(HassTokens.Ink.actionFill) : VacuumStyle.secondaryFill)
+                        .stateColorTransition("VacuumAreaEditor", value: active)
+                }
         }
         .buttonStyle(.plain)
         .disabled(disabled)

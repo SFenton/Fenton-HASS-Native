@@ -35,6 +35,7 @@ public struct ComponentGallery: View {
         case profile
         /// An empty page: only the wallpaper and its scrim (with `FENTON_BACKDROP_FIXTURE=1`), for screenshots.
         case backdrop
+        case motion
         case shellHeader = "shell-header"
     }
 
@@ -112,6 +113,7 @@ public struct ComponentGallery: View {
                     case .modalSizing: ModalSizingGallery()
                     case .liveActivity: LiveActivityGallery()
                     case .backdrop: BackdropOnlyPage()
+                    case .motion: MotionGallery()
                     case .rooms, .vacation, .food, .chores, .location, .settings, .shellHeader, .profile: EmptyView()
                     }
                 }

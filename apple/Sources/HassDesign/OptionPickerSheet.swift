@@ -64,6 +64,7 @@ public struct OptionPickerSheet: View {
                             .font(.body.weight(.semibold))
                             .foregroundStyle(HassTokens.Ink.action)
                             .opacity(option.value == selected ? 1 : 0)
+                            .quickTransition("OptionPickerSheet", value: option.value == selected)
                             .accessibilityHidden(true)
                     }
                     .frame(minHeight: HassTokens.minTarget)

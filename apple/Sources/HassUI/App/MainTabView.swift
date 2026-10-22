@@ -13,6 +13,8 @@ struct MainTabView: View {
     @SceneStorage("selectedTab") private var storedSelection: AppSection = .home
     @State private var navigator = ShellNavigator()
     @State private var windowTop: CGFloat = 0
+    /// Models that outlive the pages that show them (the Food hub, the inventory), so a revisit shows results at once.
+    @State private var sessionModels = SessionModels()
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(EntityStore.self) private var store: EntityStore?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
@@ -21,6 +23,7 @@ struct MainTabView: View {
     @Environment(HassConnection.self) private var connection: HassConnection?
     @Environment(PushCoordinator.self) private var push: PushCoordinator?
     @Environment(LocationCoordinator.self) private var location: LocationCoordinator?
+    @Environment(MotionPolicy.self) private var motion: MotionPolicy?
 
     private var style: ShellNavigationStyle {
         ShellNavigationStyle.resolve(isRegularWidth: horizontalSizeClass == .regular)
@@ -57,6 +60,7 @@ struct MainTabView: View {
             Color.clear.onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top.rounded() } action: { windowTop = $0 }
         }
         .environment(navigator)
+        .environment(\.sessionModels, sessionModels)
         .environment(\.shellNavigationStyle, style)
         .environment(\.shellChrome, chrome)
         // The window's full size, which the page backdrop wallpaper is rendered for and fills on every page.
@@ -99,9 +103,12 @@ struct MainTabView: View {
 
     /// The root tab view: one `TabView` for every system, the glass floating bar on iOS 26 and the standard bar before
     /// it. Five tabs (owner, 2026-10-16): Quick Links is a header button now, not a trailing tab.
+    ///
+    /// A tab switch is a cut (`.agents/design/motion.md` §4.1): the content swaps with no transition, and the selection change
+    /// carries no animation that could reach it. Tapping the selected tab is the standard second tap
+    /// (``ShellNavigator/reselect(_:)``): pop to the root, then scroll to the top. Each section keeps its own path and scroll position.
     private var tabs: some View {
-        @Bindable var navigator = navigator
-        return TabView(selection: $navigator.selection) {
+        TabView(selection: tabSelection) {
             ForEach(AppSection.allCases) { section in
                 sectionStack(for: section)
                     .tabItem { Label(section.title, systemImage: section.symbol) }
@@ -109,6 +116,19 @@ struct MainTabView: View {
                     .tag(section)
             }
         }
+        // Only a change of tab: nothing else inside the sections loses its animation.
+        .transaction(value: navigator.selection) { $0.animation = nil }
+    }
+
+    /// The tab bar's selection. Its setter also runs for a tap on the selected tab, which is how that tap is seen.
+    private var tabSelection: Binding<AppSection> {
+        Binding(
+            get: { navigator.selection },
+            set: { section in
+                if section != navigator.selection { motion?.measureCut(.tabSwitch(section.title)) }
+                navigator.tabTapped(section)
+            }
+        )
     }
 
     /// A section's stack. Every section pushes full width; Settings pushes its topics on the same path.
@@ -126,9 +146,11 @@ struct MainTabView: View {
                 }
             }
             .sectionRootChrome()
-            .pageChrome()
+            .pageChrome(measuring: nil)
+            // A second tap on the selected tab, at the root, scrolls the root to its top.
+            .scrollsToTop(whenRequested: navigator.scrollToTopRequests[section] ?? 0)
             // Pages a notification opens (``ShellNavigator/open(_:)``) or Quick Links chooses.
-            .navigationDestination(for: HomeRoute.self) { HomeRouteDestination(route: $0).pageChrome() }
+            .navigationDestination(for: HomeRoute.self) { HomeRouteDestination(route: $0).pageChrome(measuring: $0.title) }
             .navigationDestination(for: HouseholdSettingsPage.self) { HouseholdSettingsDestination(page: $0).pageChrome() }
             .navigationDestination(for: SettingsRoute.self) { SettingsRouteDestination(route: $0).pageChrome() }
         }
@@ -187,12 +209,16 @@ extension View {
     /// translucent band behind the navigation bar; ``HeaderEdgeFade``), the blurred house backdrop
     /// (``HouseBackdrop``), and the root tab bar hidden in flyout style (on iPadOS 18+ the floating top tab bar
     /// too). A pushed page without it brings the tab bar back and draws no backdrop.
-    func pageChrome() -> some View { modifier(PageChrome()) }
+    ///
+    /// - Parameter page: The name its push is recorded under (``SwiftUICore/View/measuresNavigation(_:page:)``); nil for a tab
+    ///   root, which is never pushed.
+    func pageChrome(measuring page: String? = "Page") -> some View { modifier(PageChrome(measuredPage: page)) }
 }
 
 /// Implementation of ``SwiftUI/View/pageChrome()``. Inside a sheet a page takes the sheet's chrome instead: wallpaper
 /// is never drawn in sheets (direction G, Layers), and the header buttons belong to pages, not sheets.
 private struct PageChrome: ViewModifier {
+    var measuredPage: String?
     @Environment(\.shellNavigationStyle) private var style
     @Environment(\.shellChrome) private var chrome
     @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
@@ -207,8 +233,14 @@ private struct PageChrome: ViewModifier {
     }
 
     @ViewBuilder
+    private func measured(_ content: Content) -> some View {
+        if let measuredPage { content.measuresNavigation(.push, page: measuredPage) } else { content }
+    }
+
+    @ViewBuilder
     private func pageContent(_ content: Content) -> some View {
         let isFlyoutOpen = navigator?.isFlyoutOpen ?? false
+        let content = measured(content)
         #if os(iOS)
         // Both layers: SwiftUI vends a page's own elements past UIKit, and the UIKit navigation bar is
         // out of SwiftUI's reach.

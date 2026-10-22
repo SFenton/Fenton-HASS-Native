@@ -91,7 +91,7 @@ public struct FloatingActionBar: View {
         .padding(.horizontal, HassTokens.Spacing.l)
         .padding(.bottom, HassTokens.Spacing.s)
         // Reduce Motion: the search capsule swaps in place without the spring.
-        .animation(reduceMotion ? nil : .snappy, value: search?.isExpanded.wrappedValue)
+        .motionSafeAnimation(MotionTokens.standard, value: search?.isExpanded.wrappedValue)
     }
 
     /// One row: the search field fills the leading space, then the other actions.
@@ -171,7 +171,7 @@ public struct FloatingActionBar: View {
         Button(action: perform) {
             Image(systemName: symbol)
                 .font(.title3.weight(.medium))
-                .foregroundStyle(isActive ? Self.activeGlyph : .white)
+                .stateForeground("FloatingActionBar", isActive ? Self.activeGlyph : Color.white)
                 .frame(width: buttonSize, height: buttonSize)
                 .modifier(BarGlass(tint: isActive ? Self.activeTint : nil, shape: Circle()))
                 .contentShape(Circle())
@@ -195,7 +195,7 @@ public struct FloatingActionBar: View {
                 Spacer(minLength: 0)
             }
             .font(.body)
-            .foregroundStyle(query.isEmpty ? HassTokens.Surface.secondaryOnWash : .white)
+            .stateForeground("FloatingActionBar", query.isEmpty ? HassTokens.Surface.secondaryOnWash : Color.white)
             .padding(.horizontal, HassTokens.Spacing.l)
             .frame(maxWidth: .infinity, minHeight: buttonSize)
             .modifier(BarGlass(tint: nil, shape: Capsule()))
@@ -261,13 +261,16 @@ private struct BarGlass<S: Shape>: ViewModifier {
         #if os(watchOS)
         content.background(.ultraThinMaterial, in: shape)
         #else
+        // An applied sort or filter, or a primary action, changes the tint: it cross-fades (`MotionTokens.state`).
         if #available(iOS 26.0, macOS 26.0, *), !PerfSwitches.isOff(.glassBar) {
             content.glassEffect(glass, in: shape)
+                .stateColorTransition("FloatingActionBar", value: tint)
         } else {
             content.background {
                 shape.fill(.ultraThinMaterial)
                 if let tint { shape.fill(tint.opacity(Self.fallbackTintOpacity)) }
             }
+            .stateColorTransition("FloatingActionBar", value: tint)
         }
         #endif
     }

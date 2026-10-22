@@ -23,7 +23,7 @@ public struct PerformanceScreen: View {
                     .onChange(of: recording) { _, on in Telemetry.isEnabled = on }
                     .accessibilityIdentifier("performance.recording")
             } footer: {
-                FormFooter("Measures scrolling, loading, live updates and images on this device. Nothing leaves the device unless you export it.")
+                FormFooter("Measures scrolling, navigation, loading, live updates and images on this device. Nothing leaves the device unless you export it.")
             }
 
             Section {
@@ -52,6 +52,18 @@ public struct PerformanceScreen: View {
                 PerformanceRow(title: "Shown instantly", value: "\(report.counter("gate.instant"))",
                                detail: "Pages whose data was already there")
             } header: { FormHeader("Page Loading") }
+
+            Section {
+                if report.navigation.isEmpty {
+                    emptyRow("Switch tabs and open pages to measure them.")
+                        .accessibilityIdentifier("performance.navigation.empty")
+                }
+                ForEach(report.navigation) { row in
+                    PerformanceRow(title: row.surface.title, value: Self.navigationValue(row),
+                                   detail: Self.navigationDetail(row), tone: Self.navigationTone(row))
+                        .accessibilityIdentifier("performance.navigation.\(row.surface.rawValue)")
+                }
+            } header: { FormHeader("Navigation") }
 
             Section {
                 if let stats = report.stats["EntityUpdate"] { statsRow("Apply time", stats) }
@@ -109,6 +121,29 @@ public struct PerformanceScreen: View {
         }
         .task { refresh() }
         .accessibilityIdentifier("performance.screen")
+    }
+
+    /// The headline: the median time to settle (or to the first frame when the transition has no end of its own).
+    static func navigationValue(_ row: NavigationTelemetry.Row) -> String {
+        let headline = row.settled ?? row.firstFrame
+        return headline.map { String(format: "%.0f ms", $0.p50) } ?? "-"
+    }
+
+    /// p50 and p95 for each phase, and the main thread's worst turn.
+    static func navigationDetail(_ row: NavigationTelemetry.Row) -> String {
+        func pair(_ label: String, _ stats: TelemetryStats?) -> String? {
+            stats.map { String(format: "%@ p50 %.0f · p95 %.0f ms", label, $0.p50, $0.p95) }
+        }
+        var parts = [pair("first frame", row.firstFrame), pair("settled", row.settled)].compactMap { $0 }
+        if let worst = row.turnWorst { parts.append(String(format: "worst turn %.0f ms", worst.max)) }
+        parts.append("\(row.count) samples")
+        return parts.joined(separator: " · ")
+    }
+
+    /// A turn over a 120 Hz frame (8 ms) at the 95th percentile is a dropped frame during the transition.
+    static func navigationTone(_ row: NavigationTelemetry.Row) -> PerformanceRow.Tone {
+        guard let p95 = row.turnP95?.p95 else { return .neutral }
+        return p95 <= 8 ? .good : p95 <= 16 ? .warning : .bad
     }
 
     private func refresh() {

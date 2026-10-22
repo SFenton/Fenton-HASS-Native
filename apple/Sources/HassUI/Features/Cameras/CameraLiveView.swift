@@ -28,7 +28,6 @@ struct CameraLiveView: View {
     var style: Style = .viewer
     @Environment(HassConnection.self) private var connection
     @Environment(\.cameraStreamPool) private var poolOverride
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.sectionIsShowing) private var sectionIsShowing
     /// Whether this view has told the pool it shows the camera. A reference, not state: it changes without a redraw.
     @State private var presence = Presence()
@@ -68,7 +67,7 @@ struct CameraLiveView: View {
             .overlay(alignment: .bottom) {
                 if style == .viewer { retry(model.state) }
             }
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.25), value: model.state.phase)
+            .motionSafeAnimation(MotionTokens.quick, value: model.state.phase)
             // Shown means on screen *and* in the section the user is looking at: the tab bar keeps the other sections'
             // views alive without calling `onDisappear`, so a camera behind another tab would otherwise keep its stream.
             .onAppear { presence.onScreen = true; syncPresence() }

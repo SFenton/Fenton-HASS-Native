@@ -29,7 +29,6 @@ struct WeatherRail: View {
 
     var tone: Tone
     var range: WeatherRailRange
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// A rail for a range (temperature, precipitation, visibility) or a scale with a marker (AQI, UV, feels like).
     init(tone: Tone, range: WeatherRailRange = WeatherRailRange()) {
@@ -58,7 +57,7 @@ struct WeatherRail: View {
                 }
             }
             .frame(maxHeight: .infinity)
-            .animation(reduceMotion ? nil : .smooth(duration: 0.39), value: range)
+            .motionSafeAnimation(MotionTokens.standard, value: range)
         }
         .frame(height: 12)
         .frame(minWidth: 48)

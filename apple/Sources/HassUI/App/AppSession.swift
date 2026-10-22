@@ -34,9 +34,6 @@ public final class AppSession {
     /// Different Account.
     public private(set) var expiredAccount: RememberedAccount?
 
-    /// Which one-time moments (the intro, Home's arrival after a sign-in) have played this session; signing out resets it.
-    @ObservationIgnored public let motion = MotionPolicy()
-
     /// The blurred house photo behind every page, for the signed-in server (``HouseBackdrop``).
     @ObservationIgnored private(set) var backdrop: HouseBackdropStore?
 
@@ -51,6 +48,10 @@ public final class AppSession {
 
     /// The Live Activities: tokens for Home Assistant, button presses and sign-out (nil in tests that do not need it).
     @ObservationIgnored public let liveActivities: LiveActivityCoordinator?
+
+    /// Which one-time moments (intro, sign-in arrival) have played, and Reduce Motion. One per session; reset at sign-out
+    /// (`.agents/design/motion.md`). `RootView` puts it in the environment.
+    public let motion: MotionPolicy
 
     /// The app's pages in system search; filled when a session starts and emptied at sign-out.
     @ObservationIgnored private let spotlight: any SpotlightIndexing
@@ -68,13 +69,16 @@ public final class AppSession {
     ///   - location: The app's location coordinator (the app delegate's, created at launch for zone relaunches).
     ///   - liveActivities: The app's Live Activity coordinator (the app delegate's, so its buttons work at launch).
     ///   - spotlight: Where the app's pages are indexed; inert unless the app passes ``CoreSpotlightIndexer``.
+    ///   - motion: The session's motion policy; tests inject one with a fake Reduce Motion source.
     ///   - remembered: Where the last username and the person's name are kept (``expiredAccount``).
     public init(tokenStore: TokenStore = KeychainTokenStore(accessGroup: KeychainTokenStore.sharedAccessGroup),
                 snapshotCache: EntitySnapshotCache = .init(), push: PushCoordinator = .inert(),
                 location: LocationCoordinator? = nil, liveActivities: LiveActivityCoordinator? = nil,
                 spotlight: any SpotlightIndexing = InertSpotlightIndexer(),
+                motion: MotionPolicy = MotionPolicy(),
                 remembered: RememberedAccountStore = RememberedAccountStore()) {
         self.spotlight = spotlight
+        self.motion = motion
         self.remembered = remembered
         self.tokenStore = tokenStore
         self.snapshotCache = snapshotCache
@@ -102,11 +106,14 @@ public final class AppSession {
             let server = ProcessInfo.processInfo.environment["FENTON_HASS_SERVER"]
                 .flatMap(URL.init(string:)).map(HassServer.init(baseURL:)) ?? .fentonHome
             let tokens = AuthTokens(accessToken: token, expiresAt: .distantFuture, refreshToken: "")
+            motion.markPlayed(.signInArrival)
             start(server: server, tokens: TokenManager(store: InMemoryTokenStore(), initial: tokens))
             return
         }
         #endif
         if let stored = tokenStore.load() {
+            // Resuming a saved sign-in is not an arrival: nothing introduces the app to someone already in it.
+            motion.markPlayed(.signInArrival)
             start(server: stored.server, tokens: TokenManager(store: tokenStore))
         }
     }
@@ -177,6 +184,8 @@ public final class AppSession {
         backdrop = nil
         motion.reset()
         spotlight.removeAll()
+        // A second sign-in plays its arrival again, and the signed-out screen its intro.
+        motion.reset()
         phase = .signedOut
         let push = push, liveActivities = liveActivities
         Task {

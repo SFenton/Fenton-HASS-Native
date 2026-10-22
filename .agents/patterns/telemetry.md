@@ -5,7 +5,7 @@
 - **Module:** `HassTelemetry` (`Telemetry`, `TelemetryLog`). It has no dependencies; every other module may use it.
   - **Signposts** (`OSSignposter`, subsystem `com.sfenton.home`, category `Performance`) are always on. Instruments and `XCTOSSignpostMetric` read them.
   - **In-app log**: a 4000-sample ring with counters and per-page scroll stats. It records while `Telemetry.isEnabled`: Debug builds, `FENTON_TELEMETRY=1`, or the switch on the Performance screen.
-- **Names** (`Telemetry.Name`; tests depend on them): `EntityUpdate`, `ContentReady`, `ImageFetch`, `ImageDecode`, `ServiceCall`, `OptimisticConfirm`, `Scroll` and `Hitch`. `SnapshotSave` measures the debounced snapshot write.
+- **Names** (`Telemetry.Name`; tests depend on them): `EntityUpdate`, `ContentReady`, `ImageFetch`, `ImageDecode`, `ServiceCall`, `OptimisticConfirm`, `Scroll` and `Hitch`. `SnapshotSave` measures the debounced snapshot write. Navigation: `TabSwitch`, `Push`, `Pop`, `SheetPresent`, `SheetDismiss`, `ZoomOpen`, `ZoomClose`; moments: `Intro`, `Arrival`. A transition records a `firstFrame` and a `settled` sample and its `p95Turn` and `worstTurn` (`Telemetry.Phase`, in the record's `detail`; `TelemetryLog.phaseStats` keys them `Push.settled@Room`).
 - **Scrolling:**
   - Every page's main `ScrollView` / `List` carries `.scrollTelemetry("<Page>")` (`HassUI/Diagnostics/FrameMonitor.swift`).
   - While it scrolls, a 120 Hz display link times each frame. A frame later than half a budget counts as a hitch, and the page's hitch ratio (ms per s) is recorded.
@@ -13,8 +13,9 @@
   - `CADisableMinimumFrameDurationOnPhone` is set, so ProMotion iPhones scroll at 120 Hz.
 - **Scroll cost:** `MainThreadCostMeter` (HassTelemetry) reads the process' CPU instructions and, per main run-loop turn, the main thread's CPU time; `ScrollCostProbe` (HassUI) drives the front scroll view by itself and reports it. Both are inert unless `FENTON_SCROLLCOST=1`, in any build, and need no test to drive the app. `tools/ios_scrollcost.sh` runs it over every page and sheet; a turn over 8 ms is a dropped frame at 120 Hz. Details, numbers and budgets: [performance](../testing/apple/performance.md). `EntityUpdate` now times only the main-thread part of a live delivery (applying the changed entities); the diff runs on `HassConnection.deltaQueue`.
 - **MetricKit:** `MetricKitCollector` keeps daily metric and diagnostic payloads (scroll hitch ratio, hangs) under `Caches/MetricKit`. It only runs on physical devices.
+- **Navigation:** `NavigationMeasurement` times a transition and meters the main thread meanwhile; `.measuresNavigation(_:page:)` puts it on a page, `MotionPolicy.measure(_:)` / `measureCut(_:)` on code. Budgets and the runner: [performance](../testing/apple/performance.md), "Navigation".
 - **Seeing it:**
-  - Settings → Performance (`PerformanceScreen`) shows scrolling per page, page loading, live updates, actions and images.
+  - Settings → Performance (`PerformanceScreen`) shows scrolling per page, navigation per surface, page loading, live updates, actions and images.
   - **Export Telemetry** shares one JSON file containing the log plus the MetricKit payloads.
   - Gallery: `FENTON_GALLERY=performance` (seeded).
 - **Privacy:** nothing leaves the device unless the user exports it. Records carry page names and entity ids, never values or credentials.

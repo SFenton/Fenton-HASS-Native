@@ -281,8 +281,6 @@ struct ShellChromeTests {
         #expect(StatusChipStyle.fillTint(.contact, isActive: false, tint: nil) == nil)
         #expect(StatusChipStyle.fillTint(.occupancy, isActive: true, tint: nil) == ChipTint(family: .occupancy))
         #expect(StatusChipStyle.fillTint(.neutral, isActive: true, tint: nil) == nil)
-        // Reduce Motion keeps a colour cross-fade (HIG, Motion), only shorter.
-        #expect(StatusChipStyle.colorAnimation(reduceMotion: true) != StatusChipStyle.colorAnimation(reduceMotion: false))
     }
 
     @Test func chipsRenderFilledAndNeutral() {

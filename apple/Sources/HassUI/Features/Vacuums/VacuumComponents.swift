@@ -158,7 +158,7 @@ struct VacuumStatusChip: View {
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: symbol)
-                .foregroundStyle(tint)
+                .stateForeground("VacuumStatusChip", tint)
                 .accessibilityHidden(true)
             Text(value)
                 .foregroundStyle(HassTokens.Ink.primary)

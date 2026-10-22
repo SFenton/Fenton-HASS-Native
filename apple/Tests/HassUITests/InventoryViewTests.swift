@@ -243,4 +243,17 @@ struct InventoryViewTests {
         #expect(rendered(InventoryGallery(environment: ["FENTON_GALLERY_STATE": "loading"])))
         #expect(rendered(InventoryGallery(environment: ["FENTON_GALLERY_HOLD_ADDED": "1"])))
     }
+
+    /// Motion (`.agents/design/motion-components.md`): a split pane's selected row washes in and out.
+    @Test func rowsAnimateTheirSelectedWash() async throws {
+        let (_, models) = models()
+        let model = models.model(for: .allFood)
+        await model.load()
+        _ = try #require(model.visibleItems.first)
+        // The row's selected wash is the list row background, which `ImageRenderer` does not draw inside a `List`.
+        let audited = MotionAudit.capture {
+            _ = ImageRenderer(content: InventoryRowBackground(isFirst: true, isLast: true, selected: true).frame(width: 402, height: 80)).cgImage
+        }
+        #expect(audited.contains("InventoryRow"))
+    }
 }

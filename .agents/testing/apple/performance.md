@@ -141,6 +141,38 @@ No difference outside the run-to-run noise (a first run in a hold reads a bogus 
 
 The render itself (`BackdropRenderer.render`, a 1024 x 684 photo, a 402 x 874 pt window at 3x, on the Mac's GPU): 5 ms at 0% (1206 x 2622 px), under 2 ms at 50% and 100% (302 x 656 px, a quarter of the resolution), always off the main thread. A slider drag renders as fast as renders finish, with 140 ms between them.
 
+## Navigation (simulator and device)
+
+Tab switches, pushes, pops, sheets and zooms are timed by the app itself, the way scrolling is ([motion](../../design/motion.md) §10, [telemetry](../../patterns/telemetry.md)).
+
+- **What is measured.** `NavigationMeasurement` (HassTelemetry) times one transition from its intent to its first frame and to settled, and meters the main thread meanwhile (`MainThreadCostMeter`: the transition's p95 and longest run-loop turn). Names: `TabSwitch`, `Push`, `Pop`, `SheetPresent`, `SheetDismiss`, `ZoomOpen`, `ZoomClose`.
+  - **Tab switch:** the intent is the tab tap (`MotionPolicy.measureCut`); first frame and settled are the next display tick, because a cut has no animation.
+  - **Push, pop, sheet, zoom:** `measuresNavigation` (`pageChrome`, `hassSheet`, `zoomDestination`) puts a zero-size view controller in the page. The page being built is the intent; `viewWillAppear` plus the next display tick is the first frame; `viewDidAppear` is settled (and the same on the way out). A non-animated appearance (cold launch, restored path, tab becoming visible) is not a transition and records nothing.
+- **In the app:** Settings → Performance → Navigation shows p50, p95 and the worst turn per surface. Export Telemetry carries them as `phases` (`Push.settled@Room`) next to the raw records.
+- **Simulator budgets** (CPU only; simulator hitch ratios and GPU cost are false): each transition's p95 run-loop turn at most 8 ms, none over 16 ms; a tab tap to its first frame at most 50 ms (p95); push and sheet tap to settled at most 600 ms.
+- **Run it:** `tools/ios_navperf.sh [--env temp.env] [--only iphone|duo|ipad] [--test testTabCycleStaysWithinBudget]`. It builds once under a `build` hold, then runs `NavigationPerformanceTests` on the iPhone, iPhone Duo and iPad simulators, each in its own devcap hold, and prints one row per surface (p50 and p95 for first frame and settled, p95 and worst turn). Raw rows: `apple/.build/navperf-<label>.tsv`.
+- **The tests** (`Apps/iOSUITests/NavigationPerformanceTests.swift`), skipped unless `TEST_RUNNER_FENTON_PERF_ON_SIMULATOR=1`:
+  - tab cycle (each tab x 3) and Home revisit x 10 (live, navigation only);
+  - push and pop a room page x 10 and sheet open and close x 10 (the Rooms gallery: fixtures, no house);
+  - zoom open and close a room tile x 10 (live; the push fallback before iOS 18).
+
+  The app reports through `diagnostics.navperf` (`FENTON_NAVPERF=1`, `NavigationPerfProbe`): a test posts `com.sfenton.home.navperf.reset` before, and `...report` after, so the report itself never disturbs a measurement.
+- **Device** (`testDeviceNavigationTransitionMetrics`, `testDeviceZoomTransitionMetrics`): `XCTOSSignpostMetric.navigationTransitionMetric` plus the app's own `Push`, `Pop`, `SheetPresent`, `SheetDismiss`, `ZoomOpen` and `ZoomClose` signposts, ten iterations. They skip on a simulator and need the owner's say-so before anyone runs them on the phone. Target: hitch ratio under 5 ms/s.
+- **First numbers (2026-10-18, simulators on a Mac running about 400 load average, so wall times are inflated; the turn costs are CPU and are not).** iPhone 17 Pro / iPhone Duo / iPad Pro 11 (iOS 27), live house for the tab and zoom rows, Rooms gallery for push and sheet. First frame and settled are p50 / p95 in ms; turn is the transition's p95 and worst run-loop turn.
+
+  | Surface | iPhone | iPhone Duo | iPad |
+  |---|---|---|---|
+  | Tab revisit, first frame | 67 / 71 | 3 / 89 | (flyout) |
+  | Tab cycle, first frame (turn p95 / worst) | 94 / 220 (15.6) | 78 / 116 (9.2) | (flyout) |
+  | Tab first visit, first frame | 304 / 481 | 325 / 468 | (flyout) |
+  | Push room, first frame / settled | 89 / 201, 563 / 673 | 93 / 251, 580 / 736 | 78 / 218, 570 / 712 |
+  | Push turn p95 / worst | 0.8 / 10.5 | 0.6 / 3.2 | 0.9 / 11.6 |
+  | Sheet present, settled | 610 / 817 | 626 / 903 | 600 / 726 |
+  | Sheet dismiss turn p95 / worst | 0.3 / 23.3 | 0.4 / 22.8 | 0.2 / 15.0 |
+  | Zoom open, settled | 960 / 1002 (first run) | 944 / 974 | 958 / 988 |
+
+  Against the budgets: transitions cost the main thread very little (turn p95 under 1.3 ms everywhere), but a sheet dismissal's longest turn (22 to 23 ms on the phones) and one tab-revisit turn (15.6 ms iPhone) break the 16 ms rule, and push and sheet "settled" p95 sit above 600 ms (the system animations are about 0.5 s plus the build). `Pop` and `ZoomClose` are not recorded yet (see `patterns/motion.md`, Departures).
+- **Adding a navigation surface:** give it a `measuresNavigation` (or a `MotionPolicy.measure`) and a row in `NavigationPerformanceTests` ([patterns/motion.md](../../patterns/motion.md)).
 ## Launch and sign-in (2026-10-17, `claude/signin-and-launch-motion`)
 
 What the launch intro, a signed-in relaunch and the sign-in arrival cost, measured the way scrolling is: a simulator's hitch ratio is false, so the number is the main thread's CPU time per run-loop turn (`MainThreadCostMeter`) plus the signpost intervals the run recorded. Motion design: [direction G, Launch and sign-in motion](../../design/direction-g.md#launch-and-sign-in-motion).

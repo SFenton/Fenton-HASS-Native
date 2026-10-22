@@ -20,10 +20,9 @@ struct AppIconChoiceButton: View {
                 AppIconPreview(choice: choice, side: side)
                     .padding(Self.ringGap)
                     .overlay {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: side * AppIconPreview.cornerFraction + Self.ringGap, style: .continuous)
-                                .strokeBorder(HassTokens.Ink.action, lineWidth: 3)
-                        }
+                        RoundedRectangle(cornerRadius: side * AppIconPreview.cornerFraction + Self.ringGap, style: .continuous)
+                            .strokeBorder(HassTokens.Ink.action.opacity(isSelected ? 1 : 0), lineWidth: 3)
+                            .stateColorTransition("AppIconChoiceButton", value: isSelected)
                     }
                 HStack(spacing: HassTokens.Spacing.xs) {
                     if isSelected {

@@ -186,12 +186,12 @@ struct TodoItemRow: View {
                 HStack(alignment: .firstTextBaseline, spacing: ModuleRowMetrics.gap) {
                     Image(systemName: Self.checkSymbol(done: done))
                         .font(.body)
-                        .foregroundStyle(done ? AnyShapeStyle(.green) : AnyShapeStyle(surface.secondaryInk))
+                        .stateForeground("TodoItemRow", done ? Color.green : surface.secondaryInk)
                         .frame(width: checkColumn)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
                             .font(.body)
-                            .foregroundStyle(done ? surface.secondaryInk : HassTokens.Ink.primary)
+                            .stateForeground("TodoItemRow", done ? surface.secondaryInk : HassTokens.Ink.primary)
                             .strikethrough(done)
                             .fixedSize(horizontal: false, vertical: true)
                         if let due {
@@ -261,7 +261,7 @@ struct DueLabel: View {
         }
         .font(.subheadline)
         .monospacedDigit()
-        .foregroundStyle(Self.color(tone, surface: surface))
+        .stateForeground("DueLabel", Self.color(tone, surface: surface))
     }
 
     /// The text and glyph colour for a tone on a surface (a sheet's secondary ink follows its appearance).

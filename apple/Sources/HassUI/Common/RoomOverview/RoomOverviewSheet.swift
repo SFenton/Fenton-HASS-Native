@@ -32,6 +32,9 @@ struct RoomOverviewSheet: View {
             .navigationDestination(for: RoomGroup.self) { group in
                 RoomGroupDetailPage(kind: kind, group: group) { dismiss() }
                     .modalChrome()
+                    // A plain push: a zoom inside a sheet hides the sheet's content while the backdrop stays blurred
+                    // (`.agents/design/motion.md` §4.3).
+                    .measuresNavigation(.push, page: "Room overview")
             }
             .toolbar {
                 SheetCloseItem { dismiss() }

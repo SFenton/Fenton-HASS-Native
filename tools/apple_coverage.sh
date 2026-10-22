@@ -7,6 +7,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Every file under apple/Sources must be classified in contracts/coverage-rules.json. Check before taking a
 # build slot, so a new module or file fails here by name instead of as missing coverage after the build.
 python3 "$ROOT/tools/coverage_gate.py" --language swift --classify-only
+# The motion rules (.agents/patterns/motion.md, "Lint"): no raw animation values, no navigation transitions, state colours animate.
+"$ROOT/tools/lint_motion.sh"
 # Compile and test under a machine-wide `build` slot (tools/devcap.py), waiting when the Mac is full.
 if [[ ",${DEVCAP_HELD:-}," != *",build,"* ]]; then
   exec python3 "$ROOT/tools/devcap.py" run --pool build --hold "${FENTON_DEVCAP_HOLD:-3600}" \

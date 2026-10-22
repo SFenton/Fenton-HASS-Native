@@ -125,8 +125,8 @@ public struct BrightnessTile: View {
         }
         .allowsHitTesting(!isUnavailable)
         // The band and bubble glide; with Reduce Motion they jump, and only the bubble and shadow fade.
-        .motionSafeAnimation(.snappy(duration: 0.2), value: shown)
-        .motionSafeAnimation(.snappy(duration: 0.2), reduced: .easeInOut(duration: 0.15), value: isDragging)
+        .motionSafeAnimation(MotionTokens.quick, value: shown)
+        .motionSafeAnimation(MotionTokens.quick, reduced: MotionTokens.quick, value: isDragging)
         // Any live report replaces the optimistic value (web `useOptimisticState`).
         .onChange(of: percent) { interaction.pendingPercent = nil }
         .accessibilityElement(children: .ignore)

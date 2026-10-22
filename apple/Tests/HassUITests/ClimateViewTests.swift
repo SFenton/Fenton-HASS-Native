@@ -194,4 +194,16 @@ struct ClimateViewTests {
         try await recorder.callService("climate", "set_temperature", data: ["entity_id": "climate.missing", "temperature": 70.0])
         #expect(recorder.lastCall.hasPrefix("climate.set_temperature"))
     }
+
+    /// Motion (`.agents/design/motion-components.md`): the hub pill's glyph and the eco options' checks fade their colours.
+    @Test func hubPillAndEcoOptionsAnimateTheirColours() {
+        let climate = controller(.home)
+        let pill = MotionAudit.capture { _ = render(ThermostatHubPill(controller: climate), controller: climate) }
+        #expect(pill.contains("ThermostatHubPill"))
+        var eco: Set<String> = []
+        for option in ClimateConfig.EcoOption.allCases {
+            eco.formUnion(MotionAudit.capture { _ = render(VStack { EcoOptionDetail(controller: climate, option: option) }, controller: climate) })
+        }
+        #expect(eco.contains("EcoOptionDetail"))
+    }
 }

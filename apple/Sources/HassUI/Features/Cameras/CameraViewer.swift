@@ -256,12 +256,15 @@ struct CameraControlButton: View {
                     .font(.title2)
                     .symbolEffect(.pulse, options: .repeating, isActive: pulses && !reduceMotion)
                     .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
-                    .foregroundStyle(isActive ? tint : HassTokens.Ink.primary)
+                    .stateForeground("CameraControlButton", isActive ? tint : HassTokens.Ink.primary)
                     .frame(width: max(circle, HassTokens.minTarget), height: max(circle, HassTokens.minTarget))
                     .background {
                         Circle()
                             .fill(HassTokens.Surface.sheetCell)
-                            .overlay { if isActive { Circle().fill(tint.opacity(0.22)) } }
+                            .overlay {
+                                Circle().fill(tint.opacity(isActive ? 0.22 : 0))
+                                    .stateColorTransition("CameraControlButton", value: isActive)
+                            }
                     }
                 Text(title)
                     .font(.footnote.weight(.semibold))

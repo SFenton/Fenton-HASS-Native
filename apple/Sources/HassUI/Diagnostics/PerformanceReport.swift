@@ -19,6 +19,8 @@ struct PerformanceReport {
     var scroll: [PageScroll]
     var pages: [PageReady]
     var stats: [String: TelemetryStats]
+    /// Tab switches, pushes, pops, sheets and zooms (``NavigationTelemetry``).
+    var navigation: [NavigationTelemetry.Row]
     var counters: [String: Int]
     var recordCount: Int
     var diskBytes: Int
@@ -40,6 +42,7 @@ struct PerformanceReport {
                 .map { PageReady(name: String($0.key.dropFirst(prefix.count)), stats: $0.value) }
                 .sorted { $0.stats.p50 > $1.stats.p50 },
             stats: stats,
+            navigation: NavigationTelemetry.rows(from: log.phaseStats),
             counters: log.counters,
             recordCount: log.records.count,
             diskBytes: disk.bytes,

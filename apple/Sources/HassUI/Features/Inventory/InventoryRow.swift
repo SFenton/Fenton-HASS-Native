@@ -174,7 +174,7 @@ struct InventoryRow: View {
 
 /// A row's share of the page's dense module: the module tint (opaque with Reduce Transparency), rounded at the top of
 /// the first row and the bottom of the last, with the split pane's selection washed over it.
-private struct InventoryRowBackground: View {
+struct InventoryRowBackground: View {
     var isFirst: Bool
     var isLast: Bool
     var selected: Bool
@@ -185,7 +185,8 @@ private struct InventoryRowBackground: View {
         // The dense module on the wallpaper, the sheet's cell colour in a sheet (as ``ModuleRowBackground`` does).
         ground
             .overlay {
-                if selected { HassTokens.Ink.action.opacity(0.18) }
+                HassTokens.Ink.action.opacity(selected ? 0.18 : 0)
+                    .stateColorTransition("InventoryRow", value: selected)
             }
             .clipShape(UnevenRoundedRectangle(
                 topLeadingRadius: isFirst ? radius : 0, bottomLeadingRadius: isLast ? radius : 0,

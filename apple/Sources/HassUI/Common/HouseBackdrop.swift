@@ -267,7 +267,7 @@ struct HouseBackdrop: View {
         .scaleEffect(arrived || reduceMotion ? 1 : MotionTokens.Arrival.backdropScale)
         .opacity(arrived ? 1 : 0)
         .animation(reduceMotion ? MotionTokens.crossFade : MotionTokens.Arrival.backdrop, value: arrived)
-        .animation(.easeInOut(duration: 0.3), value: store?.image != nil)
+        .motionSafeAnimation(MotionTokens.standard, reduced: MotionTokens.quick, value: store?.image != nil)
     }
 }
 
