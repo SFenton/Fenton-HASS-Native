@@ -175,11 +175,11 @@ final class NavigationJourneyTests: XCTestCase {
         open("home", title: "Home", in: app)
     }
 
-    /// A drag from the leading edge opens the flyout, and the edge does not swallow taps: Open Navigation
-    /// works when tapped inside the edge-swipe width.
+    /// A drag from the leading edge opens the flyout wherever the hamburger shows (iPad, unfolded Duo, iPhone), and the
+    /// edge does not swallow taps: Open Navigation works when tapped inside the edge-swipe width.
     func testEdgeSwipeOpensFlyoutWithoutBlockingEdgeTaps() throws {
         let app = try FentonHomeApp.launchSignedIn()
-        guard usesFlyout(app) else { throw XCTSkip("Compact window") }
+        guard app.buttons["nav.open"].waitForExistence(timeout: 5) else { throw XCTSkip("No hamburger in this window") }
         // Start on a control at the leading edge (the first camera tile's row): the swipe must open only
         // the flyout, never the control under it (the landscape Duo opened the camera too).
         let window = app.windows.firstMatch
@@ -188,6 +188,8 @@ final class NavigationJourneyTests: XCTestCase {
         let start = window.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: 2, dy: y))
         start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 200, dy: 0)))
         XCTAssertTrue(flyout(app).waitForExistence(timeout: 3), "Edge swipe did not open the flyout")
+        // The drawer's blur reaches the top and bottom of the screen (look at the screenshot).
+        keepScreenshot(app, "flyout-edge-swipe")
         XCTAssertFalse(app.navigationBars.buttons["Close"].exists, "The edge swipe also activated the control under it")
         app.buttons["nav.flyout.scrim"].tap()
         XCTAssertTrue(flyout(app).waitForNonExistence(timeout: 3))

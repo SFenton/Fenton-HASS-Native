@@ -33,10 +33,10 @@ struct NavigationFlyout: View {
 
     private var scrim: some View {
         ZStack(alignment: .leading) {
-            // The dimming layer: drawing only. Leaves the status bar undimmed (dimmed, its window title
-            // read below 3:1 in the audit).
+            // The dimming layer: drawing only. Covers the whole window, the status bar area included, so the
+            // content behind the drawer darkens the same under the top safe area as in the body.
             Color.black.opacity(0.32)
-                .ignoresSafeArea(edges: [.horizontal, .bottom])
+                .ignoresSafeArea()
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
             // The close target covers only the area beside the panel: a full-window button won the
@@ -51,7 +51,7 @@ struct NavigationFlyout: View {
             }
             .buttonStyle(.plain)
             .keyboardShortcut(.cancelAction)
-            .padding(.leading, NavigationFlyoutMetrics.panelWidth + 2 * NavigationFlyoutMetrics.margin)
+            .padding(.leading, NavigationFlyoutMetrics.panelWidth)
             .accessibilityLabel("Close Navigation")
             .accessibilityIdentifier("nav.flyout.scrim")
             // The panel's own rows come first for VoiceOver; the close target is reachable after them.
@@ -81,8 +81,13 @@ struct NavigationFlyout: View {
             .scrollBounceBehavior(.basedOnSize)
         }
         .frame(width: NavigationFlyoutMetrics.panelWidth)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
-        .padding(NavigationFlyoutMetrics.margin)
+        // A full-height drawer: the blur runs under the status bar, the home indicator and any leading inset, while
+        // the rows stay inside the safe area.
+        .background {
+            UnevenRoundedRectangle(bottomTrailingRadius: HassTokens.Radius.tile, topTrailingRadius: HassTokens.Radius.tile, style: .continuous)
+                .fill(.regularMaterial)
+                .ignoresSafeArea()
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("nav.flyout")
         .accessibilityAddTraits(.isModal)
@@ -139,8 +144,6 @@ struct NavigationFlyout: View {
 enum NavigationFlyoutMetrics {
     /// Panel width; the web rail is 248 px, widened for 44 pt rows and Dynamic Type.
     static let panelWidth: CGFloat = 300
-    /// Gap between the floating panel and the window edges (FestivalNativeApps drawer).
-    static let margin: CGFloat = 8
     /// Width of the leading-edge strip that opens the flyout with a swipe.
     static let edgeSwipeWidth: CGFloat = 20
     /// Horizontal travel that opens the flyout.

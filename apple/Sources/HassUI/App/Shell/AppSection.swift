@@ -119,7 +119,8 @@ struct ShellChrome: Equatable, Sendable {
     /// The page title sits in the header row beside the trailing buttons (``HeaderTitleStyle``): where nothing but
     /// the trailing buttons shares the row, which is every window without the menu button.
     var titleInHeader: Bool
-    /// The leading edge swipe opens the flyout. Off on iPhone, where the edge belongs to the system Back swipe.
+    /// The leading edge swipe opens the flyout, wherever the menu button shows. The menu button only shows on section
+    /// roots, where no Back swipe owns the edge (``ShellNavigator/edgeSwipeEnded(startX:translation:)`` checks the root).
     var edgeSwipe: Bool
 
     init(showsMenuButton: Bool, titleInHeader: Bool, edgeSwipe: Bool? = nil) {
@@ -140,7 +141,7 @@ struct ShellChrome: Equatable, Sendable {
             // With the menu button leading (iPhone), the title is the standard large title below the bar: `.inlineLarge`
             // would put it in the leading slot and push the menu button to the trailing side (owner, 2026-10-20).
             let menu = isPhone && !inVerticalBar
-            return ShellChrome(showsMenuButton: menu, titleInHeader: !menu, edgeSwipe: false)
+            return ShellChrome(showsMenuButton: menu, titleInHeader: !menu, edgeSwipe: menu)
         }
     }
 }
