@@ -28,9 +28,10 @@ public struct SettingsSection<Content: View>: View {
             ForEach(Array(paragraphs.enumerated()), id: \.offset) { _, paragraph in
                 Text(paragraph)
                     .font(.subheadline)
-                    // On the wallpaper (the Settings tab's topic pages) the fixed light ink: the adaptive secondary
-                    // measured 4.1:1 there; in a sheet it keeps the sheet's own ink.
-                    .foregroundStyle(surface == .page ? HassTokens.Ink.onDarkSecondary : HassTokens.Ink.secondary)
+                    // On the wallpaper (the Settings tab's topic pages) the fixed white ink: the adaptive secondary
+                    // measured 4.1:1 there, and white at 85% 4.3:1 over a bright patch of the iPad's wallpaper (live Admin
+                    // page, 2026-10-17); in a sheet it keeps the sheet's own ink.
+                    .foregroundStyle(surface == .page ? HassTokens.Ink.onDark : HassTokens.Ink.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             content

@@ -26,8 +26,11 @@ final class FeedbackJourneyTests: JourneyTestCase {
     private func feedbackRow(_ app: XCUIApplication, _ kind: String) -> XCUIElement {
         let row = app.buttons["settings.feedback.\(kind)"]
         _ = app.buttons["settings.homeAssistant"].waitForExistence(timeout: 10)
-        for _ in 0..<10 where !(row.exists && row.isHittable) {
-            app.settingsList.swipeUp(velocity: .slow)
+        // The list grew (App Icon, Backdrop blur): ten slow swipes stopped above the last rows.
+        // Clear of the bottom edge too: at ax5 a hittable row can sit under the tab bar's hit area.
+        let list = app.settingsList
+        for _ in 0..<40 where !(row.exists && row.isHittable && row.frame.maxY < list.frame.maxY - 100) {
+            list.swipeUp(velocity: .slow)
         }
         return row
     }
@@ -39,6 +42,11 @@ final class FeedbackJourneyTests: JourneyTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 5), "Feedback row \(kind) not found")
         assertTarget(row)
         row.tap()
+        if !app.buttons["feedback.submit"].waitForExistence(timeout: 5) {
+            // The row can still be settling after the last swipe: scroll it clear again and retry once.
+            let again = feedbackRow(app, kind)
+            if again.exists, again.isHittable { again.tap() }
+        }
         XCTAssertTrue(app.buttons["feedback.submit"].waitForExistence(timeout: 5), "Feedback form did not open")
         sleep(1) // Let the sheet finish presenting.
     }
@@ -174,12 +182,14 @@ final class FeedbackJourneyTests: JourneyTestCase {
         if keep.exists && keep.isHittable {
             keep.tap()
         } else {
-            // iOS 27 anchors the dialog as a popover without Keep Editing; an outside tap keeps editing. Tap just
-            // above the popover (below it near the top): the window's middle fell on the popover in iPad landscape
-            // and kept it open (2026-10-15).
+            // iOS 27 anchors the dialog as a popover without Keep Editing; an outside tap keeps editing. Tap the middle
+            // of the larger free band above or below the popover: the window's middle fell on the popover in iPad
+            // landscape and kept it open (2026-10-15), and a tap 40 pt above a popover that starts at 88 pt lands in the
+            // status bar on iPhone, which ignores it (2026-10-17).
             let popover = app.popovers.firstMatch.exists ? app.popovers.firstMatch.frame : discard.frame
             let window = app.windows.firstMatch.frame
-            let y = popover.minY > 80 ? popover.minY - 40 : min(popover.maxY + 40, window.maxY - 20)
+            let below = window.maxY - popover.maxY, above = popover.minY - window.minY
+            let y = below >= above ? popover.maxY + min(below / 2, 240) : popover.minY - min(above / 2, 240)
             app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: popover.midX, dy: y)).tap()
         }
         XCTAssertTrue(discard.waitForNonExistence(timeout: 5))

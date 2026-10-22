@@ -42,6 +42,9 @@ private struct PrimaryButtonBody: View {
         configuration.label
             .font(.body.weight(.semibold))
             .multilineTextAlignment(.center)
+            // Take the height the wrapped label needs: the audit read "Open in Cookidoo" as possibly clipped when the
+            // label's own height was proposed the button's minimum (iPhone, 2026-10-21).
+            .fixedSize(horizontal: false, vertical: true)
             .stateForeground("PrimaryButton", colors.label)
             .padding(.horizontal, HassTokens.Spacing.xl)
             .padding(.vertical, HassTokens.Spacing.s)

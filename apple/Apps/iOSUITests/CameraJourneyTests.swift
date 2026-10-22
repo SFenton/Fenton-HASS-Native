@@ -134,9 +134,14 @@ final class CameraJourneyTests: JourneyTestCase {
         let snapshot = app.buttons["camera.control.snapshot"]
         XCTAssertTrue(snapshot.wait(for: \.isHittable, toEqual: true, timeout: 10))
         sleep(1) // Measure after the page sheet settles, not mid-presentation.
-        let video = app.descendants(matching: .any)["camera.viewer.video"].frame
+        let video = app.descendants(matching: .any)["camera.viewer.video"].firstMatch.frame
         let controls = snapshot.frame
         add(XCTAttachment(string: "video \(video), controls \(controls)\n\(app.debugDescription)"))
+        // The element must have a real frame (VoiceOver outlines it): a clear overlay without an accessibility shape came
+        // back as a zero frame on iPhone and the folded Duo (2026-10-17).
+        XCTAssertGreaterThan(video.width, 100, "The video element has no frame: \(video)")
+        XCTAssertGreaterThan(video.height, 60, "The video element has no frame: \(video)")
+        XCTAssertTrue(window.contains(video), "The video element lies outside the window: \(video)")
         if splits {
             XCTAssertLessThanOrEqual(video.maxX, controls.minX, "Controls trail the video")
         } else {

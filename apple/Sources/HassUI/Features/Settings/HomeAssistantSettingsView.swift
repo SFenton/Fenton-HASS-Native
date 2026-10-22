@@ -68,7 +68,7 @@ struct HomeAssistantSettingsView: View {
     private var serverSection: some View {
         Section {
             infoRow("Address", Self.displayedServer(connection.server), id: "haSettings.server")
-            infoRow("Connection", Self.statusText(connection.status), id: "haSettings.status")
+            infoRow("Connection", Self.statusText(connection.status, isOffline: connection.isOffline), id: "haSettings.status")
             if let version = Self.version(connection.status) {
                 infoRow("Version", version, id: "haSettings.version")
             }
@@ -211,8 +211,9 @@ struct HomeAssistantSettingsView: View {
     }
 
     /// Connection status in words.
-    static func statusText(_ status: HassConnection.Status) -> String {
-        switch status {
+    static func statusText(_ status: HassConnection.Status, isOffline: Bool = false) -> String {
+        if isOffline { return "Offline" }
+        return switch status {
         case .disconnected: "Disconnected"
         case .connecting: "Connecting…"
         case .connected: "Connected"

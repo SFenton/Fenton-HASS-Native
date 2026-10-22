@@ -65,7 +65,12 @@ final class ResumeCyclesJourneyTests: JourneyTestCase {
             sleep(6) // The connection answers and the streams restart.
             scrollHome(app)
 
-            let now = census(app)
+            var now = census(app)
+            // Threads follow work in flight: while four streams reconnect (WebRTC peers starting and stopping) the
+            // process holds extra ones, which return once they settle (folded Duo, cycle 6: 27 at launch, 55 mid
+            // reconnect). A leak never returns, so wait on the state for up to 30 s before judging it.
+            let settleBy = Date().addingTimeInterval(30)
+            while (now["Process.threads"] ?? 0) > launchThreads + 25, Date() < settleBy { now = census(app) }
             for name in Self.exact {
                 XCTAssertEqual(now[name], launch[name], "Cycle \(cycle): \(name) changed from the first launch.\nlaunch \(launch)\nnow    \(now)")
             }

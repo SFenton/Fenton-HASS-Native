@@ -16,11 +16,20 @@ private struct SectionRootChrome: ViewModifier {
     @Environment(\.shellChrome) private var chrome
     @AccessibilityFocusState private var buttonFocused: Bool
 
+    /// The menu button is the leading-most bar item: `.navigation` would be pushed trailing by an inline-large title.
+    private static var menuPlacement: ToolbarItemPlacement {
+        #if os(iOS)
+        .topBarLeading
+        #else
+        .navigation
+        #endif
+    }
+
     func body(content: Content) -> some View {
         content
             .toolbar {
                 if chrome.showsMenuButton {
-                    ToolbarItem(placement: .navigation) {
+                    ToolbarItem(placement: Self.menuPlacement) {
                         Button {
                             navigator?.openFlyout()
                         } label: {
@@ -49,6 +58,7 @@ extension View {
 private struct ShellHeaderButtons: ViewModifier {
     @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
     @Environment(EntityStore.self) private var store: EntityStore?
+    @Environment(HassConnection.self) private var connection: HassConnection?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
 
     /// Overdue chores plus expired food (``ProfileSummary/badgeCount(overdue:expiredFood:vacationMode:)``); zero until
@@ -63,6 +73,7 @@ private struct ShellHeaderButtons: ViewModifier {
                 ShellHeaderItems(
                     profileName: navigator.profileName,
                     attentionCount: attentionCount,
+                    isOffline: connection?.isOffline ?? false,
                     openQuickLinks: { navigator.openQuickLinks() },
                     openAccount: { navigator.openAccount() }
                 )
@@ -85,6 +96,7 @@ private struct ShellHeaderButtons: ViewModifier {
 struct ShellHeaderItems: ToolbarContent {
     var profileName: String?
     var attentionCount = 0
+    var isOffline = false
     var openQuickLinks: () -> Void
     var openAccount: () -> Void
     @Environment(\.shellInVerticalBar) private var inVerticalBar
@@ -95,15 +107,15 @@ struct ShellHeaderItems: ToolbarContent {
             // glass shape; the person symbol (a monogram custom view stays in the horizontal bar, measured) shares the glass, and no spacer is added (HIG Designing for iPhone Duo).
             ToolbarItemGroup(placement: .primaryAction) {
                 QuickLinksButton(action: openQuickLinks)
-                ProfileButton(name: profileName, attentionCount: attentionCount, grouped: true, action: openAccount)
+                ProfileButton(name: profileName, attentionCount: attentionCount, isOffline: isOffline, grouped: true, action: openAccount)
             }
         } else if #available(iOS 26.0, macOS 26.0, *) {
             ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: openQuickLinks) }
             ToolbarSpacer(.fixed, placement: .primaryAction)
-            ProfileHeaderItem(name: profileName, attentionCount: attentionCount, action: openAccount)
+            ProfileHeaderItem(name: profileName, attentionCount: attentionCount, isOffline: isOffline, action: openAccount)
         } else {
             ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: openQuickLinks) }
-            ProfileHeaderItem(name: profileName, attentionCount: attentionCount, action: openAccount)
+            ProfileHeaderItem(name: profileName, attentionCount: attentionCount, isOffline: isOffline, action: openAccount)
         }
     }
 }
@@ -113,17 +125,18 @@ struct ShellHeaderItems: ToolbarContent {
 private struct ProfileHeaderItem: ToolbarContent {
     var name: String?
     var attentionCount: Int
+    var isOffline = false
     var action: () -> Void
 
     var body: some ToolbarContent {
         if #available(iOS 26.0, macOS 26.0, *) {
             ToolbarItem(placement: .primaryAction) {
-                ProfileButton(name: name, attentionCount: attentionCount, action: action)
+                ProfileButton(name: name, attentionCount: attentionCount, isOffline: isOffline, action: action)
             }
             .sharedBackgroundVisibility(ProfileButton.Presentation.resolve(name: name).sharedBackground)
         } else {
             ToolbarItem(placement: .primaryAction) {
-                ProfileButton(name: name, attentionCount: attentionCount, action: action)
+                ProfileButton(name: name, attentionCount: attentionCount, isOffline: isOffline, action: action)
             }
         }
     }
@@ -192,6 +205,11 @@ struct ProfileButton: View {
     var name: String?
     /// Overdue chores plus expired food, badged on the avatar ("9+" past nine) and spoken with its value.
     var attentionCount = 0
+    /// No network path: a small `icloud.slash` badge sits on the bottom-right of the disc, opposite the attention badge.
+    /// Chosen over a mark beside Quick Links because the header's trailing group is already two fixed 44 pt circles
+    /// (a third item would crowd the Duo's vertical rail and the iPad bar) and the badge rides on the Profile circle in
+    /// every bar without changing the layout.
+    var isOffline = false
     /// The button sits in the Duo's shared glass group in the vertical rail. A monogram (a custom view) does not move into
     /// the rail (measured: it stayed 68 pt off the rail's column), so the group shows the person symbol instead.
     var grouped = false
@@ -209,9 +227,9 @@ struct ProfileButton: View {
     }
 
     /// "Stephen Fenton, 3 items need attention": the person, then what is waiting (web `profile.openWithAttention`).
-    static func accessibilityValue(name: String?, attentionCount: Int) -> String {
+    static func accessibilityValue(name: String?, attentionCount: Int, isOffline: Bool = false) -> String {
         let attention = attentionCount > 0 ? "\(attentionCount) \(attentionCount == 1 ? "item needs" : "items need") attention" : nil
-        return [name, attention].compactMap { $0 }.joined(separator: ", ")
+        return [name, attention, isOffline ? "Offline" : nil].compactMap { $0 }.joined(separator: ", ")
     }
 
     // MARK: Presentation
@@ -276,11 +294,12 @@ struct ProfileButton: View {
         let metrics = Metrics.current
         Button(action: action) { label(for: presentation, metrics: metrics) }
             .overlay(alignment: .topTrailing) { badge(metrics: metrics) }
+            .overlay(alignment: .bottomTrailing) { offlineBadge(metrics: metrics) }
             .accessibilityShowsLargeContentViewer {
                 Label("Profile", systemImage: "person.crop.circle")
             }
             .accessibilityLabel("Profile")
-            .accessibilityValue(Self.accessibilityValue(name: name, attentionCount: attentionCount))
+            .accessibilityValue(Self.accessibilityValue(name: name, attentionCount: attentionCount, isOffline: isOffline))
             .accessibilityHint("Opens your summary and account")
             .accessibilityIdentifier("nav.profile")
     }
@@ -313,6 +332,23 @@ struct ProfileButton: View {
                 .font(.title3)
                 .foregroundStyle(.primary)
                 .modifier(SymbolCircle(ringed: metrics.ringed))
+        }
+    }
+
+    /// The offline badge on the disc's bottom-trailing edge.
+    @ViewBuilder
+    private func offlineBadge(metrics: Metrics) -> some View {
+        if isOffline {
+            Image(systemName: "icloud.slash")
+                .font(.system(size: 9, weight: .bold))
+                .dynamicTypeSize(...DynamicTypeSize.xLarge)
+                .foregroundStyle(.white)
+                .frame(width: 18, height: 18)
+                .background(Color(white: 0.28), in: Circle())
+                .overlay { Circle().strokeBorder(Color.white.opacity(0.35), lineWidth: 0.5) }
+                .offset(x: metrics.overhang - 2, y: 1)
+                .accessibilityLabel("Offline")
+                .accessibilityIdentifier("nav.offline")
         }
     }
 

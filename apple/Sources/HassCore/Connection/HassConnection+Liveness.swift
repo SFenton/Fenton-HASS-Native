@@ -51,7 +51,7 @@ extension HassConnection {
     /// Disconnects first rather than letting `connect()` swap sockets, as ``refreshRoute()`` does
     /// (`.agents/platforms/apple/connection-lifecycle.md`).
     func reconnect() {
-        guard wantsConnection else { return }
+        guard wantsConnection, !isOffline else { return }
         connection.disconnect()
         connection.connect()
         refreshStatus()

@@ -2,7 +2,7 @@ import XCTest
 
 /// The shell after the 2026-10-16 owner decisions (`.agents/design/direction-g.md`, Navigation): Settings is the last
 /// tab; Quick Links and Profile are header buttons on every page; the Profile sheet is the web's Your Summary; and the
-/// page title shares the header row with them where there is no hamburger (`toolbarTitleDisplayMode(.inlineLarge)`).
+/// page title shares the header row with them where there is no hamburger (`toolbarTitleDisplayMode(.inlineLarge)`); on iPhone the hamburger is leading and the title is the standard large title below the bar.
 /// Runs on iPhone, the folded iPhone Duo and iPad (portrait; `FENTON_UITEST_ORIENTATION=landscape` for iPad landscape).
 @MainActor
 final class ShellJourneyTests: JourneyTestCase {
@@ -232,9 +232,19 @@ final class ShellJourneyTests: JourneyTestCase {
         }
         XCTAssertEqual(app.buttons["nav.open"].exists, FentonHomeApp.family == .iPhone, "Hamburger only on iPhone")
         let large = title.frame
-        XCTAssertLessThan(abs(large.midY - profile.frame.midY), 20, "The title is not in the buttons' row")
         XCTAssertGreaterThan(large.height, 30, "The title is not large at the top")
-        XCTAssertLessThan(large.minX, 40, "The large title is not leading")
+        let menu = app.buttons["nav.open"]
+        if menu.exists {
+            // iPhone (owner, 2026-10-20): hamburger leading-most, the standard large title below the bar.
+            XCTAssertLessThan(menu.frame.minX, large.minX + 40, "The menu button is not at the leading edge")
+            XCTAssertLessThan(menu.frame.minX, 30, "The menu button is not at the left edge")
+            XCTAssertLessThan(menu.frame.maxX, app.buttons["quickLinks.open"].frame.minX, "The menu button is not left of Quick Links")
+            XCTAssertLessThan(menu.frame.midX, profile.frame.minX, "The menu button is not left of Profile")
+            XCTAssertGreaterThan(large.minY, profile.frame.maxY - 4, "The large title is not below the bar")
+        } else {
+            XCTAssertLessThan(abs(large.midY - profile.frame.midY), 20, "The title is not in the buttons' row")
+            XCTAssertLessThan(large.minX, 40, "The large title is not leading")
+        }
         shoot(app, "title-large")
         let scroll = app.scrollViews.firstMatch
         for _ in 0..<3 { scroll.swipeUp() }
@@ -245,11 +255,10 @@ final class ShellJourneyTests: JourneyTestCase {
             let inline = collapsed.frame
             XCTAssertLessThan(inline.height, large.height - 8, "The title did not shrink on scroll")
             XCTAssertLessThan(abs(inline.midY - profile.frame.midY), 20, "The inline title left the buttons' row")
-            // With the hamburger (iPhone) the bar keeps the inline title leading beside it; without it the title centres.
-            if app.buttons["nav.open"].exists {
-                XCTAssertLessThan(inline.maxX, app.buttons["nav.open"].frame.minX, "The inline title runs under the buttons")
-            } else {
-                XCTAssertGreaterThan(inline.minX, large.minX + 40, "The inline title did not centre")
+            XCTAssertGreaterThan(inline.minX, large.minX + 40, "The inline title did not centre")
+            if menu.exists {
+                XCTAssertGreaterThan(inline.minX, menu.frame.maxX, "The inline title runs under the menu button")
+                XCTAssertLessThan(inline.maxX, app.buttons["quickLinks.open"].frame.minX, "The inline title runs under the buttons")
             }
         } else {
             XCTAssertEqual(FentonHomeApp.family, .iPhoneDuo, "The title vanished on scroll")

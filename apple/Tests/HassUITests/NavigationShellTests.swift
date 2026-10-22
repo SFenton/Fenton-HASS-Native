@@ -300,8 +300,13 @@ struct ShellHamburgerTests {
     @Test func iPhoneTabBarShowsTheMenuButtonButNotTheEdgeSwipe() {
         let chrome = ShellChrome.resolve(style: .tabBar, isPhone: true)
         #expect(chrome.showsMenuButton)
-        #expect(chrome.titleInHeader)
+        #expect(!chrome.titleInHeader)
         #expect(!chrome.edgeSwipe)
+    }
+
+    @Test func duoRailAndCompactIPadKeepTheTitleInTheHeader() {
+        #expect(ShellChrome.resolve(style: .tabBar, isPhone: true, inVerticalBar: true).titleInHeader)
+        #expect(ShellChrome.resolve(style: .tabBar, isPhone: false).titleInHeader)
     }
 
     @Test func duoRailAndCompactIPadHaveNoMenuButton() {

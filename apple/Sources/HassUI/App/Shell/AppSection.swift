@@ -135,8 +135,12 @@ struct ShellChrome: Equatable, Sendable {
     ///   - inVerticalBar: The system has moved bar items into the Duo's vertical bar.
     static func resolve(style: ShellNavigationStyle, isPhone: Bool = false, inVerticalBar: Bool = false) -> ShellChrome {
         switch style {
-        case .flyout: ShellChrome(showsMenuButton: true, titleInHeader: false, edgeSwipe: true)
-        case .tabBar: ShellChrome(showsMenuButton: isPhone && !inVerticalBar, titleInHeader: true, edgeSwipe: false)
+        case .flyout: return ShellChrome(showsMenuButton: true, titleInHeader: false, edgeSwipe: true)
+        case .tabBar:
+            // With the menu button leading (iPhone), the title is the standard large title below the bar: `.inlineLarge`
+            // would put it in the leading slot and push the menu button to the trailing side (owner, 2026-10-20).
+            let menu = isPhone && !inVerticalBar
+            return ShellChrome(showsMenuButton: menu, titleInHeader: !menu, edgeSwipe: false)
         }
     }
 }

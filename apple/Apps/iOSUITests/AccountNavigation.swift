@@ -81,4 +81,12 @@ extension XCUIApplication {
         // Right after a sheet over Settings closes, the list can take a moment to come back.
         return list.waitForExistence(timeout: 3) ? list : collectionViews.firstMatch
     }
+
+    /// Scrolls the Settings list until `row` is built and hittable, down and then back up: the list is lazy and keeps only
+    /// the rows near the viewport, so on a short screen (the folded Duo) a row can be above or below where the page was left.
+    func revealSettingsRow(_ row: XCUIElement) {
+        let list = settingsList
+        for _ in 0..<15 where !(row.exists && row.isHittable) { list.swipeUp(velocity: .slow) }
+        for _ in 0..<15 where !(row.exists && row.isHittable) { list.swipeDown(velocity: .slow) }
+    }
 }

@@ -194,9 +194,11 @@ struct SecurityViewTests {
         try await recorder.callService("alarm_control_panel", "alarm_arm_night", data: ["entity_id": SecurityConfig.alarmEntityId])
         #expect(store.value(SecurityConfig.alarmEntityId)?.state == "armed_night")
         try await recorder.callService("cover", "open_cover", data: ["entity_id": SecurityConfig.leftGarageDoorEntityId])
-        // The door finishes opening a few seconds later; poll rather than guess how long the main actor is busy.
-        for _ in 0..<3000 where store.value(SecurityConfig.leftGarageDoorEntityId)?.state != "open" {
-            try await Task.sleep(for: .milliseconds(10))
+        // The door finishes opening a few seconds later; poll against the clock, not a count of sleeps: under load each
+        // 10 ms sleep takes far longer, and a count ran out (or the main actor pumped other suites) before the door moved.
+        let deadline = ContinuousClock.now + .seconds(120)
+        while store.value(SecurityConfig.leftGarageDoorEntityId)?.state != "open", ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
         }
         #expect(store.value(SecurityConfig.leftGarageDoorEntityId)?.state == "open")
         try await recorder.callService("cover", "close_cover", data: ["entity_id": SecurityConfig.leftGarageDoorEntityId])

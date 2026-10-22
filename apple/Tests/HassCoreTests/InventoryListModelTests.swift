@@ -191,7 +191,7 @@ struct InventoryListModelTests {
     @Test func typingDuringTheFirstLoadSearchesAfterIt() async {
         let (model, server) = makeModel()
         model.searchDebounce = .milliseconds(20)
-        server.latency = .milliseconds(600)
+        server.latency = .milliseconds(1500) // The first load must still be in flight when the query is typed, however busy the host is.
         let load = Task { await model.load() }
         #expect(await eventually { !server.calls.isEmpty }, "The first load is in flight")
         model.searchQuery = "milk"
@@ -199,7 +199,7 @@ struct InventoryListModelTests {
         await load.value
         #expect(model.settledQuery == "")
         #expect(model.isSearching)
-        #expect(await eventually { model.settledQuery == "milk" && !model.isSearching })
+        #expect(await eventually(timeout: .seconds(15)) { model.settledQuery == "milk" && !model.isSearching })
         #expect(model.settledQuery == "milk")
         #expect(names(model) == ["Whole Milk"])
         #expect(!model.isSearching)
@@ -265,8 +265,10 @@ struct InventoryListModelTests {
     @Test func addToShoppingGoesIdleAddingAddedIdle() async throws {
         let (model, server) = await loaded()
         let eggs = try #require(model.displayItem(id: "eggs"))
-        model.addedVisibleFor = .seconds(1)
-        server.latency = .milliseconds(600)
+        // Windows no stalled main actor can outlast between two statements (1 s and 600 ms failed under load): the
+        // check shows for 4 s, and the add stays in flight for 1.5 s.
+        model.addedVisibleFor = .seconds(4)
+        server.latency = .milliseconds(1500)
         #expect(model.shopping["eggs"] == nil)
 
         let add = Task { await model.addToShopping(eggs, quantity: 2) }
@@ -281,7 +283,7 @@ struct InventoryListModelTests {
         await model.addToShopping(eggs, quantity: 2)
         #expect(server.calls.count == 3, "The tap while the check shows was ignored")
 
-        #expect(await eventually { model.shopping["eggs"] == .idle })
+        #expect(await eventually(timeout: .seconds(15)) { model.shopping["eggs"] == .idle })
         #expect(model.rowErrors["eggs"] == nil)
     }
 
@@ -341,7 +343,7 @@ struct InventoryListModelTests {
     @Test func deleteInFlightBlocksASecondDelete() async throws {
         let (model, server) = await loaded()
         let eggs = try #require(model.displayItem(id: "eggs"))
-        server.latency = .milliseconds(600)
+        server.latency = .milliseconds(1500) // Long enough that the second delete is made while the first is in flight, however busy the host is.
         let first = Task { await model.delete(eggs, quantity: 1) }
         #expect(await eventually { !model.deleting.isEmpty })
         #expect(model.deleting == ["eggs"])

@@ -180,7 +180,10 @@ private struct VideoAccessibility: ViewModifier {
             content
                 .accessibilityHidden(true)
                 .overlay {
+                    // An accessibility shape of its own: a clear fill draws nothing, and on iPhone and the folded Duo the
+                    // element came back with a zero frame (VoiceOver had no outline to focus; 2026-10-17).
                     Rectangle().fill(.clear)
+                        .contentShape(.accessibility, Rectangle())
                         .accessibilityElement()
                         .accessibilityLabel("\(camera.title) camera")
                         .accessibilityValue(CameraLiveView.statusText(state))

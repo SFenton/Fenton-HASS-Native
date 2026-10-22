@@ -127,7 +127,10 @@ final class LightSheetsJourneyTests: JourneyTestCase {
         XCUIDevice.shared.appearance = appearance
         sleep(2)
         var launched = launchFollowingTheSystem()
-        for _ in 0..<3 where !launched.probe.label.hasPrefix("screen=\(wanted) ") {
+        // Against the clock, not a count of relaunches: three relaunches (about 15 s) were not enough for a simulator on a
+        // loaded host to take the setting (iPhone, 2026-10-17: the device read dark, the screen stayed light).
+        let deadline = Date().addingTimeInterval(120)
+        while !launched.probe.label.hasPrefix("screen=\(wanted) "), Date() < deadline {
             launched.app.terminate()
             sleep(3)
             launched = launchFollowingTheSystem()

@@ -5,6 +5,9 @@ import SwiftUI
 /// The quiet "Reconnecting…" chip: an orange dot that breathes, and the word (owner, 2026-10-17). It says the values on screen
 /// may be stale; it never clears them. With Reduce Motion the dot holds still.
 struct ReconnectingChip: View {
+    /// No network path: the chip says the app is offline instead (a still grey `icloud.slash`, no breathing dot).
+    var offline = false
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.arcSpinnersPaused) private var paused
 
@@ -20,14 +23,21 @@ struct ReconnectingChip: View {
 
     var body: some View {
         HStack(spacing: HassTokens.Spacing.s) {
-            TimelineView(.animation(paused: paused || reduceMotion)) { context in
-                Circle()
-                    .fill(Self.dot)
-                    .opacity(Self.dotOpacity(at: context.date, reduceMotion: reduceMotion))
+            if offline {
+                Image(systemName: "icloud.slash")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .accessibilityHidden(true)
+            } else {
+                TimelineView(.animation(paused: paused || reduceMotion)) { context in
+                    Circle()
+                        .fill(Self.dot)
+                        .opacity(Self.dotOpacity(at: context.date, reduceMotion: reduceMotion))
+                }
+                .frame(width: 8, height: 8)
+                .accessibilityHidden(true)
             }
-            .frame(width: 8, height: 8)
-            .accessibilityHidden(true)
-            Text("Reconnecting…")
+            Text(offline ? "Offline. Showing last known values." : "Reconnecting…")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(.white)
         }
@@ -36,7 +46,7 @@ struct ReconnectingChip: View {
         .background(HassTokens.Surface.moduleDense, in: Capsule())
         .overlay { Capsule().strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5) }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Reconnecting to Home Assistant")
-        .accessibilityIdentifier("reconnecting.chip")
+        .accessibilityLabel(offline ? "Offline. Showing last known values." : "Reconnecting to Home Assistant")
+        .accessibilityIdentifier(offline ? "offline.chip" : "reconnecting.chip")
     }
 }

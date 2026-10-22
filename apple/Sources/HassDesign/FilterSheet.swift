@@ -21,6 +21,7 @@ public struct FilterSheet<Content: View>: View {
     @ViewBuilder public var content: () -> Content
 
     @Environment(\.dismiss) private var dismiss
+    @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 12
 
     /// Creates a sheet.
     public init(title: String, subtitle: String? = nil, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void,
@@ -50,10 +51,16 @@ public struct FilterSheet<Content: View>: View {
                             Text("Reset to Defaults")
                                 .foregroundStyle(HassTokens.Ink.action)
                                 .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget, alignment: .leading)
+                                // Padding that scales with the text instead of a fixed 44 pt floor: the floor made the row the
+                                // same height whatever the text did (iPad: 74 pt at the default size, 93.5 pt at AX5, 1.26x
+                                // while the text triples), which the Dynamic Type check reads as text that does not grow
+                                // (iPad Filter Recipes, 2026-10-17). 12 pt either side of the 20 pt line is the 44 pt target.
+                                .padding(.vertical, verticalPadding)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 0, leading: HassTokens.Spacing.l, bottom: 0, trailing: HassTokens.Spacing.l))
                         .accessibilityIdentifier("filterSheet.reset")
                     }
                 }

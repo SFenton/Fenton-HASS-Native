@@ -16,6 +16,7 @@ struct VacuumGallery: View {
     private let initialVacuum: VacuumConfig?
     private let initialTab: VacuumTab
     private let scenario: VacuumFixtures.Scenario
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init() {
         let environment = ProcessInfo.processInfo.environment
@@ -33,12 +34,16 @@ struct VacuumGallery: View {
             VacuumSheet(controller: VacuumController(vacuum: vacuum, store: store, caller: recorder),
                         loader: VacuumFixtures.loader(vacuum, scenario: scenario), server: nil, catalog: nil,
                         services: VacuumFixtures.services, initialTab: initialTab)
-                .safeAreaInset(edge: .bottom) {
-                    if !GalleryEnvironment.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
-                }
+                .safeAreaInset(edge: .bottom) { lastCallBar }
         }
-        .safeAreaInset(edge: .bottom) {
-            if !GalleryEnvironment.isClean { lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar) }
+        .safeAreaInset(edge: .bottom) { lastCallBar }
+    }
+
+    /// The debug line under the page and the sheet. At accessibility text sizes it is left out, as the Food gallery
+    /// does: it grew over the sheet's section bar and took its taps (the AX5 journey could not open the menu).
+    @ViewBuilder private var lastCallBar: some View {
+        if !GalleryEnvironment.isClean, !dynamicTypeSize.isAccessibilitySize {
+            lastCall.padding(.horizontal).padding(.vertical, 4).background(.bar)
         }
     }
 
