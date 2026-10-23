@@ -30,5 +30,6 @@
 | [image-cache.md](image-cache.md) | `HassDesign/Images/ImagePipeline.swift`, `CachedImage.swift` | browser HTTP cache (`decoding="async"` images) |
 | [telemetry.md](telemetry.md) | `HassTelemetry/`, `HassUI/Diagnostics/` | none (native only) |
 | [weather.md](weather.md) | `HassUI/Features/Home/Weather/WeatherSummaryCard.swift`, `WeatherSheet.swift`, `WeatherPagedCarousel.swift`; logic in `HassCore/Weather` | `src/components/hass/WeatherSummary.tsx`, `useWeatherForecasts.ts`, `weatherPresentation.ts`, `weatherDayBriefing.ts` |
+| [ticker.md](ticker.md) | `HassDesign/TickerLabel.swift`, `TickerPlan.swift` | none (native only; owner decision 2026-10-22) |
 | [camera-streams.md](camera-streams.md) | `HassUI/Features/Cameras/CameraStreamPool.swift`, `CameraLiveModel.swift`; logic in `HassCore/Cameras/CameraStream.swift` | `SFenton/WebRTC` `www/stream-manager.js`, `rtcStreamRetention.ts` |
 | [resume-lifecycle.md](resume-lifecycle.md) | `HassTelemetry/ResourceCensus.swift`, `HassUI/Diagnostics/ResourceCensusProbe.swift`, `HassDesign/NativePaging.swift` | none (native only) |

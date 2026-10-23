@@ -60,6 +60,33 @@ enum WeatherSymbols {
         }
     }
 
+    /// Empty space between a condition symbol's frame and its ink on the left, as a fraction of the point size. SF Symbols carry
+    /// 2 to 5 pt of it at 40 pt, which pushed the hero glyph's edge right of the text under it
+    /// (`.agents/design/weather-card-header.md`). ``WeatherGlyph`` pulls the symbol left by this much; `WeatherViewTests` renders
+    /// every condition symbol and fails when an entry is more than half a point off at 40 pt.
+    static let leadingInsets: [String: CGFloat] = [
+        "cloud.bolt.fill": 0.075,  // 3 pt at 40 pt
+        "cloud.bolt.rain.fill": 0.075,  // 3 pt at 40 pt
+        "cloud.fill": 0.075,  // 3 pt at 40 pt
+        "cloud.fog.fill": 0.075,  // 3 pt at 40 pt
+        "cloud.hail.fill": 0.075,  // 3 pt at 40 pt
+        "cloud.heavyrain.fill": 0.075,  // 3 pt at 40 pt
+        "cloud.moon.fill": 0.059375,  // 2.375 pt at 40 pt
+        "cloud.moon.rain.fill": 0.059375,  // 2.375 pt at 40 pt
+        "cloud.rain.fill": 0.075,  // 3 pt at 40 pt
+        "cloud.sleet.fill": 0.075,  // 3 pt at 40 pt
+        "cloud.snow.fill": 0.075,  // 3 pt at 40 pt
+        "cloud.sun.fill": 0.05625,  // 2.25 pt at 40 pt
+        "exclamationmark.triangle.fill": 0.1,  // 4 pt at 40 pt
+        "moon.stars.fill": 0.125,  // 5 pt at 40 pt
+        "smoke.fill": 0.05,  // 2 pt at 40 pt
+        "sun.max.fill": 0.075,  // 3 pt at 40 pt
+        "wind": 0.128125,  // 5.125 pt at 40 pt
+    ]
+
+    /// The leading inset of a condition symbol, as a fraction of its point size; 0 for a symbol not in ``leadingInsets``.
+    static func leadingInset(of symbol: String) -> CGFloat { leadingInsets[symbol] ?? 0 }
+
     static let precipitation = "cloud.rain.fill"
     static let humidity = "humidity.fill"
     static let cloudCover = "cloud.fill"
@@ -79,10 +106,18 @@ enum WeatherSymbols {
         }
     }
 
+    /// Every Home Assistant condition the card draws (plus an unknown one, which falls back to the cloud).
+    static let conditionKeys = ["sunny", "clear-night", "partlycloudy", "cloudy", "rainy", "pouring", "snowy", "snowy-rainy", "lightning",
+                                "lightning-rainy", "fog", "hail", "windy", "windy-variant", "exceptional", "unknown"]
+
+    /// Every symbol a condition can draw, day and night, for the existence and ink-edge tests.
+    static var conditionNames: [String] {
+        Array(Set(conditionKeys.flatMap { [condition($0), condition($0, night: true)] })).sorted()
+    }
+
     /// Every name this file can return, for the hosted existence test.
     static var allNames: [String] {
-        let conditions = ["sunny", "clear-night", "partlycloudy", "cloudy", "rainy", "pouring", "snowy", "snowy-rainy", "lightning",
-                          "lightning-rainy", "fog", "hail", "windy", "windy-variant", "exceptional", "unknown"]
+        let conditions = conditionKeys
         var names = conditions.flatMap { [condition($0), condition($0, night: true)] }
         names += WeatherHazard.allCases.map(hazard)
         names += WeatherHighlight.Kind.allCases.map { highlight($0) }
