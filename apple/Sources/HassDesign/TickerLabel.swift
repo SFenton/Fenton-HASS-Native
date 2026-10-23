@@ -41,7 +41,7 @@ public struct TickerLabel: View {
     }
 
     /// Whether this launch adds the probe elements (UI tests set `FENTON_TICKER_PROBE=1`).
-    static let probeEnabled = ProcessInfo.processInfo.environment["FENTON_TICKER_PROBE"] == "1"
+    public static let probeEnabled = ProcessInfo.processInfo.environment["FENTON_TICKER_PROBE"] == "1"
 
     /// Whether the label may run now.
     var shouldRun: Bool {
