@@ -155,11 +155,15 @@ final class WeatherHeaderJourneyTests: JourneyTestCase {
         }
     }
 
-    func testHeaderPassesTheAccessibilityAudit() throws {
+    private func audit(condition: String) throws {
         guard ProcessInfo.processInfo.environment["FENTON_SKIP_AUDIT"] != "1" else { return }
-        let app = launch(condition: Self.longCondition, arguments: Self.large)
-        try FentonHomeApp.audit(app, ax5Page: { self.launch(condition: Self.longCondition, arguments: FentonHomeApp.ax5) }, presenter: nil)
+        let app = launch(condition: condition, arguments: Self.large)
+        try FentonHomeApp.audit(app, ax5Page: { self.launch(condition: condition, arguments: FentonHomeApp.ax5) }, presenter: nil)
     }
+
+    func testHeaderWithAShortConditionPassesTheAccessibilityAudit() throws { try audit(condition: Self.shortCondition) }
+
+    func testHeaderWithATickingConditionPassesTheAccessibilityAudit() throws { try audit(condition: Self.longCondition) }
 
     // MARK: - Evidence
 
