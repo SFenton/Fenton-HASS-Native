@@ -123,35 +123,52 @@ struct WeatherCardContent: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background { cardButton(current) }
         .background(alignment: .topLeading) { rangeMeasure(current) }
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { headerWidth = $0 }
         .environment(\.tickerIsOnScreen, sectionIsShowing)
     }
 
-    /// The numeral with the chevron beside it, centred on the numeral. The card's one button: it names the condition and the
-    /// reading, so the condition text itself is hidden from VoiceOver.
+    /// The numeral with the chevron beside it, centred on the numeral. Drawn only: the card's button (``cardButton(_:)``) names the
+    /// condition and the reading.
     private func reading(_ current: WeatherCurrent) -> some View {
+        HStack(alignment: .center, spacing: HassTokens.Spacing.xs) {
+            Text(current.degreeText)
+                // Capped: past this a three-digit reading no longer fits the folded Duo's card at AX5.
+                .font(.system(size: min(numeralSize, Self.maxNumeralSize), weight: .thin))
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize()
+                .overlay { if TickerLabel.probeEnabled { numeralProbe } }
+            Image(systemName: WeatherSymbols.disclosure)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+        }
+        .frame(minHeight: HassTokens.minTarget)
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { readingWidth = $0 }
+        .accessibilityHidden(true)
+    }
+
+    /// The card's one button for assistive technology, behind the header so its frame covers the glyph, condition and reading it
+    /// names (the audit finds no drawn text without an element); today's range stays its own element on top.
+    private func cardButton(_ current: WeatherCurrent) -> some View {
         Button { isPresented = true } label: {
-            HStack(alignment: .center, spacing: HassTokens.Spacing.xs) {
-                Text(current.degreeText)
-                    // Capped: past this a three-digit reading no longer fits the folded Duo's card at AX5.
-                    .font(.system(size: min(numeralSize, Self.maxNumeralSize), weight: .thin))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .fixedSize()
-                Image(systemName: WeatherSymbols.disclosure)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(HassTokens.Surface.secondaryOnModule)
-            }
-            .frame(minHeight: HassTokens.minTarget)
-            .contentShape(.rect)
-            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { readingWidth = $0 }
+            Color.clear.contentShape(.rect)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Self.openLabel(current))
         .accessibilityAddTraits(.isButton)
         .accessibilityIdentifier("home.weather.card")
+    }
+
+    /// An invisible element with the numeral's frame, for UI tests (`FENTON_TICKER_PROBE=1`).
+    private var numeralProbe: some View {
+        Color.clear
+            .allowsHitTesting(false)
+            .accessibilityElement()
+            .accessibilityLabel("numeral")
+            .accessibilityIdentifier("home.weather.numeral")
     }
 
     /// Whether today's range is wider than the left column. Measured from the header's width, the reading's width and the

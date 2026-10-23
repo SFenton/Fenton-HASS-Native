@@ -69,15 +69,16 @@ final class WeatherHeaderJourneyTests: JourneyTestCase {
 
     // MARK: - Numeral
 
-    /// The reading is never cut: the button holds the numeral and chevron at their natural width, so it is wider than it is tall
-    /// at the default sizes and never narrower than a short three-character reading would be, and it stays inside the card.
+    /// The reading is never cut: the invisible `home.weather.numeral` element has the numeral's own frame, which is at least as wide
+    /// as it is tall (a three-character reading in a thin font), and it stays inside the card.
     private func assertNumeralWhole(_ app: XCUIApplication, _ size: String, file: StaticString = #filePath, line: UInt = #line) {
-        let card = app.buttons["home.weather.card"]
+        let numeral = app.descendants(matching: .any)["home.weather.numeral"].firstMatch
         let module = app.descendants(matching: .any)["home.weather"].firstMatch
+        XCTAssertTrue(numeral.waitForExistence(timeout: 8), file: file, line: line)
         XCTAssertTrue(module.exists, file: file, line: line)
-        XCTAssertGreaterThanOrEqual(card.frame.width, 0.9 * card.frame.height, "The numeral looks cut at \(size): \(card.frame)", file: file, line: line)
-        XCTAssertLessThanOrEqual(card.frame.maxX, module.frame.maxX + 0.5, "The numeral leaves the card at \(size)", file: file, line: line)
-        XCTAssertGreaterThanOrEqual(card.frame.minX, module.frame.minX, "The numeral leaves the card at \(size)", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(numeral.frame.width, 0.9 * numeral.frame.height, "The numeral looks cut at \(size): \(numeral.frame)", file: file, line: line)
+        XCTAssertLessThanOrEqual(numeral.frame.maxX, module.frame.maxX + 0.5, "The numeral leaves the card at \(size)", file: file, line: line)
+        XCTAssertGreaterThanOrEqual(numeral.frame.minX, module.frame.minX, "The numeral leaves the card at \(size)", file: file, line: line)
     }
 
     func testNumeralIsNeverTruncated() {
