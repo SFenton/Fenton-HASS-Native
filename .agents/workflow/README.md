@@ -5,6 +5,7 @@
 | File | Holds |
 |---|---|
 | [change-loop.md](change-loop.md) | The per-change procedure |
+| [propose-first.md](propose-first.md) | The mockup-and-proposal gate before any visible change, and what the proposal holds |
 | [docs-conventions.md](docs-conventions.md) | Rules for `.agents` files |
 | [token-economy.md](token-economy.md) | No polling, session size, model routing, the test ladder, and the tools that enforce them |
 | [swiftui-pro.md](swiftui-pro.md) | How we apply the vendored SwiftUI Pro skill |
