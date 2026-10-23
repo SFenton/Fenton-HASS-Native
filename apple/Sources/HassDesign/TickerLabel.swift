@@ -1,33 +1,6 @@
 import HassTelemetry
 import SwiftUI
 
-public extension EnvironmentValues {
-    /// Whether the page the view is on is being scrolled; a ticker holds still meanwhile (`.agents/design/motion.md` §9.10).
-    /// Set by ``SwiftUICore/View/pausesTickersWhileScrolling()``.
-    @Entry var pageIsScrolling = false
-    /// Whether the view's section is on screen; a ticker holds still behind another tab. True outside the shell.
-    @Entry var tickerIsOnScreen = true
-}
-
-public extension View {
-    /// Tells the tickers inside this scroll view when it is moving, so they pause (iOS 18 and later; on iOS 17 they keep going).
-    func pausesTickersWhileScrolling() -> some View { modifier(PausesTickersWhileScrolling()) }
-}
-
-private struct PausesTickersWhileScrolling: ViewModifier {
-    @State private var scrolling = false
-
-    func body(content: Content) -> some View {
-        if #available(iOS 18, macOS 15, *) {
-            content
-                .onScrollPhaseChange { _, phase in scrolling = phase != .idle }
-                .environment(\.pageIsScrolling, scrolling)
-        } else {
-            content
-        }
-    }
-}
-
 /// One line of text that scrolls like a ticker when it is wider than the room it has (pattern: `.agents/patterns/ticker.md`).
 ///
 /// The label takes the width it is offered. If its natural width is wider, it plays ``MotionTokens/Ticker/passes`` passes of
@@ -200,30 +173,5 @@ public struct TickerLabel: View {
         try? await Task.sleep(for: .seconds(remaining + 0.05))
         guard !Task.isCancelled else { return }
         sync()
-    }
-}
-
-/// Seconds a ticker has played, kept across pauses.
-struct TickerClock: Equatable {
-    private var before: TimeInterval = 0
-    private var resumedAt: Date?
-
-    var isRunning: Bool { resumedAt != nil }
-
-    func elapsed(at date: Date) -> TimeInterval {
-        before + (resumedAt.map { max(0, date.timeIntervalSince($0)) } ?? 0)
-    }
-
-    mutating func resume(at date: Date) { if resumedAt == nil { resumedAt = date } }
-
-    mutating func pause(at date: Date) {
-        before = elapsed(at: date)
-        resumedAt = nil
-    }
-
-    /// Back to the start (the text changed).
-    mutating func restart() {
-        before = 0
-        resumedAt = nil
     }
 }
