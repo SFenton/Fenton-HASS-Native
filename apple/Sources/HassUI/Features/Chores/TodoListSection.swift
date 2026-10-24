@@ -212,9 +212,8 @@ struct TodoItemRow: View {
             .accessibilityAddTraits(.isToggle)
             .accessibilityHint(done ? "Marks the task not done." : "Marks the task done.")
             .accessibilityIdentifier("todo.item.\(item.identity)")
-            // The trailing swipe's actions, for VoiceOver.
+            // The trailing swipe's Delete, for VoiceOver; Edit is the button beside the row, so it is offered once.
             .accessibilityActions {
-                if let onEdit { Button("Edit", action: onEdit) }
                 if let onDelete { Button("Delete", action: onDelete) }
             }
 

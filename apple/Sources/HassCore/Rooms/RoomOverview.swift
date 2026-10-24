@@ -105,6 +105,21 @@ public enum RoomOverview {
         }
     }
 
+    /// How many of a room's sensors have stopped answering. A dead contact or presence sensor otherwise reads as closed
+    /// or empty, which misstates a security-relevant room.
+    public static func unavailableCount(_ group: RoomGroup, read: Read) -> Int {
+        group.items.filter { read($0.entityId)?.isUnavailable == true }.count
+    }
+
+    /// What VoiceOver reads as a room card's value: the subtitle, plus how many sensors are unavailable.
+    public static func spokenSubtitle(_ kind: RoomOverviewKind, _ group: RoomGroup, read: Read) -> String {
+        let subtitle = cardSubtitle(kind, group, read: read)
+        let offline = unavailableCount(group, read: read)
+        guard offline > 0 else { return subtitle }
+        let note = offline == 1 ? "1 sensor unavailable" : "\(offline) sensors unavailable"
+        return subtitle.isEmpty ? note : "\(subtitle), \(note)"
+    }
+
     /// A room card's subtitle in the overview.
     public static func cardSubtitle(_ kind: RoomOverviewKind, _ group: RoomGroup, read: Read) -> String {
         switch kind {

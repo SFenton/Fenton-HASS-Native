@@ -46,7 +46,7 @@ struct AppIconChoiceButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(choice.isDefault ? "\(choice.spokenName), default" : choice.spokenName)
-        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityIdentifier("appIcon.choice.\(choice.rawValue)")
     }
 }

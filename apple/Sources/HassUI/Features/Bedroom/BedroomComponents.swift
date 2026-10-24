@@ -101,9 +101,31 @@ struct BedroomRow<Trailing: View>: View {
     var title: String
     var lines: [String]
     var isMuted = false
+    /// Makes the icon and text a button that opens the row (a real `Button` for VoiceOver, Switch Control and
+    /// Full Keyboard Access); the trailing control stays its own sibling element.
+    var onOpen: (() -> Void)?
+    /// The identifier of that button.
+    var openIdentifier: String?
     @ViewBuilder var trailing: () -> Trailing
 
     var body: some View {
+        HStack(spacing: HassTokens.Spacing.m) {
+            if let onOpen {
+                Button(action: onOpen) { copy }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier(openIdentifier ?? "")
+            } else {
+                copy
+            }
+            trailing()
+        }
+        .frame(minHeight: HassTokens.minTarget)
+        .padding(.vertical, HassTokens.Spacing.s)
+        .padding(.horizontal, HassTokens.Spacing.m)
+        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+    }
+
+    private var copy: some View {
         HStack(spacing: HassTokens.Spacing.m) {
             Image(systemName: symbol)
                 .font(.title3)
@@ -119,12 +141,8 @@ struct BedroomRow<Trailing: View>: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            trailing()
         }
-        .frame(minHeight: HassTokens.minTarget)
-        .padding(.vertical, HassTokens.Spacing.s)
-        .padding(.horizontal, HassTokens.Spacing.m)
-        .background(HassTokens.Surface.sheetCell, in: RoundedRectangle(cornerRadius: HassTokens.Radius.tile, style: .continuous))
+        .contentShape(Rectangle())
     }
 }
 

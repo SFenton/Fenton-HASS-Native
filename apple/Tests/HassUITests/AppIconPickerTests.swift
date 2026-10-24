@@ -377,7 +377,8 @@ struct AppIconFlowTests {
             let button = try #require(nodes.first { $0.identifier == "appIcon.choice.\(choice.rawValue)" }, "\(choice)")
             #expect(button.role == "AXButton")
             #expect(button.spoken.hasPrefix(choice.spokenName), "\(choice): \(button.spoken)")
-            #expect(button.value == (choice == .tealMint ? "Selected" : "Not selected"), "\(choice) value \(button.value)")
+            #expect(button.isSelected == (choice == .tealMint), "\(choice) selected trait \(button.isSelected)")
+            #expect(button.value.isEmpty, "selection is a trait, not spoken text: \(button.value)")
             #expect(button.frame.height >= 44 && button.frame.width >= 44, "\(choice) target \(button.frame)")
         }
         let navy = try #require(nodes.first { $0.identifier == "appIcon.choice.navySky" })
@@ -390,11 +391,11 @@ struct AppIconFlowTests {
         defer { driver.close() }
         #expect(await driver.press("settings.appIcon") { $0.contains { $0.identifier == "appIcon.choice.plumLilac" } })
         #expect(await driver.press("appIcon.choice.plumLilac") { nodes in
-            nodes.first { $0.identifier == "appIcon.choice.plumLilac" }?.value == "Selected"
+            nodes.first { $0.identifier == "appIcon.choice.plumLilac" }?.isSelected == true
         })
         #expect(system.requested == ["AppIcon-PlumLilac"])
         let nodes = await driver.nodes()
-        #expect(nodes.first { $0.identifier == "appIcon.choice.navySky" }?.value == "Not selected")
+        #expect(nodes.first { $0.identifier == "appIcon.choice.navySky" }?.isSelected == false)
         await driver.closeSheet()
         let row = try #require(await driver.waitFor("settings.appIcon"))
         #expect(row.spoken.contains("Plum + Lilac"), "row reads: \(row.spoken)")

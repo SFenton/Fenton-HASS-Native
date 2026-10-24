@@ -326,13 +326,12 @@ struct IngredientRow: View {
         .frame(maxWidth: .infinity, minHeight: RecipeRowMetrics.minHeight, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(RecipeFormatting.title(ingredient))
-        .accessibilityValue(checklist ? (onHand ? "On hand" : "Not on hand") : "")
-        .accessibilityHint(RecipeFormatting.accessibilityDetails(detail, ingredient))
+        .accessibilityValue(RecipeFormatting.spokenValue(detail, ingredient, checklist: checklist))
         .accessibilityIdentifier("recipe.ingredient.\(ingredient.position)")
     }
 
     /// The row's mark: a filled check when on hand, a question mark when EverShelf is unsure of the match (and nobody
-    /// overrode it), else an empty circle. The spoken value stays "On hand" or "Not on hand".
+    /// overrode it), else an empty circle. The spoken value says "Match unsure" for the question mark.
     static func mark(_ ingredient: RecipeDetail.Ingredient, onHand: Bool) -> String {
         if onHand { return "checkmark.circle.fill" }
         if ingredient.overrideAvailability == nil, ingredient.inventoryState == .uncertain { return "questionmark.circle" }

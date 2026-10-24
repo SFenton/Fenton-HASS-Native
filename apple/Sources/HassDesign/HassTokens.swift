@@ -186,6 +186,10 @@ public enum HassTokens {
         public static let sheetCell = Color.adaptive(light: Palette.sheetCellLight, dark: Palette.sheetCell)
         /// The thin module tint (``SwiftUICore/View/module(_:cornerRadius:)``).
         public static let moduleThin = Color(rgb: Palette.moduleThin).opacity(0.66)
+        /// ``moduleThin``, or the opaque module fill with Reduce Transparency, for list rows that cannot use `.module()`.
+        public static func moduleThin(reduceTransparency: Bool) -> Color {
+            reduceTransparency ? Color(rgb: Palette.moduleThin) : moduleThin
+        }
         /// The dense module for red and orange text; also the opaque-enough fallback with Reduce Transparency.
         public static let moduleDense = Color(rgb: Palette.moduleDense).opacity(0.78)
         /// Hairline separators: white at 14% on dark, the system separator colour in a light sheet.

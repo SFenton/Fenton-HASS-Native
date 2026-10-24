@@ -37,6 +37,20 @@ struct RoomOverviewTests {
         #expect(group(.climate, "Master Bedroom").items[1].colorEntityId == "input_text.master_bedroom_bed_climate_color")
     }
 
+    @Test func aDeadSensorIsSpokenAsUnavailableNotAsClosedOrEmpty() throws {
+        let office = group(.occupancy, "Office")
+        let ids = office.items.map(\.entityId)
+        let allOffline = states(ids.map { ($0, "unavailable") })
+        #expect(RoomOverview.unavailableCount(office, read: allOffline) == ids.count)
+        let spoken = RoomOverview.spokenSubtitle(.occupancy, office, read: allOffline)
+        #expect(spoken.hasPrefix("Not Occupied, "))
+        #expect(spoken.hasSuffix(ids.count == 1 ? "1 sensor unavailable" : "\(ids.count) sensors unavailable"))
+        let online = states(ids.map { ($0, "off") })
+        #expect(RoomOverview.unavailableCount(office, read: online) == 0)
+        #expect(RoomOverview.spokenSubtitle(.occupancy, office, read: online) == "Not Occupied")
+        #expect(RoomOverview.unavailableCount(office, read: { _ in nil }) == 0, "a state not yet loaded is not called unavailable")
+    }
+
     // MARK: Titles and sections
 
     @Test func lightsTitleCountsLightsOn() {

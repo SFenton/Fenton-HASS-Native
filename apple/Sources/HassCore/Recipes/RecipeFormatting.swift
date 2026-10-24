@@ -121,6 +121,24 @@ public enum RecipeFormatting {
         return parts.joined(separator: ". ")
     }
 
+    /// What VoiceOver reads after an ingredient's title: its state (on hand, not on hand, or a match EverShelf is unsure
+    /// of, which the row draws as a question mark), then the chips, source and match. Content, so it is the value, not a hint.
+    public static func spokenValue(_ detail: RecipeDetail, _ ingredient: RecipeDetail.Ingredient, checklist: Bool) -> String {
+        var parts: [String] = []
+        if checklist {
+            if isOnHand(ingredient) {
+                parts.append("On hand")
+            } else if ingredient.overrideAvailability == nil, ingredient.inventoryState == .uncertain {
+                parts.append("Match unsure")
+            } else {
+                parts.append("Not on hand")
+            }
+        }
+        let details = accessibilityDetails(detail, ingredient)
+        if !details.isEmpty { parts.append(details) }
+        return parts.joined(separator: ". ")
+    }
+
     static let unitAliases: [[String]] = [
         ["tablespoon", "tablespoons", "tbsp", "tbs"], ["teaspoon", "teaspoons", "tsp"], ["cup", "cups", "c"],
         ["ounce", "ounces", "oz"], ["pound", "pounds", "lb", "lbs"], ["gram", "grams", "g"], ["kilogram", "kilograms", "kg"],

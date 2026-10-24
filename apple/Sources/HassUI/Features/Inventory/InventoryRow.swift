@@ -43,15 +43,13 @@ struct InventoryRow: View {
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
             : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.s))
         layout {
-            copy(subtitle: subtitle, tone: tone)
+            copyButton(subtitle: subtitle, tone: tone, opensEditor: opensEditor, multiBatch: multiBatch)
             if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: HassTokens.Spacing.s) }
             HStack(spacing: HassTokens.Spacing.xs) {
                 quantityLabel
                 actions(opensEditor: opensEditor, multiBatch: multiBatch)
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture { if opensEditor { onEdit() } }
         // The trailing inset is small so the chevron's 44 pt target ends near the module's edge (mockup).
         .listRowInsets(EdgeInsets(top: HassTokens.Spacing.s, leading: HassTokens.Spacing.l,
                                   bottom: HassTokens.Spacing.s, trailing: HassTokens.Spacing.xs))
@@ -71,6 +69,23 @@ struct InventoryRow: View {
     }
 
     // MARK: - Parts
+
+    /// The row's copy as the button that opens the editor (a real `Button`, not a tap gesture, so VoiceOver, Switch
+    /// Control, Full Keyboard Access and Voice Control all reach it); plain text when the row has no editor.
+    @ViewBuilder
+    private func copyButton(subtitle: String, tone: ExpiryInfo.Tone?, opensEditor: Bool, multiBatch: Bool) -> some View {
+        if opensEditor {
+            Button(action: onEdit) {
+                copy(subtitle: subtitle, tone: tone)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(multiBatch ? "Opens each expiration batch" : "Opens the item editor")
+        } else {
+            copy(subtitle: subtitle, tone: tone)
+        }
+    }
 
     /// Title 17 Regular, subtitle 15 in secondary, orange (soon) or red (expired) with a leading glyph.
     private func copy(subtitle: String, tone: ExpiryInfo.Tone?) -> some View {
@@ -128,7 +143,7 @@ struct InventoryRow: View {
         HStack(spacing: 0) {
             shoppingButton
             if opensEditor {
-                // The visible chevron; the whole row opens the editor too. VoiceOver reaches the editor here.
+                // The visible chevron; the copy is the button VoiceOver reaches, so this one stays out of the reading order.
                 Button(action: onEdit) {
                     Image(systemName: "chevron.forward")
                         .font(.subheadline.weight(.semibold))
@@ -137,8 +152,7 @@ struct InventoryRow: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.borderless)
-                .accessibilityLabel("Edit \(item.name)")
-                .accessibilityHint(multiBatch ? "Opens each expiration batch" : "Opens the item editor")
+                .accessibilityHidden(true)
                 .accessibilityIdentifier("inventory.row.edit")
             }
         }

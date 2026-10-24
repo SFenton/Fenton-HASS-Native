@@ -415,19 +415,18 @@ struct BedAlarmsTab: View {
                     .foregroundStyle(HassTokens.Ink.secondary)
             }
             ForEach(controller.alarmGroups) { group in
-                Button { path.append(.day(group.day)) } label: {
-                    BedroomRow(symbol: group.enabledCount > 0 ? "alarm" : "alarm.waves.left.and.right", title: group.title,
-                               lines: [group.alarms.map { ClockTime.display($0.time) }.joined(separator: ", "), group.summary],
-                               isMuted: group.enabledCount == 0) {
-                        if group.alarms.count == 1, let alarm = group.alarms.first {
-                            BedAlarmToggle(controller: controller, alarm: alarm)
-                        } else {
-                            Image(systemName: "chevron.right").foregroundStyle(HassTokens.Ink.secondary).accessibilityHidden(true)
-                        }
+                // The row's text is the button and the switch its sibling, so VoiceOver gives the switch its own stop.
+                BedroomRow(symbol: group.enabledCount > 0 ? "alarm" : "alarm.waves.left.and.right", title: group.title,
+                           lines: [group.alarms.map { ClockTime.display($0.time) }.joined(separator: ", "), group.summary],
+                           isMuted: group.enabledCount == 0,
+                           onOpen: { path.append(.day(group.day)) },
+                           openIdentifier: "bed.alarms.\(group.day.rawValue)") {
+                    if group.alarms.count == 1, let alarm = group.alarms.first {
+                        BedAlarmToggle(controller: controller, alarm: alarm)
+                    } else {
+                        Image(systemName: "chevron.right").foregroundStyle(HassTokens.Ink.secondary).accessibilityHidden(true)
                     }
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("bed.alarms.\(group.day.rawValue)")
             }
             Button { path.append(.add(nil)) } label: {
                 Label("Add Alarm", systemImage: "plus")
@@ -474,14 +473,12 @@ struct BedAlarmDayPage: View {
                         .foregroundStyle(HassTokens.Ink.secondary)
                 }
                 ForEach(alarms) { alarm in
-                    Button { path.append(.edit(alarm.id)) } label: {
-                        BedroomRow(symbol: alarm.enabled ? "alarm" : "alarm.waves.left.and.right", title: ClockTime.display(alarm.time),
-                                   lines: [alarm.enabled ? "Enabled" : "Disabled"], isMuted: !alarm.enabled) {
-                            BedAlarmToggle(controller: controller, alarm: alarm)
-                        }
+                    BedroomRow(symbol: alarm.enabled ? "alarm" : "alarm.waves.left.and.right", title: ClockTime.display(alarm.time),
+                               lines: [alarm.enabled ? "Enabled" : "Disabled"], isMuted: !alarm.enabled,
+                               onOpen: { path.append(.edit(alarm.id)) },
+                               openIdentifier: "bed.day.alarm.\(alarm.time)") {
+                        BedAlarmToggle(controller: controller, alarm: alarm)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("bed.day.alarm.\(alarm.time)")
                 }
                 Button { path.append(.add(day)) } label: {
                     Label("Add Alarm", systemImage: "plus")

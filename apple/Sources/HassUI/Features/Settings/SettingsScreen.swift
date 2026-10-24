@@ -20,6 +20,7 @@ struct SettingsScreen: View {
     @State private var feedbackForm: FeedbackKind?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
     @Environment(\.tileSurface) private var surface
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     /// Creates the list.
     /// - Parameter openTopic: The topic open beside or above the list; constant nil for a static render.
@@ -60,7 +61,7 @@ struct SettingsScreen: View {
                             SettingsLinkRow(title: page.rowTitle, subtitle: page.subtitle, symbol: page.symbol)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityAddTraits(openTopic == page ? .isSelected : [])
+                        .accessibilityAddTraits(openTopic == page ? [.isLink, .isSelected] : .isLink)
                         .accessibilityIdentifier("settings.topic.\(page.rawValue)")
                     }
                 } header: {
@@ -91,7 +92,7 @@ struct SettingsScreen: View {
                 FeedbackSettingsSection(openForm: $feedbackForm)
             }
             // On the wallpaper the rows are modules (direction G, Layers); a list in a sheet keeps the system cells.
-            .listRowBackground(surface == .page ? HassTokens.Surface.moduleThin : nil)
+            .listRowBackground(surface == .page ? HassTokens.Surface.moduleThin(reduceTransparency: reduceTransparency) : nil)
         }
         .accessibilityIdentifier("settings.list")
         .navigationTitle("Settings")

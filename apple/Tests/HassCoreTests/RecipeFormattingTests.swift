@@ -83,6 +83,17 @@ struct RecipeFormattingTests {
         #expect(RecipeFormatting.chips(detail, ingredient(override: .have)) == ["Missing from Inventory", "Your override: have it"])
     }
 
+    @Test func spokenValueCarriesStateAndDetailsNotAHint() {
+        let detail = RecipeDetail(id: 1, title: "T", capabilities: .init(quantities: .known))
+        let have = ingredient(displayName: "Garlic", sourceText: "4 cloves garlic, minced", quantity: 4, unit: "cloves", state: .inStock)
+        #expect(RecipeFormatting.spokenValue(detail, have, checklist: true).hasPrefix("On hand. "))
+        #expect(RecipeFormatting.spokenValue(detail, have, checklist: true).contains("Source: garlic, minced"))
+        #expect(!RecipeFormatting.spokenValue(detail, have, checklist: false).contains("On hand"))
+        #expect(RecipeFormatting.spokenValue(detail, ingredient(), checklist: true).hasPrefix("Not on hand"))
+        #expect(RecipeFormatting.spokenValue(detail, ingredient(state: .uncertain), checklist: true).hasPrefix("Match unsure"))
+        #expect(RecipeFormatting.spokenValue(detail, ingredient(state: .uncertain, override: .have), checklist: true).hasPrefix("On hand"))
+    }
+
     @Test func sectionsGroupAndCollectOrphans() {
         let a = ingredient(displayName: "A", key: "ri:0:000000000000000a")
         let b = ingredient(displayName: "B", key: "ri:1:000000000000000b")

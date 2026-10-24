@@ -23,6 +23,7 @@ struct RoomOverviewTile: View {
             kind: .navigate,
             action: action
         )
+        .tileAccessibilityValue(redact ? "Hidden" : RoomOverview.spokenSubtitle(kind, group, read: read))
         .accessibilityHint("Opens \(RoomOverview.detailTitle(kind, group))")
         .accessibilityIdentifier("overview.\(kind.rawValue).room.\(group.room)")
     }

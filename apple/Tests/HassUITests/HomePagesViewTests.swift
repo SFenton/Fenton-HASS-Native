@@ -90,7 +90,10 @@ struct HomePagesViewTests {
         #expect(MediaCardTile.look(living, display: on).symbol == SymbolMap.symbol(for: "mdi:television"))
         #expect(MediaCardTile.look(living, display: on).kind == .toggle)
         on.semantics = .selection(isSelected: true)
-        #expect(MediaCardTile.look(living, display: on).kind == .toggle)
+        on.isActive = true
+        #expect(MediaCardTile.look(living, display: on).kind == .selection(isSelected: true), "a source choice reads as selected, not On/Off")
+        on.isActive = false
+        #expect(MediaCardTile.look(living, display: on).kind == .selection(isSelected: false))
         on.semantics = .command
         #expect(MediaCardTile.look(living, display: on).kind == .command)
         #expect(MediaCardTile.slug("Living Room SHIELD") == "living-room-shield")

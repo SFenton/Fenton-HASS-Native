@@ -152,7 +152,9 @@ public struct WakeLightSheet: View {
             title: alarm.label,
             lines: ["\(WakeLight.scheduleLabel(alarm)) · \(WakeLight.displayTime(alarm.localTime))",
                     "Ramp: \(WakeLight.rampLabel(alarm.rampMinutes))"],
-            isMuted: !alarm.enabled
+            isMuted: !alarm.enabled,
+            onOpen: editable ? { path.append(.edit(alarm.id)) } : nil,
+            openIdentifier: "wake.alarm.\(alarm.id)"
         ) {
             Toggle(alarm.label, isOn: Binding(get: { alarm.enabled }, set: { enabled in
                 var next = alarm
@@ -163,11 +165,7 @@ public struct WakeLightSheet: View {
             .disabled(!editable || pending)
             .accessibilityIdentifier("wake.alarm.\(alarm.id).enabled")
         }
-        .contentShape(Rectangle())
-        .onTapGesture { if editable { path.append(.edit(alarm.id)) } }
-        .accessibilityElement(children: .combine)
-        .accessibilityAction(named: "Edit") { if editable { path.append(.edit(alarm.id)) } }
-        .accessibilityIdentifier("wake.alarm.\(alarm.id)")
+        .accessibilityElement(children: .contain)
     }
 
     private func mirroredRow(_ alarm: WakeLight.Alarm, snapshot: WakeLight.Snapshot) -> some View {

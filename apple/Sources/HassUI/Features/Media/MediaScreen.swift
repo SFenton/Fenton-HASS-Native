@@ -119,7 +119,8 @@ struct MediaCardTile: View {
         let off = MediaRemoteState.isOff(display.state)
         let icon = off ? card.offIcon ?? card.device.icon : card.device.icon
         let kind: GlassTile.Kind = switch display.semantics {
-        case .toggle, .selection: .toggle
+        case .toggle: .toggle
+        case .selection: .selection(isSelected: display.isActive)
         case .command, .state: .command
         }
         return (SymbolMap.symbol(for: icon), kind)
