@@ -304,7 +304,8 @@ struct FeedbackFormSheet: View {
     }
 
     private var finishedBinding: Binding<Bool> {
-        Binding(get: { filedIssue != nil }, set: { _ in })
+        // Every button of the alert closes the sheet, so a system dismissal does the same instead of leaving `.finished` to re-present it.
+        Binding(get: { filedIssue != nil }, set: { if !$0 { close() } })
     }
 
     private var failureMessage: String {

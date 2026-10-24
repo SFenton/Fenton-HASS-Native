@@ -62,7 +62,7 @@ private struct GateDemo: View {
     }
 
     var body: some View {
-        ContentGate(page: "Gallery Gate", isReady: loaded) {
+        ContentGate(page: "Gallery Gate", isReady: loaded, label: "Loading gallery") {
             ScrollView {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
                     ForEach(0..<8) { index in

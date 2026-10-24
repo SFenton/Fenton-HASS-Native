@@ -37,4 +37,10 @@ struct ArcSpinnerTests {
         #expect(ImageRenderer(content: compact.frame(width: 240)).cgImage != nil)
         #expect(ImageRenderer(content: determinate.frame(width: 240)).cgImage != nil)
     }
+
+    @Test func determinateTaskSpeaksPercentWithoutChangingStyle() {
+        #expect(ArcProgressViewStyle.spokenValue(nil).isEmpty)
+        #expect(ArcProgressViewStyle.spokenValue(0.4) == "40 percent")
+        #expect(ArcProgressViewStyle.spokenValue(7) == "100 percent")
+    }
 }

@@ -99,7 +99,7 @@ public struct MediaRemoteSheet: View {
 
     public var body: some View {
         NavigationStack {
-            ContentGate(page: "Media Remote", isReady: isReady) {
+            ContentGate(page: "Media Remote", isReady: isReady, label: "Loading Media Remote") {
                 layout
             }
             .background { WindowMetricsReader(metrics: $window) }

@@ -56,7 +56,7 @@
       ],
       swiftui: [
         { rule: 'Navigation: alert(_:isPresented:presenting:) over two Bools', verdict: 'pass', note: 'The success alert presents the FiledIssue value derived from model.phase (:71-81).', by: 'swiftui-pro skill' },
-        { rule: 'Data: Binding(get:set:) with an empty setter', verdict: 'fix', note: 'finishedBinding\'s setter ignores the system\'s dismissal (:306-308), so state stays .finished until a button runs.', by: 'swiftui-pro skill' },
+        { rule: 'Data: Binding(get:set:) with an empty setter', verdict: 'pass', note: 'finishedBinding's setter now closes the sheet on a system dismissal (FeedbackFormSheet.swift).', by: 'swiftui-pro skill' },
         { rule: 'Views: button action passed directly', verdict: 'pass', note: 'Button("Done", role: .cancel, action: close) (:77).', by: 'swiftui-pro skill' },
       ],
     },
