@@ -94,7 +94,7 @@
         { rule: 'Designing for iPhone Duo: a sheet with only Close should keep a horizontal bar', verdict: 'fix', note: 'No toolbarVerticalBehavior(.disabled) exists anywhere in apple/Sources, so close-only sheets (camera viewer, Security System) are free to move their Close into the Duo\'s vertical bar. Low; needs an iOS 27.1 branch.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Do not size from a single window or screen guess', verdict: 'fix', note: 'LargeDetent.height() reads the first key window across every connected scene (SheetFit.swift:249-258), so on iPad multi-window or a Duo with two scenes the cap can come from another window. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Do not size from a single window or screen guess', verdict: 'pass', note: 'Fixed: LargeDetent.height() (SheetFit.swift) now reads the foreground-active scene first. Was: LargeDetent.height() reads the first key window across every connected scene (SheetFit.swift:249-258), so on iPad multi-window or a Duo with two scenes the cap can come from another window. Low.', by: 'swiftui-pro skill' },
         { rule: 'One sizing API', verdict: 'pass', note: 'hassSheet(_:height:appearance:fitKey:) only; fitKey defaults to the call site.', by: 'swiftui-pro skill' },
         { rule: 'Avoid a resize loop', verdict: 'pass', note: '2 pt hysteresis, first reporting page owns the height, largeSnap 24 pt (SheetFit.swift:35-40, 112-114).', by: 'swiftui-pro skill' },
         { rule: 'Measure with onScrollGeometryChange (iOS 18)', verdict: 'pass', note: 'SheetFitReporter, with a documented provisional detent below iOS 18 (SheetFit.swift:205-228).', by: 'swiftui-pro skill' },

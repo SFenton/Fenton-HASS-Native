@@ -243,13 +243,16 @@ private struct SheetFitReporter: ViewModifier {
 
 // MARK: - Detent resolution
 
-/// The height of the large detent on this device: the key window below its top safe area. 0 where there is no window
+/// The height of the large detent on this device: the key window of the foreground scene below its top safe area. 0 where there is no window
 /// (macOS, `swift test`), which resolves every fitted sheet to `.large`.
 @MainActor
 enum LargeDetent {
     static func height() -> CGFloat {
         #if os(iOS)
-        let windows = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.windows }.flatMap { $0 }
+        // The foreground-active scene first, so a second scene (iPad multi-window, a Duo's two windows) cannot set the cap.
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let active = scenes.filter { $0.activationState == .foregroundActive }
+        let windows = (active.isEmpty ? scenes : active).flatMap(\.windows)
         guard let window = windows.first(where: \.isKeyWindow) ?? windows.first else { return 0 }
         return window.bounds.height - window.safeAreaInsets.top - 10
         #else
