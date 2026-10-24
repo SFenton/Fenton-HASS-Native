@@ -75,7 +75,7 @@
         { rule: 'Presentation: system sheet with presentationDetents', verdict: 'pass', note: 'SheetFit feeds .presentationDetents a measured height (SheetFit.swift:300) and iPad presentationSizing(.page.fitted) on iOS 18+.', by: 'swiftui-pro skill' },
         { rule: 'API: toolbar placement by role', verdict: 'fix', note: 'SheetCloseItem uses .confirmationAction for a dismiss-only Close (HassModal.swift:26).', by: 'swiftui-pro skill' },
         { rule: 'Views: HouseholdSheet extracts chrome', verdict: 'pass', note: 'title, modalChrome and Close live in HouseholdSheet (AdminSettingsContent.swift:95-107), not repeated per sheet.', by: 'swiftui-pro skill' },
-        { rule: 'API: UIKit colour for the sheet ground', verdict: 'fix', note: 'SheetGroundModifier uses Color(uiColor: .systemGroupedBackground) (HassModal.swift:257).', by: 'swiftui-pro skill' },
+        { rule: 'API: UIKit colour for the sheet ground', verdict: 'pass', note: 'SheetGroundModifier reads HassTokens.Surface.systemGround (HassModal.swift:257)' },
       ],
     },
 

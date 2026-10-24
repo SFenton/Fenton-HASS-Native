@@ -97,6 +97,7 @@ struct CameraControls: View {
     @Environment(HassConnection.self) private var connection
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var snapshot = CameraSnapshotFeedback.idle
+    @Environment(\.openURL) private var openURL
     @State private var showsPhotosDenied = false
     /// The tapped recording state, shown until Home Assistant reports it (rolled back if the script call fails).
     @State private var actions: OptimisticActions?
@@ -143,7 +144,7 @@ struct CameraControls: View {
         .alert("Allow Photos Access", isPresented: $showsPhotosDenied) {
             #if canImport(UIKit)
             Button("Open Settings") {
-                if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
             }
             #endif
             Button("Cancel", role: .cancel) {}

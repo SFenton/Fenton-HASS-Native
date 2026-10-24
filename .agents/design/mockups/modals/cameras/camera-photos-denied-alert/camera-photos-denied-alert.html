@@ -49,7 +49,7 @@
         { by: 'apple-hig skill', rule: 'Writing: use the app name people know', verdict: 'fix', note: 'The message says "Allow Home to add photos" (CameraViewer.swift:150); people know the app as S+H (AGENTS.md invariant). Draw the code, change the copy.' },
       ],
       swiftui: [
-        { by: 'swiftui-pro skill', rule: 'api.md: openURL instead of UIApplication', verdict: 'fix', note: 'The Open Settings button calls UIApplication.shared.open(UIApplication.openSettingsURLString) (lines 143-146); @Environment(\\.openURL) or a Link is the SwiftUI route.' },
+        { by: 'swiftui-pro skill', rule: 'api.md: openURL instead of UIApplication', verdict: 'pass', note: 'Open Settings calls @Environment(\.openURL) (CameraViewer.swift:146)' },
       ],
     },
 

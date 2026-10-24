@@ -105,7 +105,7 @@
 
         { rule: "Views: one sheet container used everywhere", verdict: "fix", note: "Only the App Icon picker calls HassModal; every other sheet assembles NavigationStack, modalChrome and SheetCloseItem by hand, so title display mode and close wiring can drift (README open note; modal-sheet.md says new modals use it). Low.", by: "swiftui-pro skill" },
 
-        { rule: "Design: avoid UIKit colours in SwiftUI", verdict: "fix", note: "SheetGroundModifier and ModalBackground use Color(uiColor: .systemGroupedBackground) with an NSColor branch for the Mac test host (HassModal.swift lines 257 and 271); acceptable for a system colour that has no SwiftUI name, but the #if os branches are legacy. Low.", by: "swiftui-pro skill" },
+        { rule: "Design: avoid UIKit colours in SwiftUI", verdict: "pass", note: "SheetGroundModifier and ModalBackground read HassTokens.Surface.systemGround, the one place the UIKit colour is named (HassModal.swift:257, HassTokens.swift)" },
 
         { rule: "Appearance: environment override rather than preferredColorScheme for a view subtree", verdict: "departure", note: "The always-dark sheet uses preferredColorScheme(.dark), which affects the whole presented screen, deliberately: the sheet is one dark photo or gradient screen (Weather, camera).", by: "swiftui-pro skill" },
 

@@ -75,11 +75,7 @@ public struct StatusPill: View {
         case .page: AnyShapeStyle(.regularMaterial)
         case .module: AnyShapeStyle(Color.clear)
         case .groupedList:
-            #if os(iOS)
-            AnyShapeStyle(Color(uiColor: .secondarySystemGroupedBackground))
-            #else
-            AnyShapeStyle(.background.secondary)
-            #endif
+            AnyShapeStyle(HassTokens.Surface.systemCell)
         }
     }
 

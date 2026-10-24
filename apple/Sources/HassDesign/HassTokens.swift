@@ -182,6 +182,23 @@ public enum HassTokens {
     public enum Surface {
         /// Sheet ground: `#1C1C1E` in dark appearance, the system grouped background (`#F2F2F7`) in light.
         public static let sheetGround = Color.adaptive(light: Palette.sheetGroundLight, dark: Palette.sheetGround)
+        /// The system grouped background: the opaque ground of a modal sheet that follows the system appearance.
+        /// The one place the shared views read it from UIKit (the macOS branch is the legacy test host).
+        public static var systemGround: Color {
+            #if canImport(UIKit)
+            Color(uiColor: .systemGroupedBackground)
+            #else
+            Color(nsColor: .windowBackgroundColor)
+            #endif
+        }
+        /// The system inset-cell colour on ``systemGround``.
+        public static var systemCell: Color {
+            #if canImport(UIKit)
+            Color(uiColor: .secondarySystemGroupedBackground)
+            #else
+            Color(nsColor: .controlBackgroundColor)
+            #endif
+        }
         /// Cells and tiles inside a sheet: `#2C2C2E` in dark appearance, white in light.
         public static let sheetCell = Color.adaptive(light: Palette.sheetCellLight, dark: Palette.sheetCell)
         /// The thin module tint (``SwiftUICore/View/module(_:cornerRadius:)``).

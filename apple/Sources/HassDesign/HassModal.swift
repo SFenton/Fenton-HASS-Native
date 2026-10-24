@@ -254,7 +254,7 @@ private struct SheetGroundModifier: ViewModifier {
     func body(content: Content) -> some View {
         #if os(iOS)
         if appearance == .system {
-            content.presentationBackground(Color(uiColor: .systemGroupedBackground))
+            content.presentationBackground(HassTokens.Surface.systemGround)
         } else {
             content
         }
@@ -267,10 +267,6 @@ private struct SheetGroundModifier: ViewModifier {
 /// The modal page background: the system grouped background, so rows and tiles on it keep their contrast.
 private struct ModalBackground: View {
     var body: some View {
-        #if canImport(UIKit)
-        Color(uiColor: .systemGroupedBackground)
-        #else
-        Color(nsColor: .windowBackgroundColor)
-        #endif
+        HassTokens.Surface.systemGround
     }
 }

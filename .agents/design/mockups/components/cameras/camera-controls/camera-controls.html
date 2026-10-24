@@ -52,7 +52,7 @@
       swiftui: [
         { by: 'swiftui-pro skill', rule: 'accessibility.md: Reduce Motion for repeating effects', verdict: 'pass', note: 'symbolEffect(.pulse, options: .repeating, isActive: pulses && !reduceMotion) and an identity content transition (lines 257-258).' },
         { by: 'swiftui-pro skill', rule: 'accessibility.md: Voice Control names', verdict: 'pass', note: 'accessibilityInputLabels accepts both the label and the visible title (line 281); Sound and Record carry the toggle trait.' },
-        { by: 'swiftui-pro skill', rule: 'swift.md: structured work instead of a free Task', verdict: 'fix', note: 'takeSnapshot starts an unstructured Task that sleeps 2 s and writes view state (lines 179-194); a .task(id: snapshot) would cancel with the view.' },
+        { by: 'swiftui-pro skill', rule: 'swift.md: structured work instead of a free Task', verdict: 'pass', note: 'runSnapshot is driven by .task(id: snapshot) so leaving the viewer cancels it (CameraViewer.swift:182)' },
       ],
     },
     notes: ['The circles are always on the dark sheet (the viewer is always dark); the page swatch is not shown because the controls never appear on a page.', 'Promote to kit: MLC.camControl and MLC.camControls.'],

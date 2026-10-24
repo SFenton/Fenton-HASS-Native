@@ -97,7 +97,7 @@
         { rule: 'Views: TextField(axis: .vertical) over TextEditor', verdict: 'fix', note: 'Description, Steps and Expected Behavior use TextEditor with frame(minHeight: 96) (:134-135), so none can show a prompt; TextField(axis: .vertical).lineLimit(5...) allows one.', by: 'swiftui-pro skill' },
         { rule: 'Data: avoid Binding(get:set:) in the body', verdict: 'fix', note: 'finishedBinding and failedBinding are closure bindings, finishedBinding with an empty setter (:306-320); drive the alerts from state or an alert(item:) on the optional result.', by: 'swiftui-pro skill' },
         { rule: 'Views: split long bodies into view structs', verdict: 'fix', note: 'form, mediaSection, progressSection, setupSection and textBox() are computed some View members of a 321-line file (:92-210); extract them into their own views.', by: 'swiftui-pro skill' },
-        { rule: 'State: enum for focus, not String', verdict: 'fix', note: '@FocusState private var focusedField: String? (:25) is keyed by literals and identifier strings (:101, :139); use a small enum.', by: 'swiftui-pro skill' },
+        { rule: 'State: enum for focus, not String', verdict: 'pass', note: 'FeedbackFormSheet.Field enum drives @FocusState (FeedbackFormSheet.swift:25)' },
         { rule: 'Navigation: sheet(item:) with the model\'s own cleanup', verdict: 'pass', note: 'feedbackFormSheet(item:) uses sheet(item:onDismiss:) and purges staged media however it closes (FeedbackSettingsSection.swift:29-33).', by: 'swiftui-pro skill' },
       ],
     },

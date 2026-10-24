@@ -76,11 +76,7 @@ struct ScanItemSheet: View {
     /// Opaque sheet and footer surface: on the iPad form sheet's glass and the footer's bar material the audit
     /// failed dark labels ("Skip Barcode", "Manually Enter Name") that read well on screen (2026-10-12).
     static var surface: Color {
-        #if os(iOS)
-        Color(uiColor: .systemGroupedBackground)
-        #else
-        Color(nsColor: .windowBackgroundColor)
-        #endif
+        HassTokens.Surface.systemGround
     }
 
     private struct CameraKey: Hashable {

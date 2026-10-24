@@ -74,7 +74,7 @@
         { by: 'apple-hig skill', rule: 'Materials: sheets use the system material', verdict: 'departure', note: 'The picker sets an opaque grouped background at every detent (OptionPickerSheet.swift:88-90) because the medium detent\'s glass let colored tiles show through and fail contrast (option-picker.md).' },
       ],
       swiftui: [
-        { by: 'swiftui-pro skill', rule: 'api.md: avoid UIKit colors in SwiftUI', verdict: 'fix', note: 'presentationBackground(Color(uiColor: .systemGroupedBackground)) (OptionPickerSheet.swift:90); Color(.systemGroupedBackground) or a HassTokens surface avoids the UIKit initializer.' },
+        { by: 'swiftui-pro skill', rule: 'api.md: avoid UIKit colors in SwiftUI', verdict: 'pass', note: 'OptionPickerSheet reads HassTokens.Surface.systemGround (OptionPickerSheet.swift:90)' },
         { by: 'swiftui-pro skill', rule: 'design.md: fixed-size decoration', verdict: 'pass', note: 'GradientSwatch is a fixed 44 by 20 capsule (line 106), decorative and hidden from VoiceOver; the labels beside it wrap with type.' },
         { by: 'swiftui-pro skill', rule: 'accessibility.md: Button, not onTapGesture', verdict: 'pass', note: 'Each row is a Button (.plain) with a 44 pt minimum height and an identifier (lines 55-75).' },
       ],

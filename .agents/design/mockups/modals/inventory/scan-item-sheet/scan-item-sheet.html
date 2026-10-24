@@ -96,7 +96,7 @@
       ],
       swiftui: [
         { rule: 'Accessibility: do not force font sizes', verdict: 'fix', note: 'The result check is .font(.system(size: 64)) and the simulated camera glyph size 56 (ScanItemSheet.swift:303, 422); decorative, but they do not scale with Dynamic Type.', by: 'swiftui-pro skill' },
-        { rule: 'Design: no UIKit colours', verdict: 'fix', note: 'The sheet and footer ground is Color(uiColor: .systemGroupedBackground) (ScanItemSheet.swift:80).', by: 'swiftui-pro skill' },
+        { rule: 'Design: no UIKit colours', verdict: 'pass', note: 'ScanItemSheet.surface reads HassTokens.Surface.systemGround (ScanItemSheet.swift:80)' },
         { rule: 'Camera lifecycle with task(id:)', verdict: 'pass', note: '.task(id: CameraKey) syncs the camera with the step and onDisappear stops it (ScanItemSheet.swift:66-67).', by: 'swiftui-pro skill' },
         { rule: 'Data flow: Binding(get:set:) per field', verdict: 'fix', note: 'nameBinding, quantityBinding, quantityStepBinding and two inline bindings route edits to model methods (ScanItemSheet.swift:368-378, 492-510); onChange on a model property would keep the setters out of the view.', by: 'swiftui-pro skill' },
         { rule: 'Form controls', verdict: 'pass', note: 'Quantity is a text field with a decimal pad and a Stepper, both labelled, in a Form; expiry is a Toggle plus DatePicker (:344-390).', by: 'swiftui-pro skill' },

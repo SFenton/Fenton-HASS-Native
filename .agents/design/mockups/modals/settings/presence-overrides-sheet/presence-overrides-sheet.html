@@ -77,7 +77,7 @@
       swiftui: [
         { rule: 'Navigation: NavigationStack(path:) with navigationDestination(for:)', verdict: 'pass', note: 'A typed PresenceRoom path inside the sheet\'s own stack (:123, :133, :157).', by: 'swiftui-pro skill' },
         { rule: 'API: Close placement by semantic role', verdict: 'fix', note: 'SheetCloseItem is .confirmationAction (HassModal.swift:26); a Close that saves nothing is .cancellationAction, which the Duo vertical bar orders by role.', by: 'swiftui-pro skill' },
-        { rule: 'API: no UIKit colours in SwiftUI', verdict: 'fix', note: 'Sheet ground is Color(uiColor: .systemGroupedBackground) (HassModal.swift:257) and ModalBackground repeats it (:271).', by: 'swiftui-pro skill' },
+        { rule: 'API: no UIKit colours in SwiftUI', verdict: 'pass', note: 'Sheet ground and ModalBackground read HassTokens.Surface.systemGround (HassModal.swift:257, 271)' },
         { rule: 'Data: one controller read per tile', verdict: 'pass', note: 'controller.presence(room.presenceEntityId) inside the ForEach; a mode change updates one tile.', by: 'swiftui-pro skill' },
         { rule: 'Performance: eager grid of 14 tiles', verdict: 'pass', note: 'A non-lazy Layout in a ScrollView is fine at 14 elements; no per-frame state.', by: 'swiftui-pro skill' },
       ],

@@ -87,7 +87,7 @@ public struct OptionPickerSheet: View {
         #if os(iOS)
         // Opaque at every detent: the medium detent's glass let a page's colored tiles show through the rows
         // and fail text contrast (HIG: Sheets; Accessibility, Color and effects).
-        .presentationBackground(Color(uiColor: .systemGroupedBackground))
+        .presentationBackground(HassTokens.Surface.systemGround)
         #endif
     }
 }

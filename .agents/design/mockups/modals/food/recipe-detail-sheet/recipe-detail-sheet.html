@@ -114,7 +114,7 @@
       ],
       swiftui: [
         { rule: 'Accessibility: hints describe the action', verdict: 'fix', note: 'Ingredient quantity caveats, source and match text are packed into accessibilityHint (RecipeDetailView.swift:330, RecipeFormatting.accessibilityDetails); that is how a person learns an ingredient is short, and VoiceOver users can turn hints off. Put it in the value.', by: 'swiftui-pro skill' },
-        { rule: 'Use task() rather than onAppear for async work', verdict: 'fix', note: '.onAppear { model.load() } fetches the detail (RecipeDetailView.swift:89); task() would cancel it when the sheet closes.', by: 'swiftui-pro skill' },
+        { rule: 'Use task() rather than onAppear for async work', verdict: 'pass', note: 'RecipeDetailView starts the load from .task (RecipeDetailView.swift:89)' },
         { rule: 'Prefer hierarchical styles over manual opacity', verdict: 'fix', note: 'ChipFlow fills chips with Color.secondary.opacity(0.16) (RecipeDetailView.swift:355); a system fill style adapts to appearance and contrast settings.', by: 'swiftui-pro skill' },
         { rule: 'Standard styling: ContentUnavailableView', verdict: 'pass', note: 'Failed, unsupported, no ingredients, no instructions and a missing link all use ContentUnavailableView (RecipeDetailView.swift:79, 262, 454, 473).', by: 'swiftui-pro skill' },
         { rule: 'Accessibility: sibling rows keep their own element', verdict: 'pass', note: 'Fact rows speak label and value; steps read "Step 2. text"; the source link carries the link trait (RecipeDetailRows.swift:31-33, 65, 86-87).', by: 'swiftui-pro skill' },

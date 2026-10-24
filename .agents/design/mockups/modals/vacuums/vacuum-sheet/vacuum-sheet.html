@@ -140,7 +140,7 @@
         { rule: 'Performance: keep fast-changing state out of the sheet body', verdict: 'pass', note: 'VacuumSheetContent is its own @Observable and VacuumSheetChrome a ViewModifier, so a tab or battery change redraws only the bar and column, never the map (VacuumSheet.swift:131-203).', by: 'swiftui-pro skill' },
         { rule: 'Accessibility and Reduce Motion for the section swap', verdict: 'pass', note: 'SmoothContentSwap.show(_, reduceMotion:) fades the panel (0.13 s out, 0.17 s in) and hides it from hit testing meanwhile (VacuumSheet.swift:224-225).', by: 'swiftui-pro skill' },
         { rule: 'Layout: custom bars use safeAreaBar on iOS 26', verdict: 'fix', note: 'The section bar is a safeAreaInset capsule (ModalTabBar.swift modalTabBar), so content gets no scroll-edge treatment under it on iOS 26; resizability.md prefers safeAreaBar for custom control bars.', by: 'swiftui-pro skill' },
-        { rule: 'Design: no UIKit colours', verdict: 'fix', note: 'HassModal.swift:257 and :271 build the sheet ground from Color(uiColor: .systemGroupedBackground); an asset-catalog or SwiftUI colour keeps the shared sheet free of UIKit types.', by: 'swiftui-pro skill' },
+        { rule: 'Design: no UIKit colours', verdict: 'pass', note: 'The shared sheet ground reads HassTokens.Surface.systemGround (HassModal.swift:257, 271)' },
       ],
     },
 

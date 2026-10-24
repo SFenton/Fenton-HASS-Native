@@ -130,7 +130,7 @@
       ],
       swiftui: [
         { by: 'swiftui-pro skill', rule: 'views.md: animate with a value and a motion token', verdict: 'fix', note: 'RemoteControlsTab animates the keyboard form with .default (MediaRemoteControls.swift:335); use MotionTokens.standard.' },
-        { by: 'swiftui-pro skill', rule: 'swift.md: never use Grand Central Dispatch', verdict: 'fix', note: 'WindowMetricsReader hops with DispatchQueue.main.async (MediaRemoteSheet.swift:250); use a @MainActor Task or onGeometryChange.' },
+        { by: 'swiftui-pro skill', rule: 'swift.md: never use Grand Central Dispatch', verdict: 'pass', note: 'WindowMetricsReader hops with Task { @MainActor } (MediaRemoteSheet.swift:250)' },
         { by: 'swiftui-pro skill', rule: 'resizability.md: size class from the window, not the idiom', verdict: 'departure', note: 'The UIKit window probe (MediaRemoteSheet.swift:243-275) exists because a sheet\'s own size class is compact on iPad (source comment, line 235); it reads the window\'s horizontalSizeClass, not userInterfaceIdiom.' },
         { by: 'swiftui-pro skill', rule: 'design.md: wrap Slider in LabeledContent inside a List', verdict: 'fix', note: 'HueSyncTab.brightnessField (MediaRemoteTabs.swift:374-397) builds its own label row and hides it from VoiceOver; use LabeledContent("Brightness") { Slider(...) }.' },
         { by: 'swiftui-pro skill', rule: 'accessibility.md: image buttons keep text; Reduce Motion', verdict: 'pass', note: 'RemoteIconButton labels every glyph (MediaRemoteControls.swift:86); RoundButtonStyle dims instead of scaling under Reduce Motion (lines 60-61) and the keyboard form drops its move (line 455).' },

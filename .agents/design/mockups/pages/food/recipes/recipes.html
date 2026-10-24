@@ -123,7 +123,7 @@
         { rule: 'Resizability: selection survives a fold', verdict: 'pass', note: 'selected and detail are @State above the split branch, so an open recipe moves between pane and sheet when the window folds (RecipesScreen.swift:143-150).', by: 'swiftui-pro skill' },
         { rule: 'Motion with Reduce Motion', verdict: 'pass', note: 'The pane transition is .opacity under Reduce Motion and the animation uses motionSafeAnimation (RecipesScreen.swift:58, 72).', by: 'swiftui-pro skill' },
         { rule: 'Performance: lazy grid and measured width', verdict: 'pass', note: 'LazyVGrid with onGeometryChange for the width (not a GeometryReader) and pagination from itemAppeared (RecipeGrid, :225).', by: 'swiftui-pro skill' },
-        { rule: 'Use task() rather than onAppear for async work', verdict: 'fix', note: 'collection.appear() and the per-card itemAppeared run from onAppear (RecipesScreen.swift:67, RecipeGrid :218); loading belongs in task() so it cancels with the page.', by: 'swiftui-pro skill' },
+        { rule: 'Use task() rather than onAppear for async work', verdict: 'pass', note: 'RecipesScreen starts collection.appear() from .task (RecipesScreen.swift:67)' },
       ],
     },
 
