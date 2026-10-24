@@ -44,6 +44,42 @@ struct WeatherViewTests {
         #expect(WeatherHourlyMode.allCases.map(WeatherSymbols.mode) == ["cloud.fill", "drop.fill", "wind"])
     }
 
+    /// The column of pixels where a symbol's ink starts, in points from its frame's leading edge, rendered at `pointSize`.
+    private func inkLeadingInset(of name: String, pointSize: CGFloat) -> CGFloat? {
+        let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .regular)
+        guard let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(configuration) else { return nil }
+        let scale = 8
+        let width = Int(image.size.width.rounded(.up)) * scale, height = Int(image.size.height.rounded(.up)) * scale
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+            isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        ), let context = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = context
+        image.draw(in: NSRect(x: 0, y: 0, width: width, height: height))
+        NSGraphicsContext.restoreGraphicsState()
+        for x in 0..<width {
+            for y in 0..<height where (rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.05 {
+                return CGFloat(x) / CGFloat(scale)
+            }
+        }
+        return nil
+    }
+
+    /// The hero glyph's ink must start on the label's left edge, so `WeatherSymbols.leadingInsets` has to match what the system
+    /// draws: every condition symbol, rendered, may be at most half a point off at 40 pt (and one point at 80 pt).
+    @Test func leadingInsetTableMatchesTheRenderedInk() throws {
+        for name in WeatherSymbols.conditionNames {
+            for pointSize in [CGFloat(40), 80] {
+                let measured = try #require(inkLeadingInset(of: name, pointSize: pointSize), "\(name) drew no ink")
+                let tabled = WeatherSymbols.leadingInset(of: name) * pointSize
+                #expect(abs(measured - tabled) <= pointSize / 80, "\(name) at \(pointSize) pt: ink starts \(measured) pt in, the table says \(tabled)")
+            }
+        }
+        #expect(WeatherSymbols.leadingInset(of: "not.a.symbol") == 0)
+        #expect(Set(WeatherSymbols.leadingInsets.keys).isSuperset(of: WeatherSymbols.conditionNames), "Every condition symbol has an entry")
+    }
+
     @Test func pagingSplitsItemsIntoWholePages() {
         let paging = WeatherCarouselPaging(count: 24, perPage: 6)
         #expect(paging.pageCount == 4)

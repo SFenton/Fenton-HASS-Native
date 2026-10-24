@@ -10,12 +10,14 @@ import SwiftUI
 /// Environment (all optional): `FENTON_GALLERY_WEATHER_CONDITION=<ha condition>` (default `rainy`),
 /// `FENTON_GALLERY_WEATHER_NIGHT=1` (sun below the horizon), `FENTON_GALLERY_WEATHER_STATE=loading|error|empty`
 /// (the service never answers, fails, or returns nothing), `FENTON_GALLERY_WEATHER_OPEN=1` (sheet open at launch),
-/// `FENTON_GALLERY_WEATHER_NOAQI=1` (no air-quality sensor).
+/// `FENTON_GALLERY_WEATHER_NOAQI=1` (no air-quality sensor), `FENTON_GALLERY_WEATHER_FILL=<points>` (empty space under the
+/// card, so the page scrolls for the scroll cost probe).
 struct WeatherGallery: View {
     @State private var entities: EntityStore
     @State private var forecasts: WeatherForecastStore
     @State private var caller: WeatherFixtureCaller
     private let startsOpen: Bool
+    private let fill: CGFloat
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         let condition = environment["FENTON_GALLERY_WEATHER_CONDITION"] ?? "rainy"
@@ -27,16 +29,19 @@ struct WeatherGallery: View {
         _forecasts = State(initialValue: WeatherForecastStore(requestTimeout: 3600))
         _caller = State(initialValue: WeatherFixtureCaller(mode: WeatherFixtureCaller.Mode(rawValue: environment["FENTON_GALLERY_WEATHER_STATE"] ?? "") ?? .normal))
         startsOpen = environment["FENTON_GALLERY_WEATHER_OPEN"] == "1"
+        fill = environment["FENTON_GALLERY_WEATHER_FILL"].flatMap(Double.init).map { CGFloat($0) } ?? 0
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
                 WeatherSummaryCard(startsOpen: startsOpen)
+                if fill > 0 { Color.clear.frame(height: fill) }
             }
             .padding(.horizontal, HassTokens.Spacing.l)
             .padding(.vertical, HassTokens.Spacing.m)
         }
+        .pausesTickersWhileScrolling()
         .accessibilityIdentifier("weather.gallery")
         .navigationTitle("Home")
         .environment(entities)
