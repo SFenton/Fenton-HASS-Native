@@ -357,7 +357,7 @@ struct ProfileButton: View {
     private func badge(metrics: Metrics) -> some View {
         if let text = ProfileSummary.badgeText(attentionCount) {
             Text(text)
-                .font(.caption2.weight(.bold))
+                .font(.caption2.bold())
                 .dynamicTypeSize(...DynamicTypeSize.xLarge)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 5)

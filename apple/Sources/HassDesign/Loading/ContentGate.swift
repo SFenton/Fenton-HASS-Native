@@ -75,9 +75,7 @@ public struct ContentGate<Content: View>: View {
 extension ContentGate {
     /// Posts `layoutChanged` once hidden content appears.
     static func announceLayoutChange() {
-        #if os(iOS)
-        UIAccessibility.post(notification: .layoutChanged, argument: nil)
-        #endif
+        AccessibilityNotification.LayoutChanged().post()
     }
 }
 

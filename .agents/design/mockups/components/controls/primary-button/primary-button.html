@@ -94,7 +94,7 @@
 
         { rule: "Accessibility: label, symbol and traits come from the Button", verdict: "pass", note: "PrimaryButton builds a Label (title plus symbol) or Text inside a Button, so VoiceOver reads the title and the symbol is decorative; callers add traits (the link trait on 'Open in Cookidoo') and values (busy).", by: "swiftui-pro skill" },
 
-        { rule: "Views: avoid unused stored properties", verdict: "fix", note: "PrimaryButtonBody carries pressedScale and an @Environment(\\.accessibilityReduceMotion) it never reads; the environment read subscribes every primary button to a setting that does nothing. Low, with the finding above.", by: "swiftui-pro skill" },
+        { rule: "Views: avoid unused stored properties", verdict: "pass", note: "PrimaryButtonBody no longer carries pressedScale or the Reduce Motion read (PrimaryButtonStyle.swift:34)" },
 
         { rule: "Design: hard-coded colours and radii in a shared control", verdict: "fix", note: "colors(_:) returns the sheet ground literal (HassTokens.Palette.sheetGround) as a label colour for family buttons and 0.4 and 0.8 opacities are inline numbers; they would sit better as named tokens next to Ink.actionFill. Low.", by: "swiftui-pro skill" },
 

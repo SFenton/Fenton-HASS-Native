@@ -19,7 +19,7 @@ struct WeatherBriefingPanel: View {
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(HassTokens.Ink.onDarkSecondary)
                     Text(headline)
-                        .font(.title3.weight(.bold))
+                        .font(.title3.bold())
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
                         .accessibilityIdentifier("weather.today.headline")

@@ -110,7 +110,7 @@ struct NavigationFlyout: View {
                 Spacer(minLength: HassTokens.Spacing.s)
                 if let badge {
                     Text(badge, format: .number)
-                        .font(.caption.weight(.bold))
+                        .font(.caption.bold())
                         .foregroundStyle(.white)
                         .padding(.horizontal, HassTokens.Spacing.s)
                         .padding(.vertical, 2)

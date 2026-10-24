@@ -117,7 +117,7 @@ struct RecipesScreen: View {
                         .foregroundStyle(HassTokens.Ink.secondary)
                         .accessibilityHidden(true)
                     Text("No Recipes Found")
-                        .font(.title2.weight(.bold))
+                        .font(.title2.bold())
                         .foregroundStyle(HassTokens.Ink.primary)
                         .accessibilityAddTraits(.isHeader)
                     Text(collection.appliedQuery.isEmpty

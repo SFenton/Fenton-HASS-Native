@@ -79,7 +79,7 @@
         { rule: 'Layout: tile grid reflows', verdict: 'pass', note: 'DeviceTileGrid(maxColumns: 2) with a scaled 132 pt minimum goes to one column at AX5.' },
       ],
       swiftui: [
-        { rule: 'Hygiene: one type per file', verdict: 'fix', note: 'GrillSheet and GrillControls are declared in AirPurifierSheet.swift (lines 67-135); the file name misleads and the type should move to GrillSheet.swift.' },
+        { rule: 'Hygiene: one type per file', verdict: 'pass', note: 'GrillSheet and GrillControls now live in GrillSheet.swift' },
         { rule: 'Accessibility: sensor cards are not buttons', verdict: 'pass', note: 'GlassTile(kind: .state) draws no press state and no button trait; the header combines its children.' },
         { rule: 'Data: explicit service calls', verdict: 'pass', note: 'turn_on / turn_off with a 2 s revert, never toggle.' },
         { rule: 'Motion: colour with the app token', verdict: 'pass', note: 'stateColorTransition on the cards and the header circle; 0.2 s under Reduce Motion.' },

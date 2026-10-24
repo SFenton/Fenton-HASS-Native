@@ -28,7 +28,7 @@ struct WeatherHighlightTile: View {
     private var content: some View {
         if !tile.available {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
-                Text(tile.value).font(.title2.weight(.bold))
+                Text(tile.value).font(.title2.bold())
                 Image(systemName: WeatherSymbols.highlight(tile.kind))
                     .font(.title)
                     .foregroundStyle(HassTokens.Ink.onDark.opacity(0.35))
@@ -39,7 +39,7 @@ struct WeatherHighlightTile: View {
         } else {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
                 HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s) {
-                    Text(tile.value).font(.title2.weight(.bold)).monospacedDigit()
+                    Text(tile.value).font(.title2.bold()).monospacedDigit()
                     if let status = tile.status {
                         Text(status).font(.footnote).foregroundStyle(HassTokens.Ink.onDarkSecondary)
                     }

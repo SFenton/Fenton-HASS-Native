@@ -19,12 +19,12 @@ struct WeatherDayRow: View {
         Group {
             if typeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
-                    Text(day).font(.subheadline.weight(.bold))
+                    Text(day).font(.subheadline.bold())
                     detail(stacked: true)
                 }
             } else {
                 HStack(spacing: HassTokens.Spacing.s) {
-                    Text(day).font(.subheadline.weight(.bold)).frame(width: dayWidth, alignment: .leading)
+                    Text(day).font(.subheadline.bold()).frame(width: dayWidth, alignment: .leading)
                     detail(stacked: false)
                 }
             }
@@ -44,9 +44,9 @@ struct WeatherDayRow: View {
             let shown = WeatherRailRange(markerPercent: index == 0 ? rail.markerPercent : nil, rangeSizePercent: rail.rangeSizePercent, rangeStartPercent: rail.rangeStartPercent)
             HStack(spacing: HassTokens.Spacing.s) {
                 WeatherGlyph(condition: forecast.condition, size: 26).frame(width: 32)
-                Text(WeatherFormat.degree(forecast.templow)).font(.subheadline.weight(.bold)).monospacedDigit().frame(minWidth: valueWidth, alignment: .trailing)
+                Text(WeatherFormat.degree(forecast.templow)).font(.subheadline.bold()).monospacedDigit().frame(minWidth: valueWidth, alignment: .trailing)
                 WeatherRail(tone: .temperature, range: shown)
-                Text(WeatherFormat.degree(forecast.temperature)).font(.subheadline.weight(.bold)).monospacedDigit().frame(minWidth: valueWidth, alignment: .trailing)
+                Text(WeatherFormat.degree(forecast.temperature)).font(.subheadline.bold()).monospacedDigit().frame(minWidth: valueWidth, alignment: .trailing)
             }
         case .precipitation:
             let probability = forecast.precipitationProbability
@@ -59,7 +59,7 @@ struct WeatherDayRow: View {
                     markerPercent: (probability ?? 0) > 0 ? probability : nil, rangeSizePercent: probability, rangeStartPercent: 0
                 ))
                 Text(amount).font(.subheadline).monospacedDigit().frame(minWidth: valueWidth + 14, alignment: .trailing)
-                Text(chance).font(.subheadline.weight(.bold)).monospacedDigit().frame(minWidth: valueWidth, alignment: .trailing)
+                Text(chance).font(.subheadline.bold()).monospacedDigit().frame(minWidth: valueWidth, alignment: .trailing)
             }
         case .wind:
             let bearing = WeatherPresentation.windBearing(forecast.windBearing)
@@ -68,7 +68,7 @@ struct WeatherDayRow: View {
                     .font(.system(size: 22, weight: .semibold))
                     .rotationEffect(.degrees(bearing?.destinationDegrees ?? 0))
                     .frame(width: 32)
-                Text(windRange).font(.subheadline.weight(.bold)).monospacedDigit()
+                Text(windRange).font(.subheadline.bold()).monospacedDigit()
                 Spacer(minLength: 0)
             }
         }

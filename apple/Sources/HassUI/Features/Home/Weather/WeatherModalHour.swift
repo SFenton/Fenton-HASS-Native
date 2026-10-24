@@ -49,16 +49,16 @@ struct WeatherModalHour: View {
         switch mode {
         case .condition:
             Text(WeatherFormat.temperature(forecast.temperature, unit: current.temperatureUnit))
-                .font(.subheadline.weight(.bold))
+                .font(.subheadline.bold())
                 .monospacedDigit()
         case .precipitation:
             VStack(spacing: 2) {
-                Text(chance).font(.subheadline.weight(.bold)).monospacedDigit()
+                Text(chance).font(.subheadline.bold()).monospacedDigit()
                 if let amount { Text(amount).font(.caption).foregroundStyle(HassTokens.Ink.onDarkSecondary).monospacedDigit() }
             }
         case .wind:
             VStack(spacing: 2) {
-                Text(windSpeed).font(.subheadline.weight(.bold)).monospacedDigit()
+                Text(windSpeed).font(.subheadline.bold()).monospacedDigit()
                 if let gust { Text(gust).font(.caption).foregroundStyle(HassTokens.Ink.onDarkSecondary).monospacedDigit() }
             }
         }

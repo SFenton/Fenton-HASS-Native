@@ -29,7 +29,7 @@ struct FeedbackAttachmentTile: View {
                     .overlay(alignment: .bottomLeading) {
                         if attachment.isVideo {
                             Image(systemName: "play.fill")
-                                .font(.caption.weight(.bold))
+                                .font(.caption.bold())
                                 .foregroundStyle(.white)
                                 .padding(5)
                                 .background(.black.opacity(0.55), in: Circle())

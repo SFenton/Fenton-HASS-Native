@@ -6,20 +6,16 @@ public struct PrimaryButtonStyle: ButtonStyle {
     public static let height: CGFloat = 50
 
     private let family: ColorFamily?
-    private let pressedScale: CGFloat
 
     /// Creates the style.
     /// - Parameters:
     ///   - family: An owner's colour family to fill with instead of the tint.
-    ///   - pressedScale: What the button shrinks to while pressed (sign-in uses 0.96); 1 keeps it still. Reduce Motion
-    ///     keeps it still whatever this is.
-    public init(family: ColorFamily? = nil, pressedScale: CGFloat = 1) {
+    public init(family: ColorFamily? = nil) {
         self.family = family
-        self.pressedScale = pressedScale
     }
 
     public func makeBody(configuration: Configuration) -> some View {
-        PrimaryButtonBody(configuration: configuration, colors: Self.colors(family), pressedScale: pressedScale)
+        PrimaryButtonBody(configuration: configuration, colors: Self.colors(family))
     }
 
     /// The fill and label colours: the tint with white, or a family's glyph colour with dark text. Both are fixed, in
@@ -34,9 +30,7 @@ public struct PrimaryButtonStyle: ButtonStyle {
 private struct PrimaryButtonBody: View {
     var configuration: ButtonStyleConfiguration
     var colors: (fill: Color, label: Color)
-    var pressedScale: CGFloat
     @Environment(\.isEnabled) private var isEnabled
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         configuration.label

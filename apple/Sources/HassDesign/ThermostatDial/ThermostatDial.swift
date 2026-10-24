@@ -159,7 +159,7 @@ public struct ThermostatDial: View {
         let unitRaise = primarySize * 0.42
         return VStack(spacing: 4) {
             Text(configuration.actionText)
-                .font(.subheadline.weight(.bold))
+                .font(.subheadline.bold())
                 .foregroundStyle(secondaryInk)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(configuration.primaryText(for: displayed))
@@ -187,7 +187,7 @@ public struct ThermostatDial: View {
                             .multilineTextAlignment(.center)
                     }
                 }
-                .font(.footnote.weight(.bold))
+                .font(.footnote.bold())
                 .monospacedDigit()
                 .foregroundStyle(secondaryInk)
             }

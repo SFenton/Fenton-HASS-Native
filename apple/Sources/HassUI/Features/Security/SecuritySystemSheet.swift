@@ -114,7 +114,7 @@ struct AlarmPanel: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.title2.weight(.bold))
+                    .font(.title2.bold())
                     // White on a page, the label colour in a light sheet.
                     .foregroundStyle(HassTokens.Ink.primary)
                     .fixedSize(horizontal: false, vertical: true)

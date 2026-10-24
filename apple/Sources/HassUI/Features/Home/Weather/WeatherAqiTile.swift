@@ -13,7 +13,7 @@ struct WeatherAqiTile: View {
         ) {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
                 HStack(alignment: .firstTextBaseline, spacing: HassTokens.Spacing.s) {
-                    Text(tile.value).font(.title.weight(.bold)).monospacedDigit()
+                    Text(tile.value).font(.title.bold()).monospacedDigit()
                     Text(tile.status ?? "").font(.subheadline).foregroundStyle(HassTokens.Ink.onDarkSecondary)
                 }
                 WeatherRail(tone: .aqi, range: WeatherRailRange(markerPercent: tile.percent))

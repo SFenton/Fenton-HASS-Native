@@ -60,7 +60,7 @@ private struct SegmentBadge: View {
     var body: some View {
         if let text = ModalTabBarStyle.badgeText(count) {
             Text(text)
-                .font(.caption2.weight(.bold))
+                .font(.caption2.bold())
                 .dynamicTypeSize(...DynamicTypeSize.xLarge)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 5)

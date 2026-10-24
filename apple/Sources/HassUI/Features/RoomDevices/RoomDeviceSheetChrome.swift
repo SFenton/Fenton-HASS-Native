@@ -13,7 +13,7 @@ enum RoomDeviceStyle {
     static let highTrail = DialTint(red: 251, green: 140, blue: 0, opacity: 0.9)
 }
 
-/// Navigation chrome for a device sheet: title, optional subtitle and Done (pattern: `.agents/patterns/room-device-sheets.md`).
+/// Navigation chrome for a device sheet: title, optional subtitle and Close (pattern: `.agents/patterns/room-device-sheets.md`).
 struct RoomDeviceSheetChrome<Content: View>: View {
     var title: String
     var subtitle: String?

@@ -206,7 +206,7 @@ struct VacuumOrderBadge: View {
 
     var body: some View {
         Text("\(order)")
-            .font(.footnote.weight(.bold))
+            .font(.footnote.bold())
             .monospacedDigit()
             // The opposite of the disc: white on `#1C1C1E` in a dark sheet, `#1C1C1E` on white in a light one.
             .foregroundStyle(VacuumStyle.selectedFill)

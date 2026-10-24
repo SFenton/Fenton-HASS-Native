@@ -20,7 +20,7 @@ struct AccountHeader: View {
                 .overlay { if ProfileButton.initials(name) == nil { Image(systemName: "person.fill").font(.largeTitle).foregroundStyle(.white) } }
                 .accessibilityHidden(true)
             Text(name ?? "Signed In")
-                .font(.title2.weight(.bold))
+                .font(.title2.bold())
                 .foregroundStyle(HassTokens.Ink.primary)
                 .multilineTextAlignment(.center)
             Text(server)

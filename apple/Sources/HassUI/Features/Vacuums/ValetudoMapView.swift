@@ -382,7 +382,7 @@ struct ValetudoMapScene {
     private func drawBadge(_ order: Int, at point: CGPoint, size: CGFloat, in context: inout GraphicsContext) {
         let rect = CGRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size)
         context.fill(Path(ellipseIn: rect), with: .color(Self.color(Palette.labelOnSelected)))
-        context.draw(Text("\(order)").font(.caption.weight(.bold)).foregroundStyle(.white), at: point)
+        context.draw(Text("\(order)").font(.caption.bold()).foregroundStyle(.white), at: point)
     }
 
     static func color(_ rgba: MapRGBA) -> Color {

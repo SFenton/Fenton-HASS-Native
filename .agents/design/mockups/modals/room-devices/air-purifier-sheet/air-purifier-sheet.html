@@ -81,7 +81,7 @@
       swiftui: [
         { rule: 'Use system controls where they exist', verdict: 'pass', note: 'Picker(.segmented) / Picker(.menu) through SegmentedChoice; nothing custom.' },
         { rule: 'Accessibility: label every control', verdict: 'pass', note: 'Each picker carries its section title; the group is labelled "<room> air purifier controls".' },
-        { rule: 'Hygiene: one type per file, docs match code', verdict: 'fix', note: 'GrillSheet and GrillControls live in AirPurifierSheet.swift (lines 67-135), and RoomDeviceSheetChrome\'s doc and identifier still say "Done" for what is the Close button (RoomDeviceSheetChrome.swift:16, 39).' },
+        { rule: 'Hygiene: one type per file, docs match code', verdict: 'pass', note: 'GrillSheet and GrillControls moved to GrillSheet.swift; RoomDeviceSheetChrome doc says Close' },
         { rule: 'Motion: no decorative animation', verdict: 'pass', note: 'Only the system segmented selection animates; section swaps are cuts.' },
       ],
     },

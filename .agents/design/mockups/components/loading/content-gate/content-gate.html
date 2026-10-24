@@ -138,7 +138,7 @@
         { rule: "Performance: do not build what is not shown", verdict: "departure", note: "The content is laid out while hidden (opacity 0) on purpose so images and children can report readiness through ContentReadiness; only the spinner is built lazily. The cost is a full build of the gated page behind the spinner.", by: "swiftui-pro skill" },
         { rule: "Data flow: @State model with Equatable task id", verdict: "pass", note: "@State ContentGateModel (an @Observable) is created once in init and task(id: Input(isReady:settled:)) re-runs only when either input changes.", by: "swiftui-pro skill" },
         { rule: "Resizability: spinner centred in whatever space the page has", verdict: "pass", note: "The spinner takes maxWidth and maxHeight infinity inside the ZStack, so it centres on iPhone, iPad, split columns and the folded Duo without a device check; its 44 pt size is fixed, which is acceptable for an indicator.", by: "swiftui-pro skill" },
-        { rule: "Views: avoid #if os() branches in shared views", verdict: "fix", note: "announceLayoutChange wraps UIAccessibility in #if os(iOS) (ContentGate.swift line 78); a SwiftUI AccessibilityNotification.LayoutChanged().post() needs no platform branch. Low.", by: "swiftui-pro skill" },
+        { rule: "Views: avoid #if os() branches in shared views", verdict: "pass", note: "announceLayoutChange posts AccessibilityNotification.LayoutChanged() with no platform branch (ContentGate.swift:78)" },
       ],
     },
     notes: [

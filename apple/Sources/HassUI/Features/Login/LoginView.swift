@@ -155,7 +155,7 @@ struct LoginView: View {
                 Text(model.buttonTitle)
             }
         }
-        .buttonStyle(PrimaryButtonStyle(pressedScale: 0.96))
+        .buttonStyle(PrimaryButtonStyle())
         // Working keeps the button solid (the label says so); the model ignores a second press.
         .disabled(!model.canSubmit && !model.isWorking)
         // The arc is silent; the button says it is busy.
