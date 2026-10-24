@@ -91,7 +91,7 @@
       ],
       swiftui: [
         { rule: 'One navigationDestination(for:) per type per stack', verdict: 'pass', note: 'HomeRoute, HouseholdSettingsPage and SettingsRoute are registered once per section stack (MainTabView.swift:153-155).', by: 'swiftui-pro skill' },
-        { rule: 'Chrome that every page needs should not depend on each caller', verdict: 'fix', note: 'Each destination closure must remember .pageChrome(): a pushed page without it brings the tab bar back and draws no backdrop (MainTabView.swift:211-215). Applying it at the stack once would remove that trap. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Chrome that every page needs should not depend on each caller', verdict: 'pass', note: 'Fixed: pageDestination(for:) in MainTabView.swift applies pageChrome once per registered destination.', by: 'swiftui-pro skill' },
         { rule: 'Measure transitions', verdict: 'pass', note: 'measuresNavigation(.push, page:) in pageChrome (MainTabView.swift:237).', by: 'swiftui-pro skill' },
       ],
     },

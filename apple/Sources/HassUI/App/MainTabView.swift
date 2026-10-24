@@ -150,9 +150,13 @@ struct MainTabView: View {
             // A second tap on the selected tab, at the root, scrolls the root to its top.
             .scrollsToTop(whenRequested: navigator.scrollToTopRequests[section] ?? 0)
             // Pages a notification opens (``ShellNavigator/open(_:)``) or Quick Links chooses.
-            .navigationDestination(for: HomeRoute.self) { HomeRouteDestination(route: $0).pageChrome(measuring: $0.title) }
-            .navigationDestination(for: HouseholdSettingsPage.self) { HouseholdSettingsDestination(page: $0).pageChrome() }
-            .navigationDestination(for: SettingsRoute.self) { SettingsRouteDestination(route: $0).pageChrome() }
+            .pageDestination(for: HomeRoute.self, measuring: \.title) { route in
+                HomeRouteDestination(route: route)
+                    .onAppear { navigator.routeAppeared(route, in: section) }
+                    .onDisappear { navigator.routeDisappeared(route, in: section) }
+            }
+            .pageDestination(for: HouseholdSettingsPage.self) { HouseholdSettingsDestination(page: $0) }
+            .pageDestination(for: SettingsRoute.self) { SettingsRouteDestination(route: $0) }
         }
         .shellSheets(caller: connection)
         .environment(\.shellSection, section)
@@ -213,6 +217,21 @@ extension View {
     /// - Parameter page: The name its push is recorded under (``SwiftUICore/View/measuresNavigation(_:page:)``); nil for a tab
     ///   root, which is never pushed.
     func pageChrome(measuring page: String? = "Page") -> some View { modifier(PageChrome(measuredPage: page)) }
+}
+
+extension View {
+    /// Registers a pushed page for `data` with ``pageChrome(measuring:)`` applied once here, so a destination can
+    /// not forget it (a pushed page without it brings the tab bar back and draws no backdrop).
+    /// - Parameters:
+    ///   - data: The route type the stack pushes.
+    ///   - page: The name the push is recorded under, from the route; "Page" when omitted.
+    ///   - destination: The page for a route.
+    func pageDestination<D: Hashable, Page: View>(
+        for data: D.Type, measuring page: @escaping (D) -> String = { _ in "Page" },
+        @ViewBuilder destination: @escaping (D) -> Page
+    ) -> some View {
+        navigationDestination(for: data) { destination($0).pageChrome(measuring: page($0)) }
+    }
 }
 
 /// Implementation of ``SwiftUI/View/pageChrome()``. Inside a sheet a page takes the sheet's chrome instead: wallpaper
