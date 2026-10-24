@@ -91,4 +91,21 @@ public enum MotionTokens {
         /// Elements past this index come in with the last staggered one: the stagger is for the first screenful.
         public static let staggerLimit = 5
     }
+
+    /// The label ticker (``TickerLabel``): the one constant-speed loop in the app, an exception to `.agents/design/motion.md`
+    /// §9.6 and §9.10 because it runs only while its label overflows, and pauses on scroll, off screen and in the background.
+    public enum Ticker {
+        /// How fast the label travels, in points per second.
+        public static let speed: CGFloat = 30
+        /// Seconds the label holds at the start and again at the end of each pass.
+        public static let hold: TimeInterval = 1.5
+        /// Seconds the label takes to return from the end to the start (`standard`'s length, eased out).
+        public static let returnDuration: TimeInterval = 0.3
+        /// Passes played after the label appears or its text changes, then it rests at the start.
+        public static let passes = 3
+        /// Width of the soft fade at each edge, in points.
+        public static let fadeWidth: CGFloat = 12
+        /// A label wider than its column by more than this overflows (absorbs sub-point measuring noise).
+        public static let overflowTolerance: CGFloat = 0.5
+    }
 }

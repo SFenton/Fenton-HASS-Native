@@ -66,6 +66,8 @@ public enum Telemetry {
         public static let arrival: StaticString = "Arrival"
         /// The connection started or left live until it is live again.
         public static let reconnect: StaticString = "Reconnect"
+        /// A label ticker running (``TickerLabel``), from a pass starting to it resting or pausing; the message names the cause.
+        public static let tickerRun: StaticString = "TickerRun"
     }
 
     /// The part of a transition a record measures, stored in the record's `detail` (``TelemetryLog/phaseStats``).

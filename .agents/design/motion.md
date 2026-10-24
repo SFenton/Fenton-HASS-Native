@@ -127,6 +127,7 @@ Exceptions must be written into this file with the owner's say-so. None exist to
 | `emphasized` | `.spring(response: 0.5, dampingFraction: 0.8)` | The house-and-heart mark in the intro, nothing else |
 | `arrivalStagger` | 0.06 s per item, first screenful only (≤8 items) | The sign-in arrival |
 | `gate` | per [content-gate](../patterns/content-gate.md) | Loading gate |
+| `Ticker` | 30 pt/s, 1.5 s holds, 0.3 s return, 3 passes, 12 pt edge fades (`MotionTokens.Ticker`) | A label too wide for its column (the Home weather card's condition), see the exception below |
 | Navigation | system | Push, sheet, zoom, tab |
 
 **Never:**
@@ -154,11 +155,19 @@ Read `accessibilityReduceMotion`, through `motionSafeAnimation` or `MotionPolicy
 3. **Entrance animations for content that was already there:** cached pages, snapshot loads, resume, reconnect.
 4. **Bouncy springs on content:** tiles that overshoot, cards that wobble.
 5. **Decorating the system transitions:** custom push curves, parallax headers on push, 3D flips, hero animations on things that aren't thumbnails.
-6. **Long durations:** anything that moves for over 0.4 s outside the two moments, and any chained sequence that makes you wait to tap.
+6. **Long durations:** anything that moves for over 0.4 s outside the two moments, and any chained sequence that makes you wait to tap. *Exception: the label ticker* (below).
 7. **Blocking input during animation:** every transition is interruptible, and taps during the arrival go through.
 8. **Animated backgrounds:** moving gradients, animated blur radii, particle effects, shimmer sweeps. They are expensive (offscreen passes every frame) and noisy.
 9. **Live updates that move layout:** re-sorting, resizing or jumping while the person is reading.
-10. **Animating what's off screen,** or animating anything while the person scrolls.
+10. **Animating what's off screen,** or animating anything while the person scrolls. *Exception: the label ticker* (below), which is bounded by the pauses listed there.
+
+**The ticker exception (owner, 2026-10-22).** A label that does not fit its column scrolls through it at a constant 30 pt/s instead of truncating or wrapping ([ticker](../patterns/ticker.md), [weather card header](weather-card-header.md)). It is the one motion allowed past 0.4 s outside the two moments, and the one that moves for seconds at a time. It is allowed because it is bounded:
+- it runs only while the label overflows its column (measured, never keyed to a string or a size), and plays three passes (1.5 s hold, travel, 1.5 s hold, 0.3 s return) after the card appears or the text changes, then rests at the start;
+- it pauses while the page scrolls, while its view is off screen or behind another tab, and while the scene is not active, and resumes where it stopped;
+- under Reduce Motion it does not run: the text wraps instead;
+- it never moves layout (a clipped, masked overlay on a fixed-size line), and its text is hidden from VoiceOver;
+- it ships with the `TickerRun` signpost, a hitch and scroll-cost test, and budgets ([performance](../testing/apple/performance.md)).
+It is not a precedent for other marquees: add another only with the owner's approval and a row here.
 
 **Why this is the line:** each of these either costs frames on a 120 Hz screen we've worked hard to keep smooth (see [performance](../testing/apple/performance.md)), or makes a two-second task slower without telling the person anything new.
 

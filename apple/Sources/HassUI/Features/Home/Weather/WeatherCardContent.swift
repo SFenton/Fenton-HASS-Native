@@ -4,9 +4,9 @@ import SwiftUI
 
 /// The card's presentation: reads entities and the store, owns the sheet.
 ///
-/// Direction G (`.agents/design/direction-g.md`, mockup n1 home): a thin module on the wallpaper with the glyph and
-/// the screen's one display numeral, the condition and today's high and low trailing, the day's first briefing
-/// sentence, then the hours.
+/// Direction G (`.agents/design/direction-g.md`, mockup n1 home): a thin module on the wallpaper with the glyph, the
+/// condition and today's high and low on the left, the screen's one display numeral on the right (header: option D,
+/// `.agents/design/weather-card-header.md`), then the day's first briefing sentence, then the hours.
 struct WeatherCardContent: View {
     var forecasts: WeatherForecastStore
     var startsOpen = false
@@ -14,6 +14,11 @@ struct WeatherCardContent: View {
     @Environment(EntityStore.self) private var entities
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.weatherCardIsNarrow) private var isNarrow
+    @Environment(\.sectionIsShowing) private var sectionIsShowing
+    /// Header measurements for the stacked-layout decision (``rangeOverflows``).
+    @State private var headerWidth: CGFloat = 0
+    @State private var readingWidth: CGFloat = 0
+    @State private var rangeWidth: CGFloat = 0
     @State private var isPresented = false
     @State private var didAutoOpen = false
     /// The hero glyph grows with Dynamic Type.
@@ -83,52 +88,109 @@ struct WeatherCardContent: View {
 
     // MARK: - Header
 
+    /// Option D (`.agents/design/weather-card-header.md`): the glyph, the condition and today's range in a left column, the
+    /// numeral with its chevron on the right. The numeral never truncates; the condition scrolls as a ticker when it does not
+    /// fit its column. At accessibility sizes, or when the range does not fit the column, the numeral takes the top row with the
+    /// glyph and the condition and range stack under it at full width.
     @ViewBuilder
     private func header(current: WeatherCurrent, night: Bool) -> some View {
-        let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.s))
-            : AnyLayout(HStackLayout(alignment: .center, spacing: HassTokens.Spacing.m))
-        layout {
-            Button { isPresented = true } label: {
-                // At accessibility sizes the glyph sits above the numeral, so "54°" keeps the card's width.
-                let hero = typeSize.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: HassTokens.Spacing.xs))
-                    : AnyLayout(HStackLayout(spacing: HassTokens.Spacing.m))
-                hero {
-                    WeatherGlyph(condition: current.drawnCondition, night: night, size: glyphSize)
-                    Text(current.degreeText)
-                        // Capped: past this a three-digit reading no longer fits the folded Duo's card at AX5.
-                        .font(.system(size: min(numeralSize, Self.maxNumeralSize), weight: .thin))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        // The condition wraps first; the reading never truncates.
-                        .layoutPriority(1)
+        let stacked = typeSize.isAccessibilitySize || rangeOverflows
+        let glyph = WeatherGlyph(condition: current.drawnCondition, night: night, size: glyphSize)
+        let reading = reading(current)
+        let condition = TickerLabel(current.conditionLabel, font: .headline, wraps: typeSize.isAccessibilitySize, probe: "home.weather.condition")
+            .foregroundStyle(HassTokens.Ink.onDark)
+        Group {
+            if stacked {
+                VStack(alignment: .leading, spacing: HassTokens.Spacing.s) {
+                    HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
+                        glyph
+                        Spacer(minLength: HassTokens.Spacing.s)
+                        reading
+                    }
+                    condition
+                    todayRange
                 }
-                .frame(minHeight: HassTokens.minTarget)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Self.openLabel(current))
-            .accessibilityAddTraits(.isButton)
-            .accessibilityIdentifier("home.weather.card")
-            if !typeSize.isAccessibilitySize { Spacer(minLength: HassTokens.Spacing.s) }
-            VStack(alignment: typeSize.isAccessibilitySize ? .leading : .trailing, spacing: 2) {
-                HStack(spacing: HassTokens.Spacing.xs) {
-                    Text(current.conditionLabel)
-                        .font(.headline)
-                        .multilineTextAlignment(typeSize.isAccessibilitySize ? .leading : .trailing)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Image(systemName: WeatherSymbols.disclosure)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+            } else {
+                HStack(alignment: .center, spacing: HassTokens.Spacing.m) {
+                    VStack(alignment: .leading, spacing: HassTokens.Spacing.xs) {
+                        glyph
+                        condition
+                        todayRange
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    reading.layoutPriority(1)
                 }
-                // The card button already reads the condition.
-                .accessibilityHidden(true)
-                todayRange
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background { cardButton(current) }
+        .background(alignment: .topLeading) { rangeMeasure(current) }
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { headerWidth = $0 }
+        .environment(\.tickerIsOnScreen, sectionIsShowing)
+    }
+
+    /// The numeral with the chevron beside it, centred on the numeral. Drawn only: the card's button (``cardButton(_:)``) names the
+    /// condition and the reading.
+    private func reading(_ current: WeatherCurrent) -> some View {
+        HStack(alignment: .center, spacing: HassTokens.Spacing.xs) {
+            Text(current.degreeText)
+                // Capped: past this a three-digit reading no longer fits the folded Duo's card at AX5.
+                .font(.system(size: min(numeralSize, Self.maxNumeralSize), weight: .thin))
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize()
+                .overlay { if TickerLabel.probeEnabled { numeralProbe } }
+            Image(systemName: WeatherSymbols.disclosure)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(HassTokens.Surface.secondaryOnModule)
+        }
+        .frame(minHeight: HassTokens.minTarget)
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { readingWidth = $0 }
+        .accessibilityHidden(true)
+    }
+
+    /// The card's one button for assistive technology, behind the header so its frame covers the glyph, condition and reading it
+    /// names (the audit finds no drawn text without an element); today's range stays its own element on top.
+    private func cardButton(_ current: WeatherCurrent) -> some View {
+        Button { isPresented = true } label: {
+            Color.clear.contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Self.openLabel(current))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("home.weather.card")
+    }
+
+    /// An invisible element with the numeral's frame, for UI tests (`FENTON_TICKER_PROBE=1`).
+    private var numeralProbe: some View {
+        Color.clear
+            .allowsHitTesting(false)
+            .accessibilityElement()
+            .accessibilityLabel("numeral")
+            .accessibilityIdentifier("home.weather.numeral")
+    }
+
+    /// Whether today's range is wider than the left column. Measured from the header's width, the reading's width and the
+    /// range's natural width, none of which depends on the layout chosen, so choosing the stacked layout cannot flip it back.
+    private var rangeOverflows: Bool {
+        guard headerWidth > 0, readingWidth > 0, rangeWidth > 0 else { return false }
+        return rangeWidth > headerWidth - readingWidth - HassTokens.Spacing.m + 0.5
+    }
+
+    /// An invisible one-line copy of the range, to measure it.
+    @ViewBuilder
+    private func rangeMeasure(_ current: WeatherCurrent) -> some View {
+        if let today = forecasts.daily.forecasts.first {
+            Text(WeatherFormat.compactHighLow(today))
+                .font(.body)
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize()
+                .hidden()
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { rangeWidth = $0 }
+                .accessibilityHidden(true)
+        }
     }
 
     // MARK: - Today
@@ -144,6 +206,7 @@ struct WeatherCardContent: View {
         if let today = forecasts.daily.forecasts.first {
             Text(WeatherFormat.compactHighLow(today))
                 .font(.body)
+                .lineLimit(1)
                 .foregroundStyle(HassTokens.Surface.secondaryOnModule)
                 .monospacedDigit()
                 .accessibilityLabel(Self.todayLabel(today))
