@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vacuum status chip and rows · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../modals/room-devices/_devices-vacuums.js"></script>
+<script src="../../../modals/vacuums/_devices-vacuums.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, dv = Mock.dv, vac = dv.vac, T = vac.TONE;
+  function sw(label, build, note, w) { return { label: label, surface: 'sheet', w: w || 340, build: build, note: note }; }
+  function chips(list) { return function () { return h('div.vc-flow', list.map(function (c) { return vac.statusChip(c); })); }; }
+  function list(rows) { return function (ctx) { return K.ModuleList({ rows: rows(ctx) }); }; }
+
+  Mock.mount({
+    kind: 'component', id: 'vacuum-status-chip', title: 'Vacuum status chip, order badge, setting row, action rows', area: 'vacuums', status: 'shipped', frame: false,
+    summary: 'The vacuum sheet\'s small parts: the read-only status chip (Docked, 87%, Dock Idle), the numbered order chip and badge, a setting row (segmented beside or under the title, or a pop-up menu), the dock action rows, and the primary and secondary command buttons. Sheet surface, light and dark.',
+    source: ['apple/Sources/HassUI/Features/Vacuums/VacuumComponents.swift', 'apple/Sources/HassUI/Features/Vacuums/VacuumMapPanel.swift', 'apple/Sources/HassUI/Features/Vacuums/VacuumTabs.swift', 'apple/Sources/HassCore/Vacuums/VacuumController.swift'],
+    spec: ['.agents/patterns/vacuum-sheet.md', '.agents/patterns/status-pill.md'],
+    patterns: ['vacuum-sheet', 'status-pill', 'module-list'],
+    hig: ['Buttons', 'Segmented controls', 'Pop-up buttons', 'Lists', 'Color', 'Dynamic Type'],
+    entities: ['sensor.valetudo_exaltedsneakydeer_battery_level', 'sensor.valetudo_exaltedsneakydeer_dock_status', 'select.valetudo_exaltedsneakydeer_mode', 'select.valetudo_exaltedsneakydeer_fan', 'select.valetudo_exaltedsneakydeer_water', 'input_select.main_floor_vacuum_cleaning_passes'],
+    kitComponents: ['StatusPill', 'ModuleList', 'SegmentedChoice', 'PrimaryButton'],
+    devices: ['iphone', 'ipad-portrait'],
+
+    states: {
+      'status-chip': { title: 'Status chip (VacuumStatusChip)', render: function (ctx) { return dv.swatches(ctx, [
+        sw('Status by state', chips([{ label: 'Status', value: 'Docked', symbol: 'checkmark.circle.fill', tint: T.ok }, { label: 'Status', value: 'Cleaning', symbol: 'sparkles', tint: T.active }, { label: 'Status', value: 'Returning', symbol: 'arrow.uturn.left.circle', tint: T.returning },
+          { label: 'Status', value: 'Paused', symbol: 'pause.circle', tint: T.warning }, { label: 'Status', value: 'Error', symbol: 'exclamationmark.circle', tint: T.danger }, { label: 'Status', value: 'Idle', symbol: 'robotic.vacuum', tint: T.neutral }, { label: 'Status', value: 'Unavailable', symbol: 'questionmark.circle', tint: T.unavailable }]), 'the glyph carries the tone; the value is always the primary ink (36 pt minimum height, capsule on the sheet cell)'),
+        sw('Battery by level', chips([{ label: 'Battery', value: '100%', symbol: 'battery.100percent', tint: 'var(--ink)' }, { label: 'Battery', value: '74%', symbol: 'battery.75percent', tint: 'var(--ink)' }, { label: 'Battery', value: '45%', symbol: 'battery.50percent', tint: 'var(--ink)' }, { label: 'Battery', value: '20%', symbol: 'battery.25percent', tint: 'var(--ink)' },
+          { label: 'Battery', value: '12%', symbol: 'battery.0percent', tint: 'var(--ink)' }, { label: 'Battery', value: 'Unknown', symbol: 'battery.0percent', tint: 'var(--ink-sheet-2)' }]), 'five glyphs at 13, 38, 63 and 88% breakpoints; Unknown dims the glyph'),
+        sw('Dock status', chips([{ label: 'Dock Status', value: 'Dock Idle', symbol: 'ev.charger', tint: 'var(--ink)' }, { label: 'Dock Status', value: 'Dock Cleaning', symbol: 'drop', tint: T.active }, { label: 'Dock Status', value: 'Dock Drying', symbol: 'wind', tint: T.active }, { label: 'Dock Status', value: 'Dock Emptying', symbol: 'trash.circle', tint: T.warning }, { label: 'Dock Status', value: 'Dock Error', symbol: 'exclamationmark.circle', tint: T.danger }, { label: 'Dock Status', value: 'Dock Unavailable', symbol: 'ev.charger', tint: T.unavailable }]))], ['sheet']); } },
+      'order': { title: 'Order chip and badge', render: function (ctx) { return dv.swatches(ctx, [sw('Selected rooms in order', function () { return h('div.vc-flow', { style: { gap: '6px' } }, [vac.orderChip(1, 'Kitchen'), vac.orderChip(2, 'Living Room'), vac.orderChip(3, 'Master Bathroom')]); }, 'white capsule with ink #1C1C1E and a black numbered disc in a dark sheet; the reverse in a light sheet'),
+        sw('Badge alone', function () { return h('div.vc-flow', [vac.badge(1), vac.badge(2), vac.badge(10)]); }, 'a 24 pt disc (scaled), 13 pt bold numeral'), sw('Room cards', function () { return h('div.vc-rooms.two', [vac.roomCard('kitchen', { order: 1 }), vac.roomCard('office', {}), vac.roomCard('gym', { locked: true })]); }, 'the Rooms section cards: selected is the same white fill with the badge top trailing; locked dims the glyph only')], ['sheet']); } },
+      'setting-row': { title: 'Setting row (VacuumSettingRow)', render: function (ctx) { return dv.swatches(ctx, [
+        sw('Short labels: segmented beside the title', list(function (c) { return [vac.settingRow({ title: 'Cleaning Passes', symbol: 'number', options: ['1x', '2x', '3x'], value: '2x' }, c)]; }), 'two to four options whose labels are 3 characters or fewer: a 170 pt control beside the title'),
+        sw('Longer labels: segmented under the row', list(function (c) { return [vac.settingRow({ title: 'Water', symbol: 'drop', detail: 'Set mop water flow so floors get the right amount of moisture.', options: ['Low', 'Medium', 'High'], value: 'Medium' }, c)]; })),
+        sw('Five options: a pop-up menu', list(function (c) { return [vac.settingRow({ title: 'Fan', symbol: 'fan', detail: 'Adjust suction strength for carpets, hard floors, and quieter cleaning.', options: ['Low', 'Medium', 'High', 'Max', 'Turbo'], value: 'Medium' }, c)]; }), 'only the trailing value is the menu\'s source (a whole-row Menu made the row vanish while open)'),
+        sw('Disabled (a clean is starting)', list(function (c) { return [vac.settingRow({ title: 'Fan', symbol: 'fan', options: ['Low', 'Medium', 'High', 'Max', 'Turbo'], value: 'Medium', disabled: true }, c)]; }))], ['sheet']); } },
+      'action-row': { title: 'Dock action rows (VacuumActionRow)', render: function (ctx) { return dv.swatches(ctx, [sw('Tones', list(function () { return [vac.actionRow({ title: 'Clean Mop Dock', symbol: 'drop', tone: 'neutral', detail: 'Start the mop-dock cleaning phase. Use Stop Dock Clean when finished so the dock drains the wash tray.' }),
+        vac.actionRow({ title: 'Stop Dock Clean', symbol: 'stop.fill', tone: 'warning', detail: 'Finish the dock-cleaning phase and drain the wash tray into the dirty-water tank.' }), vac.actionRow({ title: 'Dry Mops', symbol: 'wind', tone: 'neutral', disabled: true, detail: 'Start drying the attached mop pads.' }), vac.actionRow({ title: 'Empty Bin', symbol: 'trash.circle', tone: 'neutral', detail: 'Trigger the dock to empty the robot dustbin into its dust bag.' })]; }), 'a blue title (G\'s text-action blue), the glyph in the tone, and what it does; disabled rows go grey', 380)], ['sheet']); } },
+      'buttons': { title: 'Command buttons (VacuumActionButton)', render: function (ctx) { return dv.swatches(ctx, [
+        sw('Primary: the screen\'s one filled button', function () { return h('div.vc-gap12', vac.actionButton({ title: 'Clean', symbol: 'play.fill', tone: 'primary' }), vac.actionButton({ title: 'Start Area Clean', symbol: 'play.fill', tone: 'primary', disabled: true })); }, 'the #0071E3 capsule, 50 pt; disabled is 40% opacity'),
+        sw('Secondary grey capsules (Pause, Stop, Dock)', function () { return h('div.vc-btnrow', vac.actionButton({ title: 'Pause', symbol: 'pause.fill', tone: 'warning', detail: 'Pause the current cleaning run.' }), vac.actionButton({ title: 'Stop', symbol: 'stop.fill', tone: 'danger', detail: 'Stop the current cleaning run.' })); }, 'the label stays the primary ink; the glyph carries the tone (orange and red text fail contrast)'),
+        sw('Disabled with its reason', function () { return h('div.vc-btnrow', vac.actionButton({ title: 'Pause', symbol: 'pause.fill', tone: 'warning', disabled: true, detail: 'Pause becomes available after the robot leaves the dock.' }), vac.actionButton({ title: 'Cancel Cleaning Session', symbol: 'stop.fill', tone: 'danger', detail: 'Cancel this cleaning session before the robot leaves the dock.', showDetail: false })); }, 'a disabled command shows why under it; the detail is every button\'s accessibility hint')], ['sheet']); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'chips wrap; segmented settings become menus; the command buttons stack', render: function (ctx) { return dv.swatches(ctx, [
+        sw('Chips', chips([{ label: 'Status', value: 'Docked', symbol: 'checkmark.circle.fill', tint: T.ok }, { label: 'Battery', value: '87%', symbol: 'battery.75percent', tint: 'var(--ink)' }, { label: 'Dock Status', value: 'Dock Idle', symbol: 'ev.charger', tint: 'var(--ink)' }])),
+        sw('Setting rows', list(function (c) { return [vac.settingRow({ title: 'Cleaning Passes', symbol: 'number', options: ['1x', '2x', '3x'], value: '2x' }, c), vac.settingRow({ title: 'Water', symbol: 'drop', options: ['Low', 'Medium', 'High'], value: 'Medium' }, c)]; })),
+        sw('Buttons', function () { return h('div.vc-btnrow', vac.actionButton({ title: 'Pause', symbol: 'pause.fill', tone: 'warning', detail: 'Pause the current cleaning run.' }), vac.actionButton({ title: 'Stop', symbol: 'stop.fill', tone: 'danger', detail: 'Stop the current cleaning run.' })); })], ['sheet']); } },
+    },
+
+    motion: [
+      { id: 'chip-tone', what: 'A status chip\'s glyph changes colour with the robot\'s state (Docked green to Cleaning purple)', token: 'state 0.6 s ease-in-out, colour only (stateForeground "VacuumStatusChip")', state: 'status-chip',
+        source: 'HassUI/Features/Vacuums/VacuumComponents.swift VacuumStatusChip; motion.md section 6', reduce: 'still cross-fades at 0.2 s',
+        play: function (stage) { var c = stage.querySelector('.vc-chip'); c.style.setProperty('--ct', 'var(--vc-active)'); c.querySelector('span:last-child').textContent = 'Cleaning'; return Mock.sleep(Mock.anim.ms.state() + 600).then(function () { c.style.setProperty('--ct', 'var(--ink-success)'); c.querySelector('span:last-child').textContent = 'Docked'; return Mock.sleep(Mock.anim.ms.state() + 300); }); } },
+    ],
+
+    a11y: [
+      { rule: 'Status chip', note: 'One element: label "Battery", value "87%" (identifier vacuum.status for the state chip); the glyph is hidden because the value says it; chips are not buttons.' },
+      { rule: 'Order chip and badge', note: 'The chip reads "1. Kitchen"; the bare badge is hidden (the room card\'s label carries "cleaning order 1").' },
+      { rule: 'Setting rows', note: 'A segmented control or a menu named with the row\'s title (vacuum.setting.<title>), the menu\'s value spoken as its value; at accessibility sizes every setting is a menu below its title; 44 pt minimum.' },
+      { rule: 'Action rows', note: 'A button named by its title with the explanation as its hint (vacuum.action.<kind>); a disabled row is dimmed and spoken so.' },
+      { rule: 'Command buttons', note: 'Clean is the primary capsule; Pause, Stop and Dock are grey capsules with a toned glyph; every button is at least 50 pt tall; at AX sizes they stack.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Status chips: state in glyph and words', verdict: 'pass', note: 'VacuumStatusChip pairs a toned glyph with the value ("Docked", "87%", "Dock Idle") and speaks as label plus value (VacuumComponents.swift:151-177).', by: 'apple-hig skill' },
+        { rule: 'Segmented controls: two to four short options', verdict: 'pass', note: 'VacuumSettingRow uses a segmented control for 2 to 4 options of three characters or fewer, a pop-up menu above that and at every accessibility size (VacuumComponents.swift:306-312).', by: 'apple-hig skill' },
+        { rule: 'Color: orange and red text fail contrast', verdict: 'pass', note: 'Secondary commands keep primary-ink labels and let the glyph carry the tone (VacuumSecondaryButtonStyle); the menu value uses the action blue.', by: 'apple-hig skill' },
+        { rule: 'Buttons: 44 pt or more', verdict: 'pass', note: 'Command capsules are 50 pt (PrimaryButtonStyle.height), the menu label is 44 pt (HassTokens.minTarget, :371).', by: 'apple-hig skill' },
+      ],
+      swiftui: [
+        { rule: 'Accessibility: hints describe the action, not state', verdict: 'fix', note: 'VacuumActionButton sets accessibilityHint(action.detail) and hides the visible detail text (VacuumComponents.swift:236-243), so the reason a command is disabled is a hint that VoiceOver users may have turned off.', by: 'swiftui-pro skill' },
+        { rule: 'Menu: title as well as the glyph', verdict: 'pass', note: 'The setting menu is a Menu with an inline Picker, labelled with the setting title and valued with the selection (VacuumComponents.swift:353-377); the row stays visible while the menu is open.', by: 'swiftui-pro skill' },
+        { rule: 'Design: weights and sizes', verdict: 'fix', note: 'Chips and buttons scatter .font(.subheadline.weight(.semibold)) and a fixed 36 pt minHeight and 6 pt spacing (VacuumComponents.swift:159-172); swiftui-pro design asks for shared tokens and system weights.', by: 'swiftui-pro skill' },
+      ],
+    },
+
+    notes: [
+      'loading, error, offline: not applicable to small parts; the states they express (Unavailable, Unknown, disabled) are drawn above.',
+      'The battery glyph names the nearest level; the app asks for battery.100percent, 75, 50, 25 and 0 (VacuumStatusSummary.batterySymbol).',
+      'The status chip of the Home status rail is a different component (StatusChip); this is VacuumStatusChip.',
+      'Promote to kit: vac.statusChip, vac.orderChip, vac.settingRow, vac.actionRow, vac.actionButton, vac.roomCard (modals/vacuums/_devices-vacuums.js).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass built with the kit: chips, order chip, setting rows, action rows, command buttons, AX5.' }],
+  });
+})();
+</script></body></html>

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Switch to Rooms or Area · modal mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../room-devices/_devices-vacuums.js"></script>
+<script src="../_devices-vacuums.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, dv = Mock.dv, vac = dv.vac;
+  var AREA = { x: 24, y: 24, w: 150, h: 120 };
+  var MSG_ROOMS = 'You have an area drawn right now. Switching to Rooms will discard that area. Are you sure you want to continue?';
+  var MSG_AREA = 'Continuing clears your selected rooms and opens area drawing.';
+
+  /* Two call sites:
+     1. Controls tab, a confirmationDialog: picking Rooms while an area is drawn ("Switch to Rooms", destructive "Switch to Rooms" + Cancel) and picking Area while rooms are
+        selected ("Switch to Area?", destructive "Switch to Area" + Cancel). On iPhone an action sheet, on iPad a popover from the segmented control.
+     2. Rooms section and the map, an alert "Switch to Rooms": tapping a room card or a room on the map while an area is drawn (Continue + Cancel). */
+  function dialog(kind) {
+    if (kind === 'rooms') return dv.actionSheet({ title: 'Switch to Rooms', message: MSG_ROOMS, actions: [{ title: 'Switch to Rooms', role: 'destructive' }] });
+    if (kind === 'area') return dv.actionSheet({ title: 'Switch to Area?', message: MSG_AREA, actions: [{ title: 'Switch to Area', role: 'destructive' }] });
+    var ax = Mock.current && Mock.current.axSize;   // an alert grows and stacks its buttons at accessibility sizes
+    var a = K.Alert({ title: 'Switch to Rooms', message: MSG_ROOMS, buttons: [{ title: 'Continue' }, { title: 'Cancel', role: 'cancel' }], stacked: !!ax });
+    if (ax) a.style.width = 'calc(100% - 24px)';
+    return a;
+  }
+  function S(kind, v, tab) { return function (c) { return vac.sheet(c, { v: v, tab: tab, alert: dialog(kind) }); }; }
+
+  Mock.mount({
+    kind: 'modal', id: 'vacuum-switch-dialog', title: 'Switch to Rooms / Area (confirmation)', area: 'vacuums', status: 'shipped',
+    summary: 'Rooms and Area cannot both be set, so switching asks first. A confirmation dialog on the Controls section (Rooms or Area segment), and an alert on the Rooms section and the map (tapping a room while an area is drawn).',
+    source: ['apple/Sources/HassUI/Features/Vacuums/VacuumTabs.swift', 'apple/Sources/HassUI/Features/Vacuums/VacuumMapPanel.swift', 'apple/Sources/HassCore/Vacuums/VacuumController.swift'],
+    spec: ['.agents/patterns/vacuum-sheet.md', '.agents/pages/vacuums/spec.md'],
+    patterns: ['vacuum-sheet', 'modal-sheet'],
+    hig: ['Action sheets', 'Alerts', 'Segmented controls'],
+    entities: ['script.main_floor_vacuum_clean_zone', 'script.main_floor_vacuum_clean_selected_segments'],
+    kitComponents: ['Alert', 'HassModal', 'SegmentedChoice'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+
+    states: {
+      'default': { title: 'Confirmation: Switch to Rooms (an area is drawn)', note: 'title "Switch to Rooms" (no question mark), destructive "Switch to Rooms", Cancel added by the system', render: S('rooms', vac.V({ selected: [], area: AREA })) },
+      'switch-area': { title: 'Confirmation: Switch to Area? (rooms are selected)', note: '"Continuing clears your selected rooms and opens area drawing."', render: S('area', vac.V({})) },
+      'alert-rooms': { title: 'Alert on the Rooms section', note: 'a room card tapped while an area is drawn: alert "Switch to Rooms" with Continue and Cancel', render: S('alert', vac.V({ selected: [], area: AREA }), 'zones') },
+      'alert-map': { title: 'Alert from the map', note: 'tapping a room on the map does the same', render: S('alert', vac.V({ selected: [], area: AREA }), 'controls') },
+      'error': { title: 'Cancel path', note: 'there is no error state: Cancel leaves the area (or rooms) as it was and closes the dialog', render: S('rooms', vac.V({ selected: [], area: AREA })) },
+      'offline': { title: 'Over an offline Vacuums page', note: 'the dialog has no connection logic; the sheet behind carries the offline chip on its presenter', render: function (c) { return vac.sheet(c, { v: vac.V({ selected: [], area: AREA }), alert: dialog('rooms'), connection: 'offline' }); } },
+      'large': { title: 'Large detent (the sheet is full height)', render: S('rooms', vac.V({ selected: [], area: AREA })) },
+      'closed': { title: 'Before the dialog', note: 'Controls with the Area target', render: function (c) { return vac.sheet(c, { v: vac.V({ selected: [], area: AREA }) }); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'the action sheet and the alert grow with the text; the alert stacks its buttons', render: S('rooms', vac.V({ selected: [], area: AREA })) },
+    },
+
+    motion: [],
+
+    transitions: [
+      { from: 'Rooms segment (area drawn)', to: 'Confirmation dialog', kind: 'fade', state: 'closed', note: 'The system presents the confirmation dialog: an action sheet rising from the bottom on iPhone, a popover anchored to the segmented control on iPad; the sheet dims. Cancel, or a tap outside, dismisses.',
+        play: function (stage) {
+          var host = stage.querySelector('.ui-host'), ctx = Mock.current;
+          var scrim = h('div.ui-alert-scrim.' + (ctx.appearance === 'dark' ? 'g-dark' : 'g-light'), dialog('rooms')); host.appendChild(scrim);
+          return Mock.anim.fade(scrim, { ms: 200 }).then(function () { return Mock.sleep(1200); }).then(function () { return Mock.anim.fade(scrim, { from: 1, to: 0, ms: 200 }); }).then(function () { scrim.remove(); });
+        } },
+      { from: 'Room card (area drawn)', to: 'Alert', kind: 'fade', state: 'closed', note: 'The alert scales and fades in over the sheet (system alert, never decorated).',
+        play: function (stage) {
+          var host = stage.querySelector('.ui-host'), ctx = Mock.current;
+          var scrim = h('div.ui-alert-scrim.' + (ctx.appearance === 'dark' ? 'g-dark' : 'g-light'), dialog('alert')); host.appendChild(scrim);
+          return Mock.anim.fade(scrim, { ms: 200 }).then(function () { return Mock.sleep(1200); }).then(function () { return Mock.anim.fade(scrim, { from: 1, to: 0, ms: 200 }); }).then(function () { scrim.remove(); });
+        } },
+    ],
+
+    a11y: [
+      { rule: 'Focus', note: 'A dialog is modal: VoiceOver lands on its title, then the message, then the actions; Cancel is always present and reachable by the escape gesture.' },
+      { rule: 'Destructive action', note: 'The action that discards the area (or rooms) is role .destructive, spoken as such and drawn red; Cancel is the cancel role. The alert uses Continue (default) and Cancel.' },
+      { rule: 'Copy', note: 'Both messages say what will be lost: "Switching to Rooms will discard that area" and "Continuing clears your selected rooms and opens area drawing."' },
+      { rule: 'Dynamic Type', note: 'System dialogs scale with Dynamic Type and stack their buttons when they no longer fit.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Action sheets: choices for an intentional action', verdict: 'pass', note: 'Picking the other segment opens a confirmationDialog with a destructive switch and the system Cancel (VacuumTabs.swift:91-110); it asks only when a drawn area or room selection would be lost.', by: 'apple-hig skill' },
+        { rule: 'Alerts: titles and punctuation', verdict: 'fix', note: 'The dialog title is "Switch to Rooms" in one case and "Switch to Area?" in the other (VacuumTabs.swift:113), and the alert on the Rooms section reuses "Switch to Rooms" with a Continue button (VacuumTabs.swift:322); one sentence-style title and one verb per decision would read the same on every path.', by: 'apple-hig skill' },
+        { rule: 'Alerts and action sheets: one decision, one presentation', verdict: 'fix', note: 'The same "discard the drawn area" choice is an action sheet from the segment, but an alert from a room card (VacuumTabs.swift:322) and from the map (VacuumMapPanel.swift:128); HIG sends choices tied to an intentional action to an action sheet.', by: 'apple-hig skill' },
+      ],
+      swiftui: [
+        { rule: 'Presentation: attach confirmationDialog to its trigger', verdict: 'fix', note: 'The dialog hangs on the Controls tab\'s root VStack with a hand-made Binding(get:set:) (VacuumTabs.swift:91); attached to the segmented picker with confirmationDialog(item:) it would animate from its source and drop the Boolean.', by: 'swiftui-pro skill' },
+        { rule: 'Do not repeat the same presenter', verdict: 'fix', note: 'Two alerts with identical copy are owned by VacuumRoomsTab and VacuumMapFrame, each with its own pending-zone state; one shared presenter would keep them in step.', by: 'swiftui-pro skill' },
+      ],
+    },
+
+    notes: [
+      'loading: nothing loads here. error: there is no error state (see the Cancel path). medium and fitted: dialogs have no detents; the sheet behind is full height.',
+      'iPad: the confirmationDialog is a popover anchored to the segmented control (drawn here as the same card, centred); the alert is the centred alert on every device.',
+      'Two call sites, as the catalog says: confirmationDialog in VacuumControlsTab (VacuumTabs.swift) and an alert in VacuumRoomsTab and VacuumMapFrame (VacuumTabs.swift, VacuumMapPanel.swift).',
+      'Docs versus code: nothing in .agents describes the dialogs; the web copy lives in `confirmations.*` of vacuum.json (pages/vacuums/spec.md).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass built with the kit: both confirmation dialogs, the alert (Rooms section and map), offline, AX5; light and dark.' }],
+  });
+})();
+</script></body></html>

@@ -18,7 +18,7 @@ When unsure whether a change is visible enough, propose. A one-screen proposal c
 
 ## The proposal
 
-One self-contained HTML file at `.agents/design/mockups/<topic>/<topic>.html`, headed `Proposal · <date>`, that opens in a browser with no network (light and dark, readable at phone width). In order:
+Start from the surface's mockup in the [atlas](../design/mockups/README.md) (`catalog.json` finds it) and copy its states, so the proposal shows today beside each option and reuses the kit's components (`tools/mockups_inline.py` exports one file). One self-contained HTML file at `.agents/design/mockups/proposals/<topic>/<topic>.html`, headed `Proposal · <date>`, that opens in a browser with no network (light and dark, readable at phone width). In order:
 
 1. **Cause or goal.** What is wrong or wanted, with the measured evidence (point sizes, the failing string, a screenshot), not a guess.
 2. **Options.** At least two genuinely different answers when there is a design choice; if the fix is unambiguous, a before and after. Each at live size on the device families it affects (iPhone, iPhone Duo, iPad), at the default text size and an accessibility size, and in the states that break it (long text, empty, error, offline).
@@ -39,6 +39,7 @@ Share it where the owner is reading (the session, and a gallery artifact link if
 
 1. Write or update `.agents/design/<topic>.md` ([weather-card-header.md](../design/weather-card-header.md) shows the shape): the bug or goal, the decision (owner, option, date), and the rules it adds. Update the pattern doc if a shared component changed.
 2. Commit the mockup with the decision; it stays as the record of what was weighed. Link it from [design/README.md](../design/README.md).
+   Update the surface's atlas mockup to the chosen option (status `in-flight:<branch>` until merged, then `shipped`) and its catalog entry.
 3. Build, test and verify per the [change loop](change-loop.md). The PR names the proposal and the option chosen, and shows the built result beside the mockup.
 
 ## Exceptions
