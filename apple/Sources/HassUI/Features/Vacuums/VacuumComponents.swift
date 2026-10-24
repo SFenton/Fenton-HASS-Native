@@ -234,6 +234,8 @@ struct VacuumActionButton: View {
                 .disabled(action.isDisabled)
                 .accessibilityIdentifier(identifier ?? "vacuum.action.\(action.kind.rawValue)")
                 .accessibilityHint(action.detail ?? "")
+                // The reason is also the value while disabled, so VoiceOver still reads it with hints off.
+                .accessibilityValue(action.isDisabled ? (action.detail ?? "") : "")
             if showsDetail, let detail = action.detail {
                 Text(detail)
                     .font(.footnote)

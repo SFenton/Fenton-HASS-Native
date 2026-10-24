@@ -29,6 +29,15 @@ struct VacuumViewTests {
                            services: VacuumFixtures.services, initialTab: tab, window: window)
     }
 
+    @Test(arguments: [false, true])
+    func actionButtonRendersWithItsReasonAtDefaultAndAccessibilitySize(disabled: Bool) {
+        let action = VacuumController.Action(kind: .dock, title: "Dock", icon: "mdi:home", tone: .neutral,
+                                             detail: disabled ? "Already docked." : nil, isDisabled: disabled)
+        for size in [DynamicTypeSize.large, .accessibility5] {
+            #expect(image(VacuumActionButton(action: action) {}, size: Self.phone, typeSize: size) != nil, "disabled \(disabled) \(size)")
+        }
+    }
+
     @Test(arguments: Vacuums.all)
     func everyTabRendersInEveryScenarioAndLayout(vacuum: VacuumConfig) {
         for scenario in Self.scenarios {
