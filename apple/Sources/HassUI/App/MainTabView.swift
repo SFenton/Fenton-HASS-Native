@@ -68,8 +68,10 @@ struct MainTabView: View {
         .environment(\.headerEdgeCap, headerEdgeCap)
         // The first sign-in, before any value has arrived: tiles keep their names and show a soft bar for the value.
         .environment(\.valuesPending, store?.freshness == .empty)
-        // Connection lost for two seconds: a quiet chip under the header, until it is live again.
-        .reconnectingChip(headerEnd: headerEdgeCap ?? 0)
+        // Connection lost for two seconds: a quiet arc left of Quick Links that fades in, until it is live again.
+        .reconnectingIndicator()
+        // No network path at all: the offline chip under the header, until one returns.
+        .offlineChip(headerEnd: headerEdgeCap ?? 0)
         // Direction G: pages sit on the dimmed house photo, so the signed-in shell is always dark. Sheets follow the
         // system appearance instead: `RootView` publishes it, and `hassSheet()` / `HassModal` apply it to themselves
         // (`.agents/design/direction-g.md`, Layers; plan decision 6).

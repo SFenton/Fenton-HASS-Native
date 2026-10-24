@@ -6367,11 +6367,16 @@
       "title": "Reconnecting and offline chip",
       "path": "components/navigation/reconnecting-chip",
       "sources": [
-        "apple/Sources/HassUI/App/Shell/ReconnectingChip.swift",
-        "apple/Sources/HassUI/App/Shell/ReconnectingOverlay.swift"
+        "apple/Sources/HassUI/App/Shell/ReconnectingArc.swift",
+        "apple/Sources/HassUI/App/Shell/ReconnectingIndicatorHost.swift",
+        "apple/Sources/HassUI/App/Shell/OfflineChip.swift",
+        "apple/Sources/HassUI/App/Shell/OfflineOverlay.swift",
+        "apple/Sources/HassCore/Connection/ReconnectingIndicator.swift",
+        "apple/Sources/HassCore/Connection/ReconnectingPolicy.swift"
       ],
       "docs": [
-        ".agents/design/direction-g.md"
+        ".agents/design/direction-g.md",
+        ".agents/design/reconnecting-spinner.md"
       ],
       "patterns": [],
       "presentedFrom": [],
@@ -6391,14 +6396,11 @@
         "dot opacity sine 0.45 to 1 over 1.4 s",
         "enters opacity plus 10 pt move"
       ],
-      "inFlight": {
-        "branch": "claude/reconnecting-spinner",
-        "note": "Not on main. Branch replaces the Reconnecting chip with a header arc left of Quick Links (ReconnectingIndicatorHost); the offline chip stays. Main still draws ReconnectingChip under the header. Proposal: proposals/reconnecting-spinner."
-      },
+      "inFlight": null,
       "owner": "shell-navigation",
       "mockup": "components/navigation/reconnecting-chip/reconnecting-chip.html",
       "status": "shipped",
-      "note": "Branch target: header arc left of Quick Links for 'reconnecting'; this chip then remains for 'offline' only.",
+      "note": "Shipped by the reconnecting-spinner PR: the header arc left of Quick Links is 'reconnecting'; the offline chip remains for 'offline' only.",
       "weight": 1
     },
     {
@@ -8236,13 +8238,17 @@
       "title": "Offline and reconnect",
       "path": "flows/offline-reconnect",
       "sources": [
-        "apple/Sources/HassUI/App/Shell/ReconnectingOverlay.swift",
-        "apple/Sources/HassUI/App/Shell/ReconnectingChip.swift",
+        "apple/Sources/HassUI/App/Shell/ReconnectingArc.swift",
+        "apple/Sources/HassUI/App/Shell/ReconnectingIndicatorHost.swift",
+        "apple/Sources/HassUI/App/Shell/OfflineChip.swift",
+        "apple/Sources/HassUI/App/Shell/OfflineOverlay.swift",
+        "apple/Sources/HassCore/Connection/ReconnectingIndicator.swift",
         "apple/Sources/HassUI/Features/Settings/HomeAssistantSettingsView.swift"
       ],
       "docs": [
         ".agents/platforms/apple/connection-lifecycle.md",
-        ".agents/design/direction-g.md"
+        ".agents/design/direction-g.md",
+        ".agents/design/reconnecting-spinner.md"
       ],
       "patterns": [
         "resume-lifecycle"
@@ -8268,10 +8274,7 @@
         "chip fades in with a 10 pt move from the top (`standard`); dot breathes 0.45 to 1 opacity over 1.4 s; Reduce Motion holds it lit",
         "nothing animates on reconnect itself"
       ],
-      "inFlight": {
-        "branch": "claude/reconnecting-spinner",
-        "note": "Not on main. Branch replaces the Reconnecting chip with a header arc left of Quick Links (ReconnectingIndicatorHost); the offline chip stays. Main still draws ReconnectingChip under the header. Proposal: proposals/reconnecting-spinner."
-      },
+      "inFlight": null,
       "owner": "login-launch-flows",
       "mockup": "flows/offline-reconnect/offline-reconnect.html",
       "status": "shipped",

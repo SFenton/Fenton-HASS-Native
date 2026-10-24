@@ -1,4 +1,5 @@
 #if DEBUG
+import HassCore
 import HassDesign
 import SwiftUI
 
@@ -11,6 +12,7 @@ import SwiftUI
 /// - `FENTON_GALLERY_PROFILE`: the display name (default `Stephen Fenton`), or `none` for no name yet.
 /// - `FENTON_GALLERY_BADGE`: the attention count (default 0).
 /// - `FENTON_GALLERY_OFFLINE`: `1` shows the offline badge on Profile (the path state cannot be toggled in a simulator).
+/// - `FENTON_GALLERY_RECONNECTING`: `1` shows the reconnecting arc (``ReconnectingArc``) left of Quick Links, lit at once.
 /// - `FENTON_GALLERY_SCHEME`: `light` draws the page in the light scheme (default dark, like the shell).
 /// - `FENTON_GALLERY_PUSHED=1`: starts on a pushed page, with Back leading.
 /// - `FENTON_GALLERY_PLAIN=1`: a solid black page instead of the house backdrop, so a screenshot's glass edges and disc can
@@ -29,7 +31,10 @@ struct ShellHeaderGallery: View {
     var isOffline: Bool { environment["FENTON_GALLERY_OFFLINE"] == "1" }
     var attentionCount: Int { environment["FENTON_GALLERY_BADGE"].flatMap(Int.init) ?? 0 }
 
+    var isReconnecting: Bool { environment["FENTON_GALLERY_RECONNECTING"] == "1" }
+
     @State private var lastAction = "none"
+    @State private var indicator = ReconnectingIndicator()
     @State private var path: [Page] = Self.environment["FENTON_GALLERY_PUSHED"] == "1" ? [.pushed] : []
 
     private enum Page: Hashable { case pushed }
@@ -54,11 +59,13 @@ struct ShellHeaderGallery: View {
         .padding(HassTokens.Spacing.l)
         .modifier(GalleryPageChrome(plain: environment["FENTON_GALLERY_PLAIN"] == "1"))
         .navigationTitle(title)
+        .task { if isReconnecting { await indicator.follow(isDown: true, delay: .zero, lead: .zero) } }
         .toolbar {
             ShellHeaderItems(
                 profileName: profileName,
                 attentionCount: attentionCount,
                 isOffline: isOffline,
+                reconnecting: indicator.isPresent ? indicator : nil,
                 openQuickLinks: { lastAction = "quick-links" },
                 openAccount: { lastAction = "profile" }
             )

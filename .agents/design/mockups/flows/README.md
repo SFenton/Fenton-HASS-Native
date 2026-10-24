@@ -10,7 +10,7 @@
 | [Cold launch, signed out (intro)](launch-cold-signed-out/launch-cold-signed-out.html) | `launch-cold-signed-out` | shipped | iphone, duo, ipad |  |
 | [Flyout navigation (iPad, unfolded Duo, iPhone menu button)](flyout-navigation/flyout-navigation.html) | `flyout-navigation` | in flight (main) | iphone, duo, ipad |  |
 | [Notification, Spotlight and Live Activity deep links](notification-deep-link/notification-deep-link.html) | `notification-deep-link` | shipped | iphone, duo, ipad |  |
-| [Offline and reconnect](offline-reconnect/offline-reconnect.html) | `offline-reconnect` | in flight (claude/reconnecting-spinner) | iphone, duo, ipad |  |
+| [Offline and reconnect](offline-reconnect/offline-reconnect.html) | `offline-reconnect` | shipped | iphone, duo, ipad |  |
 | [Push and pop within a section stack](push-pop-navigation/push-pop-navigation.html) | `push-pop-navigation` | shipped | iphone, duo, ipad |  |
 | [Quick Links to a page (sheet closes, then push)](quick-links-to-page/quick-links-to-page.html) | `quick-links-to-page` | shipped | iphone, duo, ipad | opens `quick-links` |
 | [Session expired, welcome back sign-in](session-expired-welcome-back/session-expired-welcome-back.html) | `session-expired-welcome-back` | shipped | iphone, duo, ipad |  |

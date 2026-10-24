@@ -1,6 +1,6 @@
 # Offline and reconnect (flow)
-> **What:** how a dropped connection shows: nothing for 2 s, then the header arc (in flight) or today's Reconnecting chip, the offline chip at once with no network, values staying put. **Read when:** you change connection status UI or the reconnecting arc.
-- Mockup: [offline-reconnect.html](offline-reconnect.html) · status in-flight:claude/reconnecting-spinner · reviewed 2026-10-23
+> **What:** how a dropped connection shows: nothing for 2 s, then the header arc, the offline chip at once with no network, values staying put. **Read when:** you change connection status UI or the reconnecting arc.
+- Mockup: [offline-reconnect.html](offline-reconnect.html) · status shipped · reviewed 2026-10-23
 - Source: `apple/Sources/HassUI/App/Shell/ReconnectingOverlay.swift`, `ReconnectingChip.swift`, `Features/Settings/HomeAssistantSettingsView.swift`, `HassCore/Connection/ReconnectingPolicy.swift`
 - Spec: `.agents/platforms/apple/connection-lifecycle.md`, `.agents/design/reconnecting-spinner.md`, `.agents/design/direction-g.md` · Patterns: resume-lifecycle, motion
 - States covered: connected, down under 2 s, arc (target), chip (was), offline chip, stale values, live again, HA settings Connection row (reconnecting, offline, rejected), AX5

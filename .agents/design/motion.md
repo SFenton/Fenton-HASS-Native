@@ -104,7 +104,7 @@ Exceptions must be written into this file with the owner's say-so. None exist to
   - in a loading gate for network content with nothing saved.
 - **Never full-screen.** There is no full-screen or app-wide spinner, and no spinner while live house data loads (the snapshot covers it).
 - **First sign-in placeholders:** on the first sign-in only, before any snapshot exists, tiles show their names at once, with a soft pulsing bar (opacity 0.35 ↔ 1, 1.4 s) where the value will go.
-- **Connection lost:** a "Reconnecting…" chip appears under the header, but only after 2 s offline, so a quick blip never shows it. Values stay on screen.
+- **Connection lost:** a white arc spinner fades in left of Quick Links (no text), but only after 2 s down, so a quick blip never shows it, and fades out when live again. Values stay on screen. See [reconnecting-spinner](reconnecting-spinner.md).
 - **No shimmer:** no skeleton sweeps (moving gradients). They cost a full-screen animated pass and say nothing a pulse doesn't.
 
 ## 6. Live updates and user actions

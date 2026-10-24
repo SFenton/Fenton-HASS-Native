@@ -174,7 +174,7 @@
 | [House photo backdrop (wallpaper, blur, scrim)](navigation/house-backdrop/house-backdrop.html) | `house-backdrop` | shipped | iphone, duo, ipad |  |
 | [Navigation flyout drawer](navigation/navigation-flyout/navigation-flyout.html) | `navigation-flyout` | in flight (main) | iphone, duo, ipad |  |
 | [Profile button (monogram, attention badge, offline badge)](navigation/profile-button/profile-button.html) | `profile-button` | shipped | iphone, duo, ipad |  |
-| [Reconnecting and offline chip](navigation/reconnecting-chip/reconnecting-chip.html) | `reconnecting-chip` | in flight (claude/reconnecting-spinner) | iphone, duo, ipad |  |
+| [Reconnecting and offline chip](navigation/reconnecting-chip/reconnecting-chip.html) | `reconnecting-chip` | shipped | iphone, duo, ipad |  |
 
 ## sprinklers (1)
 

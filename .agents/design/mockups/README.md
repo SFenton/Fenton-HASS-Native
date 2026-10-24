@@ -30,7 +30,7 @@
 | Components | [components/](components/README.md) | 93 |
 | Flows | [flows/](flows/README.md) | 13 |
 
-In flight (decided, not on `main` yet): [Home](pages/home/home/home.html) (`claude/weather-card-header-d-5a3fe5`), [Camera viewer (live video, always dark)](modals/cameras/camera-viewer/camera-viewer.html) (`fix/camera-viewer-fitted`), [Weather card (header, hourly carousel)](components/weather/weather-summary-card/weather-summary-card.html) (`claude/weather-card-header-d-5a3fe5`), [Navigation flyout drawer](components/navigation/navigation-flyout/navigation-flyout.html) (`main`), [Reconnecting and offline chip](components/navigation/reconnecting-chip/reconnecting-chip.html) (`claude/reconnecting-spinner`), [Flyout navigation (iPad, unfolded Duo, iPhone menu button)](flows/flyout-navigation/flyout-navigation.html) (`main`), [Offline and reconnect](flows/offline-reconnect/offline-reconnect.html) (`claude/reconnecting-spinner`)
+In flight (decided, not on `main` yet): [Home](pages/home/home/home.html) (`claude/weather-card-header-d-5a3fe5`), [Camera viewer (live video, always dark)](modals/cameras/camera-viewer/camera-viewer.html) (`fix/camera-viewer-fitted`), [Weather card (header, hourly carousel)](components/weather/weather-summary-card/weather-summary-card.html) (`claude/weather-card-header-d-5a3fe5`), [Navigation flyout drawer](components/navigation/navigation-flyout/navigation-flyout.html) (`main`), [Flyout navigation (iPad, unfolded Duo, iPhone menu button)](flows/flyout-navigation/flyout-navigation.html) (`main`)
 
 <!-- END generated -->
 
