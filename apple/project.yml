@@ -47,6 +47,9 @@ targets:
         com.apple.security.application-groups:
           - group.com.sfenton.home
         com.apple.developer.networking.wifi-info: true
+        # Time-sensitive notifications break through a Focus; without it iOS delivers `interruption-level:
+        # time-sensitive` as Active. Self-service capability.
+        com.apple.developer.usernotifications.time-sensitive: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.sfenton.home

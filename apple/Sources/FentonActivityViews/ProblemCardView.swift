@@ -48,10 +48,12 @@ struct ProblemCardView: View {
                     .font(.headline)
                     .foregroundStyle(ActivityStyle.primaryText)
                     .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
+                    .privacySensitive()
                 Text(problem.problem)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(colors.lightText)
                     .lineLimit(typeSize.isAccessibilitySize ? 4 : 1)
+                    .privacySensitive()
             }
             .padding(.trailing, showsMark ? 48 : 0)
             Text(problem.message)
@@ -59,6 +61,7 @@ struct ProblemCardView: View {
                 .foregroundStyle(Color.white.opacity(0.82))
                 .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
                 .minimumScaleFactor(0.9)
+                .privacySensitive()
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

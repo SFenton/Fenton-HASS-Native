@@ -24,11 +24,13 @@ public struct HomeActivitySmallView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(ActivityStyle.primaryText)
                     .lineLimit(1)
+                    .privacySensitive()
                 if let problem = card.problem {
                     Text(problem.problem)
                         .font(.caption)
                         .foregroundStyle(ActivityStyle.severity(problem.severity).lightText)
                         .lineLimit(1)
+                        .privacySensitive()
                 } else if let bigLine = card.bigLine {
                     Text(bigLine)
                         .font(.headline)

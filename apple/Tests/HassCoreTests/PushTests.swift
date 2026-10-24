@@ -542,6 +542,16 @@ struct PushCategoryTests {
         #expect(PushCategory(actions: []) == nil)
     }
 
+    @Test func buttonsAreCappedAtWhatTheSystemPresents() throws {
+        let many = (0..<6).map { PushAction(action: "A\($0)", title: "Button \($0)") }
+        let category = try #require(PushCategory(actions: many))
+        #expect(category.actions.map(\.action) == ["A0", "A1", "A2", "A3"])
+        #expect(PushCategory(cameraActions: many).actions.count == PushCategory.maxActions)
+        #if canImport(UserNotifications)
+        #expect(category.notificationCategory.hiddenPreviewsBodyPlaceholder == PushCategory.hiddenPreviewsPlaceholder)
+        #endif
+    }
+
     @Test func mergeKeepsFixedAndCapsBuilt() throws {
         let category = try #require(PushCategory(actions: actions))
         let built = (0..<40).map { "fenton.dynamic.\($0)" }

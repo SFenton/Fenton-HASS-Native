@@ -17,6 +17,15 @@ public struct ActivityControl: Codable, Hashable, Sendable, Identifiable {
         }
     }
 
+    /// The control ids a Lock Screen button may run without unlocking: the job verbs, which only start, stop or
+    /// park a task. Any other id (a lock or door control, say) is refused there and must be run in the app.
+    public static let lockScreenSafeIDs: Set<String> = [
+        "stop", "cancel", "cancel_timer", "pause", "resume", "dock", "done", "try_again"
+    ]
+
+    /// Whether `id` may run from the Lock Screen without authentication.
+    public static func isSafeFromLockScreen(_ id: String) -> Bool { lockScreenSafeIDs.contains(id) }
+
     /// The control's id, which the engine maps to a service (`stop`, `pause`, `resume`, `dock`, `done`).
     public var id: String
     /// The label.

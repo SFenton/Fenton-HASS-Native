@@ -306,8 +306,15 @@ public final class ImagePipeline: Sendable {
         try? data.write(to: fileURL(key, ".json"), options: .atomic)
     }
 
+    #if canImport(UIKit)
+    private static let imageWriteOptions: Data.WritingOptions = [.atomic, .completeFileProtection]
+    #else
+    private static let imageWriteOptions: Data.WritingOptions = .atomic
+    #endif
+
     private func write(_ data: Data, metadata: Metadata, key: String) {
-        try? data.write(to: fileURL(key, ".img"), options: .atomic)
+        // Complete protection: stills (security-camera frames above all) are unreadable while the device is locked.
+        try? data.write(to: fileURL(key, ".img"), options: Self.imageWriteOptions)
         writeMetadata(metadata, key: key)
         Telemetry.count("image.bytesWritten", by: data.count)
     }

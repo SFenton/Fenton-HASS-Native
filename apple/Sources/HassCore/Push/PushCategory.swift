@@ -14,6 +14,12 @@ public struct PushCategory: Equatable, Sendable {
     /// How many built categories are kept; older ones are dropped when a new one is registered.
     public static let limit = 32
 
+    /// How many buttons the system presents (HIG Notifications); extra ones are dropped, in order.
+    public static let maxActions = 4
+
+    /// What a locked screen shows instead of the body when the person hides previews.
+    public static let hiddenPreviewsPlaceholder = "Notification"
+
     /// The category id.
     public let identifier: String
     /// The buttons, in order.
@@ -26,14 +32,14 @@ public struct PushCategory: Equatable, Sendable {
     /// The category for a payload's buttons; nil when it has none.
     public init?(actions: [PushAction]) {
         guard !actions.isEmpty else { return nil }
-        self.actions = actions
+        self.actions = Array(actions.prefix(Self.maxActions))
         identifier = Self.prefix + Self.digest(actions)
     }
 
     /// The camera category with this notification's buttons (registered again for each camera notification, so
     /// the buttons also show where the content extension doesn't run).
     public init(cameraActions actions: [PushAction]) {
-        self.actions = actions
+        self.actions = Array(actions.prefix(Self.maxActions))
         identifier = Self.camera
     }
 
@@ -90,6 +96,7 @@ extension PushCategory {
     /// The system category.
     public var notificationCategory: UNNotificationCategory {
         UNNotificationCategory(identifier: identifier, actions: actions.map(\.notificationAction), intentIdentifiers: [],
+                               hiddenPreviewsBodyPlaceholder: Self.hiddenPreviewsPlaceholder,
                                options: [.customDismissAction])
     }
 

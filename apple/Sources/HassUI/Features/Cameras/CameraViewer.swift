@@ -187,7 +187,7 @@ struct CameraControls: View {
             case .failed: snapshot = .failed
             }
             #if canImport(UIKit)
-            UIAccessibility.post(notification: .announcement, argument: snapshot.accessibilityValue)
+            AccessibilityNotification.Announcement(snapshot.accessibilityValue).post()
             #endif
             try? await Task.sleep(for: .seconds(2))
             snapshot = .idle

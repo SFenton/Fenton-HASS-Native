@@ -41,6 +41,7 @@ struct JobCardView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityLabel(card.spokenTitle)
                 .accessibilityIdentifier("liveactivity.title")
+                .privacySensitive()
             if showsMark { CornerMark() }
         }
     }

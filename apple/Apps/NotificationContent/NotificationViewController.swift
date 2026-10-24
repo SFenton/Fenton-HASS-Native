@@ -102,21 +102,24 @@ final class CameraNotificationModel {
             let token = try await tokens.validAccessToken()
             var request = URLRequest(url: server.url("/api/camera_proxy_stream/\(entityID)"))
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            let (bytes, response) = try await URLSession.shared.bytes(for: request)
-            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-            note("mjpeg HTTP \(code)")
-            guard code == 200 else { return }
+            let stream = MJPEGDataStream(request: request)
+            defer { stream.cancel() }
             var scanner = MJPEGFrameScanner()
-            var chunk = Data()
-            chunk.reserveCapacity(32_768)
-            for try await byte in bytes {
-                chunk.append(byte)
-                guard chunk.count >= 16_384 || byte == 0xD9 else { continue }
-                if let frame = scanner.append(chunk).last, player == nil || !isLive, let image = UIImage(data: frame) {
-                    snapshot = image
-                    if !isLive { isLive = true; note("mjpeg live") }
+            var started = false
+            // The delegate hands over each network read (kilobytes), not a byte at a time.
+            for try await event in stream.events {
+                switch event {
+                case let .response(code):
+                    note("mjpeg HTTP \(code)")
+                    guard code == 200 else { return }
+                    started = true
+                case let .data(chunk):
+                    guard started else { continue }
+                    if let frame = scanner.append(chunk).last, player == nil || !isLive, let image = UIImage(data: frame) {
+                        snapshot = image
+                        if !isLive { isLive = true; note("mjpeg live") }
+                    }
                 }
-                chunk.removeAll(keepingCapacity: true)
             }
         } catch is CancellationError {
         } catch {
@@ -227,5 +230,45 @@ struct PlayerLayerView: UIViewRepresentable {
     final class PlayerView: UIView {
         override static var layerClass: AnyClass { AVPlayerLayer.self }
         var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+    }
+}
+
+
+/// A streaming GET delivered as whole network reads through a `URLSessionDataDelegate`.
+private final class MJPEGDataStream: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+    enum Event: Sendable {
+        case response(Int)
+        case data(Data)
+    }
+
+    let events: AsyncThrowingStream<Event, Error>
+    private let continuation: AsyncThrowingStream<Event, Error>.Continuation
+    private var session: URLSession?
+
+    init(request: URLRequest) {
+        (events, continuation) = AsyncThrowingStream.makeStream()
+        super.init()
+        let session = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil)
+        self.session = session
+        session.dataTask(with: request).resume()
+    }
+
+    func cancel() {
+        session?.invalidateAndCancel()
+        continuation.finish()
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse,
+                    completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
+        continuation.yield(.response((response as? HTTPURLResponse)?.statusCode ?? 0))
+        completionHandler(.allow)
+    }
+
+    func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
+        continuation.yield(.data(data))
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error, (error as NSError).code != NSURLErrorCancelled { continuation.finish(throwing: error) } else { continuation.finish() }
     }
 }

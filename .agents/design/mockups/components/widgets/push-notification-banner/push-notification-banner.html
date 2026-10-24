@@ -66,10 +66,10 @@
       date: '2026-10-23',
       hig: [
         { by: 'apple-hig skill', rule: 'Notifications: actions honour destructive, authentication and foreground options', verdict: 'pass', note: 'PushAction.options maps authenticationRequired, destructive and foreground; text-input actions become UNTextInputNotificationAction (PushCategory.swift:67-87).' },
-        { by: 'apple-hig skill', rule: 'Notifications: at most four actions', verdict: 'fix', note: 'PushCategory(actions:) registers every action the automation sends (PushCategory.swift:27-31); nothing caps the list at the four the system presents and HIG recommends.' },
-        { by: 'apple-hig skill', rule: 'Notifications: time-sensitive needs the entitlement', verdict: 'fix', note: 'The fixtures use interruption-level time-sensitive, but project.yml gives the app only aps-environment, the app group and wifi-info (lines 43-49): no com.apple.developer.usernotifications.time-sensitive, so iOS delivers them as Active and they do not break through a Focus. The note in the Time sensitive state is corrected in this mockup.' },
+        { by: 'apple-hig skill', rule: 'Notifications: at most four actions', verdict: 'pass', note: 'Fixed: PushCategory caps buttons at PushCategory.maxActions (4), PushCategory.swift.' },
+        { by: 'apple-hig skill', rule: 'Notifications: time-sensitive needs the entitlement', verdict: 'pass', note: 'Fixed: project.yml adds com.apple.developer.usernotifications.time-sensitive.' },
         { by: 'apple-hig skill', rule: 'Notifications: ask for permission in context', verdict: 'fix', note: 'PushCoordinator.didConnect requests authorization right after sign-in (PushCoordinator.swift:62), before any notification has been explained.' },
-        { by: 'apple-hig skill', rule: 'Notifications: sensitive previews', verdict: 'fix', note: 'The category options are only .customDismissAction (PushCategory.swift:92-94); no hidden-preview placeholder is set, so a door-unlocked body appears on a locked screen when the person allows previews.' },
+        { by: 'apple-hig skill', rule: 'Notifications: sensitive previews', verdict: 'pass', note: 'Fixed: notificationCategory sets hiddenPreviewsBodyPlaceholder (PushCategory.swift).' },
       ],
       swiftui: [
         { by: 'swiftui-pro skill', rule: 'swift.md: bounded extension work', verdict: 'pass', note: 'serviceExtensionTimeWillExpire cancels the task and delivers the content as it is (NotificationService.swift:57-61).' },

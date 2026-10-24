@@ -12,6 +12,9 @@ import FentonActivityModel
 struct JobControlIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "Control Job"
     static let isDiscoverable = false
+    // Job verbs are safe to run from the Lock Screen; `perform()` refuses any other control id, because the id is
+    // free-form and the engine could one day send a lock or door control.
+    static let authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     @Parameter(title: "Activity")
     var tag: String
@@ -30,6 +33,7 @@ struct JobControlIntent: LiveActivityIntent {
     }
 
     func perform() async throws -> some IntentResult {
+        guard ActivityControl.isSafeFromLockScreen(control) else { return .result() }
         _ = await LiveActivityIntentRuntime.perform(.control(tag: tag, control: control))
         return .result()
     }

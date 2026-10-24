@@ -104,7 +104,7 @@
         { by: 'apple-hig skill', rule: 'Accessibility: the video is one element that speaks its state', verdict: 'pass', note: 'A clear overlay named "<camera> camera" whose value is Live, Connecting or the snapshot message (CameraLiveView.swift:169-196).' },
       ],
       swiftui: [
-        { by: 'swiftui-pro skill', rule: 'api.md: AccessibilityNotification instead of UIAccessibility.post', verdict: 'fix', note: 'takeSnapshot announces with UIAccessibility.post(notification: .announcement, ...) (CameraViewer.swift:190); AccessibilityNotification.Announcement(...).post() is the SwiftUI API.' },
+        { by: 'swiftui-pro skill', rule: 'api.md: AccessibilityNotification instead of UIAccessibility.post', verdict: 'pass', note: 'Fixed: CameraViewer.takeSnapshot posts AccessibilityNotification.Announcement.' },
         { by: 'swiftui-pro skill', rule: 'accessibility.md: Reduce Motion for repeating effects', verdict: 'pass', note: 'The pulse and symbol replace are off under Reduce Motion (lines 257-258); the pulse marks only saving and recording.' },
         { by: 'swiftui-pro skill', rule: 'api.md: sensoryFeedback for haptics', verdict: 'pass', note: 'Success and error on Snapshot (lines 135-141) and a medium impact on Record (line 130) use sensoryFeedback.' },
         { by: 'swiftui-pro skill', rule: 'views.md: helper views stay small', verdict: 'pass', note: 'CameraViewer keeps two small private helpers (video, controls) and the control button is its own struct; CameraControls swaps layout with one AnyLayout (line 106), so only one set of buttons is in the accessibility tree.' },
