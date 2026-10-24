@@ -50,7 +50,7 @@
       ],
       swiftui: [
         { rule: 'Navigation: confirmationDialog(isPresented:titleVisibility:) on the trigger', verdict: 'pass', note: 'Presented from the Sign Out button with titleVisibility .visible so the question shows (:120-124).', by: 'swiftui-pro skill' },
-        { rule: 'Navigation: alert and dialog share a presenter', verdict: 'fix', note: 'Same button also owns the failure alert (:117), and the iOS 27 audit finds a duplicate nested Sign Out; split the presenters.', by: 'swiftui-pro skill' },
+        { rule: 'Navigation: alert and dialog share a presenter', verdict: 'pass', note: 'Fixed on claude/hig-alerts: the presenter now sits on the triggering button (or a sibling). Same button also owns the failure alert (:117), and the iOS 27 audit finds a duplicate nested Sign Out; split the presenters.', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

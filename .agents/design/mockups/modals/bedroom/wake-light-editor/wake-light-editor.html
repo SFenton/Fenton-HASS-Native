@@ -105,7 +105,7 @@
         { rule: 'Data: avoid Binding(get:set:) in the body', verdict: 'fix', note: 'Alarm Name (line 325), Alarm Date (341), bed toggles (359) and kindBinding (394) are inline bindings; kind change and name filtering belong in onChange.' },
         { rule: 'Localization: calendar from the environment', verdict: 'fix', note: 'kindBinding uses Calendar.current (line 399) and ClockTimeField formats with String(format:); use @Environment(\\.calendar).' },
         { rule: 'Data: draft and initial separate from the model', verdict: 'pass', note: '@State draft/initial; sameEdits(as:) drives dirty; no live edits to the controller.' },
-        { rule: 'Navigation: confirmationDialog attached to its control', verdict: 'fix', note: 'Attached to the ScrollView (line 309), not the Delete button.' },
+        { rule: 'Navigation: confirmationDialog attached to its control', verdict: 'pass', note: 'Fixed on claude/hig-alerts: the presenter now sits on the triggering button (or a sibling). Attached to the ScrollView (line 309), not the Delete button.' },
         { rule: 'Views: disable only what a pending action blocks', verdict: 'pass', note: 'The form is .disabled(saving); Back stays enabled.' },
       ],
     },

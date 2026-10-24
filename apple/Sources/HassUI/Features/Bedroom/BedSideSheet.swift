@@ -553,6 +553,11 @@ struct BedAlarmEditor: View {
                     .tint(BedroomStyle.danger)
                     .disabled(saving || !controller.alarmsEditable)
                     .accessibilityIdentifier("bed.editor.delete")
+                    // On the button, not the ScrollView, so the iPad popover anchors to the control.
+                    .confirmationDialog(deletePrompt, isPresented: $confirmingDelete, titleVisibility: .visible) {
+                        Button("Delete Alarm", role: .destructive) { remove() }
+                        Button("Cancel", role: .cancel) {}
+                    }
                 }
             }
             .frame(maxWidth: 640)
@@ -561,10 +566,6 @@ struct BedAlarmEditor: View {
         }
         .navigationTitle(draft.title)
         .inlineNavigationTitle()
-        .confirmationDialog(deletePrompt, isPresented: $confirmingDelete, titleVisibility: .visible) {
-            Button("Delete Alarm", role: .destructive) { remove() }
-            Button("Cancel", role: .cancel) {}
-        }
     }
 
     private var deletePrompt: String {

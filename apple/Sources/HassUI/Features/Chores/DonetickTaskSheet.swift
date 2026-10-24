@@ -42,7 +42,10 @@ struct DonetickTaskSheet: View {
             Group {
                 if loaded {
                     DonetickTaskFormFields(form: $form, editing: mode.editTarget != nil, viewer: model.viewer, error: error,
-                                           onDelete: mode.editTarget == nil ? nil : { confirmsDelete = true })
+                                           onDelete: mode.editTarget == nil ? nil : { confirmsDelete = true },
+                                           deleteConfirmation: DeleteConfirmation(isPresented: $confirmsDelete, title: "Delete \(taskName)?") {
+                                               Task { await delete() }
+                                           })
                         .disabled(busy != nil)
                 } else if let error {
                     ContentUnavailableView("Unable to Load Task", systemImage: "exclamationmark.triangle", description: Text(error))
@@ -60,10 +63,6 @@ struct DonetickTaskSheet: View {
                                  busyTitle: mode.editTarget == nil ? "Creating" : "Saving", identifier: "task.save") {
                     Task { await save() }
                 }
-            }
-            .confirmationDialog("Delete \(taskName)?", isPresented: $confirmsDelete, titleVisibility: .visible) {
-                Button("Delete Task", role: .destructive) { Task { await delete() } }
-                    .accessibilityIdentifier("task.delete.confirm")
             }
         }
         .interactiveDismissDisabled(busy != nil)
@@ -137,6 +136,13 @@ extension DonetickTaskSheet.Mode {
 
 // MARK: - Fields
 
+/// What the task form's Delete Task button confirms before it deletes.
+struct DeleteConfirmation {
+    @Binding var isPresented: Bool
+    var title: String
+    var confirm: () -> Void
+}
+
 /// The task form's fields (web `DonetickTaskFormBody`), in a grouped `Form`.
 struct DonetickTaskFormFields: View {
     @Binding var form: DonetickTaskForm
@@ -144,6 +150,8 @@ struct DonetickTaskFormFields: View {
     var viewer: ChoresConfig.Resident?
     var error: String?
     var onDelete: (() -> Void)?
+    /// The dialog the Delete Task button raises; attached to the button so the iPad popover anchors to it.
+    var deleteConfirmation: DeleteConfirmation?
     @FocusState private var repeatFocused: Bool
 
     /// What the Task Name field is for.
@@ -259,6 +267,11 @@ struct DonetickTaskFormFields: View {
                     Button("Delete Task", role: .destructive, action: onDelete)
                         .foregroundStyle(HassTokens.Ink.danger)
                         .accessibilityIdentifier("task.delete")
+                        .confirmationDialog(deleteConfirmation?.title ?? "", isPresented: deleteConfirmation?.$isPresented ?? .constant(false),
+                                            titleVisibility: .visible) {
+                            Button("Delete Task", role: .destructive) { deleteConfirmation?.confirm() }
+                                .accessibilityIdentifier("task.delete.confirm")
+                        }
                 }
             }
         }

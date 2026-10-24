@@ -80,7 +80,7 @@
         { rule: 'Alerts: name the thing being deleted', verdict: 'fix', note: 'The bed prompt builds "on \\(draft.days.first?.label ?? "")" (BedSideSheet.swift:571), which reads "on " if the day list were ever empty.' },
       ],
       swiftui: [
-        { rule: 'Navigation: attach the dialog to its triggering control', verdict: 'fix', note: 'Wake and bed editors attach confirmationDialog to the ScrollView (WakeLightSheet.swift:309, BedSideSheet.swift:564); the humidifier editor attaches it to the Delete button (HumidifierSchedulesTab.swift:174). Only the last anchors the iPad popover correctly.' },
+        { rule: 'Navigation: attach the dialog to its triggering control', verdict: 'pass', note: 'Fixed on claude/hig-alerts: the presenter now sits on the triggering button (or a sibling). Wake and bed editors attach confirmationDialog to the ScrollView (WakeLightSheet.swift:309, BedSideSheet.swift:564); the humidifier editor attaches it to the Delete button (HumidifierSchedulesTab.swift:174). Only the last anchors the iPad popover correctly.' },
         { rule: 'Navigation: item-based presentation', verdict: 'fix', note: 'Three Bool flags plus draft reads; confirmationDialog(_:item:) on Xcode 27 would unwrap the pending alarm. Low.' },
       ],
     },

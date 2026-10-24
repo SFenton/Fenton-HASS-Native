@@ -306,11 +306,6 @@ struct WakeLightEditor: View {
         .navigationTitle(isNew ? "Add Wake Alarm" : initial.label)
         .inlineNavigationTitle()
         .onDisappear { controller.clearError() }
-        .confirmationDialog("Delete alarm set for \(WakeLight.displayTime(initial.localTime)) on \(WakeLight.scheduleLabel(initial))?",
-                            isPresented: $confirmingDelete, titleVisibility: .visible) {
-            Button("Delete Alarm", role: .destructive) { remove() }
-            Button("Cancel", role: .cancel) {}
-        }
     }
 
     @ViewBuilder private var fields: some View {
@@ -387,6 +382,12 @@ struct WakeLightEditor: View {
                 .tint(BedroomStyle.danger)
                 .disabled(locked)
                 .accessibilityIdentifier("wake.editor.delete")
+                // On the button, not the ScrollView, so the iPad popover anchors to the control.
+                .confirmationDialog("Delete alarm set for \(WakeLight.displayTime(initial.localTime)) on \(WakeLight.scheduleLabel(initial))?",
+                                    isPresented: $confirmingDelete, titleVisibility: .visible) {
+                    Button("Delete Alarm", role: .destructive) { remove() }
+                    Button("Cancel", role: .cancel) {}
+                }
             }
         }
     }

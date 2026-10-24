@@ -98,7 +98,7 @@
       ],
       swiftui: [
         { rule: 'Data: draft state separate from the model', verdict: 'pass', note: '@State draft; controller.save commits, so Back never half-writes.' },
-        { rule: 'Navigation: confirmationDialog attached to its control', verdict: 'fix', note: 'The dialog is attached to the ScrollView (BedSideSheet.swift:564) rather than the Delete button, so the iPad popover and Liquid Glass origin do not anchor to the control (navigation.md).' },
+        { rule: 'Navigation: confirmationDialog attached to its control', verdict: 'pass', note: 'Fixed on claude/hig-alerts: the presenter now sits on the triggering button (or a sibling). The dialog is attached to the ScrollView (BedSideSheet.swift:564) rather than the Delete button, so the iPad popover and Liquid Glass origin do not anchor to the control (navigation.md).' },
         { rule: 'Data: avoid Binding(get:set:) in the body', verdict: 'fix', note: 'ClockTimeField builds Binding(get: { Self.date(time) }, set:) in the body (BedroomComponents.swift:215), and uses Calendar.current with String(format:) instead of @Environment(\\.calendar).' },
         { rule: 'Design: disable, do not hide, unavailable actions', verdict: 'pass', note: 'Save and Delete disable with a BedroomNotice naming the cause.' },
         { rule: 'Motion: Reduce Motion', verdict: 'pass', note: 'stateColorTransition on chips (0.2 s reduced); no custom movement.' },

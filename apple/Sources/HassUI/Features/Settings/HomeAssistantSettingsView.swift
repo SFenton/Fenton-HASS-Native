@@ -114,9 +114,6 @@ struct HomeAssistantSettingsView: View {
                 .foregroundStyle(Self.destructiveInk)
                 .frame(maxWidth: .infinity, minHeight: HassTokens.minTarget)
                 .accessibilityIdentifier("haSettings.signOut")
-                .alert("Sign Out couldn't complete. Try again.", isPresented: $signOutFailed) {
-                    Button("OK", role: .cancel) {}
-                }
                 .confirmationDialog(
                     "Sign out of Home Assistant?",
                     isPresented: $confirmsSignOut,
@@ -128,6 +125,10 @@ struct HomeAssistantSettingsView: View {
                 } message: {
                     Text("You'll need your username and password to sign in again.")
                 }
+        }
+        // A sibling of the Sign Out button, so the button owns one presenter (the iOS 27 audit saw a nested duplicate).
+        .alert("Sign Out couldn't complete. Try again.", isPresented: $signOutFailed) {
+            Button("OK", role: .cancel) {}
         }
     }
 
