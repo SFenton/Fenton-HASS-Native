@@ -12,7 +12,28 @@ public struct ScheduleDateField: Identifiable {
     public var identifier: String
     /// Receives the picked moment; a date-only or time-only picker leaves the other part unchanged.
     public var onChange: (Date) -> Void
+    /// The earliest moment the picker offers (an end picker passes its start), so an invalid pair cannot be picked
+    /// (HIG Pickers: constrain the range rather than report the error afterwards).
+    public var earliest: Date?
+    /// The latest moment the picker offers (a start picker passes its end).
+    public var latest: Date?
     public var id: String { identifier }
+
+    /// The selectable range, or `nil` when the picker is unbounded.
+    var bounds: ClosedRange<Date>? {
+        guard earliest != nil || latest != nil else { return nil }
+        let low = earliest ?? .distantPast
+        // A saved value already outside the other bound must stay reachable, so the range never inverts.
+        return low...max(latest ?? .distantFuture, low)
+    }
+
+    /// This field limited to `earliest...latest` (either may be `nil`).
+    public func limited(from earliest: Date? = nil, to latest: Date? = nil) -> ScheduleDateField {
+        var copy = self
+        copy.earliest = earliest
+        copy.latest = latest
+        return copy
+    }
 
     /// Creates a field.
     public init(label: String, part: Part, value: Date, identifier: String, onChange: @escaping (Date) -> Void) {
@@ -69,6 +90,8 @@ struct ScheduleDatePicker: View {
     var commitDelay: Duration?
 
     @State private var draft: Date?
+    /// A pick not yet reported; sent when the view goes away rather than lost.
+    @State private var pending: Date?
     @State private var commit: Task<Void, Never>?
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -97,16 +120,33 @@ struct ScheduleDatePicker: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HassTokens.Radius.chip, style: .continuous))
             // The saved value moved (an echo or another device): drop the draft.
             .onChange(of: field.value) { _, _ in draft = nil }
-            .onDisappear { commit?.cancel() }
+            .onDisappear(perform: flush)
     }
 
     private var label: some View { Text(field.label) }
 
     private var picker: some View {
-        DatePicker(field.label, selection: selection, displayedComponents: field.part.components)
+        pickerControl
             .labelsHidden()
             .accessibilityLabel(field.label)
             .accessibilityIdentifier(field.identifier)
+    }
+
+    @ViewBuilder private var pickerControl: some View {
+        if let bounds = field.bounds {
+            DatePicker(field.label, selection: selection, in: bounds, displayedComponents: field.part.components)
+        } else {
+            DatePicker(field.label, selection: selection, displayedComponents: field.part.components)
+        }
+    }
+
+    /// Reports a pick still waiting out the quiet time, so closing the sheet right after scrolling does not lose it.
+    private func flush() {
+        commit?.cancel()
+        if let picked = pending {
+            pending = nil
+            field.onChange(picked)
+        }
     }
 
     private var selection: Binding<Date> {
@@ -118,11 +158,13 @@ struct ScheduleDatePicker: View {
                 return
             }
             draft = picked
+            pending = picked
             commit?.cancel()
             let report = field.onChange
             commit = Task { @MainActor in
                 try? await Task.sleep(for: commitDelay)
                 guard !Task.isCancelled else { return }
+                pending = nil
                 report(picked)
                 // If Home Assistant never echoes it, fall back to the saved value.
                 try? await Task.sleep(for: .seconds(3))

@@ -159,10 +159,10 @@ struct SoloTripEditorSheet: View {
                     ScheduleDateFields(fields: [
                         ScheduleDateField(SoloTripCopy.departs, .dateAndTime, controller.scheduleDraft.start, id: "soloTrip.editor.start") {
                             controller.scheduleDraft.start = $0
-                        },
+                        }.limited(to: controller.scheduleDraft.end.date()),
                         ScheduleDateField(SoloTripCopy.returns, .dateAndTime, controller.scheduleDraft.end, id: "soloTrip.editor.end") {
                             controller.scheduleDraft.end = $0
-                        },
+                        }.limited(from: controller.scheduleDraft.start.date()),
                     ])
                     .disabled(controller.isScheduling)
                     ForEach(controller.editorAlerts, id: \.self) { InlineAlert($0, severity: .error) }

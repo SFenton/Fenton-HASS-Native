@@ -181,13 +181,14 @@ struct VacationDateFields: View {
                 .foregroundStyle(HassTokens.Ink.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if invalid { InlineAlert(Vacation.Copy.dateRangeError, severity: .error) }
+            // Each picker stops at the other's value, so Ends cannot be set before Starts (HIG Pickers).
             ScheduleDateFields(fields: [
                 ScheduleDateField(Vacation.Copy.starts, .dateAndTime, range.start, id: "\(identifierPrefix).start") {
                     onChange(Vacation.DateRange(start: $0, end: range.end), false)
-                },
+                }.limited(to: range.end.date()),
                 ScheduleDateField(Vacation.Copy.ends, .dateAndTime, range.end, id: "\(identifierPrefix).end") {
                     onChange(Vacation.DateRange(start: range.start, end: $0), true)
-                },
+                }.limited(from: range.start.date()),
             ], commitDelay: commitDelay)
         }
     }

@@ -87,7 +87,7 @@
 
         { rule: "Entering data: validate dynamically and give feedback as soon as a problem is found", verdict: "pass", note: "An invalid range (return before start) shows a written 'Error: ...' alert beside the fields with a red glyph; the fields themselves do not turn red, so the error is not colour alone.", by: "apple-hig skill" },
 
-        { rule: "Entering data: prevent errors rather than only report them", verdict: "fix", note: "The pickers set no in: range, so Returns can be set before Starts and the error appears afterwards (ScheduleDateFields.swift line 106 passes only selection and components); Calendar constrains the end to the start. Low.", by: "apple-hig skill" },
+        { rule: "Entering data: prevent errors rather than only report them", verdict: "pass", note: "ScheduleDateField.limited(from:to:) bounds the picker with in: (ScheduleDateFields.swift); Vacation and Solo Trip end pickers start at the start value.", by: "apple-hig skill" },
 
         { rule: "Buttons and Layout: 44 pt rows; labels never truncate at large text", verdict: "pass", note: "Each row has minHeight 44; ViewThatFits puts label and picker side by side when the label fits on one line, else the picker drops below (always at accessibility sizes), after 'Departure Time' once truncated (2026-10-11).", by: "apple-hig skill" },
 

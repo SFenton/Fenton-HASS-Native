@@ -66,7 +66,7 @@
       swiftui: [
         { rule: "Presentation: sizing and one sheet at a time", verdict: "pass", note: "hassSheet(.form) (line 221); presented from Vacation Mode only once the checklist is complete.", by: "swiftui-pro skill" },
         { rule: "Accessibility: picker labels", verdict: "pass", note: "DatePicker(field.label…).labelsHidden().accessibilityLabel(label) with identifiers (ScheduleDateFields.swift lines 105-109).", by: "swiftui-pro skill" },
-        { rule: "Performance: date picker holds a draft task", verdict: "fix", note: "ScheduleDatePicker stores a Task and sleeps 3 s to drop the draft (lines 120-131), writing @State from an unstructured Task; use task(id:) so it is cancelled with the view. Low.", by: "swiftui-pro skill" },
+        { rule: "Performance: date picker holds a draft task", verdict: "pass", note: "ScheduleDatePicker no longer cancels a pending pick on disappear: it flushes it (pending state, onDisappear flush), so quick close keeps the date.", by: "swiftui-pro skill" },
       ],
     },
 
