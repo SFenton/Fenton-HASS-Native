@@ -294,6 +294,7 @@ struct ProfileButton: View {
         let metrics = Metrics.current
         Button(action: action) { label(for: presentation, metrics: metrics) }
             .overlay(alignment: .topTrailing) { badge(metrics: metrics) }
+            .motionSafeAnimation(MotionTokens.quick, value: ProfileSummary.badgeText(attentionCount))
             .overlay(alignment: .bottomTrailing) { offlineBadge(metrics: metrics) }
             .accessibilityShowsLargeContentViewer {
                 Label("Profile", systemImage: "person.crop.circle")
@@ -366,6 +367,7 @@ struct ProfileButton: View {
                 // Relative to the layout box, which is `overhang` narrower than the disc on each side.
                 .offset(x: 4 + metrics.overhang, y: -2)
                 .accessibilityHidden(true)
+                .transition(.opacity)
         }
     }
 }

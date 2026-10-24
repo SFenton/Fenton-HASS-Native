@@ -30,6 +30,7 @@ struct VacationModeScreen: View {
                     }
                 }
             }
+            .motionSafeAnimation(MotionTokens.standard, value: controller.showsInlineDates)
             .padding(HassTokens.Spacing.l)
         }
         .navigationTitle(Vacation.Copy.modeTitle)
@@ -190,6 +191,7 @@ struct VacationDateFields: View {
                 },
             ], commitDelay: commitDelay)
         }
+        .motionSafeAnimation(MotionTokens.standard, value: invalid)
     }
 }
 

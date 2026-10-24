@@ -264,7 +264,15 @@ struct ActiveBedAlarmSection: View {
 
     var body: some View {
         let state = controller.alarmState
-        if state.isActive {
+        Group {
+            if state.isActive { card(state) }
+        }
+        // An alarm starting settles the layout below it instead of cutting it (motion.md §6, a live change that moves layout).
+        .motionSafeAnimation(MotionTokens.standard, value: state.isActive)
+    }
+
+    private func card(_ state: BedAlarmState) -> some View {
+        Group {
             BedroomStyle.card(VStack(alignment: .leading, spacing: HassTokens.Spacing.m) {
                 BedroomSectionHeader(title: "Alarm Active", detail: state == .ringing ? "Ringing" : "Snoozing")
                 HStack(spacing: HassTokens.Spacing.m) {

@@ -55,7 +55,7 @@ struct SummaryChoresTab: View {
         .groupedListStyle()
         .environment(\.defaultMinListRowHeight, 1)
         // Chores animate away when completed and back in if the call fails; under Reduce Motion they fade (HIG Motion).
-        .motionSafeAnimation(.default, reduced: .easeInOut(duration: 0.2), value: TodoPageLayout.animationKey(shown))
+        .motionSafeAnimation(MotionTokens.standard, reduced: .easeInOut(duration: 0.2), value: TodoPageLayout.animationKey(shown))
         .background {
             // Every list loads, drawn or not, so a hidden one reappears when its entity says it has items again.
             ForEach(tabLists) { list in

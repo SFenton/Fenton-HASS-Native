@@ -332,7 +332,7 @@ struct RemoteControlsTab: View {
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Playback")
         }
-        .motionSafeAnimation(.default, value: keyboard.isOpen)
+        .motionSafeAnimation(MotionTokens.standard, value: keyboard.isOpen)
         .onChange(of: keyboard.isOpen) { _, open in fieldFocused = open }
         // Opened from the pad while another section showed (two columns): focus once the field is here.
         .onAppear { if keyboard.isOpen { fieldFocused = true } }

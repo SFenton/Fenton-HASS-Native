@@ -95,9 +95,8 @@ struct LoginView: View {
     private var column: some View {
         VStack(spacing: 0) {
             Spacer(minLength: HassTokens.Spacing.xl)
-            LoginHeader(mode: model.mode, icon: icon, markScale: stage.markScale, markShown: stage.mark)
-                .opacity(stage.title ? 1 : 0)
-                .offset(y: stage.title || reduceMotion ? 0 : MotionTokens.Intro.titleRise)
+            LoginHeader(mode: model.mode, icon: icon, markScale: stage.markScale, markShown: stage.mark,
+                        titleShown: stage.title, titleRise: reduceMotion ? 0 : MotionTokens.Intro.titleRise)
             Spacer().frame(height: HassTokens.Spacing.xl + HassTokens.Spacing.s)
             VStack(spacing: HassTokens.Spacing.l) {
                 form

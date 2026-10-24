@@ -66,6 +66,8 @@ public struct CustomLightsScreen: View {
                     .accessibilityIdentifier("customLights.resetAll")
                 }
             }
+            .motionSafeAnimation(MotionTokens.standard, value: manualOn)
+            .motionSafeAnimation(MotionTokens.standard, value: showsLights)
             .frame(maxWidth: 960, alignment: .leading)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, HassTokens.Spacing.l)
