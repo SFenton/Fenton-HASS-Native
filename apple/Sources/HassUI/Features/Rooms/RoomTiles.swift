@@ -107,7 +107,7 @@ struct RoomCardView: View {
         } else if let bed = Self.bed(card, in: bedroom) {
             // A bed side's climate entity says "heat" whatever the pod is doing; its controller knows the level and
             // power (the web's Eight Sleep tile), so the tile fills while the side is on.
-            EverySecond { now in
+            EverySecond(isRunning: bed.hotFlashHolding) { now in
                 RoomCardTile(controller: controller, card: card,
                              device: (Self.face(bed), bed.tileSubtitle(now: now)), onOpen: onOpen)
             }

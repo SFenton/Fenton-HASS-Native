@@ -64,6 +64,23 @@ struct PerformanceDiagnosticsTests {
         #expect((object["metricKit"] as? [Any])?.count == 1)
     }
 
+    @Test func theAsyncExportWritesTheSameFileOffTheMainActor() async throws {
+        let (metricKit, _, folder) = isolated()
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let log = TelemetryLog()
+        log.increment("entity.deliveries")
+        let url = try await PerformanceReport.writeExportAsync(log: log, metricKit: metricKit)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let object = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        #expect((object["telemetry"] as? [String: Any])?["counters"] != nil)
+    }
+
+    @Test func measurementsKeepTheirDecimalsAndNeverGroup() {
+        #expect(PerformanceScreen.number(12.4) == "12")
+        #expect(PerformanceScreen.number(12.46, fraction: 1) == "12.5")
+        #expect(PerformanceScreen.number(12345.6) == "12346")
+    }
+
     @Test func theEnvironmentNamesTheBuildAndTheDevice() {
         let values = PerformanceReport.environment()
         #expect(Set(values.keys).isSuperset(of: ["app", "os", "thermalState", "lowPower", "device"]))

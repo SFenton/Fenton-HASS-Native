@@ -234,9 +234,15 @@ struct ClockTimeField: View {
 
 /// A once-a-second clock for countdowns.
 struct EverySecond<Content: View>: View {
+    /// False when nothing on screen counts down: the content is drawn once with the current time and no timeline runs.
+    var isRunning = true
     @ViewBuilder var content: (Date) -> Content
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in content(context.date) }
+        if isRunning {
+            TimelineView(.periodic(from: .now, by: 1)) { context in content(context.date) }
+        } else {
+            content(.now)
+        }
     }
 }

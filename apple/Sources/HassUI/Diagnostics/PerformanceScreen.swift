@@ -12,6 +12,8 @@ public struct PerformanceScreen: View {
     @State private var report = PerformanceReport.current()
     @State private var recording = Telemetry.isEnabled
     @State private var exportURL: URL?
+    /// Bumped to rerun ``refresh()`` through `.task(id:)`, which cancels a refresh in flight.
+    @State private var refreshTick = 0
 
     /// Creates the screen.
     public init() {}
@@ -33,13 +35,13 @@ public struct PerformanceScreen: View {
                 ForEach(report.scroll) { row in
                     PerformanceRow(
                         title: row.page,
-                        value: String(format: "%.1f ms/s", row.stats.hitchRatio),
+                        value: "\(Self.number(row.stats.hitchRatio, fraction: 1)) ms/s",
                         detail: "\(row.stats.hitches) hitches in \(row.stats.frames) frames · worst \(Int(row.stats.worstFrameMs)) ms",
                         tone: row.stats.hitchRatio < 5 ? .good : row.stats.hitchRatio < 10 ? .warning : .bad
                     )
                 }
                 if let ratio = report.metricKitHitchRatio {
-                    PerformanceRow(title: "MetricKit (last day)", value: String(format: "%.1f ms/s", ratio),
+                    PerformanceRow(title: "MetricKit (last day)", value: "\(Self.number(ratio, fraction: 1)) ms/s",
                                    detail: "System scroll hitch ratio", tone: ratio < 5 ? .good : ratio < 10 ? .warning : .bad)
                 }
             } header: { FormHeader("Scrolling") }
@@ -88,7 +90,7 @@ public struct PerformanceScreen: View {
                                detail: "\(report.diskFiles) images")
                 Button("Clear Image Cache", role: .destructive) {
                     ImagePipeline.shared.removeAll()
-                    refresh()
+                    refreshTick += 1
                 }
                 .accessibilityIdentifier("performance.clearImages")
             } header: {
@@ -104,7 +106,7 @@ public struct PerformanceScreen: View {
                 }
                 Button("Reset Measurements", role: .destructive) {
                     Telemetry.log.reset()
-                    refresh()
+                    refreshTick += 1
                 }
                 .accessibilityIdentifier("performance.reset")
             } footer: {
@@ -112,30 +114,30 @@ public struct PerformanceScreen: View {
             }
         }
         .navigationTitle("Performance")
-        .refreshable { refresh() }
+        .refreshable { await refresh() }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Refresh", systemImage: "arrow.clockwise") { refresh() }
+                Button("Refresh", systemImage: "arrow.clockwise") { refreshTick += 1 }
                     .accessibilityIdentifier("performance.refresh")
             }
         }
-        .task { refresh() }
+        .task(id: refreshTick) { await refresh() }
         .accessibilityIdentifier("performance.screen")
     }
 
     /// The headline: the median time to settle (or to the first frame when the transition has no end of its own).
     static func navigationValue(_ row: NavigationTelemetry.Row) -> String {
         let headline = row.settled ?? row.firstFrame
-        return headline.map { String(format: "%.0f ms", $0.p50) } ?? "-"
+        return headline.map { "\(Self.number($0.p50)) ms" } ?? "-"
     }
 
     /// p50 and p95 for each phase, and the main thread's worst turn.
     static func navigationDetail(_ row: NavigationTelemetry.Row) -> String {
         func pair(_ label: String, _ stats: TelemetryStats?) -> String? {
-            stats.map { String(format: "%@ p50 %.0f · p95 %.0f ms", label, $0.p50, $0.p95) }
+            stats.map { "\(label) p50 \(Self.number($0.p50)) · p95 \(Self.number($0.p95)) ms" }
         }
         var parts = [pair("first frame", row.firstFrame), pair("settled", row.settled)].compactMap { $0 }
-        if let worst = row.turnWorst { parts.append(String(format: "worst turn %.0f ms", worst.max)) }
+        if let worst = row.turnWorst { parts.append("worst turn \(Self.number(worst.max)) ms") }
         parts.append("\(row.count) samples")
         return parts.joined(separator: " · ")
     }
@@ -146,9 +148,14 @@ public struct PerformanceScreen: View {
         return p95 <= 8 ? .good : p95 <= 16 ? .warning : .bad
     }
 
-    private func refresh() {
+    /// A measurement with a fixed number of decimals and no grouping, in the user's locale.
+    static func number(_ value: Double, fraction: Int = 0) -> String {
+        value.formatted(.number.precision(.fractionLength(fraction)).grouping(.never))
+    }
+
+    private func refresh() async {
         report = PerformanceReport.current()
-        exportURL = try? PerformanceReport.writeExport()
+        exportURL = try? await PerformanceReport.writeExportAsync()
     }
 
     private func emptyRow(_ text: String) -> some View {
@@ -156,7 +163,7 @@ public struct PerformanceScreen: View {
     }
 
     private func statsRow(_ title: String, _ stats: TelemetryStats) -> some View {
-        PerformanceRow(title: title, value: String(format: "%.0f ms", stats.p50),
-                       detail: String(format: "median · p95 %.0f ms · max %.0f ms · %d samples", stats.p95, stats.max, stats.count))
+        PerformanceRow(title: title, value: "\(Self.number(stats.p50)) ms",
+                       detail: "median · p95 \(Self.number(stats.p95)) ms · max \(Self.number(stats.max)) ms · \(stats.count) samples")
     }
 }

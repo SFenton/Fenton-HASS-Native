@@ -75,12 +75,27 @@ struct PerformanceReport {
     /// Writes the export (telemetry plus MetricKit payloads) to a temporary JSON file.
     @MainActor
     static func writeExport(log: TelemetryLog = Telemetry.log, metricKit: MetricKitCollector = .shared) throws -> URL {
+        let export = try exportFile(log: log, metricKit: metricKit)
+        try export.data.write(to: export.url, options: .atomic)
+        return export.url
+    }
+
+    /// ``writeExport(log:metricKit:)`` with the disk write off the main actor: the report is gathered where the log
+    /// lives, then the file is written on a background task.
+    @MainActor
+    static func writeExportAsync(log: TelemetryLog = Telemetry.log, metricKit: MetricKitCollector = .shared) async throws -> URL {
+        let export = try exportFile(log: log, metricKit: metricKit)
+        try await Task.detached { try export.data.write(to: export.url, options: .atomic) }.value
+        return export.url
+    }
+
+    /// The export's JSON and the temporary file it goes to.
+    @MainActor
+    private static func exportFile(log: TelemetryLog, metricKit: MetricKitCollector) throws -> (data: Data, url: URL) {
         let telemetry = try JSONSerialization.jsonObject(with: log.exportJSON(environment: environment()))
         let object: [String: Any] = ["telemetry": telemetry, "metricKit": metricKit.payloadObjects()]
         let data = try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
         let stamp = ISO8601DateFormatter().string(from: .now).replacingOccurrences(of: ":", with: "-")
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("FentonHome-telemetry-\(stamp).json")
-        try data.write(to: url, options: .atomic)
-        return url
+        return (data, FileManager.default.temporaryDirectory.appendingPathComponent("FentonHome-telemetry-\(stamp).json"))
     }
 }

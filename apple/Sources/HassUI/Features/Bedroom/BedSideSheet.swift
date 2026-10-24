@@ -648,7 +648,7 @@ public struct BedSideTile: View {
     public var body: some View {
         let face = BedroomStyle.face(action: controller.action, level: controller.displayedTarget,
                                     isAvailable: controller.sideAvailable)
-        EverySecond { now in
+        EverySecond(isRunning: controller.hotFlashHolding) { now in
             GlassTile(title: controller.config.title, subtitle: controller.tileSubtitle(now: now), symbol: "bed.double",
                       family: face.family,
                       // Fills while the side is on (``ThermostatTileFace/bedSide(action:level:isAvailable:)``).

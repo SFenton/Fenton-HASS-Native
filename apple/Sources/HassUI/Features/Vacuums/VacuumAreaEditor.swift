@@ -208,7 +208,7 @@ struct VacuumAreaEditor: View {
     private var squareMetres: String? {
         guard let area, let scene = mapState.scene else { return nil }
         let size = area.dimensionsCm(pixelSize: scene.interactionGeometry.pixelSize)
-        return String(format: "%.2f m² selected", size.width * size.height / 10_000)
+        return "\((size.width * size.height / 10_000).formatted(.number.precision(.fractionLength(2)).grouping(.never))) m² selected"
     }
 }
 

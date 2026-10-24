@@ -21,7 +21,7 @@
         { rule: "Toolbars: Cancel and a verb-named check", verdict: "departure", note: "direction-g.md Sheets: circle x leading, filled check \"Create\" or \"Save\" trailing, disabled until valid or changed (SheetEditState, lines 73-77).", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: "Performance: no formatter creation in bindings", verdict: "fix", note: "DonetickDueBinding.formatter() builds a new DateFormatter on every get and set (lines 270-297), and the bindings run for every body evaluation of the form; cache the two formatters or use Date.FormatStyle. Low.", by: "swiftui-pro skill" },
+        { rule: "Performance: no formatter creation in bindings", verdict: "pass", note: "DonetickDueBinding builds its two formatters once (DonetickTaskSheet.swift:270-290)", by: "swiftui-pro skill" },
         { rule: "Navigation: attach confirmationDialog to its trigger", verdict: "fix", note: "The dialog is attached to the NavigationStack, not the Delete Task button (line 64), so on iPad the popover has no row to anchor to. Low.", by: "swiftui-pro skill" },
         { rule: "Accessibility: weekday rows are selectable buttons", verdict: "pass", note: "Each day is a Button with the .isSelected trait and a checkmark (lines 233-246); the checkmark image is not hidden, so VoiceOver may read \"checkmark\" after the day. Minor.", by: "swiftui-pro skill" },
         { rule: "Views: Group around a single branch chain", verdict: "pass", note: "Group { if loaded … else if error … else ProgressView } is a legitimate multi-branch group (lines 42-52).", by: "swiftui-pro skill" },

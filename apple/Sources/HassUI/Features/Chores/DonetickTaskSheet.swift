@@ -267,12 +267,25 @@ struct DonetickTaskFormFields: View {
 
 /// Bindings between the form's `yyyy-MM-dd` / `HH:mm` strings and date pickers in the device's time zone.
 enum DonetickDueBinding {
-    static func formatter(_ format: String) -> DateFormatter {
+    /// The two formats the form uses, built once: a formatter per binding read was allocated on every body pass.
+    private nonisolated(unsafe) static let dateFormatter = makeFormatter("yyyy-MM-dd")
+    private nonisolated(unsafe) static let timeFormatter = makeFormatter("HH:mm")
+
+    private static func makeFormatter(_ format: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = format
         return formatter
+    }
+
+    static func formatter(_ format: String) -> DateFormatter {
+        switch format {
+        case "yyyy-MM-dd": dateFormatter
+        case "HH:mm": timeFormatter
+        default: makeFormatter(format)
+        }
     }
 
     /// Turning the date on picks today; off clears it.

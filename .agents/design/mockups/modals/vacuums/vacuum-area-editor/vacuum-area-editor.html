@@ -82,7 +82,7 @@
       swiftui: [
         { rule: 'Gestures: custom drag inside a ScrollView', verdict: 'fix', note: 'DragGesture(minimumDistance: 0) covers a map up to 520 pt tall (VacuumAreaEditor.swift:100-111, 123), leaving little page to scroll on iPhone; scrollDisabled(dragging) stops a stuck page, but a draw or pan mode would keep scrolling reachable.', by: 'swiftui-pro skill' },
         { rule: 'Accessibility: actions on a custom control', verdict: 'pass', note: 'The map is one element with a value and accessibilityActions from MapAreaEdit.Nudge (VacuumAreaEditor.swift:105-108); @GestureState resets a cancelled drag.', by: 'swiftui-pro skill' },
-        { rule: 'Localization: formatted numbers', verdict: 'fix', note: 'String(format: "%.2f m2 selected") and VacuumFormat.metres bake in unit text and decimal separator (VacuumAreaEditor.swift:211); use Measurement or a FormatStyle with the environment locale.', by: 'swiftui-pro skill' },
+        { rule: 'Localization: formatted numbers', verdict: 'pass', note: 'The area label formats with FormatStyle (VacuumAreaEditor.swift:211)', by: 'swiftui-pro skill' },
         { rule: 'Reduce Motion', verdict: 'pass', note: 'Only colour animates (stateColorTransition); drawing is direct manipulation.', by: 'swiftui-pro skill' },
       ],
     },

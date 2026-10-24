@@ -88,7 +88,7 @@
         { rule: 'Accessibility: live text', verdict: 'pass', note: 'The countdown is a visible text update, not an announcement; the value is read on focus.' },
       ],
       swiftui: [
-        { rule: 'Performance: tick only when needed', verdict: 'fix', note: 'BedSideTile and RoomCardView wrap the tile in EverySecond unconditionally (BedSideSheet.swift:651, RoomTiles.swift:110); the fan tile\'s gate (hourly unless a countdown shows) would also suit Hot Flash.' },
+        { rule: 'Performance: tick only when needed', verdict: 'pass', note: 'EverySecond takes isRunning and BedSideTile passes hotFlashHolding, so no timeline runs otherwise (BedroomComponents.swift:236, BedSideSheet.swift:651)' },
         { rule: 'Do not recreate shared components', verdict: 'pass', note: 'Both tiles are GlassTile with a ThermostatTileFace or lights family.' },
         { rule: 'Motion: colour with the app token', verdict: 'pass', note: 'GlassTile owns the transition; neither tile adds its own.' },
       ],

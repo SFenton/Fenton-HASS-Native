@@ -116,9 +116,9 @@
         { rule: 'Color: text contrast of 4.5:1 on the wallpaper', verdict: 'fix', note: 'FormHeader and FormFooter use Ink.secondary (white at 72%) straight on the wallpaper (FormSectionText.swift:9-31) and the Images header is the system default (PerformanceScreen.swift:94-96); Settings moved to white at 85% after a 3.8:1 measurement on iPad.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Swift: no C-style number formatting', verdict: 'fix', note: 'String(format: "%.1f ms/s") and "%.0f" build every value (:36, :42, :129, :135, :159-160); use FormatStyle (Text(value, format: .number.precision(.fractionLength(1)))).', by: 'swiftui-pro skill' },
+        { rule: 'Swift: no C-style number formatting', verdict: 'pass', note: 'Measurements go through PerformanceScreen.number, a FormatStyle (PerformanceScreen.swift)', by: 'swiftui-pro skill' },
         { rule: 'Accessibility: one element per row with label and value', verdict: 'pass', note: 'PerformanceRow ignores children and speaks title, then "value. detail" (PerformanceRow.swift:32-34).', by: 'swiftui-pro skill' },
-        { rule: 'Performance: heavy work off body and the main thread', verdict: 'fix', note: 'refresh() rebuilds the report and writes the export JSON to disk on the main actor (:149-152) on every task, pull and Refresh tap; move the write into a task.', by: 'swiftui-pro skill' },
+        { rule: 'Performance: heavy work off body and the main thread', verdict: 'pass', note: 'refresh() writes the export through PerformanceReport.writeExportAsync, driven by .task(id: refreshTick) (PerformanceScreen.swift)', by: 'swiftui-pro skill' },
         { rule: 'Views: inconsistent headers and helper views', verdict: 'fix', note: 'Sections use FormHeader except Images, which uses Text("Images") (:94-96); emptyRow and statsRow are some View helper methods rather than types (:154-161).', by: 'swiftui-pro skill' },
         { rule: 'API: onChange two-parameter form, toolbar semantic placement', verdict: 'pass', note: '.onChange(of: recording) { _, on in … } (:23) and Button("Refresh", systemImage:) in .primaryAction (:117-119).', by: 'swiftui-pro skill' },
       ],

@@ -95,7 +95,7 @@
         { rule: 'Navigation: Quick Links as a header button', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation).' },
       ],
       swiftui: [
-        { rule: 'Performance: only tick when something counts down', verdict: 'fix', note: 'RoomCardView wraps every bed tile in EverySecond unconditionally (RoomTiles.swift:110), so two GlassTiles re-render every second whenever the page is visible (performance.md: body runs frequently; AGENTS.md main-thread invariant); BathroomFanRoomTile ticks hourly until a countdown shows. Gate on hotFlashActive.' },
+        { rule: 'Performance: only tick when something counts down', verdict: 'pass', note: 'RoomCardView passes bed.hotFlashHolding to EverySecond(isRunning:) (RoomTiles.swift:110)' },
         { rule: 'Data: shared model created once per page', verdict: 'pass', note: 'One BedroomDevices per page, so the tile, the wake-light sheet and both bed sheets agree.' },
         { rule: 'Swift: do not downgrade silently', verdict: 'fix', note: 'BedroomDevices exists only when the caller conforms to HassServiceResponding (RoomScreen.swift:75); otherwise the beds quietly fall back to generic climate cards with no log. Fine for the gallery, opaque if the cast ever failed.' },
         { rule: 'Motion: animate with the app token, honour Reduce Motion', verdict: 'pass', note: 'GlassTile stateColorTransition (0.6 s, 0.2 s reduced); the countdown is a text update.' },
