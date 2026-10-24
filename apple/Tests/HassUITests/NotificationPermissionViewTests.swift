@@ -17,6 +17,7 @@ struct NotificationPermissionViewTests {
         let suite = "perm-view-\(UUID().uuidString)"
         let push = PushCoordinator(platform: platform, store: InMemoryMobileAppRegistrationStore(),
                                    defaults: UserDefaults(suiteName: suite)!)
+        push.sessionStarted(server: HassServer(baseURL: URL(string: "https://ha.example.com")!)) { "t" }
         await push.didConnect(userID: "u")
         return push
     }
@@ -26,10 +27,13 @@ struct NotificationPermissionViewTests {
         let push = await coordinator(status)
         #expect(push.showsPermissionBanner == (status == .notDetermined))
         for size in [DynamicTypeSize.large, .accessibility5] {
-            let banner = NotificationPermissionBanner().environment(push).dynamicTypeSize(size).frame(width: 390)
-            #expect(ImageRenderer(content: banner).cgImage != nil)
-            let list = List { NotificationsSettingsSection() }.environment(push).dynamicTypeSize(size).frame(width: 390, height: 600)
-            #expect(ImageRenderer(content: list).cgImage != nil)
+            let phone = CGSize(width: 402, height: 874)
+            for view in [AnyView(NotificationPermissionBanner()), AnyView(List { NotificationsSettingsSection() })] {
+                let renderer = ImageRenderer(content: NavigationStack { view.environment(push) }
+                    .dynamicTypeSize(size).frame(width: phone.width, height: phone.height))
+                renderer.proposedSize = ProposedViewSize(phone)
+                #expect(renderer.cgImage != nil)
+            }
         }
     }
 }
