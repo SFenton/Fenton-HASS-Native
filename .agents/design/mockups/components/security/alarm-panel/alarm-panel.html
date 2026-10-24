@@ -70,19 +70,27 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Alerts: confirm actions with serious consequences', verdict: 'pass', note: 'Disarming asks; Cancel always present.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Glyph, word and fill on every mode.' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'pass', note: 'Page module in dark always; sheet cell follows the system; the wash is 42% dark and 16% light so secondary ink keeps 4.5:1.' },
-        { rule: 'Buttons: at least 44 pt', verdict: 'pass', note: 'Modes 64 pt.' },
+        { rule: "Buttons: a clear selected state and 44 pt targets", verdict: 'pass', note: "Mode buttons are 64 pt tall at the least, the chosen one fills with its family colour, a filled glyph variant and the isSelected trait (SecuritySystemSheet.swift:218, 232, 253).", by: 'apple-hig skill' },
+        { rule: "Alerts: confirm Disarm", verdict: 'departure', note: "Disarm raises an alert although arming does not (SecuritySystemSheet.swift:84-90); .agents/pages/security/spec.md native departure (HIG: Alerts).", by: 'apple-hig skill' },
+        { rule: "Accessibility: bezelled elements need about 12 pt around them", verdict: 'fix', note: "Adjacent modes are 8 pt apart (SecuritySystemSheet.swift:66), Disarm next to Home.", by: 'apple-hig skill' },
+        { rule: "Feedback: more than one channel", verdict: 'fix', note: "A mode change cross-fades colour and the title; no haptic is attached to AlarmModeButton, and a failure rolls back silently (SecuritySystemSheet.swift:203-257).", by: 'apple-hig skill' },
+        { rule: "Layout: readable width", verdict: 'fix', note: "The card has no maximum width on the Security page (SecurityScreen.swift:69-70) but caps at 560 pt in the sheet (SecuritySystemSheet.swift:29), so the same component stretches to about 1160 pt on iPad landscape.", by: 'apple-hig skill' },
+        { rule: "Color: contrast on a triggered wash", verdict: 'pass', note: "The red wash is fainter on a light cell and the subtitle ink strengthens over it (SecuritySystemSheet.swift:138-143, 155-160); it steadies, never pulses.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'ScaledMetric for the badge and mode width', verdict: 'pass', note: 'badgeSize 44 (title2), minModeWidth 64 (footnote), iconHeight 24 (title3).' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'stateColorTransition on the badge, ground and mode buttons; no pulse.' },
-        { rule: 'Accessible identifiers and traits on the button itself', verdict: 'pass', note: 'Label, selected trait, hint and identifier sit on the Button so they stay together with its disabled state.' },
-        { rule: 'Reduce Transparency', verdict: 'pass', note: 'The page wash goes to 60% over the dense module.' },
+        { rule: "ScaledMetric for fixed sizes", verdict: 'pass', note: "Badge 44 and glyph 24 scale; the modes grid takes fewer columns as text grows (SecuritySystemSheet.swift:55-56, 66, 210).", by: 'swiftui-pro skill' },
+        { rule: "VoiceOver: header as one element", verdict: 'pass', note: "Label 'Security System', value 'Armed Home, Since 6:12 PM' (lines 129-132).", by: 'swiftui-pro skill' },
+        { rule: "Respect Reduce Transparency", verdict: 'pass', note: "The wash reaches 60% over a dense module (line 165).", by: 'swiftui-pro skill' },
+        { rule: "Closure bindings and state in body", verdict: 'pass', note: "The alert uses @State; optimistic actions are created lazily (lines 52-53, 185-189).", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

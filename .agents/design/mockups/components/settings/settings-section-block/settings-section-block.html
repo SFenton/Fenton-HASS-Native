@@ -54,15 +54,19 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Typography: use text styles so text scales', verdict: 'pass', note: 'title3.weight(.semibold) and subheadline, no fixed sizes.' },
-        { rule: 'Accessibility: headings are marked', verdict: 'pass', note: 'accessibilityAddTraits(.isHeader) on the title.' },
-        { rule: 'Layout: group a control with the text that explains it', verdict: 'pass', note: 'Description above the control, 8 pt between header and paragraphs, 4 pt more before the content.' },
-        { rule: 'Color: contrast of secondary text over imagery', verdict: 'departure', note: 'On the wallpaper the paragraphs are fixed white rather than the adaptive secondary ink (measured 4.1:1; settings-section.md, 2026-10-17).' },
+        { rule: 'Typography: a visible heading with the heading trait', verdict: 'pass', note: 'title3 semibold with .isHeader (SettingsSection.swift:24-27).', by: 'apple-hig skill' },
+        { rule: 'Color: paragraph contrast on the wallpaper', verdict: 'pass', note: 'Paragraphs take the fixed white on the page surface and the sheet\'s secondary in a sheet, after 4.1:1 and 4.3:1 measurements (:31-34).', by: 'apple-hig skill' },
+        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'Paragraphs wrap with fixedSize vertical (:35); the content grid drops to one column at AX sizes.', by: 'apple-hig skill' },
+        { rule: 'Alerts and inline messages: icon plus text, severity in words', verdict: 'pass', note: 'InlineAlert warning reads "Warning: …" with a glyph, an error reads "Error: …" in red with a glyph (:68-96).', by: 'apple-hig skill' },
+        { rule: 'Layout: consistent section rhythm', verdict: 'pass', note: 'Sections stack with HassTokens.Spacing.xl between them (HouseholdSettingsPage.swift:88); 4 pt before the content.', by: 'apple-hig skill' },
+        { rule: 'Consistency: one header treatment per page', verdict: 'fix', note: 'MachEContent repeats the title3 header by hand with no 4 pt content gap (HouseholdSettingsPage.swift:198-200).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use semantic fonts, not fixed sizes', verdict: 'pass', note: '.title3 and .subheadline.' },
-        { rule: 'Read the surface from the environment, not a parameter', verdict: 'pass', note: '@Environment(\\.tileSurface) picks the page or sheet ink.' },
-        { rule: 'fixedSize(vertical) so paragraphs wrap fully', verdict: 'pass', note: 'Applied to each paragraph.' },
+        { rule: 'Design: shared type tokens, not scattered weights', verdict: 'fix', note: '.font(.title3.weight(.semibold)) is repeated in SettingsSection.swift:25, HouseholdSettingsPage.swift:199, FeedbackFieldHeader.swift:18 (subheadline), SettingsSectionHeader.swift:15 and SettingsScreen.swift:138; use bold() or one token.', by: 'swiftui-pro skill' },
+        { rule: 'Views: store the built content, not a closure', verdict: 'pass', note: '@ViewBuilder content is called once in init and stored as Content (:8, :16-20).', by: 'swiftui-pro skill' },
+        { rule: 'Data: ForEach over constant offsets', verdict: 'pass', note: 'ForEach(Array(paragraphs.enumerated()), id: \\.offset) over a constant array is allowed; paragraphs never reorder (:28).', by: 'swiftui-pro skill' },
+        { rule: 'Accessibility: combined label for the inline alert', verdict: 'pass', note: 'accessibilityElement(.combine) plus a "Warning:"/"Error:" label (:83-84, :94-95).', by: 'swiftui-pro skill' },
+        { rule: 'API: manual opacity in place of a hierarchical style', verdict: 'fix', note: 'InlineAlert\'s wash is Color.orange.opacity(0.14) (:82); a tinted system style adapts to the surface.', by: 'swiftui-pro skill' },
       ],
     },
 

@@ -90,18 +90,15 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Lists and tables: 44 pt rows, secondary text for detail', verdict: 'pass', note: '52 pt minimum rows; chips and lines in 13 pt secondary ink.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Check, question mark and empty circle differ in shape; the spoken value and the chips say it in words.' },
-        { rule: 'Buttons: one prominent action per screen; show why a control is disabled', verdict: 'pass', note: 'The reason text takes the explanation\'s place in the same spot.' },
-        { rule: 'Feedback: confirm an action without a modal', verdict: 'pass', note: 'The button becomes "Added to Grocery List" with the sentence; announced to VoiceOver.' },
-        { rule: 'Lists: swipe or per-row actions where expected', verdict: 'departure', note: 'Rows are read-only (per-row grocery add, overrides and the product picker are not ported yet: spec.md "Not ported yet").' },
+        { rule: 'Lists: row anatomy and Dynamic Type', verdict: 'pass', note: 'Mark, title, chips and source lines in a 52 pt minimum row that grows with its text (IngredientRow, RecipeRowMetrics).', by: 'apple-hig skill' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Filled check, empty circle and question mark differ in shape; chips say what is missing (IngredientRow.mark).', by: 'apple-hig skill' },
+        { rule: 'Accessibility: unsure state is spoken', verdict: 'fix', note: 'An uncertain match draws a question mark, yet VoiceOver says only "On hand" or "Not on hand" (RecipeDetailView.swift:329, mark() at :336); the "unsure" state is visual only.', by: 'apple-hig skill' },
+        { rule: 'Feedback: announce the result of Add to Grocery List', verdict: 'pass', note: 'The added or failed result is posted as an announcement and the button swaps with a cross-fade (GroceryAction, :421-428).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Scaled metrics for aligned columns', verdict: 'pass', note: '@ScaledMetric glyphWidth in IngredientRow, RecipeLinkRow so titles start where ModuleList draws its hairlines.' },
-        { rule: 'Compound rows are one accessibility element', verdict: 'pass', note: '.accessibilityElement(children: .ignore) with label, value and hint.' },
-        { rule: 'Animate with the app token, scoped to the changing view', verdict: 'pass', note: '.stateColorTransition("GroceryAction", value: model.grocery) on the stack only.' },
-        { rule: 'Do not use a fixed height for text rows', verdict: 'pass', note: 'minHeight 52, no fixed height.' },
-        { rule: 'Wrap chips with a layout, not a horizontal scroll', verdict: 'pass', note: 'HassDesign FlowLayout.' },
+        { rule: 'Accessibility: hints describe the action', verdict: 'fix', note: 'The ingredient chips, source and match text are the hint (accessibilityDetails, RecipeDetailView.swift:330); the value is empty for a list without checklist.', by: 'swiftui-pro skill' },
+        { rule: 'Design: prefer system colours and hierarchical styles', verdict: 'fix', note: 'Color.green for on hand (:299) and Color.secondary.opacity(0.16) chip fills (:355) are fixed values; the green is about 2.3:1 on a light cell.', by: 'swiftui-pro skill' },
+        { rule: 'Button style and states', verdict: 'pass', note: 'GroceryAction uses PrimaryButtonStyle, disables with a reason line, and shows an inline arc while adding (:372-411).', by: 'swiftui-pro skill' },
       ],
     },
 

@@ -155,6 +155,149 @@
     'building.2': [rc(4.500, 3.500, 9, 17, 1) + rc(13.500, 9, 6, 11.500, 1) + p('M7.500 7h3M7.500 11h3M7.500 15h3M15.500 13h2M15.500 16.500h2')],
     'photo.on.rectangle': [rc(6, 3.500, 14, 12, 2) + p('M3.500 8v10a2 2 0 0 0 2 2h11') + c(11, 8, 1.400)],
   };
+  /* ---- Extra symbols (second batch). Most were drawn by the mockup helpers (components/, modals/, pages/ `_*.js`) and are promoted here
+   * verbatim; the rest are drawn in the same language. A name already in S above wins (the loop at the end never overwrites). */
+  /** A stroked shape drawn inside a FILLED glyph (the filled root has stroke="none"). */
+  function sg(d, w) { return '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="' + (w || 1.8) + '" stroke-linecap="round" stroke-linejoin="round"/>'; }
+  /** Filled drawing: `body` (solid shapes) with `cut` (stroked shapes, 1.9 wide) knocked out of it, so it reads on any background. */
+  function fm(id, body, cut) {
+    return '<mask id="sym-' + id + '"><rect width="24" height="24" fill="#fff"/><g fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + cut + '</g></mask><g mask="url(#sym-' + id + ')">' + body + '</g>';
+  }
+  /** Ring + glyph outline; filled = disc with the glyph knocked out. `cut` overrides the knock-out shapes when the glyph is itself solid. */
+  function dc(id, shapes, cut) { return [c(12, 12, 8.8) + shapes, fm(id, '<circle cx="12" cy="12" r="9.2"/>', cut || shapes)]; }
+  /** Battery with a charge bar `w` wide (the full bar is 13). */
+  function battery(w) { return rc(2.5, 7.5, 17, 9, 2.5) + p('M21.5 10.5v3') + '<rect x="4.5" y="9.5" width="' + w + '" height="5" rx="1" fill="currentColor" stroke="none"/>'; }
+  var appliance = '<rect x="4" y="3.5" width="16" height="17" rx="2"/>';
+  var applianceTop = p('M4 8h16M7 5.8h.01M10 5.8h.01');
+  var sunHalf = 'M6.8 19a5.2 5.2 0 0 1 10.4 0';
+  var sunRays = 'M3 19h18M4.8 12.2l1.4 1.4M19.2 12.2l-1.4 1.4M2.6 15.6h1.8M19.6 15.6h1.8';
+  var sunUp = 'M12 8.6V3.8M9.6 6.2 12 3.8l2.4 2.4';
+  var sunDown = 'M12 3.8v4.8M9.6 6.2 12 8.6l2.4-2.4';
+  var thermo = 'M7 14.4V5.2a2 2 0 0 1 4 0v9.2a4 4 0 1 1-4 0z';
+  var eyeShape = 'M2.5 12C5 7.5 8.3 5.5 12 5.5s7 2 9.5 6.5c-2.5 4.5-5.8 6.5-9.5 6.5S5 16.5 2.5 12z';
+  var board = 'M7 4.5h10a2 2 0 0 1 2 2v12.5a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2z';
+  var clipLines = 'M8.5 11h.01M11.5 11h4.5M8.5 15h.01M11.5 15h4.5';
+  var more = {
+    'air.conditioner.horizontal': '<rect x="3" y="6" width="18" height="8" rx="2"/><path d="M6.5 10h11M7 17.5c0 1.3-.8 1.8-.8 2.8M12 17.5c0 1.3-.8 1.8-.8 2.8M17 17.5c0 1.3-.8 1.8-.8 2.8"/>',
+    'air.purifier': '<rect x="6" y="3.5" width="12" height="17" rx="2.4"/><path d="M9 7.5h6"/><circle cx="12" cy="13.5" r="3.4"/><path d="M12 10.1v6.8M8.6 13.5h6.8"/>',
+    'alarm': ['<circle cx="12" cy="13.4" r="7"/><path d="M12 9.6v4l2.6 1.6M4.6 5.2 2.8 7.2M19.4 5.2l1.8 2"/>', '<path fill-rule="evenodd" d="M12 6.2a7.2 7.2 0 1 0 0 14.4 7.2 7.2 0 0 0 0-14.4zM11.2 9.4h1.6v3.9l2.3 1.4-.8 1.4-3.1-1.9z"/><path d="M4.1 4.7 2.4 6.8l1.1.9 1.7-2.1zM19.9 4.7l1.7 2.1-1.1.9-1.7-2.1z"/>'],
+    'alarm.waves.left.and.right': '<circle cx="12" cy="13" r="5.2"/><path d="M12 10.2v3l2 1.2M4.4 8.6a8.4 8.4 0 0 0-1.4 4.6M19.6 8.6a8.4 8.4 0 0 1 1.4 4.6M6.4 18.4 5 20M17.6 18.4 19 20"/>',
+    'antenna.radiowaves.left.and.right': ['<path d="M12 12.5V20"/><circle cx="12" cy="10.5" r="1.6"/><path d="M8.2 6.8a5.4 5.4 0 0 0 0 7.4M15.8 6.8a5.4 5.4 0 0 1 0 7.4M5.4 4.2a9.4 9.4 0 0 0 0 12.6M18.6 4.2a9.4 9.4 0 0 1 0 12.6"/>'],
+    'app.fill': ['<rect x="4.5" y="4.5" width="15" height="15" rx="4"/>', '<rect x="4" y="4" width="16" height="16" rx="4.4"/>'],
+    'apple.logo': '<path d="M12 8.4c-1.4-1.3-4.7-1-5.9 1.7-1.2 2.8.4 7.3 2.4 8.9 1.1.9 2.1.4 3.5.4s2.4.5 3.5-.4c1.1-.9 2.1-2.5 2.4-3.8-1.8-.8-2.5-3.6-.4-5.1-1.2-1.4-3.4-1.1-4.4-.2zM13 7c.2-1.5 1-2.6 2.3-3.2"/>',
+    'appletvremote.gen4': ['<rect x="7" y="2.5" width="10" height="19" rx="3"/><circle cx="12" cy="8.5" r="2.7"/><path d="M10 14.2h4M10.5 17.8h.01M13.5 17.8h.01"/>', '<path fill-rule="evenodd" d="M10 2h4a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3h-4a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zm2 3.6a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8zM10 13.6h4v1.5h-4zM10 17h1.6v1.6H10zm2.4 0H14v1.6h-1.6z"/>'],
+    'arrow.counterclockwise': ['<path d="M4.5 12a7.5 7.5 0 1 0 2.4-5.5"/><path d="M4.5 4.5v4h4"/>'],
+    'arrow.triangle.2.circlepath': '<path d="M5 12a7 7 0 0 1 12-4.9l2 1.9M19 5v4h-4M19 12a7 7 0 0 1-12 4.9l-2-1.9M5 19v-4h4"/>',
+    'arrow.up.forward.app': '<path d="M13.4 3.8h6.8v6.8M20.2 3.8l-8.2 8.2M10 4.8H7.4A3.4 3.4 0 0 0 4 8.2v8.4A3.4 3.4 0 0 0 7.4 20h8.4a3.4 3.4 0 0 0 3.4-3.4V14"/>',
+    'arrow.up.left.and.arrow.down.right': ['<path d="M14.5 3.5h6v6M20.5 3.5l-7 7M9.5 20.5h-6v-6M3.5 20.5l7-7"/>'],
+    'arrow.up.right.square': '<path d="M13 4.5h6.5V11M19.5 4.5 11 13M17.5 14v4.5a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 18.5V8a1.5 1.5 0 0 1 1.5-1.5H10"/>',
+    'arrowtriangle.down.fill': ['<path d="M5.5 8h13L12 18.5z"/>', '<path d="M4.5 7.5h15L12 19z"/>'],
+    'barcode': ['<path d="M3.500 6v12M6.500 6v12M9.500 6v12M12.200 6v12M14.800 6v12M17.500 6v12M20.500 6v12"/>'],
+    'barcode.viewfinder': ['<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M8 8.500v7M11 8.500v7M13.500 8.500v7M16 8.500v7"/>'],
+    'basket': ['<path d="M3.5 10h17l-1.6 9a1.5 1.5 0 0 1-1.5 1.2H6.6A1.5 1.5 0 0 1 5.100 19z"/><path d="M8 10 11 4M16 10l-3-6M9 13.5v3.5M12 13.5v3.5M15 13.5v3.5"/>'],
+    'bathtub': '<path d="M3 12h18v1.6A5.4 5.4 0 0 1 15.6 19H8.4A5.4 5.4 0 0 1 3 13.6zM6 12V6.8a2.2 2.2 0 0 1 4.1-1.1M7.5 19l-.8 1.8M16.5 19l.8 1.8"/>',
+    'battery.0percent': ['<rect x="2.5" y="7.5" width="17" height="9" rx="2.5"/><path d="M21.5 10.5v3"/>'],
+    'book': '<path d="M12 6.6C10.2 5.2 7.2 4.7 4 5.2v12.6c3.2-.5 6.2 0 8 1.4 1.8-1.4 4.8-1.9 8-1.4V5.2c-3.2-.5-6.2 0-8 1.4zM12 6.6v12.6"/>',
+    'calendar.badge.checkmark': ['<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4M9 15l2.2 2.2L15.4 13"/>'],
+    'calendar.badge.clock': ['<rect x="3.5" y="5" width="15" height="14.5" rx="3"/><path d="M3.5 10h15M8 3v4M14 3v4"/><circle cx="17.5" cy="17.5" r="4.2"/><path d="M17.5 15.4v2.3l1.4.9"/>'],
+    'car': '<path d="M4.5 15.5V12l1.7-4.3A2 2 0 0 1 8 6.5h8a2 2 0 0 1 1.8 1.2L19.5 12v3.5zM4.5 15.5v2.5M19.5 15.5v2.5M7.5 12h9"/><circle cx="8" cy="14.2" r="0.6"/><circle cx="16" cy="14.2" r="0.6"/>',
+    'carrot': '<path d="M13.4 6.6l4 4L5 19z"/><path d="M15.4 8.6 18 6M16.4 9.6l3-1.6M14.4 7.6 16 5"/><path d="M9.5 12.5l2 2M7.5 15.5l1.5 1.5"/>',
+    'carseat.left': '<path d="M8.2 3.6c1.6 0 2.6 1 2.7 2.6l.4 6.8h5.4a2.6 2.6 0 0 1 2.6 2.6v3H8.4L6.8 15.2V6.4c0-1.6.6-2.8 1.4-2.8z"/><path d="M9 20.4h10.2"/>',
+    'cart.circle.fill': ['<circle cx="12" cy="12" r="9.2"/><path d="M6.8 8h1.7l1.3 6.1h6.1l1.2-4.3H9.2"/><circle cx="10.4" cy="16.7" r=".6"/><circle cx="15.4" cy="16.7" r=".6"/>', '<circle cx="12" cy="12" r="9.4" fill="currentColor" stroke="none"/><g style="stroke:var(--fill,#000);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M6.8 8h1.7l1.3 6.1h6.1l1.2-4.3H9.2"/><circle cx="10.4" cy="16.7" r=".6"/><circle cx="15.4" cy="16.7" r=".6"/></g>'],
+    'character.bubble': '<path d="M5 5h14a1.5 1.5 0 0 1 1.5 1.5v8A1.5 1.5 0 0 1 19 16h-6.5L8 20v-4H5a1.5 1.5 0 0 1-1.5-1.5v-8A1.5 1.5 0 0 1 5 5z"/><path d="M9 13l2-5 2 5M9.8 11.5h2.4"/>',
+    'chevron.up.chevron.down': ['<path d="M8 9.5 12 5.5l4 4M8 14.5l4 4 4-4"/>'],
+    'circle': ['<circle cx="12" cy="12" r="8.8"/>'],
+    'circle.circle': ['<circle cx="12" cy="12" r="8.6"/><circle cx="12" cy="12" r="3.4"/>'],
+    'circle.fill': ['<circle cx="12" cy="12" r="7.5"/>', '<circle cx="12" cy="12" r="8"/>'],
+    'clock.arrow.circlepath': ['<path d="M4.200 12a7.800 7.800 0 1 0 2.300-5.500M4 4.500v3.500h3.500M12 8.500v3.800l2.500 1.500"/>'],
+    'cloud.heavyrain': ['<path d="M7.5 14.5h9.2a4 4 0 0 0 .6-7.95A5.6 5.6 0 0 0 6.5 8 3.3 3.3 0 0 0 7.5 14.5z"/><path d="M7.5 17.5l-1 2.5M12 17.5l-1 2.5M16.5 17.5l-1 2.5"/>'],
+    'desktopcomputer': '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M9 20h6M12 16.5V20"/>',
+    'dial.medium': '<circle cx="12" cy="12" r="8.5"/><path d="M12 12l3.4-3.4M7.5 16.5h9"/>',
+    'dot.radiowaves.left.and.right': ['<circle cx="12" cy="12" r="1.8"/><path d="M8.4 8.4a5 5 0 0 0 0 7.2M15.6 8.4a5 5 0 0 1 0 7.2M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/>'],
+    'drop.triangle': ['<path d="M12 3.6c3.4 4.1 5.6 7 5.6 10.1a5.6 5.6 0 0 1-11.2 0c0-3.1 2.2-6 5.6-10.1z"/><path d="M12 12.2v3M12 17.5v.1"/>'],
+    'ev.charger': ['<rect x="5" y="4.5" width="9" height="15.5" rx="1.8"/><path d="M3.5 20.5h12M14 9h2.2a1.8 1.8 0 0 1 1.8 1.8v4.4a1.5 1.5 0 0 0 3 0V9l-2.2-2.2M8.2 8.5 7 12.2h2.8L8.6 16"/>'],
+    'figure.stand': '<circle cx="12" cy="4.5" r="1.9"/><path d="M12 8.5V15M8.3 10.3h7.4M12 15l-2.6 6M12 15l2.6 6"/>',
+    'figure.walk.arrival': ['<circle cx="13.5" cy="4.6" r="1.9"/><path d="M12.2 9.5 9.4 11v3.2M12.2 9.5l3 3.3 2.9.5M12.2 9.5l.9 5.6-3.3 6.2M13.1 15.1l3 2.4.7 3.7"/><path d="M5.5 5.5H3v13"/>'],
+    'folder': ['<path d="M3.5 7.5A1.5 1.5 0 0 1 5 6h4l2 2.2h8a1.5 1.5 0 0 1 1.5 1.5v8.8a1.5 1.5 0 0 1-1.5 1.5H5a1.5 1.5 0 0 1-1.5-1.5z"/>'],
+    'frying.pan': '<circle cx="10" cy="13.5" r="6.5"/><circle cx="10" cy="13.5" r="3.4"/><path d="M15.4 9.2 21 5"/>',
+    'gauge.with.dots.needle.33percent': ['<path d="M5.6 18.4A9 9 0 1 1 18.4 18.4"/><path d="M12 12 L7.98 8.10"/><circle cx="12" cy="12" r="1"/>'],
+    'gauge.with.dots.needle.67percent': ['<path d="M5.6 18.4A9 9 0 1 1 18.4 18.4"/><path d="M12 12 L16.02 8.10"/><circle cx="12" cy="12" r="1"/>'],
+    'gauge.with.dots.needle.100percent': ['<path d="M5.6 18.4A9 9 0 1 1 18.4 18.4"/><path d="M12 12 L15.96 15.96"/><circle cx="12" cy="12" r="1"/>'],
+    'hammer.circle.fill': ['<circle cx="12" cy="12" r="9.2"/><path d="M7.6 16.4l5.6-5.6"/><path d="M11.6 7.6l2-1.6 3.6 3.6-1.6 2z"/>', '<circle cx="12" cy="12" r="9.4" fill="currentColor" stroke="none"/><g style="stroke:var(--fill,#000);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M7.6 16.4l5.6-5.6"/><path d="M11.6 7.6l2-1.6 3.6 3.6-1.6 2z"/></g>'],
+    'hand.raised': '<rect x="7" y="10.5" width="10" height="9" rx="3"/><path d="M8.8 10.5V6M11.1 10.5V4.5M13.4 10.5V5M15.7 10.5V7M7 14.2 5 12.4"/>',
+    'heat.waves': '<path d="M4.5 6.5c1.5-1.5 1.5 1.5 3 0s1.5 1.5 3 0 1.5 1.5 3 0 1.5 1.5 3 0M4.5 12c1.5-1.5 1.5 1.5 3 0s1.5 1.5 3 0 1.5 1.5 3 0 1.5 1.5 3 0M4.5 17.5c1.5-1.5 1.5 1.5 3 0s1.5 1.5 3 0 1.5 1.5 3 0 1.5 1.5 3 0"/>',
+    'hifireceiver': ['<rect x="2.5" y="7.5" width="19" height="9.5" rx="2"/><circle cx="7.5" cy="12.2" r="2.2"/><path d="M13 10.8h5.5M13 13.6h4"/>'],
+    'keyboard': ['<rect x="2.5" y="6.5" width="19" height="11" rx="2.5"/><path d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M6 13.5h.01M18 13.5h.01M9.5 14h5"/>'],
+    'ladybug': ['<ellipse cx="12" cy="13.6" rx="5.6" ry="6.4"/><path d="M12 7.2v12.8M8.4 7.2a3.6 3.6 0 0 1 7.2 0M6.4 11H3.2M17.6 11h3.2M6.6 15.8H3.6M17.4 15.8h3M9.6 4.6 8 2.8M14.4 4.6 16 2.8"/>'],
+    'leaf.circle': '<circle cx="12" cy="12" r="9"/><path d="M8 15.5c0-4 2.6-6.6 7.6-7-.2 4.8-2.8 7.4-6.4 7.4M8 16.3c1.2-2.8 3-4.4 5-5.5"/>',
+    'lightbulb.slash': '<path d="M12 3.2a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2v.2h5v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3.2z"/><path d="M9.8 19.2h4.4M10.6 21.6h2.8M4 3.6l16 16.8"/>',
+    'list.bullet': '<path d="M9 7h11.4M9 12h11.4M9 17h11.4"/><circle cx="4.6" cy="7" r="0.9"/><circle cx="4.6" cy="12" r="0.9"/><circle cx="4.6" cy="17" r="0.9"/>',
+    'list.number': '<path d="M10 7h10.4M10 12h10.4M10 17h10.4M3.8 6.2 5.4 5v4.4M3.6 14.6c.2-1 2.7-1 2.7.2 0 1.2-2.7 1.8-2.8 3.2h2.9"/>',
+    'location.circle': ['<circle cx="12" cy="12" r="9"/><path d="M16.6 7.4 7.4 11.2l4.4 1 1 4.4z"/>', '<path fill-rule="evenodd" d="M12 2.8a9.2 9.2 0 1 0 0 18.4 9.2 9.2 0 0 0 0-18.4zM16.6 7.4l-3.6 9.2-1.2-4.4-4.4-1.2z"/>'],
+    'location.slash': ['<path d="M20 4 4 11l7 2 2 7z"/><path d="M3.5 3.5l17 17"/>', '<path d="M20 4 4 11l7 2 2 7z"/><path d="M3.5 3.5l17 17" stroke="currentColor" stroke-width="2"/>'],
+    'lungs': '<path d="M12 4v8.4M9.6 9C7 10 5 14 4.5 18c-.1 1.4 1.2 2 2.4 1.5 1.4-.6 2.6-1.8 2.6-3.6V9zM14.4 9c2.6 1 4.6 5 5.1 9 .1 1.4-1.2 2-2.4 1.5-1.4-.6-2.6-1.8-2.6-3.6V9z"/>',
+    'minus.circle.fill': ['<circle cx="12" cy="12" r="8.8"/><path d="M8 12h8"/>', '<path fill-rule="evenodd" d="M12 2.8a9.2 9.2 0 1 0 0 18.4 9.2 9.2 0 0 0 0-18.4zM7.6 11h8.8v2H7.6z"/>'],
+    'paperclip': ['<path d="M20 11.4 12.2 19.2a5 5 0 0 1-7-7l8-8a3.3 3.3 0 0 1 4.7 4.7L10 16.8a1.7 1.7 0 0 1-2.4-2.4l7.1-7.1"/>'],
+    'person.crop.circle': ['<circle cx="12" cy="12" r="9.2"/><circle cx="12" cy="9.6" r="3"/><path d="M6.2 18.2c1-2.3 3.2-3.6 5.8-3.6s4.8 1.3 5.8 3.6"/>', '<path fill-rule="evenodd" d="M12 2.6a9.4 9.4 0 1 0 0 18.8 9.4 9.4 0 0 0 0-18.8zm0 4.1a3.1 3.1 0 1 1 0 6.2 3.1 3.1 0 0 1 0-6.2zM6.8 17.6c.9-1.9 2.9-3 5.2-3s4.3 1.1 5.2 3A7.6 7.6 0 0 1 12 20.2a7.6 7.6 0 0 1-5.2-2.6z"/>'],
+    'person.crop.circle.badge.exclamationmark': '<circle cx="11" cy="12.6" r="8.4"/><circle cx="11" cy="10.4" r="2.8"/><path d="M5.8 17.6c1-2 2.8-3 5.2-3s4.2 1 5.2 3"/><path d="M20 3.6v4.2M20 10v.2"/>',
+    'scope': ['<circle cx="12" cy="12" r="6.2"/><circle cx="12" cy="12" r="1.6"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3"/>'],
+    'server.rack': '<rect x="4" y="4" width="16" height="5" rx="1.5"/><rect x="4" y="10" width="16" height="5" rx="1.5"/><rect x="4" y="16" width="16" height="4" rx="1.5"/><path d="M7 6.5h.01M7 12.5h.01M7 18h.01"/>',
+    'slider.horizontal.3': '<path d="M4 7h10M18 7h2M4 12h4M12 12h8M4 17h12M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="17" r="2"/>',
+    'speaker.minus.fill': ['<path d="M3.5 9.5H7l4.5-3.7v12.4L7 14.5H3.5z"/><path d="M15 12h5"/>', '<path d="M3 9.3h4l4.8-3.9v13.2L7 14.7H3z"/><rect x="14.5" y="11.2" width="6" height="1.7" rx=".85"/>'],
+    'speaker.plus.fill': ['<path d="M3.5 9.5H7l4.5-3.7v12.4L7 14.5H3.5z"/><path d="M15 12h5M17.5 9.5v5"/>', '<path d="M3 9.3h4l4.8-3.9v13.2L7 14.7H3z"/><rect x="14.5" y="11.2" width="6" height="1.7" rx=".85"/><rect x="16.65" y="9.05" width="1.7" height="6" rx=".85"/>'],
+    'square.and.arrow.up': ['<path d="M12 15V3.5M8 7l4-3.8L16 7M7.5 10.5H6a1.5 1.5 0 0 0-1.5 1.5v7.5A1.5 1.5 0 0 0 6 21h12a1.5 1.5 0 0 0 1.5-1.5V12a1.5 1.5 0 0 0-1.5-1.5h-1.5"/>'],
+    'square.and.pencil': ['<path d="M11 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V13"/><path d="M17.2 3.8a1.8 1.8 0 0 1 2.5 2.5l-7.4 7.4-3.4.9.9-3.4z"/>'],
+    'stairs': '<path d="M3.5 20.5h4.5v-4.5h4.5v-4.5h4.5V7h3"/>',
+    'stove': '<rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M4 9h16M8 6.3h.01M12 6.3h.01M16 6.3h.01"/><rect x="7.5" y="12" width="9" height="5.5" rx="1.2"/>',
+    'sun.snow': '<circle cx="9" cy="9" r="3.2"/><path d="M9 2.8v1.4M9 13.8v1.4M2.8 9h1.4M13.8 9h1.4M17.5 13v8M14 15l7 4M21 15l-7 4"/>',
+    'takeoutbag.and.cup.and.straw': '<path d="M4.5 9h9.5l-.9 11H5.4z"/><path d="M6.8 9V7a2.5 2.5 0 0 1 5 0v2"/><path d="M16.5 12h3.6l-.5 8h-2.6z M17.4 12V9.5l1.6-1"/>',
+    'thermometer.and.liquid.waves': '<path d="M10 14.4V5.2a2 2 0 0 1 4 0v9.2a4 4 0 1 1-4 0z"/><path d="M12 8.6v7"/><path d="M16 12c.9-.9 1.7-.9 2.5 0s1.7.9 2.5 0M16 15.5c.9-.9 1.7-.9 2.5 0s1.7.9 2.5 0"/>',
+    'thermometer.high': '<path d="M10 14.4V5.2a2 2 0 0 1 4 0v9.2a4 4 0 1 1-4 0z"/><path d="M12 6.2v9.5"/>',
+    'thermometer.medium.slash': '<path d="M10 14.4V5.2a2 2 0 0 1 4 0v9.2a4 4 0 1 1-4 0z"/><path d="M12 8.6v7"/><path d="M4.5 3.5l15 17"/>',
+    'thermometer.variable': '<path d="M10 14.4V5.2a2 2 0 0 1 4 0v9.2a4 4 0 1 1-4 0z"/><path d="M12 8.6v7"/><path d="M17.2 6.5h3M17.2 10h2M17.2 13.5h3"/>',
+    'tray.circle.fill': ['<circle cx="12" cy="12" r="9.2"/><path d="M6.8 13.4h3l1 1.6h2.4l1-1.6h3M6.8 13.4l1.3-4.4h7.8l1.3 4.4v3.2H6.8z"/>', '<circle cx="12" cy="12" r="9.4" fill="currentColor" stroke="none"/><g style="stroke:var(--fill,#000);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M6.8 13.4h3l1 1.6h2.4l1-1.6h3M6.8 13.4l1.3-4.4h7.8l1.3 4.4v3.2H6.8z"/></g>'],
+    'tv.and.mediabox': ['<rect x="2.5" y="4" width="19" height="11" rx="2"/><rect x="7" y="17.5" width="10" height="3" rx="1"/>'],
+    'tv.slash': ['<rect x="3" y="5.5" width="18" height="12" rx="2.5"/><path d="M8.500 20.500h7"/><path d="M3.5 3.5l17 17"/>'],
+    'wand.and.stars': ['<path d="M4 20 14 10M12.5 8.5l3 3"/><path d="M18 3v4M16 5h4M20 11v2.4M18.8 12.2h2.4M8 3.5v2.4M6.8 4.7h2.4"/>'],
+    'waveform.path.ecg': '<path d="M2.5 12.2h4l2-5.2 3.6 11 2.4-8 1.6 2.2h5.4"/>',
+    'wifi.exclamationmark': '<path d="M3 9.5a14 14 0 0 1 18 0M6 12.8a9.6 9.6 0 0 1 12 0M9 16a5.2 5.2 0 0 1 6 0"/><circle cx="12" cy="19" r="0.9"/><path d="M20.6 14v3.2M20.6 19.6v.2"/>',
+    'window.vertical.closed': '<rect x="5" y="3.5" width="14" height="17" rx="1.5"/><path d="M12 3.5v17M5 12h14"/>',
+    'window.vertical.open': '<rect x="5" y="3.5" width="14" height="17" rx="1.5"/><path d="M12 3.5v17M5 12h7M12 6.2l5.5 2.2v7.2L12 17.8"/>',
+    'windshield.front.and.heat.waves': '<path d="M3.4 17.6 6.2 7.2A2 2 0 0 1 8.1 5.8h7.8a2 2 0 0 1 1.9 1.4l2.8 10.4z"/><path d="M9 9.2c1 1 1 2.2 0 3.2M12 9.2c1 1 1 2.2 0 3.2M15 9.2c1 1 1 2.2 0 3.2"/><path d="M6 20.5h12"/>',
+    'xmark.octagon.fill': [p('M8.600 3.600h6.800l5 5v6.800l-5 5H8.600l-5-5V8.600zM9 9l6 6M15 9l-6 6'), fm('octagon', p('M8.600 3.200h6.800l5.400 5.400v6.800l-5.400 5.400H8.600l-5.400-5.400V8.600z'), p('M9 9l6 6M15 9l-6 6'))],
+    'zzz': '<path d="M4.5 5h5l-5 6.2h5M12 11.4h4.8L12 17.4h4.8M16.6 3.4h3.4l-3.4 4.1H20"/>',
+    'dishwasher': [appliance + applianceTop + c(12, 14.2, 3.8) + p('M9.7 14.8c1 1 3 1 4.3-.4'), fm('dishwasher', appliance, p('M4 8h16M7 5.8h.01M10 5.8h.01') + '<circle cx="12" cy="14.2" r="3.8"/>' + '<path d="M9.7 14.8c1 1 3 1 4.3-.4"/>')],
+    'washer': [appliance + applianceTop + c(12, 14.2, 4) + p('M9 14.5c1.5-1.5 4.5 1.5 6 0'), fm('washer', appliance, p('M4 8h16M7 5.8h.01M10 5.8h.01') + '<circle cx="12" cy="14.2" r="4"/>' + '<path d="M9 14.5c1.5-1.5 4.5 1.5 6 0"/>')],
+    'dryer': [appliance + applianceTop + c(12, 14.2, 4) + p('M10 12.2a2.5 2.5 0 0 1 4 .1'), fm('dryer', appliance, p('M4 8h16M7 5.8h.01M10 5.8h.01') + '<circle cx="12" cy="14.2" r="4"/>' + '<path d="M10 12.2a2.5 2.5 0 0 1 4 .1"/>')],
+    'battery.25percent': [battery(3.25)],
+    'battery.50percent': [battery(6.5)],
+    'battery.100percent': [battery(13)],
+    'stop.circle': dc('stop', rc(9, 9, 6, 6, 1.4), '<rect x="9" y="9" width="6" height="6" rx="1.4" fill="#000"/>'),
+    'pause.circle': dc('pause', p('M9.800 8.600v6.800M14.200 8.600v6.800')),
+    'xmark.circle': dc('xmark', p('M9 9l6 6M15 9l-6 6')),
+    'trash.circle': dc('trash', p('M8.600 9.400h6.800M10.200 9.400V8.200h3.600v1.200M9.400 9.400l.5 6.200h4.200l.5-6.200')),
+    'thermometer.snowflake': [p(thermo) + p('M9 8.5v7.200') + p('M17.500 5v7M14.500 6.750l6 3.500M20.500 6.750l-6 3.500'), p(thermo) + sg('M17.500 5v7M14.500 6.750l6 3.500M20.500 6.750l-6 3.500')],
+    'arrow.down.to.line': p('M12 4v11M7.500 10.500 12 15l4.500-4.500M5 20h14'),
+    'scribble': [p('M3.500 16.500c1.800-4.800 3-9.500 5-9.500 2.200 0 .5 8.500 2.700 8.500 2.100 0 1.600-6.500 3.400-6.500 1.700 0 1 5.500 2.500 5.500.9 0 1.400-1 2-2'), sg('M3.500 16.500c1.800-4.800 3-9.500 5-9.500 2.200 0 .5 8.500 2.700 8.500 2.100 0 1.600-6.500 3.400-6.500 1.700 0 1 5.500 2.500 5.500.9 0 1.400-1 2-2', 2.300)],
+    'water.waves': p('M3 7.500c1.500-1.600 3-1.600 4.500 0s3 1.600 4.500 0 3-1.600 4.500 0 3 1.600 4.500 0M3 12c1.500-1.600 3-1.600 4.500 0s3 1.600 4.500 0 3-1.600 4.500 0 3 1.600 4.500 0M3 16.500c1.500-1.600 3-1.600 4.500 0s3 1.600 4.500 0 3-1.600 4.500 0 3 1.600 4.500 0'),
+    'bag': [p('M5.500 8h13l-1 11.500a1.500 1.500 0 0 1-1.500 1.500H8a1.500 1.500 0 0 1-1.500-1.500z') + p('M9 10.500V7a3 3 0 0 1 6 0v3.500'), '<path d="M5.500 8h13l-1 11.500a1.500 1.500 0 0 1-1.500 1.500H8a1.500 1.500 0 0 1-1.500-1.500z"/>' + sg('M9 10.500V7a3 3 0 0 1 6 0v3.500', 2)],
+    'bolt.horizontal.fill': ['<g transform="rotate(90 12 12)"><path d="M13.300 2.800 5.200 13.200h5.400l-1 8 8.200-10.800h-5.500z"/></g>'],
+    'circle.dashed': ['<circle cx="12" cy="12" r="8.800" stroke-dasharray="3.100 3.800"/>', '<circle cx="12" cy="12" r="8.800" fill="none" stroke="currentColor" stroke-width="1.800" stroke-linecap="round" stroke-dasharray="3.100 3.800"/>'],
+    'list.clipboard': [p('M8.500 4.500H7a2 2 0 0 0-2 2V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6.500a2 2 0 0 0-2-2h-1.500') + rc(8.500, 3, 7, 3.500, 1.300) + p(clipLines),
+      fm('clipboard', '<path d="' + board + '"/>', p(clipLines) + '<rect x="8.500" y="3" width="7" height="3.500" rx="1.300"/>') + '<rect x="8.500" y="3" width="7" height="3.500" rx="1.300"/>'],
+    'eye': [p(eyeShape) + c(12, 12, 3), '<path fill-rule="evenodd" d="M12 5.500c-3.700 0-7 2-9.500 6.500 2.500 4.500 5.800 6.500 9.500 6.500s7-2 9.500-6.500C19 7.500 15.700 5.500 12 5.500zM12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/>'],
+    'sunrise': [p(sunHalf + sunRays + sunUp), '<path d="' + sunHalf + 'z"/>' + sg(sunRays + sunUp)],
+    'sunset': [p(sunHalf + sunRays + sunDown), '<path d="' + sunHalf + 'z"/>' + sg(sunRays + sunDown)],
+    'location.north': [p('M12 3.200 18.400 20 12 16.200 5.600 20z'), '<path d="M12 3.200 18.400 20 12 16.200 5.600 20z" stroke="currentColor" stroke-width="1.600" stroke-linejoin="round"/>'],
+    'gauge': [p('M5.600 18.400A9 9 0 1 1 18.400 18.400M12 12l3.400-4.200') + c(12, 12, 1)],
+    'hammer': ['<g transform="rotate(45 12 12)">' + rc(6.500, 4.500, 11, 5, 1.400) + p('M12 9.500v11') + '</g>',
+      '<g transform="rotate(45 12 12)"><rect x="6.500" y="4.500" width="11" height="5" rx="1.400"/>' + sg('M12 9.500v11', 2) + '</g>'],
+  };
+  // Extend an existing entry with a filled drawing (the outline is the kit's).
+  S['robotic.vacuum'] = [S['robotic.vacuum'][0], '<path fill-rule="evenodd" d="M12 4.500a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 10.200a2.300 2.300 0 1 1 0 4.600 2.300 2.300 0 0 1 0-4.600z"/><path d="M11.300 2.600h1.400v2.200h-1.400z"/>'];
+  S['cart'] = [S['cart'][0], '<path d="M6.200 7.500 7.700 15h10.500l1.800-7.500z" stroke="currentColor" stroke-width="1.400" stroke-linejoin="round"/>' + sg('M3 4.500h2.500l2.200 10.500h10.500', 1.800) + c(9, 19.200, 1.500) + c(17, 19.200, 1.500)];
+  S['clock'] = [S['clock'][0], '<path fill-rule="evenodd" d="M12 2.800a9.200 9.200 0 1 0 0 18.400 9.200 9.200 0 0 0 0-18.400zM11 7h2v4.900l2.900 1.700-1 1.700-3.900-2.300z"/>'];
+  Object.keys(more).forEach(function (k) { if (!S[k]) S[k] = more[k]; });
   /** Alias names the app uses for the same glyph. */
   var alias = { 'house.fill': 'house', 'shield.fill': 'shield', 'lightbulb.fill': 'lightbulb', 'lock.fill': 'lock', 'video.fill': 'video', 'camera.fill': 'camera',
     'person.fill': 'person', 'drop.fill': 'drop', 'flame.fill': 'flame', 'moon.fill': 'moon', 'star.fill': 'star', 'heart.fill': 'heart', 'bell.fill': 'bell',
@@ -162,7 +305,12 @@
     'exclamationmark.triangle.fill': 'exclamationmark.triangle', 'gearshape.fill': 'gearshape', 'thermometer': 'thermometer.medium', 'lock.open.fill': 'lock.open',
     'sun.max.fill': 'sun.max', 'cloud.fill': 'cloud', 'tv.fill': 'tv', 'speaker.wave.2.fill': 'speaker.wave.2', 'mic.fill': 'mic', 'pencil.circle': 'pencil',
     'door.left.hand.closed.fill': 'door.left.hand.closed', 'lightbulb.max': 'lightbulb', 'figure.walk.circle': 'figure.walk', 'shield.lefthalf.filled': 'shield',
-    'xmark.circle.fill': 'xmark', 'trash.fill': 'trash', 'refrigerator.fill': 'refrigerator', 'play.rectangle': 'film' };
+    'xmark.circle.fill': 'xmark', 'trash.fill': 'trash', 'refrigerator.fill': 'refrigerator', 'play.rectangle': 'film',
+    'chevron.forward': 'chevron.right', 'chevron.backward': 'chevron.left', 'arrow.uturn.backward.circle': 'arrow.uturn.left.circle',
+    'photo.on.rectangle.angled': 'photo.on.rectangle', 'paintbrush.pointed': 'paintbrush', 'speaker.slash.fill': 'speaker.slash',
+    'location.fill': 'location', 'clock.fill': 'clock', 'cart.fill': 'cart', 'bag.fill': 'bag', 'hammer.fill': 'hammer', 'eye.fill': 'eye',
+    'sunrise.fill': 'sunrise', 'sunset.fill': 'sunset', 'location.north.fill': 'location.north', 'list.clipboard.fill': 'list.clipboard',
+    'dishwasher.fill': 'dishwasher', 'washer.fill': 'washer', 'dryer.fill': 'dryer' };
   /** Symbols that always draw their fill drawing (the app asks for the fill variant). */
   var solid = { 'bolt.fill': 1, 'play.fill': 1, 'pause.fill': 1, 'stop.fill': 1, 'ellipsis': 1 };
 

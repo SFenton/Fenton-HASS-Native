@@ -78,20 +78,37 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Pickers: date pickers for dates and times (compact style in a form row)', verdict: 'pass', note: 'Compact DatePicker per moment, the Calendar app\'s Starts / Ends idiom (owner 2026-10-13).' },
-        { rule: 'Layout: two columns only when they fit', verdict: 'pass', note: 'DynamicGridLayout(minCellWidth: 320, maxColumns: 2): at 260 an iPad form sheet\'s columns were too narrow (2026-10-11).' },
-        { rule: 'Dynamic Type: reflow rather than truncate', verdict: 'pass', note: 'Picker drops below the label at accessibility sizes.' },
-        { rule: 'Error messages: say what is wrong and how to fix it', verdict: 'pass', note: '"Start date and time must be before end date and time. Vacation mode is disabled until the dates are fixed."' },
-        { rule: 'Materials: material row', verdict: 'pass', note: 'regularMaterial on a page, over the sheet ground in a sheet.' },
+
+        { rule: "Pickers: compact date picker when space is constrained; date and time in one row", verdict: "pass", note: "Each field is the system compact DatePicker (the Calendar app's Starts and Ends idiom) with date, hourAndMinute or both components; the system popover edits and confirms.", by: "apple-hig skill" },
+
+        { rule: "Entering data: validate dynamically and give feedback as soon as a problem is found", verdict: "pass", note: "An invalid range (return before start) shows a written 'Error: ...' alert beside the fields with a red glyph; the fields themselves do not turn red, so the error is not colour alone.", by: "apple-hig skill" },
+
+        { rule: "Entering data: prevent errors rather than only report them", verdict: "fix", note: "The pickers set no in: range, so Returns can be set before Starts and the error appears afterwards (ScheduleDateFields.swift line 106 passes only selection and components); Calendar constrains the end to the start. Low.", by: "apple-hig skill" },
+
+        { rule: "Buttons and Layout: 44 pt rows; labels never truncate at large text", verdict: "pass", note: "Each row has minHeight 44; ViewThatFits puts label and picker side by side when the label fits on one line, else the picker drops below (always at accessibility sizes), after 'Departure Time' once truncated (2026-10-11).", by: "apple-hig skill" },
+
+        { rule: "Feedback: a change that triggers a service call should not be lost", verdict: "fix", note: "With a commitDelay (0.9 s) the pending commit task is cancelled in onDisappear (line 100), so a person who picks a time and closes the sheet inside that window loses it silently, with no flush of the draft; commit on disappear instead of cancelling. Low-medium.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Use DatePicker with displayedComponents', verdict: 'pass', note: '.date, .hourAndMinute or both per Part.' },
-        { rule: 'ViewThatFits for reflow', verdict: 'pass', note: 'Side-by-side first, stacked as the fallback.' },
-        { rule: 'Debounce writes to the server', verdict: 'pass', note: 'commitDelay with a cancellable Task and a 3 s draft fallback; onDisappear cancels.' },
-        { rule: '@Environment(\\.dynamicTypeSize) rather than size class', verdict: 'pass', note: 'isAccessibilitySize decides the stacked layout.' },
+
+        { rule: "Data flow: avoid Binding(get:set:) in the view body", verdict: "fix", note: "selection builds a Binding with a setter that starts a Task, cancels another and mutates @State (lines 112 to 133); bind to a draft value and move the debounce into onChange(of:), or into a small model, so the side effect is not in a computed binding. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Resizability: ViewThatFits for horizontal-then-vertical arrangements", verdict: "pass", note: "ViewThatFits(in: .horizontal) tries label beside picker, then stacked, and a DynamicGridLayout puts two fields per row from a 320 pt minimum, with no device check.", by: "swiftui-pro skill" },
+
+        { rule: "Design: LabeledContent for title and control", verdict: "fix", note: "The label Text and the DatePicker are laid out by hand in an HStack or VStack, then the DatePicker's own title is hidden and re-supplied through accessibilityLabel; LabeledContent(field.label) { DatePicker(...).labelsHidden() } gives the same row and the accessibility pairing, with its stacking at large sizes. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Concurrency: cancellable task for a delayed commit", verdict: "pass", note: "A @MainActor Task sleeps commitDelay, reports once and falls back to the saved value after 3 s if Home Assistant never echoes it; a new pick cancels the previous task so one adjustment is one service call.", by: "swiftui-pro skill" },
+
+        { rule: "Views: one type per file; computed some View members", verdict: "fix", note: "ScheduleDateFields.swift holds ScheduleDateField, ScheduleDateFields, a Part extension and ScheduleDatePicker, and label and picker are computed some View properties. Low.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

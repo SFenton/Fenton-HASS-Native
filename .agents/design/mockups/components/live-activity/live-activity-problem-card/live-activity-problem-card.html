@@ -70,16 +70,17 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Live Activities: critical information is glanceable', verdict: 'pass', note: 'Device, problem and the one instruction; everything else is on the Vacuums page.' },
-        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'Glyph plus words plus the spoken "needs help" / "needs attention".' },
-        { rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Pill 36 pt in a 44 pt frame.' },
-        { rule: 'Notifications: interruption only when it matters', verdict: 'pass', note: 'Critical updates alert with sound, warnings are silent (spec section 5).' },
+        { by: 'apple-hig skill', rule: 'Live Activities: critical information is glanceable', verdict: 'pass', note: 'Device, problem, one instruction and up to three buttons (ProblemCardView.swift:19-41).' },
+        { by: 'apple-hig skill', rule: 'Color: severity is more than red versus amber', verdict: 'fix', note: 'Whether a card "stopped and needs you" (red) or "carries on" (amber) is shown only by circle, text and gradient color (ActivityStyle.swift:76-87); VoiceOver gets "needs help" or "needs attention" (line 26), sighted viewers get no word or shape for it. Add a short label or a different glyph shape per severity.' },
+        { by: 'apple-hig skill', rule: 'Buttons: 44 pt targets that stack at accessibility sizes', verdict: 'pass', note: 'At AX sizes the status and pills stack in a trailing VStack (ActivityButtons.swift:33-38); pills keep a 44 pt frame.' },
+        { by: 'apple-hig skill', rule: 'Color: contrast on a gradient ground', verdict: 'pass', note: 'Severity light tints and 82% white text are tested at 4.5:1 on the gradient (ActivityStyle.swift:60-87; ProblemCardView.swift:59).' },
+        { by: 'apple-hig skill', rule: 'Notifications: alert only when it matters', verdict: 'pass', note: 'The client passes alertConfiguration nil for local updates (SystemLiveActivityClient.swift:34); critical alerts come from the relay\'s push.' },
       ],
       swiftui: [
-        { rule: 'Dynamic Type reflow, not truncation', verdict: 'pass', note: 'lineLimit loosens at accessibility sizes; the instruction has no limit.' },
-        { rule: 'Avoid hard-coded colours', verdict: 'departure', note: 'Severity reds and ambers are fixed values tested for contrast on the card ground (ActivityStyle.Severity); the card is always dark.' },
-        { rule: 'Avoid AnyView', verdict: 'departure', note: 'ActivityActions wraps the intent button in AnyView (the intent type lives in the widget extension).' },
-        { rule: 'ContainerRelativeShape for widget corners', verdict: 'pass', note: 'The hairline uses ContainerRelativeShape so it follows the system corner.' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Dynamic Type reflows, never truncates', verdict: 'pass', note: 'lineLimit widens at accessibility sizes and the instruction has no limit (ProblemCardView.swift:50, 54, 60).' },
+        { by: 'swiftui-pro skill', rule: 'views.md: container-relative shapes', verdict: 'pass', note: 'The hairline is a ContainerRelativeShape stroke so it follows the system corner (line 36).' },
+        { by: 'swiftui-pro skill', rule: 'design.md: semantic colors', verdict: 'departure', note: 'Severity reds and ambers and 82% white are fixed values contrast-tested on a dark card (ActivityStyle.Severity).' },
+        { by: 'swiftui-pro skill', rule: 'performance.md: avoid AnyView', verdict: 'departure', note: 'The buttons come through ActivityActions (AnyView) from the extension (ActivityActions.swift:11).' },
       ],
     },
     notes: [

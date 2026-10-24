@@ -72,16 +72,18 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Scroll views: show part of the next item so people know to scroll', verdict: 'pass', note: 'The compact row is wider than the window, so the fifth chip is cut by the edge.' },
-        { rule: 'Layout: respect the hinge and safe areas', verdict: 'pass', note: 'The rail stops 24 pt short of the fold (ChipRailMetrics.hingeGap, direction-g.md Navigation); measured only in a window that has a hinge.' },
-        { rule: 'Layout: wrap rather than hide on wide screens', verdict: 'pass', note: 'FlowLayout on regular width, leading aligned, mirrored in right to left.' },
-        { rule: 'Accessibility: 44 pt targets', verdict: 'pass', note: '48 pt chips, 8 pt apart.' },
+        { rule: "Layout: do not hide content when there is room; make scrollable content apparent", verdict: 'pass', note: "Regular width wraps every chip into view, compact scrolls with the next chip peeking (ChipRail.swift:36-47).", by: 'apple-hig skill' },
+        { rule: "Layout: keep the same function at every size", verdict: 'fix', note: "The mode comes from the size class alone (ChipRail.swift:20): at accessibility text sizes a compact rail is still one sideways row of near screen-wide chips (render, ax5), so the later chips are off screen.", by: 'apple-hig skill' },
+        { rule: "Designing for iPhone Duo: stop clear of the fold", verdict: 'pass', note: "A rail with a hinge insets 24 pt short of it, measured once on the full-width frame (ChipRail.swift:22-34, ChipRailLayout.swift:29-31).", by: 'apple-hig skill' },
+        { rule: "Right to left: start at the leading edge", verdict: 'pass', note: "The hosted scroller places a short row at the leading edge and the long one at the right in RTL (ChipRailLayout.swift:62-76).", by: 'apple-hig skill' },
+        { rule: "Scroll views: avoid nesting scroll views of the same orientation", verdict: 'pass', note: "The compact rail is horizontal inside a vertical page, which the HIG allows (ChipRail.swift:57-65).", by: 'apple-hig skill' },
+        { rule: "Accessibility: reading order", verdict: 'pass', note: "Chips are Buttons in source order, with the hosting view's accessibility switch preserved (HostedHorizontalScroll.swift:80-85).", by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use ScrollView for horizontal rows', verdict: 'departure', note: 'The compact rail hosts a UIScrollView (HostedHorizontalScroll): a nested SwiftUI ScrollView wrote its offset through the page view graph on every frame (status-rail.md, 2026-10-16: main-thread samples 6,020 to 2,943, ScrollViewCommitMutation 852 to 0).' },
-        { rule: 'Do not measure geometry per frame', verdict: 'pass', note: 'The hinge inset is measured only in a window with a hinge, from a full-width frame outside the padding (no feedback loop).' },
-        { rule: 'Use Layout for wrapping', verdict: 'pass', note: 'FlowLayout places rows from the leading edge.' },
-        { rule: 'Leading alignment is the container\'s job', verdict: 'pass', note: 'hostedContentFrame gives the hosted view exactly the row\'s natural width at the leading edge; tested in ChipRailTests and ChipAlignmentJourneyTests.' },
+        { rule: "Avoid UIKit unless needed", verdict: 'departure', note: "A hosted UIScrollView carries the compact rail (ChipRail.swift:54-65) to keep drags off the page's view graph (patterns/status-rail.md, AGENTS.md main-thread invariant).", by: 'swiftui-pro skill' },
+        { rule: "Measure with onGeometryChange, only when needed", verdict: 'pass', note: "Only a window with a hinge measures (ChipRail.swift:27-34); the frame is measured outside the padding to avoid a feedback loop.", by: 'swiftui-pro skill' },
+        { rule: "ViewThatFits or reflow at large text", verdict: 'fix', note: "Nothing in ChipRail reads dynamicTypeSize; an accessibility-size branch to .wrap would show every chip.", by: 'swiftui-pro skill' },
+        { rule: "FlowLayout is a Layout, not nested stacks", verdict: 'pass', note: "Regular width uses a custom FlowLayout (ChipRail.swift:44).", by: 'swiftui-pro skill' },
       ],
     },
     notes: [

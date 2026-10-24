@@ -78,15 +78,13 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Action sheets: destructive in red, Cancel separate', verdict: 'pass', note: 'confirmationDialog with role .destructive and role .cancel.' },
-        { rule: 'Alerts: clear title, message that says what happens', verdict: 'pass', note: 'The alert title "Switch to Rooms" is a verb phrase and the message says what is discarded.' },
-        { rule: 'Alerts: titles are sentence-like, with a question for a choice', verdict: 'fix', note: 'The two titles disagree: "Switch to Rooms" (no question mark) and "Switch to Area?"; the alert reuses "Switch to Rooms" with Continue where the dialog\'s button is "Switch to Rooms". Align the copy.' },
-        { rule: 'Confirmation: avoid for reversible actions', verdict: 'pass', note: 'It asks only when something would be lost (a drawn area, a room selection).' },
+        { rule: 'Action sheets: choices for an intentional action', verdict: 'pass', note: 'Picking the other segment opens a confirmationDialog with a destructive switch and the system Cancel (VacuumTabs.swift:91-110); it asks only when a drawn area or room selection would be lost.', by: 'apple-hig skill' },
+        { rule: 'Alerts: titles and punctuation', verdict: 'fix', note: 'The dialog title is "Switch to Rooms" in one case and "Switch to Area?" in the other (VacuumTabs.swift:113), and the alert on the Rooms section reuses "Switch to Rooms" with a Continue button (VacuumTabs.swift:322); one sentence-style title and one verb per decision would read the same on every path.', by: 'apple-hig skill' },
+        { rule: 'Alerts and action sheets: one decision, one presentation', verdict: 'fix', note: 'The same "discard the drawn area" choice is an action sheet from the segment, but an alert from a room card (VacuumTabs.swift:322) and from the map (VacuumMapPanel.swift:128); HIG sends choices tied to an intentional action to an action sheet.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Prefer confirmationDialog(presenting:) with a message', verdict: 'pass', note: 'confirmationDialog(_, isPresented:, titleVisibility: .visible, presenting:) with a message closure.' },
-        { rule: 'Use role on buttons', verdict: 'pass', note: '.destructive on Switch to Rooms / Area; .cancel on Cancel.' },
-        { rule: 'Do not attach the same alert twice', verdict: 'fix', note: 'The Rooms section and the map frame each own an alert with the same copy (VacuumRoomsTab and VacuumMapFrame); one shared presenter would keep them in step.' },
+        { rule: 'Presentation: attach confirmationDialog to its trigger', verdict: 'fix', note: 'The dialog hangs on the Controls tab\'s root VStack with a hand-made Binding(get:set:) (VacuumTabs.swift:91); attached to the segmented picker with confirmationDialog(item:) it would animate from its source and drop the Boolean.', by: 'swiftui-pro skill' },
+        { rule: 'Do not repeat the same presenter', verdict: 'fix', note: 'Two alerts with identical copy are owned by VacuumRoomsTab and VacuumMapFrame, each with its own pending-zone state; one shared presenter would keep them in step.', by: 'swiftui-pro skill' },
       ],
     },
 

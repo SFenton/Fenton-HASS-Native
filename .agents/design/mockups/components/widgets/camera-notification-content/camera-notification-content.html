@@ -65,17 +65,16 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Notifications: custom content should be glanceable', verdict: 'pass', note: 'A picture and one badge.' },
-        { rule: 'Notifications: action buttons use the system presentation', verdict: 'pass', note: 'Buttons are notificationActions set at runtime.' },
-        { rule: 'Video: no autoplay with sound', verdict: 'pass', note: 'The player is muted.' },
-        { rule: 'Feedback: show progress for a network wait', verdict: 'pass', note: 'A white spinner top-left until the first frame.' },
-        { rule: 'Feedback: show failure', verdict: 'fix', note: 'On failure nothing says so: the snapshot stays with no spinner and no badge; debug builds print the step, release builds are silent.' },
+        { by: 'apple-hig skill', rule: 'Notifications: custom content is glanceable', verdict: 'pass', note: 'A 16:9 picture and one Live badge (NotificationViewController.swift:171-209); the title, body and buttons stay the system\'s (defaultContentHidden is false).' },
+        { by: 'apple-hig skill', rule: 'Notifications: action buttons use the system presentation', verdict: 'pass', note: 'extensionContext.notificationActions come from the payload (line 40); every button is forwarded to the app (lines 50-54).' },
+        { by: 'apple-hig skill', rule: 'Playing video: no sound without a request', verdict: 'pass', note: 'The HLS player is created muted (line 142) and has no controls.' },
+        { by: 'apple-hig skill', rule: 'Feedback: say when something failed', verdict: 'fix', note: 'On failure the badge branch draws nothing (lines 200-208): a signed-out extension (failed = true, line 79) or a failed stream leaves a black box or a stale snapshot labelled "camera snapshot"; show a short "Live view unavailable" line.' },
+        { by: 'apple-hig skill', rule: 'Color: a fixed video surface', verdict: 'departure', note: 'Black ground with a white-on-red badge in every appearance (lines 176, 205); it is a video surface inside system chrome, as in direction-g.md Layers.' },
       ],
       swiftui: [
-        { rule: 'Combine accessibility elements', verdict: 'pass', note: 'accessibilityElement(children: .ignore) with a label that tracks isLive.' },
-        { rule: 'Do not block the main actor', verdict: 'pass', note: 'MJPEG scanning runs in a Task; the model is @MainActor @Observable.' },
-        { rule: 'Shared state through the app group', verdict: 'pass', note: 'Credentials come from the shared Keychain access group; the extension links UserNotificationsUI explicitly.' },
-        { rule: 'Colour', verdict: 'departure', note: 'Black ground and white/red badge are fixed (a video surface); the system provides the appearance of the surrounding notification.' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: group into one labelled element', verdict: 'pass', note: 'accessibilityElement(children: .ignore) with a label that switches between "snapshot" and "live camera" (lines 194-195).' },
+        { by: 'swiftui-pro skill', rule: 'api.md: avoid UIKit unless the API is UIKit', verdict: 'departure', note: 'The content extension is a UIViewController hosting SwiftUI (lines 13-30) and the player is an AVPlayerLayer view (lines 213-230) because UNNotificationContentExtension and SwiftUI VideoPlayer (which adds controls) require it.' },
+        { by: 'swiftui-pro skill', rule: 'performance.md: do not iterate a byte stream one byte at a time', verdict: 'fix', note: 'streamMJPEG awaits URLSession.AsyncBytes one byte per iteration (line 112) inside an extension with a small memory budget; read in chunks (for example with a delegate or buffered reads) and scan frames.' },
       ],
     },
     notes: [

@@ -70,20 +70,22 @@
     ],
 
     reviews: {
-      date: REVIEW_DATE,
+      date: '2026-10-23',
       hig: [
-        { rule: 'Privacy: a pre-alert screen has one button titled Continue and no other way out', verdict: 'pass', note: 'Continue only, no Close and no swipe-down on the asking stages; the system alert holds the decline.' },
-        { rule: 'Sheets: a sheet needs a visible way to dismiss it', verdict: 'departure', note: 'The two asking stages drop the Close every modal carries: HIG Privacy wins over the modal pattern (.agents/pages/settings/location.md Decisions).' },
-        { rule: 'Dark Mode: follow the system appearance', verdict: 'departure', note: 'Always dark (preferredColorScheme(.dark)), like every sheet in Direction G v1, so the secondary copy stays above 4.5:1 (location.md Decisions; direction-g-plan Decisions 3).' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Off and Approximate use red and amber and also say "Off" and "Approximate"; the symbol changes shape.' },
-        { rule: 'Buttons: the primary action is prominent, one per screen', verdict: 'pass', note: 'One PrimaryButton at the end of the content.' },
+        { rule: 'Privacy, pre-alert screens: one Continue and no other way out', verdict: 'pass', note: 'isPreAlert drops Close and sets interactiveDismissDisabled; the button reads Continue, never Allow (LocationPermissionCopy.swift:36; LocationPermissionView.swift:62-67).', by: 'apple-hig skill' },
+        { rule: 'Privacy: explain purpose and where data goes before asking', verdict: 'pass', note: 'Three points: arrivals and departures, only to your server, light on battery (LocationPermissionCopy.swift:110-117), plus a footnote naming the option to pick.', by: 'apple-hig skill' },
+        { rule: 'Sheets: display one sheet at a time', verdict: 'fix', note: 'From the Profile tab the permission screen is a second page sheet over the Your Summary sheet (LocationAccountSection.swift:14-16, mockup note), which the HIG says to avoid.', by: 'apple-hig skill' },
+        { rule: 'Sheets: use the smallest detent that shows the content', verdict: 'fix', note: 'hassSheet(.page, height: .full) (LocationPermissionSheet.swift:17) although there is no tab bar or navigation; the owner\'s 2026-10-16 default is fitted, full only for sheets that navigate.', by: 'apple-hig skill' },
+        { rule: 'Color: status beyond colour', verdict: 'pass', note: 'Off reads red and Approximate amber, and the words "Off" and "Approximate" carry the meaning (LocationStatusRow.swift:38-45).', by: 'apple-hig skill' },
+        { rule: 'Dark Mode: follow the system appearance', verdict: 'departure', note: 'Always dark (.preferredColorScheme(.dark), LocationPermissionView.swift:68-70) so the secondary copy stays above 4.5:1 (location.md Decisions, direction-g-plan Decisions 3); other sheets default to the system appearance (HassModal.swift:243), so this one is the exception.', by: 'apple-hig skill' },
+        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'ViewThatFits stacks the status row; the symbol and point glyphs are @ScaledMetric; the action sits at the end of the scroll, not pinned (:118-129).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use presentationDetents sized to the content', verdict: 'pass', note: 'hassSheet(.page, height: .full): full height is deliberate (the sheet changes length as the stage changes).' },
-        { rule: 'interactiveDismissDisabled only where the flow requires it', verdict: 'pass', note: 'Only while copy.isPreAlert.' },
-        { rule: 'Scaled metrics', verdict: 'pass', note: 'symbolSize and symbolWidth are @ScaledMetric; the status row uses ViewThatFits for AX.' },
-        { rule: 'Semantic colours from tokens', verdict: 'pass', note: 'Ink.action, danger and warning; the cell is secondarySystemGroupedBackground in the dark scheme.' },
-        { rule: 'ViewThatFits for layouts that overflow', verdict: 'pass', note: 'LocationStatusRow.' },
+        { rule: 'Navigation: toolbar content that depends on state', verdict: 'pass', note: 'SheetCloseItem is added only when !copy.isPreAlert inside .toolbar (LocationPermissionView.swift:61-65).', by: 'swiftui-pro skill' },
+        { rule: 'API: open Settings through the environment', verdict: 'pass', note: 'openURL with UIApplication.openSettingsURLString, or an injected closure (:139-144).', by: 'swiftui-pro skill' },
+        { rule: 'Design: semantic fonts and scaled symbol', verdict: 'pass', note: 'title2.bold, body, footnote; .font(.system(size:)) uses a @ScaledMetric size (:24, :79).', by: 'swiftui-pro skill' },
+        { rule: 'Resizability: presence only on phones', verdict: 'departure', note: 'LocationCoordinator is nil on iPad, so no sheet and no Account row (ProfileTab.swift:16-17: an iPad is not a presence device).', by: 'swiftui-pro skill' },
+        { rule: 'Resizability: page sheet on the unfolded Duo', verdict: 'fix', note: 'The 704 pt page sheet is centred and its placement against the hinge band was never run on a device (mockup note).', by: 'swiftui-pro skill' },
       ],
     },
 

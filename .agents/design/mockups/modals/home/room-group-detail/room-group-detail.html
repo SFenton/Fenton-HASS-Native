@@ -92,24 +92,28 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Sheets: a sheet may hold a navigation hierarchy; give it a close control', verdict: 'pass', note: 'Back on the pushed page and the circle x Close at every depth.' },
-        { rule: 'Gestures: do not fight the scroll view', verdict: 'pass', note: 'BrightnessDrag takes horizontal drags only; vertical drags scroll.' },
-        { rule: 'Haptic feedback: use sparingly and meaningfully', verdict: 'pass', note: 'A selection tick every 10% of brightness, not on every frame.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Words and glyphs accompany every fill (percentage, Detected, Open).' },
-        { rule: 'Typography: support Dynamic Type', verdict: 'pass', note: 'Tiles scale and stack at AX5; only the transient bubble is capped at xxLarge, and VoiceOver reads the tile\'s value instead.' },
-        { rule: 'Sheets: prefer page or form sizing on iPad', verdict: 'pass', note: 'Inherits the overview\'s 704 pt page sheet; up to four tile columns.' },
-        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'departure', note: 'Opaque sheet ground and sheet-cell tiles, as direction-g.md Sheets and modal-sheet.md.' },
+        { rule: "Sheets: a sheet can contain a navigation hierarchy; Back replaces Cancel on later steps", verdict: 'pass', note: "The room page is a plain push inside the overview's NavigationStack with the system Back and the circle-X Close at every level (RoomGroupDetailPage.swift:35-39, RoomOverviewSheet.swift:32-41).", by: 'apple-hig skill' },
+        { rule: "Gestures: give more than one way to interact; do not assume a specific gesture", verdict: 'pass', note: "A brightness tile sets level by horizontal drag and flips power on tap, while VoiceOver and Switch Control step 10% with the adjustable action (BrightnessTile.swift:143-149).", by: 'apple-hig skill' },
+        { rule: "Playing haptics: use selection feedback for changing values", verdict: 'pass', note: "A selection haptic ticks every 10% during a drag through sensoryFeedback (BrightnessTile.swift:123-125) and stays silent at rest; the lift effect is dropped under Reduce Motion (line 119).", by: 'apple-hig skill' },
+        { rule: "Accessibility: do not rely on colour alone", verdict: 'pass', note: "A lit tile prints its percentage or Off; occupancy swaps the motion-sensor glyph between variants and reads Occupied or Not Occupied (RoomGroupDetail.swift:55-59); an unavailable tile dims only the glyph and says Unavailable at 4.5:1.", by: 'apple-hig skill' },
+        { rule: "Layout and Dynamic Type: rows grow and reflow rather than clip", verdict: 'pass', note: "The detail grid minimum is @ScaledMetric 140 with equal-height tiles (RoomGroupDetail.swift:19, 33-39), so xxxLarge and AX5 go to one column (states long-text, ax5).", by: 'apple-hig skill' },
+        { rule: "Sheets: Cancel or Close on the leading edge of a single-view sheet, Done trailing", verdict: 'departure', note: "Every modal carries the circle-X Close at the trailing edge (owner, 2026-10-13: 'Done button in top right can just be circle X close button', HassModal.swift:5-9, patterns/modal-sheet.md); a saving sheet keeps its own confirm.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Accessibility adjustable actions for sliders', verdict: 'pass', note: 'BrightnessTile: accessibilityAdjustableAction steps 10%, with a hint.' },
-        { rule: 'sensoryFeedback with a trigger', verdict: 'pass', note: '.sensoryFeedback(.selection, trigger: hapticStep) filtered to drag-to-drag changes.' },
-        { rule: 'Animations respect Reduce Motion', verdict: 'pass', note: 'motionSafeAnimation: the lift becomes a shadow only; colour cross-fades at 0.2 s.' },
-        { rule: 'Optimistic UI with rollback', verdict: 'pass', note: 'OptimisticActions with .liveChange: a rejected call rolls back, a live change wins.' },
-        { rule: 'Explicit service calls, not toggle', verdict: 'departure', note: 'turn_on and turn_off through LightControl, never toggle: Presence Based Lighting\'s Presence Lock reverts toggles. A recorded departure from web parity (room-overview-sheet.md).' },
-        { rule: 'Scaled metrics', verdict: 'pass', note: '@ScaledMetric minTileWidth = 140 on a four-column cap.' },
+        { rule: "navigationDestination(for:) with a value, not NavigationLink(destination:)", verdict: 'pass', note: "RoomOverviewSheet registers navigationDestination(for: RoomGroup.self) once for the stack (line 32) and tiles append to a path array.", by: 'swiftui-pro skill' },
+        { rule: "Never use onTapGesture for a tappable element", verdict: 'pass', note: "The brightness tile needs onTapGesture beside a horizontal drag (a Button cannot share the gesture) and adds .isButton plus an accessibilityAction for the tap (BrightnessTile.swift:88, 136-137), as the rule asks when the gesture is unavoidable.", by: 'swiftui-pro skill' },
+        { rule: "Fixed size must not defeat Dynamic Type", verdict: 'departure', note: "The drag bubble is capped at xxLarge (BrightnessTile.swift:244): a transient 60 x 32 pt capsule over the tile edge would cover the tile if it grew; VoiceOver hears the value on the tile instead.", by: 'swiftui-pro skill' },
+        { rule: "Optimistic state with rollback, one state path", verdict: 'pass', note: "OptimisticActions with .liveChange rules per light shows a tap at once and yields to any live report (RoomGroupDetailPage.swift:40-45); a 4 s timeout clears a value Home Assistant never echoed (BrightnessTile.swift:37).", by: 'swiftui-pro skill' },
+        { rule: "Toolbars and presentation: use the semantic placement for a Close button", verdict: 'fix', note: "SheetCloseItem places the circle-X Close as .confirmationAction (HassModal.swift:26), a confirming slot, although it only dismisses. On the iPhone Duo outer display that slot is a prominent action, below primary navigation (Back, Close) at the top of the vertical bar (HIG Duo, Vertical controls). Use .cancellationAction with role .close.", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

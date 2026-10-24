@@ -11,7 +11,8 @@
 | Touch shared behavior (grids, tiles, chips, sheets) | [patterns/README.md](patterns/README.md), then [audit/README.md](audit/README.md) for known duplicates |
 | Restyle a screen, tile, chip, sheet or spinner | [design/direction-g.md](design/direction-g.md), build order in [design/direction-g-plan.md](design/direction-g-plan.md) |
 | The app icon or its alternates (Settings → App Icon) | [design/direction-g.md](design/direction-g.md) (App icon); regenerate the PNGs with `tools/render_app_icons.sh` |
-| Any visible change (before code): mockups and a proposal for the owner | [workflow/propose-first.md](workflow/propose-first.md), mockups in [design/mockups](design/mockups/README.md) |
+| See how a page, modal or component looks and moves today (all devices and states) | [design/mockups](design/mockups/README.md) (atlas: pages, modals, components, flows; `catalog.json`) |
+| Any visible change (before code): mockups and a proposal for the owner | [workflow/propose-first.md](workflow/propose-first.md); look the surface up in the atlas first, update it with the change |
 | A design choice the owner hasn't made | [skills/design-decision](skills/design-decision/SKILL.md) |
 | Write or review SwiftUI | [.claude/skills/swiftui-pro](../.claude/skills/swiftui-pro/SKILL.md), applied per [workflow/swiftui-pro.md](workflow/swiftui-pro.md) |
 | Fix a reported issue | [skills/fix-reported-issue](skills/fix-reported-issue/SKILL.md) |

@@ -94,22 +94,28 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Tab bars: five or fewer tabs, Settings last', verdict: 'pass', note: 'Climate is the third tab; the iPad flyout and the Duo rail carry the same five sections.' },
-        { rule: 'Pop-up buttons: show the current choice, at least 44 pt', verdict: 'pass', note: 'HubPicker is a Menu holding an inline Picker (the current choice is checked); 44 pt minimum frame.' },
-        { rule: 'Layout: respect readable width on large screens', verdict: 'pass', note: 'Column 720 pt, Whole Home 640 pt, centred on iPad and the unfolded Duo.' },
-        { rule: 'Accessibility: adjustable elements for custom sliders', verdict: 'pass', note: 'Each handle is accessibilityAdjustable (the web hid them).' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Action line text plus marker colour; notices carry words.' },
-        { rule: 'Materials: content sits on modules, glass only for navigation', verdict: 'departure', note: 'Whole Home\'s dial has no card behind it (owner 2026-10-16: "takes up too much space now and I don\'t want the card background"); it reads on the dimmed wallpaper with 92% white supporting text (3.8:1 at 72%, measured).' },
+        { rule: "Designing for iPhone Duo: reserved regions and the fold", verdict: 'fix', note: "ClimatePage is a single centred 720 pt column with no hinge read (ClimateScreen.swift:76-79); on the unfolded Duo landscape the fold band falls across the dial's readout and cool-to handle and across the hub pill (render, duo-unfolded-landscape: the unit and caption sit under the fold).", by: 'apple-hig skill' },
+        { rule: "Accessibility: adjustable elements for a custom slider-like control", verdict: 'pass', note: "Each handle is its own adjustable element with a spoken value; ring, trails and marker are hidden; the readout is one element (ThermostatDial.swift:199-234).", by: 'apple-hig skill' },
+        { rule: "Pop-up buttons: show the current selection, 44 pt target", verdict: 'pass', note: "HubPicker is a Menu over an inline Picker with a 44 pt minimum frame, label and value for VoiceOver (ClimateComponents.swift:128-156), disabled when there are no options.", by: 'apple-hig skill' },
+        { rule: "Layout: readable width on large screens", verdict: 'pass', note: "Column capped at 720 pt, Whole Home at 640 pt, centred (ClimateScreen.swift:76, 130); contact tiles scale with type (line 30).", by: 'apple-hig skill' },
+        { rule: "Feedback: if a command cannot be carried out, say so", verdict: 'fix', note: "A rejected set_temperature rolls the handles back with no message (ClimateThermostatDial.swift:96-101, the pattern is deliberate 'no error state'); a person who dragged to 68 sees it snap to 71 and nothing explains why. Show a brief inline note or an error haptic.", by: 'apple-hig skill' },
+        { rule: "Materials: content sits on modules, not bare wallpaper", verdict: 'departure', note: "The Whole Home dial has no card behind it (owner, 2026-10-16: 'takes up too much space now and I don't want the card background'); supporting text is 92% white on the dimmed wallpaper (thermostat-dial.md).", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'ScaledMetric for fixed sizes', verdict: 'pass', note: 'The dial numeral (@ScaledMetric(relativeTo: .largeTitle) 76), the contact tile minimum (160 relative to subheadline).' },
-        { rule: 'Avoid minimumScaleFactor for layout', verdict: 'departure', note: 'The readout uses minimumScaleFactor(0.4) inside the ring: the ring cannot grow with text, so scaling is the bounded fallback (thermostat-dial.md); one line per row so nothing wraps into the ring.' },
-        { rule: 'Animate with the app\'s tokens', verdict: 'pass', note: 'MotionTokens.quick for handles, stateColorTransition for colours; nil under Reduce Motion.' },
-        { rule: 'Stable identity and no per-frame state writes', verdict: 'pass', note: 'scrollTelemetry only; the dial edits local @State until commit.' },
-        { rule: 'Views read one box each', verdict: 'pass', note: 'ClimatePage reads through ClimateController lookups; commits fan out only for a range on the global thermostat.' },
+        { rule: "ScaledMetric for fixed sizes", verdict: 'pass', note: "The dial numeral is @ScaledMetric(relativeTo: .largeTitle) 76 (ThermostatDial.swift:56) and the contact minimum 160 relative to .subheadline (ClimateScreen.swift:30).", by: 'swiftui-pro skill' },
+        { rule: "Avoid minimumScaleFactor for layout", verdict: 'departure', note: "The readout shrinks to 0.4 inside the fixed ring (ThermostatDial.swift:196) because the ring cannot grow with text; thermostat-dial.md records it as the bounded fallback.", by: 'swiftui-pro skill' },
+        { rule: "Prefer bindings projected from state over Binding(get:set:) in body", verdict: 'fix', note: "HubPicker builds Binding(get:set:) inside body (ClimateComponents.swift:130); a Picker over an optional with onChange or a Menu of Buttons would avoid it.", by: 'swiftui-pro skill' },
+        { rule: "Do not create objects in a view body", verdict: 'fix', note: "ClimateScreen.body constructs a ClimateController on every evaluation (ClimateScreen.swift:10) that ClimatePage's @State then discards after the first; build it once in @State.", by: 'swiftui-pro skill' },
+        { rule: "Animate with the app tokens and Reduce Motion", verdict: 'pass', note: "Handles glide on MotionTokens.quick, nil under Reduce Motion or while dragging (ThermostatDial.swift:89); colours cross-fade at 0.2 s reduced.", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

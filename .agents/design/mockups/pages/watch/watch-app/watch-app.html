@@ -43,7 +43,7 @@
     transitions: [],
     a11y: [
       { rule: 'Name', note: 'The title is labelled "S and H" (AppBranding.spokenName, matching CFBundleSpokenName); "S+H" visually.' },
-      { rule: 'Reading order', note: 'The house glyph is decorative (a system symbol with no label), then the name, then "Coming soon".' },
+      { rule: 'Reading order', note: 'The house glyph first: Image(systemName:) has no label or hidden trait, so VoiceOver reads the symbol\'s own name ("house"), then "S and H", then "Coming soon".' },
       { rule: 'Dynamic Type', note: 'All text uses text styles (.title glyph, .headline, .footnote), so it scales; the content has no scroll view, so at the largest sizes it can clip on a small Watch. Not run on a device.' },
       { rule: 'Contrast', note: 'White and system secondary on black.' },
       { rule: 'Targets', note: 'Nothing is interactive.' },
@@ -51,17 +51,20 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'watchOS: glanceable, one task per screen', verdict: 'pass', note: 'One message.' },
-        { rule: 'watchOS: do not ship a screen with no function', verdict: 'fix', note: 'A placeholder target builds but does nothing; planned scope is in design/apple/watchos.md and nothing of it is built.' },
-        { rule: 'Typography: use text styles', verdict: 'pass', note: '.title, .headline, .footnote.' },
-        { rule: 'Accessibility: spoken name for symbols in names', verdict: 'pass', note: 'accessibilityLabel(AppBranding.spokenName).' },
+        { by: 'apple-hig skill', rule: 'watchOS: a Watch app does one useful thing at a glance', verdict: 'fix', note: 'FentonHomeWatchApp.swift draws a house, "S+H" and "Coming soon"; the planned scope in watchos.md is not built, so a paired Watch would show a screen with no function.' },
+        { by: 'apple-hig skill', rule: 'Typography: text styles', verdict: 'pass', note: '.title, .headline and .footnote (lines 10-14) scale with Dynamic Type.' },
+        { by: 'apple-hig skill', rule: 'Accessibility: names with symbols are spoken correctly', verdict: 'pass', note: 'accessibilityLabel(AppBranding.spokenName) reads "S and H" instead of "S plus H" (line 13).' },
+        { by: 'apple-hig skill', rule: 'Accessibility: decorative images are hidden', verdict: 'fix', note: 'Image(systemName: "house.fill") (line 10) has no label or hidden trait, so VoiceOver reads the symbol\'s own name before the app name; the mockup said it was decorative, which the code does not do (corrected in its Accessibility list).' },
+        { by: 'apple-hig skill', rule: 'Layout: content fits at the largest sizes', verdict: 'fix', note: 'The VStack (lines 9-15) has no ScrollView or ViewThatFits, so three lines at accessibility sizes can clip on a small Watch (not run on hardware).' },
       ],
       swiftui: [
-        { rule: 'Semantic colours and styles', verdict: 'pass', note: '.secondary for the footnote; the stub uses no fixed colours.' },
-        { rule: 'Scroll for content that can outgrow the screen', verdict: 'fix', note: 'The VStack is not in a ScrollView; at accessibility sizes the three lines can exceed a small screen.' },
+        { by: 'swiftui-pro skill', rule: 'design.md: ContentUnavailableView for missing content', verdict: 'fix', note: 'The placeholder is a hand-built VStack; ContentUnavailableView("S+H", systemImage: "house", description: Text("Coming soon")) gives system spacing, type scaling and grouping.' },
+        { by: 'swiftui-pro skill', rule: 'design.md: no hard-coded stack spacing', verdict: 'fix', note: 'VStack(spacing: 8) (line 9).' },
+        { by: 'swiftui-pro skill', rule: 'design.md: semantic styles', verdict: 'pass', note: 'foregroundStyle(.secondary); no fixed colours.' },
       ],
     },
     notes: [
+      'Corrected 2026-10-23 (skill review): the Reading order entry said the house glyph is decorative; FentonHomeWatchApp.swift never hides it, so VoiceOver reads its name first (recorded as a fix).',
       'Status: placeholder. Do not invent screens: the only drawn UI is the stub above. The Watch Smart Stack tile for a Live Activity is not an app screen (it is the iOS activity\'s .small family, see live-activity-small).',
       'States: default and ax5 are drawn. There is no loading, refreshing, empty, error, offline, reconnecting or long-text state, because the stub has no connection, data or user content. The Watch app does not connect (design/apple/watchos.md).',
       'Device: this mockup registers an Apple Watch 46 mm device (208 × 248 pt) at runtime in components/live-activity/_widgets-liveactivity.js; the kit has none. Promote to kit: the Watch device and frame. The Watch face and bezel here are stand-ins; no other Watch size is shown.',

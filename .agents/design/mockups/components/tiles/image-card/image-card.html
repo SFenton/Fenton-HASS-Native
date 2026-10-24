@@ -83,17 +83,15 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Collections: image-led items with legible captions', verdict: 'pass', note: 'Caption on a gradient scrim, bottom-leading, 12 pt side and 10 pt bottom insets.' },
-        { rule: 'Images: decorative images are hidden from assistive technologies', verdict: 'pass', note: 'RemoteImage is accessibilityHidden; the caption speaks for the card.' },
-        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'Selected adds a trait and an outline; the placeholder is a symbol, not a tint.' },
-        { rule: 'Dynamic Type: prioritise text at large sizes', verdict: 'pass', note: 'The row layout gives the title the width (HIG Typography).' },
-        { rule: 'Materials: content-layer module, no live blur', verdict: 'departure', note: 'The module is #1C1C1E at 66% over the pre-blurred wallpaper (direction-g.md Layers).' },
+        { rule: 'Images and Color: text over a photo', verdict: 'pass', note: 'The caption is white over a scrim that reaches 55% black at mid-card and 82% at the foot, tuned for a white plate at three title lines (ImageCard.swift scrim).', by: 'apple-hig skill' },
+        { rule: 'Dynamic Type: prioritise text', verdict: 'pass', note: 'At accessibility sizes the card becomes a row with a 72 pt thumbnail and the title is never truncated (ImageCard.swift:113-125, 155).', by: 'apple-hig skill' },
+        { rule: 'Buttons: the whole card is the target', verdict: 'pass', note: 'The photo card is a Button with a content shape the size of the card; the caption overlay does not take hits.', by: 'apple-hig skill' },
+        { rule: 'Collections: placeholders never look broken', verdict: 'pass', note: 'RemoteImage tries the fallback URL, then a symbol, and never shows a broken image.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Cached, downsampled images, never AsyncImage', verdict: 'pass', note: 'CachedImage via ImagePipeline: decoded at draw size off the main thread, memory and disk caches, token-stripped keys.' },
-        { rule: 'Scope the fade to the image subtree', verdict: 'pass', note: 'The animation moved off withAnimation on the state write: it had put the whole card in an animating transaction while a grid scrolled.' },
-        { rule: 'Static helpers for testable layout', verdict: 'pass', note: 'titleLines(accessibilitySize:), scrim, cornerRadius and aspectRatio are static.' },
-        { rule: 'Hit testing of fill-scaled content', verdict: 'pass', note: '.allowsHitTesting(false) on RemoteImage; the button keeps the shape\'s content shape.' },
+        { rule: 'Accessibility: a hidden Button and an inert caption', verdict: 'fix', note: 'The real Button is accessibilityHidden(true) and the caption overlay carries .isButton and a custom accessibilityAction (ImageCard.swift:86-87, 140), so Full Keyboard Access and Voice Control have no focusable button; a Button whose label is the caption would serve both.', by: 'swiftui-pro skill' },
+        { rule: 'Layout: no hidden copy to size a row', verdict: 'fix', note: 'At accessibility sizes a .hidden() copy of the caption sizes the row and a second copy is overlaid (ImageCard.swift:116-125); a plain HStack of thumbnail and caption does this without the duplicate.', by: 'swiftui-pro skill' },
+        { rule: 'Remote images', verdict: 'pass', note: 'CachedImage with a fallback and a quick 0.2 s fade; not gated on Reduce Motion because an opacity change is not movement (motion.md).', by: 'swiftui-pro skill' },
       ],
     },
 

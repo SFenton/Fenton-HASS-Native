@@ -7,7 +7,8 @@
  * track pair straddles the fold: measured after layout, because only the grid knows its own width.
  * Four is a FLOOR on iPad, never a cap: tile grids pass max 6 unless a design reason bounds them (Chores quick links stop at 4).
  * props: {items:Array<Node|GlassTile props>, min?:150 (pt, scaled), max?:6, gap?:12, equal?:boolean (default true), span?:{index:2}, ctx?}
- * Section-header helper: pass a PageSectionHeader node with class `gridheader` to take a whole row.
+ * Section-header helper: pass a PageSectionHeader node with class `gridheader` to take a whole row; in an equal-rows grid it keeps its own height (the tile rows share
+ * the tallest tile, the heading rows stay `auto`). A scaled minimum wider than the container is capped at the container (AX5 gives one full-width column, never an overflow).
  */
 (function () {
   var h = Mock.h;
@@ -16,16 +17,36 @@
     (p.items || []).forEach(function (it, i) { var n = it && it.nodeType ? it : Mock.components.GlassTile(it); if (p.span && p.span[i] === 2) n.classList.add('span2'); g.appendChild(n); });
     var min = p.min || 150, gap = p.gap == null ? 12 : p.gap, max = p.max || 6;
     if (window.ResizeObserver) {
-      var ro = new ResizeObserver(function () {
+      var frame = 0, lastW = -1, lastSc = -1;
+      /** Applies the hinge rounding and, for an equal-rows grid with section headers, the row tracks. Runs a frame after the observer fires, and only when the
+       *  width or the text scale changed, so writing the tracks never feeds the observer inside the same frame (no "ResizeObserver loop" warning). */
+      var apply = function () {
+        frame = 0;
         var screen = g.closest('.screen');
         var w = g.clientWidth, sc = parseFloat(screen ? getComputedStyle(screen).getPropertyValue('--sc') : 1) || 1;
-        if (!w) return;
-        var n = Math.max(1, Math.min(max, Math.floor((w + gap) / (min * sc + gap))));
+        if (!w || (w === lastW && sc === lastSc)) return;
+        lastW = w; lastSc = sc;
+        var n = Math.max(1, Math.min(max, Math.floor((w + gap) / (Math.min(w, min * sc) + gap))));   // a minimum wider than the container is capped at the container
         g.dataset.cols = n;
-        if (screen && screen.dataset.hinge && n >= 2 && n % 2) { n -= 1; g.dataset.even = 'true'; }   // DynamicGridMetrics.evenRounded
-        if (screen && screen.dataset.hinge) g.style.gridTemplateColumns = 'repeat(' + n + ',minmax(0,1fr))';
+        var hinge = screen && screen.dataset.hinge;
+        if (hinge && n >= 2 && n % 2) { n -= 1; g.dataset.even = 'true'; }   // DynamicGridMetrics.evenRounded
+        if (hinge) g.style.gridTemplateColumns = 'repeat(' + n + ',minmax(0,1fr))';
         g.dataset.cols = n;
-      });
+        // equalRowHeights with heading rows: tile rows share the tallest tile's height, a header row (.gridheader) keeps its own height.
+        if (g.classList.contains('eq') && g.querySelector(':scope > .gridheader')) {
+          var cols = hinge ? n : (getComputedStyle(g).gridTemplateColumns.split(' ').length || n), rows = [], at = 0;
+          Array.prototype.forEach.call(g.children, function (c) {
+            if (c.classList.contains('gridheader')) { if (at) rows.push('1fr'); rows.push('auto'); at = 0; return; }
+            var span = c.classList.contains('span2') ? Math.min(2, cols) : 1;
+            if (at + span > cols) { rows.push('1fr'); at = 0; }
+            at += span;
+          });
+          if (at) rows.push('1fr');
+          g.style.gridTemplateRows = rows.join(' ');
+          g.style.gridAutoRows = 'auto';
+        }
+      };
+      var ro = new ResizeObserver(function () { if (!frame) frame = requestAnimationFrame(apply); });
       ro.observe(g);
     }
     return g;

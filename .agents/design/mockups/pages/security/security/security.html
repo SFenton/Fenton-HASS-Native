@@ -58,7 +58,7 @@
         return page(c, { left: { state: 'closed', phase: 'error', opens: true }, page: { connection: 'offline' }, cams: CAMS_SNAP }); } },
       'guests': { title: 'Guests staying over', note: 'the section shows only while a guest toggle is on', render: function (c) { return page(c, { guests: true }); } },
       'mach-e': { title: 'Mach-E section (hidden in the app)', note: 'not shipped: SecurityConfig.showsVehicleSection is false (the web hides it); the debug gallery shows it so the tile stays tested', status: 'gallery only', render: function (c) { return page(c, { mach: true }); } },
-      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'chips scroll or wrap, the alarm modes wrap to fewer columns, door tiles and cameras go to one column', render: function (c) { return page(c, { guests: true }); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'chips scroll or wrap, the alarm modes wrap to fewer columns, door tiles go to one column; cameras and guest tiles keep their unscaled minimums (two and three columns)', render: function (c) { return page(c, { guests: true }); } },
     },
 
     motion: [
@@ -120,28 +120,35 @@
       { rule: 'Door tiles', note: 'A tile is one button: label the door, value its state ("Front Door, Locked"), hint what a tap does ("Unlocks", "Opens the door", "Closes the door"). Garage feedback is announced without moving focus ("Left Door, Sending Open…"). Unavailable tiles are disabled and dim only the glyph; text keeps 4.5:1.' },
       { rule: 'State is not colour alone', note: 'Every door state has words (Locked, Unlocked, Jammed, Opening, Error) and its own glyph (padlock, open padlock, open or closed garage); the red error face adds to the word "Error". Alarm modes have their own glyphs and titles.' },
       { rule: 'Targets', note: 'Chips 48 pt, mode buttons 64 pt, tiles 72 pt or more, camera tiles far larger, header circles 44 pt.' },
-      { rule: 'Dynamic Type', note: 'At AX5 the mode buttons fall to one column once 64 pt (scaled) no longer fits four across, door tiles stack glyph over text in one column, cameras one column; section headers stack; nothing truncates.' },
+      { rule: 'Dynamic Type', note: 'At AX5 the mode buttons fall to one column once 64 pt (scaled) no longer fits four across, door tiles stack glyph over text in one column, the cameras (160 pt) and guest tiles (110 pt) keep unscaled minimums and stay two and three columns wide; section headers stack.' },
       { rule: 'Reduce Motion and Transparency', note: 'Colour cross-fades shorten to 0.2 s; the triggered wash goes to 60% over a solid ground; modules and tiles use the solid finish.' },
       { rule: 'Privacy', note: 'FENTON_REDACT_PRIVATE=1 hides the alarm mode (card header and selection) and the Security chip text for shared screenshots.' },
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Alerts: confirm destructive or hard-to-undo actions', verdict: 'pass', note: 'Disarm opens the house and always asks; arming does not (reversible). Cancel stays on every device.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Words and glyphs on every tile and mode; error face plus the word Error.' },
-        { rule: 'HomeKit: do not cover camera views', verdict: 'pass', note: 'Only a small name label sits over the picture; the live dot is red and decorative.' },
-        { rule: 'Layout: tiles at a consistent minimum width, reflow with type size', verdict: 'pass', note: '140 pt scaled minimum, equal heights, hinge-aware even columns.' },
-        { rule: 'Feedback: confirm that a command is on its way', verdict: 'pass', note: 'Garage tiles say Sending Open… and announce progress; locks show the optimistic state until Home Assistant reports.' },
-        { rule: 'Tab bars: five tabs, Settings last', verdict: 'pass', note: 'Security is the second tab.' },
+        { rule: "Designing for iPhone Duo: reserved regions; use reserved-region APIs when a custom component is not moved by the system", verdict: 'fix', note: "SecurityPage is one VStack that never reads windowHinge (SecurityScreen.swift:66-83); on the unfolded Duo landscape the 868 pt content is centred 41 pt left of the fold, so the fold crosses the alarm card, the third door tile and the third camera (render, duo-unfolded-landscape; the page's own notes say not run on a device). Only the grids and chip rail are hinge-aware.", by: 'apple-hig skill' },
+        { rule: "Layout: respect readable width on large screens", verdict: 'fix', note: "AlarmPanel on the page has no maximum width (SecurityScreen.swift:69-70) while the same card in the sheet caps at 560 pt (SecuritySystemSheet.swift:29); on iPad landscape the four mode buttons stretch to about 280 pt each across 1160 pt (render, ipad-landscape).", by: 'apple-hig skill' },
+        { rule: "Alerts: avoid alerts for common, undoable actions", verdict: 'departure', note: "Disarm always confirms although it can be undone by arming again; .agents/pages/security/spec.md records it as a native departure (HIG: Alerts) because disarming opens the house. Arming never asks.", by: 'apple-hig skill' },
+        { rule: "Feedback and Playing haptics: combine colour, text and haptics for a significant command", verdict: 'fix', note: "Arming, disarming, locking and garage taps change colour and text only; no sensoryFeedback is attached to AlarmModeButton, LockTile or GarageDoorTile (the dial and brightness tile have one). The garage announces progress to VoiceOver (SecurityTiles.swift:117) but a sighted person gets no tactile confirmation.", by: 'apple-hig skill' },
+        { rule: "Accessibility: state not by colour alone", verdict: 'pass', note: "Door states carry words (Locked, Unlocked, Jammed, Opening, Error) and a padlock or garage glyph that opens; the error face adds the word Error (SecurityTiles.swift:79-83, SecurityDoorTile.swift:76); modes have their own glyphs and titles.", by: 'apple-hig skill' },
+        { rule: "HomeKit: avoid covering camera views", verdict: 'fix', note: "At default size only a small name capsule on a 75% black scrim sits over each picture (CameraGrid.swift:61-90), but the capsule is a .caption that scales with text while the 160 pt grid minimum does not, so at AX5 it covers most of each picture (render, state guests at ax5).", by: 'apple-hig skill' },
+        { rule: "Accessibility: 44 pt minimum controls and about 12 pt between bezelled elements", verdict: 'fix', note: "The four alarm modes (Disarm beside Home) sit 8 pt apart (SecuritySystemSheet.swift:66, spacing: s) although each is a bezelled 64 pt button; a mis-tap on Disarm is the costly one. Use 12 pt.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'ScaledMetric for fixed sizes', verdict: 'pass', note: 'minTileWidth 140 (subheadline), badge 44 (title2), mode width 64 (footnote).' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'stateColorTransition for the panel, modes and tiles; the triggered wash fades and never pulses.' },
-        { rule: 'Optimistic state rolls back on failure', verdict: 'pass', note: 'OptimisticActions with .liveChange rules for the alarm and locks; GarageDoorController owns its own timers (unit-tested with a manual clock).' },
-        { rule: 'No per-frame state writes while scrolling', verdict: 'pass', note: 'scrollTelemetry only; the chip rail is the UIKit-hosted ChipRail.' },
-        { rule: 'Do not hard-code white or black', verdict: 'departure', note: 'The page is always dark over the dimmed wallpaper, so the card and tiles use fixed inks there (Surface.secondaryOnModule); the same card in a sheet uses the adaptive inks (direction-g.md Layers).' },
+        { rule: "ScaledMetric for fixed sizes", verdict: 'pass', note: "minTileWidth 140 relative to .subheadline (SecurityScreen.swift:56), mode width 64 and badge 44 are scaled (SecuritySystemSheet.swift:55-56), so doors go to one column and modes to fewer columns at AX5.", by: 'swiftui-pro skill' },
+        { rule: "Never hard-code white or black", verdict: 'departure', note: "The page is always dark over a dimmed wallpaper, so the card and tiles use fixed white inks there (Surface.secondaryOnModule, GlassTile.swift:510); the same card in a sheet uses adaptive inks (direction-g.md Layers).", by: 'swiftui-pro skill' },
+        { rule: "Optimistic state rolls back on failure, one state path", verdict: 'pass', note: "OptimisticActions with .liveChange rules for the alarm and locks (SecuritySystemSheet.swift:185-189, SecurityDoorTile.swift:23-26); GarageDoorController owns its timers; rendered states sending, error and garage-error.", by: 'swiftui-pro skill' },
+        { rule: "Reduce Transparency and Increase Contrast", verdict: 'pass', note: "The triggered wash goes to 60% over the dense module under Reduce Transparency (SecuritySystemSheet.swift:165) and tiles take the solid finish (GlassTile.swift:306-308).", by: 'swiftui-pro skill' },
+        { rule: "Dynamic Type at accessibility sizes: avoid a fixed grid that clips", verdict: 'fix', note: "ControlTileGrid (guests, min 110) and CameraGrid (min 160) pass plain numbers (GuestPresenceSection.swift:50, CameraGrid.swift:19) while every other grid on this page scales its minimum, so at AX5 guest tiles stay three across and clip (state ax5 here, corrected from one column).", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [
@@ -154,6 +161,9 @@
       'Promote to kit: SecClimate.doorTile (LockTile, GarageDoorTile), the Security page body, and the missing symbols (car, circle and others, registered in components/climate/_security-climate.js).',
       'Kit gap found: the atlas rule `.k-wrap h2` leaks into the app header `.ui-hdr h2` (adds a 44 pt top margin); worked around locally in _security-climate.js.',
       'Cameras are the four shared go2rtc streams (CameraGrid, idPrefix security.camera); pictures are stand-ins.',
+
+      "Corrected 2026-10-23 (skill review): the guest tiles (min 110) and cameras (min 160) are not @ScaledMetric in the app (GuestPresenceSection.swift:50, CameraGrid.swift:19), so at AX5 they stay three and two columns wide; the mockup had drawn one column (kit TileGrid scales every minimum). _security-climate.js now passes appMin() for these two grids.",
+
     ],
     changelog: [{ date: '2026-10-23', note: 'First pass: 21 states, five devices, alarm modes, door and garage sequences, guests, cameras, Mach-E (gallery only).' }],
   });

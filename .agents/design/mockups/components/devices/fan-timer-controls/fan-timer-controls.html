@@ -54,18 +54,19 @@
     ],
 
     reviews: {
-      date: '2026-10-23',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Segmented controls: few segments', verdict: 'departure', note: 'Six lengths in one custom row (owner design 2026-10-17); it wraps to three columns at AX sizes where a system control cannot hold them.' },
-        { rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Segments 44 pt, button 50 pt, Clear Timer 44 pt.' },
-        { rule: 'Progress indicators: determinate for known duration', verdict: 'pass', note: 'Thin bar that empties; decorative for VoiceOver.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Timer glyph and digits, words on the buttons.' },
+        { rule: 'Segmented controls: about 5 on iPhone', verdict: 'departure', note: 'Six lengths in one custom row (owner 2026-10-17); wraps to three columns at AX sizes instead of becoming a menu.' },
+        { rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Segments 44 pt, primary button 50 pt, Clear Timer 44 pt.' },
+        { rule: 'Accessibility: value changes announce', verdict: 'fix', note: 'The countdown\'s accessibilityValue changes every second (FanTimerRunning.swift:28) and can re-announce while focused; the room tile rounds to minutes for this reason.' },
+        { rule: 'Progress indicators: determinate bar', verdict: 'pass', note: 'Thin bar empties with the time left and is hidden from VoiceOver.' },
+        { rule: 'Color: contrast', verdict: 'pass', note: 'Timer orange #FF9F0A on dark and #B35C00 on light; chosen segment at least 3:1; red on its tint 4.5:1.' },
       ],
       swiftui: [
-        { rule: '@ScaledMetric', verdict: 'pass', note: 'The 40 pt countdown and glyph.' },
-        { rule: 'Adaptive colours', verdict: 'pass', note: 'Surface.selectedSegment(Ink), Ink.timer, tint opacity by colour scheme.' },
-        { rule: 'Reduce Motion', verdict: 'pass', note: 'Nothing animates.' },
-        { rule: 'Button styles over manual backgrounds', verdict: 'pass', note: 'PrimaryButtonStyle and TintedCapsuleButtonStyle (isEnabled, isPressed aware).' },
+        { rule: 'Design: ScaledMetric', verdict: 'pass', note: 'The 40 pt countdown and glyph scale from .largeTitle.' },
+        { rule: 'Views: segments as Buttons with traits', verdict: 'pass', note: 'FanTimerSegment is a Button with .isSelected and a spoken duration label.' },
+        { rule: 'Design: minimumScaleFactor on live numbers', verdict: 'fix', note: 'The countdown shrinks to 50% before it truncates (line 22) and the segments to 70%; at AX5 that undoes part of Dynamic Type for the one number people watch.' },
+        { rule: 'Motion: Reduce Motion', verdict: 'pass', note: 'Nothing animates.' },
       ],
     },
 

@@ -50,6 +50,7 @@
       if (typeof m.play !== 'function') w.push('motion item "' + m.id + '" has no play(stage)');
       if (!m.reduce) w.push('motion item "' + m.id + '" needs a reduce field (what Reduce Motion does)');
     });
+    (Mock.loadErrors || []).forEach(function (f) { w.push('kit file ' + f + ' did not load (network); reload the page'); });
     Object.keys(Mock.missingIcons).forEach(function (n) { w.push('icon "' + n + '" is not in the symbol map (add it to lib/symbols.js)'); });
     return w;
   };
@@ -175,7 +176,7 @@
     /** Page scroll position control: the page scrolls inside the device; Middle and End let a reviewer see the lower sections. */
     function applyScroll(rootEl) {
       var f = { top: 0, mid: .5, end: 1 }[S.scroll] || 0;
-      requestAnimationFrame(function () { requestAnimationFrame(function () { rootEl.querySelectorAll('.ui-scroll').forEach(function (sc) { sc.scrollTop = f * Math.max(0, sc.scrollHeight - sc.clientHeight); sc.dispatchEvent(new Event('scroll')); }); }); });
+      requestAnimationFrame(function () { requestAnimationFrame(function () { rootEl.querySelectorAll('.ui-scroll').forEach(function (sc) { if (f === 0 && sc.dataset.scrollPinned) return; sc.scrollTop = f * Math.max(0, sc.scrollHeight - sc.clientHeight); sc.dispatchEvent(new Event('scroll')); }); }); });
     }
     function applyZoom() {
       var z = 1;

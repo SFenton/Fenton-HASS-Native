@@ -84,21 +84,39 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Toolbars: icon buttons use standard symbols; confirm and cancel placement', verdict: 'pass', note: 'x leading, check trailing, as in Calendar and Reminders; iOS 26 uses Button(role: .cancel) and .confirm.' },
-        { rule: 'Toolbars: disable rather than hide a control that does not apply now', verdict: 'departure', note: 'The check is visible and dimmed until a change (owner 2026-10-16: "visible, disabled until a change").' },
-        { rule: 'Buttons: a prominent confirm with sufficient contrast', verdict: 'pass', note: '#0071E3 under white is 4.6:1 (HassTokens.Ink.actionFill, SheetEditToolbar.swift).' },
-        { rule: 'Progress: show activity in the control that started it', verdict: 'pass', note: 'The inline arc replaces the check while saving.' },
-        { rule: 'Sheets: a viewing sheet closes, an edit sheet cancels or confirms', verdict: 'pass', note: 'Close (SheetCloseItem) for viewing, this pair for create and edit; filter sheets use it with "Apply".' },
+
+        { rule: "Sheets (iOS): Cancel on the leading edge, the confirm trailing and inactive until the task is complete", verdict: "pass", note: "SheetCancelItem is a circle-x on the leading edge and SheetConfirmItem a filled #0071E3 check trailing; SheetEditState.canConfirm keeps the check in place but disabled until a new item is valid or an edit has changes (owner 2026-10-16, as in Calendar and Reminders).", by: "apple-hig skill" },
+
+        { rule: "Modality: confirm before a dismiss gesture or button loses user-generated content", verdict: "fix", note: "Cancel and a swipe down drop the draft with no confirmation even when the draft has changes: the task and inventory editors already compute hasChanges (DonetickTaskSheet.swift line 76, InventoryItemEditor.swift) but only block interactive dismissal while saving (interactiveDismissDisabled(busy != nil)); a confirmation action sheet offering Discard Changes belongs there. Medium.", by: "apple-hig skill" },
+
+        { rule: "Toolbars: prefer standard symbols; name icon-only items; disable rather than hide", verdict: "pass", note: "Button(role: .cancel) and Button(role: .confirm) on iOS 26 (xmark and checkmark in glass), an icon-only fallback before, each with an explicit accessibility label ('Cancel', 'Save', 'Add', 'Apply'); the check never disappears.", by: "apple-hig skill" },
+
+        { rule: "Feedback and Progress indicators: show that a save is in flight", verdict: "pass", note: "While busy the check is replaced by the inline arc in a 28 pt #0071E3 circle, spoken as 'Saving', Cancel is disabled, and the check is disabled; the sheet cannot be swiped away mid-save.", by: "apple-hig skill" },
+
+        { rule: "Color: contrast for the confirm control", verdict: "pass", note: "White on #0071E3 (Ink.actionFill) is 4.6:1; the tint is applied to the system confirm role so the glass stays prominent in light and dark.", by: "apple-hig skill" },
+
+        { rule: "Sheets: viewing versus editing sheets use different controls", verdict: "departure", note: "Edit sheets use Cancel plus a confirm check while viewing sheets use a trailing Close (SheetCloseItem); humidifier schedule, feedback and the bed and wake-light editors still use text buttons (README open note), so the pair is the target and not yet universal.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Use toolbar placements, not custom buttons', verdict: 'pass', note: '.cancellationAction and .confirmationAction items.' },
-        { rule: 'availability branch for iOS 26 roles', verdict: 'pass', note: '#available(iOS 26) uses Button(role:); earlier systems draw a bordered-prominent circle.' },
-        { rule: 'Pure function for the enabled rule', verdict: 'pass', note: 'SheetEditState.canConfirm(isValid:hasChanges:isBusy:) is static and tested.' },
-        { rule: 'Keep identifiers stable so UI tests do not churn', verdict: 'pass', note: 'Each caller passes its own identifier (filterSheet.apply, ...).' },
-        { rule: 'Known gaps', verdict: 'fix', note: 'modal-sheet.md lists sheets still on their own text Save/Submit buttons: the humidifier schedule editor, the feedback form, the bed and wake-light editors\' in-page buttons.' },
+
+        { rule: "Navigation: semantic toolbar placements and button roles", verdict: "pass", note: "cancellationAction and confirmationAction placements with Button(role: .cancel) and Button(role: .confirm) let iPhone, iPad and the Duo's vertical bar position and style the items by role; an @available branch keeps iOS 17 to 25 on explicit symbols.", by: "swiftui-pro skill" },
+
+        { rule: "API: current button styles and tint", verdict: "pass", note: "The fallback uses .borderedProminent with .buttonBorderShape(.circle) and tint(Ink.actionFill); toolbar content is a ToolbarContent struct, not an inline modifier chain.", by: "swiftui-pro skill" },
+
+        { rule: "Views: avoid fontWeight scattering and Group wrappers", verdict: "fix", note: "SheetConfirmButton wraps its three branches in a Group and the fallback applies .fontWeight(.semibold) to an icon-only label (SheetEditToolbar.swift line 128), which has no visible effect on a symbol-only label; remove both. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Accessibility: the busy state keeps a name", verdict: "fix", note: "The busy ArcSpinner is labelled with busyTitle but sits inside a disabled item and is accessibilityRespondsToUserInteraction(false), so VoiceOver may skip it entirely and never say 'Saving'; an announcement on entering the busy state would make it reliable. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Localization: titles are runtime Strings", verdict: "fix", note: "SheetConfirmItem takes title and busyTitle as String and sets accessibilityLabel(title); the visible glyph is a system symbol, so VoiceOver speaks only unlocalized text. Low until the app is localized.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

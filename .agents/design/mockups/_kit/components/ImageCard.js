@@ -1,9 +1,10 @@
 /* ImageCard and CameraTile. apple/Sources/HassDesign/ImageCard.swift; apple/Sources/HassUI/Features/Home/CameraGrid.swift (CameraTile).
  * Cameras (direction-g.md Controls): 2 x 2 on Home and Security, cards 1 : 0.78 (the web's tile, fill-cropped), 22 pt radius, NOTHING over the image except a small name capsule
  * (black 75%) with a red live dot while the stream shows frames (HIG HomeKit must). The viewer is full-bleed. While connecting, or after a live stream stalls, the last snapshot stays fully
- * visible with a pill: "Last live 6:51 PM" once the stream has been live, else "Connecting". ImageCard (recipes): the photo with a scrim and the title/subtitle over it; at accessibility sizes a
+ * visible. The home tile never draws a state pill (CameraGrid.swift); the viewer's badge (CameraLiveView.badge, top-leading) says "Last live 6:51 PM" once a stream that was live reconnects,
+ * else "Connecting", "Live", "Live · Delayed" or "Snapshot": pass `viewer: true`. ImageCard (recipes): the photo with a scrim and the title/subtitle over it; at accessibility sizes a
  * row with a 64 pt thumbnail so the text (not the picture) fills the card. The photos here are drawn stand-ins (no real camera names or frames: AUTHORING.md rule 3).
- * CameraTile props: {title, state?:'live'|'snapshot'|'connecting', since?:string, scene?:'front-door'|'driveway'|'upper-deck'|'lower-deck'}
+ * CameraTile props: {title, state?:'live'|'snapshot'|'connecting', since?:string (last live time, viewer badge), scene?:'front-door'|'driveway'|'upper-deck'|'lower-deck', viewer?:boolean (draw the viewer badge), delayed?:boolean}
  * ImageCard props: {title, subtitle?, scene?:'recipe'|..., ctx?}
  */
 (function () {
@@ -19,13 +20,20 @@
   Mock.scene = function (n) { return SC[n] || SC.recipe; };
   Mock.register('CameraTile', function (p) {
     var st = p.state || 'live';
-    var pill = st === 'live' ? null : (st === 'snapshot' ? 'Last live ' + (p.since || '6:51 PM') : 'Connecting');
-    var b = h('button.ui-cam' + (st === 'live' ? '' : '.snapshot'), { type: 'button', 'aria-label': p.title + ' camera, ' + (st === 'live' ? 'Live' : 'Snapshot'), title: 'Opens the camera' },
-      h('span.photo', { style: { background: Mock.scene(p.scene || 'front-door') }, 'aria-hidden': 'true' }), pill ? h('span.state', st === 'connecting' ? Mock.components.ArcSpinner({ size: 'inline', label: 'Connecting' }) : null, pill) : null,
+    // The home tile (CameraGrid.CameraTile) draws ONLY the name capsule, with a red dot while the stream shows frames: no state pill (the app never puts one on the
+    // picture; VoiceOver reads Live or Snapshot from the value). The pill is the viewer's badge (CameraLiveView.badge): pass viewer:true to draw it top-leading.
+    var pill = null;
+    if (p.viewer) {
+      var text = st === 'live' ? (p.delayed ? 'Live \u00b7 Delayed' : 'Live') : (st === 'snapshot' ? 'Snapshot' : (p.since ? 'Last live ' + p.since : 'Connecting'));
+      pill = h('span.state', st === 'connecting' ? Mock.components.ArcSpinner({ size: 'inline', label: 'Connecting' }) : (st === 'live' ? h('span.dot', { 'aria-hidden': 'true' }) : (st === 'snapshot' ? h('span', { html: Mock.icon('photo'), 'aria-hidden': 'true' }) : null)), text);
+    }
+    var b = h('button.ui-cam' + (st === 'live' ? '' : '.snapshot') + (p.viewer ? '.viewer' : ''), { type: 'button', 'aria-label': p.title + ' camera, ' + (st === 'live' ? 'Live' : 'Snapshot'), title: 'Opens the camera' },
+      h('span.photo', { style: { background: Mock.scene(p.scene || 'front-door') }, 'aria-hidden': 'true' }), pill,
       h('span.name', h('span', st === 'live' ? h('span.dot', { 'aria-hidden': 'true' }) : null, p.title)));
     return b;
-  }, { source: 'apple/Sources/HassUI/Features/Home/CameraGrid.swift', props: '{title, state, since, scene}',
-    variants: [{ id: 'live', label: 'Live (red dot)', props: { title: 'Front Door', scene: 'front-door' } }, { id: 'snapshot', label: 'Stalled: last snapshot + "Last live"', props: { title: 'Driveway', state: 'snapshot', scene: 'driveway' } }, { id: 'connecting', label: 'Connecting', props: { title: 'Upper Deck', state: 'connecting', scene: 'upper-deck' } }] });
+  }, { source: 'apple/Sources/HassUI/Features/Home/CameraGrid.swift (tile), apple/Sources/HassUI/Features/Cameras/CameraLiveView.swift (viewer badge)', props: '{title, state, since, scene, viewer, delayed}',
+    variants: [{ id: 'live', label: 'Live (red dot beside the name)', props: { title: 'Front Door', scene: 'front-door' } }, { id: 'snapshot', label: 'Stalled or reconnecting: the last snapshot, no dot, no pill', props: { title: 'Driveway', state: 'snapshot', scene: 'driveway' } }, { id: 'connecting', label: 'Connecting: the snapshot, no dot', props: { title: 'Upper Deck', state: 'connecting', scene: 'upper-deck' } },
+      { id: 'viewer-live', label: 'Viewer badge: Live', props: { title: 'Front Door', scene: 'front-door', viewer: true } }, { id: 'viewer-last', label: 'Viewer badge: Last live 6:51 PM', props: { title: 'Driveway', state: 'connecting', since: '6:51 PM', scene: 'driveway', viewer: true } }, { id: 'viewer-snapshot', label: 'Viewer badge: Snapshot', props: { title: 'Upper Deck', state: 'snapshot', scene: 'upper-deck', viewer: true } }] });
   Mock.register('ImageCard', function (p) {
     var ctx = p.ctx || Mock.current || {};
     if (ctx.axSize) return h('button.ui-img.row', { type: 'button' }, h('span.thumb', { style: { background: Mock.scene(p.scene) }, 'aria-hidden': 'true' }), h('span.lb', h('span.ti', { style: { display: 'block', fontSize: 'var(--fs-sub)', fontWeight: 600 } }, p.title), p.subtitle ? h('span.su', { style: { display: 'block', fontSize: 'var(--fs-foot)', color: 'var(--g-secondary-on-module)' } }, p.subtitle) : null));

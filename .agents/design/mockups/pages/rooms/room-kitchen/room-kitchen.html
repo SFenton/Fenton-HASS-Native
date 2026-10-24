@@ -81,20 +81,20 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Toolbars: Back leading on a pushed page', verdict: 'pass', note: 'Same shell header as every pushed page.' },
-        { rule: 'Layout: group related items under headings', verdict: 'pass', note: 'Groceries, Appliances, Climate each a titled section; two columns from 704 pt.' },
-        { rule: 'Color: colour is not the only signal', verdict: 'pass', note: 'State words on every tile ("Ready", "Eco 50°C • 42%", counts).' },
-        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'Scaled minimum tile width; long counts wrap.' },
-        { rule: 'Color: use one hue per meaning', verdict: 'departure', note: 'Groceries tiles are neutral dark (pages, not devices) rather than a family colour: direction-g.md Colour families.' },
-        { rule: 'Navigation: Quick Links as a header button', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation).' },
+        { rule: 'Toolbars: Back leading on a pushed page, Quick Links as the trailing action', verdict: 'pass', note: 'Shell header only (RoomPageContent adds its own Quick Links button only when shellNavigator is nil, RoomScreen.swift:99); Back is the system glass circle.' },
+        { rule: 'Layout: group related items under headings', verdict: 'pass', note: 'Groceries, Appliances and Climate are titled sections in a DynamicGridLayout(minCellWidth: 340, maxColumns: 2); one column below 704 pt, so folded Duo and iPhone read one list.' },
+        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'Dishwasher mid-cycle prints "Eco 50°C • 42%" and fills; Groceries tiles print counts ("5 items", "42 Items • 3 Expiring Soon").' },
+        { rule: 'Color: one hue per meaning', verdict: 'departure', note: 'Groceries tiles are neutral dark because they are pages, not devices (direction-g.md Colour families); the web gave the list a red wash the native tile drops.' },
+        { rule: 'Navigation: a header button instead of a tab for Quick Links', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation).' },
+        { rule: 'Accessibility: describe where a control leads', verdict: 'fix', note: 'The two Groceries tiles (RoomScreen.swift:316-323) carry no accessibilityHint, while the Quick Links navigate tiles say "Opens the <title> page" (QuickLinksSheet.swift:146); VoiceOver hears the title and count only.' },
       ],
       swiftui: [
-        { rule: 'Reuse one component per pattern', verdict: 'pass', note: 'Groceries tiles are GlassTile(kind: .navigate) in a DynamicGridLayout, like every other room tile.' },
-        { rule: 'Local helpers over parallel implementations', verdict: 'pass', note: 'KitchenGroceriesSection lives in RoomScreen.swift beside RoomSectionView and uses the same grid and header.' },
-        { rule: 'Accessibility identifiers on tiles', verdict: 'pass', note: 'room.groceries.list / .food.' },
-        { rule: 'Docs match code', verdict: 'fix', note: 'KitchenGroceriesSection appears in no doc under .agents (found in the inventory pass); the Food tile reads "Food" while pages/rooms/spec.md and Quick Links say "Food & Recipes".' },
+        { rule: 'Reuse one component per pattern', verdict: 'pass', note: 'Both Groceries tiles are GlassTile(kind: .navigate) in the shared grid with equalHeightTiles(); no kitchen-only tile.' },
+        { rule: 'Dynamic Type: scaled minimum width', verdict: 'pass', note: 'minTileWidth is @ScaledMetric(relativeTo: .subheadline) 140, so the pair drops to one column at AX sizes; counts wrap.' },
+        { rule: 'Accessibility identifiers and containers', verdict: 'pass', note: 'Section is .accessibilityElement(children: .contain) with a heading-trait header; tiles carry room.groceries.list / .food.' },
+        { rule: 'Hygiene: types in their own files and docs match code', verdict: 'fix', note: 'KitchenGroceriesSection sits at the end of RoomScreen.swift beside RoomPageContent and RoomSectionView, and no .agents doc describes it; the tile reads "Food" where pages/rooms/spec.md says "Food & Recipes".' },
       ],
     },
 

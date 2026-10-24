@@ -39,16 +39,14 @@
       { rule: 'Layout', note: 'inSheet adds 8 pt above so a heading sits clear of the run above it; a gridHeader takes its own row and does not count in the grid\'s equal heights.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Typography: use text styles; headings are distinguishable', verdict: 'pass', note: 'title3 bold, one weight step above tile titles.' },
-        { rule: 'Accessibility: expose headings', verdict: 'pass', note: '.isHeader on every instance.' },
-        { rule: 'Typography: a heading over inset lists is smaller', verdict: 'departure', note: 'direction-g.md Type: 20 Bold over tile grids in sheets, 15 Semibold only over inset lists.' },
+        { rule: 'Accessibility: expose headings', verdict: 'pass', note: '.accessibilityAddTraits(.isHeader) on every instance so the rotor jumps by section.' },
+        { rule: 'Typography: heading size over inset lists', verdict: 'departure', note: 'direction-g.md Type: 20 Bold over tile grids in sheets, 15 Semibold only over inset lists.' },
       ],
       swiftui: [
-        { rule: 'Use semantic fonts, not fixed sizes', verdict: 'pass', note: '.font(.title3.bold()).' },
-        { rule: 'One implementation', verdict: 'fix', note: 'RoomSectionHeader (with inSheet) and PageSectionHeader (with detail) are two views for the same 20 pt heading; the kit treats them as aliases. Merge the inSheet padding into PageSectionHeader when next touched.' },
-        { rule: 'Colour through tokens', verdict: 'pass', note: 'HassTokens.Ink.primary.' },
+        { rule: 'Use semantic fonts', verdict: 'pass', note: '.font(.title3.bold()) with HassTokens.Ink.primary.' },
+        { rule: 'Reuse shared components', verdict: 'fix', note: 'RoomSectionHeader (with inSheet) and PageSectionHeader draw the same 20 pt heading; merge the inSheet padding into PageSectionHeader (RoomSupport.swift:156).' },
       ],
     },
     notes: [

@@ -85,20 +85,21 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Layout: adapt to size classes; use a grid that reflows rather than fixed columns', verdict: 'pass', note: 'DynamicGridLayout min 340 pt, 2 columns: side by side on iPad and the unfolded Duo in landscape, stacked on iPhone and folded Duo; not a split view.' },
-        { rule: 'Lists: rows that navigate show a disclosure indicator and are at least 44 pt', verdict: 'pass', note: 'The controller row carries a chevron and opens its sheet.' },
-        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'Watering, battery low and hub state are also words (Watering, Battery 15%, Unavailable).' },
-        { rule: 'Toolbars: Back on pushed pages, trailing Quick Links and Profile on every page', verdict: 'pass', note: 'Shell header; Sprinklers is a pushed page with a glass Back circle.' },
-        { rule: 'Materials: page content sits on the module, not on glass', verdict: 'pass', note: 'Direction G layers: wallpaper, module, pills with no fill of their own.' },
+        { rule: "Layout: grids reflow with Dynamic Type", verdict: "pass", note: "minCardWidth 340 and minPillWidth 150 are @ScaledMetric (SprinklersScreen.swift lines 13, 58), so cards and pills drop to one column at AX sizes (Chores and Solo Trip, by contrast, use literal minimums).", by: "apple-hig skill" },
+        { rule: "Lists and tables: a navigating row shows a disclosure and is at least 44 pt", verdict: "pass", note: "SprinklerControllerRow is a ModuleRow with a chevron, button trait and hint \"Opens the controller.\" (lines 90-109).", by: "apple-hig skill" },
+        { rule: "Color: do not rely on colour alone", verdict: "pass", note: "Watering, Battery 15%, Unavailable and Fault are words; the tone colours only the pill icon (StatusPill.swift lines 41-70).", by: "apple-hig skill" },
+        { rule: "Color and Accessibility: contrast of warm text on the thin module", verdict: "pass", note: "The module goes dense while the battery pill is orange (SprinklersScreen.swift line 67), so the orange icon and white text keep 4.5:1 over the photo.", by: "apple-hig skill" },
+        { rule: "Alerts and Writing: a low battery warning that says what to do", verdict: "fix", note: "The warning reads \"Backyard Faucet Battery 15%\" (line 64): it names the problem but not the action (replace or charge) and sits as an InlineAlert, not a distinct state, above a card that repeats the percentage in the Battery pill. Low.", by: "apple-hig skill" },
+        { rule: "Loading: a cold launch shows believable content", verdict: "fix", note: "With nothing saved every entity reads unavailable, so both cards show \"Unavailable\" pills and Hub \"Unavailable\" until Home Assistant answers (mockup loading state); there is no loading indicator, which reads as a fault on first launch. Low.", by: "apple-hig skill" },
+        { rule: "Designing for iPhone Duo: two-up card grid stays clear of the fold", verdict: "pass", note: "DynamicGridLayout(maxColumns: 2) rounds to an even count under a hinge (DynamicGridLayout.swift lines 186-195), so the unfolded Duo shows two cards or one, never a card across the fold.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Use ScaledMetric for minimum widths', verdict: 'pass', note: 'minCardWidth and minPillWidth are @ScaledMetric(relativeTo:).' },
-        { rule: 'Accessibility: combine decorative children, expose label, value and hint', verdict: 'pass', note: 'SprinklerControllerRow ignores children and sets label, value, hint, .isButton; StatusPill exposes label and value.' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'StatusPill uses stateForeground and stateColorTransition: 0.6 s, 0.2 s reduced.' },
-        { rule: 'Do not scroll-measure per frame', verdict: 'pass', note: 'scrollTelemetry("Sprinklers") only; no per-frame state.' },
-        { rule: 'Prefer system Dynamic Type styles', verdict: 'pass', note: 'footnote, subheadline semibold and body; no fixed point sizes.' },
+        { rule: "Accessibility: container with a button row and read-only pills", verdict: "pass", note: "accessibilityElement(children: .contain) on the card (line 84), the row ignores children and sets label, value, hint, trait (lines 103-107); StatusPill is one element each.", by: "swiftui-pro skill" },
+        { rule: "Design: avoid hard-coded spacing", verdict: "fix", note: "Spacing uses HassTokens throughout, but the page pads with .padding(.horizontal, HassTokens.Spacing.l) inside a ScrollView instead of the system margin (lines 38-39), so it ignores iPad readable margins that List-based pages get. Low.", by: "swiftui-pro skill" },
+        { rule: "Views: sheet(item:) on the controller", verdict: "pass", note: "sheet(item: $open) with hassSheet(.page, height: .full) because pages push inside it (lines 44-48).", by: "swiftui-pro skill" },
+        { rule: "Performance: telemetry only while scrolling", verdict: "pass", note: "scrollTelemetry(\"Sprinklers\") and no per-frame state (line 41).", by: "swiftui-pro skill" },
       ],
     },
 

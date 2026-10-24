@@ -77,17 +77,19 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Page controls: show a position indicator for paged content', verdict: 'pass', note: 'Capsule indicator, current dot stretched; adjustable for VoiceOver.' },
-        { rule: 'Typography: let text scale, avoid truncation', verdict: 'pass', note: 'Option D: the numeral never truncates and the condition wraps at accessibility sizes (main: the numeral could truncate, the reason for D).' },
-        { rule: 'Motion: avoid continuous animation that distracts', verdict: 'departure', note: 'The ticker is an exception recorded in design/weather-card-header.md (only on overflow, three passes then rest, pauses on scroll and off screen); Reduce Motion wraps instead.' },
-        { rule: 'Materials: content-layer cards are not Liquid Glass', verdict: 'pass', note: 'The card is the thin module (#1C1C1E at 66%) over the wallpaper.' },
-        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'Condition glyph plus label plus temperature.' },
+        { rule: "Accessibility: one control, named for what it does", verdict: 'pass', note: "The header Button reads 'Open seven-day weather forecast. Partly Cloudy, 48°' and hides the duplicate condition text (WeatherCardContent.swift:64-67, 111-127); Today's range keeps its own label.", by: 'apple-hig skill' },
+        { rule: "Typography: Dynamic Type for a display numeral", verdict: 'departure', note: "The numeral is @ScaledMetric 64 capped at 96 (WeatherCardContent.swift:19-26, 101), because a three-digit reading no longer fits the folded Duo card at AX5; the header stacks at accessibility sizes (design/weather-card-header.md, owner 2026-10-22).", by: 'apple-hig skill' },
+        { rule: "Scroll views and Page controls: show paging, support swiping", verdict: 'pass', note: "The hourly row pages with a 44 pt adjustable indicator, Previous and Next at regular width, and fewer hours per page as text grows (WeatherPagedCarousel.swift:40-87, WeatherCarouselPaging).", by: 'apple-hig skill' },
+        { rule: "Color: contrast on the card", verdict: 'pass', note: "White text on a dark module; secondary text is the 85% always-dark ink (WeatherCardContent.swift:43, 147).", by: 'apple-hig skill' },
+        { rule: "Feedback: loading shows structure not a spinner", verdict: 'pass', note: "Static placeholders and '--' until forecasts arrive, with an accessibility label 'Loading 24-hour weather forecast' (WeatherCardContent.swift:162-167).", by: 'apple-hig skill' },
+        { rule: "Gestures: the whole card is a target", verdict: 'fix', note: "The card opens from onTapGesture rather than a Button (WeatherCardContent.swift:49); VoiceOver and keyboard users reach it only through the inner header Button, and the card has no pressed state.", by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Layout adapts with AnyLayout, not nested conditionals', verdict: 'pass', note: 'Branch: stacked when accessibility size or when the range does not fit its column (measured from three widths that do not depend on the layout).' },
-        { rule: 'Scaled metrics for the numeral and glyph', verdict: 'pass', note: '@ScaledMetric numeral 64 (largeTitle, capped 96) and glyph 40.' },
-        { rule: 'No per-frame state writes in scrolling content', verdict: 'pass', note: 'The carousel is a UIKit paging scroll view; the ticker pauses while the page scrolls (pageIsScrolling).' },
-        { rule: 'Repeating animations need an off switch', verdict: 'departure', note: 'TickerLabel stops after three passes and under Reduce Motion; signposts and ios_tickerperf.sh measure it (design/weather-card-header.md).' },
+        { rule: "Never use onTapGesture for a tappable element", verdict: 'fix', note: "WeatherCardContent.swift:49; add Button or .isButton.", by: 'swiftui-pro skill' },
+        { rule: "Keep business logic out of body and task()", verdict: 'fix', note: "WeatherSummaryCard runs a 30 s polling loop in .task that builds the briefing context from three entities (WeatherSummaryCard.swift:36, 51-58); move it to the store.", by: 'swiftui-pro skill' },
+        { rule: "Use @ScaledMetric for fixed sizes", verdict: 'pass', note: "Glyph 40 relative to .title and numeral 64 relative to .largeTitle (WeatherCardContent.swift:20, 22).", by: 'swiftui-pro skill' },
+        { rule: "Avoid fixed fonts", verdict: 'fix', note: "The numeral is .system(size:weight:.thin) (line 101); a Thin weight at 64 pt is legible, but at the cap of 96 the numeral stops following the user's size.", by: 'swiftui-pro skill' },
+        { rule: "Animation with value, Reduce Motion", verdict: 'pass', note: "Colour changes and the ticker go through motion tokens; the ticker is in flight, see weather-card-header.md.", by: 'swiftui-pro skill' },
       ],
     },
     notes: [

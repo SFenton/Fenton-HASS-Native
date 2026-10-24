@@ -92,15 +92,16 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Loading: show content as soon as possible; use placeholders sparingly', verdict: 'pass', note: 'Names show at once; only the value is a placeholder, and only on the first sign-in.' },
-        { rule: 'Motion: avoid repeating movement or light', verdict: 'pass', note: 'A gentle opacity pulse, static under Reduce Motion.' },
-        { rule: 'Accessibility: do not leave placeholders unlabeled', verdict: 'pass', note: 'The tile reads "Loading".' },
+        { rule: "Loading: show something quickly; use placeholders until content arrives; no full-screen spinner", verdict: "pass", note: "On the first sign-in tiles keep their names and draw a soft bar where the value goes (owner 2026-10-17); a relaunch draws the disk snapshot at once, so the bar never appears twice, and the bar sizes to the footnote value line so the tile does not change height when the value arrives.", by: "apple-hig skill" },
+        { rule: "Motion and Accessibility: Reduce Motion stops repetitive animation; no flashing", verdict: "pass", note: "The pulse is 0.35 to 1 opacity over 1.4 s (well under three flashes a second) and under Reduce Motion the bar holds at 0.65 with its TimelineView paused; unlike the arc spinner it carries no meaning beyond 'value pending', so it can stop.", by: "apple-hig skill" },
+        { rule: "Accessibility: placeholders are named, not read as empty", verdict: "pass", note: "The bar is accessibilityHidden; a pending tile (subtitle or toggle kind) speaks its name with the value 'Loading' (GlassTile.accessibilityValue), so VoiceOver never reads an empty value.", by: "apple-hig skill" },
+        { rule: "Typography: placeholder scales with Dynamic Type", verdict: "fix", note: "The bar's height is @ScaledMetric to footnote but its width is a fixed 56 pt (PendingValue.swift line 40), so at AX sizes a long bar-height block sits beside a wrapped title; width should scale or use a fraction of the cell. Low.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Pause timelines that do not need to run', verdict: 'pass', note: 'TimelineView(.animation(paused: paused || reduceMotion)).' },
-        { rule: 'ScaledMetric for text-relative sizes', verdict: 'pass', note: 'height 12 pt relative to footnote.' },
-        { rule: 'Environment value for cross-cutting state', verdict: 'pass', note: 'valuesPending is an @Entry set once in MainTabView from the store\'s freshness.' },
-        { rule: 'Reuse before you write', verdict: 'fix', note: 'The kit has a Skeleton and a StatusChip "pending" look with no SwiftUI counterpart: only GlassTile reads valuesPending. Remove them from the kit or add the code; they are not drawn here.' },
+        { rule: "Performance: keep per-frame work small and shared", verdict: "fix", note: "Every pending tile builds its own TimelineView(.animation) that evaluates a sine on each frame; a page of 30 tiles runs 30 timelines on the main actor until values arrive, where one repeating Animation on the render server (or a shared TimelineView in the environment) would cost one. First sign-in only, so low.", by: "swiftui-pro skill" },
+        { rule: "Animation: derive from time, honour the environment", verdict: "pass", note: "opacity(at:reduceMotion:) is a pure nonisolated function of the date, tested directly, and the timeline is paused with Reduce Motion or arcSpinnersPaused (so XCUITest can go idle).", by: "swiftui-pro skill" },
+        { rule: "API: @Entry and small value views", verdict: "pass", note: "valuesPending is an @Entry Bool defaulting to false, written once by the shell and read only by GlassTile; PendingValueBar has no initializer parameters and one Capsule.", by: "swiftui-pro skill" },
+        { rule: "Design: reuse an environment key named for something else", verdict: "fix", note: "The bar pauses on \\.arcSpinnersPaused, a key documented as for spinner galleries (ArcSpinner.swift lines 91 to 94); a neutral name such as animationsPaused would stop a future reader looking for a pulse switch in the spinner file. Low.", by: "swiftui-pro skill" },
       ],
     },
     notes: [

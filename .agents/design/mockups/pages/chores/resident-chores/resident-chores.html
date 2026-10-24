@@ -32,7 +32,21 @@
     ],
   });
   cfg.id = 'resident-chores';
-  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: "Lists and tables: swipe order and a confirmed delete", verdict: "pass", note: "Complete leading; Delete then Edit trailing; Delete asks first (TodoRowActions.swift, TodoPageView.swift lines 190-204).", by: "apple-hig skill" },
+        { rule: "Undo and redo: completing from the resident page", verdict: "fix", note: "A tap or full swipe completes the task and removes it with no undo (TodoListSection.swift lines 48-50, 74); the page can show tasks assigned to Steph that the viewer could complete by accident. Medium.", by: "apple-hig skill" },
+        { rule: "Color: overdue is not colour alone", verdict: "pass", note: "Orange or red due text always has the clock glyph and \"n days overdue\" wording; the module turns dense for 4.5:1 (TodoListSection.swift lines 38-41).", by: "apple-hig skill" },
+        { rule: "Feedback: state who the page is about", verdict: "pass", note: "The title and empty copy swap by viewer (\"Your Chores\" or the name, ChoresConfig.swift lines 116-119).", by: "apple-hig skill" },
+        { rule: "Designing for iPhone Duo: keep content clear of the fold", verdict: "fix", note: "One full-width List column across the hinge in unfolded landscape (TodoPageView.swift lines 30-56). Low.", by: "apple-hig skill" },
+      ],
+      swiftui: [
+        { rule: "Sheets: DoneTick form opens from the edit glyph or Edit swipe", verdict: "pass", note: "DonetickEditTarget(item:) only for rows whose uid carries a task id (TodoPageView.swift lines 99-103), so a non-DoneTick row has no Edit.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: Edit offered once", verdict: "fix", note: "\"Edit\" custom action plus \"Edit {title}\" button on the same row (TodoListSection.swift lines 216-232). Low.", by: "swiftui-pro skill" },
+        { rule: "Performance: every visible list loads, drawn or not", verdict: "pass", note: "A hidden Color.clear task per visible list keyed by entity state and reloadVersion (TodoPageView.swift lines 62-72), cancelled with the view.", by: "swiftui-pro skill" },
+      ],
+    }, devices: (static check keys). */
   Mock.mount(cfg);
 
 })();

@@ -70,19 +70,19 @@
     ],
 
     reviews: {
-      date: '2026-10-23',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Sheets: fitted form sheet, close control', verdict: 'pass', note: 'hassSheet(.form), circle x Close.' },
-        { rule: 'Toggles: a switch-like control reads its state', verdict: 'pass', note: 'Cards are toggle buttons with On/Off values; direction G keeps switches to list rows, so a tile with a value is the grill\'s switch (room-device-sheets.md).' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Glyph, title and value on every card.' },
-        { rule: 'Readouts carry units', verdict: 'pass', note: 'Grill sensors show units, unlike the web (room-device-sheets.md Departures).' },
-        { rule: 'Dynamic Type', verdict: 'pass', note: 'One column at AX sizes.' },
+        { rule: 'Sheets: fitted form sheet with a close control', verdict: 'pass', note: '.hassSheet(.form), grabber, circle-X Close; sheet subtitle carries the grill state.' },
+        { rule: 'Toggles: a switch-like control reads its state', verdict: 'pass', note: 'Keep Warm and Super Smoke are toggle tiles with On/Off values; direction G keeps switches to list rows, so a tile with a value is the grill\'s switch (room-device-sheets.md).' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Glyph, title and value on every card; unavailable cards read the word "Unavailable".' },
+        { rule: 'Typography: Dynamic Type', verdict: 'fix', note: 'The header flame is .font(.title2) inside a fixed 44 x 44 circle (AirPurifierSheet.swift:104-109); title2 scales past 44 pt at AX5, so the glyph can outgrow its circle (FanRailButton caps its glyph at 45% for this reason).' },
+        { rule: 'Layout: tile grid reflows', verdict: 'pass', note: 'DeviceTileGrid(maxColumns: 2) with a scaled 132 pt minimum goes to one column at AX5.' },
       ],
       swiftui: [
-        { rule: 'Explicit service calls for switches', verdict: 'pass', note: 'turn_on / turn_off, never toggle (web sends homeassistant.toggle).' },
-        { rule: 'Colour animates with the app token', verdict: 'pass', note: 'stateColorTransition on the cards and the header circle.' },
-        { rule: 'Sensor cards are not buttons', verdict: 'pass', note: 'GlassTile(kind: .state) draws no press state and no button trait.' },
-        { rule: 'Group and label', verdict: 'pass', note: 'The header combines its children into one element.' },
+        { rule: 'Hygiene: one type per file', verdict: 'fix', note: 'GrillSheet and GrillControls are declared in AirPurifierSheet.swift (lines 67-135); the file name misleads and the type should move to GrillSheet.swift.' },
+        { rule: 'Accessibility: sensor cards are not buttons', verdict: 'pass', note: 'GlassTile(kind: .state) draws no press state and no button trait; the header combines its children.' },
+        { rule: 'Data: explicit service calls', verdict: 'pass', note: 'turn_on / turn_off with a 2 s revert, never toggle.' },
+        { rule: 'Motion: colour with the app token', verdict: 'pass', note: 'stateColorTransition on the cards and the header circle; 0.2 s under Reduce Motion.' },
       ],
     },
 

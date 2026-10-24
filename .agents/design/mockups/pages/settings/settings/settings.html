@@ -6,6 +6,8 @@
 <script src="../../../_kit/kit.js"></script>
 <script src="../_settings-account.js"></script>
 <script src="../_settings-page.js"></script>
+<!-- Reduce Transparency: SettingsScreen sets listRowBackground(Surface.moduleThin), a fixed 66% tint, so its rows do not go opaque like .module() (review 2026-10-23). -->
+<style>.k-reduce-transparency .ui-page .ui-mlist:not(.sa-solid){background:var(--g-module-thin)}</style>
 </head><body>
 <script>
 (function () {
@@ -96,25 +98,27 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Lists and tables: group related rows in sections with headers and footers that explain', verdict: 'pass', note: 'Six sections; Appearance and Household have headers, Appearance and Home Assistant have footers.' },
-        { rule: 'Settings: keep settings in the app only when they need frequent access; give sensible defaults', verdict: 'pass', note: 'Background Blur defaults to the web dashboard\'s value with a Reset; the icon badge defaults on.' },
-        { rule: 'Toggles: label a switch with what it controls', verdict: 'pass', note: '"Show count on app icon" is a list row, the only place switches appear (direction-g Controls).' },
-        { rule: 'Sliders: show the value; support steps', verdict: 'pass', note: 'Title and value on one line, 5 percent steps, adjustable for VoiceOver.' },
-        { rule: 'Color: do not rely on colour alone; contrast of 4.5:1', verdict: 'pass', note: 'Header and footer ink is white at 85% on the wallpaper after the iPad measurement.' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'departure', note: 'Pages are always dark on the dimmed house photo (owner 2026-10-15, direction-g Layers); sheets that Settings opens follow the system.' },
+        { rule: 'Lists and tables: group related rows in sections with headers that clarify', verdict: 'departure', note: 'Six sections but only Appearance and Household carry headers; Vacation/To-Do, Performance and Feedback are bare (FeedbackSettingsSection.swift:22 records a 1.2:1 bare-header measurement on the iPad wallpaper, page-backdrop R4). The rows name themselves.', by: 'apple-hig skill' },
+        { rule: 'Lists and tables: a disclosure indicator means the row pushes', verdict: 'fix', note: 'SettingsLinkRow defaults showsChevron to true (SettingsScreen.swift:111), so the Home Assistant row (opens a full-screen cover, :70-77) and both Feedback rows (open sheets, FeedbackSettingsSection.swift:14-16) show the same chevron as the rows that push.', by: 'apple-hig skill' },
+        { rule: 'Sliders: show the value and make it adjustable', verdict: 'pass', note: 'PercentSliderRow shows "N%" beside the title, steps by 5 and exposes accessibilityAdjustableAction (RecipesScreen.swift:377-420); Reset to Default is a 44 pt button, disabled at the default.', by: 'apple-hig skill' },
+        { rule: 'Color and Accessibility: text contrast of at least 4.5:1 on the wallpaper', verdict: 'pass', note: 'Headers and footers take the fixed Ink.onDarkSecondary (white at 85%) when surface == .page (SettingsSectionHeader.swift:17, SettingsScreen.swift:82) instead of the adaptive secondary that measured 3.8:1 on iPad.', by: 'apple-hig skill' },
+        { rule: 'Accessibility: Reduce Transparency means opaque materials', verdict: 'fix', note: 'Rows take .listRowBackground(HassTokens.Surface.moduleThin) (SettingsScreen.swift:94), a fixed 66% tint, so unlike .module() (Module.swift:35-42) they do not turn opaque with Reduce Transparency; the mockup drew them solid and was corrected to the code.', by: 'apple-hig skill' },
+        { rule: 'Dark Mode: support both appearances', verdict: 'departure', note: 'Pages are always dark over the dimmed house photo (owner 2026-10-15, direction-g Layers); sheets the list opens follow the system.', by: 'apple-hig skill' },
+        { rule: 'Typography and Layout: Dynamic Type without truncation', verdict: 'pass', note: 'Title and subtitle wrap (fixedSize vertical) and the glyph moves above the text at accessibility sizes (SettingsScreen.swift:121-133); rows keep minHeight 44.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use semantic fonts and foregroundStyle', verdict: 'pass', note: '.body, .subheadline, .footnote and HassTokens inks; no fixed point sizes in the rows.' },
-        { rule: 'Section header and footer as closures, not Section("title")', verdict: 'pass', note: 'SettingsSectionHeader and footer Text carry their own ink.' },
-        { rule: 'NavigationLink(value:) with navigationDestination', verdict: 'pass', note: 'SettingsRoute and HouseholdSettingsPage values on the tab\'s path.' },
-        { rule: 'Accessibility: combine row children, hide decorative glyphs, 44 pt targets', verdict: 'pass', note: 'SettingsLinkRow combines, hides the glyph, minHeight 44.' },
-        { rule: 'No state per frame while scrolling; list rows are cheap', verdict: 'pass', note: 'Static rows; only the slider writes (to UserDefaults and the backdrop store, not per scroll frame).' },
+        { rule: 'Accessibility: Button rows that navigate should read as links', verdict: 'fix', note: 'Household, Home Assistant and Feedback rows are Buttons with .buttonStyle(.plain) (SettingsScreen.swift:57-64, :70-77) that push or present; only NavigationLink rows get the link semantics VoiceOver announces.', by: 'swiftui-pro skill' },
+        { rule: 'Accessibility: combine row children, hide decorative glyphs, 44 pt targets', verdict: 'pass', note: 'SettingsLinkRow combines children, hides the glyph and sets minHeight HassTokens.minTarget (:143-146, :159).', by: 'swiftui-pro skill' },
+        { rule: 'Design: prefer Label over HStack for icon plus text; avoid scattered fontWeight', verdict: 'fix', note: 'SettingsLinkRow hand-builds the icon/title HStack and the chevron uses .font(.footnote.weight(.semibold)) (:138); a Label and the system disclosure would adapt without the AX special case.', by: 'swiftui-pro skill' },
+        { rule: 'Data flow: window-specific state in scene storage, not shared defaults', verdict: 'fix', note: 'The To-Do gate reads @AppStorage(ChoresModel.viewerDefaultsKey) (SettingsScreen.swift:21); two windows on iPad or the unfolded Duo share one viewer id.', by: 'swiftui-pro skill' },
+        { rule: 'Performance: no state per frame while scrolling', verdict: 'pass', note: 'Rows are static; only the slider writes, to UserDefaults and the backdrop store (AppearanceSettingsSection.swift:21).', by: 'swiftui-pro skill' },
       ],
     },
 
     notes: [
+      'Reduce Transparency (corrected in the 2026-10-23 skill review): the rows are drawn at the thin 66% module tint, not solid, because SettingsScreen applies a fixed listRowBackground(Surface.moduleThin) instead of .module(), which would turn opaque. Over the plain background the two look almost the same.',
       'loading, refreshing, empty and error: Settings reads no entities and loads nothing (the viewer id comes from AppStorage), so none of these states exist. offline and reconnecting only change the header chrome.',
       'Docs and code: split-view.md still lists Settings as a leading pane beside a detail; the code is a tab with pushes (SettingsTabRoot) and OnDemandSplitStack has no adopter. A topic never splits on any device.',
       'Unverified: the list width on iPad (drawn centred at 704 pt, an inset-grouped list on the readable guide), the separator inset (drawn at the text), and the row spacing between sections (24 pt). Check in the simulator.',

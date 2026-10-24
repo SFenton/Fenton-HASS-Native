@@ -40,9 +40,21 @@
       { rule: 'Volume', note: 'Slider "<title> volume", "32 percent", adjustable; commits on release or at once for VoiceOver steps. Mute, Volume Down and Volume Up are 44 pt buttons.' },
       { rule: 'Targets', note: 'Pad keys 64 to 104 pt (capped to the column), transport 44 to 88 pt.' },
     ],
-    reviews: { date: '2026-10-23',
-      hig: [MLC.R.target44, MLC.R.colorNotAlone, { rule: 'Playing haptics: light feedback on a press', verdict: 'pass', note: 'Impact (light) per pad press.' }, { rule: 'Sliders: leading and trailing symbols show the range', verdict: 'pass', note: 'Speaker minus and plus flank the slider.' }],
-      swiftui: [MLC.R.scaled, MLC.R.motionTokens, { rule: 'Reduce Motion: replace movement with opacity', verdict: 'pass', note: 'RoundButtonStyle.' }, { rule: 'Do not send a service call per slider point', verdict: 'pass', note: 'SliderDraft commits on release.' }] },
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { by: 'apple-hig skill', rule: 'Color: power state needs more than red versus green', verdict: 'fix', note: 'The power glyph never changes shape: Ink.danger while on, Ink.success while off (MediaRemoteControls.swift:15-18, 113-118). Red and green are the pair color-blind people confuse most, and red-for-on reads as a warning; add a filled or struck-through glyph or text for the state.' },
+        { by: 'apple-hig skill', rule: 'Playing haptics: light feedback on a press', verdict: 'fix', note: 'The pad ticks (line 231) but the transport keys (line 347) and volume, mute buttons (lines 377-385) have no onPress, so they are silent.' },
+        { by: 'apple-hig skill', rule: 'Buttons: a control looks pressable', verdict: 'fix', note: 'The SHIELD Select key draws an empty circle (RemoteButtonIcon else-branch, lines 107-110); it is labelled for VoiceOver but looks inert. Give it a dot like the Apple TV remote.' },
+        { by: 'apple-hig skill', rule: 'Sliders: leading and trailing symbols show the range', verdict: 'pass', note: 'Speaker minus and plus buttons flank the slider (lines 381-387); each is a 44 pt target.' },
+        { by: 'apple-hig skill', rule: 'Buttons: 44 pt targets that scale', verdict: 'pass', note: 'Pad keys are min(max(@ScaledMetric 76, 64), 104), never under 44 pt in a narrow column (lines 193-203); transport keys 44 to 88 pt (line 319).' },
+      ],
+      swiftui: [
+        { by: 'swiftui-pro skill', rule: 'performance.md: one service call per gesture, not per point', verdict: 'pass', note: 'SliderDraft keeps the drag local and commits on release or at once for VoiceOver steps (lines 250-273).' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Reduce Motion and Voice Control', verdict: 'pass', note: 'RoundButtonStyle dims instead of scaling under Reduce Motion (lines 60-61); Power adds input labels "Power" and the device title (line 159).' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: labels for image-only buttons', verdict: 'pass', note: 'Every key sets accessibilityLabel from its config and hides the glyph (lines 86, 106).' },
+      ],
+    },
     notes: ['The Select dot (Apple TV) and the Home dot (SHIELD) are footnote-size circle.fill glyphs, not buttons without glyphs.', 'Promote to kit: MLC.pad, MLC.volumeCard, MLC.transport, MLC.keyboardForm.'],
     changelog: [{ date: '2026-10-23', note: 'First pass.' }],
   });

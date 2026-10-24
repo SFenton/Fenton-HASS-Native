@@ -2,7 +2,7 @@
 
 > **What:** the form sheet with Cancel and Submit: prefixed title, description, steps, expected behaviour, media, reasons and sending phases. **Read when:** you change `HassUI/Features/Settings/Feedback` or `HassCore/Feedback`.
 
-- Mockup: [feedback-form-sheet.html](feedback-form-sheet.html) · shipped · reviewed 2026-10-23 (author self-check; skill reviewers replace it)
+- Mockup: [feedback-form-sheet.html](feedback-form-sheet.html) · shipped · reviewed 2026-10-23 (apple-hig and swiftui-pro skill review)
 - Source: `apple/Sources/HassUI/Features/Settings/Feedback/FeedbackFormSheet.swift`, `FeedbackFormModel.swift`, `FeedbackSettingsSection.swift`, `FeedbackFieldHeader.swift`
 - Spec: `.agents/pages/settings/feedback.md`, `.agents/workflow/triage-agent.md`  · Patterns: modal-sheet, info-box
 - States covered: default, feature-empty, no-description, typed, feature-typed, loading, setup-needed, with-attachments, max-attachments, importing, sending-media, sending-filing, error, offline, discard, filed, medium, large, fitted, ax5.

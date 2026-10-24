@@ -64,19 +64,18 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Toolbars: Back on a pushed level', verdict: 'pass', note: 'Glass Back circle; inline title "Rooms".' },
-        { rule: 'Toolbars: a modal needs a visible way out at every depth', verdict: 'fix', note: 'Pushed levels in Quick Links show Back only; the Close item sits on the root view (QuickLinksSheet). Same finding as quick-links.' },
-        { rule: 'Layout: grids adapt to width', verdict: 'pass', note: 'DynamicGridLayout, four columns at most, scaled minimum 140 pt.' },
-        { rule: 'Color: contrast and meaning', verdict: 'pass', note: 'Every fill is at least 4.7:1 under white and 0.05 OKLab from every family and alarm colour, so a room never reads as a device or alarm state.' },
-        { rule: 'Color: use colour consistently for meaning', verdict: 'departure', note: 'Sixteen hues for sixteen rooms: recognition aid, direction-g.md Colour: Room tiles (owner 2026-10-16).' },
+        { rule: 'Sheets: give a modal a clear way out at every depth', verdict: 'fix', note: 'Pushed Rooms level shows Back and no Close; the toolbar item sits on QuickLinksRoot (QuickLinksSheet.swift:63) and QuickLinksDetailView.rooms sets only a title (lines 109-115). Same root cause as quick-links. Medium.', by: 'apple-hig skill' },
+        { rule: 'Toolbars: Back on a pushed level, inline title', verdict: 'pass', note: 'System NavigationStack Back; .inlineNavigationTitle() (QuickLinksSheet.swift:114-115).', by: 'apple-hig skill' },
+        { rule: 'Color: contrast and not colour alone', verdict: 'pass', note: 'Sixteen fills moved until white holds at least 4.7:1 (RoomPalette.swift:10-12); every tile also has the room name and a glyph.', by: 'apple-hig skill' },
+        { rule: 'Color: use colour consistently for meaning', verdict: 'departure', note: 'Sixteen hues for sixteen rooms, a recognition aid (direction-g.md Colour: Room tiles, owner 2026-10-16).', by: 'apple-hig skill' },
+        { rule: 'Layout: grids adapt to width and text size', verdict: 'pass', note: 'DynamicGridLayout, up to four columns, scaled 140 pt minimum, equal heights (QuickLinksSheet.swift:229-242).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use ScaledMetric for text-tied sizes', verdict: 'pass', note: 'minTileWidth is scaled; title lines reserved from the current text size.' },
-        { rule: 'Count the visit, then navigate once', verdict: 'pass', note: 'open() records the visit and calls onOpen; the sheet owns the dismissal and push ordering.' },
-        { rule: 'Equal heights without per-frame state', verdict: 'pass', note: 'equalHeightTiles() plus a Layout; no GeometryReader writes while scrolling.' },
-        { rule: 'Fire-and-forget calls surface no error', verdict: 'fix', note: 'recordVisit uses Task { try? await caller.call(...) }: a failed counter call is silent, so a room can stay out of order. Harmless; log it.' },
+        { rule: 'Fire-and-forget calls should surface or log failure', verdict: 'fix', note: 'RoomController.recordVisit runs Task { try? await caller.call(call) } (RoomController.swift:351): a failed counter call leaves the room\'s rank unchanged and says nothing. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Order should not change under the reader', verdict: 'fix', note: 'RoomNavigation.ranked is evaluated in body (QuickLinksSheet.swift:230), so a counter that changes while the sheet is open, or the tapped room as the sheet closes, reorders the tiles live. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Group a grid for assistive tech with a name', verdict: 'pass', note: '.accessibilityElement(children: .contain) and label "Rooms" (QuickLinksSheet.swift:243-244).', by: 'swiftui-pro skill' },
       ],
     },
 

@@ -92,18 +92,18 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Toggles: switches only in list rows', verdict: 'pass', note: 'direction-g.md Controls: the manual switch is a row in a ModuleList.' },
-        { rule: 'Lists and tables: 44 pt rows, inset hairlines', verdict: 'pass', note: 'ModuleRow is 52 pt, 60 with a subtitle; hairlines start at the text.' },
-        { rule: 'Pop-up buttons: chevrons up and down show a choice', verdict: 'pass', note: 'The mode name with the up-down chevrons opens a sheet of choices (OptionPickerSheet).' },
-        MLC.R.target44, MLC.R.colorNotAlone,
-        { rule: 'Layout: content up to a readable width on iPad', verdict: 'pass', note: 'Content is capped at 960 pt and centred; tiles use DynamicGridLayout (150 pt, up to four).' },
-        { rule: 'Navigation: Quick Links as a header button, not a tab', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation).' },
+        { by: 'apple-hig skill', rule: 'Toggles: a switch belongs in a list row', verdict: 'pass', note: 'ManualControlRow is a ModuleRow holding a labelled Toggle (CustomLightsScreen.swift:108-122); unavailable disables it and dims the glyph.' },
+        { by: 'apple-hig skill', rule: 'Pop-up buttons: the up-down chevron promises an in-place menu', verdict: 'fix', note: 'LightingModeButton draws chevron.up.chevron.down (CustomLightsScreen.swift:141) but opens a sheet; that glyph belongs to a pop-up Menu. Either use a Picker(.menu) or a plain disclosure glyph.' },
+        { by: 'apple-hig skill', rule: 'Alerts: confirm or allow undo for a bulk destructive action', verdict: 'fix', note: 'Reset All Lights (lines 54-66) resets the whole group in one tap, discarding every light\'s custom colour with no confirmation and no undo.' },
+        { by: 'apple-hig skill', rule: 'Layout: readable width on iPad', verdict: 'pass', note: 'Content is capped at 960 pt and centred (line 69); tiles use DynamicGridLayout with a scaled 150 pt minimum, up to four columns; AX5 renders one column with the switch under its wrapped title.' },
+        { by: 'apple-hig skill', rule: 'Color: state is words and shape as well as hue', verdict: 'pass', note: 'Each light tile carries the band, the percent and Off or Unavailable; the mode name is text in Ink.action beside the swatch.' },
+        { by: 'apple-hig skill', rule: 'Navigation: Quick Links as a header button', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation).' },
       ],
       swiftui: [
-        MLC.R.scaled, MLC.R.motionTokens,
-        { rule: 'Never toggle from a possibly stale state', verdict: 'pass', note: 'Manual control sends explicit input_boolean.turn_on or turn_off from the shown state; lights go through LightControl (never homeassistant.toggle).' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'stateColorTransition("LightingModeButton", value: swatch).' },
-        { rule: 'Revealing rows is a user action: animate with standard', verdict: 'fix', note: 'Turning manual control on inserts rows with no animation (motion.md section 6 says user actions use standard, 0.3 s).' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: gesture-only controls need an action alternative', verdict: 'pass', note: 'Drag-to-set brightness has swipe-up/down adjust in steps of 10 and a Turn On/Off custom action (BrightnessTile.swift:138-149).' },
+        { by: 'swiftui-pro skill', rule: 'design.md: a visible control for the main action', verdict: 'fix', note: 'With onOpen set a tile tap opens the sheet (BrightnessTile.swift:155-157), so on this page power is only a drag to 0 or a VoiceOver action; no tile shows a switch.' },
+        { by: 'swiftui-pro skill', rule: 'views.md: animate inserted content with a value', verdict: 'fix', note: 'Turning manual control on inserts the mode row and eight tiles (CustomLightsScreen.swift:42-67) with no animation or transition; wrap the reveal in motionSafeAnimation(MotionTokens.standard, value: manualOn).' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Reduce Motion replaces movement with opacity', verdict: 'pass', note: 'The dragged tile skips its 1.03 scale under Reduce Motion and only the shadow and bubble fade (BrightnessTile.swift:119).' },
       ],
     },
 

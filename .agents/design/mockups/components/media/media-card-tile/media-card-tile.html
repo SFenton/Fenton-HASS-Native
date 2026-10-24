@@ -41,9 +41,18 @@
       { rule: 'Targets and type', note: '72 pt minimum height; wraps at large sizes; AX sizes stack the glyph over the text.' },
       { rule: 'Contrast', note: 'White on the pink fill is 4.5:1 or better (media fill #A03A61); the off glyph is the family colour mixed toward grey on the dark module.' },
     ],
-    reviews: { date: '2026-10-23',
-      hig: [MLC.R.target44, MLC.R.colorNotAlone, MLC.R.glass, { rule: 'Buttons: a tile that opens something shows a disclosure', verdict: 'pass', note: 'Chevron on lead tiles only.' }],
-      swiftui: [MLC.R.scaled, MLC.R.motionTokens, { rule: 'One tile implementation', verdict: 'pass', note: 'GlassTile; no parallel card (pattern-first).' }] },
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { by: 'apple-hig skill', rule: 'Buttons: a tile that opens something shows a disclosure', verdict: 'pass', note: 'Only lead tiles carry the chevron (kind .navigate, GlassTile.swift:121); source and script tiles run in place with no chevron.' },
+        { by: 'apple-hig skill', rule: 'Color: never the only differentiator', verdict: 'pass', note: 'On, Off, Playing and Unavailable are words in the subtitle and the spoken value (GlassTile.swift:173-181); the television-off glyph swaps when the room is off.' },
+        { by: 'apple-hig skill', rule: 'Accessibility: disabled controls keep readable text', verdict: 'pass', note: 'GlassTileButtonStyle never fades the label; only the glyph and border mute while unavailable (GlassTile.swift:186-194).' },
+      ],
+      swiftui: [
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: choices read as selected, not as switches', verdict: 'fix', note: 'MediaCardTile.look folds ControlSemantics.selection into GlassTile.Kind.toggle (MediaScreen.swift:121-124), so a source choice reads "On/Off, switch"; add .selection to the card path (GlassTile.swift:228).' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Button, not onTapGesture; label and value on the control', verdict: 'pass', note: 'One Button with accessibilityLabel and accessibilityValue, disabled both inside and outside the combined element (GlassTile.swift:135-145).' },
+      ],
+    },
     notes: ['Page and sheet swatches are shown because the same tile style is used on room pages (module) and in sheets (cell); on the Media page itself it is always on the dark page.', 'The kit GlassTile draws the face; the card data (titles, glyphs, labels) comes from MediaPageConfig (components/media/_media-lights-cameras.js).'],
     changelog: [{ date: '2026-10-23', note: 'First pass.' }],
   });

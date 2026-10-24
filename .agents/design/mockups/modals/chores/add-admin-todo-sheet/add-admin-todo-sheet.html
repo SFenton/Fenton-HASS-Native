@@ -10,7 +10,21 @@
 (function () {
   var h = Mock.h, K = Mock.components, C = window.Chores;
 
-  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: "Sheets: confirm before a dismiss that loses input", verdict: "fix", note: "Cancel calls dismiss() and a swipe down is allowed unless a save runs (TodoItemSheets.swift lines 123 and 129); typed text and up to four chosen images are dropped silently. HIG Sheets and Modality ask for an action sheet when changes are unsaved. Medium.", by: "apple-hig skill" },
+        { rule: "Text fields: a visible label, not only a placeholder", verdict: "fix", note: "The Task field is a bare TextField(\"Task\") in a Form (TodoItemSheets.swift line 91); the placeholder vanishes once typing starts and the section has no header, unlike the DoneTick form's FormHeader. Low.", by: "apple-hig skill" },
+        { rule: "Privacy: disclose where input goes", verdict: "pass", note: "Footer: \"This issue is synchronized from the dashboard Admin To-Do list. The repository is public.\" (line 96) and image limits (line 114).", by: "apple-hig skill" },
+        { rule: "Image wells and pickers: system picker, clear limits", verdict: "pass", note: "PhotosPicker, maxSelectionCount 4, a Remove button per image at 44 x 44 (lines 105, 185-191); validation error shown at the top.", by: "apple-hig skill" },
+        { rule: "Toolbars: Cancel leading, a verb-named confirm trailing", verdict: "departure", note: "direction-g.md Sheets: circle x and a filled check labelled \"Add\", disabled until valid (SheetEditToolbar.swift lines 11-137).", by: "apple-hig skill" },
+      ],
+      swiftui: [
+        { rule: "Views: TextField(axis: .vertical) over TextEditor", verdict: "pass", note: "lineLimit(1...4) vertical TextField (lines 91-92); a 1000 character cap in onChange.", by: "swiftui-pro skill" },
+        { rule: "Navigation: sheet(item:) with NavigationStack inside", verdict: "pass", note: "Presented through TodoPageView sheet(item:) with .hassSheet(.form) fitting the content.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: icon-only buttons carry text", verdict: "pass", note: "The remove button is labelled \"Remove {filename}\" (line 191) and the thumbnail is accessibilityHidden.", by: "swiftui-pro skill" },
+      ],
+    }, devices: (static check keys). */
   Mock.mount(C.sheetConfig({
     id: 'add-admin-todo-sheet', title: 'Add admin to-do sheet (with images)', file: 'TodoItemSheets.swift', fromLabel: 'To-Do', from: 'admin-todo',
     summary: 'Add Task with the subtitle "Admin To-Do": a multi-line Task field, a public-repository disclosure, and up to four PNG, JPEG or WebP images from the photo library. Without images it is a plain todo.add_item; with images it posts to the dashboard integration. A fitted form sheet.',

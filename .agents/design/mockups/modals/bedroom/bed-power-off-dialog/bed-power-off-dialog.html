@@ -56,15 +56,14 @@
       { rule: 'Reversibility', note: 'Only turning off asks; turning on, Snooze and Stop do not (reversible or time critical).' },
     ],
     reviews: {
-      date: '2026-10-23',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Action sheets: use for choices tied to an action; destructive in red', verdict: 'pass', note: 'One destructive action plus Cancel.' },
-        { rule: 'Action sheets: on iPad present as a popover from the control', verdict: 'pass', note: 'The system anchors the confirmationDialog to the Turn Off capsule.' },
-        { rule: 'Alerts: do not over-confirm', verdict: 'pass', note: 'Only turning a side off asks (direction-g.md Alerts: for destructive or hard-to-undo actions); turning on, Snooze and Stop do not.' },
+        { rule: 'Action sheets: destructive in red, Cancel present', verdict: 'pass', note: 'One .destructive Turn Off and a .cancel Cancel; title visible.' },
+        { rule: 'Alerts: do not over-confirm', verdict: 'departure', note: 'Turning a side off asks although it is reversible, because heating takes minutes to recover (direction-g.md Alerts: hard-to-undo actions); the destructive role colours a non-destructive action red.' },
       ],
       swiftui: [
-        { rule: 'confirmationDialog with titleVisibility and roles', verdict: 'pass', note: 'titleVisibility: .visible, Button(role: .destructive), Button(role: .cancel).' },
-        { rule: 'Attach the dialog to the control it concerns', verdict: 'pass', note: 'The dialog hangs off the power Button so the iPad popover anchors to it.' },
+        { rule: 'Navigation: confirmationDialog attached to the triggering control', verdict: 'pass', note: 'Hangs off the power Button inside powerButton, which keeps the Liquid Glass morph source correct.' },
+        { rule: 'Navigation: item-based presentation', verdict: 'fix', note: 'Uses confirmationDialog(isPresented:) with a Bool; on Xcode 27 confirmationDialog(_:item:) would drop the separate flag. Low.' },
       ],
     },
     notes: [

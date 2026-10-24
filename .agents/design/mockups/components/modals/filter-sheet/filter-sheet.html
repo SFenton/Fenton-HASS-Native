@@ -89,20 +89,41 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Sheets: edit sheets have Cancel and a confirm; dismiss drops the draft', verdict: 'pass', note: 'SheetCancelItem and SheetConfirmItem("Apply"); Cancel or a swipe down discards the draft.' },
-        { rule: 'Toolbars: disable rather than hide a control that does not apply now', verdict: 'departure', note: 'Apply visible and dimmed until a change, as in Calendar and Reminders (owner 2026-10-16).' },
-        { rule: 'Buttons: reserve red for destructive actions', verdict: 'pass', note: 'Reset to Defaults is blue (owner 2026-10-16).' },
-        { rule: 'Lists: inset grouped sections with headers and footers', verdict: 'pass', note: 'Form with FilterSection headers, no translucent band under the title (modalChrome).' },
-        { rule: 'Sheets: smallest detent that shows the content; prefer form sheets on iPad', verdict: 'pass', note: 'hassSheet(.form, height: .fitted), remembered per title (fitKey "FilterSheet.<title>").' },
+
+        { rule: "Sheets (iOS): Cancel on the leading toolbar edge, Done or the confirm action trailing and inactive until the task has a change", verdict: "pass", note: "SheetCancelItem leads and SheetConfirmItem('Apply', isEnabled: canApply) trails, inactive until the draft differs from what is applied; the pair is Cancel plus Apply, never three buttons.", by: "apple-hig skill" },
+
+        { rule: "Sheets: resizable detents and a grabber; one sheet at a time", verdict: "pass", note: "hassSheet(.form, height: .fitted) rests at the content height and grows to the large detent and scrolls; iPad takes a form sheet; Sort and Filter are separate sheets, never stacked.", by: "apple-hig skill" },
+
+        { rule: "Modality: confirm before a dismiss gesture loses user-generated content", verdict: "pass", note: "A swipe down or Cancel drops the draft with no confirmation; the draft is only a few chosen rows, rebuilt in one tap, so no confirmation is warranted.", by: "apple-hig skill" },
+
+        { rule: "Buttons: reserve red for destructive actions; 44 pt minimum target", verdict: "pass", note: "Reset to Defaults is a list row in the action tint, never red (owner 2026-10-16); FilterOptionRow keeps minHeight 44 and the Reset row is 12 pt scaled padding around a 20 pt line.", by: "apple-hig skill" },
+
+        { rule: "Controls: disable rather than hide an unavailable control", verdict: "departure", note: "Reset appears only when canReset because a dimmed row failed the contrast audit (FilterSheet.swift lines 43 to 46); the cost is a row that appears under the sections while the user edits, and a fitted sheet that may change height.", by: "apple-hig skill" },
+
+        { rule: "Accessibility: state beyond colour and text that grows with Dynamic Type", verdict: "pass", note: "Selection is a checkmark plus the selected trait; section headers are 15 pt semibold readable secondary ink at 4.5:1 and wrap at AX sizes; the Reset row's padding scales instead of a fixed 44 pt floor.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Own the draft in the caller; commit in onApply', verdict: 'pass', note: 'canApply, canReset, onApply, onReset are closures; FilterSheet holds no state.' },
-        { rule: 'Reset row padding scales with the text', verdict: 'pass', note: '@ScaledMetric verticalPadding = 12: iPad Filter Recipes measured 1.26x row growth against 3x text before (2026-10-17).' },
-        { rule: 'Animate with the app token', verdict: 'pass', note: 'quickTransition on the check only.' },
-        { rule: 'Identifiers on every control', verdict: 'pass', note: 'filterSheet.cancel, .apply, .reset; rows carry the caller\'s.' },
+
+        { rule: "Performance: store built views, not escaping @ViewBuilder closures", verdict: "fix", note: "FilterSheet and FilterSection keep `@ViewBuilder var content: () -> Content` with an @escaping init parameter (FilterSheet.swift lines 21 and 97); a stored @ViewBuilder let content: Content built once avoids re-running the closure on every body pass. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Views: use the system control for single choice", verdict: "fix", note: "FilterOptionRow hand-builds a radio row from Button, checkmark and the selected trait; Picker with .pickerStyle(.inline) (or a Form Picker) provides the radio semantics, Voice Control names and keyboard support for free, while the custom row only reproduces the look. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Navigation: NavigationStack inside the sheet with semantic toolbar placements", verdict: "pass", note: "A NavigationStack hosts the Form; SheetCancelItem and SheetConfirmItem use cancellationAction and confirmationAction semantics (see the sheet-edit-toolbar mockup), so the Duo's vertical bar sorts them by role.", by: "swiftui-pro skill" },
+
+        { rule: "Design: Form and LabeledContent in settings-style content", verdict: "pass", note: "The sheet is a Form of Sections with caller-supplied rows; the caller owns the draft and commits in onApply, so the view is pure (values in, closures out).", by: "swiftui-pro skill" },
+
+        { rule: "Hygiene: avoid platform conditionals in shared views", verdict: "fix", note: "navigationBarTitleDisplayMode sits in #if os(iOS) (FilterSheet.swift line 72); with macOS only a test host, the branch is dead legacy per AGENTS.md. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Animation: scoped, short transitions", verdict: "pass", note: "The checkmark cross-fades with quickTransition (0.2 s) keyed on isSelected; Apply enabling and the Reset row's appearance have no animation of their own.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

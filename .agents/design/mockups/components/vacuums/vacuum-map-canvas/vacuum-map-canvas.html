@@ -59,16 +59,16 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Color: provide sufficient contrast, do not rely on hue', verdict: 'pass', note: 'White, badges and hatching carry state; the ramp is cool neutral grey.' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'departure', note: 'The map card is always #262628 so a white selected room reads on a light sheet too (direction-g.md Controls: Vacuum map).' },
-        { rule: 'Accessibility: custom drawing needs an accessible representation', verdict: 'pass', note: 'One labelled element with the selection as its value, plus the Rooms section.' },
-        { rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Locate is 44 pt; room taps on the map are a convenience over 76 pt cards.' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Selected rooms are white with a numbered badge, skipped rooms are hatched, the robot, dock and path are shapes (ValetudoMapView.swift draw, :355, :385).', by: 'apple-hig skill' },
+        { rule: 'Dark Mode: a fixed dark card', verdict: 'departure', note: 'The map card stays #262628 in both appearances; direction G, Controls: Vacuum map, so the room palette keeps its contrast whatever the sheet\'s appearance.', by: 'apple-hig skill' },
+        { rule: 'Accessibility: custom graphics need a description', verdict: 'pass', note: 'The Canvas is hidden and the frame is one element "Main Floor Valetudo map" whose value lists the selected rooms (VacuumMapPanel.swift:102-104); rooms are reachable through the Rooms section.', by: 'apple-hig skill' },
+        { rule: 'Typography: minimum text size', verdict: 'fix', note: 'Room names are drawn at .caption2 semibold (about 11 pt, the HIG minimum) and order numerals at .caption (ValetudoMapView.swift:355, 385); small names are dropped rather than shown larger, so on a small map some rooms go unnamed.', by: 'apple-hig skill' },
+        { rule: 'Loading: show something quickly', verdict: 'pass', note: 'The fallback is an arc and "Loading Current Map..." or "Map Unavailable" with a sentence, white on the dark card (VacuumMapPanel.swift:166-186).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Canvas for drawing; rasterise static layers once', verdict: 'pass', note: 'One pixel per cell image with nearest-neighbour scaling; masks built once per room.' },
-        { rule: 'Do not re-create heavy views on unrelated state changes', verdict: 'pass', note: 'Tab state is outside the sheet body so the map never redraws on a tab change.' },
-        { rule: 'Hide decorative content from accessibility', verdict: 'pass', note: 'accessibilityHidden on the canvas; the frame is labelled.' },
-        { rule: 'Reduce Motion', verdict: 'pass', note: 'No animation inside the canvas; pan and zoom are direct manipulation.' },
+        { rule: 'Performance: draw once, redraw vectors', verdict: 'pass', note: 'Floor and walls rasterise once per map into a one-pixel-per-cell image; pan and zoom redraw only vectors and icons (ValetudoMapCanvas, scene.draw).', by: 'swiftui-pro skill' },
+        { rule: 'Gestures: tap needs a location', verdict: 'pass', note: 'onTapGesture(coordinateSpace: .local) is justified because the room is found from the tap point (VacuumMapPanel.swift:93); the non-gesture route is the Rooms cards.', by: 'swiftui-pro skill' },
+        { rule: 'Touch target for the Locate control', verdict: 'pass', note: 'Locate is a 44 x 44 glass circle with a label and hint over the map (VacuumMapPanel.swift:110-122).', by: 'swiftui-pro skill' },
       ],
     },
 

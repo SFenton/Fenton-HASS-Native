@@ -39,16 +39,14 @@
       { rule: 'Escape and focus', note: 'Escape or the two-finger scrub cancels; focus returns to the Sign Out button on the Profile tab.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Alerts: use them for a destructive action that is hard to undo; the destructive button is red and a Cancel is present', verdict: 'pass', note: 'Signing out needs the username and password to undo.' },
-        { rule: 'Alerts: title is a question, message adds only what the title cannot', verdict: 'pass', note: '"Sign Out of Home Assistant?" and "You’ll need your username and password to sign in again."' },
-        { rule: 'Consistency: the same decision should be presented the same way', verdict: 'fix', note: 'The Home Assistant cover asks with a confirmationDialog ("Sign out of Home Assistant?", sentence case, popover); this alert is Title Case. direction-g.md says an alert.' },
+        { rule: 'Alerts: confirm a destructive action that is hard to undo; red destructive button and a Cancel', verdict: 'pass', note: 'Button("Sign Out", role: .destructive) and Button("Cancel", role: .cancel) with a message saying what the person must do to return (YourSummarySheet.swift:72-78).', by: 'apple-hig skill' },
+        { rule: 'Alerts: sentence-style title for a sentence, one pattern for one decision', verdict: 'fix', note: 'This alert is titled "Sign Out of Home Assistant?" while Home Assistant settings asks the same thing with a confirmationDialog titled "Sign out of Home Assistant?" (HomeAssistantSettingsView.swift:121-123). Pick one presentation and one capitalisation. Low.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'alert(_:isPresented:) with Button roles', verdict: 'pass', note: 'role .destructive and role .cancel, identifiers set.' },
-        { rule: 'Guard against double submission', verdict: 'pass', note: 'isSigningOut is checked before the task starts.' },
-        { rule: 'Handle the failure path', verdict: 'pass', note: 'signOutFailed raises the "couldn’t complete" alert.' },
+        { rule: 'alert(_:isPresented:) with Button roles', verdict: 'pass', note: 'Roles and identifiers set; the state lives in the sheet because the Profile tab is rebuilt per tab (.id(tab), SummaryPanel.swift:25).', by: 'swiftui-pro skill' },
+        { rule: 'Guard a second press while async work runs', verdict: 'pass', note: 'isSigningOut is checked before the task starts (YourSummarySheet.swift:85-88).', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

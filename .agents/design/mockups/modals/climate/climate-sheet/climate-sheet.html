@@ -94,22 +94,28 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Sheets: grabber, close control, large for navigating content', verdict: 'pass', note: 'hassSheet(.page, height: .full) because it navigates and has a section bar; circle x Close trailing.' },
-        { rule: 'Segmented controls: closely related views, never at the top', verdict: 'pass', note: 'A bottom glass capsule; icons on compact width, titles on regular, a menu at AX sizes.' },
-        { rule: 'Lists: checkmark rows for a single choice; disclosure rows for pushes', verdict: 'pass', note: 'Chevron rows push; Eco options use checkmarks (climate-automation-details).' },
-        { rule: 'Toggles: a description under the control', verdict: 'pass', note: 'Section footers carry what each switch does; also the VoiceOver hint.' },
-        { rule: 'Layout: readable width on iPad', verdict: 'pass', note: 'Forms and grids cap at 720 pt inside the 704 pt page sheet.' },
-        { rule: 'Navigation: consistent controls', verdict: 'departure', note: 'The sheet is titled "Advanced Controls", not the web\'s "Thermostat · Advanced Controls" (owner 2026-10-13).' },
+        { rule: "Segmented controls: closely related subviews, about 5 segments on iPhone, text or images not a mix", verdict: 'pass', note: "Three sections as a system segmented Picker, icons on compact width, titles on regular; every icon segment is a Label with its title for VoiceOver (ModalTabBar.swift:66-84).", by: 'apple-hig skill' },
+        { rule: "Segmented controls: use a tab bar for completely separate sections", verdict: 'departure', note: "The sections are one task's subviews inside a sheet, drawn as a segmented control on a glass capsule at the bottom (ModalTabBar.swift:9-14, direction-g.md Sheets).", by: 'apple-hig skill' },
+        { rule: "Accessibility: Dynamic Type at accessibility sizes", verdict: 'pass', note: "At AX sizes the control becomes a menu of text titles naming the selected section (ModalTabBar.swift:40-57, 122); targets are at least 44 pt (line 53).", by: 'apple-hig skill' },
+        { rule: "Materials: Liquid Glass for navigation controls floating over content", verdict: 'pass', note: "The tab capsule uses navigationGlass over content that fades beneath it (ModalTabBar.swift:57, 64, 83; HassModal.swift:116-127); forms and rows stay on solid sheet cells.", by: 'apple-hig skill' },
+        { rule: "Sheets: full height for a sheet with a section tab bar", verdict: 'departure', note: ".hassSheet(.page, height: .full) so a tab or a pushed page never changes the height (ClimateScreen.swift:88, HassModal.swift:132-136, owner 2026-10-16).", by: 'apple-hig skill' },
+        { rule: "Sheets: Cancel or Close on the leading edge of a single-view sheet, Done trailing", verdict: 'departure', note: "Every modal carries the circle-X Close at the trailing edge (owner, 2026-10-13: 'Done button in top right can just be circle X close button', HassModal.swift:5-9, patterns/modal-sheet.md); a saving sheet keeps its own confirm.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'NavigationStack(path:) with typed routes', verdict: 'pass', note: 'ClimateRoute (room, predictive, eco, tracking); an initial route can open a detail directly (gallery).' },
-        { rule: 'Scaled metrics for tile widths', verdict: 'pass', note: 'minTileWidth 150 relative to subheadline.' },
-        { rule: 'System Form with explicit ink tokens', verdict: 'pass', note: 'Ink.primary and Surface.secondaryInSheet; row backgrounds are the sheet cell.' },
-        { rule: 'Optimistic toggles revert', verdict: 'pass', note: 'Reverts on confirmation, failure, or after 2 s (spec.md Services).' },
-        { rule: 'Animation through tokens only', verdict: 'pass', note: 'Selection checkmark uses quickTransition; colours stateColorTransition.' },
+        { rule: "Toolbars and presentation: use the semantic placement for a Close button", verdict: 'fix', note: "SheetCloseItem places the circle-X Close as .confirmationAction (HassModal.swift:26), a confirming slot, although it only dismisses. On the iPhone Duo outer display that slot is a prominent action, below primary navigation (Back, Close) at the top of the vertical bar (HIG Duo, Vertical controls). Use .cancellationAction with role .close.", by: 'swiftui-pro skill' },
+        { rule: "Pin bars with safeAreaInset", verdict: 'pass', note: "The tab bar is a safeAreaInset(edge: .bottom) (ModalTabBar.swift:155), so content scrolls clear of it with no guessed padding.", by: 'swiftui-pro skill' },
+        { rule: "Keep state above a branch that swaps hierarchies", verdict: 'fix', note: "The Rooms, Automation and Tracking views are swapped in a switch inside the stack root (ClimateSheet.swift:66-72), so each tab's scroll position resets when you leave it; the navigation path is above the switch and survives.", by: 'swiftui-pro skill' },
+        { rule: "Navigation: navigationDestination(for:) registered once", verdict: 'pass', note: "ClimateRoute is the single registered type (ClimateSheet.swift:80).", by: 'swiftui-pro skill' },
+        { rule: "Prefer Binding projected from state over Binding(get:set:)", verdict: 'fix', note: "Toggle rows build closure bindings in body (ClimateSheet.swift:159, 323).", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

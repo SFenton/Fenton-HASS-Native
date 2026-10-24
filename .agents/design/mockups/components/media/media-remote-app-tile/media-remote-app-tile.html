@@ -46,9 +46,20 @@
       { rule: 'Hue Sync', note: 'Switches, segmented controls (menus at AX sizes), a Brightness slider adjustable with swipes, HDMI rows with the status as value ("Selected • Linked").' },
       { rule: 'Targets', note: 'Rows 52 pt, controls 44 pt or more; artwork squares up to 168 pt.' },
     ],
-    reviews: { date: '2026-10-23',
-      hig: [MLC.R.target44, MLC.R.colorNotAlone, { rule: 'Toggles: switches only in list rows', verdict: 'pass', note: 'Devices and Hue Sync are inset lists (direction-g.md Controls).' }, { rule: 'Segmented controls: short choices, a menu when text cannot fit', verdict: 'pass', note: 'Sync Mode and Intensity.' }],
-      swiftui: [MLC.R.scaled, { rule: 'Animate colour with the app token', verdict: 'fix', note: 'AppTile\'s ring has no state transition; add stateColorTransition("AppTile").' }, { rule: 'Selection traits', verdict: 'pass', note: 'SemanticsTraits and isSelected on choice rows and HDMI rows.' }] },
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { by: 'apple-hig skill', rule: 'Color: running state is not the ring alone', verdict: 'pass', note: 'The running app gets a 3 pt media-pink ring and the word "Playing" (MediaRemoteTabs.swift:58-61, 69-73), and VoiceOver reads the selected trait (line 83).' },
+        { by: 'apple-hig skill', rule: 'Lists: switches and choices in an inset list', verdict: 'pass', note: 'Devices and Hue Sync are List sections; switches for toggles, a checkmark row for a source choice, plain text for read-only state (lines 122-204).' },
+        { by: 'apple-hig skill', rule: 'Segmented controls: short choices, a menu when text cannot fit', verdict: 'pass', note: 'Sync Mode and Intensity are segmented at default sizes and a Picker(.menu) at accessibility sizes (lines 326-333).' },
+        { by: 'apple-hig skill', rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Rows and HDMI buttons use .frame(minHeight: HassTokens.minTarget) (lines 179, 305, 364); artwork squares are up to 168 pt.' },
+      ],
+      swiftui: [
+        { by: 'swiftui-pro skill', rule: 'design.md: wrap Slider in LabeledContent inside a List', verdict: 'fix', note: 'The Hue Sync Brightness slider sits under a hand-built title row that is hidden from VoiceOver (MediaRemoteTabs.swift:374-397).' },
+        { by: 'swiftui-pro skill', rule: 'Animate color with the app token', verdict: 'fix', note: 'AppTile\'s ring changes between ColorFamily.media.glyph and the separator color with no stateColorTransition (lines 58-61), unlike the other tiles; the ring snaps when an app starts.' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: decorative images hidden, text carried by the control', verdict: 'pass', note: 'The fallback glyph is accessibilityHidden (line 108) and the tile is one element labelled by the app title (lines 80-82).' },
+      ],
+    },
     notes: ['Lettered tiles stand in for the artwork the server publishes under /local/images/apps; Fortnite has none yet, so it always shows the icon fallback.', 'Lists are drawn with the kit ModuleList (26 pt card); a SwiftUI inset grouped List draws the same cell colours.', 'Promote to kit: MLC.appTile, MLC.deviceRow, MLC.hueTab.'],
     changelog: [{ date: '2026-10-23', note: 'First pass.' }],
   });

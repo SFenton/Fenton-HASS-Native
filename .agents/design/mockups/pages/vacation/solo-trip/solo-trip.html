@@ -37,7 +37,7 @@
       'vacation-engaged': { title: 'Vacation Mode is engaged', note: 'the toggle is disabled and tiles are muted; the page says to turn Vacation off first', render: page({ vacation: true, selected: 'stephen' }) },
       'offline': { title: 'No network', note: 'values stay; offline chip under the header; commands would fail', render: page({ engaged: 'active', connection: 'offline' }) },
       'reconnecting': { title: 'Connection down 2 s+', note: 'in flight (claude/reconnecting-spinner): arc left of Quick Links; today a Reconnecting chip', render: page({ engaged: 'active', connection: 'reconnecting' }) },
-      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'one column; tiles stack their glyph over the text; the return picker drops below its label', render: page({ engaged: 'active' }) },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'sections stack in one column; the two traveler tiles stay side by side on an iPhone (minCellWidth 140 is a literal, not scaled), glyph over text; the return picker drops below its label', render: page({ engaged: 'active' }) },
     },
 
     motion: [
@@ -74,29 +74,29 @@
       { rule: 'Traveler tiles', note: 'Each is a button with the selected trait when chosen; value "Away", "Home" or "Selected"; hint "Selects the traveler." or "Clears the traveler." (none while locked). The viewer\'s own tile is titled "You". State is the filled tint plus the departing-figure glyph plus the value word.' },
       { rule: 'Return picker', note: 'A compact date-and-time picker labelled "Returns"; disabled while a command is pending or the trip cannot be edited; its error is an inline alert below.' },
       { rule: 'Status section', note: 'Title is a heading; the description reads after it; the two restore actions are buttons (bordered, 50 pt); the End Solo Trip Now button is destructive red.' },
-      { rule: 'Dynamic Type', note: 'Grid minimum 340 pt and tile minimum 140 pt: one column at AX5, tiles stacked. Descriptions wrap (fixedSize vertical). Checked at AX5 below.' },
+      { rule: 'Dynamic Type', note: 'Section grid minimum 340 pt and tile minimum 140 pt, neither scaled: one section column on an iPhone at AX5, but the two traveler tiles stay side by side at about 181 pt each, glyph over text. Descriptions wrap (fixedSize vertical). Checked at AX5 below.' },
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Selection: show a chosen item with more than colour', verdict: 'pass', note: 'Selected trait, the filled tile, a different glyph and the Away / Selected value.' },
-        { rule: 'Toggles: say why a control is unavailable', verdict: 'pass', note: 'The subtitle and an inline alert give the reason (choose a traveler, setup needed, Vacation engaged).' },
-        { rule: 'Date pickers: compact picker for a date and time', verdict: 'pass', note: 'One "Returns" picker (owner 2026-10-13).' },
-        { rule: 'Layout: a grid that reflows rather than a split', verdict: 'pass', note: 'Two sections side by side on iPad and unfolded Duo landscape.' },
-        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'Words and glyph accompany every tint.' },
-        { rule: 'Redundant labels', verdict: 'fix', note: 'With a running trip the notice title reads "Stephen Away" above the description; the Vacation Mode page also draws the title twice. Consider one.' },
+        { rule: "Alerts and Action sheets: confirm ending a running trip", verdict: "fix", note: "Turning the Solo Trip card off, or tapping End Solo Trip Now, ends or cancels the plan with no confirmation (SoloTripScreen.swift lines 53, 83; SoloTripController.toggle, lines 240-256) while Vacation Mode asks first (VacationModeScreen.swift lines 39-44). The household returns to normal automations at once. Medium.", by: "apple-hig skill" },
+        { rule: "Typography: Dynamic Type through AX5", verdict: "fix", note: "The traveler tiles use a literal minCellWidth: 140 (SoloTripScreen.swift line 63), so an iPhone at AX5 keeps two 181 pt tiles whose \"Stephen\" and \"Selected\" text clips; the drawing now shows two columns (it showed one). Scale the minimum. Medium.", by: "apple-hig skill" },
+        { rule: "Toggles and Selection: selected state is not colour alone", verdict: "pass", note: "TravelerTileView adds .isSelected and a value (\"Away\", \"Home\", \"Selected\"); the glyph changes to a departing figure (lines 99-118).", by: "apple-hig skill" },
+        { rule: "Writing: say it once", verdict: "fix", note: "With a trip running the notice title \"Stephen Away\" repeats above the description and the status section title (SoloTripNoticeBox, SoloTripStatusView lines 123-143). Low.", by: "apple-hig skill" },
+        { rule: "Date pickers: a live return time", verdict: "pass", note: "One compact date-and-time \"Returns\" picker writes after 0.9 s and shows its error inline (lines 69-76).", by: "apple-hig skill" },
+        { rule: "Color: tile tint contrast", verdict: "pass", note: "AwayTint values were checked at 4.5:1 for text (VacationComponents.swift lines 7-17).", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Local selected trait on a tile', verdict: 'pass', note: 'TravelerTileView adds .isSelected until GlassTile gets a .selection kind (ios.md).' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'GlassTile stateColorTransition for tint changes.' },
-        { rule: 'Debounce live writes', verdict: 'pass', note: 'The return picker commits after 0.9 s without a change.' },
-        { rule: 'Optimistic UI with a revert', verdict: 'pass', note: 'Ending a trip shows off at once and reverts after 60 s if Home Assistant never confirms.' },
-        { rule: 'Interactive dismiss disabled while busy', verdict: 'pass', note: 'The editor sets interactiveDismissDisabled(controller.isScheduling).' },
+        { rule: "Views: Task { await controller.toggle() } in an action closure", verdict: "pass", note: "Actions delegate to the @Observable controller; the view holds no business logic (lines 53, 65, 71, 79-85).", by: "swiftui-pro skill" },
+        { rule: "Data flow: @State controller created in init", verdict: "pass", note: "@State private var controller = SoloTripController(household:) built once (lines 9-15); viewer is pushed in through onAppear and onChange (lines 26, 30).", by: "swiftui-pro skill" },
+        { rule: "Accessibility: errors belong to the page", verdict: "pass", note: "onDisappear clears the shared household error so Vacation Mode never shows a Solo Trip error (lines 27-29).", by: "swiftui-pro skill" },
+        { rule: "Dynamic Type: AwayActionButton minimum height", verdict: "fix", note: "The bordered action buttons use .frame(minHeight: HassTokens.minTarget - 16) inside .controlSize(.large) (VacationComponents.swift lines 98-101); the sum happens to clear 44 pt but is a magic subtraction that breaks if the control size changes. Low.", by: "swiftui-pro skill" },
       ],
     },
 
     notes: [
+      'Corrected 2026-10-23 by the skill review: the traveler tiles were drawn one column at AX5 (a scaled 140 pt minimum); SoloTripScreen.swift line 63 passes a literal 140, so two tiles stay side by side. Redrawn from the code; the section grid minimum 340 is also literal in the drawing now.',
       'loading, refreshing, empty and long-text: none apply. State comes from EntityStore (saved snapshot first); the copy is fixed text; AX5 covers wrapping. An engaged trip that ends shows the off page at once (optimistic end) rather than a loading state.',
       'error is the household command failure shown in the status section (not the blocked-toggle alerts, which are the setup-required and vacation-engaged states).',
       'Traveler names (Stephen, Steph) come from HouseholdResident; the viewer mapping (You) comes from the signed-in Home Assistant user. Fixture dates are made up.',

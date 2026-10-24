@@ -69,15 +69,14 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Action sheets: use for confirming a destructive action, include Cancel, make the destructive button red', verdict: 'pass', note: 'role .destructive Delete, Cancel from the system, message "This can\'t be undone."' },
-        { rule: 'Action sheets: on iPad use a popover', verdict: 'pass', note: 'confirmationDialog becomes a popover on regular width automatically (no Cancel row; tapping outside cancels).' },
-        { rule: 'Alerts vs action sheets for irreversible actions', verdict: 'departure', note: 'direction-g.md Sheets says alerts for destructive actions; the Security Disarm, Vacation and Sign Out use alerts but the chore Delete is a confirmationDialog because it is launched from a row (swipe, menu), where an action sheet or popover anchors to the row. Recorded in the catalog as a docs difference.' },
-        { rule: 'Context menus: destructive item last, in red', verdict: 'pass', note: 'Delete is last in the menu and outermost in the swipe.' },
+        { rule: "Action sheets: confirm a destructive action, Cancel included, red Delete", verdict: "pass", note: "role .destructive Delete Task or Delete Item, titleVisibility .visible, system Cancel, message \"This can't be undone.\" (TodoPageView.swift lines 190-204).", by: "apple-hig skill" },
+        { rule: "Action sheets and Popovers: anchor to what it is about", verdict: "fix", note: "todoDeletionDialog is attached to the whole List (TodoPageView.swift line 82), so on iPad and the unfolded Duo the popover anchors to the page, not the row being deleted. Low.", by: "apple-hig skill" },
+        { rule: "Alerts: avoid a confirmation for a common undoable action", verdict: "departure", note: "The task is removed server-side with todo.remove_item and cannot be undone, so asking first is warranted; direction-g.md prefers alerts but a confirmationDialog suits a swipe or menu source (recorded in the notes).", by: "apple-hig skill" },
+        { rule: "Modality: dismiss gestures", verdict: "pass", note: "A tap outside or Cancel keeps the row; the row only leaves after Delete is chosen (TodoListController.remove).", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Use confirmationDialog(presenting:) with role .destructive', verdict: 'pass', note: 'todoDeletionDialog(_:) takes the TodoDeletion value, so the title names the task.' },
-        { rule: 'One dialog for every surface', verdict: 'pass', note: 'The Chores pages and the Summary chore tabs share todoDeletionDialog; the task sheet has its own with the same words.' },
-        { rule: 'Do not remove the row before the user confirms', verdict: 'pass', note: 'The swipe sets TodoDeletion; the row is removed by TodoListController.remove only after Delete Task.' },
+        { rule: "Navigation: confirmationDialog(presenting:) with the value", verdict: "pass", note: "todoDeletionDialog takes Binding<TodoDeletion?> and shows the task title (lines 190-204). With Xcode 27 confirmationDialog(_:item:) would drop the extra Boolean binding. Low modernisation.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: Delete reachable without the swipe", verdict: "pass", note: "The VoiceOver \"Delete\" custom action and the context menu call the same closure (TodoListSection.swift lines 216-219, 106-113).", by: "swiftui-pro skill" },
       ],
     },
 

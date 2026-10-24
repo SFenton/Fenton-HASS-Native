@@ -57,16 +57,17 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Lists and tables: swipe actions mirror in right-to-left', verdict: 'pass', note: 'Uses .leading and .trailing edges; the order flips with the language.' },
-        { rule: 'SF Symbols: align a symbol with the text', verdict: 'pass', note: 'The check circle takes the title font on a first-baseline HStack; edit glyph is square.and.pencil (not info.circle), owner 2026-10-16.' },
-        { rule: 'Color: contrast on materials', verdict: 'departure', note: 'Overdue spans sit on the dense module (direction-g.md Layers) so orange and red text keep 4.5:1 over the lit windows.' },
-        { rule: 'Lists: a section header, no card behind a row', verdict: 'pass', note: 'No card per row (owner 2026-10-13); the module draws one card per list through ModuleRowBackground.' },
+        { rule: "Lists and tables: row anatomy and 44 pt targets", verdict: "pass", note: "Row is 52 pt (60 with a due line), the whole left side toggles, the Edit glyph is a 44 x 44 button (TodoListSection.swift lines 183-232).", by: "apple-hig skill" },
+        { rule: "Color: overdue is not colour alone", verdict: "pass", note: "Orange or red DueLabel with a clock glyph and wording; dense module for 4.5:1 (lines 38-41, 249-275).", by: "apple-hig skill" },
+        { rule: "Loading: compact arc where a list has never loaded", verdict: "pass", note: "ArcSpinner(.compact, label: \"Loading {title}\") in a 44 pt row (lines 33-36).", by: "apple-hig skill" },
+        { rule: "Undo and redo: the done look is unreachable here", verdict: "fix", note: "The strikethrough and green check for a done row can only appear on the Summary sheet's tabs (hideCompleted defaults true); on the pages a tick removes the row with no undo. Medium.", by: "apple-hig skill" },
+        { rule: "Materials: a dense module under warm text", verdict: "departure", note: "direction-g.md Layers: #141416 at 78% instead of the thin module when any row is overdue (TodoListSection.swift line 41) so orange and red text keep 4.5:1 over the lit windows.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Animate with the app token, honour Reduce Motion', verdict: 'pass', note: 'motionSafeAnimation(standard, reduced: quick); colour through stateForeground.' },
-        { rule: 'Do not read geometry per frame', verdict: 'pass', note: 'TodoPlainRow reports a width, not a position (performance.md, Chores).' },
-        { rule: 'Use @ScaledMetric for the check column', verdict: 'pass', note: '@ScaledMetric(relativeTo: .body) checkColumn.' },
-        { rule: 'Accessibility traits and actions', verdict: 'pass', note: 'isToggle, value, hint and accessibilityActions.' },
+        { rule: "Views: one view per ForEach element", verdict: "pass", note: "ForEach(Array(items.enumerated()), id: \\.element.id) emits one row; separators and backgrounds are modifiers (lines 42-55).", by: "swiftui-pro skill" },
+        { rule: "Performance: Array(items.enumerated()) in a List body", verdict: "fix", note: "Each update allocates the enumerated array and a Date.now (lines 38, 42); isFirst and isLast could come from item identity, and `now` from TimelineView only when a label needs it. Low.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: toggle trait, value, hint", verdict: "pass", note: "accessibilityValue \"Not done, Due in 3 days\" or \"Done\", .isToggle, hint (lines 209-214).", by: "swiftui-pro skill" },
+        { rule: "Dynamic Type: scaled check column and wrapping title", verdict: "pass", note: "@ScaledMetric checkColumn and fixedSize vertical title (lines 168, 196).", by: "swiftui-pro skill" },
       ],
     },
     notes: [

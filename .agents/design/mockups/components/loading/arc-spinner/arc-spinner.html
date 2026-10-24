@@ -105,16 +105,19 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Progress indicators: use an indeterminate indicator for unknown waits, and keep it small', verdict: 'pass', note: 'Appears only where something is genuinely pending: the pressed button or a gate for network content.' },
-        { rule: 'Progress indicators: prefer the system spinner', verdict: 'departure', note: 'Owner 2026-10-14: "For loading spinners, can we use native arc spinners like the web?" (direction-g.md Loading and feedback).' },
-        { rule: 'Motion: respect Reduce Motion', verdict: 'pass', note: 'Half speed, not stopped (motion.md section 8).' },
-        { rule: 'Accessibility: label the indicator with what is loading', verdict: 'pass', note: 'Label parameter; "Loading" by default.' },
+        { rule: "Progress indicators: indeterminate spinners spin a circle; use the system ProgressView", verdict: "departure", note: "A custom arc replaces the system petal spinner by owner decision 2026-10-14 (direction-g.md, Loading and feedback) so it matches the web; it still spins a circle and still carries the .updatesFrequently trait.", by: "apple-hig skill" },
+        { rule: "Progress indicators: describe what is happening, avoid vague terms like 'loading'", verdict: "fix", note: "ArcSpinner defaults its VoiceOver label to 'Loading' (ArcSpinner.swift line 49); only some call sites pass an action ('Sending Open', 'Signing In'). Page-size spinners should name the content. Low.", by: "apple-hig skill" },
+        { rule: "Progress indicators: do not switch from circular to bar style", verdict: "fix", note: "ArcProgressViewStyle swaps to .linear when fractionCompleted becomes non-nil (ArcProgressViewStyle.swift line 21), so a task that turns determinate changes from the arc to a bar mid-flight. No shipped call site does this today. Low.", by: "apple-hig skill" },
+        { rule: "Accessibility: when Reduce Motion is on, reduce automatic and repetitive animation", verdict: "departure", note: "The arc keeps turning at half speed under Reduce Motion because a still arc reads as frozen (ArcSpinner.swift doc comment; motion.md section 5); it is a status with meaning, not decoration.", by: "apple-hig skill" },
+        { rule: "Accessibility: status elements are not controls (44 pt)", verdict: "pass", note: "accessibilityRespondsToUserInteraction(false) on the 16 pt inline arc; the arc is never tappable, the surrounding pill or button carries the target.", by: "apple-hig skill" },
+        { rule: "Color and contrast: titled spinner text is legible over the wallpaper", verdict: "pass", note: "The title uses Surface.secondaryOnWallpaper or secondaryInSheet instead of .secondary, which measured 3.1:1 over the wallpaper.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Do not animate with repeatForever', verdict: 'pass', note: 'TimelineView(.animation) computes the angle from the date; no implicit animation.' },
-        { rule: 'Pause galleries', verdict: 'pass', note: 'arcSpinnersPaused for the galleries so XCUITest can go idle.' },
-        { rule: 'Use foreground style, not a fixed colour', verdict: 'pass', note: '.foreground.opacity(...) strokes inherit the text colour.' },
-        { rule: 'Reduce Motion read from the environment', verdict: 'pass', note: '@Environment(\\.accessibilityReduceMotion).' },
+        { rule: "Accessibility: one element, descriptive label, no double reading", verdict: "pass", note: "ArcSpinner is a single element with a label; the titled style hides the arc and combines with the title so 'Loading recipes' is read once.", by: "swiftui-pro skill" },
+        { rule: "Animation: drive continuous motion from time, honour Reduce Motion from the environment", verdict: "pass", note: "TimelineView(.animation(paused:)) reads @Environment(\\.accessibilityReduceMotion); the angle is a pure function of date, so there is no state per frame; arcSpinnersPaused (@Entry) lets galleries hold it still so XCUITest can go idle.", by: "swiftui-pro skill" },
+        { rule: "API: @Entry for custom environment values, foregroundStyle", verdict: "pass", note: "arcSpinnersPaused uses @Entry; the strokes use .foreground.opacity(), so the arc inherits the surrounding foregroundStyle (tinted buttons, pills).", by: "swiftui-pro skill" },
+        { rule: "Design: fixed sizes need a Dynamic Type answer", verdict: "fix", note: "Diameters are fixed 44 / 20 / 16 pt (ArcSpinner.swift Size) and do not scale with text; at AX5 the 16 pt inline arc sits beside text several times its height. Use @ScaledMetric for compact and inline. Low.", by: "swiftui-pro skill" },
+        { rule: "Localization: pass localizable labels", verdict: "fix", note: "label is a plain String (line 41) fed to accessibilityLabel, which then never reaches a string catalog; take a LocalizedStringResource when the app is localized. Low.", by: "swiftui-pro skill" },
       ],
     },
     notes: [

@@ -60,18 +60,14 @@
       { rule: 'Dynamic Type', note: 'The system alert scales with the text and stacks its buttons at accessibility sizes; the alert scrolls if taller than the window.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Alerts: Cancel always present, concise title', verdict: 'pass', note: 'Titles name the item and action; the message holds the range.' },
-        { rule: 'Alerts: avoid more than two buttons and long text', verdict: 'pass', note: 'Two buttons; long item names wrap.' },
-        { rule: 'Alerts: destructive button uses the destructive role', verdict: 'fix', note: 'The Delete button of "Delete how many" is a plain button, not role .destructive, so it is blue not red. The editor\'s Delete row and the swipe are red; consider role: .destructive here.' },
-        { rule: 'Text fields: use the matching keyboard', verdict: 'pass', note: 'Decimal pad (numericEntryField).' },
-        { rule: 'Alerts: a text field validates before closing', verdict: 'departure', note: 'The alert closes on any entry and shows the error on the row; a SwiftUI alert cannot keep itself open with a message. Same as the web\'s window.prompt flow.' },
+        { rule: 'Alerts: include a text field only when input resolves the situation', verdict: 'pass', note: 'A quantity is needed to add or delete, so the alert carries a decimal-pad field prefilled with 1 (InventoryScreen.swift:92-100, InventoryPresentation.ask).', by: 'apple-hig skill' },
+        { rule: 'Alerts: validate and say what is wrong', verdict: 'fix', note: 'An invalid grocery quantity does nothing at all, and an invalid delete quantity closes the alert and shows its message on the row (InventoryPresentation.submit); the alert dismisses on any button, so the person gets no error where they typed.', by: 'apple-hig skill' },
+        { rule: 'Alerts: button titles', verdict: 'pass', note: 'One specific verb (Add, Delete, Change) and Cancel; the alert is purely transactional, not informational.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: '.alert with a TextField', verdict: 'pass', note: 'alert(_:isPresented:presenting:) with a field and Cancel and confirm buttons.' },
-        { rule: 'Keep prompts native, not custom overlays', verdict: 'pass', note: 'Replaced the web window.prompt (spec open question answered yes).' },
-        { rule: 'Accessibility identifiers for tests', verdict: 'pass', note: 'inventory.prompt.field, inventory.editor.prompt.field.' },
+        { rule: 'Alert with TextField', verdict: 'pass', note: 'alert(_:isPresented:presenting:) with a TextField action and a message closure is the iOS 16 form (InventoryScreen.swift:92-100); the Boolean is a hand-made Binding(get:set:) (:229-231), the one low-severity wart.', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

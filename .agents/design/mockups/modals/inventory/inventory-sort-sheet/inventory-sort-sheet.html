@@ -55,20 +55,15 @@
       { rule: 'Reset is not red', note: 'Resetting a sort is not destructive; the row uses the action tint (HIG Buttons: reserve red for destructive actions).' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Sheets: as tall as the content, grabber visible, close control', verdict: 'pass', note: 'Fitted detent with a grabber; an edit sheet uses Cancel and Apply circles instead of Close.' },
-        { rule: 'Sheets: prefer form or page sizing on iPad', verdict: 'pass', note: 'hassSheet(.form): a 540 pt form sheet on iPad and the unfolded Duo.' },
-        { rule: 'Lists and tables: selection with a checkmark in single-choice lists', verdict: 'pass', note: 'FilterOptionRow check in the action tint.' },
-        { rule: 'Buttons: reserve red for destructive actions', verdict: 'pass', note: 'Reset to Defaults is action tint.' },
-        { rule: 'Color: contrast of secondary text', verdict: 'pass', note: 'Headers and hints use the readable secondary ink, about 8:1 on the #2C2C2E row.' },
-        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'departure', note: 'Opaque sheet ground at every detent (direction-g.md Sheets): a partial sheet is glass on iOS 26 and let tiles show through.' },
+        { rule: 'Sheets: Cancel leading, confirm trailing', verdict: 'pass', note: 'The shared FilterSheet with Apply disabled until the draft differs (InventoryControlSheets.swift:19-46).', by: 'apple-hig skill' },
+        { rule: 'Lists: single choice with a checkmark', verdict: 'pass', note: 'Sort By and Sort Direction are option rows with checkmarks and the isSelected trait; option rows replaced the segmented control after it clipped at large text (InventoryControlSheets.swift:38-44).', by: 'apple-hig skill' },
+        { rule: 'Dynamic Type', verdict: 'pass', note: 'Rows wrap and the fitted sheet re-measures (SheetFit); Reset to Defaults appears only when the draft differs from Title, Ascending.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use a Form for settings-style lists', verdict: 'pass', note: 'FilterSheet is a NavigationStack with a Form; rows are plain Buttons with combined accessibility.' },
-        { rule: 'presentationDetents driven by measured content', verdict: 'pass', note: 'hassSheet(.form, height: .fitted, fitKey: "FilterSheet.Sort Inventory") remembers its height per sheet.' },
-        { rule: 'Scaled padding instead of a fixed 44 pt floor', verdict: 'pass', note: 'The Reset row pads with @ScaledMetric so the Dynamic Type check sees it grow.' },
-        { rule: 'Animate with the app token', verdict: 'pass', note: 'quickTransition on the check.' },
+        { rule: 'Presentation and state', verdict: 'pass', note: 'Draft @State seeded from the model in init and written back in onApply (InventoryControlSheets.swift:11-27).', by: 'swiftui-pro skill' },
+        { rule: 'Accessibility: grouped radio rows', verdict: 'pass', note: 'FilterOptionRow combines title and subtitle and adds .isSelected (FilterSheet.swift:158-159).', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

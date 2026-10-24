@@ -76,19 +76,13 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Sheets: a self-contained task with an explicit way out', verdict: 'pass', note: 'Cancel and Apply in the toolbar plus a swipe down; the draft is dropped on any way out but Apply.' },
-        { rule: 'Sheets: smallest detent that shows the content', verdict: 'pass', note: 'Fitted to the three rows; the large detent only at accessibility sizes.' },
-        { rule: 'Lists: single choice with a checkmark and secondary explanation', verdict: 'pass', note: 'FilterOptionRow: title, 13 pt secondary subtitle, checkmark in the action tint.' },
-        { rule: 'Toolbars: circle x and check, disabled not hidden', verdict: 'departure', note: 'The confirm check is visible and dimmed until a change (owner 2026-10-16; HIG says disable rather than hide a control that does not apply now); filled #0071E3 (4.6:1 under white).' },
-        { rule: 'Buttons: reserve red for destructive actions', verdict: 'pass', note: 'Reset to Defaults is blue (owner 2026-10-16).' },
-        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'departure', note: 'The grouped background at every detent, modalChrome with no material band under the title (direction-g.md Sheets).' },
+        { rule: 'Sheets: Cancel leading, confirm trailing', verdict: 'pass', note: 'Cancel drops the draft and Apply commits and closes, disabled until the choice differs (FilterSheet.swift:77-82).', by: 'apple-hig skill' },
+        { rule: 'Lists: selection feedback for an option list', verdict: 'pass', note: 'FilterOptionRow shows a checkmark and the isSelected trait, with a subtitle explaining each order (FilterSheet.swift:118-160).', by: 'apple-hig skill' },
+        { rule: 'Dynamic Type', verdict: 'pass', note: 'Rows wrap with fixedSize and a 44 pt minimum; the sheet re-fits when the type size changes (SheetFit).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use hassSheet for width and height; key the remembered height', verdict: 'pass', note: 'FilterSheet applies .hassSheet(.form, height: .fitted, fitKey: "FilterSheet.<title>").' },
-        { rule: 'Edit a draft, commit on demand', verdict: 'pass', note: '@State draft copied from the current value; onApply writes it, Cancel and swipe discard it.' },
-        { rule: 'Adaptive colours and scaled padding', verdict: 'pass', note: 'Ink and Surface tokens only; the Reset row\'s padding is a @ScaledMetric so it grows with the text.' },
-        { rule: 'Animate with the app token', verdict: 'pass', note: 'The check uses quickTransition (0.2 s); nothing else moves.' },
-        { rule: 'Accessibility identifiers survive a shared component', verdict: 'pass', note: 'recipes.sort.<raw> on each row, filterSheet.* on the toolbar and Reset.' },
+        { rule: 'Presentation: shared sheet chrome', verdict: 'pass', note: 'FilterSheet applies hassSheet(.form, height: .fitted), the visible grabber and an opaque ground (FilterSheet.swift:88).', by: 'swiftui-pro skill' },
+        { rule: 'Accessibility: radio rows', verdict: 'pass', note: 'FilterOptionRow combines its children and adds .isSelected (FilterSheet.swift:158-159); the checkmark is hidden.', by: 'swiftui-pro skill' },
       ],
     },
 

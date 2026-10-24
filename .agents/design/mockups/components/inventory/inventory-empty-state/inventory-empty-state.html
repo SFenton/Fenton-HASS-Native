@@ -41,17 +41,14 @@
       { rule: 'Contrast', note: 'Description and glyph use the secondary ink on the wallpaper (the page scrim keeps it above 4.5:1); title is white.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Loading and empty: explain what happened and what to do next', verdict: 'pass', note: 'Each message names the next step (scan an item, try again, clear the filter).' },
-        { rule: 'Buttons: a clear primary action on errors', verdict: 'pass', note: 'Try Again is the one filled button.' },
-        { rule: 'Typography: text styles that scale', verdict: 'pass', note: 'title2 bold and body.' },
-        { rule: 'Color: not by colour alone', verdict: 'pass', note: 'The error glyph is a triangle; the title says Unable to Load.' },
+        { rule: 'Empty states: icon, short title, one sentence', verdict: 'pass', note: 'A basket or warning glyph, a 22 pt bold title and a secondary description, centred (InventoryEmptyState.swift); Try Again appears only on a load failure.', by: 'apple-hig skill' },
+        { rule: 'Dynamic Type: wrap, never clip', verdict: 'pass', note: 'Plain Text with fixedSize in a scroll view wraps whole at AX sizes; the earlier ContentUnavailableView clipped its title in a list row.', by: 'apple-hig skill' },
+        { rule: 'Standard styling: ContentUnavailableView', verdict: 'departure', note: 'A custom stack replaces the system empty view because it clipped at large text in a List row (InventoryEmptyState.swift header comment, AX audit); swiftui-pro design.md prefers the system view, so this should be revisited once the clipping is fixed upstream.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Prefer ContentUnavailableView for empty states', verdict: 'departure', note: 'Its title clipped at large sizes inside a List row (audit); the page uses plain text in a ScrollView with a minimum height (InventoryEmptyState comment).' },
-        { rule: 'Reflow at accessibility sizes', verdict: 'pass', note: 'fixedSize(horizontal: false, vertical: true) and a scroll view.' },
-        { rule: 'Hide decorative symbols', verdict: 'pass', note: 'accessibilityHidden on the glyph.' },
+        { rule: 'Accessibility: title is a heading, glyph hidden', verdict: 'pass', note: 'The title carries .isHeader, the glyph is hidden and the container keeps its identifier (InventoryEmptyState.swift:18-40).', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

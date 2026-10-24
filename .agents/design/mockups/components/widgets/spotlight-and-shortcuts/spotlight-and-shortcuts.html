@@ -94,14 +94,14 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'App Shortcuts: phrases include the app name and read naturally', verdict: 'pass', note: 'Every phrase has \\(.applicationName); two to three phrases per shortcut.' },
-        { rule: 'App Shortcuts: at most ten, each with a symbol and short title', verdict: 'pass', note: 'Four, with house.fill, shield.fill, thermometer.medium and list.clipboard.fill.' },
-        { rule: 'Search: index useful, current content', verdict: 'pass', note: 'Pages and rooms only (no entity state or camera content), refreshed each session and deleted at sign-out.' },
-        { rule: 'Privacy: no sensitive data in the search index', verdict: 'pass', note: 'Room and page names only.' },
+        { by: 'apple-hig skill', rule: 'App Shortcuts: every phrase includes the app name', verdict: 'pass', note: 'All ten phrases contain \\(.applicationName) and the short titles are verbs with a symbol (SHShortcuts.swift:9-47); four shortcuts is under the limit of ten.' },
+        { by: 'apple-hig skill', rule: 'Siri: a phrase should do what it says', verdict: 'fix', note: '"Check the locks in S+H" and "Show the thermostat in S+H" (lines 24, 33) only open the Security and Climate pages (OpenPageIntent.swift:24-26); Siri says nothing about the locks or temperature. Return a dialog with the state, or rename the phrases to "Open".' },
+        { by: 'apple-hig skill', rule: 'Spoken name: symbols in names', verdict: 'pass', note: 'AppBranding.spokenName makes Siri hear "S and H" (CFBundleSpokenName); Home Assistant, HASS and Fenton Home are search keywords (OpenPageIntent.swift:9-12) and Siri alternative names (comment, SHShortcuts.swift:5).' },
+        { by: 'apple-hig skill', rule: 'Privacy: search index holds no sensitive data', verdict: 'pass', note: 'Page and room names only (SpotlightCatalog); removed on sign-out.' },
       ],
       swiftui: [
-        { rule: 'Do the work off the main thread', verdict: 'pass', note: 'Indexing runs in a detached utility task (building thumbnails cost about 50 ms in the launch window).' },
-        { rule: 'Keep intents small', verdict: 'pass', note: 'OpenPageIntent only routes; the page opens through the shared router.' },
+        { by: 'swiftui-pro skill', rule: 'swift.md: keep intents small and main-actor safe', verdict: 'pass', note: 'OpenPageIntent.perform is @MainActor and only routes through AppShortcutRouter (lines 23-27); openAppWhenRun is true.' },
+        { by: 'swiftui-pro skill', rule: 'swift.md: localized resources', verdict: 'pass', note: 'Titles use LocalizedStringResource and IntentDescription (OpenPageIntent.swift:7-12); AppPageOption cases are an AppEnum (AppPageOption.swift:5-16).' },
       ],
     },
     notes: [

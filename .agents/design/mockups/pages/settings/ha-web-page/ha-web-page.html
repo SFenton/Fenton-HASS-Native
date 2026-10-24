@@ -59,19 +59,22 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Modality: a full-screen cover for a self-contained task with its own navigation', verdict: 'pass', note: 'The Home Assistant cover; the page pushes inside it and Back returns.' },
-        { rule: 'Loading: show progress while content loads', verdict: 'pass', note: 'The app’s arc over the page and as the lone indicator before the web view exists.' },
-        { rule: 'Toolbars: place the primary action trailing; label icon buttons', verdict: 'pass', note: 'Reload is the trailing primary action with a label.' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'departure', note: 'The cover takes the shell’s dark scheme (preferredColorScheme(.dark) on MainTabView), not the system’s; the web view backgrounds with systemBackground, which is dark inside it. Not verified in the simulator in this pass.' },
-        { rule: 'Privacy: keep sign-in data out of the web view’s storage', verdict: 'pass', note: 'Tokens go into a non-persistent data store and vanish when the page closes (auth.md).' },
+        { rule: 'Loading: show progress for content that takes time', verdict: 'pass', note: 'ProgressView("Loading Settings…") with the arc style over the page while isLoading, and alone before the sign-in hand-off (HomeAssistantWebPage.swift:58, :64).', by: 'apple-hig skill' },
+        { rule: 'Offering help / Feedback: say what failed and how to recover', verdict: 'pass', note: 'ContentUnavailableView "Can\'t open Settings" with a Try Again action (:46-53); offline and token failure share it.', by: 'apple-hig skill' },
+        { rule: 'Modality: a modal with its own navigation can be closed from any depth', verdict: 'fix', note: 'The pushed page has only Reload in its bar (:33-39); the form\'s Close is on the root (HomeAssistantSettingsView.swift:58), unlike the household sheets that repeat Close on pushed pages (AdminSettingsContent.swift:110-114).', by: 'apple-hig skill' },
+        { rule: 'Gestures: do not redefine the system edge swipe', verdict: 'fix', note: 'webView.allowsBackForwardNavigationGestures = true (:103) gives the web history the left-edge swipe, competing with the navigation stack\'s interactive back once the frontend has history.', by: 'apple-hig skill' },
+        { rule: 'Dark Mode: follow the system appearance', verdict: 'departure', note: 'The pushed page sits in the dark cover (shell scheme, owner 2026-10-15) and the web view\'s own background is .systemBackground with isOpaque false (:105); the site\'s theme follows its own profile setting, so a light page can show inside the dark cover.', by: 'apple-hig skill' },
+        { rule: 'Privacy: keep credentials off disk', verdict: 'pass', note: 'Tokens go through FrontendSession into WKWebsiteDataStore.nonPersistent() (:94), gone when the page closes; off-server links open in the browser (:131-134).', by: 'apple-hig skill' },
+        { rule: 'Accessibility: Dynamic Type and VoiceOver for content', verdict: 'departure', note: 'Home Assistant\'s own pages are the one web UI the app allows (AGENTS.md invariant "Native only", in-app HA settings modal); text size, contrast and VoiceOver there are the site\'s, not the app\'s.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'ContentUnavailableView for an empty or failed state', verdict: 'pass', note: 'Label, description and a Try Again action.' },
-        { rule: 'Use .task for async preparation', verdict: 'pass', note: '.task { await prepare() } and a reload token for the representable.' },
-        { rule: 'Do not hold secrets in view state', verdict: 'pass', note: 'FrontendSession is built on demand and not persisted.' },
-        { rule: 'Hit target 44 pt for toolbar buttons', verdict: 'pass', note: 'System toolbar button.' },
+        { rule: 'WebView: native WebView on iOS 26+, wrapper otherwise', verdict: 'pass', note: 'HassWebView wraps WKWebView in UIViewRepresentable (:83-117); correct for the iOS 17 target, move to the native WebView when the target moves.', by: 'swiftui-pro skill' },
+        { rule: 'Concurrency: .task and async work', verdict: 'pass', note: '.task { await prepare() } with the refresh in a static async helper (:40, :75-78).', by: 'swiftui-pro skill' },
+        { rule: 'Toolbar: semantic placement and a text label for icon buttons', verdict: 'pass', note: 'ToolbarItem(.primaryAction) with Label("Reload", systemImage:), so VoiceOver reads the word and the Duo vertical bar sorts it by role (:34-36).', by: 'swiftui-pro skill' },
+        { rule: 'Safe areas: name the edges you ignore', verdict: 'pass', note: '.ignoresSafeArea(edges: .bottom) only (:57); the top stays under the bar.', by: 'swiftui-pro skill' },
+        { rule: 'Hygiene: UIKit and legacy platform branches', verdict: 'fix', note: 'The coordinator calls UIApplication.shared.open (:133, :143) and a #if os(macOS) stub remains (:60-62); acceptable in the wrapper but the macOS branch is legacy under the no-macOS invariant.', by: 'swiftui-pro skill' },
       ],
     },
 

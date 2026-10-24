@@ -1,7 +1,8 @@
 /* S+H mockup kit: entry point.
  *
  * A mockup links only kit.css and kit.js. This file defines the `Mock` namespace and its DOM helpers, then loads the rest of
- * the kit synchronously (document.write keeps `Mock.mount(...)` in the page's next inline script working from file://):
+ * the kit synchronously and deterministically (document.write plus a verify-and-retry step, see the bottom of this file; it keeps
+ * `Mock.mount(...)` in the page's next inline script working from file://):
  *   lib/symbols.js   SF Symbol look-alikes (Mock.icon)
  *   lib/anim.js      motion helpers (Mock.anim), every one cites its motion.md section
  *   lib/devices.js   device table and Mock.ctx
@@ -24,6 +25,7 @@
     'HassModal', 'SheetCloseItem', 'FloatingActionBar', 'FilterSheet', 'OptionPickerSheet', 'StatusPill', 'InfoBox',
     'PrimaryButton', 'SegmentedChoice', 'Toggle', 'Slider', 'BrightnessTile', 'ThermostatDial', 'ContentGate', 'ImageCard',
     'ModalTabBar', 'TabBar', 'AlarmPanel', 'NavigationFlyout', 'ReconnectingArc', 'ScheduleDateFields', 'FormField', 'Alert', 'WeatherCard',
+    'ConfirmationDialog', 'ContentUnavailableView', 'SettingsLinkRow', 'TextToolbarButtons', 'FullScreenCover',
   ];
 
   var script = document.currentScript;
@@ -106,8 +108,40 @@
 
   if (window.__MOCK_INLINED) return;
   if (!script || !script.src) return;
-  var tags = [];
-  Mock.LIB.forEach(function (n) { tags.push(Mock.base + 'lib/' + n + '.js'); });
-  Mock.COMPONENTS.forEach(function (n) { tags.push(Mock.base + 'components/' + n + '.js'); });
-  tags.forEach(function (src) { document.write('<script src="' + src + '"><\/script>'); });
+
+  /**
+   * Deterministic ordered load (v2). Every file is written as a parser-blocking <script src> (document.write, so `Mock.mount(...)` in the page's
+   * next inline script and the helpers' own <script src> keep working from file://), each with an onerror hook. A verify script runs right after the
+   * batch: when a request failed (a busy static server drops connections under parallel load) it waits briefly and re-writes the failed file AND
+   * every file after it, in the original order (so load-time dependencies hold), up to four times, before the page's own scripts run. It works the
+   * same on file:// and http(s) and never relies on timers, so the page cannot start before the kit is complete. A final failure is logged and
+   * listed in Mock.loadErrors (Mock.lint shows it in the red banner).
+   */
+  var files = [];
+  Mock.LIB.forEach(function (n) { files.push('lib/' + n + '.js'); });
+  Mock.COMPONENTS.forEach(function (n) { files.push('components/' + n + '.js'); });
+  Mock.loadErrors = [];
+  var failed = [];
+  Mock._loadFail = function (i) { failed.push(i); };
+  /** Index of the first lib file whose global is missing (a file that fetched but threw), or -1. */
+  function libMissing() {
+    var need = { symbols: Mock.icon, anim: Mock.anim, devices: Mock.devices, chrome: Mock.frame, mount: Mock.lint };
+    for (var k in need) if (!need[k]) return Mock.LIB.indexOf(k);
+    return -1;
+  }
+  function write(from, attempt) {
+    for (var i = from; i < files.length; i++) {
+      document.write('<script src="' + Mock.base + files[i] + (attempt ? '?retry=' + attempt : '') + '" onerror="Mock._loadFail(' + i + ')"><\/script>');
+    }
+    document.write('<script>Mock._loadVerify(' + attempt + ')<\/script>');
+  }
+  Mock._loadVerify = function (attempt) {
+    var first = failed.length ? Math.min.apply(null, failed) : libMissing();
+    if (first < 0) return;
+    failed = [];
+    if (attempt >= 4) { Mock.loadErrors.push(files[first]); if (window.console) console.error('Mock kit: ' + files[first] + ' did not load after ' + attempt + ' retries'); return; }
+    var until = Date.now() + 80 * (attempt + 1); while (Date.now() < until) { /* let a busy static server drain its queue */ }
+    write(first, attempt + 1);
+  };
+  write(0, 0);
 })();

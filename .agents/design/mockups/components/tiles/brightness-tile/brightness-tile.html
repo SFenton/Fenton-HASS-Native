@@ -41,9 +41,22 @@
       { rule: 'Not colour alone', note: 'Level is shown as the band, the percentage and Off or Unavailable words; the bubble is hidden from VoiceOver (the value is read).' },
       { rule: 'Targets and type', note: '72 pt tall minimum; the bubble caps its type at xxLarge.' },
     ],
-    reviews: { date: '2026-10-23',
-      hig: [MLC.R.target44, MLC.R.colorNotAlone, { rule: 'Sliders: continuous values adjust with a drag and with assistive adjust', verdict: 'pass', note: 'Drag and accessibilityAdjustableAction.' }, { rule: 'Playing haptics: a selection tick every 10%', verdict: 'pass', note: 'sensoryFeedback(.selection) between steps.' }],
-      swiftui: [MLC.R.scaled, MLC.R.motionTokens, { rule: 'No shadow pass at rest', verdict: 'pass', note: 'Shadow only while dragging (an offscreen render per frame otherwise).' }, { rule: 'Pure UI: callers send the service calls', verdict: 'pass', note: 'onPower and onBrightness intents; optimistic value clears on a live change or after 4 s.' }] },
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { by: 'apple-hig skill', rule: 'Sliders: continuous values adjust by drag and by assistive adjust', verdict: 'pass', note: 'A horizontal drag commits on release; accessibilityAdjustableAction steps 10% and sends once (BrightnessTile.swift:143-149, 280-285).' },
+        { by: 'apple-hig skill', rule: 'Playing haptics: a selection tick as the value moves', verdict: 'pass', note: 'sensoryFeedback(.selection) fires between 10% steps only while dragging (lines 123-125).' },
+        { by: 'apple-hig skill', rule: 'Color: level is not shown by the band alone', verdict: 'pass', note: 'The band is joined by the percent, Off or Unavailable text (status, lines 217-220); the "30%" bubble is VoiceOver-hidden because the value is read.' },
+        { by: 'apple-hig skill', rule: 'Typography: Dynamic Type', verdict: 'departure', note: 'The drag bubble caps its type at xxLarge (line 244); it is transient, hidden from VoiceOver and repeats the tile\'s own scaling percent.' },
+        { by: 'apple-hig skill', rule: 'Gestures: a visible way to do the primary action', verdict: 'fix', note: 'When onOpen is set (Custom Lights) a tap opens details and power is only reachable by dragging to 0 or a VoiceOver custom action (lines 138-142, 155-157); the tile shows no switch.' },
+      ],
+      swiftui: [
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: onTapGesture only when needed, with button traits', verdict: 'pass', note: 'onTapGesture (line 88) shares the overlay with a pan, so a Button cannot be used; the element adds .isButton and an accessibilityAction (lines 136-137).' },
+        { by: 'swiftui-pro skill', rule: 'api.md: avoid UIKit; SwiftUI first', verdict: 'departure', note: 'HorizontalPan is a UIGestureRecognizerRepresentable (lines 350-391) because from iOS 18 a SwiftUI DragGesture inside a ScrollView stops the page scrolling (comment lines 318-323); iOS 17 keeps the SwiftUI drag.' },
+        { by: 'swiftui-pro skill', rule: 'performance.md: no shadow pass at rest', verdict: 'pass', note: 'The blurred shadow is drawn only while dragging (line 121).' },
+        { by: 'swiftui-pro skill', rule: 'views.md: no timing heuristics for gesture disambiguation', verdict: 'fix', note: 'A tap within 300 ms of a drag end is ignored using ContinuousClock (lines 41, 90); a delayed tap after a short drag is fragile, and a gesture-state check would be deterministic.' },
+      ],
+    },
     notes: ['Kit gap: Mock.components.BrightnessTile draws "On at 70%" and has no chevron; the app draws "70%" (BrightnessTile.status) and a chevron with onOpen. This page uses MLC.lightTile; promote to kit.', 'The unavailable tile is the off face with the glyph at 50%.', 'The lit tile\'s cream and band colours are the kit tokens (direction-g.md "Lit tiles").'],
     changelog: [{ date: '2026-10-23', note: 'First pass.' }],
   });

@@ -76,22 +76,41 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Sheets: grabber visible, a clear way to dismiss, never "Done" for a viewing sheet', verdict: 'pass', note: 'presentationDragIndicator(.visible); circle x Close (owner 2026-10-13).' },
-        { rule: 'Sheets: prefer page or form sheet styles on iPad', verdict: 'pass', note: 'Every sheet names its size; the default is .form so a sheet that forgets still gets a readable one.' },
-        { rule: 'Sheets: use the smallest detent that shows the content', verdict: 'pass', note: 'Fitted by default; full only for remotes, tabbed sheets, sheets that navigate, live video (modal-sheet.md).' },
-        { rule: 'Materials: sheets are opaque, Liquid Glass belongs on the navigation layer', verdict: 'departure', note: 'An opaque grouped ground at every detent: a partial-height glass sheet let a page\'s tiles show through (direction-g.md Sheets); the controls stay glass.' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'pass', note: 'Sheets follow the system appearance; photo and video sheets stay dark.' },
-        { rule: 'Toolbars: prefer the standard symbols without text labels', verdict: 'pass', note: 'Close, Cancel and confirm are the system symbols with spoken labels.' },
+
+        { rule: "Sheets (iOS): Cancel or Close on the top toolbar's leading edge, Done trailing", verdict: "departure", note: "The Close is a circle-x at the trailing edge (owner 2026-10-13: 'circle X close button like FestivalNativeApps'); a viewing sheet never says Done, and editing sheets keep Cancel leading with a named confirm trailing (sheet-edit-toolbar).", by: "apple-hig skill" },
+
+        { rule: "Sheets: resizable with detents and a grabber; prefer page or form sheet on iPad", verdict: "pass", note: "hassSheet shows presentationDragIndicator(.visible), fits the detent to measured content capped at large (owner 2026-10-16), and names .form (540 pt) or .page for iPad via presentationSizing.", by: "apple-hig skill" },
+
+        { rule: "Sheets and Materials: partial-height sheets stay legible over the page", verdict: "pass", note: "presentationBackground(systemGroupedBackground) gives an opaque ground at every detent, so a page's coloured tiles never show through the iOS 26 glass sheet; the title sits on one flat ground with content fading beneath (header-edge-fade).", by: "apple-hig skill" },
+
+        { rule: "Modality: obvious dismissal, a title that identifies the task", verdict: "pass", note: "Inline navigation title plus a Close button in the bar and swipe down; the title is announced first by VoiceOver.", by: "apple-hig skill" },
+
+        { rule: "Dark Mode: a sheet over a photo or video keeps its own appearance", verdict: "pass", note: "HassSheetAppearance.dark pins the colour scheme for Weather and camera sheets; the default follows the system appearance while the pages behind stay dark (SystemAppearance).", by: "apple-hig skill" },
+
+        { rule: "Sheets: a sheet should not change height while people use it", verdict: "fix", note: "A fitted sheet opens at .medium until its first measurement and then jumps to the measured detent (SheetFit.swift line 314); the height is remembered per call site only for the life of the process (SheetFitMemory), so every first open after launch shows a resize. Low.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'One sheet-sizing API', verdict: 'pass', note: 'hassSheet(_:height:appearance:fitKey:); HassSheetWidth has two cases and no .automatic.' },
-        { rule: 'Measure content with onScrollGeometryChange, remember per call site', verdict: 'pass', note: 'SheetFitModel with fitKey; hysteresis 2 pt; large snap 24 pt; minimum 220 pt.' },
-        { rule: 'Never write preferredColorScheme in a feature sheet', verdict: 'pass', note: 'followsSystemAppearance() or hassSheet(appearance: .dark).' },
-        { rule: 'Phone sheets fit to content plus safe areas only', verdict: 'pass', note: 'usesSheetEstimate is for regular width: counting the sheet height on a phone made each taller sheet ask for 14 pt more (bathroom fan sheet kept 400 pt of empty ground, 2026-10-17).' },
-        { rule: 'One container for every sheet', verdict: 'fix', note: 'modal-sheet.md says new modals use HassModal; in code only AppIconPickerSheet does. Every other sheet builds NavigationStack + modalChrome + SheetCloseItem by hand. Either adopt HassModal or reword the pattern.' },
+
+        { rule: "Navigation: semantic toolbar placements so each device sorts items by role (iPhone Duo's vertical bar)", verdict: "fix", note: "SheetCloseItem places a dismiss action at .confirmationAction (HassModal.swift line 26) although it cancels nothing and confirms nothing; .cancellationAction would let the Duo's vertical bar keep Close with primary navigation at the top, and the visual trailing position is an owner choice the system can still honour on iPhone. Medium-low.", by: "swiftui-pro skill" },
+
+        { rule: "Design: never rely on UIScreen or the first window for available space", verdict: "fix", note: "LargeDetent.height() reads UIApplication.connectedScenes, picks the first key window and subtracts a magic 10 pt (SheetFit.swift lines 250 to 256); with several scenes or a window-sized iPad it can measure the wrong window. A custom PresentationDetent reading context.maxDetentValue gives the real large height. Medium.", by: "swiftui-pro skill" },
+
+        { rule: "API: current Close button and sheet modifiers", verdict: "pass", note: "Button(role: .close) on iOS 26 with an icon-only xmark fallback, presentationSizing guarded by #available(iOS 18), explicit label 'Close' and identifier; no deprecated placements.", by: "swiftui-pro skill" },
+
+        { rule: "Views: one sheet container used everywhere", verdict: "fix", note: "Only the App Icon picker calls HassModal; every other sheet assembles NavigationStack, modalChrome and SheetCloseItem by hand, so title display mode and close wiring can drift (README open note; modal-sheet.md says new modals use it). Low.", by: "swiftui-pro skill" },
+
+        { rule: "Design: avoid UIKit colours in SwiftUI", verdict: "fix", note: "SheetGroundModifier and ModalBackground use Color(uiColor: .systemGroupedBackground) with an NSColor branch for the Mac test host (HassModal.swift lines 257 and 271); acceptable for a system colour that has no SwiftUI name, but the #if os branches are legacy. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Appearance: environment override rather than preferredColorScheme for a view subtree", verdict: "departure", note: "The always-dark sheet uses preferredColorScheme(.dark), which affects the whole presented screen, deliberately: the sheet is one dark photo or gradient screen (Weather, camera).", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

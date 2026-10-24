@@ -76,20 +76,17 @@
       { rule: 'Dynamic Type / AX5', note: 'The bar keeps its size and offers the Large Content Viewer; page content reflows.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Tab bars: switching tabs does not reset or animate the destination', verdict: 'pass', note: 'A cut; each tab keeps its path and scroll position.' },
-        { rule: 'Tab bars: tapping the selected tab pops to the root, then scrolls to the top', verdict: 'pass', note: 'ShellNavigator.reselect reproduces the UIKit behaviour for the SwiftUI TabView.' },
-        { rule: 'Tab bars: badge only what needs attention', verdict: 'pass', note: 'Chores only.' },
-        { rule: 'Navigation: same model on every size', verdict: 'departure', note: 'Regular width uses the flyout, owner 2026-10-10 (design/apple/ipados.md); the style follows the size class only.' },
-        { rule: 'Motion: do not decorate system transitions', verdict: 'pass', note: 'No custom tab, push or scroll animation (motion.md section 9).' },
+        { rule: 'Tab bars: switching keeps each tab\'s state, no animation', verdict: 'pass', note: 'A cut; paths are per section in ShellNavigator.paths, scroll stays with the mounted stack (MainTabView.swift:107-120, 137).', by: 'apple-hig skill' },
+        { rule: 'Tab bars: tapping the selected tab pops to the root, then scrolls to the top', verdict: 'pass', note: 'ShellNavigator.reselect (ShellNavigator.swift:150-158) driven by the binding setter (MainTabView.swift:124-132).', by: 'apple-hig skill' },
+        { rule: 'Tab bars: badge only what needs attention', verdict: 'pass', note: 'Chores only.', by: 'apple-hig skill' },
+        { rule: 'Tab bars: use the same navigation on every size', verdict: 'departure', note: 'Regular width uses the flyout, owner 2026-10-10 (ipados.md); the second-tap behaviour carries over via select(_:).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Selection through a binding whose setter sees re-taps', verdict: 'pass', note: 'tabSelection setter calls ShellNavigator.tabTapped even for the selected tab.' },
-        { rule: 'Kill animations on a tab change with a scoped transaction', verdict: 'pass', note: '.transaction(value: navigator.selection) { $0.animation = nil }, scoped so nothing else loses its animation.' },
-        { rule: 'Use scroll APIs, not UIKit walking, where possible', verdict: 'departure', note: 'ScrollToTopBridge walks the view controller for the biggest vertical UIScrollView because it must serve ScrollView and List alike (iOS 17 target).' },
-        { rule: 'Measure navigation with signposts', verdict: 'pass', note: 'TabSwitch measured from the real tap (MotionPolicy.measureCut).' },
-        { rule: 'Keep per-section state in one model', verdict: 'pass', note: 'ShellNavigator.paths and scrollToTopRequests.' },
+        { rule: 'Prefer SwiftUI scroll APIs to walking UIKit', verdict: 'departure', note: 'ScrollToTopBridge finds the largest vertical UIScrollView so one path serves ScrollView and List on the iOS 17 target (ScrollToTop.swift:7-12, 59-74).', by: 'swiftui-pro skill' },
+        { rule: 'Persist selection with an enum', verdict: 'pass', note: '@SceneStorage selectedTab of AppSection (MainTabView.swift:13, 84).', by: 'swiftui-pro skill' },
+        { rule: 'Measure the interaction', verdict: 'pass', note: 'measureCut(.tabSwitch) from the real tap (MainTabView.swift:128).', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

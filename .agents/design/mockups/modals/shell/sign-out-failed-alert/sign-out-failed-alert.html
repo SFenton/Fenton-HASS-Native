@@ -39,15 +39,15 @@
       { rule: 'Dynamic Type', note: 'The title is the whole message and wraps; the system alert scrolls if it grows past the window.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Alerts: say what happened and what to do, in plain language', verdict: 'pass', note: 'One sentence of each: it did not complete; try again.' },
-        { rule: 'Alerts: avoid a message when the title is enough', verdict: 'pass', note: 'Title only.' },
-        { rule: 'Alerts: explain why when it helps', verdict: 'fix', note: 'It does not say why (no network or a server error), and the person is left signed in with no way to know. Low severity.' },
+        { rule: 'Alerts: say what happened and offer the next step', verdict: 'fix', note: 'The title says it did not complete and to try again, but the only button is OK, so the person must reopen the sheet and Sign Out again; it also never says why (offline, or the server could not unlink this phone). A Try Again button would close the loop. Low (YourSummarySheet.swift:68-71).', by: 'apple-hig skill' },
+        { rule: 'Alerts: title only when it is enough', verdict: 'pass', note: 'One short sentence, no message.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'alert(_:isPresented:) with one cancel-role OK', verdict: 'pass', note: 'Button("OK", role: .cancel).' },
-        { rule: 'Reset the busy flag after the task, success or not', verdict: 'pass', note: 'defer { isSigningOut = false }.' },
+        { rule: 'Single OK dismiss button', verdict: 'pass', note: 'Button("OK", role: .cancel) so Escape and the scrub gesture dismiss it; the closure could even be omitted.', by: 'swiftui-pro skill' },
+        { rule: 'One copy of a string used twice', verdict: 'fix', note: 'The literal appears in YourSummarySheet.swift:68 and HomeAssistantSettingsView.swift:117; share it in one constant as LoginCopy does. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Reset the busy flag on every path', verdict: 'pass', note: 'defer { isSigningOut = false } (YourSummarySheet.swift:90).', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

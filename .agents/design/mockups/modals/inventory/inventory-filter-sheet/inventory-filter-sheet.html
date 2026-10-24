@@ -61,18 +61,16 @@
       { rule: 'Not colour alone', note: 'The chosen filter is a check glyph plus the selected trait, never colour alone.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Sheets: as tall as the content, grabber visible', verdict: 'pass', note: 'Fitted, capped at large.' },
-        { rule: 'Lists and tables: checkmark for single selection', verdict: 'pass', note: 'FilterOptionRow.' },
-        { rule: 'Toolbars: Cancel and confirm on edit sheets', verdict: 'pass', note: 'Circle x and the filled check (owner 2026-10-16); never "Done".' },
-        { rule: 'Navigation bars: title plus subtitle', verdict: 'pass', note: 'iOS 26 navigationSubtitle; before iOS 26 the title is alone (the count is not repeated elsewhere, so it is lost there: the deployment target is 17).' },
-        { rule: 'Materials: opaque sheet ground', verdict: 'departure', note: 'direction-g.md Sheets.' },
+        { rule: 'Sheets: Cancel leading, confirm trailing', verdict: 'pass', note: 'The shared FilterSheet draft: Cancel drops, Apply commits, disabled until the choice changes (InventoryControlSheets.swift:62-68).', by: 'apple-hig skill' },
+        { rule: 'Sheets: unsaved changes on swipe down', verdict: 'fix', note: 'A swipe down discards a chosen filter silently (FilterSheet.swift has no interactiveDismissDisabled).', by: 'apple-hig skill' },
+        { rule: 'Lists: single choice with a checkmark', verdict: 'pass', note: 'Seven FilterOptionRow rows with a checkmark, isSelected and a line saying what each keeps; the subtitle counts the matches ("2 of 10 Items").', by: 'apple-hig skill' },
+        { rule: 'Feedback: say what a choice will do', verdict: 'pass', note: 'filterSummary(mode) updates under the title as the draft changes, including a filter with no match (InventoryControlSheets.swift:64).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Scaled metrics', verdict: 'pass', note: 'Reset row pad is @ScaledMetric.' },
-        { rule: 'Do not hide a count behind an OS-version check without a fallback', verdict: 'fix', note: 'On iOS 17 and 18 the "n of N Items" subtitle is not drawn (SheetSubtitle.isShown is false) and this sheet has no in-form fallback, unlike Add Item. The owner\'s device runs the latest OS; flagged.' },
-        { rule: 'Use hassSheet for size and ground', verdict: 'pass', note: 'hassSheet(.form, .fitted).' },
+        { rule: 'Presentation: sheet(item:) and the shared sheet size', verdict: 'pass', note: 'InventorySheetContent switches on an Identifiable InventorySheet used with .sheet(item:) (InventoryScreen.swift:86-88).', by: 'swiftui-pro skill' },
+        { rule: 'Accessibility: Dynamic Type', verdict: 'pass', note: 'Reset to Defaults pads with @ScaledMetric so the row grows with the text (FilterSheet.swift:24, 58).', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

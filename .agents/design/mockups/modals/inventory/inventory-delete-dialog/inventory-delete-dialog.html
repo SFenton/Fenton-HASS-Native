@@ -49,16 +49,14 @@
       { rule: 'Reduce Motion', note: 'The system presents with a cross-fade.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Action sheets: destructive action first and red, Cancel separate', verdict: 'pass', note: 'Delete (destructive) over the system Cancel.' },
-        { rule: 'Action sheets: provide a title that explains the consequence', verdict: 'pass', note: 'titleVisibility: .visible with the item and place.' },
-        { rule: 'Action sheets on iPad appear as popovers', verdict: 'pass', note: 'confirmationDialog is a popover on regular width; Cancel is not shown there.' },
-        { rule: 'Alerts versus action sheets for a destructive confirm', verdict: 'departure', note: 'direction-g.md says destructive confirmations are alerts (Disarm, Turn Off Vacation, Sign Out); this one is a confirmationDialog. The Sign Out sheets differ the same way (see _inventory-notes.md item 4).' },
+        { rule: 'Action sheets: destructive choice prominent, Cancel present', verdict: 'pass', note: 'confirmationDialog shows a .destructive Delete and the system Cancel, with titleVisibility .visible (InventoryScreen.swift:101-108).', by: 'apple-hig skill' },
+        { rule: 'Action sheets: aim for one-line titles', verdict: 'fix', note: '"Delete <name> from the <place>?" wraps to several lines for a long item name, and All Food says "the library" (InventoryScreen.swift:102, space.phrase); the dialog has no separate message, so the name is the title.', by: 'apple-hig skill' },
+        { rule: 'Alerts: avoid confirming common, undoable actions', verdict: 'pass', note: 'Only a single remaining unit asks; more than one asks how many instead (InventoryPresentation.requestDelete).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use confirmationDialog for destructive choices', verdict: 'pass', note: 'presenting: item, role .destructive.' },
-        { rule: 'Anchor the dialog to its source on iPad', verdict: 'fix', note: 'The dialog is attached to the whole InventoryScreen, not the row, so the iPad popover has no row anchor; the system picks the placement. Attach it to the row for a popover that points at it.' },
+        { rule: 'Presentation: attach to the triggering control', verdict: 'fix', note: 'The dialog is attached to the page, not the swiped row, so the iPad popover has no source to point at (InventoryScreen.swift:101); it also uses an isPresented Binding(get:set:) plus presenting instead of an item.', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

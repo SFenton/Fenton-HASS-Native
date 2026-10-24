@@ -42,18 +42,15 @@
       { rule: 'Dynamic Type', note: 'The system scales the dialog; the popover and the action sheet scroll when taller than the window.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Modality: get confirmation before closing could lose user-generated content', verdict: 'pass', note: 'Cancel, Escape and the swipe go through it.' },
-        { rule: 'Sheets: if changes are unsaved when swiping begins, confirm with an action sheet', verdict: 'pass', note: 'The swipe attempt is observed and raises the dialog (UIKit delegate proxy).' },
-        { rule: 'Action sheets: make the destructive choice clear; include Cancel', verdict: 'departure', note: 'On iOS 27 a popover omits Cancel (an outside tap is the cancel); the Keep Editing button is still in the code for earlier systems.' },
-        { rule: 'Alerts and action sheets: title says what will happen, buttons name the action', verdict: 'pass', note: '"Discard Changes" and "Keep Editing" rather than Yes and No.' },
+        { rule: 'Sheets: confirm with an action sheet when a swipe would lose changes', verdict: 'pass', note: 'interactiveDismissDisabled while input or a send is in flight, and the attempt raises the dialog (FeedbackFormSheet.swift:54-57, :236-243).', by: 'apple-hig skill' },
+        { rule: 'Action sheets: say what is lost; destructive choice first', verdict: 'pass', note: '"Discard this report?" with "Your text and attached media will be lost.", Discard Changes destructive, Keep Editing as the cancel role (:218-225).', by: 'apple-hig skill' },
+        { rule: 'Modality: only interrupt when there is something to lose', verdict: 'pass', note: 'requestClose() closes immediately when the form is empty (:237-243).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'confirmationDialog anchored to the triggering control', verdict: 'pass', note: 'Attached to the Cancel toolbar button so the popover points at it.' },
-        { rule: 'interactiveDismissDisabled while there is something to lose', verdict: 'pass', note: 'isSending or hasUnsavedInput.' },
-        { rule: 'Button roles', verdict: 'pass', note: '.destructive and .cancel.' },
-        { rule: 'Do not wrap a UIKit delegate without forwarding', verdict: 'pass', note: 'DelegateProxy forwards every other call to SwiftUI’s own delegate.' },
+        { rule: 'Navigation: confirmationDialog attached to the Cancel button', verdict: 'pass', note: 'Anchored to the toolbar Cancel so the popover points at it (:214-226).', by: 'swiftui-pro skill' },
+        { rule: 'API: avoid UIKit unless there is no SwiftUI equivalent', verdict: 'departure', note: 'SheetDismissAttemptObserver wraps UIAdaptivePresentationControllerDelegate because SwiftUI has no public hook for a blocked swipe (SheetDismissAttemptObserver.swift:9-13); it forwards every other delegate call.', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

@@ -67,18 +67,18 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Live Activities: brief, glanceable, one or two controls', verdict: 'pass', note: 'One job per activity, one big value, at most two buttons (spec section 0).' },
-        { rule: 'Live Activities: Lock Screen height limit (160 pt)', verdict: 'pass', note: 'About 96 to 110 pt at the default size, at most 160 pt with a two-line title (LiveActivityJourneyTests). At AX sizes the card grows because the text must not truncate.' },
-        { rule: 'Buttons: 44 x 44 pt minimum target', verdict: 'pass', note: 'Pill 36 pt in a 44 pt frame.' },
-        { rule: 'Color: sufficient contrast, not colour alone', verdict: 'pass', note: 'See the accessibility list.' },
-        { rule: 'Materials: system background on the Lock Screen', verdict: 'departure', note: 'The card sets its own dark tint (activityBackgroundTint) so family accents keep 3:1 on any wallpaper (direction-g.md colour families, per-job spec section 8).' },
+        { by: 'apple-hig skill', rule: 'Live Activities: glanceable, one value, at most two controls', verdict: 'pass', note: 'Glyph and title, one 32 pt value with the buttons in its row, an optional 5 pt bar (JobCardView.swift:20-62).' },
+        { by: 'apple-hig skill', rule: 'Live Activities: Lock Screen height limit', verdict: 'pass', note: 'ActivityStyle.lockScreenHeightLimit is 160 pt (line 127) and LiveActivityJourneyTests assert it; those tests were not run in this review.' },
+        { by: 'apple-hig skill', rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Pill 36 pt in a 44 pt frame, round 44 pt (ActivityButtons.swift:92, 104-107).' },
+        { by: 'apple-hig skill', rule: 'Color: contrast and not color alone', verdict: 'pass', note: 'Secondary text is 78% white tested at 4.5:1 on the card ground (ActivityStyle.swift:31); Paused is the word and the Resume button, Complete a check and the word.' },
+        { by: 'apple-hig skill', rule: 'Materials: system background on the Lock Screen', verdict: 'departure', note: 'activityBackgroundTint(ActivityStyle.ground) (HomeLiveActivity.swift:28): an own dark tint so family accents keep 3:1 on any wallpaper (direction-g.md colour families).' },
+        { by: 'apple-hig skill', rule: 'Always-On: reduce brightness', verdict: 'fix', note: 'isLuminanceReduced is read only to drop the ring track (ActivityRing.swift:11, 70); the solid white button pills and white figure keep full brightness on an Always-On Lock Screen.' },
       ],
       swiftui: [
-        { rule: 'Dynamic Type via text styles and ScaledMetric', verdict: 'pass', note: 'ActivityFont scales exact design sizes relative to a text style; the island caps at xxxLarge.' },
-        { rule: 'Avoid AnyView', verdict: 'departure', note: 'ActivityActions.control returns AnyView because the Button(intent:) lives in the widget extension and the package cannot name the intent (ActivityActions.swift).' },
-        { rule: 'Semantic colours over hard-coded', verdict: 'departure', note: 'The ground and text are fixed white on a fixed dark tint by design (ActivityStyle.swift); the Lock Screen is the one surface that is always dark.' },
-        { rule: 'Reduce Motion', verdict: 'pass', note: 'The views add no animation; timers and bars are the system\'s.' },
-        { rule: 'Accessibility labels on controls', verdict: 'pass', note: 'accessibilityLabel on every button; decoration is accessibilityHidden.' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Dynamic Type with scaled metrics', verdict: 'pass', note: 'ActivityFontModifier scales 17, 24 and 32 pt from their text style with @ScaledMetric (ActivityFont.swift:6-18); AX sizes stack the value over the buttons (JobCardView.swift:50-55).' },
+        { by: 'swiftui-pro skill', rule: 'views.md: avoid manual geometry hacks', verdict: 'fix', note: 'ActivityBar scales a ProgressView with scaleEffect(y: 5/4) to reach 5 pt (ActivityBar.swift:18-20), which depends on the system\'s 4 pt track and also stretches its rounded caps; draw the bar with a Capsule pair or use a progressViewStyle.' },
+        { by: 'swiftui-pro skill', rule: 'performance.md: avoid AnyView', verdict: 'departure', note: 'ActivityActions.control returns AnyView because the Button(intent:) lives in the widget extension (ActivityActions.swift:11).' },
+        { by: 'swiftui-pro skill', rule: 'design.md: semantic colors', verdict: 'departure', note: 'White text on a fixed dark tint by design (ActivityStyle.swift:28-44); the Lock Screen card is the one surface that is always dark.' },
       ],
     },
     notes: [

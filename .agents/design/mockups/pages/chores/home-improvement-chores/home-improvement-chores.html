@@ -10,7 +10,20 @@
 (function () {
   var h = Mock.h, K = Mock.components, C = window.Chores;
 
-  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: "Lists and tables: group rows by what the person decides on", verdict: "pass", note: "Past Due, Due Today, Upcoming and No Due Date headers with empty lists removed (TodoPageLayout.section, TodoPageView.swift lines 237-247).", by: "apple-hig skill" },
+        { rule: "Writing: sentence copy has typos", verdict: "fix", note: "The empty text keeps the web's hyphen spacing, \"There are no home improvement tasks due- nice job!\" (ChoresConfig.swift line 214). Web parity, but it reads as a typo natively. Low.", by: "apple-hig skill" },
+        { rule: "Color: do not rely on colour alone", verdict: "pass", note: "Far-off tasks read as \"Due in 3 months\" with the calendar glyph (DueLabel, TodoListSection.swift line 256), never colour only.", by: "apple-hig skill" },
+        { rule: "Designing for iPhone Duo: keep content clear of the fold", verdict: "fix", note: "Single List column across the hinge in unfolded landscape (TodoPageView.swift lines 30-56). Low.", by: "apple-hig skill" },
+      ],
+      swiftui: [
+        { rule: "Dynamic Type: due line wraps, check column scales", verdict: "pass", note: "DueLabel text uses fixedSize vertical (TodoListSection.swift line 260) and the check column is @ScaledMetric (line 168).", by: "swiftui-pro skill" },
+        { rule: "Sheets: Add Task preassigns the page's assignee", verdict: "pass", note: "AddAction.donetickTask(defaultAssignee) feeds DonetickTaskSheet(.create) (TodoPageView.swift lines 114-115).", by: "swiftui-pro skill" },
+        { rule: "Accessibility: row action sets", verdict: "fix", note: "Edit is offered as a custom action and as a button (TodoListSection.swift lines 216-232), so VoiceOver lists it twice. Low.", by: "swiftui-pro skill" },
+      ],
+    }, devices: (static check keys). */
   Mock.mount(C.pageConfig('home-improvement-chores', {
     title: 'Home Improvement Tasks',
     summary: 'Home improvement tasks: Past Due, Due Today, Upcoming, No Due Date (empty lists hidden). Opened from the Home Tasks Quick Link; Add Task preassigns "Home Improvement". Fixture tasks.',

@@ -77,20 +77,41 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Loading and empty states: explain what is missing and what to do', verdict: 'pass', note: 'Each message names the absence and, where it helps, the next step (Scan an item…, Use Add Task…).' },
-        { rule: 'Buttons: one clear action', verdict: 'pass', note: 'At most one action per message.' },
-        { rule: 'Dynamic Type: never clip', verdict: 'pass', note: 'Recipes and Inventory moved off the system view to a wrapping stack after the audit.' },
-        { rule: 'Use ContentUnavailableView for standard messages', verdict: 'departure', note: 'Recipes and Inventory use a custom stack because ContentUnavailableView capped text size and clipped titles (code comments in RecipesScreen and InventoryEmptyState).' },
-        { rule: 'Color: contrast on imagery', verdict: 'pass', note: 'White title and secondary white description over the dimmed wallpaper; sheet ink in sheets.' },
+
+        { rule: "Writing: say what happened and what to do next; be consistent", verdict: "fix", note: "The retry action is 'Retry' on Recipes (RecipesScreen.swift line 103) and 'Try Again' on Inventory (InventoryEmptyState.swift line 31) and the Home Assistant web page (HomeAssistantWebPage.swift line 50); pick one label. Low.", by: "apple-hig skill" },
+
+        { rule: "Progress indicators and Loading: if a process fails, explain the problem and what people can do", verdict: "fix", note: "DonetickTaskSheet shows 'Unable to Load Task' with the loader's message and no retry action (DonetickTaskSheet.swift line 48), so a failed load is a dead end apart from closing the sheet; Recipes and Inventory both offer a retry. Medium.", by: "apple-hig skill" },
+
+        { rule: "Writing: plain, specific copy; Title Case titles that name what is missing", verdict: "pass", note: "Titles such as 'No Items Found', 'Can't open <page>' and 'Unable to Load Recipes' name the problem; descriptions say what to check ('Check your connection and try again').", by: "apple-hig skill" },
+
+        { rule: "Writing: copy typos and odd punctuation", verdict: "fix", note: "The Chores empty copy keeps the web's 'nice job!' with its original hyphen spacing ('due- nice', ChoresConfig); web parity is deliberate, but the stray hyphen reads as a typo in a native empty state. Low.", by: "apple-hig skill" },
+
+        { rule: "Typography: support Dynamic Type through AX5 without clipping", verdict: "departure", note: "Recipes (No Recipes Found) and Inventory draw their own scrolling stack because ContentUnavailableView capped its text size and clipped the title at AX sizes on the folded Duo (AX audit 2026-10-12; RecipesScreen.swift line 111, InventoryEmptyState.swift doc comment).", by: "apple-hig skill" },
+
+        { rule: "Buttons: 44 pt minimum target", verdict: "pass", note: "Retry and Try Again are the 50 pt PrimaryButton capsule; the Home Assistant page uses a system button.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Prefer ContentUnavailableView for empty states', verdict: 'departure', note: 'Two sites use a plain VStack for the reason above; the rest use the system view.' },
-        { rule: 'Semantic fonts', verdict: 'pass', note: 'The plain stacks use title2.bold, body and largeTitle for the glyph.' },
-        { rule: 'Accessibility traits', verdict: 'pass', note: 'Titles carry .isHeader; glyphs are accessibilityHidden; the container keeps its children\'s identifiers.' },
-        { rule: 'Single implementation', verdict: 'departure', note: 'About a dozen call sites compose their own ContentUnavailableView; there is no shared EmptyState view (a candidate for a pattern record).' },
+
+        { rule: "Design: strongly prefer ContentUnavailableView for missing data", verdict: "pass", note: "Eleven call sites use it (Rooms, Chores, Recipe detail, Task sheet, Quick Links, placeholders, the web page); the two plain stacks are recorded departures with a reason in code.", by: "swiftui-pro skill" },
+
+        { rule: "Design: use ContentUnavailableView.search for empty search results", verdict: "fix", note: "RecipesScreen shows a hand-built 'No Recipes Found' for a non-empty appliedQuery (RecipesScreen.swift line 119); ContentUnavailableView.search inserts the term itself, but it shares the AX clipping problem above, so the custom stack is the pragmatic choice. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Accessibility: title is a heading, glyph is hidden, actions are real buttons", verdict: "pass", note: "Custom stacks add .isHeader to the title and accessibilityHidden to the glyph; ContentUnavailableView groups title, description and actions natively; the retry buttons carry identifiers.", by: "swiftui-pro skill" },
+
+        { rule: "Views: do not duplicate a pattern across call sites", verdict: "fix", note: "About a dozen call sites compose their own empty view and two re-implement the stack (no shared EmptyState, Open notes in the README), so spacing, title size (title2 bold versus system) and padding differ; one shared view with a plain-stack mode would remove that. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Localization: build text with interpolation, not concatenation", verdict: "pass", note: "Label(\"Can't open \\(page.title)\") uses interpolation, so the key is extractable; page.emptyTitle and loader errors are runtime Strings, shown verbatim.", by: "swiftui-pro skill" },
+
+        { rule: "Resizability: centred, scrollable, no fixed width beyond a cap", verdict: "pass", note: "The stacks centre with maxWidth .infinity and a 320 pt cap on the retry button, so the layout holds on the folded Duo, unfolded Duo and iPad split columns.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

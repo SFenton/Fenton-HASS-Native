@@ -2,7 +2,7 @@
 
 > **What:** the Settings tab root as built: Vacation and To-Do, Appearance, the household topics, Home Assistant Settings, Performance and Feedback on the wallpaper. **Read when:** you change `HassUI/Features/Settings` or need the Settings list on any device.
 
-- Mockup: [settings.html](settings.html) · shipped · reviewed 2026-10-23 (author self-check; skill reviewers replace it)
+- Mockup: [settings.html](settings.html) · shipped · reviewed 2026-10-23 (apple-hig and swiftui-pro skill review)
 - Source: `apple/Sources/HassUI/Features/Settings/SettingsScreen.swift`, `SettingsTabRoot.swift`, `SettingsSectionHeader.swift`, `Appearance/AppearanceSettingsSection.swift`, `Feedback/FeedbackSettingsSection.swift`, `AppIcon/AppIconSettingsRow.swift`
 - Spec: `.agents/pages/settings/ios.md`, `household.md`, `feedback.md`  · Patterns: settings-section, module-list, page-backdrop
 - States covered: default, steph-viewer, blur-changed, icon-badge-off, icon-changed, icon-unsupported, reduce-transparency, offline, reconnecting, long-text, ax5 (loading, refreshing, empty and error do not exist).

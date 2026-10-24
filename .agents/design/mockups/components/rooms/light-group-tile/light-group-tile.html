@@ -71,17 +71,17 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Gestures: do not conflict with scrolling', verdict: 'pass', note: 'Horizontal drags only; vertical drags scroll.' },
-        { rule: 'Haptic feedback: meaningful, not constant', verdict: 'pass', note: 'One selection tick per 10% step.' },
-        { rule: 'Sliders: provide an accessible adjustable action', verdict: 'pass', note: 'accessibilityAdjustableAction steps 10% with a hint.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Percentage, glyph and band agree.' },
-        { rule: 'Materials: tiles in a sheet are opaque', verdict: 'departure', note: 'Sheet-cell grounds and the warm lit tile; direction-g.md Controls and Tile finish.' },
+        { rule: "Gestures: do not rely on a specific gesture; indicate unavailable", verdict: 'pass', note: "Horizontal drag sets the level, tap flips power, and VoiceOver or Switch Control step by 10 with the adjustable action; an unavailable tile does not hit-test (BrightnessTile.swift:126, 143-149).", by: 'apple-hig skill' },
+        { rule: "Playing haptics: selection tick while a value changes", verdict: 'pass', note: "sensoryFeedback(.selection) per 10% step while dragging only (BrightnessTile.swift:123-125, 205-207).", by: 'apple-hig skill' },
+        { rule: "Color: state is text as well", verdict: 'pass', note: "A dimmable tile prints '70%' or Off; a power tile prints On or Off; the band carries the level but is not the only cue (BrightnessTile.swift:217-220, LightGroupTile.swift:39).", by: 'apple-hig skill' },
+        { rule: "Accessibility: tile reads as one element with a hint", verdict: 'pass', note: "Label is the title, value the percent, hint 'Double-tap to turn off. Swipe up or down to adjust brightness.' (BrightnessTile.swift:132-136, 198-202).", by: 'apple-hig skill' },
+        { rule: "Typography: transient bubble keeps readable size", verdict: 'departure', note: "The 60 x 32 pt percentage bubble is capped at xxLarge (BrightnessTile.swift:244) so it cannot cover the tile; VoiceOver speaks the value instead.", by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Animations respect Reduce Motion', verdict: 'pass', note: 'motionSafeAnimation on the level and drag state; no scale with Reduce Motion.' },
-        { rule: 'Explicit service calls, not toggle', verdict: 'departure', note: 'turn_on and turn_off through LightControl: Presence Based Lighting\'s Presence Lock reverts toggles. A recorded departure from web parity (room-overview-sheet.md).' },
-        { rule: 'Optimistic UI with rollback', verdict: 'pass', note: 'interaction.pendingPercent shows at once; it clears on the next live report or after 4 s.' },
-        { rule: 'sensoryFeedback with a trigger', verdict: 'pass', note: '.sensoryFeedback(.selection, trigger: hapticStep) only drag to drag.' },
+        { rule: "Never use onTapGesture except for tap handling beside a drag", verdict: 'pass', note: "The overlay combines onTapGesture and a horizontal drag with a 300 ms guard (BrightnessTile.swift:88-92), and adds .isButton and an accessibilityAction (lines 136-137).", by: 'swiftui-pro skill' },
+        { rule: "Explicit turn_on and turn_off, not toggle", verdict: 'pass', note: "LightControl.flip and brightness send explicit services so Presence Lock cannot revert a toggle (LightGroupTile.swift:5-6, 32-33, 45).", by: 'swiftui-pro skill' },
+        { rule: "Reduce Motion: replace motion with fades", verdict: 'pass', note: "The drag lift scale is dropped and only the shadow and bubble fade (BrightnessTile.swift:119, 127-129).", by: 'swiftui-pro skill' },
+        { rule: "Use system haptic API, not UIKit generators", verdict: 'pass', note: "sensoryFeedback rather than UIImpactFeedbackGenerator (line 123).", by: 'swiftui-pro skill' },
       ],
     },
     notes: [

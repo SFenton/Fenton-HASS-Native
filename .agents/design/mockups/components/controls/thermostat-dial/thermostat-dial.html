@@ -15,7 +15,7 @@
 
   Mock.mount({
     kind: 'component', id: 'thermostat-dial', title: 'ThermostatDial', area: 'design', status: 'shipped', frame: false,
-    summary: 'The signature thermostat control: a 270 degree ring open at the bottom, heat and cool trails with draggable handles in range mode or one handle for a single target, a current-temperature marker, and a readout. Drag a handle (or focus it and use the arrow keys) in the Interactive state.',
+    summary: 'The signature thermostat control: a 270 degree ring open at the bottom, heat and cool trails with draggable handles in range mode or one handle for a single target, a current-temperature marker, and a readout. Drag a handle in the Interactive state (the arrow keys here stand in for the VoiceOver adjust swipe; the app has no key handler).',
     source: ['apple/Sources/HassDesign/ThermostatDial/ThermostatDial.swift', 'apple/Sources/HassDesign/ThermostatDial/ThermostatDialGeometry.swift', 'apple/Sources/HassDesign/ThermostatDial/ThermostatDialModel.swift', 'apple/Sources/HassUI/Controls/Thermostat/ClimateThermostatDial.swift'],
     spec: ['.agents/patterns/thermostat-dial.md', '.agents/design/direction-g.md', '.agents/pages/climate/spec.md'],
     patterns: ['thermostat-dial', 'optimistic-actions', 'motion'],
@@ -32,7 +32,7 @@
       'read-only': S('Read-only (readout only)', [D('Read only', { low: 71, high: 74, action: 'heating', readOnly: true }, 'handles and gestures are off; the readout still speaks')]),
       'dragging': S('A handle being dragged', [D('Heat-to handle held', { low: 69, high: 74, action: 'heating', dragging: 'low' }, 'a 12% white halo (40 pt) and a larger shadow; the numerals follow only for value dials; no animation while dragging')]),
       'sizes': S('Sizes', [D('page 316 pt', { size: 'page', low: 71, high: 74, action: 'heating' }, 'Whole Home'), D('modal 300 pt', { size: 'modal', low: 71, high: 74 }, 'a room\'s detail in the sheet'), D('compact 250 pt', { size: 'compact', low: 71, high: 74 }, 'a small preview')], 300),
-      'interactive': S('Interactive: drag a handle', [D('Range, try it', { low: 71, high: 74, action: 'heating', interactive: true }, 'pointer or keyboard (focus a handle, arrows move one step of 0.5); heat-to never passes cool-to; release commits (no call here)')]),
+      'interactive': S('Interactive: drag a handle', [D('Range, try it', { low: 71, high: 74, action: 'heating', interactive: true }, 'pointer drag; the arrow keys stand in for VoiceOver swipe up and down (one 0.5 step), the app has no hardware-keyboard handler; heat-to never passes cool-to; release commits (no call here)')]),
       'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'the 76 pt numeral scales with text (to ~237 pt) and the readout shrinks uniformly to fit inside the ring (minimumScaleFactor 0.4)', render: function (ctx) { return SC.swatches(ctx, { min: 400, items: [D('Range at AX5', { low: 71, high: 74, action: 'heating' }), D('Single at AX5', { target: 72, current: 68.5, action: 'heating' })] }); } },
     },
 
@@ -64,24 +64,43 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Sliders and custom controls: adjustable by assistive technology', verdict: 'pass', note: 'accessibilityAdjustableAction per handle.' },
-        { rule: 'Haptics: selection feedback for stepped values', verdict: 'pass', note: '.sensoryFeedback(.selection) only while a handle is active.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Words on the action line and caption.' },
-        { rule: 'Touch targets: 44 pt', verdict: 'pass', note: '64 pt around each handle and the ring band.' },
-        { rule: 'Display numerals: one per screen, Light or Thin with monospaced digits', verdict: 'pass', note: 'Light 76 pt, monospaced digits (direction-g.md Display numerals).' },
+
+        { rule: "Gestures and Buttons: custom drag handles need a generous touch target; touches outside the control fall through", verdict: "pass", note: "Each 24 pt handle sits in a 64 pt hit frame and the ring accepts taps in a 64 pt band (RingHitShape), so touches inside the ring fall through to the enclosing scroll view; the drag shows the setpoint at once and commits on release.", by: "apple-hig skill" },
+
+        { rule: "Accessibility: provide an alternative to a precise drag gesture", verdict: "fix", note: "The dial is moved only by dragging a handle, tapping the ring or VoiceOver's adjust action (one 0.5 degree step); there is no plus and minus pair, Stepper or hardware-keyboard path (ThermostatDial.swift, ClimateThermostatDial.swift), so a person without VoiceOver who cannot drag precisely cannot make a one-step change. Medium-low.", by: "apple-hig skill" },
+
+        { rule: "VoiceOver: custom controls expose name, value and adjustability", verdict: "pass", note: "Each handle is an adjustable element ('<title> heat to', value '72 degrees', swipe up or down moves one step and commits) and the readout is one element ('Heating, currently 68.5°F', 'set to 72.0°F'); the ring, trails and marker are hidden.", by: "apple-hig skill" },
+
+        { rule: "Color: do not rely on colour alone; non-text contrast 3:1", verdict: "fix", note: "State is also text ('Heating', 'Cooling', 'Idle', 'Unavailable'), but the ring's track is the label colour at 16% (38% only with Increase Contrast, ThermostatDial.swift line 142), roughly 1.3:1 on the dark ground, below the 3:1 a control's boundary needs; the coloured trails and handles carry the range. Low.", by: "apple-hig skill" },
+
+        { rule: "Typography: Dynamic Type should enlarge text, not shrink it to fit", verdict: "fix", note: "The readout scales the numeral with @ScaledMetric but then sits in a frame of 0.62 of the ring side with minimumScaleFactor(0.4) and lineLimit(1) (lines 187 to 190), so at AX5 the action line, the caption and the numeral shrink back toward their default size; the ring itself is capped at 316 pt. Low.", by: "apple-hig skill" },
+
+        { rule: "Feedback and Playing haptics: selection haptic while adjusting", verdict: "pass", note: "sensoryFeedback(.selection, trigger: displayed) fires only while a handle is active, once per step; the glide animation is off while dragging and under Reduce Motion, while haptics are unchanged.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Plain-value model, editor logic outside the view', verdict: 'pass', note: 'ThermostatDialConfiguration and ThermostatDialEditor are pure and unit-tested.' },
-        { rule: 'Do not write state per frame', verdict: 'pass', note: 'The edit is local @State until the drag ends; one commit per release; an identical commit within 400 ms is dropped.' },
-        { rule: 'minimumScaleFactor', verdict: 'departure', note: 'The readout scales to fit the ring at accessibility sizes: the ring cannot grow (thermostat-dial.md Accessibility).' },
-        { rule: 'Adaptive ink in a sheet, no hard-coded white', verdict: 'pass', note: 'Track and text use Ink.primary and secondary; handles are white by design (the marker keeps a near-black rim so it is never mistaken for a handle).' },
-        { rule: 'Rollback on a rejected call', verdict: 'pass', note: 'ThermostatRejection rolls the handles back if that edit is still on screen; no error state.' },
+
+        { rule: "API: sensoryFeedback and value-keyed animation", verdict: "pass", note: "The dial uses .sensoryFeedback(.selection, trigger:) rather than UIKit generators and .animation(_, value: displayed), switched off while a handle is active or Reduce Motion is on.", by: "swiftui-pro skill" },
+
+        { rule: "Design: avoid GeometryReader where containerRelativeFrame works; no fixed screen sizes", verdict: "fix", note: "The ring sizes itself in a GeometryReader and then .position()s the ZStack, with a square aspect ratio and a cap of size.maxSide + 40 (ThermostatDial.swift lines 69 to 80); the ring and handle placement need the measured side, so the GeometryReader is justified, but the .position(x:y:) centring could be a plain frame. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Data flow: pure view, editor model owns the draft, caller rolls back on rejection", verdict: "pass", note: "@State ThermostatDialEditor holds the in-flight edit, onCommit sends setpoints and a rejection value rolls the handles back, matching AGENTS.md's optimistic-actions rule (Home Assistant stays the source of truth).", by: "swiftui-pro skill" },
+
+        { rule: "Design: hard-coded colours", verdict: "fix", note: "ThermostatDialPalette.heat (#cd5401) and cool (#2c8e98) are web literals, not HassTokens, and the numeral uses .system(size: primarySize, weight: .light) so the 76 pt light digits do not follow Bold Text; a text style with @ScaledMetric size would. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Views: one type per file; computed some View members", verdict: "fix", note: "ThermostatDial.swift holds the dial, ThermostatDialPalette, a Color extension, RingArc, RingHitShape and a private enum; ring(side:), readout(side:) and handleView(_:targets:side:) are builder methods of a 319-line view. Low.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [
+      'Corrected 2026-10-23 (skill review): the mockup said a handle can be focused and moved with the arrow keys. In the app a handle is moved by drag, a ring tap, or VoiceOver\'s adjustable action (swipe up or down, one step); there is no onKeyPress, focusable or Stepper path (ThermostatDial.swift, ClimateThermostatDial.swift). The arrow keys in the Interactive state are a demo stand-in for the VoiceOver action.',
       'This mockup draws the dial with the local SecClimate.dial because the kit\'s ThermostatDial draws only the range look (heat arc from the minimum, cool arc to the maximum, a dark dot): no single-target mode (no trails), no off or unavailable state, no halo, a plain white knob without the 4 pt status ring, and a text readout without the fitting. Promote to kit: this dial.',
       'Docs versus code: the catalog and thermostat-dial.md say numerals roll; the code has no contentTransition on the readout, so the current temperature swaps. The code also says "Thin" in direction-g.md but draws Light (76 pt, .light).',
       'Docs versus code: thermostat-dial.md says sizes page 316, modal 300, compact 250 are the ring maximum; the view adds a 20 pt gutter each side so the 64 pt handle targets stay inside (box 356, 340 and 290 pt).',

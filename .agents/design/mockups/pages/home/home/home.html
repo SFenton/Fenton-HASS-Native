@@ -12,15 +12,16 @@
 
   /* ---- the Home page body, section order as HomeScreen.swift draws it: status rail, weather, guests (only while a toggle is on), cameras.
      Unfolded Duo landscape splits on the hinge (HomeColumns): chips and weather lead, cameras and guests trail; iPad landscape stays one column. */
+  function appMin(n) { var c = Mock.current; return n / ((c && c.scale) || 1); } /* the app's ControlTileGrid (110) and CameraGrid (160) pass a plain number: not @ScaledMetric, so they do not follow Dynamic Type; the kit TileGrid scales min, so divide it out */
   function section(title, kids) { return h('div.ui-section', K.PageSectionHeader({ title: title }), kids); }
   function cameras(o) {
     var s = o.cams || ['live', 'live', 'live', 'live'];
     var names = [['Front Door', 'front-door'], ['Driveway', 'driveway'], ['Upper Deck', 'upper-deck'], ['Lower Deck', 'lower-deck']];
-    return section('Cameras', K.TileGrid({ min: 160, max: 4, equal: false, items: names.map(function (n, i) { return K.CameraTile({ title: n[0], scene: n[1], state: s[i] }); }) }));
+    return section('Cameras', K.TileGrid({ min: appMin(160), max: 4, equal: false, items: names.map(function (n, i) { return K.CameraTile({ title: n[0], scene: n[1], state: s[i] }); }) }));
   }
   function guests() {
     return section('Guests Staying Over', [h('p', 'Guest mode skips some away automations. Review security, climate, and auto-clean controls before leaving.'),
-      K.TileGrid({ min: 110, max: 6, items: [
+      K.TileGrid({ min: appMin(110), max: 6, items: [
         { title: 'Guest Room', subtitle: 'Guests staying', symbol: 'bed.double', family: 'occupancy', isActive: true },
         { title: 'Music Room', subtitle: 'No guests', symbol: 'guitars', family: 'occupancy', isActive: false },
         { title: 'Theater Room', subtitle: 'Guests staying', symbol: 'videoprojector', family: 'occupancy', isActive: true }] })]);
@@ -123,30 +124,35 @@
       { rule: 'Weather card', note: 'One button: "<condition>, <n> degrees". The ticker text is hidden from VoiceOver; the condition is never truncated. Accessibility sizes stack the header and wrap the condition.' },
       { rule: 'Cameras', note: 'Each tile is "<name> camera" with value "Live" or "Snapshot" and the hint "Opens the camera". The red live dot is decorative.' },
       { rule: 'Targets', note: 'Chips are at least 48 pt tall, header circles 44 pt, tab bar items 44 pt or more, camera tiles far larger.' },
-      { rule: 'Dynamic Type', note: 'Text sizes use the HIG styles (large title 34, section header 20, chip title 15, state 12). At AX5 the chip row still scrolls on compact width and wraps on regular, tiles and the cameras go to one column, section headers stack.' },
+      { rule: 'Dynamic Type', note: 'Text sizes use the HIG styles (large title 34, section header 20, chip title 15, state 12). At AX5 the chip row still scrolls on compact width and wraps on regular, the guest tiles (110 pt) and cameras (160 pt) keep their plain, unscaled minimums (ControlTileGrid, CameraGrid are not @ScaledMetric), so they stay three and two columns wide and the guest text clips; section headers stack.' },
       { rule: 'Reduce Motion', note: 'The ticker stops (the condition wraps), the arrival becomes a 0.35 s cross-fade, the reconnecting arc turns at half speed, colour changes shorten to 0.2 s.' },
       { rule: 'Reduce Transparency and Increase Contrast', note: 'The wallpaper becomes the plain base colour, modules and tiles go opaque (the solid finish).' },
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Tab bars: five or fewer tabs, SF Symbols, badges on the tab', verdict: 'pass', note: 'Home, Security, Climate, Chores, Settings (Settings last, owner 2026-10-16); Chores carries the overdue badge.' },
-        { rule: 'Toolbars: leading back/menu, trailing groups, title', verdict: 'pass', note: 'Hamburger leading (owner 2026-10-20), Quick Links and Profile trailing 12 pt apart; the Duo rail shows one glass group.' },
-        { rule: 'Materials: Liquid Glass only on the navigation layer', verdict: 'pass', note: 'Tab bar and header circles are glass; chips, tiles, cards and the weather card are content-layer modules.' },
-        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'Every chip state has its own glyph and words; the armed-open contact chip adds a triangle.' },
-        { rule: 'Loading: show content as soon as possible', verdict: 'pass', note: 'A saved snapshot shows at once with no spinner; first sign-in shows names and soft pulsing bars only (motion.md section 5).' },
-        { rule: 'Navigation: Quick Links as a header button, not a tab', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation) reversing the Phase 2 rule.' },
-        { rule: 'Materials: no custom blur layer per tile', verdict: 'departure', note: 'Modules are #1C1C1E at 66% over a once-rendered wallpaper instead of a live thin material (direction-g.md Layers, GPU cost).' },
+        { rule: "Layout: choose layout from size classes and keep functionality constant (Adaptability and size classes)", verdict: 'pass', note: "HomeScreen.swift:56 resolves one column or two hinge halves from the measured container, horizontalSizeClass == .regular and the window hinge, never an idiom; the sheet @State sits above the branch (line 12), so folding or rotating cannot reset a presented sheet.", by: 'apple-hig skill' },
+        { rule: "Designing for iPhone Duo: use margins and safe areas, expand the existing layout with space", verdict: 'pass', note: "Unfolded landscape gives chips and weather the leading half and cameras and guests the trailing half with an empty hinge band (HomeScreen.swift:58-77); the chip rail stops 24 pt short of the fold (ChipRailLayout.swift:19). Rendered on duo-unfolded-landscape.", by: 'apple-hig skill' },
+        { rule: "Layout and Scroll views: do not hide content off screen when there is room; make scrollable content apparent", verdict: 'fix', note: "ChipRail picks scroll or wrap from the size class alone (ChipRail.swift:20), so at AX5 on iPhone the rail stays one sideways row of chips as big as the screen and only about one and a half show (render, state ax5); wrapping below the title at accessibility sizes would show every chip.", by: 'apple-hig skill' },
+        { rule: "Accessibility: do not rely on colour alone; convey state and function another way", verdict: 'pass', note: "Every chip pairs fill with words in the summary line and a filled-glyph variant (StatusRail.swift:71-81); the armed-and-open contact chip swaps to a triangle (StatusChipAppearance.swift:49); camera tiles speak Live or Snapshot as a value (CameraGrid.swift:28).", by: 'apple-hig skill' },
+        { rule: "Sheets: show one sheet at a time, include a grabber, size by content", verdict: 'pass', note: "Chips and cameras share one sheet(item:) over an enum (HomeScreen.swift:33), so two cannot stack; the security sheet is fitted, the room overviews full, and the grabber is visible (HassModal.swift:191).", by: 'apple-hig skill' },
+        { rule: "HomeKit: avoid covering camera views", verdict: 'fix', note: "The camera name capsule scales with Dynamic Type inside a tile whose grid minimum does not (CameraGrid.swift:19, 84-89), so at AX5 the label covers most of each picture (render, state guests at ax5); cap its size or let it sit below the picture.", by: 'apple-hig skill' },
+        { rule: "Materials: standard materials for the content layer, Liquid Glass for navigation", verdict: 'departure', note: "Modules, chips and tiles are flat tinted fills over a once-rendered wallpaper, not live thin materials (GlassTile.swift:600, ModuleBackground.tint); direction-g.md Layers records the GPU-cost reason. Glass stays on the header circles and tab bar.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Dynamic Type and accessibility sizes reflow, never truncate', verdict: 'pass', note: 'Weather header option D stacks at AX sizes; the numeral never truncates (in flight: design/weather-card-header.md).' },
-        { rule: '44 pt targets', verdict: 'pass', note: 'Chips 48 pt, circles 44 pt, tab items 44 pt or more.' },
-        { rule: 'Motion with Reduce Motion', verdict: 'pass', note: 'All motion goes through MotionTokens and motionSafeAnimation; the ticker has a no-motion fallback.' },
-        { rule: 'No live per-frame state writes while scrolling', verdict: 'pass', note: 'HomeScreen measures only the horizontal frame; the compact chip rail is a UIKit scroller (status-rail.md).' },
-        { rule: 'Use ScrollView for a horizontal rail', verdict: 'departure', note: 'ChipRail hosts a UIScrollView: a nested SwiftUI ScrollView cost main-thread time on every frame (patterns/status-rail.md, 2026-10-16).' },
-        { rule: 'Weather ticker is a repeating animation', verdict: 'departure', note: 'Exception recorded in design/weather-card-header.md: it only runs on overflow, pauses on scroll and off screen, rests after three passes.' },
+        { rule: "Never rely on UIScreen.main; measure with onGeometryChange, not a per-frame state write", verdict: 'pass', note: "HomeScreen.swift:26 reads only the horizontal frame through onGeometryChange (the vertical position is dropped, lines 23-25), so scrolling does not re-evaluate the page; no UIScreen use.", by: 'swiftui-pro skill' },
+        { rule: "Typography: avoid .caption for state text and scattered fontWeight()", verdict: 'fix', note: "The chip's state line is the only place its value appears and is .caption (12 pt, StatusRail.swift:80); titles and glyphs add .weight(.semibold) by hand (lines 72, 77, CameraGrid.swift:84). Prefer .footnote and bold() so the system picks the weight.", by: 'swiftui-pro skill' },
+        { rule: "Accessibility: never use onTapGesture for a tappable element; use Button", verdict: 'fix', note: "The weather card opens its sheet from onTapGesture on the whole module (WeatherCardContent.swift:49) with no isButton trait; VoiceOver is covered only because the header is its own Button (line 92). Make the card a Button or add the trait.", by: 'swiftui-pro skill' },
+        { rule: "Avoid UIKit unless needed (HostedHorizontalScroll)", verdict: 'departure', note: "The compact chip rail hosts a UIScrollView (ChipRail.swift:60) because a nested SwiftUI ScrollView cost main-thread time every frame (AGENTS.md main-thread invariant, patterns/status-rail.md).", by: 'swiftui-pro skill' },
+        { rule: "Accessibility: Reduce Motion replaces large motion with opacity", verdict: 'pass', note: "arrivalMotion fades only under Reduce Motion (ArrivalMotion.swift:41-43); colour changes keep a 0.2 s fade through stateColorTransition (StateColorTransition.swift:57).", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [
@@ -156,6 +162,9 @@
       'Wallpaper, camera pictures and weather glyphs are stand-ins drawn by the kit (no external images). Chip and tile colours, radii and finishes are the real tokens.',
       'Promote to kit: nothing local; every piece is a kit component.',
       'The duo-unfolded-portrait pose was not run on a simulator (design/apple/duo.md); its chrome here follows AUTHORING.md (rail on the trailing edge).',
+
+      "Corrected 2026-10-23 (skill review): the guest tiles (ControlTileGrid, min 110) and cameras (CameraGrid, min 160) are plain numbers in the app, not @ScaledMetric, so at AX5 they stay three and two columns wide; the mockup had drawn one column because the kit TileGrid scales every minimum. Home now passes appMin() to undo the scaling.",
+
     ],
     changelog: [{ date: '2026-10-23', note: 'First pass built with the kit (iPhone, folded Duo, unfolded Duo, iPad).' }],
   });

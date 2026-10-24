@@ -96,22 +96,41 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Segmented controls: limit segments (about five on iPhone), prefer text or images not a mix', verdict: 'pass', note: 'Two to four segments in every caller; icons only on compact, titles only on regular (or an icon over its title when badged).' },
-        { rule: 'Segmented controls: closely related views of one thing', verdict: 'pass', note: 'See "Not a tab bar".' },
-        { rule: 'Materials: Liquid Glass on the navigation layer only', verdict: 'pass', note: 'navigationGlass(in: Capsule()): glassEffect on iOS 26, thin material before; content scrolls under it.' },
-        { rule: 'Badging: show a count, cap it, speak it', verdict: 'pass', note: '"9+" past nine; "Overdue Chores, 3 items" for VoiceOver.' },
-        { rule: 'Menus: use for a long or text-heavy set', verdict: 'pass', note: 'The AX form is a menu Picker naming the selection.' },
-        { rule: 'Tabs that top-align under a header vs bottom glass', verdict: 'departure', note: 'Pinned at the bottom (direction-g.md Sheets, owner-approved mockups 2026-10-13), like the web\'s ModalIconTabNav; placement: .top remains for lanes that have not moved.' },
+
+        { rule: "Segmented controls: closely related views of one thing; about five segments on iPhone; do not mix text and images in one control", verdict: "pass", note: "A modal's sections are related views of one device, so the control stays segmented, not a tab bar; ModalTabBarStyle.form picks icons (compact) or titles (regular), never a mix, and the badged regular form is icon over title in every segment.", by: "apple-hig skill" },
+
+        { rule: "Segmented controls: labels that make each segment's purpose clear", verdict: "departure", note: "On compact width the segments are icons only, to fit five sections like the web's ModalIconTabNav (owner 2026-10-16: 'show icons like the web app instead of text titles'); each segment keeps its title for VoiceOver and Voice Control, and regular width and accessibility sizes show text.", by: "apple-hig skill" },
+
+        { rule: "Accessibility: Dynamic Type; keep labels at accessibility sizes", verdict: "pass", note: "At accessibility sizes the bar becomes a pop-up menu of text titles naming the selected section, each with its count; a segmented control cannot grow (owner 2026-10-16).", by: "apple-hig skill" },
+
+        { rule: "Buttons: 44 pt minimum target", verdict: "fix", note: "Badged segments assert 44 pt (icon) and 56 pt (icon over title) in BadgedTabSegment, but the system segmented forms rely on controlSize(.large) with no explicit 44 pt floor (ModalTabBar.swift line 80), and the menu form sets minHeight 44. Low.", by: "apple-hig skill" },
+
+        { rule: "Materials: Liquid Glass for navigation controls floating over content", verdict: "pass", note: "The capsule is glass on iOS 26 and a thin-material capsule before (navigationGlass), pinned along the bottom with content fading beneath; the selected segment lifts onto the sheet-cell colour so selection does not depend on the glass.", by: "apple-hig skill" },
+
+        { rule: "Typography: avoid caption2 and capped Dynamic Type for informative text", verdict: "fix", note: "The segment count badge is .caption2 bold with dynamicTypeSize(...xLarge) (BadgedTabSegment.swift lines 63 to 64), so it never grows past xLarge and is the smallest text in the sheet; the number is spoken in the name, but sighted low-vision users get a 16 pt dot with a tiny numeral. Low.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'One shared control, never a second tab control', verdict: 'pass', note: 'modalTabBar(...) is the only API; every tabbed sheet passes symbol:.' },
-        { rule: 'Form chosen by a pure function', verdict: 'pass', note: 'ModalTabBarStyle.form(...) is static and tested (ModalTabBarTests).' },
-        { rule: 'matchedGeometryEffect for a moving selection, with Reduce Motion', verdict: 'pass', note: 'BadgedTabSegment reads accessibilityReduceMotion and passes a nil animation.' },
-        { rule: 'Accessibility element per custom segment', verdict: 'pass', note: 'Buttons with label, selected trait and identifier.' },
-        { rule: 'Content swap', verdict: 'pass', note: 'A cut (modalTabBar changes the selection binding); only the vacuum sheet fades its panel through SmoothContentSwap.' },
+
+        { rule: "API: automatic grammar agreement for plurals", verdict: "fix", note: "accessibilityTitle builds the count with badge == 1 ? 'item' : 'items' (ModalTabBar.swift line 136); Text('^[\\(badge) item](inflect: true)') or a LocalizedStringResource plural agrees automatically, and the menu-form title is a plain String ternary that is not localized. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Accessibility: icon-only controls keep a text label and selection traits", verdict: "pass", note: "Icon segments use Label(...).labelStyle(.iconOnly); the badged buttons set accessibilityLabel with the count, an isSelected trait, the badge hidden, and the bar is a .contain group named by the caller.", by: "swiftui-pro skill" },
+
+        { rule: "Animation: tokens, Reduce Motion, one transition", verdict: "fix", note: "The selected capsule glides with matchedGeometryEffect and a literal .snappy(duration: 0.2), nil under Reduce Motion (BadgedTabSegment.swift line 51); it is not a MotionTokens entry (motion.md does not list it), unlike the rest of the app's transitions. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Navigation: a bar pinned with safeAreaInset", verdict: "pass", note: "modalTabBar uses safeAreaInset(edge:), so the content's safe area grows by the bar and the last row clears it at every size; placement is a parameter (top or bottom) and nothing branches on a device name.", by: "swiftui-pro skill" },
+
+        { rule: "Data flow: pass a binding and values, closures for per-item values", verdict: "fix", note: "ModalTabBar and BadgedTabSegments store escaping closures (title, symbol, badge) instead of precomputed values, so the bar re-runs the closures on every body pass; mapping tabs to a small Segment struct once removes that. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Views: avoid reimplementing a system control", verdict: "departure", note: "BadgedTabSegments rebuilds a segmented control from buttons because the system control cannot draw a badge or give VoiceOver a per-segment count (ModalTabBar.swift lines 59 to 60); the cost is a custom selection animation and no system keyboard or Switch Control grouping.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

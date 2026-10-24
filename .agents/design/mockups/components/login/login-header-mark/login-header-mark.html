@@ -64,16 +64,20 @@
       { rule: 'Colour', note: 'The mark\'s house colour is the saved icon\'s (default Navy + Sky #7CC4FF, 8.9:1 on the ground); the monogram\'s initials use the icon\'s tint on its glyph colour.' },
     ],
     reviews: {
-      date: REVIEW_DATE,
+      date: '2026-10-23',
       hig: [
-        { rule: 'App icons: keep the brand mark consistent with the icon', verdict: 'pass', note: 'The same HouseHeartShape the icon artwork draws, filled with the icon\'s glyph colour.' },
-        { rule: 'Typography: use the dynamic text styles', verdict: 'pass', note: 'largeTitle.bold for the name, body for the line.' },
-        { rule: 'Accessibility: decorative images are hidden', verdict: 'pass', note: 'Mark and monogram are accessibilityHidden.' },
+        { rule: 'Accessibility: heading trait, spoken name for the brand', verdict: 'pass', note: '"S+H" is a heading with accessibilityLabel(AppBranding.spokenName); the mark and monogram are hidden (LoginHeader.swift:23-28; SignInMark.swift:16; SignInMonogram.swift:27).', by: 'apple-hig skill' },
+        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'largeTitle.bold and body scale; the monogram disc is @ScaledMetric(relativeTo: .largeTitle) (SignInMonogram.swift:11); the 96 pt mark is decorative and fixed.', by: 'apple-hig skill' },
+        { rule: 'Color: secondary line contrast on the glow', verdict: 'pass', note: 'The line is Surface.secondaryOnWallpaper (white at 85%) on the radial glow (LoginHeader.swift:50).', by: 'apple-hig skill' },
+        { rule: 'Motion: Reduce Motion shows the same pieces', verdict: 'pass', note: 'With Reduce Motion the stage becomes shown in one 0.35 s cross-fade and the title and form do not rise (LoginView.swift:100, :113, :200-203).', by: 'apple-hig skill' },
+        { rule: 'Motion: the intro the owner specified', verdict: 'fix', note: 'LoginView applies .opacity(stage.title) to the whole header, so the mark\'s own spring (0.86 to 1.03) plays unseen and only the settle shows (LoginView.swift:98-100; LoginHeader.swift:19-21).', by: 'apple-hig skill' },
+        { rule: 'Writing and Inclusion: names', verdict: 'fix', note: '"Welcome back, \\(firstName)" is plain string interpolation (LoginCopy.swift:24), not PersonNameComponents formatting, which matters for names that do not split into first and last.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Shape instead of Canvas for something widgets also draw', verdict: 'pass', note: 'HouseHeartShape is a Shape; the ring is real transparency.' },
-        { rule: 'Scaled metric for a disc that holds text', verdict: 'pass', note: 'SignInMonogram.size is @ScaledMetric(relativeTo: .largeTitle).' },
-        { rule: 'Animations from tokens', verdict: 'pass', note: 'Intro.markRise and emphasized.' },
+        { rule: 'Accessibility: container semantics', verdict: 'pass', note: 'accessibilityElement(children: .contain) on the header and isHeader on the title (LoginHeader.swift:27, :44).', by: 'swiftui-pro skill' },
+        { rule: 'Design: semantic fonts', verdict: 'pass', note: 'largeTitle.bold(), body; the monogram\'s .font(.system(.title, design: .rounded, weight: .semibold)) still scales with Dynamic Type (SignInMonogram.swift:18).', by: 'swiftui-pro skill' },
+        { rule: 'Views: mode switch with distinct structure', verdict: 'pass', note: 'switch mode inside a VStack, each case one mark plus text, no AnyView (LoginHeader.swift:17-42).', by: 'swiftui-pro skill' },
+        { rule: 'Performance: intro state on the parent only', verdict: 'pass', note: 'scaleEffect and opacity read stage values passed in; only the intro frames change them (LoginView.swift:98-100).', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

@@ -60,16 +60,16 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Dynamic Island: compact content is minimal and glanceable', verdict: 'pass', note: 'One ring and one time or one word.' },
-        { rule: 'Dynamic Island: avoid content that stretches the island', verdict: 'pass', note: 'The time is drawn over a hidden template, so Text(timerInterval:) cannot stretch it (spec 8a, owner device test 2026-10-17).' },
-        { rule: 'Live Activities: respect limited width on newer systems', verdict: 'pass', note: 'iOS 27 isDynamicIslandLimitedInWidth hides the trailing side behind #available.' },
-        { rule: 'Dynamic Type', verdict: 'departure', note: 'Capped at xxxLarge: the island regions are fixed by the system (per-job spec section 8a, accessibility audit).' },
+        { by: 'apple-hig skill', rule: 'Dynamic Island: compact content is minimal', verdict: 'pass', note: 'One 24 pt ring or glyph on the leading side and one time or word on the trailing side (HomeActivityIslandViews.swift:18-90).' },
+        { by: 'apple-hig skill', rule: 'Dynamic Island: content must not stretch the island', verdict: 'pass', note: 'The live time is drawn over a hidden template of the same font so Text(timerInterval:) cannot widen it (lines 94-114).' },
+        { by: 'apple-hig skill', rule: 'Live Activities: respect limited width', verdict: 'pass', note: 'On iOS 27 isDynamicIslandLimitedInWidth empties the trailing side (HomeLiveActivity.swift:62-83).' },
+        { by: 'apple-hig skill', rule: 'Dynamic Type: system-sized island', verdict: 'departure', note: 'The trailing side is capped at xxxLarge (HomeLiveActivity.swift:44) because the island\'s width is the system\'s; the time is a text style so its template and live text scale together.' },
+        { by: 'apple-hig skill', rule: 'Color: contrast of text on black', verdict: 'fix', note: 'The time and word use the family accent, documented as 3:1 on black (ActivityStyle.swift:20) at 15 pt semibold (line 120); HIG asks for 4.5:1 below bold 18 pt-equivalents, so check the weakest family accent at that size.' },
       ],
       swiftui: [
-        { rule: 'Use text styles that scale', verdict: 'pass', note: 'ActivityStyle.compactTimeFont is .subheadline semibold monospacedDigit.' },
-        { rule: 'Accessibility element grouping', verdict: 'pass', note: 'Leading and trailing set an explicit label and ignore children.' },
-        { rule: 'Avoid fixed frames', verdict: 'pass', note: 'Only the rigid template defines width; the regions size themselves.' },
-        { rule: 'Availability checks for new API', verdict: 'pass', note: 'IslandCompactTrailing wraps the iOS 27 environment in #available.' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: group and name the pieces', verdict: 'pass', note: 'Leading and trailing set an explicit label (the card title, a problem\'s spoken summary, the spoken figure) and ignore children (lines 33-35, 66-67).' },
+        { by: 'swiftui-pro skill', rule: 'api.md: text styles over fixed sizes', verdict: 'pass', note: 'compactTimeFont is .subheadline semibold monospacedDigit and compactLabelFont .footnote (ActivityStyle.swift:120-122).' },
+        { by: 'swiftui-pro skill', rule: 'api.md: availability checks', verdict: 'pass', note: 'The iOS 27 environment value is wrapped in #available (HomeLiveActivity.swift:67-82).' },
       ],
     },
     notes: [

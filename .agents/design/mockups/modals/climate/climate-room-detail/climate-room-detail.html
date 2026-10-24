@@ -83,19 +83,27 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Navigation: Back leading on pushed levels, Close trailing on the sheet', verdict: 'pass', note: 'NavigationStack inside the sheet; Close stays in the bar.' },
-        { rule: 'Custom controls expose adjustable accessibility actions', verdict: 'pass', note: 'accessibilityAdjustableAction per handle.' },
-        { rule: 'Read-only tiles are not buttons', verdict: 'pass', note: 'kind .state: no button trait, no press style.' },
-        { rule: 'Sheets: opaque ground', verdict: 'pass', note: 'The dial sits on the sheet ground (clear row), vents on the same ground.' },
+        { rule: "Accessibility: adjustable element for a custom dial handle", verdict: 'pass', note: "Handles are accessibilityAdjustable with spoken values; ring and trails hidden (ThermostatDial.swift:228-234); the room dial reuses the same control at .modal size (ClimateSheet.swift:244).", by: 'apple-hig skill' },
+        { rule: "Playing haptics: selection feedback while a value changes", verdict: 'pass', note: "sensoryFeedback(.selection) fires while a handle moves, not on the programmatic glide (ThermostatDial.swift:90).", by: 'apple-hig skill' },
+        { rule: "Feedback: say when a command cannot be carried out", verdict: 'fix', note: "A rejected set_temperature snaps the handle back without any message (ClimateThermostatDial.swift:96-101).", by: 'apple-hig skill' },
+        { rule: "Layout: readable width and grouped forms", verdict: 'pass', note: "ClimateForm caps at 720 pt with grouped style (ClimateSheet.swift:111-119); vents are a scaled 150 pt tile grid (line 239).", by: 'apple-hig skill' },
+        { rule: "Color: heating and cooling not by colour alone", verdict: 'pass', note: "The action line says Heating, Cooling or Idle; vents say Open · 50% and fill only while open (ClimateSheet.swift:263-271).", by: 'apple-hig skill' },
+        { rule: "Sheets: Cancel or Close on the leading edge of a single-view sheet, Done trailing", verdict: 'departure', note: "Every modal carries the circle-X Close at the trailing edge (owner, 2026-10-13: 'Done button in top right can just be circle X close button', HassModal.swift:5-9, patterns/modal-sheet.md); a saving sheet keeps its own confirm.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Use a Form with clear row backgrounds for non-list content', verdict: 'pass', note: 'listRowBackground(.clear) and zero insets for the dial and the tile grid.' },
-        { rule: 'ScaledMetric for tile widths', verdict: 'pass', note: 'minTileWidth 150 relative to subheadline.' },
-        { rule: 'Adaptive ink in a sheet', verdict: 'pass', note: 'The dial uses the sheet\'s adaptive inks; the page dial uses 92% white (this one never sits on the wallpaper).' },
-        { rule: 'Rollback on a rejected call', verdict: 'pass', note: 'ThermostatRejection; no error state.' },
+        { rule: "Do not scale text to fit a fixed ring", verdict: 'departure', note: "The readout uses minimumScaleFactor(0.4) inside the ring (ThermostatDial.swift:196), the bounded fallback recorded in patterns/thermostat-dial.md.", by: 'swiftui-pro skill' },
+        { rule: "ScaledMetric for the numeral", verdict: 'pass', note: "76 pt relative to .largeTitle (ThermostatDial.swift:56).", by: 'swiftui-pro skill' },
+        { rule: "Plain list rows hosting a custom grid", verdict: 'pass', note: "Vent grid rows clear the list background and insets so tiles align with the dial (ClimateSheet.swift:276-277).", by: 'swiftui-pro skill' },
+        { rule: "Toolbars and presentation: use the semantic placement for a Close button", verdict: 'fix', note: "SheetCloseItem places the circle-X Close as .confirmationAction (HassModal.swift:26), a confirming slot, although it only dismisses. On the iPhone Duo outer display that slot is a prominent action, below primary navigation (Back, Close) at the top of the vertical bar (HIG Duo, Vertical controls). Use .cancellationAction with role .close.", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

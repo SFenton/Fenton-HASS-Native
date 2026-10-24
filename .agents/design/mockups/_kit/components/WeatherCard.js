@@ -6,7 +6,11 @@
  * the numeral could truncate to "4…" beside a long condition because layoutPriority sat inside the Button. The card is about 19 pt taller at the default size.
  * Card: a 26 pt thin module with the header, a daily briefing, a hairline, then the hourly row (Now, 11 AM, ...). Always dark styling (it sits on the wallpaper).
  * WeatherCardHeader props: {condition, temp, hi, lo, glyph?:'partly-cloudy'|'sunny'|'cloudy'|'rain'|'storm'|'snow'|'clear-night', ctx?}
- * WeatherCard props: header props + {brief?, hours?:[{t,glyph,temp}], pending?:boolean (first sign-in placeholders)}
+ * WeatherCard props: header props + {brief?, hours?:[{t,g,d}] (default: 24 sample hours), page?:0 (which page of hours shows), narrow?:boolean (the half-width split pane: 6 per page), pending?:boolean, ctx?}
+ * Hourly carousel (WeatherPagedCarousel): each page holds 6 whole hours (9 on regular width, 6 in the split pane), scaled to 0.8 at xxxLarge, 0.5 at AX1-2 and 0.34 at AX3-5 (never below two); more than
+ * one page draws the page-dot indicator (current page an 18 x 7 capsule) and, on regular width, 44 pt Previous and Next circles either side of the strip. Hour time is 13 pt semibold, temperature 17 pt medium.
+ * Pending (first sign-in, WeatherCardContent with no data): the numeral reads "--", the hours are WeatherCardHourPlaceholder (static capsules and a circle at 18% white; nothing pulses here), no briefing.
+ * The numeral is capped at 96 pt at accessibility sizes (WeatherCardContent.maxNumeralSize).
  */
 (function () {
   var h = Mock.h;
@@ -26,18 +30,17 @@
   var CHEV = Mock.icon('chevron.right', { weight: 2.4 });
   function Header(p) {
     var ctx = p.ctx || Mock.current || {}, ax = !!ctx.axSize;
+    if (p.pending && !p.pendingNumeral) p = Object.assign({}, p, { pendingNumeral: true, condition: p.condition || 'Weather Unavailable', glyph: p.glyph || 'cloudy', hi: null, lo: null });
     var g = Glyph({ kind: p.glyph });
-    if (p.pending) {
-      return h('div.ui-wxhdr', { 'aria-label': 'Weather, Loading' }, h('div.lc', g, h('span.ui-pending', { style: { position: 'relative', top: 0, width: '110px' } }), h('span.ui-pending', { style: { position: 'relative', top: 0, width: '80px' } })), h('div.temp', h('span.ui-pending', { style: { position: 'relative', top: 0, width: '84px', height: '48px', borderRadius: '12px' } })));
-    }
-    var num = h('span.num', { 'aria-label': p.temp + ' degrees' }, p.temp + '°'), chev = h('span.chev', { html: CHEV, 'aria-hidden': 'true' });
-    var hl = h('span.hl', 'H:' + p.hi + '°  L:' + p.lo + '°');
+    // WeatherFormat.degree(nil) is "--" (no degree sign); the H/L line holds its height blank until the daily forecast arrives.
+    var num = h('span.num', { 'aria-label': p.pendingNumeral ? 'temperature unknown' : p.temp + ' degrees' }, p.pendingNumeral ? '--' : p.temp + '\u00b0'), chev = h('span.chev', { html: CHEV, 'aria-hidden': 'true' });
+    var hl = h('span.hl', p.hi == null ? '\u00a0' : 'H:' + p.hi + '\u00b0  L:' + p.lo + '\u00b0');
     var el;
     if (ax) {
-      el = h('div.ui-wxhdr.stack', { role: 'button', tabindex: 0, 'aria-label': p.condition + ', ' + p.temp + ' degrees' }, h('div.r1', g, h('span.sp'), h('span.temp', num, chev)), h('span.lab.wrap', p.condition), hl);
+      el = h('div.ui-wxhdr.stack', { role: 'button', tabindex: 0, 'aria-label': p.condition + (p.pendingNumeral ? '' : ', ' + p.temp + ' degrees') }, h('div.r1', g, h('span.sp'), h('span.temp', num, chev)), h('span.lab.wrap', p.condition), hl);
     } else {
       var tick = h('div.ui-tick', h('span.tk.lab', p.condition));
-      el = h('div.ui-wxhdr', { role: 'button', tabindex: 0, 'aria-label': p.condition + ', ' + p.temp + ' degrees' }, h('div.lc', g, tick, hl), h('div.temp', num, chev));
+      el = h('div.ui-wxhdr', { role: 'button', tabindex: 0, 'aria-label': p.condition + (p.pendingNumeral ? '' : ', ' + p.temp + ' degrees') }, h('div.lc', g, tick, hl), h('div.temp', num, chev));
       Mock.whenAttached(el, function () {
         var tk = tick.firstElementChild, over = tk.offsetWidth - (tick.clientWidth - 16);
         if (over > 1 && Mock.settings.reduceMotion) { tick.classList.remove('over'); tk.classList.remove('lab'); tk.classList.add('lab', 'wrap'); tk.style.whiteSpace = 'normal'; tick.style.overflow = 'visible'; tick.style.width = 'auto'; tick.style.marginLeft = 0; tick.style.paddingLeft = 0; }
@@ -50,15 +53,44 @@
   Mock.register('WeatherCardHeader', Header, { source: 'apple/Sources/HassUI/Features/Home/Weather/WeatherCardContent.swift (option D, in flight)', props: '{condition, temp, hi, lo, glyph, ctx}',
     variants: [{ id: 'short', label: 'Partly Cloudy', props: { condition: 'Partly Cloudy', temp: 48, hi: 58, lo: 38 } }, { id: 'long', label: 'Long label: ticker', props: { condition: 'Heavy Thunderstorm With Hail', temp: 48, hi: 58, lo: 38, glyph: 'storm' } }, { id: 'unavailable', label: 'Weather Unavailable', props: { condition: 'Weather Unavailable', temp: 48, hi: 58, lo: 38 } }] });
 
+  /** The 24 hours the card scrolls through (the first six are the card's classic sample). */
+  function sampleHours() {
+    var rows = [['Now', 'partly-cloudy', 48], ['11 AM', 'sunny', 52], ['12 PM', 'sunny', 55], ['1 PM', 'partly-cloudy', 57], ['2 PM', 'cloudy', 58], ['3 PM', 'cloudy', 58], ['4 PM', 'cloudy', 57], ['5 PM', 'cloudy', 55], ['6 PM', 'rain', 52], ['7 PM', 'rain', 50],
+      ['8 PM', 'cloudy', 49], ['9 PM', 'clear-night', 47], ['10 PM', 'clear-night', 46], ['11 PM', 'clear-night', 45], ['12 AM', 'clear-night', 44], ['1 AM', 'clear-night', 43], ['2 AM', 'clear-night', 42], ['3 AM', 'cloudy', 42], ['4 AM', 'cloudy', 41],
+      ['5 AM', 'cloudy', 40], ['6 AM', 'partly-cloudy', 40], ['7 AM', 'partly-cloudy', 42], ['8 AM', 'sunny', 45], ['9 AM', 'sunny', 49]];
+    return rows.map(function (r) { return { t: r[0], g: r[1], d: r[2] + '\u00b0' }; });
+  }
+  /** Hours per page (WeatherCarouselPaging.hoursPerPage): 6 compact, 9 regular (6 in the half-width split pane), scaled down with the text, never below two. */
+  function perPage(ctx, narrow) {
+    var base = ctx.regular && !narrow ? 9 : 6, f = ctx.ts === 'ax5' ? .34 : (ctx.ts === 'xxxl' ? .8 : 1);
+    return Math.max(2, Math.round(base * f));
+  }
+  function hourCell(x, pending) {
+    if (pending) return h('div.ph', { 'aria-hidden': 'true' }, h('i.c1'), h('i.c2'), h('i.c3'));   // WeatherCardHourPlaceholder: a 28 x 8 capsule, a 22 pt circle, a 24 x 8 capsule, 18% white, static
+    return h('div.hr', h('span.ht', x.t), Glyph({ kind: x.g || x.glyph }), h('span.hd', x.d || x.temp));
+  }
+  /** The page-dot indicator (WeatherPagedCarousel.indicator): the current page a 18 x 7 capsule, the others 7 pt dots at 45%, in a 44 pt target. */
+  function pager(pages, current) {
+    var dots = []; for (var i = 0; i < pages; i++) dots.push(h('i' + (i === current ? '.cur' : '')));
+    return h('div.ui-wxpages', { role: 'group', 'aria-label': '24-hour weather forecast pages', 'aria-valuetext': 'Page ' + (current + 1) + ' of ' + pages }, dots);
+  }
+  function ctrl(sym, label, disabled) {
+    var b = h('button.ui-wxctl', { type: 'button', 'aria-label': label, html: Mock.icon(sym, { weight: 2.2 }) }); if (disabled) b.disabled = true; return b;
+  }
   function WeatherCard(p) {
-    var hours = p.hours || [{ t: 'Now', g: 'partly-cloudy', d: '48°' }, { t: '11 AM', g: 'sunny', d: '52°' }, { t: '12 PM', g: 'sunny', d: '55°' }, { t: '1 PM', g: 'partly-cloudy', d: '57°' }, { t: '2 PM', g: 'cloudy', d: '58°' }, { t: '3 PM', g: 'cloudy', d: '58°' }];
-    return h('section.ui-weather', { role: 'region', 'aria-label': 'Weather' }, Header(p), h('hr'), (p.pending ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px 0' }, 'aria-hidden': 'true' }, h('span.ui-pending', { style: { position: 'relative', top: 0, width: '100%', height: '12px' } }), h('span.ui-pending', { style: { position: 'relative', top: 0, width: '70%', height: '12px' } })) : h('p.brief', p.brief || 'The day opens with full sun, shifts to a mix of sun and clouds, and settles into overcast skies.')), h('hr'),
-      h('div.ui-hours', hours.map(function (x) {
-        if (p.pending) return h('div.hr', h('span.ht', x.t), h('span.ui-pending', { style: { position: 'relative', top: 0, width: '22px', height: '22px', borderRadius: '50%' } }), h('span.ui-pending', { style: { position: 'relative', top: 0, width: '26px', height: '10px' } }));
-        return h('div.hr', h('span.ht', x.t), Glyph({ kind: x.g || x.glyph }), h('span.hd', x.d || x.temp));
-      })));
+    var ctx = p.ctx || Mock.current || {}, hours = p.hours || sampleHours(), pending = !!p.pending, n = pending ? 24 : hours.length, per = perPage(ctx, p.narrow);
+    var pages = Math.max(1, Math.ceil(n / per)), page = Math.min(pages - 1, Math.max(0, p.page || 0)), more = pages > 1;
+    var show = pending ? new Array(per).join('.').split('.') : hours.slice(page * per, page * per + per);
+    var controls = more && ctx.regular;   // Previous and Next only on wide layouts (the web shows them for pointer devices)
+    var strip = h('div.ui-wxstrip' + (controls ? '.ctl' : ''), h('div.ui-hours', show.map(function (x) { return hourCell(x, pending); })),
+      controls ? [h('div.prev', ctrl('chevron.left', 'Previous 24-hour weather forecast', page === 0)), h('div.next', ctrl('chevron.right', 'Next 24-hour weather forecast', page >= pages - 1))] : null);
+    // pending (first sign-in, nothing saved): "--" for the numeral, the placeholder hours; no briefing (the card omits the unavailable sentence and its separator)
+    var hdr = pending ? Header({ condition: 'Weather Unavailable', temp: '--', hi: null, lo: null, glyph: 'cloudy', ctx: ctx, pendingNumeral: true }) : Header(Object.assign({ ctx: ctx }, p));
+    return h('section.ui-weather', { role: 'region', 'aria-label': 'Weather' }, hdr, h('hr'),
+      pending ? null : [h('p.brief', p.brief || 'The day opens with full sun, shifts to a mix of sun and clouds, and settles into overcast skies.'), h('hr')],
+      pending ? h('div', { 'aria-label': 'Loading 24-hour weather forecast', role: 'group' }, strip) : strip, more ? pager(pages, page) : null);
   }
   Mock.register('WeatherCard', WeatherCard, { source: 'apple/Sources/HassUI/Features/Home/Weather/WeatherSummaryCard.swift', props: 'WeatherCardHeader props + {brief, hours}',
     variants: [{ id: 'default', label: 'Default', props: { condition: 'Partly Cloudy', temp: 48, hi: 58, lo: 38 } }, { id: 'long', label: 'Long condition (ticker)', props: { condition: 'Heavy Thunderstorm With Hail', temp: 48, hi: 58, lo: 38, glyph: 'storm' } }],
-    states: [{ id: 'pending', label: 'First sign-in: placeholders pulse', props: { pending: true } }] });
+    states: [{ id: 'pending', label: 'First sign-in: "--" and static placeholder hours', props: { pending: true } }] });
 })();

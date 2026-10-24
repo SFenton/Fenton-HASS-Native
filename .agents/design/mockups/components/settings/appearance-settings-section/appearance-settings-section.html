@@ -6,6 +6,7 @@
 <script src="../../../_kit/kit.js"></script>
 <script src="../../../pages/settings/_settings-account.js"></script>
 <script src="../../../pages/settings/_settings-page.js"></script>
+<style>.k-reduce-transparency .k-swatch.page .ui-mlist{background:var(--g-module-thin)}</style>
 </head><body>
 <script>
 (function () {
@@ -50,23 +51,26 @@
       { rule: 'Dynamic Type', note: 'Title and value stay on one baseline until they cannot; the slider keeps its width; the footer wraps.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Sliders: show the current value and make it adjustable for assistive tech', verdict: 'pass', note: 'Value beside the title, accessibilityAdjustableAction.' },
-        { rule: 'Settings: provide a way to return to defaults', verdict: 'pass', note: 'Reset to Default.' },
-        { rule: 'Toggles: label what the switch controls', verdict: 'pass', note: '"Show count on app icon".' },
-        { rule: 'Accessibility: Reduce Transparency', verdict: 'pass', note: 'The photo is replaced by the plain base colour and the footer says so.' },
-        { rule: 'Color: contrast', verdict: 'pass', note: 'Footer ink is white at 85% on the wallpaper.' },
+        { rule: 'Sliders: show the value; make it adjustable', verdict: 'pass', note: 'PercentSliderRow shows "N%" beside the title, steps by 5 and exposes accessibilityAdjustableAction (RecipesScreen.swift:377-406).', by: 'apple-hig skill' },
+        { rule: 'Settings: sensible defaults and a way back', verdict: 'pass', note: 'Background Blur defaults to the web dashboard\'s 50% and Reset to Default is disabled at the default (AppearanceSettingsSection.swift:44-50).', by: 'apple-hig skill' },
+        { rule: 'Toggles: identify what the switch affects; switch only in a list row', verdict: 'pass', note: '"Show count on app icon" is a labelled switch in a list row (:22).', by: 'apple-hig skill' },
+        { rule: 'Accessibility: Reduce Transparency', verdict: 'pass', note: 'The footer says the blur has nothing to soften when pages use a plain background (:57-61).', by: 'apple-hig skill' },
+        { rule: 'Color: contrast on the wallpaper', verdict: 'pass', note: 'Footer ink is the fixed white at 85% on the page surface, the sheet\'s secondary elsewhere (:30-31).', by: 'apple-hig skill' },
+        { rule: 'Accessibility: Reduce Transparency means opaque materials', verdict: 'fix', note: 'The rows sit on SettingsScreen\'s fixed .listRowBackground(Surface.moduleThin) (SettingsScreen.swift:94), which stays 66% translucent, unlike .module() (Module.swift:35-42); the page surface in this mockup was corrected to the code.', by: 'apple-hig skill' },
+        { rule: 'Playing haptics: tick through discrete steps', verdict: 'fix', note: 'The slider moves in 5% steps with no sensoryFeedback, unlike BrightnessTile\'s stepped selection haptic (BrightnessTile.swift:123); a live-previewing control benefits from it.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Bindable settings object, no per-frame state writes', verdict: 'pass', note: '@Bindable BackdropBlurSettings; the store renders the latest value only when a render finishes.' },
-        { rule: 'Section with header and footer closures', verdict: 'pass', note: 'SettingsSectionHeader and a footer Text.' },
-        { rule: 'AppStorage for a simple preference', verdict: 'pass', note: '@AppStorage(AppIconBadgeSync.enabledKey).' },
-        { rule: 'Do not build state in an initialiser', verdict: 'pass', note: 'AppIconPickerModelStore creates the model on first read (its doc explains why).' },
-        { rule: 'Reuse one slider-with-value row', verdict: 'pass', note: 'PercentSliderRow is shared with the recipe horizon filter, though it lives in RecipesScreen.swift (doc: move it to HassDesign).' },
+        { rule: 'Views: shared control in its own file', verdict: 'fix', note: 'PercentSliderRow is declared in Features/Food/RecipesScreen.swift (:377) and reused by Settings; a shared control belongs in HassDesign or its own file.', by: 'swiftui-pro skill' },
+        { rule: 'Accessibility: one adjustable element for title, value and slider', verdict: 'pass', note: 'accessibilityElement(children: .ignore) with label, value "N percent" and an adjustable action (:400-406), after the folded Duo audit flagged separate text.', by: 'swiftui-pro skill' },
+        { rule: 'Data: @Bindable settings and @AppStorage toggle', verdict: 'pass', note: 'BackdropBlurRows binds $settings.sliderValue; the switch binds @AppStorage (AppearanceSettingsSection.swift:13, :41-44).', by: 'swiftui-pro skill' },
+        { rule: 'Views: section header and footer as closures with their own ink', verdict: 'pass', note: 'SettingsSectionHeader and a footer Text carry the surface-dependent ink (:27-32).', by: 'swiftui-pro skill' },
+        { rule: 'Design: LabeledContent for title and slider', verdict: 'fix', note: 'The slider row is a hand-built VStack with an HStack of title and value (RecipesScreen.swift:390-396) rather than LabeledContent, so it lays out differently from the switch and link rows.', by: 'swiftui-pro skill' },
       ],
     },
     notes: [
+      'Reduce Transparency (corrected in the 2026-10-23 skill review): on the page surface the rows stay at the thin 66% tint, because SettingsScreen supplies a fixed listRowBackground(Surface.moduleThin) rather than .module(); only the footer text and the plain background change.',
       'PercentSliderRow lives in Features/Food/RecipesScreen.swift and is shared with the recipe horizon filter; the kit has Mock.components.SliderRow for it.',
       'On the sheet surface the module becomes the sheet cell; a Settings list is only ever on the page in the shipped app (the debug galleries show it in a sheet), so the sheet swatch is for completeness.',
       'Reset to Default, the switch and the App Icon row share one section with no glyphs, so the separators start at the 16 pt margin (drawn); the App Icon row’s preview slot is 34 pt.',

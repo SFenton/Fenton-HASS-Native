@@ -56,15 +56,15 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Lists: group related rows with the standard row anatomy', verdict: 'pass', note: 'ModuleRow: glyph, title, subtitle, trailing value.' },
-        { rule: 'Navigation bars: titles are short', verdict: 'departure', note: 'The inline title is long ("Main Floor · Automatic Cleaning Report (4)") and may truncate or wrap in the bar; it mirrors the web\'s title (spec.md) and VoiceOver reads it whole.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Distinct glyphs and words.' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'pass', note: 'Sheet cell colours follow the system.' },
+        { rule: 'Navigation bars: keep titles short', verdict: 'fix', note: 'The inline title is "Main Floor . Automatic Cleaning Report (4)" (VacuumMapPanel.swift:344); at about 45 characters it truncates on iPhone and the Duo outer display. It mirrors the web, but web parity does not override the HIG, and no owner decision records it.', by: 'apple-hig skill' },
+        { rule: 'Lists: standard row anatomy', verdict: 'pass', note: 'ModuleRow with glyph, room name, sentence and the status word trailing (VacuumMapPanel.swift:325-338).', by: 'apple-hig skill' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Check, pause, clock, alert and question glyphs differ in shape, and every row says Completed, Interrupted, Not Attempted, Failed or Completion Unverified in words.', by: 'apple-hig skill' },
+        { rule: 'Dynamic Type: reflow rather than truncate', verdict: 'pass', note: 'At accessibility sizes ModuleRow puts the status word under the sentence; the page is a scroll view with a 640 pt measure.', by: 'apple-hig skill' },
+        { rule: 'Sheets: Back, not Close, on a pushed level', verdict: 'pass', note: 'The report is pushed on the sheet\'s stack; only the root carries the Close circle (VacuumSheet.swift:98).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Combine row children for VoiceOver', verdict: 'pass', note: 'accessibilityElement(children: .combine) per row.' },
-        { rule: 'Pure presentation helpers are testable', verdict: 'pass', note: 'VacuumOutcomeText is in HassCore.' },
-        { rule: 'No animation', verdict: 'pass', note: 'The page has none of its own.' },
+        { rule: 'Accessibility: combine row children', verdict: 'pass', note: '.accessibilityElement(children: .combine) per room reads "Kitchen, <sentence>, Completed" as one element (VacuumMapPanel.swift:336).', by: 'swiftui-pro skill' },
+        { rule: 'Navigation: one registration per type', verdict: 'pass', note: 'navigationDestination(for: Route.self) is registered once on the sheet\'s stack (VacuumSheet.swift:99).', by: 'swiftui-pro skill' },
       ],
     },
 

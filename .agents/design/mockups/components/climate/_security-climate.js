@@ -483,9 +483,10 @@
     return K.GlassTile({ title: s.title, subtitle: un ? 'Unavailable' : titleCase(st), symbol: s.kind === 'car' ? 'car' : (st === 'locked' || un ? 'lock' : 'lock.open'), family: 'contact', isActive: active, isUnavailable: un, isError: st === 'jammed', kind: 'command', pending: s.pending });
   };
   SC.doors = { front: { kind: 'lock', title: 'Front Door' }, left: { kind: 'garage', title: 'Left Door' }, right: { kind: 'garage', title: 'Right Door' } };
+  function appMin(n) { var c = Mock.current; return n / ((c && c.scale) || 1); } /* the app's ControlTileGrid (110) and CameraGrid (160) pass a plain number: not @ScaledMetric, so they do not follow Dynamic Type; the kit TileGrid scales min, so divide it out */
   function guests() {
     return section('Guests Staying Over', [h('p', 'Guest mode skips some away automations. Review security, climate, and auto-clean controls before leaving.'),
-      K.TileGrid({ min: 110, max: 6, equal: false, items: [
+      K.TileGrid({ min: appMin(110), max: 6, equal: false, items: [
         { title: 'Guest Room', subtitle: 'Guests staying', symbol: 'bed.double', family: 'occupancy', isActive: true },
         { title: 'Music Room', subtitle: 'No guests', symbol: 'guitars', family: 'occupancy', isActive: false },
         { title: 'Theater Room', subtitle: 'Guests staying', symbol: 'videoprojector', family: 'occupancy', isActive: true }] })]);
@@ -505,7 +506,7 @@
     var kids = [top, section('Doors', K.TileGrid({ min: 140, max: 4, items: tiles }))];
     if (o.guests) kids.push(guests());
     var cs = o.cams || ['live', 'live', 'live', 'live'], names = [['Front Door', 'front-door'], ['Driveway', 'driveway'], ['Upper Deck', 'upper-deck'], ['Lower Deck', 'lower-deck']];
-    kids.push(section('Cameras', K.TileGrid({ min: 160, max: 4, equal: false, items: names.map(function (n, i) { return K.CameraTile({ title: n[0], scene: n[1], state: cs[i] }); }) })));
+    kids.push(section('Cameras', K.TileGrid({ min: appMin(160), max: 4, equal: false, items: names.map(function (n, i) { return K.CameraTile({ title: n[0], scene: n[1], state: cs[i] }); }) })));
     if (o.mach) kids.push(section('Mach-E', K.TileGrid({ min: 140, max: 4, items: [t({ kind: 'car', title: 'Doors' }, { state: 'locked' })] })));
     return kids;
   };

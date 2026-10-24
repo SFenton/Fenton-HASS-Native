@@ -69,19 +69,26 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Buttons: the whole tile is the target', verdict: 'pass', note: 'GlassTile is the button, as the web\'s was.' },
-        { rule: 'Feedback: show that a command is under way', verdict: 'pass', note: 'Sending Open… after the tap, Opening until the door reports, Error with a red face on failure.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Glyph and words per state.' },
-        { rule: 'Safety: a garage door opens on tap with no confirmation', verdict: 'departure', note: 'Spec decision (pages/security/spec.md): the web opens garage doors on tap; locks send explicit lock and unlock. Only Disarm asks.' },
+        { rule: "Color: state beyond colour", verdict: 'pass', note: "Words Locked, Unlocked, Jammed, Opening, Closing, Error and glyphs that open; the red error face adds the word Error (SecurityTiles.swift:76-83, SecurityDoorTile.swift:73-77).", by: 'apple-hig skill' },
+        { rule: "Feedback: communicate that a command is on its way", verdict: 'pass', note: "The garage says 'Sending Open…' then the live state, and announces each phase to VoiceOver without moving focus (SecurityTiles.swift:76-83, 116-120); locks show the tapped state until Home Assistant reports.", by: 'apple-hig skill' },
+        { rule: "Playing haptics: confirm a physical action", verdict: 'fix', note: "Neither LockTile nor GarageDoorTile attaches sensoryFeedback; the action that opens a door and the failure are silent to touch (SecurityTiles.swift:47-63).", by: 'apple-hig skill' },
+        { rule: "Alerts: avoid an alert for a common undoable action", verdict: 'departure', note: "Locks and garage doors act on one tap with no confirmation (.agents/pages/security/ios.md Safety: 'garage doors open on tap with no confirmation'); only Disarm asks.", by: 'apple-hig skill' },
+        { rule: "Layout: equal heights and a scaled minimum", verdict: 'pass', note: "@ScaledMetric 140 and equalRowHeights so a long name lifts the row, one column at AX5 (SecurityScreen.swift:56, 107-112).", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'One GlassTile, no parallel implementation', verdict: 'pass', note: 'LockTile and GarageDoorTile configure the shared GlassTile (family .contact, kind .command).' },
-        { rule: 'Optimistic state with rollback', verdict: 'pass', note: 'OptimisticActions for locks; GarageDoorController (injected scheduler, unit-tested with a manual clock) for garage doors.' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'Through GlassTile\'s stateColorTransition; the glyph uses a replace symbol effect, identity with Reduce Motion.' },
-        { rule: 'Announce state changes without stealing focus', verdict: 'pass', note: 'Announcement notification on phase change.' },
+        { rule: "Tile is the Button with a hint", verdict: 'pass', note: "GlassTile .command with hints 'Locks', 'Unlocks', 'Opens the door', 'Closes the door' (SecurityDoorTile.swift:63, SecurityTiles.swift:61, 71-74).", by: 'swiftui-pro skill' },
+        { rule: "Use sensoryFeedback for haptics", verdict: 'fix', note: "No sensoryFeedback on the tiles; the dial and brightness tile show the pattern (ThermostatDial.swift:90).", by: 'swiftui-pro skill' },
+        { rule: "Hygiene: remove unused code", verdict: 'fix', note: "SecurityConfig.Tone colours and GarageDoorTile.tone(for:) are defined but no view reads them (SecurityTiles.swift:7-25, 87-89); the face comes from GlassTile alone.", by: 'swiftui-pro skill' },
+        { rule: "Controller owns timers, view stays thin", verdict: 'pass', note: "GarageDoorController is unit-tested with a manual clock; the view forwards liveDidChange and connection changes (SecurityTiles.swift:102-121).", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

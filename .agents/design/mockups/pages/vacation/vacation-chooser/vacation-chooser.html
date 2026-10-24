@@ -61,19 +61,18 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Lists: rows that navigate show a disclosure indicator', verdict: 'pass', note: 'NavigationLink draws the system chevron (SettingsLinkRow hides its own).' },
-        { rule: 'Navigation bars: a pushed page shows Back with the previous title', verdict: 'pass', note: 'Back goes to Settings.' },
-        { rule: 'Layout: let list rows reflow at large text sizes', verdict: 'pass', note: 'Glyph above text at accessibility sizes.' },
-        { rule: 'Consistency: the same list on the same surface looks the same', verdict: 'fix', note: 'The chooser\'s rows carry no listRowBackground, so they draw the system\'s opaque #1C1C1E grouped cell, while the Settings list sets the module "thin" ground (#1C1C1E at 66%) on a page. Apply the same .listRowBackground to VacationChooser.' },
-        { rule: 'Content: link text is not a control', verdict: 'fix', note: '"Learn More" reads like a link but is plain text on iOS and on the web (spec open question 2).' },
+        { rule: "Lists and tables: rows that navigate show a disclosure", verdict: "pass", note: "Two NavigationLink rows; SettingsLinkRow is drawn with showsChevron false because the link draws its own (VacationScreen.swift lines 86-98, SettingsScreen.swift lines 110-111).", by: "apple-hig skill" },
+        { rule: "Lists and tables: the same list looks the same on the same surface", verdict: "fix", note: "VacationChooser is a plain List with no listRowBackground (VacationScreen.swift lines 84-101), so it draws the system grouped cell where the Settings list uses the module ground over the wallpaper. Medium.", by: "apple-hig skill" },
+        { rule: "Typography: Dynamic Type", verdict: "pass", note: "SettingsLinkRow moves the glyph above the text at accessibility sizes so text keeps the row width (SettingsScreen.swift lines 119-124).", by: "apple-hig skill" },
+        { rule: "Writing: a subtitle that looks like a link", verdict: "fix", note: "\"Home Assistant Setup · Learn More\" is plain text with no action (SoloTripCopy.setupRequiredSubtitle); it reads as a link but cannot be followed. Low.", by: "apple-hig skill" },
+        { rule: "Navigation: a chooser that disappears when a mode is engaged", verdict: "departure", note: "ios.md and VacationScreen.swift lines 21-23, 62-65: an engaged mode skips the chooser, and turning it off keeps its page via lastEngaged so the root does not swap under the person.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Use value-based NavigationLink and a single stack', verdict: 'pass', note: 'Rows push views inside VacationChooser; the engaged swap is a root change.' },
-        { rule: 'Scaled metrics and Dynamic Type', verdict: 'pass', note: 'System text styles; the icon moves above text at AX sizes.' },
-        { rule: 'Accessibility: combine children', verdict: 'pass', note: 'SettingsLinkRow: .accessibilityElement(children: .combine).' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'No colour changes on this page.' },
+        { rule: "Navigation: do not mix destination styles in one hierarchy", verdict: "fix", note: "The chooser pushes with NavigationLink { VacationModeScreen … } destination closures (lines 86-96) inside a Settings stack that registers navigationDestination(for: SettingsRoute.self) (MainTabView.swift lines 153-155). Use values and registered destinations. Medium.", by: "swiftui-pro skill" },
+        { rule: "Views: switch on route inside body", verdict: "pass", note: "@ViewBuilder content switches three roots by derived route; state lives in HouseholdAwayController above the switch (lines 19, 50-60).", by: "swiftui-pro skill" },
+        { rule: "Accessibility: identifiers and combined row", verdict: "pass", note: "accessibilityIdentifier on both links; SettingsLinkRow reads as one element with title then subtitle.", by: "swiftui-pro skill" },
       ],
     },
 

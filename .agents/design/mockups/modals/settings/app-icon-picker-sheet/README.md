@@ -2,7 +2,7 @@
 
 > **What:** the fitted form sheet with the eight icons, the installed one ringed and checked. **Read when:** you change `HassUI/Features/Settings/AppIcon` or `AppIconArtwork`.
 
-- Mockup: [app-icon-picker-sheet.html](app-icon-picker-sheet.html) · shipped · reviewed 2026-10-23 (author self-check; skill reviewers replace it)
+- Mockup: [app-icon-picker-sheet.html](app-icon-picker-sheet.html) · shipped · reviewed 2026-10-23 (apple-hig and swiftui-pro skill review)
 - Source: `apple/Sources/HassUI/Features/Settings/AppIcon/AppIconPickerSheet.swift`, `AppIconChoiceButton.swift`, `AppIconPickerModel.swift`, `apple/Sources/HassDesign/AppIconArtwork.swift`
 - Spec: `.agents/design/direction-g.md`, `.agents/design/apple/iphone.md`, `.agents/pages/settings/ios.md`  · Patterns: modal-sheet
 - States covered: default, other-selected, loading (changing), error (failure alert), offline, medium, large, fitted, ax5 (dark and light).

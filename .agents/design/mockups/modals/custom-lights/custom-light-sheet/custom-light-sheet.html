@@ -73,16 +73,17 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        MLC.R.sheetFit, MLC.R.sheetPage,
-        { rule: 'Color wells: use the system colour picker', verdict: 'pass', note: 'ColorPicker(supportsOpacity: false); departs from the web\'s custom wheel on purpose (HIG Color wells).' },
-        MLC.R.target44, MLC.R.colorNotAlone, MLC.R.darkModes,
-        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'departure', note: 'Opaque sheet ground at every detent (direction-g.md Sheets; modal-sheet.md).' },
+        { by: 'apple-hig skill', rule: 'Color wells: use the system color picker', verdict: 'pass', note: 'ColorPicker(supportsOpacity: false) (CustomLightSheet.swift:72) gives wheel, sliders, eyedropper and VoiceOver for free; the departure from the web wheel is recorded in ios.md.' },
+        { by: 'apple-hig skill', rule: 'Sheets: as tall as the content', verdict: 'pass', note: '.hassSheet(.page) fitted (CustomLightsScreen.swift:92) with a circle close at the trailing edge (SheetCloseItem).' },
+        { by: 'apple-hig skill', rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Copy-color circles are max(scaled 48 pt, minTarget) (CustomLightSheet.swift:183); action rows are 52 pt.' },
+        { by: 'apple-hig skill', rule: 'Alerts: confirm or allow undo for a bulk action', verdict: 'fix', note: 'Apply to All Lights (lines 84-87) overwrites every light\'s color in one tap with no confirmation and no undo.' },
+        { by: 'apple-hig skill', rule: 'Accessibility: a control that cannot act reads as unavailable', verdict: 'fix', note: 'An off light\'s swatch is made inert with allowsHitTesting(false) (line 209) instead of disabled, so VoiceOver still announces "Apply Bollard 2 Color" as a button that does nothing; keep the contrast but remove the button trait.' },
+        { by: 'apple-hig skill', rule: 'Materials: sheets draw on the system material', verdict: 'departure', note: 'Opaque sheet ground at every detent (direction-g.md Sheets; modal-sheet.md); the sheet still follows the system appearance.' },
       ],
       swiftui: [
-        MLC.R.scaled, MLC.R.motionTokens,
-        { rule: 'Debounce a continuous control', verdict: 'pass', note: 'A picked colour is sent 250 ms after it settles so a drag across the wheel does not flood the light.' },
-        { rule: 'Adaptive colour tokens in a sheet', verdict: 'pass', note: 'Surface.sheetCell, Ink.action, Ink.secondary; the off swatch uses a ring, not a fill.' },
-        { rule: 'Disabled controls keep contrast', verdict: 'pass', note: 'ActionRowStyle swaps to secondaryInSheet instead of dimming; allowsHitTesting(false) for the off swatch (measured 2:1 when dimmed on white).' },
+        { by: 'swiftui-pro skill', rule: 'api.md: avoid UIKit colors; use Color.resolve(in:)', verdict: 'fix', note: 'RGB(color:) converts through UIColor.getRed (CustomLightSheet.swift:222-232) behind canImport(UIKit)/AppKit; Color.resolve(in: EnvironmentValues()) gives the same components without UIKit.' },
+        { by: 'swiftui-pro skill', rule: 'performance.md: debounce a continuous control', verdict: 'pass', note: 'A picked color is sent 250 ms after it settles and the pending Task is cancelled on each change (lines 104-118).' },
+        { by: 'swiftui-pro skill', rule: 'resizability.md: grids reflow with type and width', verdict: 'pass', note: 'Swatch width is @ScaledMetric (line 22) and the grid uses DynamicGridLayout; AX5 gives one column.' },
       ],
     },
 

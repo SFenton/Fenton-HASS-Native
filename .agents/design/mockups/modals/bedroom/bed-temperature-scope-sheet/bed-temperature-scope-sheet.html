@@ -57,15 +57,18 @@
       { rule: 'Dismissal', note: 'Close (circle x) and swipe down both cancel the question; there is no destructive choice.' },
     ],
     reviews: {
-      date: '2026-10-23',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Sheets: a short question belongs in a fitted sheet with Close', verdict: 'pass', note: 'hassSheet(.form), SheetCloseItem.' },
-        { rule: 'Sheets: avoid stacking one sheet on another', verdict: 'fix', note: 'Undocumented: modal-sheet.md says nothing about a second sheet over a sheet. The web\'s BedTemperatureScopePrompt is a dialog; record the departure in modal-sheet.md or move the question to a confirmationDialog with two buttons.' },
-        { rule: 'Lists: explain each choice', verdict: 'pass', note: 'Each row has a one-line consequence.' },
+        { rule: 'Sheets: stacking one sheet on another', verdict: 'fix', note: 'Presented as a second fitted form sheet over the large bed sheet; a two-choice question belongs in a confirmationDialog (the web used a dialog). modal-sheet.md is silent, so the departure is unrecorded.' },
+        { rule: 'Sheets: smallest detent that shows the content', verdict: 'pass', note: '.hassSheet(.form) fits the two rows plus header; reaches large only at AX5.' },
+        { rule: 'Lists: each choice explains its effect', verdict: 'pass', note: 'One-line consequence under Tonight and All Nights.' },
+        { rule: 'Alerts: say what dismissing does', verdict: 'fix', note: 'Close and swipe-down dismiss silently, leaving the target applied for tonight only; the sheet never says that, so cancelling reads as "undo".' },
       ],
       swiftui: [
-        { rule: 'Presentation bound to model state', verdict: 'pass', note: '.sheet(isPresented:) bound to scopeRequest != nil; the setter calls dismissScope().' },
-        { rule: 'Fixed text sizes', verdict: 'pass', note: 'Text styles throughout; the explanation uses fixedSize(horizontal: false, vertical: true).' },
+        { rule: 'Navigation: sheet presentation bound to state', verdict: 'pass', note: 'isPresented is bound to scopeRequest != nil and the setter calls dismissScope().' },
+        { rule: 'Navigation: prefer sheet(item:)', verdict: 'fix', note: 'A Bool binding built with Binding(get:set:) (BedSideSheet.swift:104) is bound to scopeRequest != nil and the content re-reads the request with if let (line 220); sheet(item:) over the request would unwrap it once.' },
+        { rule: 'Design: text styles and wrapping', verdict: 'pass', note: 'fixedSize(horizontal: false, vertical: true) on the explanation; text styles only.' },
+        { rule: 'Accessibility: rows are single buttons', verdict: 'pass', note: '.accessibilityElement(children: .combine) with .isButton; chevron hidden.' },
       ],
     },
     notes: [

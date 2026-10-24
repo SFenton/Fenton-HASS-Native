@@ -76,17 +76,15 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Lights, occupancy and contacts add glyph and words to the fill; climate never fills.' },
-        { rule: 'Color: not the only differentiator (Air Quality)', verdict: 'fix', note: 'The AQI band (good, moderate, unhealthy) is carried by the glyph and rim colour only; the numbers are text but the band name is not drawn or spoken. Owner call; drawn as shipped.' },
-        { rule: 'Buttons: a tappable control is at least 44 pt', verdict: 'pass', note: '72 pt minimum height cards.' },
-        { rule: 'Typography: support Dynamic Type', verdict: 'pass', note: 'Scaled minimum width, stacked layout at AX5, names wrap.' },
-        { rule: 'Materials: tiles in a sheet are opaque', verdict: 'departure', note: 'Sheet-cell grounds, not glass, as direction-g.md Sheets and Tile finish.' },
+        { rule: "Color: do not rely on colour alone", verdict: 'pass', note: "Lights, occupancy and contact cards fill and swap glyph and subtitle; Climate and Air Quality never fill and print their values (RoomOverviewTile.swift:19-38, RoomOverviewStyle.swift:23-27).", by: 'apple-hig skill' },
+        { rule: "Accessibility: indicate when something is unavailable", verdict: 'fix', note: "RoomOverviewTile passes no isUnavailable (RoomOverviewTile.swift:17-25), so a room of offline sensors reads Off, Clear or Closed, which is wrong for a contact or presence sensor.", by: 'apple-hig skill' },
+        { rule: "Lists and tables: chevron only where it navigates", verdict: 'pass', note: "Four kinds are .navigate with a chevron and 'Opens' hint; Air Quality is .state with none (RoomOverviewTile.swift:23-26, AirQualityRoomTile.swift:19).", by: 'apple-hig skill' },
+        { rule: "Dynamic Type: a name that wraps lifts the row", verdict: 'pass', note: "Faces grow at large sizes and the grid equalises heights (GlassTile.swift:328-331, RoomOverviewGrid.swift:14, 31).", by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use accessibilityElement(children:) with a label and value', verdict: 'pass', note: 'GlassTile builds one element per tile; the hint names the destination.' },
-        { rule: 'Colour changes animate with the app token', verdict: 'pass', note: 'GlassTileFace .stateColorTransition: 0.6 s, 0.2 s reduced; layout never rides along.' },
-        { rule: 'Static content is not a button', verdict: 'pass', note: 'AirQualityRoomTile is kind .state: no button trait, no chevron.' },
-        { rule: 'Symbol replacement honours Reduce Motion', verdict: 'pass', note: '.contentTransition(reduceMotion ? .identity : .symbolEffect(.replace)).' },
+        { rule: "A tile is a Button with label, value and hint", verdict: 'pass', note: "GlassTile Button with accessibilityLabel(title), value subtitle, hint set by the caller (GlassTile.swift:135-145).", by: 'swiftui-pro skill' },
+        { rule: "Hard-coded colours", verdict: 'pass', note: "Colours come from ColorFamily and Surface tokens, light inks on sheet cells via TileAppearance (GlassTile.swift:301-302, 505-530).", by: 'swiftui-pro skill' },
+        { rule: "Typography", verdict: 'fix', note: "Weight is applied by hand with .subheadline.weight(.semibold) on titles (GlassTile.swift:416); bold() lets the system choose the weight.", by: 'swiftui-pro skill' },
       ],
     },
     notes: [

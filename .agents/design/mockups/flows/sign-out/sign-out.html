@@ -96,18 +96,18 @@
     ],
 
     reviews: {
-      date: REVIEW_DATE,
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Alerts: a destructive action is red and Cancel is present', verdict: 'pass', note: 'Both controls name Cancel and mark Sign Out destructive.' },
-        { rule: 'Alerts vs action sheets: be consistent for the same action', verdict: 'fix', note: 'The Account sheet uses an alert and Home Assistant settings a confirmationDialog for the same act, and the two titles differ ("Sign Out of" vs "Sign out of"). inventory-notes item 4; direction-g says an alert. Pick one.' },
-        { rule: 'Feedback: show progress for an action that waits on the network', verdict: 'fix', note: 'No busy state while confirmedSignOut() waits on the server; consider the inline arc the sheet\'s confirm uses.' },
-        { rule: 'Destructive actions: say what is lost', verdict: 'pass', note: '"You\'ll need your username and password to sign in again."' },
+        { rule: 'Alerts: red destructive button, Cancel present, say what is lost', verdict: 'pass', note: 'Both entry points name Cancel and mark Sign Out destructive, with "You\'ll need your username and password to sign in again." (YourSummarySheet.swift:72-78; HomeAssistantSettingsView.swift:121-130).', by: 'apple-hig skill' },
+        { rule: 'Alerts versus action sheets: one pattern per decision', verdict: 'fix', note: 'Your Summary uses an alert titled "Sign Out of Home Assistant?"; Home Assistant settings a confirmationDialog titled "Sign out of Home Assistant?". Low.', by: 'apple-hig skill' },
+        { rule: 'Progress indicators: show progress for work that waits on the network', verdict: 'fix', note: 'After Sign Out is confirmed, confirmedSignOut() awaits the server (currentUser, unlinkPresence) with only an isSigningOut guard and no spinner or dimming (YourSummarySheet.swift:85-98; HomeAssistantSettingsView.swift:182-193). The sheet looks idle for as long as the call takes. Medium.', by: 'apple-hig skill' },
+        { rule: 'Do not trap people: explain what blocks an action', verdict: 'fix', note: 'With a LocationCoordinator the sign-out needs the server to unlink the phone, so with no network the same generic alert appears every time (AppSession.swift:152-168). Intended so a phone does not keep reporting presence; the copy does not say it. Low.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use .alert / confirmationDialog with roles', verdict: 'pass', note: 'role .destructive and .cancel on both.' },
-        { rule: 'Guard against a second press while the async work runs', verdict: 'pass', note: 'isSigningOut.' },
-        { rule: 'Identical copy in one place', verdict: 'fix', note: 'The alert strings are literals in two files; share them in one type like LoginCopy.' },
-        { rule: 'Colour contrast token for the destructive row', verdict: 'pass', note: 'HomeAssistantSettingsView.destructiveInk resolves the high-contrast red.' },
+        { rule: 'Attach confirmationDialog to its triggering control', verdict: 'pass', note: 'The dialog is on the Sign Out button, so glass animates from it (HomeAssistantSettingsView.swift:112-128).', by: 'swiftui-pro skill' },
+        { rule: 'Guard a second press while async work runs', verdict: 'pass', note: 'isSigningOut with defer (YourSummarySheet.swift:85-98).', by: 'swiftui-pro skill' },
+        { rule: 'Strings used twice live in one place', verdict: 'fix', note: 'The failure alert text is a literal in two files (YourSummarySheet.swift:68; HomeAssistantSettingsView.swift:117). Low.', by: 'swiftui-pro skill' },
+        { rule: 'Contrast token for the destructive ink', verdict: 'pass', note: 'destructiveInk resolves the Increase Contrast red (HomeAssistantSettingsView.swift:153-160).', by: 'swiftui-pro skill' },
       ],
     },
 

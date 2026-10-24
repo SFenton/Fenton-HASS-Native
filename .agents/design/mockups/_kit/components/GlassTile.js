@@ -3,7 +3,7 @@
  *
  * props: {title, subtitle?, symbol, family?, fill?:cssColor, room?:'kitchen', quickLink?:'rooms', tint?:cssColor, isActive?, isUnavailable?, isError?,
  *   kind?:'toggle'|'navigate'|'command'|'selection'|'state', selected?:boolean, wash?:cssColor, progress?:0..1, progressTint?:cssColor, layout?:'row'|'stack',
- *   titleLines?:2, accessory?:Node, pending?:boolean (first sign-in: a soft pulsing bar where the value goes), singleLine?:boolean, id?:string}
+ *   titleLines?:2, accessory?:Node, pending?:boolean (first sign-in: a soft pulsing bar where the value goes), singleLine?:boolean, showsChevron?:boolean, id?:string}
  *   family: 'lights' 'heating' 'cooling' 'vents' 'air' 'water' 'occupancy' 'contact' 'media' 'cleaning' 'power' 'cooking' 'climate' 'sec-home' ...
  *   (see kit.css --fam-*). Face resolution is TileFaceStyle.resolve: error > fill (room, Quick Link) > off (inactive or unavailable) > tinted (no
  *   family) > lit (lights) > filled (family fill). Off keeps the family glyph mixed toward grey; on fills the family colour (tinted glass: 78% over a
@@ -30,7 +30,8 @@
     var cls = 'ui-tile ' + (face === 'tinted' ? 'tinted' : face);
     if (face === 'power') cls += ' on-power';
     if (unavail) cls += ' unavail';
-    if (kind === 'navigate') cls += ' navigate';
+    var chevron = kind === 'navigate' || !!p.showsChevron;   // showsChevron: a tile that opens details on tap but keeps its own semantics (BrightnessTile with onOpen)
+    if (chevron) cls += ' navigate';
     if (p.wash) cls += ' wash';
     if (p.layout === 'stack' || p.layout === 'anchoredBottom') cls += ' stack';
     if (p.titleLines === 2) cls += ' lines2';
@@ -56,7 +57,7 @@
       else tx.appendChild(h('span.st' + (p.singleLine ? '.one' : ''), p.subtitle));
     }
     kids.push(tx);
-    if (kind === 'navigate') kids.push(h('span.chev', { html: I('chevron.right', { weight: 2.4 }), 'aria-hidden': 'true' }));
+    if (chevron) kids.push(h('span.chev', { html: I('chevron.right', { weight: 2.4 }), 'aria-hidden': 'true' }));
     if (p.accessory) { kids.push(h('span.acc', p.accessory)); style['--acc-w'] = (p.accessoryWidth || 64) + 'px'; }
     var attrs = { type: 'button', style: style, dataset: { face: face, family: fam || '' } };
     if (p.id) attrs.id = p.id;

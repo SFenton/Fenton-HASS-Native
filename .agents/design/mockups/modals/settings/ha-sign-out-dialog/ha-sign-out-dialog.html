@@ -43,17 +43,14 @@
       { rule: 'Focus', note: 'Focus returns to the Sign Out button when the dialog closes without signing out.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Action sheets: use one for a choice that is destructive and hard to undo; label the destructive action clearly', verdict: 'pass', note: 'Signing out needs the password to undo; the button is red and named Sign Out.' },
-        { rule: 'Action sheets: on iPad present as a popover anchored to the source', verdict: 'pass', note: 'The system does this; the dialog is attached to the Sign Out button for the anchor.' },
-        { rule: 'Alerts versus action sheets: choose consistently', verdict: 'fix', note: 'The Account sheet’s Sign Out is an alert ("Sign Out of Home Assistant?", capitalised) while this cover uses a confirmationDialog ("Sign out of Home Assistant?", sentence case). Same decision, two presentations and two spellings.' },
-        { rule: 'Include a Cancel in action sheets', verdict: 'departure', note: 'The iOS 27 popover omits Cancel (an outside tap is the cancel); the code still provides a Cancel button for earlier systems.' },
+        { rule: 'Action sheets: destructive choice prominent, message only if needed', verdict: 'pass', note: 'Title "Sign out of Home Assistant?", one-line message, red Sign Out and a Cancel role (HomeAssistantSettingsView.swift:120-130); SwiftUI supplies Cancel except in the iOS 26 popover.', by: 'apple-hig skill' },
+        { rule: 'Alerts and sheets: use one confirmation style for one action', verdict: 'fix', note: 'The Home Assistant cover confirms with a confirmationDialog ("Sign out of Home Assistant?") while the Account sheet\'s Sign Out is an alert ("Sign Out of Home Assistant?"): one decision, two presentations and two capitalisations (mockup notes; ios.md says action sheet, direction-g says alert).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'confirmationDialog(_:isPresented:titleVisibility:) with a message', verdict: 'pass', note: 'titleVisibility .visible so the question shows.' },
-        { rule: 'Button role .destructive and role .cancel', verdict: 'pass', note: 'Both roles set.' },
-        { rule: 'Anchor the dialog to the control that triggers it', verdict: 'pass', note: 'Attached to the Sign Out button’s view inside the section.' },
+        { rule: 'Navigation: confirmationDialog(isPresented:titleVisibility:) on the trigger', verdict: 'pass', note: 'Presented from the Sign Out button with titleVisibility .visible so the question shows (:120-124).', by: 'swiftui-pro skill' },
+        { rule: 'Navigation: alert and dialog share a presenter', verdict: 'fix', note: 'Same button also owns the failure alert (:117), and the iOS 27 audit finds a duplicate nested Sign Out; split the presenters.', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

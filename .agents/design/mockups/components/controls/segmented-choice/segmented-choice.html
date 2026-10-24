@@ -68,20 +68,37 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Segmented controls: two to five segments, closely related options', verdict: 'pass', note: 'Two to four short options (direction-g.md Controls: choosing one option).' },
-        { rule: 'Segmented controls: do not use at accessibility sizes where segments cannot grow', verdict: 'pass', note: 'Becomes a menu at accessibility sizes.' },
-        { rule: 'Sliders: provide the value and make it adjustable for VoiceOver', verdict: 'pass', note: 'accessibilityValue and accessibilityAdjustableAction with a step of 5.' },
-        { rule: 'Dynamic Type: reflow rather than truncate', verdict: 'pass', note: 'The row\'s label and value wrap; the menu fills the width.' },
-        { rule: 'Pickers: menu style for longer lists', verdict: 'pass', note: 'The menu form is the system pop-up button.' },
+
+        { rule: "Segmented controls: two to four short options; avoid more segments than fit", verdict: "pass", note: "SegmentedChoice is documented for 2 to 4 options (direction-g.md Controls) using the system segmented Picker at controlSize(.large), with titles short enough for one line.", by: "apple-hig skill" },
+
+        { rule: "Segmented controls and Accessibility: segments cannot hold accessibility text", verdict: "pass", note: "At accessibility sizes the control becomes a menu Picker that names the choice and its current option with a 44 pt minimum height, so text never truncates inside a segment.", by: "apple-hig skill" },
+
+        { rule: "Feedback: a control acknowledges a tap", verdict: "fix", note: "Choosing calls select and nothing else: the derived binding returns the device's reported selection, so the control shows no pending or optimistic state until Home Assistant echoes the value (and the system thumb may snap back meanwhile); AGENTS.md allows optimistic state for immediate feedback and the tile has a pending bar. Low.", by: "apple-hig skill" },
+
+        { rule: "Sliders: show the value; adjustable in useful steps", verdict: "pass", note: "PercentSliderRow shows 'NN%' beside the title, steps by 5, and exposes one adjustable element ('Availability Weight', '60 percent', increment and decrement by 5); hiding the visible text while only the slider spoke was flagged on the folded Duo.", by: "apple-hig skill" },
+
+        { rule: "Disabled controls: explain why", verdict: "pass", note: "A disabled row dims to 50% and a footer says why when not obvious ('Weights are unavailable while recipes are sorted alphabetically'); the picker is dimmed by the system.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Derive the binding from the source of truth', verdict: 'pass', note: 'SegmentedChoice holds no state: the device\'s reported value is the selection.' },
-        { rule: 'Read dynamicTypeSize, not size class, to change the control', verdict: 'pass', note: 'isAccessibilitySize switches segmented to menu.' },
-        { rule: 'One adjustable accessibility element for a composite control', verdict: 'pass', note: 'accessibilityElement(children: .ignore) with label, value and adjustable action.' },
-        { rule: 'Do not fork a control per screen', verdict: 'departure', note: 'RecipeHorizonPicker repeats the segmented-or-menu switch instead of using SegmentedChoice (a Picker over a draft Int); a candidate to merge.' },
+
+        { rule: "Data flow: avoid Binding(get:set:) in the view body", verdict: "fix", note: "SegmentedChoice builds Binding<Option?>(get:set:) in body to turn a read-only selection plus a select closure into a Picker selection (SegmentedChoice.swift lines 31 to 34); it is a deliberate 'view holds no state' design, but the setter's side effect (calling select) belongs in an onChange or a model that owns the selection. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Design: Slider wrapped in LabeledContent; reuse the system control's accessibility", verdict: "fix", note: "PercentSliderRow lays out title, value and Slider by hand in a VStack and then replaces the slider's accessibility with accessibilityElement(.ignore) plus its own adjustable action (RecipesScreen.swift lines 345 to 360); LabeledContent with the Slider (and accessibilityValue) would keep the system's semantics. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Views: one control for the segmented-or-menu switch", verdict: "fix", note: "RecipeHorizonPicker repeats the segmented-versus-menu switch with its own Picker instead of using SegmentedChoice (README open note), so the AX behaviour has two implementations. Low.", by: "swiftui-pro skill" },
+
+        { rule: "API: generic over Hashable options, identifiers for UI tests", verdict: "pass", note: "SegmentedChoice<Option: Hashable> uses ForEach(options, id: \\.self) with .tag(Optional(option)) so no selection is a valid state (a mist level between presets), and the identifier sits on the Picker.", by: "swiftui-pro skill" },
+
+        { rule: "Resizability: switch layout by Dynamic Type size, not by device", verdict: "pass", note: "typeSize.isAccessibilitySize chooses .menu or .segmented; nothing branches on a device or size class, so the folded Duo's narrow outer display and iPad sheets behave the same.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

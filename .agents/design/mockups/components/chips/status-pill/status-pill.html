@@ -41,17 +41,20 @@
       { rule: 'Surfaces', note: 'In a grouped list or sheet the fill is solid (a material over a sheet\'s glass smeared the content behind it, seen 2026-10-11); with Reduce Transparency the page material is opaque.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'The value is text; the icon colour is reinforcement.' },
-        { rule: 'Materials: use a standard material or a solid fill, not glass, for content', verdict: 'pass', note: 'regularMaterial on a page; solid in lists; none in a module.' },
-        { rule: 'Accessibility: group related text into one element', verdict: 'pass', note: 'accessibilityElement(children: .ignore) with label and value.' },
-        { rule: 'Typography: text styles, monospaced digits for changing numbers', verdict: 'pass', note: 'footnote label, subheadline semibold value with monospacedDigit.' },
+        { rule: "Color: do not rely on colour alone; contrast of non-text elements 3:1", verdict: "fix", note: "Tone is on the icon only and the words carry the meaning, but the tone colours are system .green, .orange, .red and .gray (StatusPill.swift lines 95 to 99), not HassTokens inks; HassTokens.Ink.success notes system green is 2.3:1 on a light sheet, and the controller sheet's solid row is white in light appearance, so the glyph falls under 3:1 there. Medium-low.", by: "apple-hig skill" },
+        { rule: "Materials: content-layer surfaces avoid a live blur per element", verdict: "fix", note: "The .page surface fills with .regularMaterial (line 75) over the wallpaper, while tiles and modules deliberately use a fixed dark tint because a backdrop layer per element costs GPU time and crashed the simulator's render server (HassTokens ModuleBackground doc); the Sprinklers card draws several pills per controller. Low.", by: "apple-hig skill" },
+        { rule: "Typography: Dynamic Type; text keeps contrast", verdict: "pass", note: "Label and detail are footnote in Ink.secondary and the value is subheadline semibold in Ink.primary; text wraps with fixedSize vertical, and the grid's @ScaledMetric minimum collapses pills to one column at AX sizes.", by: "apple-hig skill" },
+        { rule: "Accessibility: a read-only element is not presented as a control", verdict: "pass", note: "The pill is one element read as 'Battery, 82%' (label then value and detail), the icon hidden, no button trait; a 44 pt minimum height is kept so a row of pills lines up, although it is not a target.", by: "apple-hig skill" },
+        { rule: "Motion: colour change only, shorter with Reduce Motion", verdict: "pass", note: "A tone change cross-fades the icon and ground over 0.6 s (0.2 s reduced) through stateForeground and stateColorTransition; layout never animates.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Animate state colour with the token', verdict: 'pass', note: 'stateForeground("StatusPill", tone colour) on the icon and stateColorTransition on the fill (0.6 s, 0.2 s reduced).' },
-        { rule: 'Use the semantic ink tokens', verdict: 'fix', note: 'Tone icons use system .green, .orange and .red, not the HassTokens ink pair, so on a light sheet the orange and green icons are the system\'s (not tuned to 3:1 against the sheet cell). Text is unaffected.' },
-        { rule: 'Do not make a read-only view look tappable', verdict: 'pass', note: 'No chevron, no pressed state.' },
+        { rule: "Design: system hierarchical styles and shared tokens", verdict: "fix", note: "Tone colours bypass the token set (see HIG finding) and the .groupedList fill uses Color(uiColor: .secondarySystemGroupedBackground) with a macOS .background.secondary branch; named tokens (Ink.success, Ink.warning, Ink.danger, Surface.sheetCell) already exist for exactly these. Low.", by: "swiftui-pro skill" },
+        { rule: "Performance: AnyShapeStyle for style ternaries is fine", verdict: "pass", note: "fill is a switch over Surface returning AnyShapeStyle (material, clear or solid), which keeps one RoundedRectangle in the hierarchy instead of branching views, the pattern swiftui-pro recommends for mixed style types.", by: "swiftui-pro skill" },
+        { rule: "Views: one canonical component per pattern", verdict: "fix", note: "The humidifier and vacuum sheets draw their own DeviceStatusPill and VacuumStatusChip instead of StatusPill (README note), so label, value, tone and fill rules exist three times. Low.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: label and value split", verdict: "pass", note: "accessibilityLabel(label) with accessibilityValue(value, detail) via a pure nonisolated function the unit test calls, so VoiceOver speaks the label as a name and the value as state.", by: "swiftui-pro skill" },
+        { rule: "Localization: pass resources not runtime strings", verdict: "fix", note: "label, value and detail are Strings composed in SprinklerFormat and joined with ', ' for VoiceOver (StatusPill.swift line 88), so list punctuation and any localization is the app's, not the system's; ListFormatStyle would join them per locale. Low.", by: "swiftui-pro skill" },
       ],
     },
     notes: [

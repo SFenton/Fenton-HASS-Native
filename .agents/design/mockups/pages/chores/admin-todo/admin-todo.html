@@ -10,7 +10,21 @@
 (function () {
   var h = Mock.h, K = Mock.components, C = window.Chores;
 
-  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: "Lists and tables: edit is the secondary action, no destructive swipe", verdict: "pass", note: "ChoresConfig.adminTodo has deletesItems false, so TodoRowActions gives only Complete (leading) and Edit (trailing); the list is synced from GitHub issues.", by: "apple-hig skill" },
+        { rule: "Undo and redo: completing an admin item runs a script and the row vanishes", verdict: "fix", note: "The check-off calls script.complete_admin_todo_item with the item name and the row leaves (TodoListSection.swift line 74); the item is hidden afterwards and cannot be reopened from this page. Add an undo affordance. Medium.", by: "apple-hig skill" },
+        { rule: "Privacy: say where entered text goes", verdict: "pass", note: "The Add and Rename sheets state the repository is public (TodoItemSheets.swift lines 96 and 247), and this page is hidden from Steph.", by: "apple-hig skill" },
+        { rule: "Designing for iPhone Duo: keep content clear of the fold", verdict: "fix", note: "Single List column across the hinge in unfolded landscape (TodoPageView.swift lines 30-56); a long issue title can straddle the fold. Low.", by: "apple-hig skill" },
+        { rule: "Accessibility: Edit offered once", verdict: "fix", note: "Each row exposes \"Edit\" as a custom action on the toggle and a separate \"Edit {title}\" button (TodoListSection.swift lines 216-232). Low.", by: "apple-hig skill" },
+      ],
+      swiftui: [
+        { rule: "Navigation: opened from a Settings row with its own ChoresModelHost", verdict: "pass", note: "AdminTodoScreen wraps TodoPageScreen in ChoresModelHost (ChoresScreen.swift lines 53-59), so it shares nothing with the Chores tab stack and back returns to Settings.", by: "swiftui-pro skill" },
+        { rule: "Views: hideListHeaders page uses the first list as page lead", verdict: "pass", note: "leadsPage is passed when no header view exists (TodoPageView.swift line 50), so the first row sits at the right distance from the title.", by: "swiftui-pro skill" },
+        { rule: "Sheets: sheet(item:) with an Identifiable item", verdict: "pass", note: "TodoPageView.swift lines 78-81 presents TodoSheet by sheet(item:) and routes create or rename in one switch.", by: "swiftui-pro skill" },
+      ],
+    }, devices: (static check keys). */
   Mock.mount(C.pageConfig('admin-todo', {
     title: 'Admin To-Do',
     summary: 'Opened from a Settings row (Stephen only, hidden from Steph): the admin to-do list with no list header, Edit (rename) on each row, no delete. Checking an item off runs a script; Add Task can attach up to four images. Fixture items.',

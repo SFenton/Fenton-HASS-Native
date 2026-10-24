@@ -77,19 +77,17 @@
     ],
 
     reviews: {
-      date: REVIEW_DATE,
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Feedback: tell people when something is not working, without blocking them', verdict: 'pass', note: 'A small status, never a modal or a full-screen state; values stay.' },
-        { rule: 'Loading: avoid showing an indicator for a wait too short to matter', verdict: 'pass', note: 'Nothing for the first 2 s down.' },
-        { rule: 'Motion: opacity is not motion; Reduce Motion keeps spinners', verdict: 'pass', note: 'The arc fades under Reduce Motion and keeps turning at half speed.' },
-        { rule: 'Toolbars: status items in the bar are not tappable controls', verdict: 'pass', note: 'The arc is a status item with no action.' },
-        { rule: 'Layout: do not cover content with transient chrome', verdict: 'pass', note: 'The arc moves the chip out from over page content (the bug the change fixes).' },
+        { rule: 'Feedback: show a problem without blocking', verdict: 'pass', note: 'A small chip or badge only; values stay (ReconnectingOverlay.swift; AGENTS.md No reload on reopen).', by: 'apple-hig skill' },
+        { rule: 'Loading: no indicator for a wait too short to matter', verdict: 'pass', note: 'ReconnectingPolicy.delay is 2 s; offline shows at once (ReconnectingPolicy.swift:10).', by: 'apple-hig skill' },
+        { rule: 'Motion: Reduce Motion', verdict: 'pass', note: 'Chip moves are dropped and the dot holds lit (ReconnectingOverlay.swift:38; ReconnectingChip.swift:18-20).', by: 'apple-hig skill' },
+        { rule: 'Motion: make motion optional (arc, in flight)', verdict: 'departure', note: 'The in-flight arc keeps turning at half speed under Reduce Motion, owner 2026-10-14. Branch not in this tree; from the mockup and the doc.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Animation scoped to the value that changes', verdict: 'pass', note: 'animation(.., value: showsChip) in the overlay; value: lit in the arc.' },
-        { rule: 'A task per state, cancelled on change', verdict: 'pass', note: '.task(id: state) in ReconnectingOverlay and the indicator host: a blip never shows, coming back cancels the wait.' },
-        { rule: 'Reduce Motion read from the environment', verdict: 'pass', note: 'Chip transition drops the move; the dot holds lit; the arc fades.' },
-        { rule: 'Do not drive animation from a timer when a TimelineView will do', verdict: 'pass', note: 'The dot uses TimelineView(.animation(paused:)).' },
+        { rule: 'A task per state, cancelled on change', verdict: 'pass', note: '.task(id: state) in ReconnectingOverlay (lines 43-54); a blip never shows.', by: 'swiftui-pro skill' },
+        { rule: 'Offline is also spoken on Profile and in settings', verdict: 'pass', note: 'ProfileButton\'s accessibilityValue ends with "Offline" (ShellHeader.swift:230-233); the settings Connection row reads "Offline" (HomeAssistantSettingsView.swift:71, 214-215).', by: 'swiftui-pro skill' },
+        { rule: 'Show state in more than colour', verdict: 'pass', note: 'A cloud-slash glyph on Profile and words in the chip (ShellHeader.swift:338-352; ReconnectingChip.swift:27-41).', by: 'swiftui-pro skill' },
       ],
     },
 

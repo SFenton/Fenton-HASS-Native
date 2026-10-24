@@ -2,7 +2,7 @@
 
 > **What:** Home Assistant's own Settings or Profile page in a WKWebView, pushed inside the Home Assistant cover. **Read when:** you change `HomeAssistantWebPage.swift` or the sign-in hand-off.
 
-- Mockup: [ha-web-page.html](ha-web-page.html) · shipped · reviewed 2026-10-23 (author self-check; skill reviewers replace it)
+- Mockup: [ha-web-page.html](ha-web-page.html) · shipped · reviewed 2026-10-23 (apple-hig and swiftui-pro skill review)
 - Source: `apple/Sources/HassUI/Features/Settings/HomeAssistantWebPage.swift`, `HomeAssistantSettingsView.swift`
 - Spec: `.agents/pages/settings/ios.md`, `.agents/platforms/apple/auth.md`  · Patterns: modal-sheet
 - States covered: default (settings), profile, loading, refreshing (reload), preparing, error, offline, ax5. The web content is a labelled stand-in.

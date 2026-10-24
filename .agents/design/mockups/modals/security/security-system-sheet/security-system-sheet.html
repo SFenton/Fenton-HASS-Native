@@ -107,23 +107,29 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Sheets: a sheet should be as tall as its content, grabber visible, dismiss with a close control', verdict: 'pass', note: 'Fitted detent, grabber, circle x Close trailing (never "Done").' },
-        { rule: 'Sheets: prefer page or form sizing on iPad', verdict: 'pass', note: 'Page size (704 pt) on iPad and the unfolded Duo (modal-sheet.md "iPad size").' },
-        { rule: 'Alerts: destructive action is red, Cancel always present', verdict: 'pass', note: 'Disarm in red, Cancel kept; arming does not confirm (it is reversible).' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Glyph and words accompany every mode colour.' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'pass', note: 'Sheets follow the system appearance while pages stay dark (owner 2026-10-15).' },
-        { rule: 'Toolbars: Close dismisses a modal; prefer the standard symbol without text', verdict: 'pass', note: 'xmark circle, labelled Close for VoiceOver.' },
-        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'departure', note: 'Opaque sheet ground at every detent, as direction-g.md Sheets and modal-sheet.md (a partial-height glass sheet let page tiles show through).' },
+        { rule: "Sheets: a grabber on a resizable sheet; size to content", verdict: 'pass', note: "Fitted height with a visible grabber (HassModal.swift:191, SheetFit); a page sheet on iPad (SecurityScreen.swift:92).", by: 'apple-hig skill' },
+        { rule: "Materials: a partial-height sheet uses the system material", verdict: 'departure', note: "The sheet draws an opaque grouped ground at every detent so the page's coloured tiles never show through glass (HassModal.swift:192-194, 257).", by: 'apple-hig skill' },
+        { rule: "Sheets: Cancel or Close on the leading edge of a single-view sheet, Done trailing", verdict: 'departure', note: "Every modal carries the circle-X Close at the trailing edge (owner, 2026-10-13: 'Done button in top right can just be circle X close button', HassModal.swift:5-9, patterns/modal-sheet.md); a saving sheet keeps its own confirm.", by: 'apple-hig skill' },
+        { rule: "Playing haptics and Feedback: confirm a significant command through more than one channel", verdict: 'fix', note: "Tapping a mode changes colour and the Since line only; there is no sensoryFeedback on AlarmModeButton (SecuritySystemSheet.swift:203-257) and the failure rollback is silent.", by: 'apple-hig skill' },
+        { rule: "Color: state is words and glyphs as well", verdict: 'pass', note: "Title says Armed Home, Armed Away, Armed Night, Disarmed or Triggered; the selected mode gains a filled glyph (line 218) and the selected trait.", by: 'apple-hig skill' },
+        { rule: "Accessibility: bezelled elements need about 12 pt spacing", verdict: 'fix', note: "Mode buttons are 8 pt apart (SecuritySystemSheet.swift:66) with Disarm next to Home.", by: 'apple-hig skill' },
+        { rule: "Dynamic Type: reflow at accessibility sizes", verdict: 'pass', note: "Mode width @ScaledMetric 64 relative to .footnote drops the four across to fewer columns at AX5, labels wrap instead of truncating (lines 55, 223-225).", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Use presentationDetents with a measured height', verdict: 'pass', note: 'hassSheet(.page, height: .fitted): the custom height detent from SheetFit, capped at large.' },
-        { rule: 'Scaled metrics for glyph and badge', verdict: 'pass', note: 'badgeSize and the 64 pt mode width are @ScaledMetric.' },
-        { rule: 'Adaptive colour tokens, no hard-coded white or black in a sheet', verdict: 'pass', note: 'Surface.sheetCell, Ink.primary, Surface.secondaryInSheet; selected modes use fixed fills with fixed white ink.' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'stateColorTransition("AlarmPanel"/"AlarmModeButton"): 0.6 s, 0.2 s with Reduce Motion.' },
-        { rule: 'Button role .destructive in the alert', verdict: 'pass', note: 'Disarm uses role .destructive; Cancel role .cancel.' },
+        { rule: "Toolbars and presentation: use the semantic placement for a Close button", verdict: 'fix', note: "SheetCloseItem places the circle-X Close as .confirmationAction (HassModal.swift:26), a confirming slot, although it only dismisses. On the iPhone Duo outer display that slot is a prominent action, below primary navigation (Back, Close) at the top of the vertical bar (HIG Duo, Vertical controls). Use .cancellationAction with role .close.", by: 'swiftui-pro skill' },
+        { rule: "ScaledMetric for fixed sizes", verdict: 'pass', note: "Badge 44 relative to .title2, glyph row height 24 relative to .title3 (SecuritySystemSheet.swift:56, 210).", by: 'swiftui-pro skill' },
+        { rule: "Combined VoiceOver element for the status header", verdict: 'pass', note: "The header ignores children and speaks label 'Security System' with value 'Armed Home, Since 6:12 PM' (lines 129-132).", by: 'swiftui-pro skill' },
+        { rule: "Hard-coded colours", verdict: 'departure', note: "The mode glyph and selected-mode label are fixed white on the mode's own family fill (lines 105, 229); the unselected ground and title adapt to the sheet appearance (direction-g.md Layers).", by: 'swiftui-pro skill' },
+        { rule: "Optimistic action rolls back on failure", verdict: 'pass', note: "OptimisticActions with .liveChange (lines 185-189); tapping the current mode sends nothing (line 176).", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

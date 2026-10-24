@@ -78,17 +78,18 @@
     ],
 
     reviews: {
-      date: REVIEW_DATE,
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Launching: show the app\'s first screen quickly, no splash or branding', verdict: 'pass', note: 'The launch ground is the launch screen\'s own colour; the saved screen follows in 0.2 s.' },
-        { rule: 'Loading: show content as soon as possible; an indicator only where a wait is real', verdict: 'pass', note: 'The disk snapshot shows at once; no full-screen spinner (motion.md section 5).' },
-        { rule: 'Motion: animate change, not presence', verdict: 'pass', note: 'Nothing animates on a cold launch except the ground\'s fade.' },
-        { rule: 'Feedback: tell people when content may be stale', verdict: 'pass', note: 'The arc (or the chip today) after 2 s; the Profile cloud badge offline.' },
+        { rule: 'Launching: match the launch screen, no splash', verdict: 'pass', note: 'A plain ground in the launch screen\'s colour fades in 0.2 s onto the saved screen (RootView.swift:92-101, 164-171).', by: 'apple-hig skill' },
+        { rule: 'Launching: restore the previous state', verdict: 'fix', note: 'Only the selected tab is stored (@SceneStorage("selectedTab"), MainTabView.swift:13); pushed pages and scroll positions live in memory (ShellNavigator.paths), so a cold launch returns to the tab root. Low.', by: 'apple-hig skill' },
+        { rule: 'Loading: show content at once, indicate only real waits', verdict: 'pass', note: 'AppSession restores synchronously so the first frame has the disk snapshot (AppSession.swift:63-65, 114-118).', by: 'apple-hig skill' },
+        { rule: 'Feedback: say when content may be stale', verdict: 'pass', note: 'Chip after 2 s, offline chip at once, cloud badge on Profile (ReconnectingOverlay.swift; ShellHeader.swift:338-352).', by: 'apple-hig skill' },
+        { rule: 'Motion: animate change, not presence', verdict: 'pass', note: 'Nothing but the ground\'s fade moves on a signed-in launch; the arrival is marked played (AppSession.swift:116).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Do not start animations in onAppear for content that is already known', verdict: 'pass', note: 'Destinations render their content in the first frame.' },
-        { rule: 'Animation with value-scoped tokens', verdict: 'pass', note: 'withAnimation(MotionTokens.quick) once for the ground.' },
-        { rule: 'Reduce Motion handled', verdict: 'pass', note: 'Chip transition falls back to opacity; the pulse stops.' },
+        { rule: 'No reload on reopen: update boxes in place', verdict: 'pass', note: 'Views bind to EntityStore boxes; a relaunch draws the snapshot and ends the snapshot-shown interval on first appear (MainTabView.swift:77-81).', by: 'swiftui-pro skill' },
+        { rule: 'Keep per-launch work out of body', verdict: 'pass', note: 'Profile name is cached in UserDefaults and refreshed in .task(id: isConnected) (ShellNavigator.swift:28-30; MainTabView.swift:95).', by: 'swiftui-pro skill' },
+        { rule: 'Reduce Motion', verdict: 'pass', note: 'The chip transition falls back to opacity (ReconnectingOverlay.swift:38).', by: 'swiftui-pro skill' },
       ],
     },
 

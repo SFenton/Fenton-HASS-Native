@@ -85,20 +85,28 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Lists: a checkmark marks the single choice', verdict: 'pass', note: 'EcoOptionDetail uses checkmarks with descriptions; multiple choice uses the circle with a tick.' },
-        { rule: 'Toggles: a description under the control', verdict: 'pass', note: 'Section footers or VoiceOver hints carry what each switch does.' },
-        { rule: 'Navigation: Back to the previous level, Close dismisses', verdict: 'pass', note: 'Back leading, Close trailing.' },
-        { rule: 'Disabled controls say why', verdict: 'pass', note: 'Subtitles ("Enable Track Selected Rooms first") and InlineAlerts.' },
-        { rule: 'Use a checkmark list rather than switches for choosing rooms', verdict: 'departure', note: 'The web used checkboxes; native keeps one circle-tick row per room (ios.md Native decisions).' },
+        { rule: "Toggles: use the switch style only in a list row", verdict: 'pass', note: "Every setting is a Toggle in a Form row with its description as the footer (ClimateSheet.swift:151-186); the tile-style toggles are not used here.", by: 'apple-hig skill' },
+        { rule: "Lists and tables: a checkmark marks the single choice", verdict: 'pass', note: "Eco options are Buttons with a trailing checkmark and the isSelected trait, description in the label (ClimateSheet.swift:426-455).", by: 'apple-hig skill' },
+        { rule: "Accessibility: say why a row is disabled", verdict: 'pass', note: "A disabled Tracking opener keeps its subtitle ('Enable Track Selected Rooms first') as the value so VoiceOver reads it dimmed (ClimateSheet.swift:482-486).", by: 'apple-hig skill' },
+        { rule: "Lists: drill-down uses a disclosure indicator", verdict: 'pass', note: "NavigationLink rows draw the system chevron; Predictive Comfort's Current Prediction row appears only while the switch is on (ClimateSheet.swift:331-336).", by: 'apple-hig skill' },
+        { rule: "Dynamic Type: forms grow, never clip", verdict: 'pass', note: "Rows use text styles with fixedSize vertically and a 720 pt readable width (ClimateSheet.swift:110-119, 140); AX5 wraps subtitles.", by: 'apple-hig skill' },
+        { rule: "Toggles: announce a state once", verdict: 'fix', note: "The room checklists draw an empty circle versus a filled checkmark circle but also speak 'On'/'Off' and isSelected together, double-announcing; a Toggle row would carry one switch state (ClimateSheet.swift:516-535).", by: 'apple-hig skill' },
+        { rule: "Sheets: Cancel or Close on the leading edge of a single-view sheet, Done trailing", verdict: 'departure', note: "Every modal carries the circle-X Close at the trailing edge (owner, 2026-10-13: 'Done button in top right can just be circle X close button', HassModal.swift:5-9, patterns/modal-sheet.md); a saving sheet keeps its own confirm.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Typed navigation destinations', verdict: 'pass', note: 'navigationDestination(for: ClimateRoute.self).' },
-        { rule: 'Accessibility traits on custom rows', verdict: 'pass', note: '.isSelected on chosen rows; labels and values set on the Button.' },
-        { rule: 'Optimistic state with rollback', verdict: 'pass', note: 'controller.shown and toggle revert on confirmation, failure or after 2 s.' },
-        { rule: 'Animate only with app tokens', verdict: 'pass', note: 'quickTransition on the checkmark.' },
+        { rule: "Prefer Binding projected from state over Binding(get:set:)", verdict: 'fix', note: "ClimateToggleRow and the Predictive Comfort toggle build Binding(get:set:) in body (ClimateSheet.swift:159, 323).", by: 'swiftui-pro skill' },
+        { rule: "navigationDestination(for:)", verdict: 'pass', note: "ClimateRoute is registered once (ClimateSheet.swift:80); links are NavigationLink(value:).", by: 'swiftui-pro skill' },
+        { rule: "Accessibility hint carries what a switch does", verdict: 'pass', note: "Label is the title and the description is the hint, while the footer shows the same text (ClimateSheet.swift:163-164, 184).", by: 'swiftui-pro skill' },
+        { rule: "Toolbars and presentation: use the semantic placement for a Close button", verdict: 'fix', note: "SheetCloseItem places the circle-X Close as .confirmationAction (HassModal.swift:26), a confirming slot, although it only dismisses. On the iPhone Duo outer display that slot is a prominent action, below primary navigation (Back, Close) at the top of the vertical bar (HIG Duo, Vertical controls). Use .cancellationAction with role .close.", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

@@ -84,23 +84,41 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Materials: Liquid Glass for controls floating above content', verdict: 'pass', note: 'Bar buttons are glassEffect(.regular[.tint]).interactive(); content scrolls and peeks through.' },
-        { rule: 'Buttons: one prominent action per screen', verdict: 'pass', note: 'Only the page\'s primary labelled action is tinted; Scan Item and the circles are untinted.' },
-        { rule: 'Buttons: touch targets of at least 44 pt', verdict: 'pass', note: '52 pt base, growing with Dynamic Type.' },
-        { rule: 'Dynamic Type: reflow rather than truncate', verdict: 'pass', note: 'Two-row layout at accessibility sizes.' },
-        { rule: 'Search fields: a search affordance that expands in place', verdict: 'pass', note: 'A capsule that opens a field with a Close Search button.' },
-        { rule: 'Toolbars: use a standard bottom toolbar', verdict: 'departure', note: 'A custom floating bar on the navigation layer instead of the system bottom bar (direction-g.md Layers: Liquid Glass is for "page bottom toolbars"; owner 2026-10-16).' },
-        { rule: 'Color: colour of an action', verdict: 'departure', note: '#0071E3 tinted glass for the primary action is G\'s tint, not the system accent (direction-g.md Controls).' },
+
+        { rule: "Materials: Liquid Glass for controls floating above content; let content scroll beneath", verdict: "pass", note: "BarGlass uses glassEffect on iOS 26 inside a safeAreaBar with a soft bottom scroll-edge effect; below iOS 26 or with the perf switch off it is a thin material with the tint at 88%.", by: "apple-hig skill" },
+
+        { rule: "Materials and Color: tint sparingly, reserve it for the primary action", verdict: "pass", note: "Only the one labelled primary action is blue-tinted glass (#0071E3, white label 4.6:1); secondary capsules and circles are clear glass, and an applied sort or filter is a light fill with a black glyph, so state is also a shape-and-value change, not only hue.", by: "apple-hig skill" },
+
+        { rule: "Buttons: 44 pt minimum target; keep targets large", verdict: "pass", note: "Circles are 52 pt (@ScaledMetric relative to title3, capped at 1.5 times) and the Close Search button is a 44 pt frame; every capsule has minHeight buttonSize.", by: "apple-hig skill" },
+
+        { rule: "Dynamic Type: reflow rather than truncate", verdict: "pass", note: "At accessibility sizes accessibilityLayout gives labelled actions a full-width row and moves the circles and magnifier beneath; an expanded search field stays alone on one row (FloatingActionsJourneyTests covers AX5).", by: "apple-hig skill" },
+
+        { rule: "Search fields: prefer the standard search affordance", verdict: "departure", note: "Search is a custom glass capsule that expands into a TextField (no .searchable, no system Cancel or scope), to match the web's floating search FAB (floating-actions.md); the field has a submitLabel(.search), a 44 pt Close Search and a spoken query value.", by: "apple-hig skill" },
+
+        { rule: "Accessibility: icon-only buttons keep a text label; Reduce Motion", verdict: "pass", note: "Icon circles carry accessibilityLabel(title) (Sort, Filter, Scan Item); applied state adds the selected trait; the search swap uses motionSafeAnimation, so it drops the spring under Reduce Motion.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Use glassEffect with a shape and interactive()', verdict: 'pass', note: 'BarGlass applies Glass.regular, tint and interactive() on iOS 26, a thin material below.' },
-        { rule: 'safeAreaBar with a scroll edge effect', verdict: 'pass', note: 'floatingActionBar(_:search:) uses safeAreaBar(edge: .bottom) and scrollEdgeEffectStyle(.soft, for: .bottom).' },
-        { rule: '@ScaledMetric for control sizes', verdict: 'pass', note: 'buttonSize = min(scaledSize, 52 x 1.5).' },
-        { rule: 'Animate with the app token and honour Reduce Motion', verdict: 'pass', note: 'motionSafeAnimation(MotionTokens.standard) for the search swap; stateColorTransition for the tint.' },
-        { rule: 'Hard-coded colours', verdict: 'departure', note: 'FloatingActionBar.tint (#0071E3) and activeTint (#F2F2F7) are fixed by design (ink contrast measured in tests).' },
+
+        { rule: "Liquid Glass: group neighbouring glass in a GlassEffectContainer", verdict: "fix", note: "Each circle and capsule applies its own glassEffect through BarGlass (FloatingActionBar.swift line 266) and there is no GlassEffectContainer around the row, so the pieces cannot morph or blend as the search expands, and each one is a separate glass layer to render. Low.", by: "swiftui-pro skill" },
+
+        { rule: "API: safeAreaBar and scrollEdgeEffectStyle on iOS 26, safeAreaInset before", verdict: "pass", note: "floatingActionBar picks safeAreaBar(edge: .bottom) with .scrollEdgeEffectStyle(.soft) under #available(iOS 26) and falls back to safeAreaInset, so the last row scrolls clear on both.", by: "swiftui-pro skill" },
+
+        { rule: "Views: extract helpers into View structs instead of computed some View members", verdict: "fix", note: "standardLayout, accessibilityLayout, capsuleButton, circleButton, collapsedSearch and expandedSearch are six builder members on one 250-line view (FloatingActionBar.swift lines 98 to 240); the search pieces especially could be a FloatingSearchField struct with its own @FocusState. Low.", by: "swiftui-pro skill" },
+
+        { rule: "API: prefer the system glass button styles", verdict: "fix", note: "Buttons are .plain with a hand-applied glassEffect(.interactive()); .buttonStyle(.glass) and .glassProminent give the system press response, focus and Increase Contrast handling, and take the tint with .tint. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Accessibility: label, selected trait and identifier on the Button itself", verdict: "pass", note: "Each Button sets accessibilityLabel, an isSelected trait for an applied or searched state, and a fab.<id> identifier; decorative magnifiers are hidden.", by: "swiftui-pro skill" },
+
+        { rule: "Hygiene: avoid platform branches and magic colours in a shared view", verdict: "fix", note: "#if os(watchOS) and macOS availability branches remain (legacy, AGENTS.md) and activeTint is a literal Color(rgb: 0xF2F2F7) rather than a HassTokens entry. Low.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

@@ -56,10 +56,11 @@
    * A page (tab root or pushed): wallpaper, scrolling body with large title, header buttons, tab bar or rail or flyout.
    * @param {object} ctx
    * @param {{title:string, subtitle?:string, section?:string, back?:string|boolean, body?:Node|Node[], connection?:'live'|'offline'|'reconnecting'|'reconnecting-chip',
-   *   badge?:number, choresBadge?:number, flyoutOpen?:boolean, floating?:Node, scrollTop?:number, noTabs?:boolean, profileName?:string, bottomPad?:number}} o
+   *   badge?:number, choresBadge?:number, flyoutOpen?:boolean, floating?:Node, scrollTop?:number, collapsed?:boolean, noTabs?:boolean, profileName?:string, bottomPad?:number}} o
    *   section: which tab/flyout row is selected ('home'|'security'|'climate'|'chores'|'settings'); back: pushed page (label for VoiceOver);
    *   connection: 'reconnecting' draws the in-flight arc left of Quick Links; 'reconnecting-chip' draws today's orange chip (the "was");
-   *   badge: Profile attention count; choresBadge: overdue chores on the Chores tab/row; floating: a FloatingActionBar node.
+   *   badge: Profile attention count; choresBadge: overdue chores on the Chores tab/row; floating: a FloatingActionBar node; collapsed: the scrolled state where the large title has collapsed into
+   *   the bar's inline title (it also fades in by itself as any page scrolls; the Page scroll control's Top resets it, Middle and End scroll on).
    */
   Mock.page = function (ctx, o) {
     o = o || {};
@@ -71,6 +72,9 @@
     if (d.titleInHeader && !o.back) bar.appendChild(h('h1.ui-t-large', { style: { marginLeft: lead ? 0 : 4, whiteSpace: 'nowrap' } }, o.title));
     else if (d.titleInHeader && o.back) bar.appendChild(h('h1.ui-t-large', { style: { whiteSpace: 'nowrap' } }, o.title));
     bar.appendChild(h('div.sp'));
+    // The inline title: where the large title lives below the bar, it fades into the bar as the large title scrolls under it (standard large-title collapse).
+    var inlineTitle = d.titleInHeader ? null : h('div.inline-title', { 'aria-hidden': 'true' }, o.title);
+    if (inlineTitle) bar.appendChild(inlineTitle);
     if (o.connection === 'reconnecting') bar.appendChild(K.ReconnectingArc({ on: true }));
     if (!d.rail) {
       bar.appendChild(K.QuickLinksButton());
@@ -85,9 +89,17 @@
     else scroll.appendChild(h('div', { style: { height: '4px' } }));
     var body = h('div.ui-body', o.body);
     scroll.appendChild(body);
-    scroll.addEventListener('scroll', function () { scroll.style.setProperty('--ramp', Math.min(40, scroll.scrollTop) + 'px'); });
+    var titleWrap = scroll.querySelector('.ui-title-wrap');
+    scroll.addEventListener('scroll', function () {
+      scroll.style.setProperty('--ramp', Math.min(40, scroll.scrollTop) + 'px');
+      if (inlineTitle) { var th = (titleWrap && titleWrap.offsetHeight) || 60; inlineTitle.style.opacity = Math.max(0, Math.min(1, (scroll.scrollTop - th * .45) / (th * .4))).toFixed(2); }
+    });
     page.appendChild(scroll);
-    if (o.scrollTop) requestAnimationFrame(function () { scroll.scrollTop = o.scrollTop; });
+    if (o.collapsed && !d.titleInHeader) {   // the collapsed-title state: scrolled so the large title is under the bar and the inline title shows
+      scroll.dataset.scrollPinned = 'true'; body.style.minHeight = '100%';   // enough content that the large title can scroll away
+      var settle = function () { scroll.scrollTop = ((titleWrap && titleWrap.offsetHeight) || 60) + 4; scroll.dispatchEvent(new Event('scroll')); };
+      requestAnimationFrame(function () { requestAnimationFrame(settle); });
+    } else if (o.scrollTop) requestAnimationFrame(function () { scroll.scrollTop = o.scrollTop; });
 
     if (o.connection === 'offline' || o.connection === 'reconnecting-chip') {
       page.appendChild(h('div', { style: { position: 'absolute', left: 0, right: d.rail + 'px', top: (barBottom + 4) + 'px', zIndex: 15, pointerEvents: 'none' } }, K.OfflineChip({ variant: o.connection === 'offline' ? 'offline' : 'reconnecting' })));
@@ -187,7 +199,7 @@
     if (o.grabber !== false && compact) panel.appendChild(h('div.grab'));
     panel.appendChild(K.HassModal({ title: o.title, subtitle: o.subtitle, leading: o.leading, trailing: o.trailing, confirm: o.confirm, content: o.content, tabs: o.tabs, fitted: detent === 'fitted' }));
     host.appendChild(panel);
-    if (o.alert) host.appendChild(h('div.ui-alert-scrim.' + (ctx.appearance === 'dark' ? 'g-dark' : 'g-light'), o.alert));
+    if (o.alert) host.appendChild(o.alert.classList && o.alert.classList.contains('ui-confirm-scrim') ? o.alert : h('div.ui-alert-scrim.' + (ctx.appearance === 'dark' ? 'g-dark' : 'g-light'), o.alert));   // a ConfirmationDialog brings its own scrim
     return host;
   };
 })();

@@ -60,7 +60,7 @@
     '.vc-sbtn[disabled] { opacity: .45; cursor: default; } .vc-sbtn .ui-sym { flex: none; }',
     '.vc-btnrow { display: flex; gap: 10px; align-items: flex-start; } .ts-ax5 .vc-btnrow { flex-direction: column; align-items: stretch; } .vc-btnrow.stack { flex-direction: column; align-items: stretch; }',
     '.vc-tool { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px 8px; border: 0; border-radius: 999px; background: var(--vc-fill); color: var(--ink); font: 600 var(--fs-sub)/1.2 var(--font); cursor: pointer; transition: background-color var(--t-state) var(--ease-state); }',
-    '.vc-tool.on { background: #0071E3; color: #fff; } .vc-tool[disabled] { opacity: .45; } .vc-toolbar { display: flex; gap: 8px; } .ts-ax5 .vc-toolbar { flex-direction: column; }',
+    '.vc-tool.on { background: #0071E3; color: #fff; } .vc-tool[disabled] { opacity: .45; } .vc-toolbar { display: flex; gap: 8px; }',
     /* room cards */
     '.vc-rooms { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(150px * var(--sc))), 1fr)); } .vc-rooms.two { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ts-ax5 .vc-rooms.two { grid-template-columns: 1fr; }',
     '.vc-room { position: relative; display: flex; flex-direction: column; gap: 8px; min-height: 76px; padding: 12px; border: 0; border-radius: var(--radius-tile); background: var(--sheet-cell); color: var(--ink); text-align: left; font: inherit; cursor: pointer; transition: background-color var(--t-state) var(--ease-state), color var(--t-state) var(--ease-state); }',

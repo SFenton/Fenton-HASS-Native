@@ -70,7 +70,8 @@
     return h('div.vs-sec', kids, o.content);
   };
   /** Two sections side by side when the page is wide enough (DynamicGridLayout min 340, 2 columns, spacing 24). */
-  V.grid = function (sections) { var c = Mock.current, w = c ? c.contentW - 32 : 370, sc = (c && c.scale) || 1; return K.TileGrid({ min: Math.max(60, Math.min(340, Math.floor(w / sc))), max: 2, gap: 24, equal: false, items: sections }); };
+  /* The app's grids use a literal 340 pt (AwaySectionGrid) and 140 pt (traveler tiles) minimum, not a scaled one: the kit scales min by --sc, so divide it back. */
+  V.grid = function (sections) { var c = Mock.current, sc = (c && c.scale) || 1; return K.TileGrid({ min: 340 / sc, max: 2, gap: 24, equal: false, items: sections }); };
   V.err = function (msg) { return K.InlineAlert({ message: msg, severity: 'error' }); };
   /** AwayActionButton: the prominent one is the screen's primary capsule; the rest are bordered in the action tint, or red when destructive. */
   V.actionButton = function (title, o) {
@@ -170,7 +171,7 @@
       return t;
     }
     var cw = Mock.current ? Mock.current.contentW - 32 : 370, sc0 = (Mock.current && Mock.current.scale) || 1;
-    var tiles = K.TileGrid({ min: Math.max(60, Math.min(140, Math.floor(cw / sc0))), max: 2, gap: 8, equal: false, items: [tile('stephen', viewer === 'stephen' ? 'You' : 'Stephen'), tile('steph', viewer === 'steph' ? 'You' : 'Steph')] });
+    var tiles = K.TileGrid({ min: 140 / sc0, max: 2, gap: 8, equal: false, items: [tile('stephen', viewer === 'stephen' ? 'You' : 'Stephen'), tile('steph', viewer === 'steph' ? 'You' : 'Steph')] });
     var extra = [tiles];
     if (eng) {
       var rv = o.ret || { value: V.when.plus3 };

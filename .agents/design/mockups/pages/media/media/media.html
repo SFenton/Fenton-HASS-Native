@@ -77,17 +77,18 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Layout: adaptive grids, content never hides behind chrome', verdict: 'pass', note: 'DynamicGridLayout (sections 340 pt, tiles 140 pt) scales with type and width; Duo unfolded rounds columns to an even count.' },
-        MLC.R.target44, MLC.R.colorNotAlone,
-        { rule: 'Toolbars: Back for a pushed page; Quick Links and Profile trailing on every page', verdict: 'pass', note: 'Pushed under Home: glass Back replaces the hamburger.' },
-        { rule: 'Materials: Liquid Glass only on the navigation layer', verdict: 'pass', note: 'Tiles are tinted-glass content-layer tiles; the header circles and tab bar are glass.' },
-        { rule: 'Navigation: Quick Links as a header button, not a tab', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation).' },
+        { by: 'apple-hig skill', rule: 'Color: never the only differentiator', verdict: 'pass', note: 'Source and script tiles read On or Off in words and glyph as well as the pink fill; GlassTile.accessibilityValue speaks the same (GlassTile.swift:173-181), and a first sign-in with nothing saved speaks "Loading" (line 175).' },
+        { by: 'apple-hig skill', rule: 'Buttons: 44 pt minimum target, one named control per tile', verdict: 'pass', note: 'Tiles are 60 pt or taller in an equal-height grid (MediaScreen.swift:79-84); each tile is one Button named by the device with its state as the value.' },
+        { by: 'apple-hig skill', rule: 'Layout: adaptive grid, iPhone Duo and iPad', verdict: 'pass', note: 'DynamicGridLayout (340 pt sections, up to three columns, MediaScreen.swift:40) is a grid, not a split, so no hinge case is needed: one column on iPhone and the folded Duo, even columns on the unfolded Duo, three on iPad landscape.' },
+        { by: 'apple-hig skill', rule: 'Navigation: Quick Links as a header button, page pushed under Home', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation); HomeRoute.media pushes onto the Home stack so Back returns to Home.' },
+        { by: 'apple-hig skill', rule: 'Loading: show content at once, no blocking spinner', verdict: 'pass', note: 'The page reads EntityStore, so names draw at once with soft pending bars; there is no spinner and nothing re-fades on reopen (AGENTS.md invariant).' },
+        { by: 'apple-hig skill', rule: 'Playing haptics: confirm an action the person triggered', verdict: 'fix', note: 'Source and script tiles fire their call with no haptic (MediaCardTile, MediaScreen.swift:109-111) and only change colour after Home Assistant echoes the state, while the remote pad ticks on every press (MediaRemoteControls.swift:231).' },
       ],
       swiftui: [
-        MLC.R.scaled, MLC.R.motionTokens,
-        { rule: 'Use the shared tile, never a parallel implementation', verdict: 'pass', note: 'GlassTile(family: .media); the Music Room controller is shared with its remote so an optimistic source change shows on both.' },
-        { rule: 'No per-frame state writes while scrolling', verdict: 'pass', note: 'scrollTelemetry only; the page measures nothing per frame.' },
-        { rule: 'Tile tap semantics', verdict: 'fix', note: 'ios.md says RemoteGlassTile adds selection traits "TODO(orchestrator)": source tiles read as toggles, which is right for On/Off but not for the Music Room source choice (selected). Fold .selection into GlassTile.Kind.' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: traits match the control (switch versus selected choice)', verdict: 'fix', note: 'MediaCardTile.look maps ControlSemantics.selection to GlassTile.Kind.toggle (MediaScreen.swift:121-124), so the Music Room source tiles read as On/Off switches instead of "selected"; GlassTileKind.selection exists (GlassTile.swift:228) and is not used here.' },
+        { by: 'swiftui-pro skill', rule: 'design.md: scaled metrics, no fixed widths', verdict: 'pass', note: 'Section and tile widths are @ScaledMetric (MediaScreen.swift:19, 70); spacing comes from HassTokens.' },
+        { by: 'swiftui-pro skill', rule: 'performance.md: nothing written per frame while scrolling', verdict: 'pass', note: 'Only scrollTelemetry runs on the ScrollView (line 48); each tile receives its own card and the page owns one shared controller.' },
+        { by: 'swiftui-pro skill', rule: 'navigation.md: sheet(item:) for an optional value', verdict: 'pass', note: '$remote drives sheet(item:) (line 51) and the Music Room remote reuses the page controller, so an optimistic source change shows in both.' },
       ],
     },
 

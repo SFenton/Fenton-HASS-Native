@@ -73,15 +73,15 @@
       { rule: 'Dynamic Type', note: 'The system lays the dialog out at AX sizes: the title wraps and the buttons stack.' },
     ],
     reviews: {
-      date: '2026-10-23',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Action sheets: a destructive choice in red with a Cancel', verdict: 'pass', note: 'One destructive button plus Cancel.' },
-        { rule: 'Action sheets: popover on iPad, anchored to the control', verdict: 'pass', note: 'confirmationDialog attached to the editor; the system anchors it.' },
-        { rule: 'Alerts: consistent wording for the same action', verdict: 'fix', note: 'The button reads "Delete Alarm" in the two alarm editors and "Delete Activity" in the humidifier; the alarm editors write Cancel and the humidifier relies on the system\'s. Visually the same, but unify the code.' },
+        { rule: 'Action sheets: destructive in red with a Cancel', verdict: 'pass', note: 'One .destructive action per dialog; Cancel is written (alarm editors) or added by the system (humidifier).' },
+        { rule: 'Alerts: consistent wording for the same action', verdict: 'fix', note: 'Buttons read "Delete Alarm" in two editors and "Delete Activity" in the third, and only two write Cancel; visually equal, but unify (WakeLightSheet.swift:311, BedSideSheet.swift:565, HumidifierSchedulesTab.swift:175).' },
+        { rule: 'Alerts: name the thing being deleted', verdict: 'fix', note: 'The bed prompt builds "on \\(draft.days.first?.label ?? "")" (BedSideSheet.swift:571), which reads "on " if the day list were ever empty.' },
       ],
       swiftui: [
-        { rule: 'confirmationDialog with titleVisibility', verdict: 'pass', note: 'titleVisibility: .visible on all three.' },
-        { rule: 'Do not build the dialog message from raw model state', verdict: 'pass', note: 'The wake prompt uses scheduleLabel and displayTime; the bed prompt reads the draft\'s first day (a multi-day draft shows only the first; an existing alarm has one day).' },
+        { rule: 'Navigation: attach the dialog to its triggering control', verdict: 'fix', note: 'Wake and bed editors attach confirmationDialog to the ScrollView (WakeLightSheet.swift:309, BedSideSheet.swift:564); the humidifier editor attaches it to the Delete button (HumidifierSchedulesTab.swift:174). Only the last anchors the iPad popover correctly.' },
+        { rule: 'Navigation: item-based presentation', verdict: 'fix', note: 'Three Bool flags plus draft reads; confirmationDialog(_:item:) on Xcode 27 would unwrap the pending alarm. Low.' },
       ],
     },
     notes: [

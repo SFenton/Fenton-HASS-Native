@@ -75,18 +75,18 @@
     ],
 
     reviews: {
-      date: REVIEW_DATE,
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Motion: purposeful, brief and precise; optional', verdict: 'pass', note: 'One moment of about 0.9 s on arrival; Reduce Motion cross-fades.' },
-        { rule: 'Motion: do not animate for its own sake on every launch', verdict: 'pass', note: 'Once per session; a cold launch while signed in has no arrival (AppSession marks it played).' },
-        { rule: 'Loading: content is usable as soon as it arrives', verdict: 'pass', note: 'Nothing is blocked during the 0.9 s; elements are interactive as they land.' },
-        { rule: 'Navigation: a tab bar rises with the app, not as a separate event', verdict: 'pass', note: 'It rises with the rest.' },
+        { rule: 'Motion: purposeful, brief, optional, not repeated', verdict: 'pass', note: 'About 0.9 s once per session; a saved sign-in marks it played (HomeArrival.swift:24; AppSession.swift:114-118).', by: 'apple-hig skill' },
+        { rule: 'Motion: Reduce Motion drops movement, keeps the fade', verdict: 'pass', note: 'ArrivalEffect uses no offset and a cross-fade; the bars get no translation (ArrivalMotion.swift:16, 31; ArrivalChrome.swift:53-56; RootView.swift:150-151, 204).', by: 'apple-hig skill' },
+        { rule: 'Accessibility: move focus to the new screen', verdict: 'fix', note: 'The sign-in layer is hidden from VoiceOver once signed in (RootView.swift:154) but nothing posts a screen-changed notification or names a focus target for Home, so focus falls to wherever UIKit chooses. Not seen in source; confirm with VoiceOver. Medium.', by: 'apple-hig skill' },
+        { rule: 'Loading: content usable as it arrives', verdict: 'pass', note: 'Views exist from the first frame and only opacity and offset are held (HomeArrival.swift:29-37); held bars are alpha 0 and release with .allowUserInteraction (ArrivalChrome.swift:76-83).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Hold content back with state, not by delaying creation', verdict: 'pass', note: 'HomeArrival.begin() hides and reveal() animates; the views exist from the start.' },
-        { rule: 'Reduce Motion read from the environment', verdict: 'pass', note: 'ArrivalEffect and RootView branch on accessibilityReduceMotion.' },
-        { rule: 'Document the one place UIKit is animated', verdict: 'pass', note: 'ArrivalChromeProbe says why (the bars are UIKit\'s).' },
-        { rule: 'Tokens agree with the docs', verdict: 'fix', note: 'MotionTokens.arrivalRise (8) and arrivalStaggerCap (8) are not used by the arrival; Arrival.riseDistance (16) and staggerLimit (5) are. Either delete the unused pair or use it, and update motion.md section 7.' },
+        { rule: 'Chain with completion, not sleeps', verdict: 'fix', note: 'signedIn sequences the lift with Task.sleep(.milliseconds(60/400)) and HomeArrival.duration - 460 ms (RootView.swift:201-209); withAnimation completion would not drift from the animation. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Tokens agree with use', verdict: 'fix', note: 'MotionTokens.arrivalRise (8) and arrivalStaggerCap (8) are unused; the arrival reads Arrival.riseDistance (16) and staggerLimit (5) (MotionTokens.swift:25-27, 87-92). Low.', by: 'swiftui-pro skill' },
+        { rule: 'Hold content with state, not by delaying creation', verdict: 'pass', note: 'begin() holds, reveal() animates (HomeArrival.swift:30-37).', by: 'swiftui-pro skill' },
+        { rule: 'Document the one place UIKit is animated, and fail safe', verdict: 'pass', note: 'ArrivalChromeProbe explains why, and a probe that leaves restores the bars (ArrivalChrome.swift:6-10, 63-66).', by: 'swiftui-pro skill' },
       ],
     },
 

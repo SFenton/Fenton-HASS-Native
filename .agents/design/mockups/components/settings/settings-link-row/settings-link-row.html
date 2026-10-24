@@ -41,18 +41,19 @@
       { rule: 'Selected', note: 'A caller adds the selected trait when the row’s topic is open beside the list (household topics on a split window).' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Lists and tables: a disclosure indicator for a row that opens another screen', verdict: 'pass', note: 'Chevron, drawn by the NavigationLink or by the row.' },
-        { rule: 'Typography: use text styles so rows scale', verdict: 'pass', note: '.body and .subheadline; the glyph is .title3.' },
-        { rule: 'Accessibility: do not truncate at large sizes', verdict: 'pass', note: 'fixedSize(horizontal: false, vertical: true) on both texts.' },
-        { rule: 'Color: contrast of secondary text', verdict: 'pass', note: 'Secondary ink on the module is white at 72% over a 66% black module: above 4.5:1.' },
+        { rule: 'Lists and tables: a disclosure indicator means push', verdict: 'fix', note: 'showsChevron defaults to true (SettingsScreen.swift:111), so rows that open a cover or sheet (Home Assistant, Feedback) draw the same chevron as rows that push.', by: 'apple-hig skill' },
+        { rule: 'Typography: Dynamic Type and wrapping', verdict: 'pass', note: 'Title body and subtitle subheadline wrap with fixedSize vertical, and the icon moves above the text at accessibility sizes (:121-133).', by: 'apple-hig skill' },
+        { rule: 'Buttons: 44 pt target and whole-row hit area', verdict: 'pass', note: 'minHeight HassTokens.minTarget and contentShape(Rectangle()) (:143-145).', by: 'apple-hig skill' },
+        { rule: 'Accessibility: one element, decorative glyph hidden', verdict: 'pass', note: 'accessibilityElement(children: .combine) with the glyph and chevron hidden; the App Icon preview is hidden and its name is the subtitle (:140, :159, :146; AppIconPreview.swift:24).', by: 'apple-hig skill' },
+        { rule: 'Color: ink hierarchy', verdict: 'pass', note: 'Title uses Ink.primary, subtitle and glyph Ink.secondary; only the chevron is .tertiary (:126, :132, :139, :157).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'accessibilityElement(children: .combine)', verdict: 'pass', note: 'The row is one element.' },
-        { rule: 'Hide decorative images from accessibility', verdict: 'pass', note: 'accessibilityHidden on the glyph and chevron; the preview is hidden too.' },
-        { rule: 'Adapt layout to accessibility sizes explicitly', verdict: 'pass', note: 'typeSize.isAccessibilitySize moves the icon.' },
-        { rule: 'Prefer a Label to an HStack of Image and Text', verdict: 'fix', note: 'The row builds the glyph and text by hand (so it can move the icon at AX sizes); a Label with a custom style would give the same result. Low severity.' },
+        { rule: 'Design: Label for icon and text', verdict: 'fix', note: 'The row hand-builds an HStack of icon and VStack (:118-142); a Label with a custom style could carry the accessibility-size switch.', by: 'swiftui-pro skill' },
+        { rule: 'Design: scattered fontWeight', verdict: 'fix', note: 'The chevron uses .font(.footnote.weight(.semibold)) (:138).', by: 'swiftui-pro skill' },
+        { rule: 'Views: private computed helper for the icon', verdict: 'pass', note: 'One small @ViewBuilder icon property tied to body (:149-161), the allowed case.', by: 'swiftui-pro skill' },
+        { rule: 'API: foregroundStyle with semantic styles', verdict: 'pass', note: 'Uses foregroundStyle(HassTokens.Ink.…) and .tertiary; no foregroundColor.', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

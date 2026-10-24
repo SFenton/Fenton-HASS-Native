@@ -33,13 +33,20 @@
       { rule: 'Dynamic Type', note: 'The pill grid has a 150 pt scaled minimum, so it is two columns at the default size and one at AX5; text wraps. Check with the Text size control.' },
       { rule: 'Contrast', note: 'White on the thin module (#1C1C1E at 66%), on the dense one (#141416 at 78%) when the battery is low: warm text needs the thicker ground (direction G, Layers).' },
     ],
-    reviews: { date: '2026-10-23', by: 'author',
-      hig: [{ rule: 'Lists: a row that navigates shows a disclosure chevron', verdict: 'pass', note: 'The row opens the controller sheet, even while offline.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Values and the alert carry the state in words.' },
-        { rule: 'Layout: reflow to the available width', verdict: 'pass', note: 'DynamicGridLayout, 150 pt scaled minimum, 2 columns.' }],
-      swiftui: [{ rule: 'ScaledMetric for grid minimums', verdict: 'pass', note: 'minPillWidth @ScaledMetric(relativeTo: .footnote).' },
-        { rule: 'Combine or contain accessibility children deliberately', verdict: 'pass', note: '.accessibilityElement(children: .contain) on the card; the row ignores its children.' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'Pill icon tone cross-fades 0.6 s (0.2 s reduced); the module density change has no explicit animation.' }] },
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: "Lists and tables: one tappable row inside a card of read-only status", verdict: "pass", note: "Only the controller row is a button; the four StatusPill cells are not (SprinklersScreen.swift lines 69-81), so tapping a pill does nothing and nothing implies it should.", by: "apple-hig skill" },
+        { rule: "Color and Accessibility: tone icons plus words", verdict: "pass", note: "Battery tone is the icon colour only; value text carries the state (StatusPill.swift lines 41-70, 92-101). The Hub \"Unavailable\" grey icon is paired with the word.", by: "apple-hig skill" },
+        { rule: "Layout: pills reflow to one column at AX sizes", verdict: "pass", note: "minPillWidth is @ScaledMetric(relativeTo: .footnote) 150 (line 58) and the grid caps at two columns.", by: "apple-hig skill" },
+        { rule: "Materials: module surface instead of a pill fill", verdict: "departure", note: "direction-g.md Layers and status-pill.md: pills inside a module take surface .module and draw no fill of their own (StatusPill.swift lines 12-20, 73-77); the material page fill is for pills outside a module.", by: "apple-hig skill" },
+      ],
+      swiftui: [
+        { rule: "Accessibility: label, value and hint", verdict: "pass", note: "SprinklerControllerRow: label title, value subtitle, hint, isButton (lines 103-107); the glyph and chevron are hidden.", by: "swiftui-pro skill" },
+        { rule: "Views: keep card state derived, not stored", verdict: "pass", note: "let snapshot = controller.snapshot at the top of body, batteryLow decides dense and alert (lines 61-67); no extra @State.", by: "swiftui-pro skill" },
+        { rule: "Design: fixed font sizes", verdict: "pass", note: "StatusPill uses .footnote and .subheadline.weight(.semibold) text styles; only the label weight is overridden (lines 48-55).", by: "swiftui-pro skill" },
+      ],
+    },
     notes: [
       'Only the page surface is drawn: the card never appears in a sheet (the controller sheet uses the same pills on the grouped-list cell, shown in the controller sheet mockup).',
       'The row is inside the module: a hairline above the pills is drawn from the row text inset, like every ModuleList child. The mockup draws it with a local .vs-hair rule (promote to kit).',

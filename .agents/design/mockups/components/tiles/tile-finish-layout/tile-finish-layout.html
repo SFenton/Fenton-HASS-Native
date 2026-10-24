@@ -96,16 +96,19 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Materials: do not use Liquid Glass in the content layer', verdict: 'pass', note: 'Tiles are content; translucency and a hairline stand in for a standard material (TileFinish header).' },
-        { rule: 'Accessibility: honour Reduce Transparency and Increase Contrast', verdict: 'pass', note: 'TileFinish.effective returns solid for either.' },
-        { rule: 'Layout: let content reflow at large text sizes', verdict: 'pass', note: 'TileLayout.resolved(accessibilitySize:) turns a row into anchored bottom.' },
-        { rule: 'Materials: use the system\'s blur materials', verdict: 'departure', note: 'No live blur per tile: the wallpaper is blurred once and cached, and a material per tile cost GPU time and crashed the render server (direction-g.md Layers; performance.md).' },
+        { rule: "Materials: do not use Liquid Glass in the content layer", verdict: "pass", note: "Tiles are content, so tinted glass is translucency over the already-blurred wallpaper plus one sheen gradient and a hairline rim, never glassEffect (TileFinish.swift doc comment).", by: "apple-hig skill" },
+        { rule: "Materials: prefer standard system materials", verdict: "departure", note: "The finish is a custom 78% family fill over a 50% dark underlay rather than a system material, because a material or blur per tile cost GPU time and crashed the simulator's render server (direction-g.md Layers; performance.md; owner 2026-10-17, Tile finish option A).", by: "apple-hig skill" },
+        { rule: "Accessibility and Dark Mode: test with Reduce Transparency and Increase Contrast, separately and together", verdict: "pass", note: "TileFinish.effective returns .solid for either setting (opaque family fill, thin module when off) and every state keeps its meaning; the off glyph keeps 88% of the family colour on glass and 72% on solid so it holds 3:1.", by: "apple-hig skill" },
+        { rule: "Layout and Buttons: 44 pt targets; text reflows at accessibility sizes", verdict: "pass", note: "Every arrangement is at least 72 pt (row 48 content plus 24 padding; anchored 96, centred 84, stacked 112) and TileLayout.resolved turns a row into anchored bottom at accessibility sizes so text is never squeezed beside the glyph.", by: "apple-hig skill" },
+        { rule: "Color: contrast of white ink on a translucent fill over a photo", verdict: "fix", note: "Contrast is set by tokens (fill 0.78 over a 0.50 underlay) and measured on the gallery, but a 22% window to the wallpaper means the real ratio varies with the photo's brightest patch behind each tile; the README records the layers drawn on a flat swatch, so the mockup cannot show the worst case. Low.", by: "apple-hig skill" },
+        { rule: "Layout: do not ship unused arrangements", verdict: "fix", note: "centeredStack and stackedTop are gallery-only (the README: nothing ships them) yet live in the production enum with titles and metrics (TileLayout.swift lines 17 to 19, TileMetrics.swift line 26); the mockup draws both from local style. Low.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Keep layer counts low in repeated rows', verdict: 'pass', note: 'Fills are flattened into one colour (FinishColor.flatten); one sheen gradient; one stroked rim.' },
-        { rule: 'Pure functions for style decisions', verdict: 'pass', note: 'TileFaceStyle.resolve, TileFinish.effective and TileMetrics are tested without a view.' },
-        { rule: 'Use ScaledMetric for reserved heights', verdict: 'pass', note: 'Title line and glyph heights scale, so the two-line reserve grows with Dynamic Type.' },
-        { rule: 'Debug switches stay out of Release', verdict: 'pass', note: 'FENTON_TILE_FINISH and FENTON_TILE_FINISH_OMIT exist only in Debug builds.' },
+        { rule: "Design: named tokens for the numbers behind the finish", verdict: "pass", note: "TileFinish.Tokens records underlay 0.66, fillUnderlay 0.50, fillOpacity 0.78 (1 in a sheet), sheen 0.14 and 0.08, rim 0.32 and 0.06 as an Equatable Sendable struct that direction-g.md and the mockup reproduce.", by: "swiftui-pro skill" },
+        { rule: "API: @Entry defaults must stay equal across reads", verdict: "pass", note: "tileFinish defaults to TileFinish.standard, a static let (a debug launch may read FENTON_TILE_FINISH once), and tileLayout to .row, so readers do not update on unrelated environment changes.", by: "swiftui-pro skill" },
+        { rule: "Performance: layers per tile are few and measured", verdict: "pass", note: "A tile draws a ground, one sheen gradient, one rim stroke and an optional tinted border, with a Debug-only FENTON_TILE_FINISH_OMIT switch to measure each; tools/ios_scrollcost.sh is the gate (AGENTS.md invariant).", by: "swiftui-pro skill" },
+        { rule: "Hygiene: debug switches and gallery strings in the shipping module", verdict: "fix", note: "TileFinish carries title and summary strings for the gallery and DEBUG environment reads (FENTON_TILE_FINISH, FENTON_TILE_FINISH_OMIT) inside HassDesign; they compile out of Release but the gallery copy does not, and neither is localizable. Low.", by: "swiftui-pro skill" },
+        { rule: "Data flow: pure arithmetic separated from drawing", verdict: "pass", note: "TileMetrics.minContentHeight and TileLayout.resolved are pure functions of layout, reserved lines and scaled metrics, unit tested apart from the views.", by: "swiftui-pro skill" },
       ],
     },
     notes: [

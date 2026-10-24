@@ -243,13 +243,15 @@
   Chores.quickLinks = function (o) {
     o = o || {};
     var items = LINKS.map(function (l) { return Chores.quickLinkTile(l, o); });
-    var grid = K.TileGrid({ items: items, min: 150, max: 4, equal: true, span: { 4: 2 } });
+    var sc0 = (Mock.current && Mock.current.scale) || 1;
+    // ChoreQuickLinks passes a literal minCellWidth of 150 (not @ScaledMetric): the kit scales min by --sc, so divide it back; at AX5 on an iPhone that is still two tracks.
+    var grid = K.TileGrid({ items: items, min: 150 / sc0, max: 4, equal: true, span: { 4: 2 } });
     // kit gap: a one-track grid whose scaled minimum is wider than the screen (AX sizes) overflows, and a span of two then adds a second track. DynamicGridLayout clamps both.
     if (window.ResizeObserver) {
       var mine = false;
       new ResizeObserver(function () {
         var w = grid.clientWidth, screen = grid.closest('.screen, .ui-root'); if (!w) return;
-        var sc = parseFloat(screen ? getComputedStyle(screen).getPropertyValue('--sc') : 1) || 1, one = Math.floor((w + 12) / (150 * sc + 12)) < 2;
+        var sc = parseFloat(screen ? getComputedStyle(screen).getPropertyValue('--sc') : 1) || 1, one = Math.floor((w + 12) / (150 + 12)) < 2;
         if (one) { grid.style.gridTemplateColumns = 'minmax(0,1fr)'; mine = true; } else if (mine) { grid.style.gridTemplateColumns = ''; mine = false; }
         grid.classList.toggle('cz-one', one);
       }).observe(grid);
@@ -680,7 +682,7 @@
       states: Chores.pageStates(id, { extra: spec.extraStates, defaultTitle: spec.defaultTitle }),
       motion: Chores.pageMotion(id).concat(spec.extraMotion || []), transitions: Chores.pageTransitions(id).concat(spec.extraTransitions || []),
       a11y: (spec.a11y || []).concat(A11Y),
-      reviews: { date: REVIEWS.date, hig: REVIEWS.hig.concat((spec.reviews || {}).hig || []), swiftui: REVIEWS.swiftui.concat((spec.reviews || {}).swiftui || []) },
+      reviews: spec.reviews && spec.reviews.date ? spec.reviews : { date: REVIEWS.date, hig: REVIEWS.hig.concat((spec.reviews || {}).hig || []), swiftui: REVIEWS.swiftui.concat((spec.reviews || {}).swiftui || []) },  // a skill review (per mockup) replaces the shared author self-check
       notes: (spec.notes || []).concat([
         'Docs versus code: ios.md says the DoneTick form opens at the large detent and one-field sheets at medium; the code fits every todo sheet to its content (TodoPageLayout.isShortPrompt only survives for tests). split-view.md says Chores lists split to item detail; sub-pages push full width on every device and edits are sheets.',
         'iPad and Duo: inset-grouped List margins are the system\'s (16 pt compact, wider on regular); the mockup draws 16 pt everywhere, so module edges are approximate on iPad. The unfolded Duo does not split this page: a one-column page crosses the hinge band (dynamic-grid.md notes the same).',
@@ -754,7 +756,7 @@
           play: function (stage) { var host = stage.querySelector('.ui-host'); return Mock.anim.sheet(host, 'out').then(function () { return Mock.sleep(500); }); } },
       ].concat(spec.transitions || []),
       a11y: (spec.a11y || []).concat(SHEET_A11Y),
-      reviews: { date: SHEET_REVIEWS.date, hig: SHEET_REVIEWS.hig.concat((spec.reviews || {}).hig || []), swiftui: SHEET_REVIEWS.swiftui.concat((spec.reviews || {}).swiftui || []) },
+      reviews: spec.reviews && spec.reviews.date ? spec.reviews : { date: SHEET_REVIEWS.date, hig: SHEET_REVIEWS.hig.concat((spec.reviews || {}).hig || []), swiftui: SHEET_REVIEWS.swiftui.concat((spec.reviews || {}).swiftui || []) },
       notes: (spec.notes || []).concat([
         'Docs versus code: ios.md still says the DoneTick form opens at the large detent and the one-field sheets at medium; the code content-fits every todo sheet (hassSheet(.form), height .fitted, owner 2026-10-16), so medium and large here are what the system would draw, not shipped detents.',
         'Presenter is the page the sheet opens from (a trimmed copy). Wallpaper, glyphs and photos are kit stand-ins; field values are fixtures.',

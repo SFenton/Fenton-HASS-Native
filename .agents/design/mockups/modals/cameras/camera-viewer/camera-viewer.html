@@ -96,18 +96,18 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Sheets: as tall as the content, not larger', verdict: 'pass', note: 'In flight: the viewer is one page that never resizes, so it opens fitted like Security System; live video is not a reason for full height (owner 2026-10-23).' },
-        { rule: 'Playing video: show live state, keep controls clear of the picture', verdict: 'pass', note: 'The pill says Live, Connecting or Last live h:mm; controls sit under the video, never over it.' },
-        { rule: 'HomeKit cameras: avoid covering the camera view', verdict: 'pass', note: 'Only a small pill over the picture; the tile has just a name capsule.' },
-        MLC.R.sheetPage, MLC.R.target44, MLC.R.colorNotAlone, MLC.R.glass,
-        { rule: 'Dark Mode: support both appearances', verdict: 'departure', note: 'Always dark: it frames live video (direction-g.md Layers: Sheets; modal-sheet.md Appearance).' },
-        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'fix', note: 'Open point in the proposal: dark fitted sheets skip SheetGroundModifier\'s opaque ground (system appearance only); check on iOS 26 glass before relying on it.' },
+        { by: 'apple-hig skill', rule: 'Sheets: as tall as the content', verdict: 'fix', note: 'Main still opens the viewer with .hassSheet(.page, height: .full, appearance: .dark) (CameraViewer.swift:69), leaving about half of the iPhone sheet empty; fix/camera-viewer-fitted (in flight, uncommitted) makes it fitted.' },
+        { by: 'apple-hig skill', rule: 'Playing video: show live state; muted on reopen', verdict: 'pass', note: 'The pill reads Live, Live · Delayed, Connecting or Last live h:mm (CameraLiveView.swift:107-155) and the viewer mutes on disappear (CameraViewer.swift:71).' },
+        { by: 'apple-hig skill', rule: 'Layout: controls clear of the picture; split only where allowed', verdict: 'pass', note: 'Controls sit under the video (lines 49-52); the split needs SplitPolicy.allowsSplit and a 640 pt sheet (lines 329-336), so folded Duo and portrait iPad stay stacked; hinge crossing on the unfolded Duo not run on a device.' },
+        { by: 'apple-hig skill', rule: 'Dark Mode: support both appearances', verdict: 'departure', note: 'Always dark because it frames live video (appearance: .dark, line 69; direction-g.md Layers: Sheets).' },
+        { by: 'apple-hig skill', rule: 'Buttons: 44 pt targets with labels under icons', verdict: 'pass', note: 'CameraControlButton circles are max(scaled 56 pt, 44) with a footnote title (lines 249-277); at accessibility sizes the row stacks (line 106).' },
+        { by: 'apple-hig skill', rule: 'Accessibility: the video is one element that speaks its state', verdict: 'pass', note: 'A clear overlay named "<camera> camera" whose value is Live, Connecting or the snapshot message (CameraLiveView.swift:169-196).' },
       ],
       swiftui: [
-        MLC.R.scaled, MLC.R.motionTokens,
-        { rule: 'One page scroller so SheetFit can measure', verdict: 'pass', note: 'In flight: both layouts sit in one ScrollView; the split no longer has a nested scroller. WindowMetrics.current seeds the first layout so a stacked-fit height is never kept after a split arrives.' },
-        { rule: 'Repeating animation only for a live pending state', verdict: 'pass', note: 'The pulse marks saving and recording; off under Reduce Motion.' },
-        { rule: 'Never blank, never re-fade', verdict: 'pass', note: 'The snapshot stays until a frame shows; a stalled stream puts the snapshot back with "Last live".' },
+        { by: 'swiftui-pro skill', rule: 'api.md: AccessibilityNotification instead of UIAccessibility.post', verdict: 'fix', note: 'takeSnapshot announces with UIAccessibility.post(notification: .announcement, ...) (CameraViewer.swift:190); AccessibilityNotification.Announcement(...).post() is the SwiftUI API.' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Reduce Motion for repeating effects', verdict: 'pass', note: 'The pulse and symbol replace are off under Reduce Motion (lines 257-258); the pulse marks only saving and recording.' },
+        { by: 'swiftui-pro skill', rule: 'api.md: sensoryFeedback for haptics', verdict: 'pass', note: 'Success and error on Snapshot (lines 135-141) and a medium impact on Record (line 130) use sensoryFeedback.' },
+        { by: 'swiftui-pro skill', rule: 'views.md: helper views stay small', verdict: 'pass', note: 'CameraViewer keeps two small private helpers (video, controls) and the control button is its own struct; CameraControls swaps layout with one AnyLayout (line 106), so only one set of buttons is in the accessibility tree.' },
       ],
     },
 

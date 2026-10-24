@@ -81,18 +81,16 @@
       { rule: 'Dynamic Type / AX5', note: 'No effect on the transition; the destination page reflows.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Motion: use the zoom where a thumbnail opens its full view', verdict: 'pass', note: 'Only a tile that is the thing it opens (motion.md 4.3); never a device tile that opens a control sheet.' },
-        { rule: 'Motion: make motion optional', verdict: 'pass', note: 'System cross-fade under Reduce Motion.' },
-        { rule: 'Navigation: do not decorate system transitions', verdict: 'pass', note: 'The zoom is a system navigation transition; no custom matched geometry.' },
-        { rule: 'Docs and code agree about where it is used', verdict: 'fix', note: 'motion.md 4.3 lists a camera card, a recipe card and a room tile as zoom; patterns/motion.md says only overview room tiles; the owner (2026-10-22) says none inside sheets; no call site exists. Needs an owner decision.' },
+        { rule: 'Motion: use a zoom where a thumbnail opens its full view', verdict: 'pass', note: 'The rule is stated at the API: only a tile that is the thing it opens (ZoomTransition.swift:5-7).', by: 'apple-hig skill' },
+        { rule: 'Motion: Reduce Motion and iOS 17', verdict: 'pass', note: 'Gated by #available(iOS 18); older systems keep the push or sheet, and the system zoom follows Reduce Motion (ZoomTransition.swift:17-23, 35-40).', by: 'apple-hig skill' },
+        { rule: 'Navigation: the design is not wired', verdict: 'fix', note: 'zoomSource and zoomDestination have no call site in apple/Sources; the camera card and room tile, the examples in motion.md section 4.3, still use a sheet or plain push, and the docs and the owner\'s 2026-10-22 note disagree about where zoom is allowed. Needs an owner decision. Low.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Gate by #available(iOS 18) and fall back silently', verdict: 'pass', note: 'zoomSource and zoomDestination do nothing on iOS 17.' },
-        { rule: 'Match the source clip to the tile radius', verdict: 'departure', note: 'Default 26 pt (the module radius); tiles are 22 pt, so callers pass cornerRadius: 22 (patterns/motion.md Departures).' },
-        { rule: 'Measure it', verdict: 'fix', note: 'ZoomOpen is recorded by the probe; ZoomClose is not recorded yet.' },
-        { rule: 'Do not apply to rows or controls', verdict: 'pass', note: 'Documented rule (motion.md 4.3); no call site breaks it because there are none.' },
+        { rule: 'Match the source clip to the tile\'s corner radius', verdict: 'fix', note: 'The default is HassTokens.Radius.module (26) while tiles are Radius.tile (22) (ZoomTransition.swift:15; HassTokens.swift:24-27); every future caller must remember to pass 22. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Do not keep API nothing calls', verdict: 'fix', note: 'Dead code until wired; the mockup is the only place the design is visible. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Branch on #available, fall back silently', verdict: 'pass', note: 'iOS 18 branches in both modifiers.', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

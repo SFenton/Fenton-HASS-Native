@@ -63,16 +63,18 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Segmented controls: two to five segments, equal width', verdict: 'pass', note: 'Three icon segments in a capsule, each 44 pt square, selected state a lighter capsule plus the trait.' },
-        { rule: 'Page controls: dots show position, tap to move', verdict: 'pass', note: 'Adjustable element; regular layouts add explicit Previous and Next.' },
-        { rule: 'Accessibility: do not rely on icons alone', verdict: 'pass', note: 'Every icon button has a label and a hint; the subhead names the unit and the mode.' },
-        { rule: 'Color: contrast on varying backgrounds', verdict: 'pass', note: 'Panels are a darkening wash, so the gradient never lowers the text contrast.' },
+        { rule: "Segmented controls: a small set of closely related choices", verdict: 'pass', note: "Three icon buttons in a capsule, each 44 pt, with a label, hint and isSelected on the current one, grouped as 'Hourly detail' (WeatherHourlyPanel.swift:41-66).", by: 'apple-hig skill' },
+        { rule: "Segmented controls: use the system control", verdict: 'fix', note: "The mode switcher is hand-built icon Buttons rather than a Picker(.segmented), so it lacks the system selection motion, pointer and Full Keyboard Access behaviour (WeatherHourlyPanel.swift:41-66).", by: 'apple-hig skill' },
+        { rule: "Charting data: accessible values for every item", verdict: 'pass', note: "Each hour is one element reading '7 PM precipitation 40%' or '7 PM wind 9 mph gusts 14' (WeatherModalHour.swift:73-83).", by: 'apple-hig skill' },
+        { rule: "Page controls and Scroll views: page by page with an indicator", verdict: 'pass', note: "A UIKit paging row with an adjustable indicator, hours per page 5 compact and 7 regular scaling down with type (WeatherPagedCarousel.swift:36-48, 63-87).", by: 'apple-hig skill' },
+        { rule: "Typography: minimum text size", verdict: 'fix', note: "Precipitation amounts and gusts under each hour are .caption (WeatherModalHour.swift:57, 62), the weakest line on the panel; glyphs are fixed 26 and 24 pt (lines 38, 42).", by: 'apple-hig skill' },
+        { rule: "Color: tint is supplementary", verdict: 'pass', note: "The precipitation drop is multicolour but the value prints beside it (WeatherModalHour.swift:35-38, 56).", by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Use a real Button with a label for icon controls', verdict: 'pass', note: 'Button with accessibilityLabel, hint and isSelected trait; contentShape(.rect) widens the target.' },
-        { rule: 'Animate changes with the app token', verdict: 'pass', note: 'motionSafeAnimation(MotionTokens.quick, value: mode).' },
-        { rule: 'Scrolling content must not write state per frame', verdict: 'pass', note: 'Paging is a UIKit scroll view hosted in the sheet (performance.md round 2: 1.1 s to about 0.5 s main-thread per sweep).' },
-        { rule: 'Prefer ScrollView over a custom pager', verdict: 'departure', note: 'PagedRow is a UIKit paging scroll view because a nested SwiftUI ScrollView committed its offset through the sheet\'s view graph every frame (patterns/weather.md).' },
+        { rule: "Use Label for icon plus text", verdict: 'pass', note: "The panel title and subhead are text; icon buttons carry accessibilityLabel (WeatherHourlyPanel.swift:57).", by: 'swiftui-pro skill' },
+        { rule: "Animate with the app token and Reduce Motion", verdict: 'pass', note: "motionSafeAnimation(MotionTokens.quick, value: mode) on the content (line 21) and paging animation off under Reduce Motion (WeatherPagedCarousel.swift:55).", by: 'swiftui-pro skill' },
+        { rule: "Avoid fixed font sizes", verdict: 'fix', note: "WeatherModalHour uses .font(.system(size: 26)) and (size: 24, weight: .semibold) for the drop and wind arrow (lines 38, 42), which do not scale.", by: 'swiftui-pro skill' },
+        { rule: "Avoid UIKit unless needed", verdict: 'departure', note: "PagedRow is UIKit to keep paging off the sheet's view graph (WeatherPagedCarousel.swift:52-54).", by: 'swiftui-pro skill' },
       ],
     },
     notes: [

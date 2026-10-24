@@ -2,7 +2,7 @@
 
 > **What:** the confirmationDialog on the cover's Sign Out: an anchored popover (iOS 26+) or an action sheet (iOS 17 to 25). **Read when:** you change the cover's sign-out confirmation.
 
-- Mockup: [ha-sign-out-dialog.html](ha-sign-out-dialog.html) · shipped · reviewed 2026-10-23 (author self-check; skill reviewers replace it)
+- Mockup: [ha-sign-out-dialog.html](ha-sign-out-dialog.html) · shipped · reviewed 2026-10-23 (apple-hig and swiftui-pro skill review)
 - Source: `apple/Sources/HassUI/Features/Settings/HomeAssistantSettingsView.swift`
 - Spec: `.agents/pages/settings/ios.md`  · Patterns: modal-sheet
 - States covered: default (popover), action-sheet, ax5. loading, error, offline and detents do not apply.

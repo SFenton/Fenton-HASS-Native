@@ -61,17 +61,15 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Alerts: use for important decisions; a destructive action is red and Cancel is present', verdict: 'pass', note: 'Turn Off .destructive and Cancel .cancel.' },
-        { rule: 'Alerts: titles are a short sentence or question; button titles are verbs', verdict: 'pass', note: 'The title is a question; "Turn Off" is a verb phrase. The title is long for an alert (47 characters); the owner accepted it.' },
-        { rule: 'Alerts: avoid more than two buttons', verdict: 'pass', note: 'Two.' },
-        { rule: 'Dark Mode: the alert follows its presenter', verdict: 'pass', note: 'Presented from the shell\'s always-dark page, so dark in both system appearances (derived from preferredColorScheme(.dark); confirm on a device).' },
+        { rule: "Alerts: a succinct title that says what will happen", verdict: "fix", note: "Title is \"Are you sure you want to turn off Vacation Mode?\" (VacationConfig.swift line 61); HIG Alerts: succinct, avoid wrapping past two lines. The catalog title \"Turn Off Vacation Mode?\" is shorter and clearer. Low.", by: "apple-hig skill" },
+        { rule: "Alerts: buttons are verbs, Cancel is present", verdict: "pass", note: "\"Turn Off\" and \"Cancel\" (VacationConfig.swift lines 62-63), not Yes or No.", by: "apple-hig skill" },
+        { rule: "Alerts: destructive style only for an undeliberate loss", verdict: "fix", note: "Turn Off is .destructive (VacationModeScreen.swift line 40) but resets only the checklist and helper flags (Vacation.disableCalls); the person chose it deliberately and can redo it. Use a plain button. Low.", by: "apple-hig skill" },
+        { rule: "Alerts: use sparingly for common, undoable actions", verdict: "departure", note: "Owner 2026-10-13 (ios.md): turning vacation off clears the checklist and the invalid-dates flag, so one extra step is wanted; the alert is the one shipped confirmation on this feature.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Button roles in .alert', verdict: 'pass', note: 'role: .destructive and role: .cancel.' },
-        { rule: 'Accessibility identifiers', verdict: 'pass', note: 'vacation.disable.confirm and vacation.disable.cancel.' },
-        { rule: 'Binding that cancels on dismissal', verdict: 'pass', note: 'confirmingDisable sets false through cancelDisable().' },
+        { rule: "Navigation: alert tied to controller state", verdict: "pass", note: "alert(_:isPresented:) with a Binding whose setter runs cancelDisable (lines 39-44, 104-106).", by: "swiftui-pro skill" },
       ],
     },
 

@@ -125,16 +125,20 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Loading: show content as soon as possible', verdict: 'departure', note: '.page holds the spinner for at least 1 s even when the data is already there (owner 2026-10-16: "graceful spinner fade-in, content loads, spinner fade-out, content fade-in (no pop)"; recorded in patterns/content-gate.md). A page whose data is there starts open; .results has no minimum.' },
-        { rule: 'Progress indicators: indeterminate indicator for unknown waits, only when the wait is real', verdict: 'pass', note: '150 ms delay on results; the .page profile is the departure above.' },
-        { rule: 'Motion: respect Reduce Motion', verdict: 'pass', note: 'No rise, fade kept.' },
-        { rule: 'Accessibility: tell VoiceOver when content appears', verdict: 'pass', note: 'UIAccessibility.post(.layoutChanged) when the hidden content shows.' },
+        { rule: "Loading: show something quickly, or people may think the app is broken", verdict: "departure", note: "The gate hides content entirely instead of showing placeholders; the .results profile waits 150 ms before any spinner and the .page profile holds the spinner at least 1000 ms and times out at 10 s (ContentGateModel.swift Profile.page). Both mirror the web app's page-load behaviour (patterns/content-gate.md, motion.md section 5); live-house pages never use it.", by: "apple-hig skill" },
+        { rule: "Loading: best loading ends before people notice", verdict: "pass", note: "A gate created with isReady already true (disk snapshot or cache) shows content with no animation and builds no spinner; a fast load never shows one.", by: "apple-hig skill" },
+        { rule: "Progress indicators: indeterminate spinner for unquantifiable waits, with a meaningful description", verdict: "fix", note: "The default gate label is 'Loading' (ContentGate.swift line 35) and page-size gates that omit label speak only that; name the page ('Loading Pantry') at every call site. Low.", by: "apple-hig skill" },
+        { rule: "Accessibility: Reduce Motion drops positional motion and keeps fades", verdict: "pass", note: "RiseIn is inactive when reduceMotion, so the 4 pt offset disappears while the 170 ms fade stays; the spinner keeps its half-speed turn (arc-spinner mockup).", by: "apple-hig skill" },
+        { rule: "VoiceOver: tell people when content appears; hidden content is not read", verdict: "pass", note: "Content is accessibilityHidden and non-hit-testable until it shows; the gate posts a layoutChanged notification when it reaches idle.", by: "apple-hig skill" },
+        { rule: "Motion: keep animations brief and purposeful", verdict: "pass", note: "Spinner in 200 ms, out 140 ms (500 ms on .page), content in and out 170 ms, all ease-in or ease-out; nothing loops except the spinner itself.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Use Task and structured waits, not timers', verdict: 'pass', note: 'ContentGateModel.advance with an injectable sleeper; cancellable.' },
-        { rule: 'Animation values come from one place', verdict: 'pass', note: 'The gate\'s durations are its profile constants (MotionTokens.swift: "ContentGateModel keeps its own profile constants"); call sites pass a profile, never a duration.' },
-        { rule: 'Keep content out of the tree while hidden when expensive', verdict: 'pass', note: 'The content is laid out hidden on purpose (so images can report); the spinner is built only while it shows.' },
-        { rule: 'Telemetry', verdict: 'pass', note: 'ContentReady interval per cold load; gate.instant for ready starts.' },
+        { rule: "Animation: drive state changes with withAnimation, not delays", verdict: "pass", note: "ContentGateModel sequences phases with withAnimation(.easeIn/.easeOut) on its own state and a testable injected sleep; .task(id:) cancels with the view.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: use the notification that matches the change", verdict: "fix", note: "announceLayoutChange posts .layoutChanged with no argument (ContentGate.swift line 79) for an entire page that was hidden; .screenChanged, or an @AccessibilityFocusState on the page heading, moves VoiceOver focus to the new content more reliably. Low.", by: "swiftui-pro skill" },
+        { rule: "Performance: do not build what is not shown", verdict: "departure", note: "The content is laid out while hidden (opacity 0) on purpose so images and children can report readiness through ContentReadiness; only the spinner is built lazily. The cost is a full build of the gated page behind the spinner.", by: "swiftui-pro skill" },
+        { rule: "Data flow: @State model with Equatable task id", verdict: "pass", note: "@State ContentGateModel (an @Observable) is created once in init and task(id: Input(isReady:settled:)) re-runs only when either input changes.", by: "swiftui-pro skill" },
+        { rule: "Resizability: spinner centred in whatever space the page has", verdict: "pass", note: "The spinner takes maxWidth and maxHeight infinity inside the ZStack, so it centres on iPhone, iPad, split columns and the folded Duo without a device check; its 44 pt size is fixed, which is acceptable for an indicator.", by: "swiftui-pro skill" },
+        { rule: "Views: avoid #if os() branches in shared views", verdict: "fix", note: "announceLayoutChange wraps UIAccessibility in #if os(iOS) (ContentGate.swift line 78); a SwiftUI AccessibilityNotification.LayoutChanged().post() needs no platform branch. Low.", by: "swiftui-pro skill" },
       ],
     },
     notes: [

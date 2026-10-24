@@ -17,7 +17,12 @@
   function page(ctx, o) {
     o = o || {};
     var b = vac.pageBody(ctx, { scenarios: o.sc, summary: o.summary, autoClean: o.autoClean });
-    var body = ctx.splitGeometry ? [Mock.split(ctx, { leading: [b.col1], trailing: [b.col2] })] : [b.col1, b.col2];
+    /* VacuumsPage.body: two ScrollViews of width/2 either side of a 1 pt Divider; SplitPolicy.dividerX gets hingeMidX nil, so the unfolded Duo's fold is not honoured (reviewed 2026-10-23). */
+    var half = Math.floor((ctx.contentW - 1) / 2);
+    var body = ctx.canSplit ? [h('div.ui-split.ui-bleed', { style: { margin: 0 } },
+      h('div.pane', { style: { width: half + 'px' } }, [b.col1]),
+      h('div.band', { style: { width: '1px', alignSelf: 'stretch', background: 'var(--sep)' }, 'aria-hidden': 'true' }),
+      h('div.pane', { style: { width: (ctx.contentW - 1 - half) + 'px' } }, [b.col2]))] : [b.col1, b.col2];
     var pg = Mock.page(ctx, { title: 'Vacuums', section: 'home', back: 'Home', badge: 3, choresBadge: 2, connection: o.connection || 'live', body: body });
     return pg;
   }
@@ -77,29 +82,30 @@
     a11y: [
       { rule: 'Reading order', note: 'Back, (reconnecting arc), Quick Links, Profile; the title "Vacuums" (heading); the summary line ("1 Cleaning", identifier vacuums.summary); the "Robot Vacuums" heading and its three tiles; the "Auto-Clean" heading and its three rows; the tab bar last.' },
       { rule: 'Tiles', note: 'Each tile is a button "Main Floor, Docked • 87%" with the hint "Opens the vacuum controls and map." (identifier vacuums.tile.<map id>); state is colour AND glyph AND words (Cleaning, Paused, Error • issue); an error tile is the red face with the issue in words.' },
-      { rule: 'Auto-Clean rows', note: 'Each row is a switch: label "Main Floor", value On or Off, subtitle Enabled or Paused, hint "Turns automatic cleaning on or off."; the Main Floor switch is inverted (it pauses the coordinator, so on means enabled when the pause switch is off). An unavailable row dims only its glyph; the text stays at full contrast.' },
+      { rule: 'Auto-Clean rows', note: 'Each row is two elements: the combined text "Main Floor, Enabled" and a separate switch labelled "Main Floor" (value On or Off, hint "Turns automatic cleaning on or off."); only the switch is tappable. The Main Floor switch is inverted (it pauses the coordinator, so on means enabled when the pause switch is off). An unavailable row dims only its glyph; the text stays at full contrast.' },
       { rule: 'Summary contrast', note: 'On the wallpaper the summary is the always-dark secondary at 85% (72% measured 4.0:1).' },
       { rule: 'Targets', note: 'Tiles are at least 72 pt tall; rows 60 pt; the switch 51 x 31 inside a 60 pt row.' },
       { rule: 'Dynamic Type', note: 'At AX5 the grid is one column of stacked tiles, the switches drop under the row text, the summary and headers wrap.' },
-      { rule: 'Split', note: 'On iPad landscape and the unfolded Duo in landscape the two sections sit side by side and scroll separately; the Duo hinge is a 40 pt band no control touches.' },
+      { rule: 'Split', note: 'On iPad landscape and the unfolded Duo in landscape the two sections sit side by side in equal halves and scroll separately; the code divides at the mid-point (SplitPolicy.dividerX with no hinge), so on the Duo the fold is not kept clear.' },
     ],
 
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Navigation bars: Back, large title, trailing circles', verdict: 'pass', note: 'A pushed page swaps the hamburger for a glass Back circle; Quick Links and Profile stay (direction-g.md Navigation).' },
-        { rule: 'Split views: only where there is room', verdict: 'pass', note: 'SplitPolicy.allowsSplit: landscape, regular width, each pane at least 360 pt; portrait and the folded Duo stack.' },
-        { rule: 'Lists: switches only in list rows', verdict: 'pass', note: 'Auto-Clean is a ModuleList of switch rows (direction-g.md Controls: Switches).' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Glyph and words for every state; the error face adds the issue text.' },
-        { rule: 'Layout: respect the hinge', verdict: 'pass', note: 'Even columns on the unfolded Duo; panes end at the hinge band.' },
-        { rule: 'Loading: show content as soon as possible', verdict: 'pass', note: 'Nothing waits: tiles read the saved snapshot; an unknown robot reads "Unavailable".' },
+        { rule: 'Navigation bars: Back, large title, trailing circles', verdict: 'pass', note: 'A pushed page swaps the hamburger for a glass Back circle and keeps Quick Links and Profile; "Vacuums" is the large title (VacuumsScreen.swift:64, rendered on iPhone 17 Pro).', by: 'apple-hig skill' },
+        { rule: 'Designing for iPhone Duo: split columns adapt to the fold', verdict: 'fix', note: 'The landscape split calls SplitPolicy.dividerX(width:hingeMidX: nil) (VacuumsScreen.swift:47), so the unfolded Duo divides at the mid-point and ignores the fold; SplitPolicy.geometry(container:hinge:) exists but is not used here. The mockup drew a 40 pt hinge band the code does not have; redrawn as equal halves.', by: 'apple-hig skill' },
+        { rule: 'Split views: only where there is room', verdict: 'pass', note: 'SplitPolicy.allowsSplit needs a regular-width window wider than tall with each half at least 360 pt (VacuumsScreen.swift:42); portrait, folded Duo and iPhone stay one column (owner 2026-10-10, geometric rule).', by: 'apple-hig skill' },
+        { rule: 'Toggles: the control and its row are one target', verdict: 'fix', note: 'Only the system switch (51 x 31) takes the tap in a 60 pt row; the title and subtitle are inert (VacuumsScreen.swift:142-157). Accessibility > Mobility asks for 44 x 44 by default; making the whole row the Toggle label would give a 60 pt target.', by: 'apple-hig skill' },
+        { rule: 'Feedback: say when a command cannot be carried out', verdict: 'fix', note: 'When the service call throws, or Home Assistant does not confirm within 8 s, the switch snaps back with no message or haptic (VacuumAutoCleanController.toggle, overlay.reset); the person is not told the command failed.', by: 'apple-hig skill' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Every robot state has a glyph and words (Cleaning, Paused, Error plus the issue); an error tile adds the issue text beside the red face (VacuumPageFormat.tile).', by: 'apple-hig skill' },
+        { rule: 'Accessibility > Vision: contrast', verdict: 'pass', note: 'The summary line uses the always-dark secondary at 85% after 72% measured 4.0:1 on the wallpaper (VacuumsScreen.swift:87); Auto-Clean rows dim only the glyph so text keeps full contrast.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Avoid per-frame state while scrolling', verdict: 'pass', note: 'scrollTelemetry only; the layout reads one GeometryReader size.' },
-        { rule: 'Use Toggle with a hidden label and a hint', verdict: 'pass', note: 'Toggle(...).labelsHidden() with accessibilityHint and identifier.' },
-        { rule: 'Dynamic Type: reflow, never truncate', verdict: 'pass', note: 'GlassTile stacks at AX sizes; rows move the switch under the text.' },
-        { rule: 'Equal-height tiles', verdict: 'pass', note: 'DynamicGridLayout(equalRowHeights:) with equalHeightTiles().' },
-        { rule: 'Motion with Reduce Motion', verdict: 'pass', note: 'Colour only through stateColorTransition (0.2 s reduced).' },
+        { rule: 'Accessibility: one element per control row', verdict: 'fix', note: 'ModuleRow combines only its text, and the Toggle (labelled with the title) stays a separate element, so VoiceOver reads "Main Floor, Enabled" and then "Main Floor, switch" (VacuumsScreen.swift:142-157). The mockup\'s a11y note claimed a single switch element and is corrected.', by: 'swiftui-pro skill' },
+        { rule: 'Data flow: avoid Binding(get:set:) built in view code', verdict: 'fix', note: 'The Toggle binding ignores its setter value and calls autoClean.toggle (VacuumsScreen.swift:150-153); a Button or a Toggle bound to controller state with onChange states the intent directly.', by: 'swiftui-pro skill' },
+        { rule: 'Layout: prefer onGeometryChange to a page-wide GeometryReader', verdict: 'fix', note: 'The whole page is a GeometryReader and swaps the hierarchy between split and single column (VacuumsScreen.swift:41-60), so the two ScrollViews are replaced and lose their offset when the window folds or rotates; resizability.md keeps state above the branch.', by: 'swiftui-pro skill' },
+        { rule: 'Dynamic Type: reflow and scale minimums', verdict: 'pass', note: 'minTileWidth is @ScaledMetric(relativeTo: .subheadline), GlassTile stacks glyph over text and ModuleRow moves the switch under the text at accessibility sizes.', by: 'swiftui-pro skill' },
+        { rule: 'Presentation: sheet(item:)', verdict: 'pass', note: '.sheet(item: $open) with the shared hassSheet(.page, height: .full) for the vacuum sheet (VacuumsScreen.swift:65).', by: 'swiftui-pro skill' },
       ],
     },
 
@@ -111,6 +117,7 @@
       'The tile subtitle on an error is "Error • 87% • <issue>" where the issue is the status code title-cased (docs example: "Error • 23% • Wheel Stuck"); the code is VacuumPageFormat.tile.',
       'Vacuum sheet and Auto-Clean data are the gallery fixtures (Main Floor 87%, Music Room 100%, Theater Room 64%; Theater Room Auto-Clean paused).',
       'The duo-unfolded-portrait pose was not run on a simulator (design/apple/duo.md); the page stacks there as on any portrait window.',
+      'Reviewed 2026-10-23: the split is drawn as coded (two equal halves and a 1 pt divider). The earlier drawing used Mock.split with a 40 pt hinge band, which VacuumsPage does not implement (it calls SplitPolicy.dividerX with hingeMidX nil); the Auto-Clean row a11y note was corrected to two elements as well.',
       'Promote to kit: vac.robotTile (a GlassTile family cleaning wrapper) and vac.autoCleanList (modals/vacuums/_devices-vacuums.js).',
     ],
     changelog: [{ date: '2026-10-23', note: 'First pass built with the kit: docked, cleaning, mixed, paused, unavailable, offline, reconnecting, long text, split on iPad and Duo landscape, AX5.' }],

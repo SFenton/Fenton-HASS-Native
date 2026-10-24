@@ -66,21 +66,37 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Alerts and inline messages: say what is wrong and what to do', verdict: 'pass', note: 'Warnings name the condition; errors name the failure.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'A triangle and the spoken word Warning or Error; a checkmark and trait for selection.' },
-        { rule: 'Lists and tables: single choice shown with a checkmark', verdict: 'pass', note: 'Checkmark plus selected trait.' },
-        { rule: 'Accessibility: touch targets of at least 44 pt', verdict: 'pass', note: 'minHeight 44.' },
-        { rule: 'Materials: regular material row', verdict: 'pass', note: 'A regularMaterial rounded rectangle; the sheet cell colour in the kit stand-in.' },
-        { rule: 'Color: errors in red text', verdict: 'departure', note: 'An error is red text with no box, as the web\'s InlineAlert error severity; a warning is the only boxed severity (info-box.md).' },
+
+        { rule: "Color and Accessibility: severity is not conveyed by colour alone", verdict: "pass", note: "A warning has a triangle glyph and an error a circle glyph, and both are spoken as 'Warning: <message>' or 'Error: <message>'; the warning keeps primary ink on a 14% orange wash and the error is Ink.error text (4.5:1 or better in light and dark).", by: "apple-hig skill" },
+
+        { rule: "Writing and Feedback: put the message next to the control it concerns", verdict: "pass", note: "InlineAlert sits under the field or section it refers to (the one inline alert for every page, info-box.md) and wraps with fixedSize; informational notices use InfoBox, not a third alert view.", by: "apple-hig skill" },
+
+        { rule: "Lists and Buttons: single-choice rows with a check; 44 pt targets; selection not by colour alone", verdict: "pass", note: "SelectableOptionRow is at least 44 pt with the whole rounded rectangle as the hit shape; selection adds a 2 pt border in the tint, a checkmark and the selected trait, and a disabled row dims to 50% and is not actionable.", by: "apple-hig skill" },
+
+        { rule: "Accessibility: do not put essential information in a hint", verdict: "fix", note: "The row's description is exposed only as accessibilityHint(detail) (SettingsSection.swift line 165) while the label is the title; VoiceOver users who turn hints off never hear what 'Away' or 'Guest' does, though the detail is visible text that decides the choice. Put it in the value or the label. Medium-low.", by: "apple-hig skill" },
+
+        { rule: "Color: unselected glyphs keep contrast", verdict: "fix", note: "The unselected option glyph is Color.secondary (line 127), the system grey the app measured at about 3:1 on its grounds elsewhere (ArcProgressViewStyle, FilterSection); Ink.secondary or Surface.secondaryInSheet would match the rest of the app. Low.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Combine children for one accessibility element', verdict: 'pass', note: 'accessibilityElement(children: .combine) with an explicit label.' },
-        { rule: 'Animate with app tokens', verdict: 'pass', note: 'stateColorTransition and quickTransition keyed by "SelectableOptionRow".' },
-        { rule: 'Hard-coded .orange and .opacity(0.14)', verdict: 'departure', note: 'The warning wash is Color.orange at 14% (settings-section.md); not a named token.' },
-        { rule: 'Use semantic fonts', verdict: 'pass', note: 'subheadline for the alert; headline and subheadline for the row.' },
+
+        { rule: "Design: one section header style; avoid scattered fontWeight", verdict: "fix", note: "SettingsSection draws its title as .title3.weight(.semibold) (line 25) while PageSectionHeader uses .title3.bold(); two near-identical section headers differ in weight, and fontWeight(.semibold) is the scattered-weight pattern swiftui-pro warns about. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Views: use the system control for a single choice", verdict: "fix", note: "SelectableOptionRow is a Button, border and checkmark that re-creates a Picker row (the same shape appears in FilterOptionRow and OptionPickerSheet); three hand-built single-choice rows exist, each with its own accessibility wiring. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Accessibility: label and traits on the Button; identifier stays with the control", verdict: "pass", note: "The label, hint and selected trait sit on the Button itself (see GlassTile) so the identifier and state do not split across two elements.", by: "swiftui-pro skill" },
+
+        { rule: "Localization: build accessibility strings from resources", verdict: "fix", note: "InlineAlert's accessibilityLabel('Warning: \\(message)') interpolates into a String, so the 'Warning:' and 'Error:' prefixes are fixed English; a LocalizedStringResource with the message as an argument would be extractable. Low.", by: "swiftui-pro skill" },
+
+        { rule: "API: current idioms for lists and shapes", verdict: "pass", note: "clipShape-free backgrounds with continuous RoundedRectangle, fill(.regularMaterial) for rows, ForEach(Array(paragraphs.enumerated()), id: \\.offset) is correct for the iOS 17 target (the direct form needs iOS 26).", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

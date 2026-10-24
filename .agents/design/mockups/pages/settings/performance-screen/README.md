@@ -2,7 +2,7 @@
 
 > **What:** Settings, Performance: scrolling, page loading, navigation, live updates, actions and images, the recording switch, export and reset. **Read when:** you change `HassUI/Diagnostics` or add a measurement row.
 
-- Mockup: [performance-screen.html](performance-screen.html) · shipped · reviewed 2026-10-23 (author self-check; skill reviewers replace it)
+- Mockup: [performance-screen.html](performance-screen.html) · shipped · reviewed 2026-10-23 (apple-hig and swiftui-pro skill review)
 - Source: `apple/Sources/HassUI/Diagnostics/PerformanceScreen.swift`, `PerformanceReport.swift`, `PerformanceRow.swift`
 - Spec: `.agents/patterns/telemetry.md`, `.agents/testing/apple/performance.md`  · Patterns: telemetry
 - States covered: default (seeded), empty, recording-off, refreshing, no-export, offline, reconnecting, long-text, ax5 (loading and error do not exist).

@@ -36,14 +36,20 @@
       { rule: 'Grid', note: 'AwaySectionGrid is a DynamicGridLayout (min 340, max 2): reading order is the source order, mode section first, in one column or two.' },
       { rule: 'Dynamic Type', note: 'Everything uses system text styles and wraps; the grid minimum is 340 pt, so at AX5 it is one column. Check with the Text size control.' },
     ],
-    reviews: { date: '2026-10-23', by: 'author',
-      hig: [{ rule: 'Buttons: a prominent action is filled; secondary actions are tinted or plain; destructive is red', verdict: 'pass', note: 'Primary capsule, bordered action, bordered destructive.' },
-        { rule: 'Color: legible text on tinted fills', verdict: 'pass', note: 'Plain ink on the tinted bordered fill; the notice text stays the primary label on a 16% wash.' },
-        { rule: 'Layout: adapt to the available width', verdict: 'pass', note: 'One or two columns by width.' },
-        { rule: 'Headings: a section title should add information', verdict: 'departure', note: 'No title is drawn above the mode section: the navigation title already says it (owner 2026-10-13).' }],
-      swiftui: [{ rule: 'Use the environment to switch surface styles', verdict: 'pass', note: 'AwaySection reads tileSurface: PageSectionHeader on a page, FormHeader in a sheet.' },
-        { rule: 'Scaled text styles', verdict: 'pass', note: 'subheadline and body; no fixed sizes.' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'Buttons and notices have no explicit colour animation; tiles use stateColorTransition.' }] },
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: "Buttons: one prominent, bordered others, destructive in red", verdict: "pass", note: "AwayActionButton uses PrimaryButtonStyle for the prominent one and .bordered with Ink.danger for destructive (VacationComponents.swift lines 79-107); label text is plain ink on the tint so Keep Current Schedule keeps 4.5:1.", by: "apple-hig skill" },
+        { rule: "Layout: sections side by side only when there is room", verdict: "fix", note: "AwaySectionGrid is DynamicGridLayout(minCellWidth: 340, maxColumns: 2) with a literal width (line 61), not scaled with Dynamic Type; at AX5 on an iPad two sections can still sit beside each other at 340 pt. Low.", by: "apple-hig skill" },
+        { rule: "Color: notice states are not colour alone", verdict: "pass", note: "InfoBox pairs a checkmark or info glyph with a title (InfoBox.swift lines 28-35) on a 16% tint with primary ink.", by: "apple-hig skill" },
+        { rule: "Typography: section headers differ by surface", verdict: "departure", note: "direction-g.md Type: 20 Bold PageSectionHeader on the wallpaper, 15 Semibold FormHeader inside a sheet (VacationComponents.swift lines 31-40).", by: "apple-hig skill" },
+      ],
+      swiftui: [
+        { rule: "Design: manual opacity for a wash", verdict: "fix", note: "InfoBox fills with tint.opacity(0.16) and a hard-coded RGB green (InfoBox.swift lines 45, 51); swiftui-pro prefers system hierarchical styles over manual opacity. Low.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: notice read as one element", verdict: "pass", note: "InfoBox uses accessibilityElement(children: .combine) (line 46).", by: "swiftui-pro skill" },
+        { rule: "Design: magic subtraction in the action button", verdict: "fix", note: "frame(minHeight: HassTokens.minTarget - 16) (line 98) inside controlSize(.large); a named constant would survive a control size change. Low.", by: "swiftui-pro skill" },
+      ],
+    },
     notes: [
       'The sheet surface variants are legacy: AwaySection\'s doc comment says Vacation opens in the Account and Quick Links sheets, but Settings is a tab now, so only the page style ships on these pages.',
       'AwayParts is a local registration that bundles the five pieces for this one mockup; the real types are separate SwiftUI views. Promote to kit: a builder per piece.',

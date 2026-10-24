@@ -48,18 +48,24 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Words and glyph carry the warning.' },
-        { rule: 'Dynamic Type: text wraps rather than truncates', verdict: 'pass', note: 'No line limit.' },
-        { rule: 'Materials: content-layer module, no glass', verdict: 'pass', note: 'Thin module or dense module (#141416 at 78%).' },
-        { rule: 'Alerts: do not use an alert for a persistent condition', verdict: 'pass', note: 'An inline notice stays while the condition lasts.' },
+        { rule: "Color: a warning is not colour alone", verdict: 'pass', note: "The warning swaps the glyph to a triangle as well as orange, uses a denser ground, and the text states the problem (ClimateComponents.swift:126, 36-50).", by: 'apple-hig skill' },
+        { rule: "Accessibility: one element, glyph decorative", verdict: 'pass', note: "Glyph hidden, glyph and text combined (ClimateComponents.swift:41, 52).", by: 'apple-hig skill' },
+        { rule: "Typography: .subheadline wraps at AX5", verdict: 'pass', note: "Text is fixedSize vertically with no line limit (lines 42-46).", by: 'apple-hig skill' },
+        { rule: "Materials: fixed white ink on an always-dark page", verdict: 'departure', note: "The notice text is .white (line 44) because the Climate page is always dark (direction-g.md Layers).", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Combine children into one accessibility element', verdict: 'pass', note: 'accessibilityElement(children: .combine).' },
-        { rule: 'Fixed ink on a fixed ground', verdict: 'departure', note: 'The text is always white because the module is dark in every scheme (the page is always dark); the notice is never drawn in a sheet.' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'stateForeground and stateColorTransition("ClimateNotice").' },
+        { rule: "Do not hard-code white", verdict: 'departure', note: "As above; the page background is always the dimmed wallpaper.", by: 'swiftui-pro skill' },
+        { rule: "Use stateColorTransition", verdict: 'pass', note: "Glyph and ground cross-fade when the warning toggles (lines 40, 51).", by: 'swiftui-pro skill' },
+        { rule: "Dynamic Type", verdict: 'pass', note: "A body-relative glyph with text styles; padding is fixed 14 and 16 pt, which is fine for a wrapping row.", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

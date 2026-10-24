@@ -80,16 +80,17 @@
       { rule: 'Updates', note: 'The once-a-second countdown is a visible text change, not a VoiceOver announcement; the tile value is read when focused.' },
     ],
     reviews: {
-      date: '2026-10-23',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Buttons: a tappable tile has a visible affordance', verdict: 'pass', note: 'Navigate tiles carry a trailing chevron.' },
-        { rule: 'Color: state shown by more than colour', verdict: 'pass', note: 'Words in the subtitle and glyph fill.' },
-        { rule: 'Dynamic Type: switch layout at accessibility sizes', verdict: 'pass', note: 'GlassTile stacks at AX sizes.' },
+        { rule: 'Buttons: a tappable tile has an affordance', verdict: 'pass', note: 'Navigate tiles carry a trailing chevron (hidden from VoiceOver).' },
+        { rule: 'Color: state accurate and not colour alone', verdict: 'fix', note: 'BedSideTile passes no isUnavailable, so an unavailable side draws neutral and reads "Off"; WakeLightTile is active whenever an alarm is enabled, even blocked or in vacation mode (WakeLightSheet.swift:449-452).' },
+        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'GlassTile stacks glyph over text and goes one column at AX sizes.' },
+        { rule: 'Accessibility: live text', verdict: 'pass', note: 'The countdown is a visible text update, not an announcement; the value is read on focus.' },
       ],
       swiftui: [
-        { rule: 'Do not recreate shared components', verdict: 'pass', note: 'Both tiles are GlassTile with a face from ThermostatTileFace.bedSide or the lights family; no private tile.' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'GlassTile owns the stateColorTransition; BedSideTile and WakeLightTile add none.' },
-        { rule: 'TimelineView for periodic text', verdict: 'pass', note: 'EverySecond wraps only the tile, not the page.' },
+        { rule: 'Performance: tick only when needed', verdict: 'fix', note: 'BedSideTile and RoomCardView wrap the tile in EverySecond unconditionally (BedSideSheet.swift:651, RoomTiles.swift:110); the fan tile\'s gate (hourly unless a countdown shows) would also suit Hot Flash.' },
+        { rule: 'Do not recreate shared components', verdict: 'pass', note: 'Both tiles are GlassTile with a ThermostatTileFace or lights family.' },
+        { rule: 'Motion: colour with the app token', verdict: 'pass', note: 'GlassTile owns the transition; neither tile adds its own.' },
       ],
     },
     notes: [

@@ -30,18 +30,18 @@
       { rule: 'Warnings use InlineAlert', note: 'A warning is the orange-triangle InlineAlert ("Warning: …") and an error red text ("Error: …"); do not add a third alert view (pattern doc).' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'Glyph and title.' },
-        { rule: 'Accessibility: sufficient contrast in both appearances', verdict: 'pass', note: 'Primary ink on a light wash.' },
-        { rule: 'Materials: a notice is content, not navigation', verdict: 'pass', note: 'A flat tint, no glass.' },
-        { rule: 'Writing: lead with the state, add detail below', verdict: 'pass', note: 'Title is the state ("Stephen Away"), message the detail.' },
+        { rule: "Color: do not rely on colour alone; keep contrast at 4.5:1 or better", verdict: "pass", note: "Tone is carried by a glyph (checkmark.circle.fill or info.circle.fill) and the title; all text is Ink.primary on a 16 percent wash, so the contrast does not depend on the tint.", by: "apple-hig skill" },
+        { rule: "Typography: Dynamic Type, wrap rather than truncate", verdict: "pass", note: "headline title and subheadline message use fixedSize(horizontal: false, vertical: true) inside a maxWidth .infinity box, so the notice grows at AX5.", by: "apple-hig skill" },
+        { rule: "Color: use semantic or token colours; keep success green consistent", verdict: "fix", note: "InfoBox hard-codes success as Color(red: 0.26, green: 0.63, blue: 0.28) (InfoBox.swift line 51), a green that duplicates AwayTint.vacation and differs from HassTokens.Ink.success (#30D158 dark, #1E7B34 light); the glyph is green on its own 16 percent wash, about 3:1 on a white sheet cell. Low.", by: "apple-hig skill" },
+        { rule: "Accessibility and Feedback: tell people when a status appears", verdict: "fix", note: "The Solo Trip and vacuum notices appear with their section and post no announcement, so VoiceOver users learn of a newly confirmed state only by exploring; a notice that appears after an action should post an announcement (AccessibilityNotification.Announcement). Low.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Combine children for one accessibility element', verdict: 'pass', note: 'accessibilityElement(children: .combine).' },
-        { rule: 'Use semantic fonts and fixedSize for wrapping', verdict: 'pass', note: '.headline and .subheadline with fixedSize(horizontal: false, vertical: true).' },
-        { rule: 'Prefer system colours that adapt', verdict: 'departure', note: 'The success green is a fixed RGB (0.26, 0.63, 0.28) at 16% as a wash and as the icon tint; contrast is carried by the primary ink, so one value serves both appearances.' },
-        { rule: 'Animate colour changes with the app token', verdict: 'fix', note: 'The tint does not use stateColorTransition: a notice changing from neutral to success switches at once. Rare (Solo Trip starting), so low priority.' },
+        { rule: "Accessibility: combine title and message into one element", verdict: "pass", note: ".accessibilityElement(children: .combine) on the box reads 'Stephen Away, Solo Trip is active until Oct 28' as one static element; it is not a Button, so it is not tappable.", by: "swiftui-pro skill" },
+        { rule: "Design: use Label for icon plus text; system hierarchical styles", verdict: "pass", note: "The title is a Label with an icon builder rather than an HStack; the wash uses background(_:in:) with a continuous RoundedRectangle shape and no extra overlay.", by: "swiftui-pro skill" },
+        { rule: "Design: avoid hard-coded colours; reuse tokens", verdict: "fix", note: "The tint switch returns a literal green and .gray (lines 49 to 54); tone colours belong in HassTokens next to Ink.success, and .gray ignores the sheet or page appearance (the wash is the same grey on #2C2C2E and white). Low.", by: "swiftui-pro skill" },
+        { rule: "API: prefer value-in views with Sendable enums", verdict: "pass", note: "InfoBox takes title, message and a Sendable Tone enum, no environment or store, so Solo Trip, the vacuum sheet and the feedback sheet share it unchanged.", by: "swiftui-pro skill" },
       ],
     },
     notes: [

@@ -77,20 +77,21 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Date pickers: use a compact time picker for a time of day', verdict: 'pass', note: 'DatePicker(.hourAndMinute) per start time. The mockup draws the picker as a time button.' },
-        { rule: 'Toggles and buttons keep 44 pt targets', verdict: 'pass', note: 'Day circles, remove buttons and list rows are 44 pt or more.' },
-        { rule: 'Selection: state is not colour alone', verdict: 'pass', note: 'Filled circle, dark letter and the selected trait.' },
-        { rule: 'Sheets: pushed levels keep Close and Back', verdict: 'pass', note: 'Close on every level.' },
-        { rule: 'Schedule pickers share one component', verdict: 'fix', note: 'schedule-date-fields.md lists sprinkler start times as a planned consumer; today the editor uses its own DatePicker rows, not ScheduleDateFields. Fold in or record the departure.' },
-        { rule: 'Loading: show progress for a call in flight', verdict: 'fix', note: 'Apply only disables while `sending`; no in-button arc (motion.md section 5).' },
+        { rule: "Settings: one commit model per screen", verdict: "fix", note: "Program Enabled and Start Program Now act immediately (lines 286-298) while days, start times and budget wait for Apply (lines 340-354) on the same page, with no hint which is which; leaving with Back or Close silently drops edited days and times. Medium.", by: "apple-hig skill" },
+        { rule: "Sheets and Modality: confirm before discarding edits", verdict: "fix", note: "Back, Close and a swipe down discard changed days, times and budget without a prompt (SheetCloseItem on pushed pages, line 45 of the sheet file). HIG Sheets asks for confirmation when changes are unsaved. Medium.", by: "apple-hig skill" },
+        { rule: "Buttons: say why a button is disabled", verdict: "fix", note: "Apply is disabled when no day or no time is set (line 350) but, unlike Start Watering, nothing explains it; the Days section has no footer. Add a footer (\"Choose at least one day.\"). Medium.", by: "apple-hig skill" },
+        { rule: "Loading: progress where the person pressed", verdict: "fix", note: "Apply only disables while `sending` (lines 342-350); no inline arc. Low.", by: "apple-hig skill" },
+        { rule: "Date pickers: compact time pickers with a remove control", verdict: "pass", note: "Each start time is a compact hour-and-minute DatePicker labelled \"Start n\" with a 44 x 44 \"Remove Start Time n\" button, disabled at one time (lines 305-317).", by: "apple-hig skill" },
+        { rule: "Color: selected days are not colour alone", verdict: "pass", note: "A chosen day is a filled water-colour circle with dark text against a 15% grey circle, plus the .isSelected trait and full day names (DayPicker, lines 445-461).", by: "apple-hig skill" },
+        { rule: "Layout: the seven day circles reflow", verdict: "pass", note: "ViewThatFits: one row of seven 44 pt circles, else a 4 + 3 grid (lines 431-437), so the folded Duo and AX sizes keep 44 pt targets.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Stable identity in ForEach', verdict: 'pass', note: 'StartTime has its own UUID, so removing a row keeps the others.' },
-        { rule: 'ViewThatFits for the day row', verdict: 'pass', note: 'One row of seven, else a four-column grid on two rows (the folded Duo left 42 pt each).' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'stateColorTransition("DayPicker"), stateForeground("DayPicker").' },
-        { rule: 'Use safeAreaInset for the pinned action', verdict: 'pass', note: 'Apply sits in a bottom inset on a .bar background.' },
+        { rule: "Reuse: schedule-date-fields pattern", verdict: "fix", note: "schedule-date-fields.md lists sprinkler start times as a consumer, but the editor uses raw DatePicker rows (line 307), so the label and material row differ from Vacation and Solo Trip. Low.", by: "swiftui-pro skill" },
+        { rule: "Views: Button action logic inline", verdict: "fix", note: "Apply builds the saveSchedule arguments and a Task inline in the button (lines 341-349) and the page keeps days, times and budget as @State copied from the controller in init (lines 264-273), so a program changed on another device does not refresh the draft. Low.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: labels that wrap", verdict: "pass", note: "WrappingRowLabel for Start Program Now and Add Another Start Time (lines 387-399) after AX5 clipped a Label title.", by: "swiftui-pro skill" },
+        { rule: "Navigation: pushed page inside a sheet", verdict: "pass", note: "Pushed by SprinklerDetail.schedule; done() pops the path (lines 40, 52).", by: "swiftui-pro skill" },
       ],
     },
 

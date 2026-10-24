@@ -10,7 +10,20 @@
 (function () {
   var h = Mock.h, K = Mock.components, C = window.Chores;
 
-  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: "Sheets: dismissal of a one-field draft", verdict: "pass", note: "A single short field; Cancel and swipe down drop it without a prompt (TodoItemSheets.swift lines 40, 45), which is proportionate to what could be lost.", by: "apple-hig skill" },
+        { rule: "Text fields: a label that stays visible", verdict: "fix", note: "TextField(\"Item\") has no header or footer (lines 26-32) while every other todo form has them (owner 2026-10-16); the placeholder is the only label. Low.", by: "apple-hig skill" },
+        { rule: "Keyboards: return key and focus", verdict: "pass", note: "submitLabel(.done), onSubmit adds, focused set in onAppear (lines 29-30, 46).", by: "apple-hig skill" },
+        { rule: "Sheets: grabber and a size that fits", verdict: "pass", note: "hassSheet(.form) fitted detent with grabber (HassModal.swift lines 149-153, 192-196).", by: "apple-hig skill" },
+        { rule: "Toolbars: confirm named for what it does", verdict: "departure", note: "direction-g.md Sheets: a check labelled \"Add\", disabled until the trimmed field is non-empty.", by: "apple-hig skill" },
+      ],
+      swiftui: [
+        { rule: "Concurrency: submit once, show busy", verdict: "pass", note: "submitting guard and isBusy on SheetConfirmItem; the form and Cancel are disabled while in flight (lines 34, 41, 50-53).", by: "swiftui-pro skill" },
+        { rule: "Accessibility: errors announced", verdict: "fix", note: "TodoSheetErrorSection draws an InlineAlert but nothing posts an announcement or moves focus when the error appears (TodoItemSheets.swift lines 294-304); VoiceOver users on the keyboard may not hear it. Low.", by: "swiftui-pro skill" },
+      ],
+    }, devices: (static check keys). */
   Mock.mount(C.sheetConfig({
     id: 'add-grocery-item-sheet', title: 'Add grocery item sheet', file: 'TodoItemSheets.swift', fromLabel: 'Groceries', from: 'groceries',
     summary: 'A one-field prompt: Item, with the subtitle "Groceries", Cancel and an Add check. The field takes focus when the sheet opens. A fitted form sheet that follows the system appearance; switch Sheet appearance above.',

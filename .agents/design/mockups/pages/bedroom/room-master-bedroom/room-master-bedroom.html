@@ -84,22 +84,22 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
         { rule: 'Toolbars: Back leading on a pushed page', verdict: 'pass', note: 'Standard shell header.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Heating and Cooling both carry the words and a signed level; the family changes the fill and glyph only.' },
-        { rule: 'Layout: one equal height per grid row', verdict: 'pass', note: 'Both bed cards and the wake light share the row height set by the tallest.' },
-        { rule: 'Disabled controls look disabled', verdict: 'pass', note: 'Unavailable cards dim; a read-only side draws off and says so.' },
-        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'Scaled minimum width; wraps at AX5.' },
-        { rule: 'Color: a state should be visible without colour', verdict: 'fix', note: 'Wake-Light Alarms reads only the sensor\'s state word and never fills while ramping or snoozed, so a wake in progress is not visible at a glance. Candidate for a family fill while ramping (owner call).' },
+        { rule: 'Color: state visible without colour', verdict: 'fix', note: 'Wake-Light Alarms prints the sensor word but never fills while ramping or snoozing (WakeLightTile isActive means "some alarm enabled", WakeLightSheet.swift:451), so a wake in progress is not distinct from a scheduled one at a glance. Low: the words carry it.' },
+        { rule: 'Color: unavailable must read as unavailable', verdict: 'fix', note: 'An unavailable bed side is not marked isUnavailable (BedSideTile, BedSideSheet.swift:652-656): it draws the neutral face and reads "Off", which misstates a side that has stopped answering (after the 10 s hold).' },
+        { rule: 'Layout: equal row heights in a grid', verdict: 'pass', note: 'Both bed tiles share the wake light row height via equalHeightTiles.' },
+        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'Scaled minimum width, tiles anchor text bottom-leading at AX5, long states wrap.' },
+        { rule: 'Accessibility: names that say what is meant', verdict: 'pass', note: 'Personalised "Your Side" title for VoiceOver while the identifier keeps the config title.' },
         { rule: 'Navigation: Quick Links as a header button', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation).' },
       ],
       swiftui: [
-        { rule: 'One timer for live text', verdict: 'pass', note: 'EverySecond wraps only the bed tile that needs the countdown; the rest of the page does not tick.' },
-        { rule: 'Shared state objects created once per page', verdict: 'pass', note: 'One BedroomDevices per page (bedroom-devices.md), so the tile and both sheets agree.' },
-        { rule: 'Animate colour with the app token; honour Reduce Motion', verdict: 'pass', note: 'GlassTile stateColorTransition (0.6 s, 0.2 s reduced).' },
-        { rule: 'Do not hard-code identity in identifiers', verdict: 'pass', note: 'Ids use the config title ("Stephen\'s Bed"), so a personalised title does not change them.' },
-        { rule: 'Do not swallow errors silently', verdict: 'fix', note: 'BedroomDevices is only created when the caller can read service responses (HassServiceResponding); otherwise the page quietly keeps the generic tiles and the sheets fall back. Fine for the gallery, a silent downgrade in the app if the cast ever failed.' },
+        { rule: 'Performance: only tick when something counts down', verdict: 'fix', note: 'RoomCardView wraps every bed tile in EverySecond unconditionally (RoomTiles.swift:110), so two GlassTiles re-render every second whenever the page is visible (performance.md: body runs frequently; AGENTS.md main-thread invariant); BathroomFanRoomTile ticks hourly until a countdown shows. Gate on hotFlashActive.' },
+        { rule: 'Data: shared model created once per page', verdict: 'pass', note: 'One BedroomDevices per page, so the tile, the wake-light sheet and both bed sheets agree.' },
+        { rule: 'Swift: do not downgrade silently', verdict: 'fix', note: 'BedroomDevices exists only when the caller conforms to HassServiceResponding (RoomScreen.swift:75); otherwise the beds quietly fall back to generic climate cards with no log. Fine for the gallery, opaque if the cast ever failed.' },
+        { rule: 'Motion: animate with the app token, honour Reduce Motion', verdict: 'pass', note: 'GlassTile stateColorTransition (0.6 s, 0.2 s reduced); the countdown is a text update.' },
+        { rule: 'Accessibility identifiers independent of personalisation', verdict: 'pass', note: 'Ids use the config title ("Stephen\'s Bed"), so Your Side does not change them.' },
       ],
     },
 

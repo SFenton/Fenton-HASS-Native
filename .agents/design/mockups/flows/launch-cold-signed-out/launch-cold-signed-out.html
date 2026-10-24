@@ -71,17 +71,19 @@
     ],
 
     reviews: {
-      date: REVIEW_DATE,
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Launching: do not show a splash or branding; match the launch screen', verdict: 'pass', note: 'The first frame is the launch screen\'s own #121722; the intro starts on the sign-in screen itself.' },
-        { rule: 'Motion: make motion optional, brief and precise; more than 0.4 s only for moments', verdict: 'pass', note: 'About 1.2 s once per session, the one moment allowed past 0.4 s (motion.md section 7); Reduce Motion cross-fades.' },
-        { rule: 'Motion: avoid repeating it', verdict: 'pass', note: 'MotionPolicy plays it once per session (and again after a sign-out reset).' },
-        { rule: 'Dark Mode', verdict: 'pass', note: 'Always dark.' },
+        { rule: 'Launching: no splash; match the launch screen', verdict: 'pass', note: 'The first frame is SignInStyle.base, the launch screen colour (RootView.swift:92-101; SignInStyle.swift:12).', by: 'apple-hig skill' },
+        { rule: 'Motion: brief, optional, not repeated', verdict: 'pass', note: 'About 1.2 s once per session; Reduce Motion cross-fades in 0.35 s (LoginView.swift:196-203).', by: 'apple-hig skill' },
+        { rule: 'Motion: do not animate what cannot be seen', verdict: 'fix', note: 'The mark\'s rise runs inside LoginHeader, which is held at opacity 0 until the title stage (LoginView.swift:98-100, 206-212), so it plays unseen and appears with the title. Low; confirm with a frame capture.', by: 'apple-hig skill' },
+        { rule: 'Entering data: password manager and keyboard flow', verdict: 'pass', note: 'Username and password content types, Next then Go, interactive keyboard dismissal (LoginFields.swift:45-77; LoginView.swift:74).', by: 'apple-hig skill' },
+        { rule: 'Accessibility: announce a failure; stack at accessibility sizes', verdict: 'pass', note: 'AccessibilityNotification.Announcement on a failure (LoginView.swift:88-90); LoginRow stacks label over field at AX sizes (LoginRow.swift:17-21).', by: 'apple-hig skill' },
+        { rule: 'Dark Mode: support both appearances', verdict: 'departure', note: 'Sign-in is always dark like the app it opens (LoginView.swift:80-81; direction-g.md Sign-in).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Animations from tokens, delays on the animation not Task.sleep', verdict: 'pass', note: 'One withAnimation per piece with .delay(MotionTokens.Intro.*); the mark settles in its completion handler.' },
-        { rule: 'Reduce Motion read from the environment', verdict: 'pass', note: 'accessibilityReduceMotion in LoginView; titleRise and formRise offsets are zero under it.' },
-        { rule: 'Do not animate an element that has not appeared', verdict: 'fix', note: 'The mark\'s rise runs under a parent whose opacity is 0 until 0.46 s, so it plays unseen; either lift the mark out of the faded header or start the title earlier. Needs a simulator frame capture first.' },
+        { rule: 'Screens that assume everything fits scroll', verdict: 'pass', note: 'A ScrollView with a minimum height and a 460 pt column cap handles the Duo\'s short outer display and iPad (LoginView.swift:66-75; SignInStyle.swift:20).', by: 'swiftui-pro skill' },
+        { rule: 'Delay on the animation, chain with completion', verdict: 'pass', note: '.delay(MotionTokens.Intro.*) and withAnimation completion blocks (LoginView.swift:205-217).', by: 'swiftui-pro skill' },
+        { rule: 'Focus helpers keep the field as the accessible control', verdict: 'pass', note: '.onTapGesture only forwards a tap on a row\'s padding to the field (LoginFields.swift:54, 79); the field keeps its own label and role.', by: 'swiftui-pro skill' },
       ],
     },
 

@@ -81,19 +81,24 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Alerts: use for serious consequences, with a clear title and a short message', verdict: 'pass', note: 'Disarming opens the house; the title is a question and the message says what stops.' },
-        { rule: 'Alerts: destructive action is red, Cancel is always present', verdict: 'pass', note: 'role .destructive for Disarm, role .cancel for Cancel.' },
-        { rule: 'Alerts: do not confirm reversible actions', verdict: 'pass', note: 'Arming sends at once.' },
-        { rule: 'Alerts: avoid more than two buttons', verdict: 'pass', note: 'Two.' },
-        { rule: 'Sheets: alert over a sheet follows the sheet\'s appearance', verdict: 'pass', note: 'Dark or light by the system; on the page, always dark.' },
+        { rule: "Alerts: avoid alerts for common, undoable actions", verdict: 'departure', note: "Disarm always asks although re-arming undoes it, because it opens the house; .agents/pages/security/spec.md lists it as a native departure (HIG: Alerts). Arming never asks.", by: 'apple-hig skill' },
+        { rule: "Alerts: always title a cancel button Cancel; destructive style only an action people did not deliberately choose", verdict: 'fix', note: "Disarm carries .destructive (SecuritySystemSheet.swift:85) although the person has just chosen it; HIG says not to destructive-style a deliberately chosen action. Cancel is titled Cancel with the cancel role and no default (line 87).", by: 'apple-hig skill' },
+        { rule: "Alerts: title is a clear question, short message only if it adds value", verdict: 'pass', note: "'Disarm the Security System?' with one sentence 'Doors and motion stop triggering the alarm.' (SecuritySystemSheet.swift:84-90), two lines or fewer at AX5.", by: 'apple-hig skill' },
+        { rule: "Alerts: use a system alert so the fold, Dynamic Type and VoiceOver are handled", verdict: 'pass', note: "A real .alert, not a custom overlay (SecuritySystemSheet.swift:84); the system centres it across the Duo hinge.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Use .alert with isPresented and roles', verdict: 'pass', note: 'Button(role: .destructive) and Button("Cancel", role: .cancel).' },
-        { rule: 'Do not decorate or animate a system alert', verdict: 'pass', note: 'motion.md section 2: system alerts are never replaced or slowed.' },
-        { rule: 'Accessibility identifier on the confirm button', verdict: 'pass', note: 'security.disarm.confirm.' },
+        { rule: "Alert attached to the view that owns the action", verdict: 'pass', note: ".alert sits on AlarmPanel so it works over the page or the sheet (SecuritySystemSheet.swift:84); state is a private @State Bool (line 52).", by: 'swiftui-pro skill' },
+        { rule: "Roles: .destructive and .cancel", verdict: 'fix', note: "Disarm uses role .destructive (line 85), see the HIG finding; consider no role so it reads as the confirming action.", by: 'swiftui-pro skill' },
+        { rule: "Identifier and accessibility on alert buttons", verdict: 'pass', note: "The confirm button has an accessibilityIdentifier for tests (line 86); the system gives VoiceOver the alert context.", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

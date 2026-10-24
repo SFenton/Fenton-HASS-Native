@@ -56,19 +56,26 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Pop-up buttons: show the current choice and a chevron indicator', verdict: 'pass', note: 'Glyph (or value at AX) plus up-down chevron; choice checked in the menu.' },
-        { rule: 'Menus: group related items, mark the current one', verdict: 'pass', note: 'Inline Picker checkmark; items carry glyphs.' },
-        { rule: 'Buttons: at least 44 pt', verdict: 'pass', note: 'HassTokens.minTarget on each picker.' },
-        { rule: 'Native controls over custom option tiles', verdict: 'departure', note: 'Owner 2026-10-13: a native dropdown replaces the web\'s option-tile dialog (spec.md Departures).' },
+        { rule: "Pop-up buttons: show the current selection, predictable before opening", verdict: 'fix', note: "At default size the mode and fan menus are only a glyph (power, fan) and a chevron, so the choice shows only in the neighbouring state text, and 'power' does not describe an HVAC mode (ClimateComponents.swift:94-101, 139-146); at AX5 they show the value.", by: 'apple-hig skill' },
+        { rule: "Accessibility: 44 pt targets", verdict: 'pass', note: "Each Menu has a 44 x 44 minimum frame and its own label and value (ClimateComponents.swift:149, 154-155).", by: 'apple-hig skill' },
+        { rule: "Layout: stack at accessibility sizes", verdict: 'pass', note: "The menus drop under the text and show their value at AX sizes (ClimateComponents.swift:71-72, 94).", by: 'apple-hig skill' },
+        { rule: "Color: tint is extra to text", verdict: 'pass', note: "The glyph tint follows hvac_action but the state text says Heat, Cool, Off (line 78, 85).", by: 'apple-hig skill' },
+        { rule: "Materials: a thin module", verdict: 'pass', note: "One thin module, glass not used (line 108).", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Use Menu with Picker, not a bare Picker, when the hit area matters', verdict: 'pass', note: 'See the Targets note; documented in the source.' },
-        { rule: 'AnyLayout to switch layouts at AX sizes', verdict: 'pass', note: 'HStackLayout or VStackLayout by isAccessibilitySize.' },
-        { rule: 'Optimistic selection', verdict: 'pass', note: 'controller.shown(hubModeKey) and hubFanKey; setHubMode and setHubFan are optimistic and revert on failure.' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'stateForeground on the glyph.' },
+        { rule: "Prefer bindings projected from state over Binding(get:set:)", verdict: 'fix', note: "HubPicker builds Binding(get:set:) in body (ClimateComponents.swift:130).", by: 'swiftui-pro skill' },
+        { rule: "Menu needs a text title for VoiceOver", verdict: 'pass', note: "accessibilityLabel('Thermostat Hub Mode') and the value are set explicitly (lines 154-155).", by: 'swiftui-pro skill' },
+        { rule: "Use Menu over bare Picker for a larger hit area", verdict: 'pass', note: "The comment records that a bare Picker keeps a small UIKit hit area (lines 116-117).", by: 'swiftui-pro skill' },
+        { rule: "Group related elements", verdict: 'pass', note: "Glyph, name and state combine into one element; the menus stay separate (lines 91, 109).", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

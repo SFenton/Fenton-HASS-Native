@@ -103,25 +103,29 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Sheets: dismiss with a close control; the header carries the title', verdict: 'pass', note: 'Circle x Close trailing, inline title "Weather"; no "Done" (owner 2026-10-13).' },
-        { rule: 'Sheets: full height only for content that needs it', verdict: 'pass', note: 'hassSheet(.page, height: .full): seven panels of forecast; the page sheet on iPad and the unfolded Duo.' },
-        { rule: 'Color: contrast on a varying background', verdict: 'pass', note: 'Gradients are dark enough for white at 5.6:1 or better; panels are a darkening wash.' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'departure', note: 'The sheet is dark in either system appearance (patterns/weather.md "Sheet"; direction-g.md): the condition gradient is the ground, like Apple Weather.' },
-        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'departure', note: 'The ground is the condition gradient (opaque), not the sheet-ground token, because the weather IS the surface.' },
-        { rule: 'Charting data: label axes, support Dynamic Type', verdict: 'pass', note: 'Plain bars (not Swift Charts) so every axis label scales; the tile speaks the series (patterns/weather.md departures).' },
-        { rule: 'Motion: keep decoration subtle and optional', verdict: 'pass', note: 'Slow streaks at low opacity, still frame under Reduce Motion, none with Reduce Transparency.' },
-        { rule: 'Page controls: 44 pt targets, a way to page without swiping', verdict: 'pass', note: 'Adjustable indicator element, Previous and Next on regular width.' },
+        { rule: "Sheets: consider medium for progressive disclosure", verdict: 'departure', note: "The sheet opens at large only, dark in either appearance, over a condition gradient (WeatherCardContent.swift:54, .hassSheet(.page, height: .full, appearance: .dark)); hassSheet doc (HassModal.swift:132-141) records both choices.", by: 'apple-hig skill' },
+        { rule: "Color: contrast on every scene", verdict: 'pass', note: "Every gradient stop is dark enough for white text (WeatherBackdrop.swift:44-53; the lightest, clear-sky top 0.13/0.40/0.78, measures about 5.5:1 against white) and panels add a 28% black wash that needs no blur (WeatherSurface.swift:15).", by: 'apple-hig skill' },
+        { rule: "Accessibility: Reduce Motion and Reduce Transparency", verdict: 'pass', note: "Decoration animates only with Reduce Motion off and is left out under Reduce Transparency, leaving a solid gradient (WeatherBackdrop.swift:25-28); the carousel pages with no animation (WeatherPagedCarousel.swift:55).", by: 'apple-hig skill' },
+        { rule: "Charting data: make every chart accessible, with labels for values", verdict: 'pass', note: "Bar charts and rails are hidden from VoiceOver and each tile speaks its whole series as a value (WeatherBarChart.swift:41, WeatherTile.swift:26-28, WeatherChanceTile.swift:14-18).", by: 'apple-hig skill' },
+        { rule: "Page controls: tapping either side of the current indicator moves a page", verdict: 'fix', note: "The carousel indicator is a 44 pt custom element with an adjustable action only (WeatherPagedCarousel.swift:63-87); a sighted touch user cannot tap it, and Previous and Next exist only at regular width (line 40), so on iPhone paging is swipe-only.", by: 'apple-hig skill' },
+        { rule: "Typography: minimum text size and Dynamic Type", verdict: 'fix', note: "The hero numeral shrinks with minimumScaleFactor(0.5) inside a fixed one-line frame (WeatherSheet.swift:61-64) and the hours, chart axes and pressure unit use .caption and .caption2 (WeatherModalHour.swift:57, WeatherBarChart.swift:32, WeatherPressureGauge.swift:26), at the 11 pt floor before scaling.", by: 'apple-hig skill' },
+        { rule: "Sheets: Cancel or Close on the leading edge of a single-view sheet, Done trailing", verdict: 'departure', note: "Every modal carries the circle-X Close at the trailing edge (owner, 2026-10-13: 'Done button in top right can just be circle X close button', HassModal.swift:5-9, patterns/modal-sheet.md); a saving sheet keeps its own confirm.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Use presentationBackground for the sheet ground', verdict: 'pass', note: 'WeatherBackdrop(scene, decorated: false) as the presentation background; the page draws the decoration once.' },
-        { rule: 'Scaled metrics for glyph, hero and tiles', verdict: 'pass', note: 'heroSize (76, largeTitle), compass 104 (cap 160), tile width 150 scaled so the grid reflows; the day-row widths are @ScaledMetric.' },
-        { rule: 'Accessibility size layouts via AnyLayout or branches, not truncation', verdict: 'pass', note: 'Header, day row and wind tile switch at isAccessibilitySize.' },
-        { rule: 'Animate with the app tokens and honour Reduce Motion', verdict: 'pass', note: 'motionSafeAnimation(MotionTokens.quick / standard); the streaks timeline is paused when not animated.' },
-        { rule: 'Avoid per-frame state writes in scrolling content', verdict: 'pass', note: 'The carousel is a UIKit paging scroll view (PagedRow); the rain is one Canvas stroke per frame (performance.md round 2).' },
-        { rule: 'Avoid hard-coded colours', verdict: 'departure', note: 'Scene gradients, rail gradients and the amber needle are fixed RGB values (WeatherBackdrop.colors, WeatherRail.Tone): they are always-dark art, not adaptive UI colours.' },
+        { rule: "Close with semantic placement", verdict: 'fix', note: "SheetCloseItem is .confirmationAction (HassModal.swift:26); on the Duo outer display Close should sit with primary navigation at the top (HIG Duo, Vertical controls).", by: 'swiftui-pro skill' },
+        { rule: "Use presentationBackground and a color-scheme environment for a dark sheet", verdict: 'pass', note: "presentationBackground draws the gradient at every detent and preferredColorScheme(.dark) applies to the whole sheet, which is intended (WeatherSheet.swift:50-52).", by: 'swiftui-pro skill' },
+        { rule: "Never use fixed font sizes where a style exists", verdict: 'fix', note: "The hero numeral is .system(size:) with @ScaledMetric 76 and a 0.5 shrink (WeatherSheet.swift:17, 61); AX5 relies on shrinking rather than reflow. Hour glyphs are fixed 26 and 24 pt (WeatherModalHour.swift:38, 42).", by: 'swiftui-pro skill' },
+        { rule: "Avoid UIKit unless needed (PagedRow)", verdict: 'departure', note: "The hourly carousel is a UIKit paging scroll view because a nested SwiftUI ScrollView committed offset through the sheet's view graph every frame (WeatherPagedCarousel.swift:52-54, patterns/resume-lifecycle.md).", by: 'swiftui-pro skill' },
+        { rule: "Accessibility traits and labels", verdict: 'pass', note: "Panels are .contain with labels, headers carry isHeader, the hero combines (WeatherHourlyPanel.swift:24-26, WeatherHighlightsPanel.swift:37-38, WeatherSheet.swift:82).", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

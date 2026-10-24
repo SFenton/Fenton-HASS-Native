@@ -40,7 +40,7 @@
       timeSensitive: { title: 'Time sensitive', note: 'interruption-level and sound', render: function (ctx) {
         var rows = [['banner.apns', 'time-sensitive', 'default', 'security'], ['camera.apns', 'time-sensitive', 'default', 'doorbell'], ['actions.apns', 'time-sensitive', 'default', 'garage']];
         return h('div', { style: { background: '#14161c', borderRadius: '16px', padding: '14px', overflowX: 'auto' } }, h('table.la-tbl', h('thead', h('tr', ['Fixture', 'interruption-level', 'sound', 'thread-id'].map(function (t) { return h('th', t); }))), h('tbody', rows.map(function (r) { return h('tr', r.map(function (c) { return h('td', c); })); }))),
-          h('p.la-note', { style: { marginTop: '10px' } }, 'The app sets the level; the system decides what that looks like and lets a time-sensitive notification through a Focus. There is no S+H-drawn badge. Critical alerts need Apple\'s entitlement for com.sfenton.home, so until then the integration sends time-sensitive (push.md, Open).')); } },
+          h('p.la-note', { style: { marginTop: '10px' } }, 'The app sets the level; the system decides what that looks like. A time-sensitive notification gets through a Focus only when the app has the com.apple.developer.usernotifications.time-sensitive entitlement, which project.yml does not list yet, so today these arrive as Active. There is no S+H-drawn badge. Critical alerts need Apple\'s entitlement for com.sfenton.home, so until then the integration sends time-sensitive (push.md, Open).')); } },
       threads: { title: 'Grouped by thread (Notification Center)', render: function (ctx) {
         function grp(name, k) { return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '6px' } }, h('div', { style: { font: '600 11px var(--mono)', color: 'rgba(255,255,255,.6)' } }, 'thread-id: ' + name), n(ctx, k, { time: '9:31 AM' })); }
         return lockWith(ctx, [grp('security', 'banner'), grp('doorbell', 'camera'), grp('garage', 'actions')], { bottom: '60px' }); } },
@@ -65,18 +65,20 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Notifications: short, specific titles; body adds detail', verdict: 'pass', note: 'Fixture copy: "Front Door" / "Security" / one sentence.' },
-        { rule: 'Notifications: at most four actions, destructive marked', verdict: 'pass', note: 'The fixture has four; Ignore is destructive.' },
-        { rule: 'Notifications: time-sensitive only for urgent', verdict: 'pass', note: 'The fixtures use time-sensitive for the door, garage and doorbell events; the Home Assistant automation chooses the level.' },
-        { rule: 'Notifications: ask permission in context', verdict: 'fix', note: 'Permission is asked once per install right after sign-in (MainTabView.loadProfileName), not at the first moment a notification matters.' },
+        { by: 'apple-hig skill', rule: 'Notifications: actions honour destructive, authentication and foreground options', verdict: 'pass', note: 'PushAction.options maps authenticationRequired, destructive and foreground; text-input actions become UNTextInputNotificationAction (PushCategory.swift:67-87).' },
+        { by: 'apple-hig skill', rule: 'Notifications: at most four actions', verdict: 'fix', note: 'PushCategory(actions:) registers every action the automation sends (PushCategory.swift:27-31); nothing caps the list at the four the system presents and HIG recommends.' },
+        { by: 'apple-hig skill', rule: 'Notifications: time-sensitive needs the entitlement', verdict: 'fix', note: 'The fixtures use interruption-level time-sensitive, but project.yml gives the app only aps-environment, the app group and wifi-info (lines 43-49): no com.apple.developer.usernotifications.time-sensitive, so iOS delivers them as Active and they do not break through a Focus. The note in the Time sensitive state is corrected in this mockup.' },
+        { by: 'apple-hig skill', rule: 'Notifications: ask for permission in context', verdict: 'fix', note: 'PushCoordinator.didConnect requests authorization right after sign-in (PushCoordinator.swift:62), before any notification has been explained.' },
+        { by: 'apple-hig skill', rule: 'Notifications: sensitive previews', verdict: 'fix', note: 'The category options are only .customDismissAction (PushCategory.swift:92-94); no hidden-preview placeholder is set, so a door-unlocked body appears on a locked screen when the person allows previews.' },
       ],
       swiftui: [
-        { rule: 'Keep extension work bounded', verdict: 'pass', note: 'serviceExtensionTimeWillExpire cancels the task and delivers the content as it is.' },
-        { rule: 'Do not store secrets in the extension', verdict: 'pass', note: 'The token comes from the shared Keychain item; traces carry no tokens or text.' },
-        { rule: 'Fail soft', verdict: 'pass', note: 'Anything that fails leaves the notification as the relay sent it.' },
+        { by: 'swiftui-pro skill', rule: 'swift.md: bounded extension work', verdict: 'pass', note: 'serviceExtensionTimeWillExpire cancels the task and delivers the content as it is (NotificationService.swift:57-61).' },
+        { by: 'swiftui-pro skill', rule: 'swift.md: protect shared mutable state', verdict: 'departure', note: 'DeliveryState is @unchecked Sendable around an NSLock (lines 66-88) because the work task and the synchronous serviceExtensionTimeWillExpire callback share one handler; an actor cannot be awaited there, though Mutex or OSAllocatedUnfairLock would drop the @unchecked.' },
+        { by: 'swiftui-pro skill', rule: 'hygiene.md: no secrets in the extension', verdict: 'pass', note: 'The token comes from the shared Keychain access group and traces carry neither tokens nor text (lines 27-28; PushTrace).' },
       ],
     },
     notes: [
+      'Corrected 2026-10-23 (skill review): the Time sensitive state said the system lets time-sensitive notifications through a Focus; the app has no time-sensitive entitlement (project.yml lines 43-49), so the level is requested but not honoured until it is added (recorded as a fix).',
       'System UI: the banner, the Lock Screen and Notification Center layouts are iOS\'s. This mockup draws an approximation of their look around the real content (fixtures in tools/push_fixtures: banner, camera, actions); nothing here is S+H-drawn except the strings, the category and the attachment.',
       'Doc versus code: push.md says an attached snapshot did not show a thumbnail on the iOS 27.0 simulator preview even with no error logged (2026-10-14); the camera state shows what a device should draw and has not been confirmed on a device with real APNs.',
       'Debug builds show a payload as a local notification after the same enrichment (FENTON_PUSH_PREVIEW); that path is not a product surface.',

@@ -58,20 +58,18 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Sheets: a create sheet has Cancel leading; do not allow dismissal that would lose an in-flight action', verdict: 'pass', note: 'interactiveDismissDisabled(controller.isScheduling) and a disabled Cancel.' },
-        { rule: 'Sheets: form sizing on iPad', verdict: 'pass', note: 'hassSheet(.form) fitted.' },
-        { rule: 'Date pickers: compact pickers with inline validation', verdict: 'pass', note: 'One picker per moment; messages below as inline alerts.' },
-        { rule: 'Loading: show progress for work in flight', verdict: 'fix', note: 'While scheduling the button only disables; there is no inline arc in it (motion.md section 5: the spinner belongs in the button you pressed). The wait can last until Home Assistant echoes.' },
-        { rule: 'Toolbars: avoid text Done/Save', verdict: 'departure', note: 'The primary action is a content button beside the fields instead of the toolbar check (SheetConfirmItem) other create sheets use (direction G, Sheets).' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'pass', note: 'Sheets follow the system appearance.' },
+        { rule: "Sheets: confirm before discarding a draft", verdict: "fix", note: "Cancel and swipe down close the editor and reset the draft without a prompt (SoloTripScreen.swift lines 181-185; SoloTripController.closeEditor); only an in-flight schedule blocks it. Low, two dates.", by: "apple-hig skill" },
+        { rule: "Loading: progress where the person pressed", verdict: "fix", note: "While scheduling the confirm button only disables (lines 169-172); no inline arc although the wait lasts until Home Assistant echoes the same start and end. Medium.", by: "apple-hig skill" },
+        { rule: "Date pickers: invalid ranges prevented or explained", verdict: "pass", note: "editorAlerts lists the traveler, range and setup problems inline and editorConfirmDisabled gates the button (lines 168-172).", by: "apple-hig skill" },
+        { rule: "Buttons: a content button as the single primary action", verdict: "departure", note: "direction-g.md Sheets and ios.md 2026-10-13: Schedule Solo Trip is a PrimaryButtonStyle capsule in the content with Cancel as the toolbar circle x, not the SheetConfirmItem check used by create sheets.", by: "apple-hig skill" },
+        { rule: "Sheets: a size that fits and a grabber", verdict: "pass", note: "hassSheet(.form) fitted (line 186), interactiveDismissDisabled while scheduling (line 185).", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Use presentationDetents with a measured height', verdict: 'pass', note: 'hassSheet(.form): fitted, capped at large.' },
-        { rule: 'Disable dismissal while busy', verdict: 'pass', note: 'interactiveDismissDisabled on the NavigationStack.' },
-        { rule: 'Accessibility identifiers', verdict: 'pass', note: 'soloTrip.editor.start, .end, .confirm, .cancel.' },
-        { rule: 'Keep drafts local', verdict: 'pass', note: 'scheduleDraft is reset by openEditor and closeEditor.' },
+        { rule: "Data flow: draft edited through the controller", verdict: "pass", note: "ScheduleDateFields write controller.scheduleDraft directly (lines 159-166), so cancel and reopen start from makeDefault (SoloTripController lines 232-238).", by: "swiftui-pro skill" },
+        { rule: "Accessibility: error order and labels", verdict: "pass", note: "ForEach(controller.editorAlerts) draws each InlineAlert(.error) before the button (line 168), read as errors.", by: "swiftui-pro skill" },
+        { rule: "Navigation: sheet(isPresented:) with a custom Binding", verdict: "fix", note: "SoloTripScreen presents the editor through editorOpen, a Binding(get:set:) in a computed property (lines 31, 91-93); sheet(item:) over the traveler or a draft value would remove the Boolean. Low.", by: "swiftui-pro skill" },
       ],
     },
 

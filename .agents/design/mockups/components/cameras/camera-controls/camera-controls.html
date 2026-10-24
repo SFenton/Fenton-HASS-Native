@@ -41,9 +41,20 @@
       { rule: 'Targets and type', note: 'Circles 56 pt scaled (44 minimum, 88 at AX); labels wrap rather than truncate.' },
       { rule: 'Not colour alone', note: 'Each state changes the glyph (muted speaker vs waves, record ring), the title (Muted, Sound On, Recording) and the tint.' },
     ],
-    reviews: { date: '2026-10-23',
-      hig: [MLC.R.target44, MLC.R.colorNotAlone, { rule: 'Buttons: labels under icons', verdict: 'pass', note: 'Circle over a footnote semibold title.' }, { rule: 'Materials: Liquid Glass only on the navigation layer', verdict: 'pass', note: 'The circles are the sheet cell colour, not glass: they sit on the sheet ground under the video, not over it (HIG Materials).' }],
-      swiftui: [MLC.R.scaled, MLC.R.motionTokens, { rule: 'Repeating effects only for a live pending state', verdict: 'pass', note: 'Pulse only while saving or recording; off with Reduce Motion.' }, { rule: 'Haptics for outcomes', verdict: 'pass', note: 'success, error, and a medium impact on Record.' }] },
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { by: 'apple-hig skill', rule: 'Buttons: labels under icons, 44 pt targets', verdict: 'pass', note: 'Circle is max(scaled 56 pt, 44) over a footnote title; the whole column is the hit area (CameraViewer.swift:249-277).' },
+        { by: 'apple-hig skill', rule: 'Color: state is glyph and title as well as tint', verdict: 'pass', note: 'Sound swaps speaker.slash and speaker.wave, Record reads Recording, Snapshot swaps to a check or a warning triangle (lines 111-129, 216-222).' },
+        { by: 'apple-hig skill', rule: 'Playing haptics: outcomes confirmed', verdict: 'pass', note: 'Success, error and a medium impact on Record use sensoryFeedback (lines 130-141).' },
+        { by: 'apple-hig skill', rule: 'Feedback: an error stays long enough to read', verdict: 'fix', note: 'The "Not Saved" state resets to idle after 2 s (lines 192-193); someone looking at the video can miss it and the announcement is the only trace. Keep it until the next action or the viewer closes.' },
+      ],
+      swiftui: [
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Reduce Motion for repeating effects', verdict: 'pass', note: 'symbolEffect(.pulse, options: .repeating, isActive: pulses && !reduceMotion) and an identity content transition (lines 257-258).' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Voice Control names', verdict: 'pass', note: 'accessibilityInputLabels accepts both the label and the visible title (line 281); Sound and Record carry the toggle trait.' },
+        { by: 'swiftui-pro skill', rule: 'swift.md: structured work instead of a free Task', verdict: 'fix', note: 'takeSnapshot starts an unstructured Task that sleeps 2 s and writes view state (lines 179-194); a .task(id: snapshot) would cancel with the view.' },
+      ],
+    },
     notes: ['The circles are always on the dark sheet (the viewer is always dark); the page swatch is not shown because the controls never appear on a page.', 'Promote to kit: MLC.camControl and MLC.camControls.'],
     changelog: [{ date: '2026-10-23', note: 'First pass.' }],
   });

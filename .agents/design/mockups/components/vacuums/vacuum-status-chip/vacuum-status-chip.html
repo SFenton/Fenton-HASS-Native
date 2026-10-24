@@ -68,17 +68,15 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Buttons: one primary action, 44 pt targets', verdict: 'pass', note: 'One filled capsule per screen state; secondaries are grey 50 pt capsules.' },
-        { rule: 'Segmented controls: 2 to 5 short options', verdict: 'pass', note: 'Two to four options; five or more become a pop-up button; a menu at AX.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Every chip and button pairs a glyph with a word.' },
-        { rule: 'Text colour on tints: contrast', verdict: 'pass', note: 'Orange and red appear only as glyphs on grey (labels stay primary ink).' },
-        { rule: 'Pop-up buttons: value as the source', verdict: 'pass', note: 'Only the value is the Menu label (owner report 2026-10-13).' },
+        { rule: 'Status chips: state in glyph and words', verdict: 'pass', note: 'VacuumStatusChip pairs a toned glyph with the value ("Docked", "87%", "Dock Idle") and speaks as label plus value (VacuumComponents.swift:151-177).', by: 'apple-hig skill' },
+        { rule: 'Segmented controls: two to four short options', verdict: 'pass', note: 'VacuumSettingRow uses a segmented control for 2 to 4 options of three characters or fewer, a pop-up menu above that and at every accessibility size (VacuumComponents.swift:306-312).', by: 'apple-hig skill' },
+        { rule: 'Color: orange and red text fail contrast', verdict: 'pass', note: 'Secondary commands keep primary-ink labels and let the glyph carry the tone (VacuumSecondaryButtonStyle); the menu value uses the action blue.', by: 'apple-hig skill' },
+        { rule: 'Buttons: 44 pt or more', verdict: 'pass', note: 'Command capsules are 50 pt (PrimaryButtonStyle.height), the menu label is 44 pt (HassTokens.minTarget, :371).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Combine accessibility elements', verdict: 'pass', note: 'accessibilityElement(children: .ignore) with a label and value on chips.' },
-        { rule: 'Colour animation through the app token', verdict: 'pass', note: 'stateForeground / stateColorTransition.' },
-        { rule: 'Dynamic Type: AnyLayout for AX', verdict: 'pass', note: 'Setting rows and command buttons switch layouts at accessibility sizes.' },
-        { rule: 'Use ButtonStyle, not hand-built buttons', verdict: 'pass', note: 'PrimaryButtonStyle and VacuumSecondaryButtonStyle.' },
+        { rule: 'Accessibility: hints describe the action, not state', verdict: 'fix', note: 'VacuumActionButton sets accessibilityHint(action.detail) and hides the visible detail text (VacuumComponents.swift:236-243), so the reason a command is disabled is a hint that VoiceOver users may have turned off.', by: 'swiftui-pro skill' },
+        { rule: 'Menu: title as well as the glyph', verdict: 'pass', note: 'The setting menu is a Menu with an inline Picker, labelled with the setting title and valued with the selection (VacuumComponents.swift:353-377); the row stays visible while the menu is open.', by: 'swiftui-pro skill' },
+        { rule: 'Design: weights and sizes', verdict: 'fix', note: 'Chips and buttons scatter .font(.subheadline.weight(.semibold)) and a fixed 36 pt minHeight and 6 pt spacing (VacuumComponents.swift:159-172); swiftui-pro design asks for shared tokens and system weights.', by: 'swiftui-pro skill' },
       ],
     },
 

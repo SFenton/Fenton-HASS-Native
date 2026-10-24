@@ -69,17 +69,17 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Dynamic Island: expanded content uses the system regions', verdict: 'pass', note: 'leading, trailing and bottom regions, the centre left empty.' },
-        { rule: 'Dynamic Island: content aligns with the camera cut-out', verdict: 'pass', note: 'Regions are sized by the system for each phone; the stand-in reproduces 393/126, 402/104, 440/126.' },
-        { rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Pill 36 pt in a 44 pt frame; round buttons 44 pt.' },
-        { rule: 'Dynamic Type', verdict: 'departure', note: 'Capped at xxxLarge; per-job spec section 8a and the accessibility journey.' },
-        { rule: 'Live Activities: no sensitive data in the island', verdict: 'pass', note: 'Titles are device names only.' },
+        { by: 'apple-hig skill', rule: 'Dynamic Island: use the system regions, centre empty', verdict: 'pass', note: 'Leading glyph, trailing mark and a full-width bottom block; the centre stays empty (HomeLiveActivity.swift:33-40).' },
+        { by: 'apple-hig skill', rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Pills are 36 pt inside a 44 pt frame and the vacuum icons are 44 pt circles (ActivityButtons.swift:92, 104-107).' },
+        { by: 'apple-hig skill', rule: 'Dynamic Type: system-sized island', verdict: 'departure', note: 'Each region is capped at xxxLarge (HomeLiveActivity.swift:34-38) and the title is a fixed 16 pt (HomeActivityIslandViews.swift:192); per-job spec section 8a.' },
+        { by: 'apple-hig skill', rule: 'Layout: critical text never hides', verdict: 'fix', note: 'A problem\'s device and problem lines are lineLimit(1) at every size (HomeActivityIslandViews.swift:213-221); "Main Floor Vacuum" and a long problem truncate with only the spoken summary carrying the rest.' },
+        { by: 'apple-hig skill', rule: 'Color: white on black, severity tints', verdict: 'pass', note: 'Title and value are white; the problem line takes the severity light tint (lines 191-197, 218-220).' },
       ],
       swiftui: [
-        { rule: 'Avoid fixed frames; let the system size regions', verdict: 'pass', note: 'No fixed frames in the regions (E2c).' },
-        { rule: 'Shape the content with layoutPriority, not magic numbers', verdict: 'pass', note: 'The buttons take fixedSize(horizontal), the title block takes the rest.' },
-        { rule: 'Avoid AnyView', verdict: 'departure', note: 'ActivityActions wraps the intent button in AnyView because the intent type lives in the extension.' },
-        { rule: 'Reduce Motion', verdict: 'pass', note: 'No app animation; the system presents and collapses the island.' },
+        { by: 'swiftui-pro skill', rule: 'performance.md: avoid AnyView', verdict: 'departure', note: 'ActivityActions wraps the intent button in AnyView (ActivityActions.swift:11, 20) because the intent type lives in the extension.' },
+        { by: 'swiftui-pro skill', rule: 'resizability.md: let regions size themselves', verdict: 'pass', note: 'No fixed frames; buttons take fixedSize(horizontal:) and the title block takes the rest (lines 189-205).' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Reduce Motion', verdict: 'pass', note: 'The views add no animation; the system owns the expand and collapse.' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: pending and stale states in words', verdict: 'pass', note: 'ActivityButtons swaps the pills for "Stopping..." while pending and adds "Not confirmed" when stale (ActivityButtons.swift:21-31, 51-59).' },
       ],
     },
     notes: [

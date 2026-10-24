@@ -63,19 +63,33 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Pickers: a short list in a sheet with a checkmark for the current value', verdict: 'pass', note: 'Direction G chooses a sheet when options need swatches or more room; two to four short options use SegmentedChoice inline.' },
-        { rule: 'Sheets: opaque ground, close button, grouped lists', verdict: 'departure', note: 'presentationBackground(systemGroupedBackground) at every detent (patterns/option-picker.md).' },
-        { rule: 'Lists: 44 pt rows', verdict: 'pass', note: 'minHeight: HassTokens.minTarget; contentShape(Rectangle()) so the whole row taps.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Label, check and selected trait accompany the swatch.' },
+
+        { rule: "Lists and tables, Pickers: single choice shown with a checkmark on the current row", verdict: "pass", note: "Each row is a 44 pt button with the label, an optional swatch and a trailing checkmark (opacity 1 only on the current value); choosing a new value calls choose and dismisses, tapping the current one just dismisses.", by: "apple-hig skill" },
+
+        { rule: "Color: do not rely on colour alone", verdict: "pass", note: "The 44 by 20 pt gradient capsule is a preview of the lighting mode's colours, hidden from VoiceOver; the label names the mode and the check plus the selected trait mark the current one.", by: "apple-hig skill" },
+
+        { rule: "Sheets: close control, content-fitted height, opaque ground", verdict: "departure", note: "The sheet shows only a trailing circle-x Close (no Cancel, because choosing is the action) and is a fitted form sheet through hassSheet(.form), where option-picker.md calls for medium and large detents; the ground is the opaque grouped background so a page's tiles never show through at a partial detent (OptionPickerSheet.swift lines 88 to 90).", by: "apple-hig skill" },
+
+        { rule: "Typography: Dynamic Type", verdict: "fix", note: "Row labels wrap, but the swatch is a fixed 44 by 20 pt capsule (GradientSwatch, line 106) that does not scale, so at AX sizes it shrinks relative to the label and the wrapped label can push it to the row's edge. Low.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Do not re-send the current value', verdict: 'pass', note: 'choose is called only when option.value != selected; the sheet dismisses either way.' },
-        { rule: 'Stable accessibility identifiers per option', verdict: 'pass', note: 'identifierPrefix.value.' },
-        { rule: 'Animate with the app token', verdict: 'pass', note: 'quickTransition on the check only.' },
-        { rule: 'Sheet appearance through the shared modifier', verdict: 'pass', note: 'followsSystemAppearance(); the call site adds hassSheet(.form).' },
+
+        { rule: "Views: use the system control for a choose-one list", verdict: "fix", note: "The rows re-create a single-selection Picker (Button, checkmark, isSelected trait) in a List; Picker with .pickerStyle(.inline) in a Form, or .navigationLink, supplies the radio semantics, keyboard and Voice Control support, though the swatch row would need a custom label. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Accessibility: row is one button with selected trait and identifier", verdict: "pass", note: "The decorative swatch and check are accessibilityHidden, so VoiceOver reads the label and 'selected'; the identifier is <prefix>.<value>.", by: "swiftui-pro skill" },
+
+        { rule: "Navigation: sheet chrome through the shared container", verdict: "fix", note: "OptionPickerSheet builds its own NavigationStack, modalChrome, SheetCloseItem, followsSystemAppearance and presentationBackground by hand, duplicating HassModal and hassSheet's SheetGroundModifier; use HassModal so the title mode and ground cannot drift. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Data flow: typed selection and values in, closure out", verdict: "fix", note: "selected and choose are plain Strings keyed by an Option.value string, so a typo selects nothing and the compiler cannot help; a generic Hashable selection or a Binding would be safer. Low.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [

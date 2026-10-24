@@ -70,14 +70,14 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'watchOS Smart Stack: glanceable, no interaction needed', verdict: 'pass', note: 'One figure; no controls (the engine does not rely on a button there).' },
-        { rule: 'CarPlay: minimal, glanceable content', verdict: 'pass', note: 'Same one-line layout; nothing to operate while driving.' },
-        { rule: 'Dynamic Type', verdict: 'fix', note: 'One-line limits truncate at AX sizes; the journeys do not cover the small family on a Watch or CarPlay (per-job spec section 8 "until a device check says otherwise").' },
+        { by: 'apple-hig skill', rule: 'Smart Stack and CarPlay: glanceable, no controls', verdict: 'pass', note: 'Glyph or ring, title and one figure, with no buttons (HomeActivitySmallView.swift:13-43).' },
+        { by: 'apple-hig skill', rule: 'Dynamic Type: text must not truncate', verdict: 'fix', note: 'Title, problem and headline are lineLimit(1) (lines 26, 31, 36) and the view is not run on a Watch or CarPlay; at accessibility sizes the title truncates.' },
+        { by: 'apple-hig skill', rule: 'Typography: the smallest styles', verdict: 'fix', note: 'The title is .caption.weight(.semibold) and the problem line .caption (lines 24, 29), the smallest text on a Watch tile; a .footnote or .subheadline gives more at the same width.' },
       ],
       swiftui: [
-        { rule: 'Accessibility grouping', verdict: 'pass', note: 'children: .combine on the whole view.' },
-        { rule: 'Availability', verdict: 'pass', note: 'supplementalActivityFamilies([.small]) and the activityFamily environment are behind #available(iOS 18).' },
-        { rule: 'Text styles over fixed sizes', verdict: 'pass', note: 'caption and headline; the ring and glyph are fixed (decoration).' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: combine into one element', verdict: 'pass', note: 'accessibilityElement(children: .combine) on the whole view (line 42).' },
+        { by: 'swiftui-pro skill', rule: 'api.md: availability for the .small family', verdict: 'pass', note: 'supplementalActivityFamilies([.small]) and the activityFamily environment are behind #available(iOS 18) (HomeLiveActivity.swift:17, 92-113).' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: scaled figure', verdict: 'pass', note: 'ActivityFigure(size: 17, relativeTo: .headline) scales from a text style (line 38).' },
       ],
     },
     notes: [

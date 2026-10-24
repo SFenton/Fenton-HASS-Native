@@ -69,19 +69,20 @@
     ],
 
     reviews: {
-      date: '2026-10-23',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Segmented controls: 2 to 5 short options', verdict: 'pass', note: 'Three or four options each; a menu at AX sizes (direction-g.md Controls: Choosing one option).' },
-        { rule: 'Sheets: fitted height with a grabber and a close control', verdict: 'pass', note: 'hassSheet(.form), circle x Close.' },
-        { rule: 'Sheets: prefer form sizing for a short list of controls on iPad', verdict: 'pass', note: 'Form sheet (540 pt), fitted.' },
-        { rule: 'Toolbars: title with a subtitle', verdict: 'pass', note: 'The system navigation subtitle on iOS 26 (sheetSubtitle); earlier systems show the title alone.' },
-        { rule: 'Dynamic Type', verdict: 'pass', note: 'Controls become menus at AX sizes; text wraps rather than truncates.' },
+        { rule: 'Segmented controls: about 5 segments on iPhone', verdict: 'pass', note: 'Fan Mode has 3 or 4 options and Fan Speed 4; SegmentedChoice is a system Picker(.segmented) and becomes a menu at accessibility sizes (SegmentedChoice.swift:41).' },
+        { rule: 'Sheets: fitted height, grabber, close control', verdict: 'pass', note: '.hassSheet(.form) fits the measured content and shows the grabber; Close is the circle-X trailing.' },
+        { rule: 'Sheets: prefer form sizing on iPad for a short list of controls', verdict: 'pass', note: '540 pt form sheet, fitted vertically (HassModal.swift:218).' },
+        { rule: 'Toolbars: title with subtitle', verdict: 'pass', note: 'sheetSubtitle shows the AQI and PM2.5 summary under the title on iOS 26; earlier systems show the title alone.' },
+        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'Choices become menus showing "Title: value" at AX sizes; no truncation.' },
+        { rule: 'Feedback: optimistic change with a revert', verdict: 'pass', note: 'A pick shows at once and reverts after 2 s if Home Assistant does not confirm; system picker haptics apply.' },
       ],
       swiftui: [
-        { rule: 'Use system controls where they exist', verdict: 'pass', note: 'Picker(.segmented) / Menu via SegmentedChoice.' },
-        { rule: 'Accessibility label for each control', verdict: 'pass', note: 'SegmentedChoice(label:) and the group label.' },
-        { rule: 'Disabled controls say so', verdict: 'pass', note: '.disabled on the choice when its entity is unavailable.' },
-        { rule: 'No decorative animation', verdict: 'pass', note: 'Nothing animates but the system segmented selection.' },
+        { rule: 'Use system controls where they exist', verdict: 'pass', note: 'Picker(.segmented) / Picker(.menu) through SegmentedChoice; nothing custom.' },
+        { rule: 'Accessibility: label every control', verdict: 'pass', note: 'Each picker carries its section title; the group is labelled "<room> air purifier controls".' },
+        { rule: 'Hygiene: one type per file, docs match code', verdict: 'fix', note: 'GrillSheet and GrillControls live in AirPurifierSheet.swift (lines 67-135), and RoomDeviceSheetChrome\'s doc and identifier still say "Done" for what is the Close button (RoomDeviceSheetChrome.swift:16, 39).' },
+        { rule: 'Motion: no decorative animation', verdict: 'pass', note: 'Only the system segmented selection animates; section swaps are cuts.' },
       ],
     },
 

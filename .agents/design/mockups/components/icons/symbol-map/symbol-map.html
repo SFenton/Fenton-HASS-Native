@@ -83,15 +83,17 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'SF Symbols: use symbols that match the meaning and the system\'s use', verdict: 'pass', note: 'Each MDI maps to the nearest SF Symbol by meaning (bed.double, alarm, humidity, robotic.vacuum).' },
-        { rule: 'SF Symbols: rely on the symbol\'s variants (fill) for selected states', verdict: 'pass', note: 'Active tiles and selected tabs use the fill variant.' },
-        { rule: 'SF Symbols: avoid brand symbols in general UI', verdict: 'fix', note: 'mdi:apple maps to apple.logo (a brand symbol; the Apple TV remote). Check the SF Symbols license terms for this use or pick a neutral symbol.' },
-        { rule: 'Accessibility: describe imagery', verdict: 'pass', note: 'Hidden; the label carries the meaning.' },
+        { rule: "SF Symbols: use symbols for objects and concepts; symbols depend on the target OS version", verdict: "pass", note: "SymbolMap.table maps 170-odd MDI names to SF Symbol names by meaning, with a documented process (add a row for each new MDI name) and unit tests that read SymbolMap through the page and sheet view tests.", by: "apple-hig skill" },
+        { rule: "SF Symbols: avoid vague or misleading metaphors", verdict: "fix", note: "Unmapped names silently draw a plain 'circle' (SymbolMap.symbol(for:), line 189), and several mappings are approximations that can mislead: mdi:robot-vacuum-off to questionmark.circle, mdi:fan-off to power, mdi:shield-moon to moon.zzz, mdi:thermometer-alert to thermometer.high (a heat symbol for an alert), mdi:food-off-outline to the plain fork.knife. Low.", by: "apple-hig skill" },
+        { rule: "SF Symbols and Icons: trademark and brand symbols only for the product they name", verdict: "pass", note: "mdi:apple maps to apple.logo and is used for the Apple TV media card (RoomsConfig 'Apple TV'), an Apple product, which the SF Symbols terms allow; the earlier note to avoid it elsewhere stands if the name is reused for a non-Apple device.", by: "apple-hig skill" },
+        { rule: "Accessibility: icons that carry meaning have labels, decorative ones are hidden", verdict: "pass", note: "Tile, row and tab symbols are accessibilityHidden because their host names itself in text, so 'bed.double' is never read; a tab bar icon is named by the tab's title.", by: "apple-hig skill" },
+        { rule: "Color: family glyph colours repeat state words and fills", verdict: "pass", note: "The glyph colour is only decoration on top of the state in the subtitle and a filled variant (symbolVariant(.fill)) for active tiles; light sheets take the darker glyphLightRGB (3:1).", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Do not scatter lookups', verdict: 'fix', note: 'Two tables exist: SymbolMap.table and FoodSymbols.table (kept apart "while several page threads add rows"; its own comment says to fold them in). Fold them into SymbolMap.' },
-        { rule: 'An unknown key must not crash', verdict: 'pass', note: 'table[mdi] ?? "circle" (the dictionary literal traps only on a duplicate key at launch).' },
-        { rule: 'Use the .symbolEffect(.replace) for swaps', verdict: 'pass', note: 'GlassTile replaces lock-style symbols (motion-components.md).' },
+        { rule: "Design: stringly-typed symbol names are not compile-checked", verdict: "fix", note: "SymbolMap.table is [String: String] and Image(systemName:) with a name that does not exist on the deployment OS draws nothing (no warning); generated symbol constants or a unit test that builds UIImage(systemName:) for every value would catch an unavailable name on iOS 17. Low.", by: "swiftui-pro skill" },
+        { rule: "API: prefer the generated symbol asset API for catalog images", verdict: "departure", note: "These are system symbols resolved at run time from Home Assistant icon names (mdi:...), not asset-catalog images, so a lookup table is the only option; the source of truth is the web dashboard's icon strings.", by: "swiftui-pro skill" },
+        { rule: "Hygiene: one source of truth", verdict: "fix", note: "SymbolMap and FoodSymbols are two tables for overlapping names (mdi:food-fork-drink and mdi:fridge appear in both with different results for Food) and ModalTabSymbols is a third; the README open note says they should merge. Low.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: scale symbols with text", verdict: "pass", note: "Symbols take the font of the text style around them (title2 or title3 in tiles, body in rows), so they follow Dynamic Type; tile glyph frames are fixed to the layout, which stacks at accessibility sizes.", by: "swiftui-pro skill" },
       ],
     },
     notes: [

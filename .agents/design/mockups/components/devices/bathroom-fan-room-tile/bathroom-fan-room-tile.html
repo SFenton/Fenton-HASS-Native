@@ -78,19 +78,19 @@
     ],
 
     reviews: {
-      date: '2026-10-23',
+      date: '2026-10-23', by: 'apple-hig skill / swiftui-pro skill',
       hig: [
-        { rule: 'Buttons: 44 pt minimum hit target', verdict: 'pass', note: '44 pt circles, scaled up to 1.5x.' },
-        { rule: 'Layout: do not place controls over other controls', verdict: 'pass', note: 'The rail sits one chevron slot in from the edge so the chevron and Power never overlap (owner 2026-10-17).' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Glyph variants and words.' },
-        { rule: 'Dynamic Type', verdict: 'pass', note: 'At AX sizes the rail moves to the bottom-leading corner under the text.' },
-        { rule: 'Nested buttons', verdict: 'departure', note: 'Two buttons sit inside a navigating tile (owner design 2026-10-17, entity-tile.md Accessory rail): the tile body navigates and the rail acts; the tile exposes the state as one value so VoiceOver stays unambiguous.' },
+        { rule: 'Buttons: 44 pt minimum target', verdict: 'pass', note: 'Rail circles are 44 pt scaled up to 66 pt (FanRailButton.swift:19-30).' },
+        { rule: 'Layout: do not stack controls over a control', verdict: 'departure', note: 'Two buttons sit inside a navigating tile (owner 2026-10-17, entity-tile.md Accessory rail): the tile body navigates, the rail acts, and the rail is placed one chevron slot in so they never overlap.' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Lock swaps lock.fill/lock.open; Power fills white; the status line says On, Off or the countdown.' },
+        { rule: 'Accessibility: state values', verdict: 'pass', note: 'Rail buttons are toggles with On/Off values; the tile speaks "on, off in 12 minutes, locked", rounded so it does not change each second.' },
+        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'At AX sizes the rail drops under the text and the circles stay circles.' },
       ],
       swiftui: [
-        { rule: 'TimelineView for a live clock', verdict: 'pass', note: 'Per second only while a countdown shows; hourly otherwise keeps view identity.' },
-        { rule: '@ScaledMetric for sizes', verdict: 'pass', note: 'Diameter and glyph are scaled metrics; the glyph is held under 45% of the circle.' },
-        { rule: 'Accessibility identifiers on accessory tiles', verdict: 'pass', note: 'tileIdentifier(_:) instead of accessibilityIdentifier on the whole tile.' },
-        { rule: 'Colour with the app token', verdict: 'pass', note: 'FanRailButton fill and ink come from ColorFamily.air.fill and the tile\'s state colours.' },
+        { rule: 'Performance: TimelineView only while counting', verdict: 'pass', note: 'by: showsCountdown ? 1 : 3600 keeps the tile identity stable.' },
+        { rule: 'Design: ScaledMetric for sizes tied to text', verdict: 'pass', note: 'Diameter and glyph are @ScaledMetric; glyph held under 45% of the circle.' },
+        { rule: 'Accessibility: tileIdentifier on accessory tiles', verdict: 'pass', note: 'Prevents the tile identifier overwriting the rail ids.' },
+        { rule: 'Views: fontWeight and fixed glyph size', verdict: 'fix', note: 'FanRailButton sets .font(.system(size: glyphSize, weight: .semibold)) (line 50); scaled but not a text style. Low.' },
       ],
     },
 

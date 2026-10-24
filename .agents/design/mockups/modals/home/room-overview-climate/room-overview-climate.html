@@ -71,66 +71,27 @@
 ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-      {
-            "rule": "Sheets: a sheet may hold a navigation hierarchy; give it a close control",
-            "verdict": "pass",
-            "note": "NavigationStack inside the sheet, Back on the pushed page, circle x Close at every depth."
-      },
-      {
-            "rule": "Sheets: prefer page or form sizing on iPad",
-            "verdict": "pass",
-            "note": "hassSheet(.page, height: .full): a 704 pt page sheet on iPad and the unfolded Duo; tile grids need the width."
-      },
-      {
-            "rule": "Sheets: content that pushes pages keeps one height",
-            "verdict": "pass",
-            "note": "height .full is required here (modal-sheet.md): a fitted sheet would resize when a room is pushed."
-      },
-      {
-            "rule": "Layout: scales with Dynamic Type",
-            "verdict": "pass",
-            "note": "Scaled minimum card width, one column at AX5, equal heights measured live."
-      },
-      {
-            "rule": "Materials: a sheet draws on an opaque ground",
-            "verdict": "departure",
-            "note": "Opaque sheet ground and sheet-cell tiles at every size, as direction-g.md Sheets and modal-sheet.md."
-      },
-      {
-            "rule": "Color: not the only differentiator",
-            "verdict": "pass",
-            "note": "No state rides on colour: temperatures are text and the glyph is the room's."
-      }
-],
+        { rule: "Sheets: consider medium for progressive disclosure; full height where content is more useful there", verdict: 'departure', note: "Opens at large only (HomeScreen.swift:38, .hassSheet(.page, height: .full)) because the sheet pushes pages and its height must not change on a push (hassSheet doc, HassModal.swift:132-136, owner 2026-10-16).", by: 'apple-hig skill' },
+        { rule: "Color: climate cards never fill, so state is words", verdict: 'pass', note: "Climate is 'active' whenever it reports, so cards stay dark with the family glyph and print the range as text (RoomOverviewStyle.swift:21-27); nothing depends on colour.", by: 'apple-hig skill' },
+        { rule: "Writing: grammatical copy", verdict: 'fix', note: "A one-sensor room with no helper reads '1 sensors' (RoomOverview.swift:270; the error state shows it) and Critical Protection reads '1 rooms forced' (ClimateLogic.swift:202). Use automatic grammar agreement.", by: 'apple-hig skill' },
+        { rule: "Layout: scaled minimum and equal heights", verdict: 'pass', note: "Same RoomOverviewGrid, @ScaledMetric 140, equal heights (RoomOverviewGrid.swift:11-31).", by: 'apple-hig skill' },
+        { rule: "Lists and tables: a chevron for drill-down", verdict: 'pass', note: "kind .navigate with hint 'Opens <room> Climate' (RoomOverviewTile.swift:23-26).", by: 'apple-hig skill' },
+        { rule: "Sheets: Cancel or Close on the leading edge of a single-view sheet, Done trailing", verdict: 'departure', note: "Every modal carries the circle-X Close at the trailing edge (owner, 2026-10-13: 'Done button in top right can just be circle X close button', HassModal.swift:5-9, patterns/modal-sheet.md); a saving sheet keeps its own confirm.", by: 'apple-hig skill' },
+
+      ],
+
       swiftui: [
-      {
-            "rule": "Use ScrollView with a layout, not a List, for tile grids",
-            "verdict": "pass",
-            "note": "ScrollView { DynamicGridLayout } capped at 960 pt and centred."
-      },
-      {
-            "rule": "Scaled metrics for tile width",
-            "verdict": "pass",
-            "note": "@ScaledMetric(relativeTo: .subheadline) minTileWidth = 140."
-      },
-      {
-            "rule": "No entrance animations inside a sheet",
-            "verdict": "pass",
-            "note": "Content is present on arrival (motion.md 4.4); no .onAppear cascade."
-      },
-      {
-            "rule": "navigationSubtitle only where available",
-            "verdict": "pass",
-            "note": "sheetSubtitle(_:) guards #available(iOS 26); earlier systems keep the web title (SheetSubtitle.isShown)."
-      },
-      {
-            "rule": "Accessibility identifiers and hints on controls",
-            "verdict": "pass",
-            "note": "overview.climate, overview.climate.room.<room>; hint \"Opens <room> Climate\"."
-      }
-],
+        { rule: "Prefer automatic grammar agreement for counts (localization)", verdict: 'fix', note: "The count is hand-built with string interpolation, '\\(count) sensors' (RoomOverview.swift:270), instead of Text('^[\\(n) sensor](inflect: true)'), which is available on the iOS 17 target.", by: 'swiftui-pro skill' },
+        { rule: "navigationDestination(for:)", verdict: 'pass', note: "A single registration for RoomGroup (RoomOverviewSheet.swift:32).", by: 'swiftui-pro skill' },
+        { rule: "Use tokens tuned to contrast, not raw opacity", verdict: 'pass', note: "Card inks come from Surface tokens measured per ground (GlassTile.swift:514-529).", by: 'swiftui-pro skill' },
+        { rule: "Reduce Motion", verdict: 'pass', note: "A live change recolours a card in place through stateColorTransition (0.2 s when reduced) and never reorders it.", by: 'swiftui-pro skill' },
+
+      ],
+
     },
 
     notes: [

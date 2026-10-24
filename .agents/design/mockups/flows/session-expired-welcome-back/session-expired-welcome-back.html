@@ -93,17 +93,19 @@
     ],
 
     reviews: {
-      date: REVIEW_DATE,
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Entering data: do not ask again for what you know', verdict: 'pass', note: 'The account is shown, not asked for; only the password is.' },
-        { rule: 'Feedback: explain why the person was signed out, in plain words', verdict: 'pass', note: '"Your sign-in ended" under a personal title.' },
-        { rule: 'Motion: a transition between root states is a cross-fade', verdict: 'pass', note: 'crossFade 0.35 s.' },
-        { rule: 'Layout: avoid a flash of the wrong colour between layers', verdict: 'fix', note: 'MainTabView leaves at once and the layer fades in over RootView\'s own background (none is set), so the window colour shows during the 0.35 s. Confirm what colour that is on a device.' },
+        { rule: 'Entering data: do not ask again for what you know', verdict: 'pass', note: 'The username is shown read-only and only the password is asked (LoginFields.swift:55-64).', by: 'apple-hig skill' },
+        { rule: 'Feedback: say why the person was signed out', verdict: 'pass', note: '"Welcome back, <first name>" and "Your sign-in ended. Enter your password to pick up where you left off." (LoginCopy.swift:21,24).', by: 'apple-hig skill' },
+        { rule: 'Accessibility: announce a change of screen', verdict: 'fix', note: 'A rejected token ends the session and swaps the whole screen (AppSession.swift:131-141; RootView.swift:128-156) with no announcement or screen-changed notification; only sign-in failures are announced (LoginView.swift:88-90). A VoiceOver user is moved without being told. Medium.', by: 'apple-hig skill' },
+        { rule: 'Launching: do not repeat a long intro', verdict: 'fix', note: 'sessionExpired() calls signOut(), whose motion.reset() clears the intro, so the full 1.2 s intro plays again on the welcome back screen (AppSession.swift:131-135, 185-188; RootView.swift:144-145). Low.', by: 'apple-hig skill' },
+        { rule: 'Layout: no flash of the wrong colour between layers', verdict: 'fix', note: 'MainTabView leaves with .transition(.identity) while the sign-in layer fades in over a root that sets no ground of its own (RootView.swift:140, 155, 158). Read from code, unconfirmed on a device. Low.', by: 'apple-hig skill' },
+        { rule: 'Buttons: 44 pt text button for the secondary action', verdict: 'pass', note: 'Use a Different Account has minHeight HassTokens.minTarget and a lifted link colour (LoginView.swift:130-139; SignInStyle.swift:14).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Transitions declared where the view is inserted or removed', verdict: 'pass', note: '.transition(.identity) on the shell, .transition(.opacity) on the layer, animation on isSignedIn.' },
-        { rule: 'State kept in the model, not duplicated', verdict: 'pass', note: 'LoginModel(mode: .welcomeBack(account)) from session.expiredAccount.' },
-        { rule: 'Animations from tokens', verdict: 'pass', note: 'crossFade and quick.' },
+        { rule: 'Declare transitions where views are inserted and removed', verdict: 'pass', note: '.transition(.identity) on the shell, .transition(.opacity) on the sign-in layer, animation on isSignedIn (RootView.swift:140, 155, 158).', by: 'swiftui-pro skill' },
+        { rule: 'Hide a covered layer from assistive tech', verdict: 'pass', note: '.accessibilityHidden(session.isSignedIn) and allowsHitTesting on the sign-in layer (RootView.swift:153-154).', by: 'swiftui-pro skill' },
+        { rule: 'Do the same reset once', verdict: 'fix', note: 'AppSession.signOut calls motion.reset() twice (AppSession.swift:185 and 188). Low hygiene.', by: 'swiftui-pro skill' },
       ],
     },
 

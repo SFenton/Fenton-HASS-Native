@@ -84,17 +84,18 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Buttons: at least 44 x 44 pt, a clear label', verdict: 'pass', note: '48 pt minimum height; the whole capsule is the hit area (contentShape Capsule).' },
-        { rule: 'Color: do not use colour as the only signal', verdict: 'pass', note: 'Every state has words; glyphs change for contact and occupancy.' },
-        { rule: 'Color: sufficient contrast', verdict: 'pass', note: 'White on every fill at 4.5:1 or better (tests in ChipTintTests); glyphs 3:1.' },
-        { rule: 'Materials: content layer, not Liquid Glass', verdict: 'pass', note: 'Capsule on the thin module or a family fill; no blur per chip.' },
-        { rule: 'Chips are not pills like the web or Apple Home', verdict: 'departure', note: 'Owner 2026-10-13: page-level chips need background colours (status-rail.md); the colour rules are owner 2026-10-16 (direction-g.md "Status chips follow the web").' },
+        { rule: "Color: state beyond colour; contrast", verdict: 'pass', note: "Chip fills are darkened until white text reaches 4.5:1 including the 12% top highlight, glyphs keep 3:1 (ChipTint.swift:60-75, StatusRail.swift:78-81); the armed-and-open chip adds a triangle (StatusChipAppearance.swift:49).", by: 'apple-hig skill' },
+        { rule: "Accessibility: 44 pt minimum target", verdict: 'pass', note: "The capsule is at least 48 pt tall with a Capsule contentShape (StatusRail.swift:88-90, 101).", by: 'apple-hig skill' },
+        { rule: "Accessibility: do not use thin or very small custom text", verdict: 'fix', note: "The state line, the only place a chip's value appears, is .caption (12 pt) at default size (StatusRail.swift:80), and weights are set per Text (lines 72, 77).", by: 'apple-hig skill' },
+        { rule: "Buttons: label and hint for a custom control", verdict: 'pass', note: "'<title>, <summary>' with hint 'Opens <title>'; an inert chip drops the button trait (StatusRail.swift:55-64).", by: 'apple-hig skill' },
+        { rule: "Typography: wrap before truncating", verdict: 'pass', note: "Title and summary are plain Texts with no line limit so a narrow rail wraps the caption (StatusRail.swift:77-82); the kit keeps one line (README note).", by: 'apple-hig skill' },
+        { rule: "Materials: standard material for the content layer", verdict: 'departure', note: "A neutral chip is a thin module tint, not a live blur (StatusRail.swift:129, ModuleBackground); direction-g.md Layers.", by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Animate colour only, scoped', verdict: 'pass', note: 'stateColorTransition / stateForeground scoped to the colour modifiers so a longer text never slides the capsule.' },
-        { rule: 'One resolver for appearance', verdict: 'pass', note: 'StatusChipAppearance decides symbol, family, filled and tint; StatusChipButton only draws.' },
-        { rule: 'Use text styles with scaling', verdict: 'pass', note: 'subheadline semibold, caption, monospacedDigit on the state.' },
-        { rule: 'Hard-coded colours', verdict: 'departure', note: 'Title and state inks are fixed white because the ground is always dark (a family fill or the module) whatever the scheme.' },
+        { rule: "Dynamic Type", verdict: 'pass', note: "Text styles throughout; the capsule is minHeight, not a fixed height (StatusRail.swift:88).", by: 'swiftui-pro skill' },
+        { rule: "Fixed inks", verdict: 'departure', note: "Titles are .white because the chip ground is always dark (StatusRail.swift:76-77), the page's always-dark policy (direction-g.md Layers).", by: 'swiftui-pro skill' },
+        { rule: "Animate colour only", verdict: 'pass', note: "stateForeground and stateColorTransition cross-fade ground and ink; width and glyph swap never ride the animation (StatusRail.swift:73-74, 133).", by: 'swiftui-pro skill' },
+        { rule: "Use bold() instead of fontWeight", verdict: 'fix', note: "The glyph and title weights are set with .weight(.semibold) (StatusRail.swift:72, 77).", by: 'swiftui-pro skill' },
       ],
     },
     notes: [

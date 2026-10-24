@@ -68,15 +68,15 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Pickers: a short list of mutually exclusive options', verdict: 'pass', note: 'Single-choice list with a checkmark; four to six options is the sweet spot; two to four short choices would be a SegmentedChoice instead.' },
-        { rule: 'Sheets: form sheet on iPad for lists and prompts', verdict: 'pass', note: '.hassSheet(.form): 540 pt on iPad and the unfolded Duo.' },
-        MLC.R.sheetFit, MLC.R.target44, MLC.R.colorNotAlone, MLC.R.darkModes,
-        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'departure', note: 'Opaque grouped background at every detent (option-picker.md; modal-sheet.md).' },
+        { by: 'apple-hig skill', rule: 'Pickers: one choice from a short list', verdict: 'pass', note: 'A checkmark list that sends only a new value and then dismisses (OptionPickerSheet.swift:54-76).' },
+        { by: 'apple-hig skill', rule: 'Sheets: form size on iPad, fitted height', verdict: 'pass', note: '.hassSheet(.form) (CustomLightsScreen.swift:87) is narrow on iPad and the unfolded Duo and as tall as its rows.' },
+        { by: 'apple-hig skill', rule: 'Color: selection is not the swatch or the check alone', verdict: 'pass', note: 'The row carries .isSelected (line 74); the swatch and checkmark are hidden from VoiceOver (lines 62-68, GradientSwatch line 108).' },
+        { by: 'apple-hig skill', rule: 'Materials: sheets use the system material', verdict: 'departure', note: 'The picker sets an opaque grouped background at every detent (OptionPickerSheet.swift:88-90) because the medium detent\'s glass let colored tiles show through and fail contrast (option-picker.md).' },
       ],
       swiftui: [
-        MLC.R.scaled, MLC.R.motionTokens,
-        { rule: 'Choosing calls the action only for a new value, then dismisses', verdict: 'pass', note: 'OptionPickerSheet.choose is skipped for the current option.' },
-        { rule: 'Identifiers and traits for UI tests', verdict: 'pass', note: 'Rows carry customLights.mode.<value> and isSelected.' },
+        { by: 'swiftui-pro skill', rule: 'api.md: avoid UIKit colors in SwiftUI', verdict: 'fix', note: 'presentationBackground(Color(uiColor: .systemGroupedBackground)) (OptionPickerSheet.swift:90); Color(.systemGroupedBackground) or a HassTokens surface avoids the UIKit initializer.' },
+        { by: 'swiftui-pro skill', rule: 'design.md: fixed-size decoration', verdict: 'pass', note: 'GradientSwatch is a fixed 44 by 20 capsule (line 106), decorative and hidden from VoiceOver; the labels beside it wrap with type.' },
+        { by: 'swiftui-pro skill', rule: 'accessibility.md: Button, not onTapGesture', verdict: 'pass', note: 'Each row is a Button (.plain) with a 44 pt minimum height and an identifier (lines 55-75).' },
       ],
     },
 

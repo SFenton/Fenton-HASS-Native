@@ -68,17 +68,15 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Page controls: dots show position and are adjustable by assistive technologies', verdict: 'pass', note: 'accessibilityAdjustableAction with "n of 5"; 7 pt dots in a 44 pt frame.' },
-        { rule: 'Collections: show part of the next page so people know to swipe', verdict: 'pass', note: 'The next page peeks into the page margin at standard sizes; clipped in a split column and at accessibility sizes.' },
-        { rule: 'Scroll views: paging by viewport', verdict: 'pass', note: 'pagesScrollViewByViewport, scrollTargetLayout, scrollPosition(id:).' },
-        { rule: 'Loading: keep the layout stable', verdict: 'pass', note: 'Five pages of empty modules at the card ratio while loading; the page never jumps.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'The current dot is also named in "Page 1 of 5" and the adjustable value.' },
+        { rule: 'Page controls: tap to move, bounded count', verdict: 'fix', note: 'The dots are drawn Circles with an adjustable VoiceOver action, not tappable (SuggestedRecipesCarousel.swift:128-146); the HIG page control lets a tap on either side of the current dot change page. Five pages stays under the ten-dot limit.', by: 'apple-hig skill' },
+        { rule: 'Collections: paging with a peek', verdict: 'pass', note: 'Next page peeks at standard sizes and clips at accessibility sizes (:88-91); columns follow the width, rows 3 or 2.', by: 'apple-hig skill' },
+        { rule: 'Loading: keep the layout stable', verdict: 'pass', note: 'Five placeholder pages draw empty modules so the frame does not jump (:105-111).', by: 'apple-hig skill' },
+        { rule: 'Empty states: say what happened', verdict: 'fix', note: 'A service that answers with no suggestions draws the header and nothing under it, with no copy (phase .ready with zero items); a failed load shows ContentUnavailableView, an empty one should too.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'LazyHStack with containerRelativeFrame, no GeometryReader sizing the cards', verdict: 'pass', note: 'Widths come from containerRelativeFrame; only the section width is read (onGeometryChange).' },
-        { rule: 'Static layout function for tests', verdict: 'pass', note: 'SuggestedRecipesCarousel.layout(width:accessibilitySize:) and adjusted(_:_:pageCount:).' },
-        { rule: 'Reduce Motion on programmatic scrolls', verdict: 'pass', note: 'withAnimation(reduceMotion ? nil : MotionTokens.standard).' },
-        { rule: 'Header detail follows state', verdict: 'pass', note: 'Computed from the scroll position binding, so it needs no extra state write per frame.' },
+        { rule: 'Performance: one top-level view per ForEach element', verdict: 'fix', note: 'The slot ForEach yields an ImageCard, a placeholder or nothing depending on phase and position (SuggestedRecipesCarousel.swift:96-112); performance.md asks each element to produce the same top-level views so rows are cheap to identify.', by: 'swiftui-pro skill' },
+        { rule: 'Accessibility: adjustable and reduce motion', verdict: 'pass', note: 'accessibilityAdjustableAction pages without animation when Reduce Motion is on (:141-144).', by: 'swiftui-pro skill' },
+        { rule: 'Scroll APIs', verdict: 'pass', note: 'scrollPosition(id:), scrollTargetLayout and containerRelativeFrame replace a GeometryReader for page width (:75-90).', by: 'swiftui-pro skill' },
       ],
     },
 

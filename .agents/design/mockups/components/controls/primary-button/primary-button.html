@@ -24,10 +24,10 @@
     kitComponents: ['PrimaryButton', 'ArcSpinner'],
     devices: ['iphone', 'duo-folded', 'ipad-portrait', 'ipad-landscape'],
     states: Object.assign({}, base.states, {
-      'pressed': { title: 'Pressed', note: 'the press dims to 80%; the sign-in button also shrinks to 0.96 (pressedScale), none other does; Reduce Motion keeps it still', render: sw([
+      'pressed': { title: 'Pressed', note: 'the press dims to 80%; no button scales: the style stores pressedScale (the sign-in button passes 0.96) but PrimaryButtonBody never applies it', render: sw([
         { label: 'default pressed (80%)', node: function () { var b = K.PrimaryButton({ title: 'Retry' }); b.style.opacity = .8; return b; } },
         { label: 'family pressed (80%)', node: function () { var b = K.PrimaryButton({ title: 'Start Watering', family: 'water', symbol: 'sprinkler.and.droplets' }); b.style.opacity = .8; return b; } },
-        { label: 'sign-in pressed (80%, 0.96)', node: function () { var b = K.PrimaryButton({ title: 'Sign In' }); b.style.opacity = .8; b.style.transform = 'scale(.96)'; return b; } },
+        { label: 'sign-in pressed (80%; pressedScale 0.96 is not applied)', node: function () { var b = K.PrimaryButton({ title: 'Sign In' }); b.style.opacity = .8; return b; } },
       ]) },
       'busy': { title: 'Busy (sign-in): arc and the label', note: 'the button stays solid while working; the arc is silent and the button\'s accessibility value says it is busy; a second press is ignored', render: sw([
         { label: 'working', node: function () { return h('button.ui-primary', { type: 'button', 'aria-label': 'Signing In', 'aria-busy': 'true', style: { gap: '8px' } }, K.ArcSpinner({ size: 'inline' }), 'Signing In'); } },
@@ -53,10 +53,10 @@
       { id: 'fill-change', what: 'The fill changes with the owner (a sheet switching family): the capsule cross-fades from #0071E3 to the family colour', token: 'state 0.6 s ease-in-out, colour only (0.2 s reduced)', state: 'variants',
         source: 'HassDesign/PrimaryButtonStyle.swift .stateColorTransition("PrimaryButton", value: colors.fill)', reduce: 'still cross-fades, shortened to 0.2 s',
         play: function (stage) { var b = stage.querySelector('.ui-primary:not(.family)'); if (!b) return Promise.resolve(); b.style.transition = 'background-color var(--t-state) var(--ease-state), color var(--t-state) var(--ease-state)'; b.style.background = '#4CC9F0'; b.style.color = '#1C1C1E'; return Mock.sleep(Mock.anim.ms.state() + 600).then(function () { b.style.background = ''; b.style.color = ''; return Mock.sleep(Mock.anim.ms.state() + 300); }); } },
-      { id: 'sign-in-press', what: 'Pressing the sign-in button: it dims to 80% and shrinks to 0.96, then returns', token: 'immediate press dim; pressedScale 0.96 (sign-in only)', state: 'pressed',
-        source: 'HassDesign/PrimaryButtonStyle.swift pressedScale; LoginView.signInButton', reduce: 'the scale is dropped (the button stays still); the dim remains',
+      { id: 'sign-in-press', what: 'Pressing the sign-in button: it dims to 80%, then returns (the 0.96 pressedScale it passes is not applied)', token: 'immediate press dim; no scale (pressedScale is stored, never read in PrimaryButtonBody)', state: 'pressed',
+        source: 'HassDesign/PrimaryButtonStyle.swift pressedScale; LoginView.signInButton', reduce: 'unchanged: there is no scale to drop; the dim remains',
         play: function (stage) { var b = stage.querySelectorAll('.ui-primary')[2]; if (!b) return Promise.resolve(); var rm = Mock.settings.reduceMotion; b.style.transform = 'none'; b.style.opacity = 1; b.style.transition = 'transform 120ms ease-out, opacity 120ms ease-out';
-          return Mock.sleep(120).then(function () { b.style.opacity = .8; if (!rm) b.style.transform = 'scale(.96)'; return Mock.sleep(500); }).then(function () { b.style.opacity = 1; b.style.transform = 'none'; return Mock.sleep(300); }); } },
+          return Mock.sleep(120).then(function () { b.style.opacity = .8; return Mock.sleep(500); }).then(function () { b.style.opacity = 1; b.style.transform = 'none'; return Mock.sleep(300); }); } },
     ],
 
     a11y: [
@@ -65,30 +65,49 @@
       { rule: 'Targets', note: '50 pt minimum height, full width (or as wide as its label with fixedSize), so over 44 pt; it grows when the label wraps.' },
       { rule: 'Busy', note: 'While signing in the arc is hidden from VoiceOver and the button\'s value says it is busy; the button stays enabled-looking so the label stays readable (a faded button would fail contrast).' },
       { rule: 'Dynamic Type', note: 'The label is a body-semibold wrapping Text with fixedSize vertical; at AX5 a long label takes several lines and the capsule grows into a rounded block (corner radius stays 25 pt).' },
-      { rule: 'Reduce Motion', note: 'The sign-in press scale is dropped; fill and enable changes still cross-fade (0.2 s).' },
+      { rule: 'Reduce Motion', note: 'Nothing scales (the sign-in pressedScale is never applied), so there is no press motion to drop; fill and enable changes still cross-fade (0.2 s).' },
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Buttons: make the most likely action the prominent one', verdict: 'pass', note: 'At most one per screen; secondary actions are not filled.' },
-        { rule: 'Buttons: 44 pt minimum hit target', verdict: 'pass', note: '50 pt.' },
-        { rule: 'Color: sufficient contrast', verdict: 'pass', note: '4.6:1 white on #0071E3; tested in HassTokens contrast tests.' },
-        { rule: 'Dynamic Type: reflow rather than truncate', verdict: 'pass', note: 'The label wraps and the button grows.' },
-        { rule: 'Buttons: use the system accent colour for the primary button', verdict: 'departure', note: '#0071E3 is direction G\'s tint (4.6:1), not systemBlue, and a family hue replaces it on owner sheets (direction-g.md Controls: Primary buttons).' },
-        { rule: 'Buttons: use system button styles', verdict: 'departure', note: 'A custom ButtonStyle (a 50 pt capsule) because the system prominent style did not give G\'s fixed colours and height.' },
+
+        { rule: "Buttons: make the most likely action the prominent one; 44 pt target", verdict: "pass", note: "One 50 pt capsule per screen (no white or grey primaries), full width or as wide as its label, growing when the label wraps; PrimaryButtonStyle.height is the floor and the whole capsule is the hit shape.", by: "apple-hig skill" },
+
+        { rule: "Buttons: prefer system button styles", verdict: "departure", note: "The capsule is custom (#0071E3 or a family colour) instead of .borderedProminent or the iOS 26 .glassProminent, to match direction G and the web (direction-g.md Controls: Primary buttons); it is a plain SwiftUI Button, so focus, Voice Control and Switch Control behave as for any button.", by: "apple-hig skill" },
+
+        { rule: "Color: contrast 4.5:1 for text on a filled control", verdict: "pass", note: "White on #0071E3 is 4.6:1 (Ink.actionFill); the family variant is #1C1C1E ink on the family glyph colour (about 9:1), fixed in light and dark sheets.", by: "apple-hig skill" },
+
+        { rule: "Buttons: disabled and in-progress states stay readable", verdict: "pass", note: "Disabled is 0.4 opacity with a 0.2 s quick fade (a disabled control is exempt from contrast); a working sign-in button stays solid, shows the inline arc (hidden from VoiceOver), and speaks a busy accessibilityValue while the model ignores a second press.", by: "apple-hig skill" },
+
+        { rule: "Typography: wrap at large Dynamic Type; fixed shapes must follow", verdict: "fix", note: "The capsule's corner radius is height / 2 = 25 pt (RoundedRectangle(cornerRadius: PrimaryButtonStyle.height / 2), line 53); once a wrapped label makes the button taller than 50 pt at AX sizes the ends stop being round and it becomes a rounded block, where Capsule() would stay a capsule. Low.", by: "apple-hig skill" },
+
+        { rule: "Motion and Feedback: press feedback", verdict: "fix", note: "PrimaryButtonStyle stores pressedScale and the sign-in button passes 0.96, but PrimaryButtonBody never reads it or reduceMotion (PrimaryButtonStyle.swift lines 36 to 39), so the only press feedback is the 0.8 opacity dim; either apply the scale (with Reduce Motion off) or drop the parameter. The mockup drew the scale and was corrected. Low.", by: "apple-hig skill" },
+
       ],
+
       swiftui: [
-        { rule: 'Reuse one button style; no parallel implementations', verdict: 'pass', note: 'PrimaryButton wraps PrimaryButtonStyle; screens with their own label use the style.' },
-        { rule: 'Read isEnabled inside a ButtonStyle via a View', verdict: 'pass', note: 'PrimaryButtonBody reads @Environment(\\.isEnabled).' },
-        { rule: 'Animate with app tokens, honour Reduce Motion', verdict: 'pass', note: 'quickTransition and stateColorTransition; the scale is dropped under Reduce Motion.' },
-        { rule: 'Hard-coded colours', verdict: 'departure', note: 'Ink.actionFill (#0071E3) and the family glyph colour are fixed tokens for contrast, not adaptive.' },
+
+        { rule: "API: ButtonStyle reads isEnabled through a view", verdict: "pass", note: "A ButtonStyle cannot read the environment, so PrimaryButtonBody wraps it; stateForeground and stateColorTransition cross-fade the fill and label while only opacity (quick) animates enabling.", by: "swiftui-pro skill" },
+
+        { rule: "Accessibility: label, symbol and traits come from the Button", verdict: "pass", note: "PrimaryButton builds a Label (title plus symbol) or Text inside a Button, so VoiceOver reads the title and the symbol is decorative; callers add traits (the link trait on 'Open in Cookidoo') and values (busy).", by: "swiftui-pro skill" },
+
+        { rule: "Views: avoid unused stored properties", verdict: "fix", note: "PrimaryButtonBody carries pressedScale and an @Environment(\\.accessibilityReduceMotion) it never reads; the environment read subscribes every primary button to a setting that does nothing. Low, with the finding above.", by: "swiftui-pro skill" },
+
+        { rule: "Design: hard-coded colours and radii in a shared control", verdict: "fix", note: "colors(_:) returns the sheet ground literal (HassTokens.Palette.sheetGround) as a label colour for family buttons and 0.4 and 0.8 opacities are inline numbers; they would sit better as named tokens next to Ink.actionFill. Low.", by: "swiftui-pro skill" },
+
+        { rule: "Localization: button titles", verdict: "fix", note: "PrimaryButton takes title: String and shows Text(title) verbatim, so titles never reach a string catalog; a LocalizedStringResource title would. Low until the app is localized.", by: "swiftui-pro skill" },
+
       ],
+
     },
 
     notes: [
+      'Corrected 2026-10-23 (skill review): the mockup drew a 0.96 press scale on the sign-in button. PrimaryButtonStyle stores pressedScale and PrimaryButtonBody receives it but never applies it (no scaleEffect in PrimaryButtonStyle.swift; LoginView passes pressedScale: 0.96), so the app only dims to 80%.',
       'Swatches (Variants, States) come from the kit on the page and sheet surfaces; Pressed, Busy, Real usages and AX5 are added here.',
-      'The sign-in button lives in the Login batch; it is drawn here only to show its pressedScale and busy arc.',
+      'The sign-in button lives in the Login batch; it is drawn here only to show its busy arc and press dim.',
       'Which sheets use PrimaryButton directly: Sprinklers (Start Watering, Apply), Recipe detail (Open in Cookidoo, link trait), Scan Item and Location permission; Bed side, Wake light, Vacuum and Vacation use PrimaryButtonStyle with their own label.',
       'The Location permission label "Continue" is a fixture (the copy is in the Location batch).',
     ],

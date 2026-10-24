@@ -87,20 +87,19 @@
     ],
 
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
-        { rule: 'Alerts: destructive action is red, Cancel always present', verdict: 'pass', note: 'Disarm red (#FF6961 dark, #C21717 light); arming does not confirm because it is reversible.' },
-        { rule: 'Toolbars: Back on a pushed level', verdict: 'pass', note: 'Glass Back circle, inline title.' },
-        { rule: 'Toolbars: a modal needs a visible way out at every depth', verdict: 'fix', note: 'Back only: the Close item sits on the Quick Links root view. Same finding as quick-links.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Glyph and words accompany every mode colour.' },
-        { rule: 'Dark Mode: support both appearances', verdict: 'pass', note: 'Sheets follow the system appearance (the gallery pair shows both).' },
-        { rule: 'Empty states: say what is missing', verdict: 'pass', note: 'State-only view shows the current mode.' },
+        { rule: 'Sheets: give a modal a clear way out at every depth', verdict: 'fix', note: 'Security System pushes inside Quick Links with Back only: QuickLinksSecurityDetail adds no Close item (QuickLinksSheet.swift:194-215). Same root cause as quick-links. Medium.', by: 'apple-hig skill' },
+        { rule: 'Alerts: confirm a destructive action, red destructive button, Cancel', verdict: 'pass', note: '"Disarm the Security System?" with a destructive Disarm, Cancel and a message about what stops (SecuritySystemSheet.swift:84-90). Arming does not ask because it is reversible.', by: 'apple-hig skill' },
+        { rule: 'Color: state is not carried by colour alone', verdict: 'pass', note: 'Each mode has its own glyph, a filled variant when selected, a selected trait and a spoken title (SecuritySystemSheet.swift:173-205).', by: 'apple-hig skill' },
+        { rule: 'Playing haptics: confirm a change that matters', verdict: 'fix', note: 'Arming and disarming give no haptic; the camera viewer does (CameraViewer.swift:130-140). A success or error sensoryFeedback on the alarm change would match. Low.', by: 'apple-hig skill' },
+        { rule: 'Accessibility: one element for the card\'s state', verdict: 'pass', note: 'Header is .ignore with label "Security System" and a value of title and since-time (SecuritySystemSheet.swift:126-129).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Reuse the shared view, do not fork it', verdict: 'pass', note: 'SecurityControls and AlarmPanel serve the Security sheet and this level.' },
-        { rule: 'Button role .destructive in the alert', verdict: 'pass', note: 'Disarm uses .destructive, Cancel .cancel.' },
-        { rule: 'Adaptive colour tokens in a sheet', verdict: 'pass', note: 'Surface.sheetCell, Ink.primary; selected modes use fixed fills with white ink.' },
-        { rule: 'Optimistic UI with rollback', verdict: 'pass', note: 'The tapped mode shows until Home Assistant reports a change; a failed call rolls back (optimistic-actions.md).' },
+        { rule: 'Reuse the shared view, do not fork it', verdict: 'pass', note: 'SecurityControls and AlarmPanel serve this level and SecuritySystemSheet.', by: 'swiftui-pro skill' },
+        { rule: 'Optimistic change with rollback', verdict: 'pass', note: 'OptimisticActions shows the tapped mode until Home Assistant reports it (SecuritySystemSheet.swift:44-46, 153-160).', by: 'swiftui-pro skill' },
+        { rule: 'Targets and scaled sizes', verdict: 'pass', note: 'Mode buttons minHeight 64, badge and glyph are ScaledMetric, labels use fixedSize so they wrap rather than truncate (lines 55-56, 175-200).', by: 'swiftui-pro skill' },
+        { rule: 'Adaptive ink on a sheet that follows the system appearance', verdict: 'pass', note: 'Ink.primary and Surface.sheetCell; the selected fill is fixed with white ink.', by: 'swiftui-pro skill' },
       ],
     },
 

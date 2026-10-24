@@ -72,66 +72,26 @@
 ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-      {
-            "rule": "Sheets: a sheet may hold a navigation hierarchy; give it a close control",
-            "verdict": "pass",
-            "note": "NavigationStack inside the sheet, Back on the pushed page, circle x Close at every depth."
-      },
-      {
-            "rule": "Sheets: prefer page or form sizing on iPad",
-            "verdict": "pass",
-            "note": "hassSheet(.page, height: .full): a 704 pt page sheet on iPad and the unfolded Duo; tile grids need the width."
-      },
-      {
-            "rule": "Sheets: content that pushes pages keeps one height",
-            "verdict": "pass",
-            "note": "height .full is required here (modal-sheet.md): a fitted sheet would resize when a room is pushed."
-      },
-      {
-            "rule": "Layout: scales with Dynamic Type",
-            "verdict": "pass",
-            "note": "Scaled minimum card width, one column at AX5, equal heights measured live."
-      },
-      {
-            "rule": "Materials: a sheet draws on an opaque ground",
-            "verdict": "departure",
-            "note": "Opaque sheet ground and sheet-cell tiles at every size, as direction-g.md Sheets and modal-sheet.md."
-      },
-      {
-            "rule": "Color: not the only differentiator",
-            "verdict": "fix",
-            "note": "The AQI band is carried by the glyph and rim colour; the numbers are text but the band name (Good, Moderate, Unhealthy) is neither drawn nor spoken. Owner call; drawn as shipped."
-      }
-],
+        { rule: "Color: do not use colour alone; here the AQI scale is the information", verdict: 'pass', note: "The glyph and rim take the room's AQI colour but the card also prints AQI and PM2.5 as text (AirQualityRoomTile.swift:15, RoomFormat.airSummary), so colour is supplementary.", by: 'apple-hig skill' },
+        { rule: "Accessibility: indicate when something is unavailable", verdict: 'fix', note: "AirQualityRoomTile passes no isUnavailable (AirQualityRoomTile.swift:13-20): an offline sensor keeps the teal fallback and prints 'Unavailable • Unavailable' like a reading, with no dimmed announcement.", by: 'apple-hig skill' },
+        { rule: "Lists and tables: no disclosure indicator where nothing drills down", verdict: 'pass', note: "kind .state: not a button, no chevron, read as label plus value (GlassTile.swift:128-133).", by: 'apple-hig skill' },
+        { rule: "Sheets: full height", verdict: 'departure', note: "Large only (HomeScreen.swift:38) although nothing pushes from this overview; RoomOverviewSheet sizes every kind alike (HassModal.swift:132-136, owner 2026-10-16).", by: 'apple-hig skill' },
+        { rule: "Sheets: Cancel or Close on the leading edge of a single-view sheet, Done trailing", verdict: 'departure', note: "Every modal carries the circle-X Close at the trailing edge (owner, 2026-10-13: 'Done button in top right can just be circle X close button', HassModal.swift:5-9, patterns/modal-sheet.md); a saving sheet keeps its own confirm.", by: 'apple-hig skill' },
+
+      ],
+
       swiftui: [
-      {
-            "rule": "Use ScrollView with a layout, not a List, for tile grids",
-            "verdict": "pass",
-            "note": "ScrollView { DynamicGridLayout } capped at 960 pt and centred."
-      },
-      {
-            "rule": "Scaled metrics for tile width",
-            "verdict": "pass",
-            "note": "@ScaledMetric(relativeTo: .subheadline) minTileWidth = 140."
-      },
-      {
-            "rule": "No entrance animations inside a sheet",
-            "verdict": "pass",
-            "note": "Content is present on arrival (motion.md 4.4); no .onAppear cascade."
-      },
-      {
-            "rule": "navigationSubtitle only where available",
-            "verdict": "pass",
-            "note": "sheetSubtitle(_:) guards #available(iOS 26); earlier systems keep the web title (SheetSubtitle.isShown)."
-      },
-      {
-            "rule": "Static content is not a button",
-            "verdict": "pass",
-            "note": "AirQualityRoomTile uses kind .state: no button trait, no push, no chevron."
-      }
-],
+        { rule: "Do not hide state from assistive technology", verdict: 'pass', note: "State tiles ignore children and speak title and subtitle (GlassTile.swift:128-133).", by: 'swiftui-pro skill' },
+        { rule: "Use SwiftUI Color, not UIColor", verdict: 'pass', note: "The AQI colour is built from the helper's RGB text as a SwiftUI Color (RoomOverview.airQualityColor), not UIKit.", by: 'swiftui-pro skill' },
+        { rule: "Layout reflows with type size", verdict: 'pass', note: "@ScaledMetric 140 grid (RoomOverviewGrid.swift:11-15).", by: 'swiftui-pro skill' },
+        { rule: "Toolbars and presentation: use the semantic placement for a Close button", verdict: 'fix', note: "SheetCloseItem places the circle-X Close as .confirmationAction (HassModal.swift:26), a confirming slot, although it only dismisses. On the iPhone Duo outer display that slot is a prominent action, below primary navigation (Back, Close) at the top of the vertical bar (HIG Duo, Vertical controls). Use .cancellationAction with role .close.", by: 'swiftui-pro skill' },
+
+      ],
+
     },
 
     notes: [

@@ -39,22 +39,27 @@
     },
     motion: [],
     a11y: [
-      { rule: 'Spoken', note: 'Tab and flyout row: "Chores, 3 overdue" (NavigationMenu.accessibilityLabel); the capsule itself is hidden from VoiceOver. Profile: "Profile, Stephen Fenton, 3 items need attention" (its count adds expired food).' },
+      { rule: 'Spoken', note: 'Flyout row: "Chores, 3 overdue" (NavigationMenu.accessibilityLabel, the capsule itself hidden). The tab bar item is the system item: Label("Chores") with .badge(3), which VoiceOver speaks as the tab name then the badge value, not "overdue" (MainTabView.swift line 114 does not apply the label). Profile: "Profile, Stephen Fenton, 3 items need attention" (its count adds expired food).' },
       { rule: 'Not colour alone', note: 'The badge is a number on red; the count is also in the spoken label and Your Summary\'s Overdue Chores tab.' },
       { rule: 'One source', note: 'The tab, the flyout, the Profile button, Your Summary and the resident page all read the same Past Due list\'s open count (ios.md), so they cannot disagree.' },
     ],
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Badging: use a badge for a count that needs attention, remove it at zero', verdict: 'pass', note: 'AppSection badge helpers return nil for 0 or nil.' },
-        { rule: 'Tab bars: use the system badge', verdict: 'pass', note: 'TabView .badge(Int) on iPhone and the Duo rail; the flyout capsule is the app\'s own, since the flyout is custom.' },
+        { rule: "Badging: a badge for a count that needs attention, none at zero", verdict: "pass", note: "NavigationMenu.badge returns nil for 0 or nil (AppSection.swift lines 81-85) and the tab passes ?? 0 to .badge (MainTabView.swift line 115).", by: "apple-hig skill" },
+        { rule: "Tab bars: use the system badge", verdict: "pass", note: "TabView with tabItem Label and .badge(Int) (MainTabView.swift lines 111-116), so the iPhone bar, the iPad bar and the Duo rail place it.", by: "apple-hig skill" },
+        { rule: "Accessibility: the badge is spoken with its meaning", verdict: "fix", note: "The \"Chores, 3 overdue\" label is applied only to the flyout row (NavigationFlyout.swift line 137); the TabView item speaks the system badge value, \"3\", with no word saying what it counts. Corrected in this mockup's a11y text. Low.", by: "apple-hig skill" },
+        { rule: "Badging: cap large numbers", verdict: "fix", note: "TabView.badge and the flyout capsule print the full number, only the Profile button uses ProfileSummary.badgeText (\"9+\", ShellHeader.swift lines 355-370); three places, two behaviours. Low.", by: "apple-hig skill" },
+        { rule: "Color: do not rely on colour alone", verdict: "pass", note: "A number on a red capsule; the count is also in Your Summary's Overdue Chores tab and the Profile value.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: 'Publish state with onChange(of:initial:), not onAppear polling', verdict: 'pass', note: 'OverdueChoresBadge uses onChange(of: overdue, initial: true).' },
-        { rule: 'Combine the count into the accessibility label', verdict: 'pass', note: 'NavigationMenu.accessibilityLabel(for:overdue:).' },
+        { rule: "Data flow: publish with onChange(of:initial:)", verdict: "pass", note: "OverdueChoresBadge.body uses onChange(of: overdue, initial: true) to set navigator.overdueChores (OverdueChoresBadge.swift lines 21-25).", by: "swiftui-pro skill" },
+        { rule: "Design: fonts and sizes in the badge", verdict: "fix", note: "The Profile badge uses .caption2.weight(.bold) capped with dynamicTypeSize(...xLarge) (ShellHeader.swift lines 359-361); swiftui-pro design: avoid caption2. The flyout capsule uses .caption (NavigationFlyout.swift line 113). Low.", by: "swiftui-pro skill" },
+        { rule: "Views: modifier on a stack in the shell", verdict: "pass", note: "The ViewModifier is applied once in MainTabView, so the badge works before the Chores tab is opened (line 48).", by: "swiftui-pro skill" },
       ],
     },
     notes: [
+      'Corrected 2026-10-23 by the skill review: the a11y line used to say the tab speaks "Chores, 3 overdue"; that label is applied only in NavigationFlyout.swift line 137, the TabView item uses the system badge.',
       'The kit\'s TabBar prints "9+" past nine, but TabView.badge(Int) prints the number (and the flyout capsule prints the full number); only the Profile button uses ProfileSummary.badgeText ("9+"). Drawn as the kit has it; promote a fix to the kit if exact is wanted.',
       'The badge modifier is applied in MainTabView, so it works before the Chores tab is ever opened; the viewer id is cached in UserDefaults (chores.viewerUserId) and refreshed from auth/current_user.',
       'A viewer who is not a resident (a guest account) gets no badge and no personal copy anywhere.',

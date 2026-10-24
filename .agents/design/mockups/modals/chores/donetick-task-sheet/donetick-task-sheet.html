@@ -10,7 +10,23 @@
 (function () {
   var h = Mock.h, K = Mock.components, C = window.Chores;
 
-  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: "Sheets and Modality: confirm before losing changes", verdict: "fix", note: "Cancel and swipe-down dismiss an edited form without asking (DonetickTaskSheet.swift lines 58, 69); only an in-flight save blocks it. The form holds name, description, schedule and recurrence. HIG Sheets: \"If changes are unsaved when swiping begins, confirm with an action sheet.\" Medium.", by: "apple-hig skill" },
+        { rule: "Progress indicators and Loading: a failed load needs a way forward", verdict: "fix", note: "A failed get_task shows ContentUnavailableView \"Unable to Load Task\" with the message and no Retry (lines 47-48); only Cancel remains. Medium.", by: "apple-hig skill" },
+        { rule: "Keyboards: a number pad needs a way to finish", verdict: "fix", note: "Repeat Every uses .numberPad (lines 215-221, 302-308); the pad has no return key and no Done toolbar, so the field commits only when focus moves (line 229). Add a keyboard toolbar Done. Low.", by: "apple-hig skill" },
+        { rule: "Action sheets: confirm a destructive delete, attach to the control", verdict: "pass", note: "Delete Task row is destructive and asks \"Delete {name}?\" with Delete Task and the system Cancel (lines 64-67, 257-262). The dialog has no \"This can't be undone.\" message that the list dialog carries. Low copy gap.", by: "apple-hig skill" },
+        { rule: "Toggles and Date pickers: optional date and time", verdict: "pass", note: "Due Date and Due Time are switches revealing compact DatePickers (lines 194-205); Repeat is a menu picker (line 210). Turning the date on picks today, time noon.", by: "apple-hig skill" },
+        { rule: "Toolbars: Cancel and a verb-named check", verdict: "departure", note: "direction-g.md Sheets: circle x leading, filled check \"Create\" or \"Save\" trailing, disabled until valid or changed (SheetEditState, lines 73-77).", by: "apple-hig skill" },
+      ],
+      swiftui: [
+        { rule: "Performance: no formatter creation in bindings", verdict: "fix", note: "DonetickDueBinding.formatter() builds a new DateFormatter on every get and set (lines 270-297), and the bindings run for every body evaluation of the form; cache the two formatters or use Date.FormatStyle. Low.", by: "swiftui-pro skill" },
+        { rule: "Navigation: attach confirmationDialog to its trigger", verdict: "fix", note: "The dialog is attached to the NavigationStack, not the Delete Task button (line 64), so on iPad the popover has no row to anchor to. Low.", by: "swiftui-pro skill" },
+        { rule: "Accessibility: weekday rows are selectable buttons", verdict: "pass", note: "Each day is a Button with the .isSelected trait and a checkmark (lines 233-246); the checkmark image is not hidden, so VoiceOver may read \"checkmark\" after the day. Minor.", by: "swiftui-pro skill" },
+        { rule: "Views: Group around a single branch chain", verdict: "pass", note: "Group { if loaded … else if error … else ProgressView } is a legitimate multi-branch group (lines 42-52).", by: "swiftui-pro skill" },
+      ],
+    }, devices: (static check keys). */
   Mock.mount(C.sheetConfig({
     id: 'donetick-task-sheet', title: 'Task sheet (create and edit)', file: 'DonetickTaskSheet.swift', fromLabel: 'Chores', from: 'chores',
     summary: 'New Task and Edit Task for DoneTick chores: name, description, assignee and priority, due date and time, repeat, vacation. A fitted form sheet with Cancel and a check (Create or Save). Follows the system appearance; switch Sheet appearance above (the States gallery shows both).',

@@ -47,17 +47,17 @@
       { rule: 'Dynamic Type', note: 'At AX5 the buttons stack and the system alert scrolls; the issue number reads as part of the sentence.' },
     ],
     reviews: {
-      date: '2026-10-23', by: 'author',
+      date: '2026-10-23',
       hig: [
-        { rule: 'Alerts: a title that says the outcome; a message only when it adds something', verdict: 'pass', note: '"Report Sent" plus the number and what happens next.' },
-        { rule: 'Alerts: avoid more than two buttons; mark the cancel role', verdict: 'pass', note: 'Done (cancel role) and View on GitHub.' },
-        { rule: 'Alerts: error messages say what went wrong and how to fix it', verdict: 'pass', note: 'Each of the eleven messages names the cause and the next step.' },
-        { rule: 'Writing: avoid "Thank you" padding in alerts', verdict: 'fix', note: '"Thank you!" adds nothing the title does not; the triage-agent line is the useful part. Low severity.' },
+        { rule: 'Alerts: succinct title that says what happened', verdict: 'pass', note: '"Report Sent" / "Request Sent" and "Couldn\'t Send" describe the outcome (FeedbackFormSheet.swift:71, :82, :283).', by: 'apple-hig skill' },
+        { rule: 'Alerts: buttons named for the action; cancel role for the dismissal', verdict: 'pass', note: 'View on GitHub and Done (role .cancel) on success; one OK (role .cancel) that keeps the form and its content on failure (:72-86).', by: 'apple-hig skill' },
+        { rule: 'Alerts: avoid purely informational alerts', verdict: 'pass', note: 'The success alert carries an action (View on GitHub) and ends the sheet; failures keep everything typed.', by: 'apple-hig skill' },
+        { rule: 'Writing: messages say what to do next, without internal names or padding', verdict: 'fix', note: 'Success opens with "Thank you!" and mentions "the triage agent" (FeedbackFormSheet.swift:80), and GitHub failures tell everyone to replace a token "in Fenton Home Feedback" (FeedbackFilingError.swift githubProblem), which only an administrator can act on.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'alert(_:isPresented:presenting:) with data', verdict: 'pass', note: 'presenting: filedIssue supplies the number and URL.' },
-        { rule: 'Read-only binding for a phase-driven alert', verdict: 'pass', note: 'finishedBinding has a no-op setter; the buttons drive the model.' },
-        { rule: 'Open URLs through openURL', verdict: 'pass', note: '@Environment(\\.openURL) then close().' },
+        { rule: 'Navigation: alert(_:isPresented:presenting:) over two Bools', verdict: 'pass', note: 'The success alert presents the FiledIssue value derived from model.phase (:71-81).', by: 'swiftui-pro skill' },
+        { rule: 'Data: Binding(get:set:) with an empty setter', verdict: 'fix', note: 'finishedBinding\'s setter ignores the system\'s dismissal (:306-308), so state stays .finished until a button runs.', by: 'swiftui-pro skill' },
+        { rule: 'Views: button action passed directly', verdict: 'pass', note: 'Button("Done", role: .cancel, action: close) (:77).', by: 'swiftui-pro skill' },
       ],
     },
     notes: [

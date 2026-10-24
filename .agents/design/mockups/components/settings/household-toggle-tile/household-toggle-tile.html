@@ -96,17 +96,19 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Toggles: state shown and spoken', verdict: 'pass', note: 'Toggle trait, written state, filled glyph and rim.' },
-        { rule: 'Accessibility: traits match behaviour', verdict: 'pass', note: 'Read-only tiles drop the button trait.' },
-        { rule: 'Layout: adapt columns to width, not device', verdict: 'pass', note: 'DynamicGridLayout: width and Dynamic Type decide the columns.' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Words and glyph accompany every tint.' },
-        { rule: 'Materials: tiles as Liquid Glass', verdict: 'departure', note: 'Content-layer tinted glass finish (direction-g.md Tile finish), Liquid Glass only on the navigation layer.' },
+        { rule: 'Toggles: outside a list use a toggle-like button; state difference obvious', verdict: 'pass', note: 'GlassTile kind .toggle changes fill, glyph and subtitle between On and Off (HouseholdSettingsPage.swift:135-154).', by: 'apple-hig skill' },
+        { rule: 'Color: never colour alone', verdict: 'pass', note: 'The accessibility value and subtitle say On, Off or Unavailable (GlassTile.swift:173-181).', by: 'apple-hig skill' },
+        { rule: 'Accessibility: unavailable stays legible', verdict: 'pass', note: 'An unavailable tile keeps its text at 4.5:1 and mutes only icon and border; VoiceOver still reads it as dimmed (GlassTileButtonStyle comment, GlassTile.swift:128-143).', by: 'apple-hig skill' },
+        { rule: 'Motion: Reduce Motion and Reduce Transparency', verdict: 'pass', note: 'GlassTile reads both (GlassTile.swift:286, :290); the symbol replace effect becomes identity (:404) and the glass goes opaque.', by: 'apple-hig skill' },
+        { rule: 'Layout: responsive grid, even columns around a hinge', verdict: 'pass', note: 'DynamicGridLayout floors (width + gap) / (min + gap) to a capped count and rounds to even on a hinge (DynamicGridLayout.swift:3-38); per-page minimums scale with the text.', by: 'apple-hig skill' },
+        { rule: 'Playing haptics: confirm a toggle', verdict: 'fix', note: 'GlassTile and HouseholdToggleTile have no sensoryFeedback; a flip that is applied optimistically and may revert has no tactile confirmation.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'One implementation of a repeated pattern', verdict: 'departure', note: 'GlassStateTile is feature-local until the shared read-only tile lands in HassDesign (entity-tile.md).' },
-        { rule: 'Scaled metrics', verdict: 'pass', note: '@ScaledMetric on the grid minimum.' },
-        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'stateColorTransition: 0.6 s, 0.2 s reduced.' },
-        { rule: 'Explicit commands from the shown state', verdict: 'pass', note: 'turn_on / turn_off chosen from the displayed value, optimistic for 2 s.' },
+        { rule: 'Accessibility: label, value and toggle trait on the Button', verdict: 'pass', note: 'Label, value and .isToggle go on the Button, not a wrapping element, so identifiers and state stay on one element (GlassTile.swift:136-142).', by: 'swiftui-pro skill' },
+        { rule: 'Data: one controller read per tile', verdict: 'pass', note: 'controller.toggle(tile.entityId) in each tile, so a live change re-renders one tile (HouseholdSettingsPage.swift:139-153).', by: 'swiftui-pro skill' },
+        { rule: 'Design: Layout protocol over GeometryReader', verdict: 'pass', note: 'HouseholdTileGrid wraps DynamicGridLayout, a custom Layout, with a @ScaledMetric minimum width (:121-131).', by: 'swiftui-pro skill' },
+        { rule: 'Views: read-only tile as a disabled Button', verdict: 'fix', note: 'GlassStateTile uses allowsHitTesting(false) and accessibilityRemoveTraits(.isButton) on a Button face (:233-238) instead of GlassTile\'s .state kind.', by: 'swiftui-pro skill' },
+        { rule: 'Materials: Liquid Glass stays on the navigation layer', verdict: 'pass', note: 'GlassTile draws a tinted content-layer fill with no glassEffect (Module.swift:15-19 explains why; direction-g.md Tile finish).', by: 'swiftui-pro skill' },
       ],
     },
 

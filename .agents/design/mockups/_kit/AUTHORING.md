@@ -58,8 +58,9 @@ An incomplete config (missing source, spec, reviews, a11y, a state this list exp
 ## The kit (`_kit/`)
 
 - `kit.css`: every token as a CSS custom property, light and dark pairs exactly as in [direction-g](../../direction-g.md): sheet scopes `.g-dark` / `.g-light` (`--sheet-ground`, `--sheet-cell`, `--ink`, `--ink-sheet-2`, `--sep`, `--ink-action`, `--ink-error`...), `--fam-<family>-glyph|glyph-light|fill`, `--room-<room>`, `--ql-*`, `--chip-contact-*`, security modes (`--fam-sec-*`), the tinted-glass finish (`--tg-*`), `--radius-tile: 22px`, `--radius-module: 26px`, the wallpaper (dusk house stand-in, 16.8 pt blur, the documented scrim stops), glass, module and tile materials, Dynamic Type (`.ts-xxxl`, `.ts-ax5` set `--fs-*` and `--sc`), device frames. The atlas page furniture uses `--k-*` and `.k-*` (light and dark by `prefers-color-scheme`, manual Theme button). App components are `.ui-*`.
-- `kit.js`: the `Mock` namespace, `Mock.h` (DOM builder), `Mock.register`, `Mock.color`; it loads `lib/` and `components/` (see below). Builders return DOM nodes (icons return HTML strings); they never fetch.
-- `lib/symbols.js`: `Mock.icon(name, {fill, size, weight, label})` and `Mock.iconEl`: 140 inline SVG stand-ins keyed by **SF Symbol name** (the names `HassDesign/SymbolMap.swift` returns). A name not in the map draws a dashed circle and the lint banner names it: add the drawing to `symbols.js`.
+- `kit.js`: the `Mock` namespace, `Mock.h` (DOM builder), `Mock.register`, `Mock.color`; it loads `lib/` and `components/` (see below) in order, verifies the load and retries a file whose request failed (a busy static server dropping connections; works from `file://` and over http, no timers), so `Mock.components.X` is there when your next inline script runs. Builders return DOM nodes (icons return HTML strings); they never fetch.
+- **Page furniture never reaches into a device.** The `.k-wrap h1, h2, h3, p, code, a, ul, li, table` rules are guarded with `:not(:where(.screen, .k-device, .k-swatch, .k-plain, .ui-root, .ui-sheet, .in-sheet, .ui-host) *)`, so a SettingsSection title, a page section header or a form header inside a frame is styled by the kit's `.ui-*` rules alone. Delete local `margin: 0` / `font` workarounds on those headings when you next touch the file.
+- `lib/symbols.js`: `Mock.icon(name, {fill, size, weight, label})` and `Mock.iconEl`: about 300 inline SVG stand-ins keyed by **SF Symbol name** (the names `HassDesign/SymbolMap.swift` returns). A name not in the map draws a dashed circle and the lint banner names it: add the drawing to `symbols.js`.
 - `lib/anim.js`: `Mock.anim` (below). `lib/devices.js`: `Mock.devices`, `Mock.ctx`. `lib/chrome.js`: `Mock.frame`, `Mock.page`, `Mock.sheet`, `Mock.split`, `Mock.presentDemo`. `lib/mount.js`: `Mock.mount`, `Mock.lint`, `Mock.componentConfig`.
 - `components/<Name>.js`: one file per shared component (several names where they are one SwiftUI file: `NavigationGlass.js` registers the header buttons). Each calls `Mock.register(name, fn, {source, variants, states})`, so `Mock.components.<Name>(props)` returns a node and `.variants` / `.states` list `{id, label, props}` for the component mockup of the same name. Props are documented in each file's header comment and in [README.md](README.md).
 
@@ -84,16 +85,17 @@ State keys every **page** mockup considers (omit one only with a one-line reason
 
 ```js
 Mock.page(ctx, { title, subtitle?, section: 'home', back?: 'Rooms' | true, body: [nodes], connection?: 'live'|'offline'|'reconnecting'|'reconnecting-chip',
-                 badge?: 3 (Profile), choresBadge?: 2, flyoutOpen?, floating?: FloatingActionBar node, noTabs?, scrollTop?, bottomPad? })
+                 badge?: 3 (Profile), choresBadge?: 2, flyoutOpen?, floating?: FloatingActionBar node, noTabs?, scrollTop?, collapsed?: true (large title scrolled into the bar's inline title), bottomPad? })
 Mock.sheet(ctx, { title, subtitle?, detent: 'fitted'|'medium'|'large', size: 'page'|'form', leading?: 'none'|'back'|'cancel'|Node, trailing?: 'close'|'confirm'|'none'|Node,
-                  confirm?: {title, enabled, busy}, content: Node|Node[], tabs?: ModalTabBar node, appearance?: 'dark' (dark by design), presenter?: Mock.page node, alert?: Alert node })
+                  confirm?: {title, enabled, busy}, content: Node|Node[], tabs?: ModalTabBar node, appearance?: 'dark' (dark by design), presenter?: Mock.page node, alert?: Alert / AlertField / ConfirmationDialog node })
 Mock.split(ctx, { leading: [nodes], trailing: [nodes] })     // two columns on the hinge or midpoint when allowed, else one stacked column
+Mock.cover(ctx, {title, leading?, trailing?, content, presenter?, ground?, cell?, bleed?})   // FullScreenCover: no grabber, no detents, nothing scales back
 Mock.presentDemo(stage, sheetOpts, {hold})                    // for a transition's play(): the page presents the sheet and it dismisses
 ```
 
 `Mock.page` supplies the wallpaper, the header (hamburger or Back, the reconnecting arc, Quick Links, Profile), the large title, the scrolling body with the header edge fade, and the tab bar, rail or flyout for the device. Body children get a 16 pt margin; a node with class `ui-bleed` (ChipRail) is full width. A modal puts a **trimmed copy of the page it opens from** behind it as `presenter`. A state can override the controls: `{ override: { ts: 'ax5', appearance: 'light', device: 'iphone', reduceMotion: true } }`.
 
-Never copy the kit's CSS into a mockup: if the kit lacks a component, add a local helper in the mockup and list it in `notes` as "promote to kit". Text uses `var(--fs-*)` (Dynamic Type) inside kit components; a local helper must too.
+Never copy the kit's CSS into a mockup: if the kit lacks a component, add a local helper in the mockup and list it in `notes` as "promote to kit". Before you write a helper check the v2 additions: `ConfirmationDialog` / `ActionSheet`, `ContentUnavailableView`, `AlertField`, `SettingsLinkRow`, `TextToolbarButtons`, `FullScreenCover`, and about 300 symbols (do not patch `Mock.symbols` at run time any more; add the drawing to `lib/symbols.js`). Text uses `var(--fs-*)` (Dynamic Type) inside kit components; a local helper must too.
 
 ### Motion
 

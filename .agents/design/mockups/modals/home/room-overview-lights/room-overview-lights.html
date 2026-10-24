@@ -42,24 +42,28 @@
     ],
 
     reviews: {
+
       date: '2026-10-23',
+
       hig: [
-        { rule: 'Sheets: a sheet may hold a navigation hierarchy; give it a close control', verdict: 'pass', note: 'NavigationStack inside the sheet, Back on the pushed page, circle x Close at every depth.' },
-        { rule: 'Sheets: prefer page or form sizing on iPad', verdict: 'pass', note: 'hassSheet(.page, height: .full): a 704 pt page sheet on iPad and the unfolded Duo; tile grids need the width.' },
-        { rule: 'Sheets: content that pushes pages keeps one height', verdict: 'pass', note: 'height .full is required here (modal-sheet.md): a fitted sheet would resize when a room is pushed.' },
-        { rule: 'Toolbars: a centred title with a one-line subtitle', verdict: 'pass', note: 'iOS 26 navigation subtitle ("11 of 46 On"); before iOS 26 the title keeps the count, "Lights (11 On)".' },
-        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Lit versus dark comes with a filled versus outline bulb and the words "N On" / "Off".' },
-        { rule: 'Layout: scales with Dynamic Type', verdict: 'pass', note: 'Scaled minimum width, one column at AX5, equal heights measured live.' },
-        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'departure', note: 'Opaque sheet ground and sheet-cell tiles at every size, as direction-g.md Sheets and modal-sheet.md.' },
+        { rule: "Sheets: consider medium for progressive disclosure; full height where content is more useful there", verdict: 'departure', note: "Opens at large only (HomeScreen.swift:38, .hassSheet(.page, height: .full)) because the sheet pushes pages and its height must not change on a push (hassSheet doc, HassModal.swift:132-136, owner 2026-10-16).", by: 'apple-hig skill' },
+        { rule: "Color: convey state beyond colour", verdict: 'pass', note: "A room with lights on fills as the warm lit tile and its subtitle says how many are on; the 'Lights On' then 'Lights Off' headings repeat it in words (RoomOverviewStyle.swift:23-27).", by: 'apple-hig skill' },
+        { rule: "Layout: a grid that reflows with text size", verdict: 'pass', note: "RoomOverviewGrid uses @ScaledMetric 140, up to six columns, equal row heights (RoomOverviewGrid.swift:11-14), so a wrapping room name lifts every card and AX5 goes to one column.", by: 'apple-hig skill' },
+        { rule: "Lists and tables: a disclosure indicator for drill-down", verdict: 'pass', note: "Every card is kind .navigate with a trailing chevron, hint 'Opens <room> Lights' and a push (RoomOverviewTile.swift:23-26); direction-g.md still calls them status tiles, the code draws navigation.", by: 'apple-hig skill' },
+        { rule: "Designing for iPhone Duo: sheets adapt to the fold", verdict: 'pass', note: "A system page sheet (presentationSizing .page, HassModal.swift:224-225) is used, so placement across the hinge is the system's; the unfolded pose has not been run on a device, so only the standard component is verified.", by: 'apple-hig skill' },
+        { rule: "Sheets: Cancel or Close on the leading edge of a single-view sheet, Done trailing", verdict: 'departure', note: "Every modal carries the circle-X Close at the trailing edge (owner, 2026-10-13: 'Done button in top right can just be circle X close button', HassModal.swift:5-9, patterns/modal-sheet.md); a saving sheet keeps its own confirm.", by: 'apple-hig skill' },
+
       ],
+
       swiftui: [
-        { rule: 'Use ScrollView with a layout, not a List, for tile grids', verdict: 'pass', note: 'ScrollView { DynamicGridLayout } capped at 960 pt and centred.' },
-        { rule: 'Scaled metrics for tile width', verdict: 'pass', note: '@ScaledMetric(relativeTo: .subheadline) minTileWidth = 140.' },
-        { rule: 'Accessibility identifiers and hints on controls', verdict: 'pass', note: 'overview.lights, overview.lights.section.<title>, overview.lights.room.<room>; hint "Opens <room> Lights".' },
-        { rule: 'Colour changes animate with the app token', verdict: 'pass', note: 'GlassTileFace .stateColorTransition: 0.6 s, 0.2 s reduced; layout never rides along.' },
-        { rule: 'No entrance animations inside a sheet', verdict: 'pass', note: 'Content is present on arrival (motion.md 4.4); no .onAppear cascade.' },
-        { rule: 'navigationSubtitle only where available', verdict: 'pass', note: 'sheetSubtitle(_:) guards #available(iOS 26) and the title keeps the count below it (SheetSubtitle.isShown).' },
+        { rule: "sheet(item:) over an optional value", verdict: 'pass', note: "Home presents with sheet(item: $sheet) on an Identifiable enum (HomeScreen.swift:33).", by: 'swiftui-pro skill' },
+        { rule: "Navigation subtitle where available, a counted title otherwise", verdict: 'pass', note: "sheetSubtitle puts the count in the iOS 26 subtitle and the web's counted title applies before it (RoomOverviewSheet.swift:27-31, 48-51).", by: 'swiftui-pro skill' },
+        { rule: "Accessibility: label, value and hint on a custom tile Button", verdict: 'pass', note: "GlassTile puts label, value and hint on the Button itself and hides the glyph (GlassTile.swift:135-145, 410).", by: 'swiftui-pro skill' },
+        { rule: "Dynamic Type: no fixed point sizes", verdict: 'pass', note: "Tile text uses .subheadline and .footnote with a @ScaledMetric glyph (GlassTile.swift:298-299, 416, 425).", by: 'swiftui-pro skill' },
+        { rule: "Toolbars and presentation: use the semantic placement for a Close button", verdict: 'fix', note: "SheetCloseItem places the circle-X Close as .confirmationAction (HassModal.swift:26), a confirming slot, although it only dismisses. On the iPhone Duo outer display that slot is a prominent action, below primary navigation (Back, Close) at the top of the vertical bar (HIG Duo, Vertical controls). Use .cancellationAction with role .close.", by: 'swiftui-pro skill' },
+
       ],
+
     },
 
     notes: [

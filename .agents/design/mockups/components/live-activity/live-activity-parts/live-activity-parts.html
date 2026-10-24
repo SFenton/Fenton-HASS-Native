@@ -105,16 +105,16 @@
     reviews: {
       date: '2026-10-23',
       hig: [
-        { rule: 'Live Activities: use the app\'s identity (icon colour) sparingly', verdict: 'pass', note: 'One corner mark in the picked icon\'s foreground colour; the job colour is the family accent.' },
-        { rule: 'SF Symbols: use symbols that match the content', verdict: 'pass', note: 'Named per glyph id in ActivityGlyphImage.swift; robotic.vacuum falls back to sparkles before iOS 18.' },
-        { rule: 'Buttons: 44 pt hit area', verdict: 'pass', note: 'Pill 36 pt visible, round 44 pt.' },
-        { rule: 'Color: sufficient contrast', verdict: 'pass', note: 'See the accessibility list.' },
+        { by: 'apple-hig skill', rule: 'SF Symbols: glyphs match the content', verdict: 'pass', note: 'Each glyph id maps to a named symbol and robotic.vacuum falls back to sparkles before iOS 18 (ActivityGlyphImage.swift:4-36).' },
+        { by: 'apple-hig skill', rule: 'Buttons: 44 pt hit area, named for the device', verdict: 'pass', note: 'ActivityButtons.pill sets accessibilityLabel from the card (line 78) and the icon variants are 44 pt circles (lines 82-95).' },
+        { by: 'apple-hig skill', rule: 'Color: decoration hidden, text spoken', verdict: 'pass', note: 'Ring, header glyph, severity circle, corner mark and bar are accessibilityHidden (ActivityRing.swift:25; ActivityHeaderGlyph.swift:23; SeverityCircle.swift:15; CornerMark.swift:27; ActivityBar.swift:21).' },
+        { by: 'apple-hig skill', rule: 'Typography: small status text', verdict: 'fix', note: 'The "Not confirmed" status and chips use .caption.weight(.semibold) (ActivityButtons.swift:54, 65) beside 36 pt pills; caption is the second-smallest style and the line is lineLimit(1).' },
       ],
       swiftui: [
-        { rule: 'ScaledMetric for fixed design sizes', verdict: 'pass', note: 'ActivityFontModifier scales 17, 24 and 32 pt from their text style.' },
-        { rule: 'Mirror data in one place (CornerMarkPalette vs AppIconChoice)', verdict: 'departure', note: 'The widget does not link HassCore, so the eight foreground colours are duplicated; a HassUI test compares them for every choice so they cannot drift.' },
-        { rule: 'Avoid AnyView', verdict: 'departure', note: 'ActivityButtons.iconLabel and ActivityActions return AnyView (the intent button lives in the extension).' },
-        { rule: 'Shapes over Canvas in widgets', verdict: 'pass', note: 'HouseHeartShape is a Shape because widgets and Live Activities draw shapes reliably.' },
+        { by: 'swiftui-pro skill', rule: 'views.md: avoid manual geometry hacks', verdict: 'fix', note: 'The bar is a system ProgressView stretched with scaleEffect(y: 5/4) (ActivityBar.swift:18-20), which distorts the track ends and assumes the system height.' },
+        { by: 'swiftui-pro skill', rule: 'performance.md: avoid AnyView', verdict: 'departure', note: 'ActivityButtons.iconLabel and ActivityActions return AnyView (ActivityButtons.swift:77-95) so the package need not name the extension\'s intent.' },
+        { by: 'swiftui-pro skill', rule: 'hygiene.md: one source of truth', verdict: 'departure', note: 'CornerMarkPalette duplicates the eight AppIconChoice foreground colors because the widget does not link HassCore; a HassUI test compares them so they cannot drift.' },
+        { by: 'swiftui-pro skill', rule: 'views.md: shapes in widgets', verdict: 'pass', note: 'HouseHeartShape is a Shape, which draws reliably in widgets and Live Activities (CornerMark.swift:24).' },
       ],
     },
     notes: [
