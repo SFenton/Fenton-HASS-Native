@@ -78,7 +78,7 @@
       swiftui: [
         { rule: "Group related tiles as one element with a label", verdict: 'pass', note: "The panel is .contain with the label 'Weather highlights' and a header-trait title (WeatherHighlightsPanel.swift:21-23, 37-38).", by: 'swiftui-pro skill' },
         { rule: "Use Label for icon plus text", verdict: 'pass', note: "Tile title uses Label with its icon (WeatherTile.swift:17-21).", by: 'swiftui-pro skill' },
-        { rule: "Avoid fontWeight(.bold)", verdict: 'fix', note: "Values use .title2.weight(.bold) and .title.weight(.bold) (WeatherHighlightTile.swift:31, 42, WeatherAqiTile.swift:16); use bold().", by: 'swiftui-pro skill' },
+        { rule: "Avoid fontWeight(.bold)", verdict: 'pass', note: "Every .weight(.bold) in a font is now .bold() (WeatherHighlightTile.swift, WeatherAqiTile.swift:16)", by: 'swiftui-pro skill' },
         { rule: "Canvas drawings are decorative and hidden", verdict: 'pass', note: "Sun arc, compass, gauge and rail set accessibilityHidden (WeatherSunArc.swift:31, WeatherPressureGauge.swift:31, WeatherRail.swift:64).", by: 'swiftui-pro skill' },
         { rule: "Animation with Reduce Motion", verdict: 'pass', note: "Rail changes use motionSafeAnimation(MotionTokens.standard, value:) (WeatherRail.swift:60).", by: 'swiftui-pro skill' },
       ],

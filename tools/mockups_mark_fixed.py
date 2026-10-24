@@ -15,11 +15,11 @@ for line in open(sys.argv[1]):
     for p in paths:
         out = []
         for l in open(p).read().split("\n"):
-            m = re.search(r"verdict: (['\"])fix\1, note: (['\"]).*\2 \}", l)
+            m = re.search(r"verdict: (['\"])fix\1, note: (['\"])(?:\\.|(?!\2).)*\2", l)
             if m and rule in l:
                 q = m.group(2)
                 text = note.replace("\\", "\\\\").replace(q, "\\" + q)
-                l = l[:m.start()] + f"verdict: {m.group(1)}pass{m.group(1)}, note: {q}{text}{q} }}" + l[m.end():]
+                l = l[:m.start()] + f"verdict: {m.group(1)}pass{m.group(1)}, note: {q}{text}{q}" + l[m.end():]
                 done += 1
             out.append(l)
         open(p, "w").write("\n".join(out))
