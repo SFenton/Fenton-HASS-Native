@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vacuum area editor · modal mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../room-devices/_devices-vacuums.js"></script>
+<script src="../_devices-vacuums.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, dv = Mock.dv, vac = dv.vac;
+  var AREA = { x: 24, y: 24, w: 150, h: 120 };
+
+  /* VacuumAreaEditor is pushed onto the vacuum sheet's NavigationStack (.navigationDestination(for: Route.areaEditor)): system Back, an inline title "<Robot> Cleaning Area",
+     one scrolling column (max 760): toolbar (Draw / Reset View / Clear), the map, a hint, the dimensions, a description, and Use This Area. */
+  function S(o) { return function (c) { return vac.pushed(c, { title: 'Main Floor Cleaning Area', content: vac.areaEditor(o.ed), connection: o.connection }); }; }
+
+  Mock.mount({
+    kind: 'modal', id: 'vacuum-area-editor', title: 'Vacuum area editor (pushed)', area: 'vacuums', status: 'shipped',
+    summary: 'The page pushed inside the vacuum sheet when Area is chosen or Edit Area is tapped: draw one rectangle on the live map, move it, resize it from a corner, pan and pinch, then Use This Area. VoiceOver gets the same edits as actions.',
+    source: ['apple/Sources/HassUI/Features/Vacuums/VacuumAreaEditor.swift', 'apple/Sources/HassUI/Features/Vacuums/VacuumSheet.swift', 'apple/Sources/HassUI/Features/Vacuums/ValetudoMapView.swift', 'apple/Sources/HassCore/Vacuums/MapAreaEdit.swift',
+      'apple/Sources/HassCore/Vacuums/ValetudoMapGeometry.swift'],
+    spec: ['.agents/patterns/valetudo-map.md', '.agents/patterns/vacuum-sheet.md', '.agents/pages/vacuums/ios.md'],
+    patterns: ['valetudo-map', 'vacuum-sheet', 'modal-sheet'],
+    hig: ['Navigation bars', 'Gestures', 'Buttons', 'Accessibility', 'Dynamic Type'],
+    entities: ['script.main_floor_vacuum_clean_zone', 'camera.valetudo_exaltedsneakydeer_map_data'],
+    kitComponents: ['HassModal', 'BackButton', 'PrimaryButton', 'InlineAlert'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+
+    states: {
+      'default': { title: 'Draw mode, nothing drawn', note: 'Draw is the live tool (action blue); Clear is dim; "Draw an Area to Continue" is disabled', render: S({ ed: { area: null, draw: true } }) },
+      'drawing': { title: 'Mid-drag: a draft area', note: 'the outline follows the finger; handles stay hidden while Draw is on; the dimensions update live', render: S({ ed: { area: { x: 30, y: 30, w: 110, h: 80 }, draw: true } }) },
+      'drawn': { title: 'Area drawn, handles shown', note: 'drag inside to move, drag a round corner handle to resize (22 pt reach), drag elsewhere to pan, pinch to zoom 1 to 10x', render: S({ ed: { area: AREA, draw: false } }) },
+      'zoomed': { title: 'Zoomed in', note: 'pan and pinch only redraw the vectors; the viewport can be reset with Reset View', render: S({ ed: { area: AREA, draw: false, zoom: 1.7 } }) },
+      'outside': { title: 'Area outside the focus rooms', note: 'a focused map (Music Room) limits drawing: "The area must stay inside the rooms shown on the map."', render: S({ ed: { area: AREA, draw: false, outside: true } }) },
+      'error': { title: 'Map unavailable', note: 'an inline "Map Unavailable" notice replaces the map; the toolbar and the button are disabled', render: S({ ed: { unavailable: true } }) },
+      'voiceover': { title: 'With VoiceOver on', note: 'Draw places a centred starting area (a drag is not available) and the map offers six custom actions', render: S({ ed: { area: AREA, draw: false, voiceover: true } }) },
+      'offline': { title: 'Over an offline Vacuums page', note: 'no offline UI of its own; with the websocket down the live map stops polling and the tools disable (the map is not "ready")', render: function (c) { return vac.pushed(c, { title: 'Main Floor Cleaning Area', content: vac.areaEditor({ unavailable: true }), connection: 'offline' }); } },
+      'large': { title: 'Large detent (shipped, full height)', render: S({ ed: { area: AREA, draw: false } }) },
+      'closed': { title: 'The sheet it was pushed from', note: 'Controls with the Area target', render: function (c) { return vac.sheet(c, { v: vac.V({ selected: [], area: AREA }) }); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'the three tools stack; the summary and description wrap; the map stays full width', render: S({ ed: { area: AREA, draw: false } }) },
+    },
+
+    motion: [
+      { id: 'tool-fill', what: 'The live tool (Draw) fills the action blue and the others sit grey; choosing Draw moves the fill', token: 'state 0.6 s ease-in-out, colour only (stateForeground / stateColorTransition "VacuumAreaEditor")', state: 'drawn',
+        source: 'HassUI/Features/Vacuums/VacuumAreaEditor.swift tool(...); motion.md section 6', reduce: 'still cross-fades at 0.2 s',
+        play: function (stage) { var t = stage.querySelector('.vc-tool'); t.classList.add('on'); return Mock.sleep(Mock.anim.ms.state() + 700).then(function () { t.classList.remove('on'); return Mock.sleep(Mock.anim.ms.state() + 300); }); } },
+      { id: 'drag-draw', what: 'Dragging on the map draws the rectangle; it tracks the finger with no animation', token: 'no animation: the draft is state set on every drag change', state: 'default',
+        source: 'VacuumAreaEditor.drag(...), MapAreaEdit.update', reduce: 'unchanged',
+        play: function (stage) {
+          var wrap = stage.querySelector('.vc-edmap > div'), steps = [[30, 30, 20, 15], [30, 30, 70, 50], [30, 30, 110, 80], [30, 30, 150, 120]], i = 0, ctx = Mock.current;
+          return new Promise(function (res) { var id = setInterval(function () { var s = steps[i++]; var next = vac.mapCanvas({ map: 'main', selected: [], robot: 'dock', area: { x: s[0], y: s[1], w: s[2], h: s[3] }, handles: false }); wrap.replaceChildren(next); if (i >= steps.length) { clearInterval(id); res(); } }, 450); });
+        } },
+    ],
+
+    transitions: [
+      { from: 'Controls (Area)', to: 'Area editor', kind: 'push', state: 'closed', note: 'Edit Area, or the Area segment with nothing to discard, pushes the editor; the section bar stays on the page below. Back or the edge swipe pops; Use This Area also pops.',
+        play: function (stage) { return vac.pushDemo(stage, { title: 'Main Floor Cleaning Area', content: vac.areaEditor({ area: AREA }) }); } },
+    ],
+
+    a11y: [
+      { rule: 'Reading order', note: 'Back, the title "Main Floor Cleaning Area"; the toolbar (Draw or Redraw, Reset View, Clear); the map; its hint; the dimensions and square metres; the description; the warning if any; Use This Area.' },
+      { rule: 'Map', note: 'One element named "Main Floor cleaning area editor" with the dimensions as its value ("3.8 m × 2.6 m", or "No area selected"). Touch drawing is not possible with VoiceOver: Draw places a centred area and the map exposes six actions (Move area left/right/up/down, Make area larger/smaller), each a half-side step.' },
+      { rule: 'Toolbar', note: 'Three capsule buttons, 44 pt tall (vacuum.area.draw / reset / clear); the live tool carries the selected trait, so the state is spoken, not only coloured. Clear is dim and disabled with nothing drawn.' },
+      { rule: 'Use This Area', note: 'The one primary button; its title tells the state ("Draw an Area to Continue" while disabled); it is disabled while the map is not live.' },
+      { rule: 'Scrolling', note: 'The page cannot scroll while a drag is live (a gesture-state gate, not the drag\'s job, so a cancelled drag never leaves the page stuck); scroll from below the map.' },
+      { rule: 'Dynamic Type', note: 'At AX sizes the three tools stack and the text wraps; the map keeps its width.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Gestures: provide an alternative for a drag', verdict: 'pass', note: 'VoiceOver actions on the map and a placed default area; the toolbar is plain buttons.' },
+        { rule: 'Navigation bars: Back on a pushed level', verdict: 'pass', note: 'Glass Back circle; no Close (the root\'s toolbar item does not follow a push).' },
+        { rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Tools 44 pt, Use This Area 50 pt; corner handles are 16 pt drawn with a 22 pt reach.' },
+        { rule: 'Handles: touch targets of 44 pt', verdict: 'departure', note: 'The corner handles are drawn at 16 pt with a 22 pt hit radius (the web\'s), not 44; the VoiceOver actions and Reset View cover users who cannot place them precisely.' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'The outline is action blue at 22% fill and a 2 pt stroke, with square metres in words below.' },
+      ],
+      swiftui: [
+        { rule: 'Gesture conflicts in a scroll view', verdict: 'pass', note: 'scrollDisabled while @GestureState dragging; pinch is simultaneous.' },
+        { rule: 'Canvas drawing with pure geometry helpers', verdict: 'pass', note: 'MapAreaEdit (HassCore) is unit tested; the view only routes values.' },
+        { rule: 'Accessibility actions on a custom control', verdict: 'pass', note: 'accessibilityActions with Nudge.allCases titles.' },
+        { rule: 'Reduce Motion', verdict: 'pass', note: 'Only colour animates (0.2 s reduced); drawing is direct manipulation.' },
+      ],
+    },
+
+    notes: [
+      'loading: the editor has none; it is reached only from a sheet whose map is ready (Area stays disabled until the map is live), so the missing-map case is the error state.',
+      'medium and fitted: a pushed level inside a full-height sheet; only large exists.',
+      'The map is the same stand-in floor plan as the vacuum sheet (Main Floor, rotated 180 degrees). A focused map (Music Room) would crop to its three rooms; the outside state describes it.',
+      'Dimensions are illustrative ("3.8 m × 2.6 m", 9.88 m²); the app converts grid cells with the map\'s pixel size (VacuumFormat.metres) and the minimum side is 25 cm.',
+      'Promote to kit: vac.mapCanvas (with area and handles) and the three-tool toolbar (modals/vacuums/_devices-vacuums.js).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass built with the kit: draw, drawing, drawn, zoomed, outside, unavailable, VoiceOver actions, AX5; light and dark.' }],
+  });
+})();
+</script></body></html>

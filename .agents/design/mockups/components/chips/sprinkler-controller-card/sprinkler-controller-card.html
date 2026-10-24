@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sprinkler controller card · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/sprinklers/_vacation-sprinklers.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, S = Mock.VS.S;
+  var cfg = Mock.componentConfig('SprinklerControllerCard', { surfaces: ['page'], swatchWidth: '372px', props: {} });
+  /* In context: the real Sprinklers page on an iPhone frame, scaled to fit the component page. */
+  cfg.states['in-context'] = { title: 'In context: the Sprinklers page', render: function (ctx) {
+    var c2 = Mock.ctx('iphone', { appearance: ctx.appearance, ts: ctx.ts, reduceMotion: ctx.reduceMotion, reduceTransparency: ctx.reduceTransparency }), prev = Mock.current;
+    Mock.current = c2; var frame = Mock.frame(c2, S.page(c2, {})); Mock.current = prev;
+    return h('div', { style: { zoom: .62, width: 'max-content', margin: '0 auto' } }, frame);
+  } };
+  Mock.mount(Object.assign(cfg, {
+    states: cfg.states,
+    id: 'sprinkler-controller-card', title: 'Sprinkler controller card (row + status pills)', area: 'sprinklers', status: 'shipped',
+    summary: 'SprinklerControllerCard: one controller as a module card. A low battery alert sits above it; inside, the controller row (water glyph, name, status line, chevron, opens the sheet) over a two-column grid of Battery, Next Watering, Last Watering and Hub status pills. Dense while the battery is low.',
+    source: ['apple/Sources/HassUI/Features/Sprinklers/SprinklersScreen.swift', 'apple/Sources/HassDesign/StatusPill.swift', 'apple/Sources/HassDesign/ModuleList.swift', 'apple/Sources/HassCore/Sprinklers/SprinklerFormat.swift'],
+    spec: ['.agents/pages/sprinklers/ios.md', '.agents/patterns/status-pill.md', '.agents/patterns/module-list.md'],
+    patterns: ['status-pill', 'module-list', 'dynamic-grid'],
+    hig: ['Lists and tables', 'Color', 'Dynamic Type'],
+    kitComponents: ['ModuleList', 'ModuleRow', 'StatusPill', 'TileGrid', 'InlineAlert'],
+    devices: ['iphone', 'ipad-portrait'],
+    a11y: [
+      { rule: 'Structure', note: 'The card is an accessibility container (children contained): the optional warning, then the row, then four pills. Not one element, so each pill stays separately reachable.' },
+      { rule: 'Row', note: 'One button: label is the controller name, value the status line, hint "Opens the controller.", trait button; glyph and chevron hidden. 60 pt tall, far over 44 pt.' },
+      { rule: 'Pills', note: 'Read-only: label then "value, detail". The tone colours the icon only (orange battery, green or grey hub); the words say the same, so state is never colour alone.' },
+      { rule: 'Dynamic Type', note: 'The pill grid has a 150 pt scaled minimum, so it is two columns at the default size and one at AX5; text wraps. Check with the Text size control.' },
+      { rule: 'Contrast', note: 'White on the thin module (#1C1C1E at 66%), on the dense one (#141416 at 78%) when the battery is low: warm text needs the thicker ground (direction G, Layers).' },
+    ],
+    reviews: { date: '2026-10-23', by: 'author',
+      hig: [{ rule: 'Lists: a row that navigates shows a disclosure chevron', verdict: 'pass', note: 'The row opens the controller sheet, even while offline.' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Values and the alert carry the state in words.' },
+        { rule: 'Layout: reflow to the available width', verdict: 'pass', note: 'DynamicGridLayout, 150 pt scaled minimum, 2 columns.' }],
+      swiftui: [{ rule: 'ScaledMetric for grid minimums', verdict: 'pass', note: 'minPillWidth @ScaledMetric(relativeTo: .footnote).' },
+        { rule: 'Combine or contain accessibility children deliberately', verdict: 'pass', note: '.accessibilityElement(children: .contain) on the card; the row ignores its children.' },
+        { rule: 'Animate colour with the app token', verdict: 'pass', note: 'Pill icon tone cross-fades 0.6 s (0.2 s reduced); the module density change has no explicit animation.' }] },
+    notes: [
+      'Only the page surface is drawn: the card never appears in a sheet (the controller sheet uses the same pills on the grouped-list cell, shown in the controller sheet mockup).',
+      'The row is inside the module: a hairline above the pills is drawn from the row text inset, like every ModuleList child. The mockup draws it with a local .vs-hair rule (promote to kit).',
+      'The card is registered locally as Mock.components.SprinklerControllerCard by the helper; it is not in the kit COMPONENTS list.',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: idle, watering, battery low, hub, unavailable, fault, plus the unknown and no-history strings.' }],
+  }));
+})();
+</script></body></html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Status rail · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../weather/_home-weather.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, C = Mock.chips, HW = Mock.HW;
+
+  function sub(ctx, key) { return Mock.ctx(key, { appearance: ctx.appearance, ts: ctx.ts, reduceMotion: ctx.reduceMotion, reduceTransparency: ctx.reduceTransparency }); }
+  /** A rail in its window: as wide as the device's content column, with the hinge band drawn where there is one. */
+  function rail(c, chips, o) {
+    o = o || {}; var w = Math.min(c.contentW, 1000);
+    var r = K.ChipRail({ chips: chips, ctx: c, frame: { x: 0, w: c.contentW }, mode: o.mode });
+    var box = h('div', { style: { position: 'relative', width: w + 'px', maxWidth: '100%' } }, r);
+    if (c.hinge) box.appendChild(h('div', { 'aria-hidden': 'true', title: 'Hinge band: nothing interactive here', style: { position: 'absolute', left: c.hinge.x + 'px', width: c.hinge.w + 'px', top: '-6px', bottom: '-6px', background: 'repeating-linear-gradient(135deg, rgba(255,255,255,.14) 0 6px, rgba(255,255,255,.04) 6px 12px)', borderRadius: '4px' } }));
+    return box;
+  }
+  function item(c, cap, chips, o) { o = o || {}; return { cap: cap, note: o.note, surface: 'page', width: Math.min(c.contentW, 1000) + 28, node: function () { return rail(c, chips(), o); } }; }
+  function S(fn) { return function (ctx) { return HW.swatches(ctx, fn(ctx)); }; }
+  var UN = function () { return [C.unavailable('Lights', 'lightbulb.2'), C.security('unknown'), C.unavailable('Climate', 'thermometer.medium'), C.unavailable('Occupancy', 'person'), C.unavailable('Contact Sensors', 'door.left.hand.closed'), C.unavailable('Air Quality', 'aqi.medium')]; };
+  function room() { return [C.lights(2), C.climate('70–72°F', 71), C.occupancy(true), C.contacts('closed', 0), C.airQuality('AQI 22 · PM2.5 5')]; }
+
+  Mock.mount({
+    kind: 'component', id: 'status-rail', title: 'Status rail (chips)', area: 'home', status: 'shipped', frame: false,
+    summary: 'The chip row under a page title. Home shows six chips, Security two, a room page its overview chips. Compact width (iPhone, folded Duo) scrolls them sideways in one row; regular width (iPad, unfolded Duo) wraps them so every chip is in view; with a hinge the rail stops 24 pt short of the fold. Chips always start at the leading margin.',
+    source: ['apple/Sources/HassUI/Features/Home/StatusRail.swift', 'apple/Sources/HassDesign/ChipRail.swift', 'apple/Sources/HassDesign/ChipRailLayout.swift', 'apple/Sources/HassUI/Features/Rooms/RoomTiles.swift (RoomStatusRail)', 'apple/Sources/HassCore/Config/HomeConfig.swift'],
+    spec: ['.agents/patterns/status-rail.md', '.agents/design/direction-g.md', '.agents/design/apple/split-view.md'],
+    patterns: ['status-rail', 'dynamic-grid', 'motion'],
+    hig: ['Scroll views', 'Layout', 'Toolbars', 'Dynamic Type'],
+    entities: ['light.lights', 'alarm_control_panel.aqara_hub_m3_0056_security_system_2', 'input_text.all_climate_range', 'binary_sensor.occupancy_sensors', 'binary_sensor.contact_sensors', 'input_text.all_aqi_range'],
+    kitComponents: ['ChipRail', 'StatusChip'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+
+    states: {
+      'home': { title: 'Home: six chips in web order', note: 'Lights, Security, Climate, Occupancy, Contact Sensors, Air Quality; the Device control sets scroll or wrap', render: S(function (ctx) { return [item(ctx, 'page · Home rail', C.home)]; }) },
+      'poses': { title: 'The same rail on three windows', note: 'iPhone scrolls (the fifth chip is cut by the edge on purpose); iPad portrait wraps; the unfolded Duo landscape wraps and stops 24 pt short of the hinge', render: S(function (ctx) { var p = sub(ctx, 'iphone'), i = sub(ctx, 'ipad-portrait'), d = sub(ctx, 'duo-unfolded-landscape'); return [item(p, 'page · iPhone (scroll)', C.home), item(i, 'page · iPad portrait (wrap)', C.home), item(d, 'page · unfolded Duo landscape (wrap, hinge)', C.home)]; }) },
+      'security': { title: 'Security: two chips', note: 'Security and Contact Sensors only; still at the leading margin even though they fit', render: S(function (ctx) { return [item(ctx, 'page · Security rail', function () { return [C.security('armed_home'), C.contacts('closed', 0)]; })]; }) },
+      'room': { title: 'Room page rail', note: 'the room\'s overview cards: RoomStatusRail, labelled "<room> status"', render: S(function (ctx) { return [item(ctx, 'page · Master Bedroom', room)]; }) },
+      'left-aligned': { title: 'Few chips still start at the leading margin', note: 'owner 2026-10-17: a row\'s alignment is the container\'s job, never a hosting view\'s size', render: S(function (ctx) { return [item(ctx, 'page · two chips', function () { return [C.lights(0), C.occupancy(false)]; })]; }) },
+      'loading': { title: 'First sign-in (names, soft bars)', render: S(function (ctx) { return [item(ctx, 'page · pending', function () { return C.home().map(function (c) { return Object.assign({}, c, { pending: true, isActive: false, tint: null }); }); })]; }) },
+      'error': { title: 'Entities unavailable', note: 'every chip reads Unavailable, dimmed, and still opens its sheet', render: S(function (ctx) { return [item(ctx, 'page · unavailable', UN)]; }) },
+      'long-text': { title: 'Long summaries', note: 'chips keep their own widths, so a long value never shifts its neighbours; compact scrolls, regular wraps', render: S(function (ctx) { return [item(ctx, 'page · long values', function () { return [C.lights(142), C.security('armed_night'), C.climate('83.4–87.9°F', 85), C.occupancy(true), C.contacts('armed', 14), C.airQuality('AQI 118–142 · PM2.5 38–54', [255, 126, 0])]; })]; }) },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'chips grow with their text; compact still scrolls, regular wraps one chip per row if need be', render: S(function (ctx) { return [item(ctx, 'page · AX5', C.home)]; }) },
+    },
+
+    motion: [
+      { id: 'chip-colour', what: 'A chip fills in a new colour when the house changes (Contact Sensors goes soft green to amber)', token: 'state 0.6 s ease-in-out (0.2 s reduced), colour only', state: 'home',
+        source: 'StatusRail.swift StatusChipStyle.colorAnimation; motion.md section 6', reduce: 'still cross-fades (colour is not motion), shortened to 0.2 s',
+        play: function (stage) { var c = stage.querySelector('.ui-chip[data-chip="Contact Sensors"]'); if (!c) return Promise.resolve(); c.style.setProperty('--cf', 'var(--chip-contact-home-fill)'); c.style.setProperty('--cg', 'var(--chip-contact-home-glyph)'); c.querySelector('.su').textContent = '2 Open'; return Mock.sleep(Mock.anim.ms.state() + 300); } },
+      { id: 'arrival-slide', what: 'After signing in the chips slide in 30 pt from the trailing edge (once per session)', token: 'part of the 0.9 s arrival: chips slide 30 pt over 0.45 s standard, after the header settles', state: 'home',
+        source: 'HassUI/App/Motion/ArrivalMotion.swift (.arrivalMotion(kind: .slideIn)), HomeArrival; direction-g.md Launch and sign-in motion', reduce: 'cross-fades only, about 0.35 s',
+        play: function (stage) { return Mock.anim.arrival(stage); } },
+      { id: 'sideways-scroll', what: 'The compact rail scrolls sideways in one row; a drag never touches the page', token: 'UIKit scroll view (HostedHorizontalScroll); no app animation', state: 'poses',
+        source: 'HassDesign/ChipRail.swift HostedHorizontalScroll; status-rail.md "Scrolling is UIKit\'s"', reduce: 'the system scroll is unchanged (no app motion to remove)',
+        play: function (stage) { var r = stage.querySelector('.ui-rail-chips.scroll'); if (!r) return Promise.resolve(); r.scrollTo({ left: r.scrollWidth, behavior: Mock.settings.reduceMotion ? 'auto' : 'smooth' }); return Mock.sleep(900).then(function () { r.scrollTo({ left: 0, behavior: 'auto' }); }); } },
+    ],
+    transitions: [
+      { from: 'Status chip', to: 'Room overview sheet or Security System sheet', kind: 'sheet', note: 'Every chip but Security opens a full-height room overview sheet; Security opens the fitted Security System sheet. See the Home page mockup for the Play.' },
+    ],
+
+    a11y: [
+      { rule: 'Reading order', note: 'Chips read in rail order (Lights, Security, Climate, Occupancy, Contact Sensors, Air Quality); a room rail is a container labelled "<room> status". The compact rail is a UIKit scroll view: VoiceOver scrolls it when focus moves to an off-screen chip.' },
+      { rule: 'Each chip', note: '"<title>, <summary>" with the hint "Opens <title>"; 48 pt minimum height; state in colour, glyph and words (see the Status chip mockup).' },
+      { rule: 'Nothing hidden', note: 'On regular widths every chip is in view (HIG: do not hide content off screen when there is room); the hinge band stays empty and no chip crosses it.' },
+      { rule: 'Dynamic Type', note: 'At AX5 chips grow tall and wide; the compact row still scrolls and the wrapped row flows onto more lines. Chips keep their widths so live values do not shift neighbours.' },
+      { rule: 'Reduce Motion', note: 'The arrival slide becomes a cross-fade; colour changes stay and shorten to 0.2 s.' },
+    ],
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Scroll views: show part of the next item so people know to scroll', verdict: 'pass', note: 'The compact row is wider than the window, so the fifth chip is cut by the edge.' },
+        { rule: 'Layout: respect the hinge and safe areas', verdict: 'pass', note: 'The rail stops 24 pt short of the fold (ChipRailMetrics.hingeGap, direction-g.md Navigation); measured only in a window that has a hinge.' },
+        { rule: 'Layout: wrap rather than hide on wide screens', verdict: 'pass', note: 'FlowLayout on regular width, leading aligned, mirrored in right to left.' },
+        { rule: 'Accessibility: 44 pt targets', verdict: 'pass', note: '48 pt chips, 8 pt apart.' },
+      ],
+      swiftui: [
+        { rule: 'Use ScrollView for horizontal rows', verdict: 'departure', note: 'The compact rail hosts a UIScrollView (HostedHorizontalScroll): a nested SwiftUI ScrollView wrote its offset through the page view graph on every frame (status-rail.md, 2026-10-16: main-thread samples 6,020 to 2,943, ScrollViewCommitMutation 852 to 0).' },
+        { rule: 'Do not measure geometry per frame', verdict: 'pass', note: 'The hinge inset is measured only in a window with a hinge, from a full-width frame outside the padding (no feedback loop).' },
+        { rule: 'Use Layout for wrapping', verdict: 'pass', note: 'FlowLayout places rows from the leading edge.' },
+        { rule: 'Leading alignment is the container\'s job', verdict: 'pass', note: 'hostedContentFrame gives the hosted view exactly the row\'s natural width at the leading edge; tested in ChipRailTests and ChipAlignmentJourneyTests.' },
+      ],
+    },
+    notes: [
+      'Docs versus code: none found; status-rail.md matches ChipRail.swift and ChipRailLayout.swift. The kit draws the compact rail as a CSS overflow scroller (the app hosts UIKit).',
+      'The hinge band is drawn as a striped overlay in the unfolded Duo poses so the 24 pt gap is visible; the unfolded Duo simulator pose was only run for pages (duo.md).',
+      'refreshing and offline: the rail has no state of its own; values update in place and an offline Home carries the offline chip above (see the Home page).',
+      'Room rail: the kit draws five overview chips for illustration; each room has its own subset (RoomPage.overviewCards).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: Home, Security and room rails; scroll, wrap and hinge poses; unavailable, pending, AX5.' }],
+  });
+})();
+</script></body></html>

@@ -4,10 +4,11 @@
 <title>Home · page mockup</title>
 <link rel="stylesheet" href="../../../_kit/kit.css">
 <script src="../../../_kit/kit.js"></script>
+<script src="../../../components/weather/_home-weather.js"></script>
 </head><body>
 <script>
 (function () {
-  var h = Mock.h, K = Mock.components;
+  var h = Mock.h, K = Mock.components, HW = Mock.HW;
 
   /* ---- the Home page body, section order as HomeScreen.swift draws it: status rail, weather, guests (only while a toggle is on), cameras.
      Unfolded Duo landscape splits on the hinge (HomeColumns): chips and weather lead, cameras and guests trail; iPad landscape stays one column. */
@@ -27,7 +28,7 @@
   function body(ctx, o) {
     o = o || {};
     var chips = K.ChipRail({ chips: o.chips || Mock.chips.home(o.chipOpts), frame: { x: 0, w: ctx.splitGeometry ? ctx.splitGeometry.leading : ctx.contentW } });
-    var wx = K.WeatherCard(Object.assign({ condition: 'Partly Cloudy', temp: 48, hi: 58, lo: 38 }, o.weather));
+    var wx = HW.card(ctx, Object.assign({ condition: 'Partly Cloudy', temp: 48, hi: 58, lo: 38, narrow: !!ctx.splitGeometry }, o.weather));
     var cams = cameras(o), g = o.guests ? guests() : null;
     if (ctx.splitGeometry && ctx.hinge) return [Mock.split(ctx, { leading: [chips, wx], trailing: [cams, g] })];
     return [chips, wx, g, cams];
@@ -59,11 +60,11 @@
 
     states: {
       'default': { title: 'Signed in, house online', render: function (d) { return page(d); } },
-      'loading': { title: 'First sign-in, nothing saved', note: 'names at once, soft pulsing bars where values go', render: function (d) {
-        return page(d, { chips: PENDING, weather: { pending: true }, cams: ['connecting', 'connecting', 'connecting', 'connecting'] }); } },
+      'loading': { title: 'First sign-in, nothing saved', note: 'chips: names at once and soft pulsing bars where values go; the weather card has no bars: it reads "--" and Weather Unavailable over static placeholder hours until the entity arrives', render: function (d) {
+        return page(d, { chips: PENDING, weather: { loading: true }, cams: ['connecting', 'connecting', 'connecting', 'connecting'] }); } },
       'refreshing': { title: 'Saved snapshot on screen, live values swap in', note: 'identical to default by design: no spinner, no pill, nothing re-fades (owner 2026-10-17)', render: function (d) { return page(d); } },
       'error': { title: 'Entities unavailable', note: 'chips read "Unavailable", dimmed, and still open their sheet', render: function (d) {
-        return page(d, { chips: UNAVAIL, weather: { condition: 'Weather Unavailable' }, cams: ['snapshot', 'snapshot', 'snapshot', 'snapshot'] }); } },
+        return page(d, { chips: UNAVAIL, weather: { condition: 'Weather Unavailable', temp: null, glyph: 'cloudy' }, cams: ['snapshot', 'snapshot', 'snapshot', 'snapshot'] }); } },
       'offline': { title: 'No network', note: 'values stay; offline chip under the header; cloud badge on Profile', render: function (d) {
         return page(d, { cams: ['snapshot', 'snapshot', 'snapshot', 'snapshot'], page: { connection: 'offline' } }); } },
       'reconnecting': { title: 'Connection down 2 s+', note: 'in flight (claude/reconnecting-spinner): arc left of Quick Links; was a "Reconnecting…" chip under the header', render: function (d) {
@@ -72,6 +73,8 @@
         return page(d, { page: { connection: 'reconnecting-chip' } }); } },
       'long-text': { title: 'Long weather condition and long chip text', render: function (d) {
         return page(d, { weather: { condition: 'Heavy Thunderstorm With Hail', glyph: 'storm' }, chipOpts: { security: 'triggered', contacts: ['armed', 3], aqi: ['AQI 118–142 · PM2.5 38–54'], climate: ['83.4–87.9°F', 85], lights: 14 } }); } },
+      'weather-was': { title: 'Weather header on main today (was)', note: 'in flight: option D replaces this (claude/weather-card-header-d-5a3fe5): glyph and numeral lead, the condition with its chevron and the range trail; the numeral could truncate to "4…" beside a long condition', render: function (d) {
+        return page(d, { weather: { header: 'was' } }); } },
       'guests': { title: 'Guests staying over', note: 'the section shows only while a guest toggle is on', render: function (d) { return page(d, { guests: true }); } },
       'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, render: function (d) { return page(d, { guests: true }); } },
     },

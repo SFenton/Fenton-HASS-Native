@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Light and light-group tile · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../modals/home/_room-overview-data.js"></script>
+<script src="../../../modals/home/_room-overview.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h;
+  function world(extra) { var w = RO.world('mixed'); Object.keys(extra || {}).forEach(function (id) { w.e[id] = Object.assign({ dim: true }, w.e[id], extra[id]); }); return w; }
+  /** One light tile in a fixture world. */
+  function L(label, title, id, extra, o) {
+    o = o || {};
+    return { label: label, note: o.note, wide: o.wide, w: o.w, build: function () { return h('div', { style: { width: '100%' } }, RO.lightTile(title, id, world(extra), o)); } };
+  }
+  function S(list) { return function (ctx) { return RO.swatches(ctx, list); }; }
+  var FL = 'light.living_room_front_left_light';
+
+  var states = {
+    'dimmable': { title: 'Brightness tile (dimmable light)', note: 'tap flips power, a horizontal drag sets brightness; the status line is "Off", "30%" or "Unavailable"',
+      render: S([L('Off', 'Front Left', FL, { 'light.living_room_front_left_light': { st: 'off', pct: 0 } }), L('On at 30%', 'Front Left', FL, { 'light.living_room_front_left_light': { st: 'on', pct: 30 } }), L('On at 80%', 'Front Left', FL, { 'light.living_room_front_left_light': { st: 'on', pct: 80 } }),
+        L('Coloured bulb tints the band', 'Drums Light', 'light.hue_color_downlight_3', {}), L('Unavailable', 'Grill Light', 'light.grill_light', { 'light.grill_light': { st: 'unavailable', pct: 0 } })]) },
+    'dragging': { title: 'Dragging', note: 'the tile lifts 3%, a dark bubble ("55%") floats over the band\'s edge, a haptic tick every 10%; the bubble is hidden from VoiceOver',
+      render: S([L('Dragging at 55%', 'Kitchen Lights', 'light.kitchen', { 'light.kitchen': { st: 'on', pct: 55 } }, { dragging: 55 }), L('Dragging at 20%', 'Front Left', FL, { 'light.living_room_front_left_light': { st: 'on', pct: 20 } }, { dragging: 20 })]) },
+    'power': { title: 'Power tile (switch or on/off-only light)', note: 'no brightness: tap flips power; the status line is On, Off or Unavailable',
+      render: S([L('Off', 'Entryway Light', 'switch.upper_entryway_light_switch_top', { 'switch.upper_entryway_light_switch_top': { st: 'off', dim: false } }), L('On', 'Entryway Light', 'switch.upper_entryway_light_switch_top', {}), L('Floodlight on', 'Floodlight', 'light.garage_camera_floodlight', {}),
+        L('Unavailable', 'Floodlight', 'light.garage_camera_floodlight', { 'light.garage_camera_floodlight': { st: 'unavailable', pct: 0 } })]) },
+    'group': { title: 'The room\'s group light (full-width slab)', note: 'a room with several lights shows its group as one tile titled "<Room> Lights" above the lights; it works the same way',
+      render: S([L('Living Room Lights, 60%', 'Living Room Lights', 'light.living_room', {}, { group: true, wide: true }), L('Kitchen Lights, off', 'Kitchen Lights', 'light.kitchen', { 'light.kitchen': { st: 'off', pct: 0 } }, { group: true, wide: true })]) },
+    'titles': { title: 'Titles', note: 'nightstands personalise (Your Nightstand, Steph Nightstand); long names wrap rather than truncate',
+      render: S([L('Your Nightstand (signed in as Stephen)', 'Your Nightstand', 'light.stephen_nightstand_light', {}), L('Another resident', 'Steph Nightstand', 'light.steph_nightstand_light', {}), L('Long title wraps', 'Master Bedroom Closet Light', 'light.master_bedroom_closet_light', {})]) },
+    'in-context': { title: 'In context: Kitchen Lights page', note: 'heading, the group slab, then each light in an equal-height grid', 
+      render: function (ctx) { return RO.swatches(ctx, [{ label: 'RoomGroupDetail, Kitchen', wide: true, build: function () { return RO.detailBody('lights', RO.group('lights', 'Kitchen'), RO.world('mixed')); } }]); } },
+    'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'the tile stacks glyph over name and state; the band stays',
+      render: S([L('Dimmable on', 'Front Left', FL, {}), L('Power tile on', 'Entryway Light', 'switch.upper_entryway_light_switch_top', {})]) },
+  };
+
+  Mock.mount({
+    kind: 'component', id: 'light-group-tile', title: 'Light and light-group tile (brightness slab)', area: 'home', status: 'shipped', frame: false,
+    summary: 'One light, or a room\'s group light: a brightness tile when the light dims (tap toggles, a horizontal drag sets the level), else a power tile. Both send explicit turn_on and turn_off, never toggle. Used on Home\'s pushed room pages and the room pages\' Lights sheets. Drawn on the sheet surface; the Device control picks the size class.',
+    source: ['apple/Sources/HassUI/Common/RoomOverview/LightGroupTile.swift', 'apple/Sources/HassDesign/BrightnessTile.swift', 'apple/Sources/HassCore/Lights/LightControl.swift', 'apple/Sources/HassUI/Common/RoomOverview/RoomGroupDetail.swift'],
+    spec: ['.agents/patterns/room-overview-sheet.md', '.agents/patterns/entity-tile.md', '.agents/design/direction-g.md'],
+    patterns: ['entity-tile', 'room-overview-sheet', 'optimistic-actions'],
+    hig: ['Gestures', 'Haptic feedback', 'Accessibility'], entities: ['light.living_room', 'light.living_room_front_left_light', 'switch.upper_entryway_light_switch_top', 'light.hue_color_downlight_3'],
+    kitComponents: ['BrightnessTile', 'GlassTile', 'TileGrid'],
+    devices: ['iphone', 'ipad-portrait'],
+    states: states,
+    motion: [
+      { id: 'drag-brightness', what: 'Dragging sets brightness: the tile lifts, a bubble follows the band\'s edge, the band glides with the finger', token: 'quick 0.2 s easeOut for band, lift and bubble; selection haptic every 10%', state: 'dimmable',
+        source: 'HassDesign/BrightnessTile.swift (BrightnessDrag, BrightnessBubble); motion.md section 6; motion-components.md BrightnessTile', reduce: 'no lift (a shadow only), the band and bubble still follow; the bubble fades',
+        note: 'Horizontal only; a vertical drag scrolls the page. The value commits on release.',
+        play: function (stage) { var t = stage.querySelectorAll('.ui-tile')[1]; return RO.dragDemo(t, 30, 85); } },
+      { id: 'tap-power', what: 'Tapping an off tile lights it at once (optimistic), the band fills; tapping again turns it off', token: 'state 0.6 s ease-in-out, colour only (0.2 s reduced); the band on quick 0.2 s', state: 'dimmable',
+        source: 'GlassTileFace .stateColorTransition; BrightnessInteraction.flip; optimistic-actions.md', reduce: 'colour still cross-fades at 0.2 s',
+        play: function (stage) { var t = stage.querySelectorAll('.ui-tile')[0]; return RO.flipTile(t, true, { pct: 70, subtitle: '70%' }).then(function () { return Mock.sleep(700); }).then(function () { return RO.flipTile(t, false, { subtitle: 'Off' }); }); } },
+    ],
+    transitions: [],
+
+    a11y: [
+      { rule: 'Brightness tile', note: 'One element: label the light ("Front Left"), value "60%", "Off" or "Unavailable", button trait. Double-tap toggles; swipe up or down adjusts by 10% (accessibilityAdjustableAction). Hint: "Double-tap to turn off. Swipe up or down to adjust brightness." Unavailable tiles take no touch.' },
+      { rule: 'Power tile', note: 'Label the light, value On, Off or Unavailable, button trait; double-tap flips. A switch with no state yet has no value.' },
+      { rule: 'Target size', note: '72 pt minimum height on the Row layout; the drag works across the whole tile.' },
+      { rule: 'Gestures', note: 'A horizontal drag sets the level and commits on release; a short drag that ends as a tap is ignored for 300 ms after a drag; a vertical drag scrolls the page.' },
+      { rule: 'Haptics', note: 'Selection tick on each 10% step while dragging, only between two drag values.' },
+      { rule: 'State is not colour alone', note: 'The lit tile, the percentage and the filled bulb agree; an off tile is dark with an outline bulb and the word Off.' },
+      { rule: 'Dynamic Type', note: 'Stacked layout at AX5; the bubble is capped at xxLarge (transient, and VoiceOver reads the value); long titles wrap.' },
+    ],
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Gestures: do not conflict with scrolling', verdict: 'pass', note: 'Horizontal drags only; vertical drags scroll.' },
+        { rule: 'Haptic feedback: meaningful, not constant', verdict: 'pass', note: 'One selection tick per 10% step.' },
+        { rule: 'Sliders: provide an accessible adjustable action', verdict: 'pass', note: 'accessibilityAdjustableAction steps 10% with a hint.' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Percentage, glyph and band agree.' },
+        { rule: 'Materials: tiles in a sheet are opaque', verdict: 'departure', note: 'Sheet-cell grounds and the warm lit tile; direction-g.md Controls and Tile finish.' },
+      ],
+      swiftui: [
+        { rule: 'Animations respect Reduce Motion', verdict: 'pass', note: 'motionSafeAnimation on the level and drag state; no scale with Reduce Motion.' },
+        { rule: 'Explicit service calls, not toggle', verdict: 'departure', note: 'turn_on and turn_off through LightControl: Presence Based Lighting\'s Presence Lock reverts toggles. A recorded departure from web parity (room-overview-sheet.md).' },
+        { rule: 'Optimistic UI with rollback', verdict: 'pass', note: 'interaction.pendingPercent shows at once; it clears on the next live report or after 4 s.' },
+        { rule: 'sensoryFeedback with a trigger', verdict: 'pass', note: '.sensoryFeedback(.selection, trigger: hapticStep) only drag to drag.' },
+      ],
+    },
+    notes: [
+      'Docs versus code: the kit\'s BrightnessTile prints "On at 70%" and places its bubble 8 pt above the tile; the app prints "70%" and puts a 60 x 32 pt bubble centred 24 pt above (BrightnessBubble). This mockup rewrites the text and offset to the code; promote to kit.',
+      'LightGroupTile chooses by LightControl.isDimmable: any light with a brightness attribute or a colour mode beyond onoff; switches and on/off-only lights get the power tile. Which fixture lights dim is invented.',
+      'rgb_color tints the band (fillTint), never past dark-ink contrast; the fixture colours (pink, purple) are invented.',
+      'Kit gaps (promote to kit): see the notes of room-group-detail (BrightnessTile text and bubble, equal rows in TileGrid).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass built with the kit: brightness and power tiles, group slab, drag, unavailable, titles, AX5.' }],
+  });
+})();
+</script></body></html>

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HeaderEdgeFade · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../_bedroom-motion.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, CM = Mock.cm, I = Mock.icon;
+  var RAMP = 40;   /* HeaderEdgeFade.rampHeight */
+  var ROWS = ['Wake-Light Alarms', 'Stephen\'s Bed', 'Steph\'s Bed', 'Master Bathroom Fan', 'Humidifier', 'Closet Lights', 'Bedroom Lights', 'Ceiling Fan', 'Night Stand Lamp', 'Window Blinds', 'Air Purifier', 'Thermostat'];
+  /* HeaderEdgeFade.progress / edgeOpacity / ramp, as the page applies them */
+  function progress(scroll, ramp) { if (ramp <= 0) return scroll > 0 ? 1 : 0; return Math.min(Math.max(scroll / ramp, 0), 1); }
+  function applyMask(scroller, ramp) {
+    var hh = parseFloat(scroller.dataset.hh), top = scroller.scrollTop, p = progress(top, ramp), e = 1 - p;
+    var g = ramp > 0 ? 'linear-gradient(180deg, transparent 0, transparent ' + hh + 'px, rgba(0,0,0,' + e.toFixed(3) + ') ' + hh + 'px, #000 ' + (hh + ramp) + 'px)' : 'linear-gradient(180deg, transparent 0, transparent ' + hh + 'px, #000 ' + hh + 'px)';
+    scroller.style.webkitMaskImage = g; scroller.style.maskImage = g;
+    var ro = scroller.parentNode.querySelector('[data-ro]'); if (ro) ro.textContent = 'scroll ' + Math.round(top) + ' pt · ramp ' + ramp + ' pt · edge opacity ' + e.toFixed(2);
+  }
+  /** One live demo: a header (glass back + title + close) over a scrolling list; the list fades to clear at the header's bottom edge. */
+  function demo(o) {
+    var W = 340, H = 400, hh = o.sheet ? 64 : 96;
+    var bg = o.sheet ? 'var(--sheet-ground)' : 'linear-gradient(180deg,#2c4256,#16222f 60%,#0b1118)';
+    var box = h('div', { 'data-fade': 'true', style: { position: 'relative', width: W + 'px', maxWidth: '100%', height: H + 'px', borderRadius: '26px', overflow: 'hidden', background: bg, color: o.sheet ? 'var(--ink)' : '#fff' } });
+    var rows = ROWS.map(function (t, i) { return h('div', { style: { margin: '0 16px 10px', padding: '12px 14px', borderRadius: '18px', background: o.sheet ? 'var(--sheet-cell)' : 'var(--g-module-thin)', font: '600 var(--fs-body) var(--font)', display: 'flex', gap: '10px', alignItems: 'center' } }, h('span', { html: I(['bed.double', 'moon', 'fan', 'humidity', 'lightbulb'][i % 5]) }), t); });
+    var title = h('div', { style: { padding: '0 16px 8px', font: '700 var(--fs-lt) var(--font-d)' } }, 'Master Bedroom');
+    var scroller = h('div', { dataset: { hh: hh }, style: { position: 'absolute', inset: 0, overflowY: 'auto', paddingTop: hh + 'px', paddingBottom: '24px', scrollbarWidth: 'none' } }, o.sheet ? null : title, rows);
+    var hdr = h('div', { style: { position: 'absolute', left: 0, right: 0, top: o.sheet ? '10px' : '44px', height: '44px', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 3 } },
+      h('button.ui-circle.ui-glass', { type: 'button', 'aria-label': 'Back', html: I('chevron.left') }), o.sheet ? h('span', { style: { font: '600 var(--fs-hd) var(--font)' } }, 'Stephen\'s Bed') : h('span'), h('button.ui-circle.ui-glass', { type: 'button', 'aria-label': o.sheet ? 'Close' : 'Quick Links', html: I(o.sheet ? 'xmark' : 'square.grid.2x2') }));
+    var ro = h('div', { 'data-ro': 'true', style: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: '6px 12px', font: '600 11px var(--mono)', background: 'rgba(0,0,0,.55)', color: '#fff', zIndex: 5 } }, '');
+    var guide = h('div', { style: { position: 'absolute', left: 0, right: 0, top: hh + 'px', height: '1px', background: 'rgba(255,214,10,.7)', zIndex: 4 }, 'aria-hidden': 'true' });
+    box.appendChild(scroller); box.appendChild(hdr); if (o.guides) box.appendChild(guide); box.appendChild(ro);
+    var ramp = o.ramp == null ? RAMP : o.ramp;
+    scroller.addEventListener('scroll', function () { applyMask(scroller, ramp); });
+    box.__scroller = scroller; box.__ramp = function () { return ramp; }; box.__setRamp = function (r) { ramp = r; applyMask(scroller, ramp); };
+    Mock.whenAttached(box, function () { scroller.scrollTop = o.scroll || 0; applyMask(scroller, ramp); });
+    return box;
+  }
+  function wrap(label, d, note) { return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } }, d, note ? h('p.cm-note', { style: { marginTop: 0 } }, note) : null); }
+  function rule(ctx) {
+    var live = demo({ scroll: 0, guides: true });
+    return CM.grid(ctx, [
+      { label: 'At rest (scrolled to the top): nothing dimmed', node: demo({ scroll: 0, guides: true }), w: 372 },
+      { label: 'Scrolled 30 pt: the ramp is growing', node: demo({ scroll: 30, guides: true }), w: 372 },
+      { label: 'Scrolled 90 pt: fully faded at the bar\'s edge', node: demo({ scroll: 90, guides: true }), w: 372 },
+    ], { surfaces: ['page'] });
+  }
+  function live(ctx) {
+    return CM.grid(ctx, [{ label: 'Live: scroll the list (yellow line = the header\'s bottom edge)', node: demo({ scroll: 0, guides: true }), w: 372 },
+      { label: 'Live in a sheet header', node: demo({ scroll: 0, sheet: true, guides: true }), w: 372 }], { surfaces: ['page'] });
+  }
+  function sheetState(ctx) {
+    return CM.grid(ctx, [{ label: 'Sheet header: scrolled 0, 30, 90', node: h('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px' } }, demo({ sheet: true, scroll: 0 }), demo({ sheet: true, scroll: 90 })), w: 372 }], { surfaces: ['sheet'] });
+  }
+  function hard(ctx) {
+    return CM.grid(ctx, [
+      { label: 'Reduce Transparency or Increase Contrast: hard edge (ramp 0)', node: demo({ scroll: 90, ramp: 0, guides: true }), w: 372, note: 'Content is cut cleanly at the header; never dimmed, never shown under it.' },
+      { label: 'iOS 17 (no scroll reading): the same hard edge', node: demo({ scroll: 90, ramp: 0, guides: true }), w: 372, note: 'tracksScroll needs iOS 18; the deployment target is iOS 17.' },
+    ], { surfaces: ['page'] });
+  }
+  function inPage(ctx) {
+    function pageAt(scrollTop) {
+      var c = Mock.ctx('iphone', { appearance: ctx.appearance, ts: ctx.ts, reduceMotion: ctx.reduceMotion, reduceTransparency: ctx.reduceTransparency }), d = Mock.devices.iphone;
+      var prev = Mock.current; Mock.current = c;
+      var tiles = ROWS.map(function (t, i) { return { title: t, subtitle: i % 2 ? 'Off' : 'On', symbol: ['bed.double', 'moon', 'fan', 'humidity', 'lightbulb'][i % 5], family: ['heating', 'lights', 'air', 'water', 'lights'][i % 5], isActive: i % 2 === 0 }; });
+      var page = Mock.page(c, { title: 'Master Bedroom', back: 'Rooms', section: 'home', scrollTop: scrollTop, body: [CM.fitGrid(K.TileGrid({ items: tiles, min: 150, max: 2 }))] });
+      var screen = h('div.screen.ui-root.g-dark' + (c.ts === 'ax5' ? '.ts-ax5' : '') + (ctx.reduceTransparency ? '.k-reduce-transparency' : ''), { dataset: { device: 'iphone' }, style: { '--w': d.w + 'px', '--h': '620px', '--r': '36px', '--safe-top': d.safeTop + 'px', '--safe-bottom': '34px', zoom: .8 } }, page);
+      Mock.current = prev; return screen;
+    }
+    return CM.grid(ctx, [{ label: 'A real page (Mock.page): at the top', node: pageAt(0), w: 340 }, { label: 'Scrolled under the bar', node: pageAt(120), w: 340 }], { surfaces: ['page'] });
+  }
+  function geometry(ctx) {
+    var rows = [['rampHeight', '40 pt', 'The fade below the header (FestivalNativeApps ScrollEdgeFade.topDistance; web useScrollMask DEFAULT_SIZE)'], ['progress(scrollOffset:)', '0 at rest, 1 after 40 pt', 'The ramp grows with the first 40 pt of scrolling; a pull-down is 0'], ['edgeOpacity(progress:)', '1 at rest, 0 at full ramp', 'The mask\'s opacity at the header\'s bottom edge; above it the mask is always clear'], ['clearHeight(header:smallestInset:cap:)', 'the inline bar, never the large title', 'On iOS 26 an expanded large title counts toward the inset; the band stops at the inline bar\'s bottom edge so the title is not hidden'], ['ramp(reduceTransparency:increaseContrast:tracksScroll:)', '40 or 0', '0 (hard edge) for Reduce Transparency, Increase Contrast, or iOS 17'], ['trackedOffset(contentOffset:topInset:)', 'whole points, -1 to 41', 'Clamped so only changes that move the mask reach SwiftUI (the UIKit key-value observer writes on change only)']];
+    var t = h('table.cm-tbl', h('thead', h('tr', ['Function', 'Value', 'Meaning'].map(function (x) { return h('th', x); }))), h('tbody', rows.map(function (r) { return h('tr', h('th', { scope: 'row' }, h('code', r[0])), h('td', r[1]), h('td', r[2])); })));
+    return CM.grid(ctx, [{ label: 'HeaderEdgeFade geometry', node: h('div', { style: { overflowX: 'auto' } }, t), w: 940 }], { surfaces: ['sheet'] });
+  }
+  Mock.mount({
+    kind: 'component', id: 'header-edge-fade', title: 'HeaderEdgeFade (content fades under the header)', area: 'design', status: 'shipped', frame: false,
+    summary: 'How scrolling content meets a page or modal header: the header has no band or material of its own, and content fades to clear at the header\'s bottom edge over a 40 pt ramp as the page scrolls. At rest nothing is dimmed. Reduce Transparency, Increase Contrast and iOS 17 make it a hard edge. One modifier (headerEdgeFade), applied by pageChrome and modalChrome.',
+    source: ['apple/Sources/HassDesign/HeaderEdgeFade.swift', 'apple/Sources/HassDesign/NavigationGlass.swift', 'apple/Sources/HassDesign/HassModal.swift'],
+    spec: ['.agents/patterns/header-edge-fade.md', '.agents/design/direction-g.md'],
+    patterns: ['header-edge-fade', 'modal-sheet', 'page-backdrop'],
+    hig: ['Scroll views', 'Toolbars', 'Materials', 'Accessibility: Reduce Transparency'],
+    entities: [],
+    kitComponents: ['NavigationGlass', 'HassModal', 'TileGrid'],
+    devices: ['iphone', 'ipad-portrait'],
+    states: {
+      'default': { title: 'The rule: at rest, 30 pt, 90 pt', render: rule },
+      'live': { title: 'Live scroll: page and sheet headers', render: live },
+      'sheet': { title: 'A sheet header (follows the Sheet appearance)', render: sheetState },
+      'hard-edge': { title: 'Hard edge: Reduce Transparency, Increase Contrast, iOS 17', render: hard },
+      'in-context': { title: 'A real page behind the header', render: inPage },
+      'geometry': { title: 'Geometry functions', render: geometry },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, render: function (ctx) { return CM.grid(ctx, [{ label: 'Large title and tiles at AX5', node: demo({ scroll: 30, guides: true }), w: 372 }], { surfaces: ['page'] }); } },
+    },
+    motion: [
+      { id: 'follow-scroll', what: 'The list is scrolled up under the header and back: the fade grows over the first 40 pt of travel and shrinks again', token: 'none: driven by the scroll offset, not by time (rampHeight 40 pt)', state: 'live',
+        source: 'HeaderEdgeFade.progress(scrollOffset:), UIKitScrollOffset (KVO on contentOffset); motion.md section 9 item 10 (nothing animates while scrolling, the mask just follows)', reduce: 'unchanged: it is not an animation; Reduce Transparency (a different setting) turns the ramp into a hard edge',
+        play: function (stage) { var f = stage.querySelector('[data-fade]'), sc = f.__scroller, t0 = performance.now(), dur = 2200; return new Promise(function (res) { (function tick(now) { var t = Math.min(now - t0, dur), k = t < dur / 2 ? t / (dur / 2) : 1 - (t - dur / 2) / (dur / 2); sc.scrollTop = 120 * k; if (t < dur) requestAnimationFrame(tick); else { sc.scrollTop = 0; res(); } })(t0); }); } },
+      { id: 'hard-edge', what: 'Reduce Transparency turns on: the ramp collapses to nothing and the content is cut cleanly at the header', token: 'none: a state switch (ramp 40 to 0), not an animation', state: 'live',
+        source: 'HeaderEdgeFade.ramp(reduceTransparency:increaseContrast:tracksScroll:)', reduce: 'this is the accessibility variant',
+        play: function (stage) { var f = stage.querySelector('[data-fade]'), sc = f.__scroller; sc.scrollTop = 90; f.__setRamp(40); return Mock.sleep(900).then(function () { f.__setRamp(0); return Mock.sleep(1200); }).then(function () { f.__setRamp(40); sc.scrollTop = 0; }); } },
+    ],
+    transitions: [],
+    a11y: [
+      { rule: 'Reduce Transparency and Increase Contrast', note: 'Either makes the ramp 0: content is cut cleanly at the header, never dimmed and never shown under it, so text stays readable at full contrast. iOS 17 (no scroll reading) gets the same hard edge.' },
+      { rule: 'Nothing hides content from VoiceOver', note: 'The mask is visual only; every row below the header stays in the accessibility tree, and VoiceOver scrolls to focused content.' },
+      { rule: 'Large title', note: 'The band kept clear stops at the inline bar, never the expanded large title, so the title is not faded away at rest.' },
+      { rule: 'Dynamic Type', note: 'The bar and title grow with text; the header height is measured (the top safe-area inset), not assumed, and a size change (rotation, fold, resize) resets the measurement.' },
+      { rule: 'Header controls', note: 'Back, Quick Links, Profile and Close stay glass circles of 44 pt on top of the fade; the bar draws no band behind them.' },
+    ],
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Scroll views: use an edge effect only where scrolling content sits behind floating interface', verdict: 'pass', note: 'The effect applies where content scrolls under the bar; with nothing scrolling behind the header the effect is hidden (header-edge-fade.md).' },
+        { rule: 'Materials: do not rely on translucency when Reduce Transparency is on', verdict: 'pass', note: 'Hard edge.' },
+        { rule: 'Toolbars: let bar items float on content', verdict: 'departure', note: 'The standard iOS 26 scroll-edge effect (a blurred band under the bar) is hidden app-wide (scrollEdgeEffectHidden) in favour of the owner\'s fade (owner 2026-10-13: "Headers should not have the translucent background behind them in pages or modals").' },
+        { rule: 'Accessibility: respect Increase Contrast', verdict: 'pass', note: 'colorSchemeContrast == .increased gives a hard edge.' },
+      ],
+      swiftui: [
+        { rule: 'Do not read geometry on every scroll frame', verdict: 'pass', note: 'iOS reads contentOffset by KVO and writes state only when the clamped, rounded value changes (the first 40 pt); onScrollGeometryChange cost a fifth to a third of a List page\'s main-thread time.' },
+        { rule: 'Use mask, not overlays, for the fade', verdict: 'pass', note: 'A VStack mask: clear band, 40 pt gradient, black; the backdrop is outside the masked content (rule R6).' },
+        { rule: 'Apply modifiers inside the stack that owns the toolbar', verdict: 'pass', note: 'Rule R5: pages get it from pageChrome, modals from HassModal or modalChrome; feature folders never add their own.' },
+        { rule: 'Performance switches for A/B runs', verdict: 'pass', note: 'FENTON_PERF_DISABLE=headerFade,fadeMask,fadeReaders (debug).' },
+      ],
+    },
+    notes: [
+      'Docs versus code: header-edge-fade.md R3 says the ramp is read from onScrollGeometryChange (iOS 18+); the code reads the page\'s UIScrollView by KVO on iOS (UIKitScrollOffset) and uses onScrollGeometryChange only elsewhere; the behaviour is the same.',
+      'The kit\'s Mock.page mask grows the ramp from 0 to 40 as the page scrolls (its --ramp variable); the same function as the app.',
+      'On iOS 26 pages the bar\'s glass circles (Back, Quick Links, Profile) float on this fade; before iOS 26 they use a thin material.',
+      'Component mockup: no device frame; Device selects the size class. The "real page" cards are a trimmed Master Bedroom page at 80%.',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: rule at three scroll offsets, live scrolling, sheet header, hard edge, real page, geometry.' }],
+  });
+})();
+</script></body></html>

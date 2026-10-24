@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Resident chores (Stephen's, Steph's) · page mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../_chores.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, C = window.Chores;
+
+  /* One template, two instances: Stephen's Chores and Steph's Chores (ChoresConfig.stephensChores / stephsChores). This mockup draws Stephen's; the
+     states "steph-page" and "viewer-steph" draw the other combinations. Both pages read the *_with_unassigned lists (owner 2026-10-16). */
+  var cfg = C.pageConfig('stephens-chores', {
+    title: "Resident chores (Stephen's, Steph's)",
+    summary: 'Past Due, Due Today, Upcoming and No Due Date for one resident, including tasks nobody is assigned to, as inset lists on the dimmed house photo. One template for Stephen\'s Chores and Steph\'s Chores; the Chores tab Quick Links open them. Fixture tasks.',
+    source: ['apple/Sources/HassUI/Features/Chores/DonetickTaskSheet.swift', 'apple/Sources/HassCore/Todo/DonetickTaskForm.swift'],
+    entities: ['todo.stephen_s_past_due_with_unassigned', 'todo.stephen_s_due_today_with_unassigned', 'todo.stephen_s_upcoming_with_unassigned', 'todo.stephen_s_no_due_date_with_unassigned', 'todo.steph_s_due_today_with_unassigned', 'todo.steph_s_upcoming_with_unassigned', 'input_boolean.vacation_mode'],
+    defaultTitle: "Stephen's page, signed in as Stephen",
+    extraStates: {
+      'steph-page': { title: "Steph's Chores, signed in as Stephen", note: 'the other instance: her two lists; "Steph has no chores due" copy when empty', render: function (d) { return C.page(d, 'stephs-chores'); } },
+      'steph-page-as-steph': { title: "Steph's Chores, signed in as Steph", render: function (d) { return C.page(d, 'stephs-chores', { viewer: 'steph' }); } },
+      'steph-page-empty-as-steph': { title: "Steph's own empty page", note: 'only here does the copy say "You have no chores due- nice job!"', render: function (d) { return C.page(d, 'stephs-chores', { viewer: 'steph', mode: 'empty' }); } },
+    },
+    a11y: [{ rule: 'Reading order', note: 'Back (Chores), Quick Links, Profile; the title (heading); then each list heading ("Past Due" first) and its rows; Add Task; tab bar.' }],
+    notes: [
+      'Resident pages are one template for two instances: the title, the Add Task default assignee (1 for Stephen, 2 for Steph; "You" in the picker on your own page) and the empty copy follow ChoresConfig.Resident. States steph-page, steph-page-as-steph and steph-page-empty-as-steph draw Steph\'s instance.',
+      'The catalog hint says the viewer\'s title is "Your Tasks"; the code titles the page page.title ("Stephen\'s Chores") for everyone and only the Quick Link tile reads "Your Chores" for the viewer. The web used "Your Tasks".',
+      'Lists drop out while empty: Stephen\'s four lists show here, Steph\'s page shows two. These pages read the _with_unassigned views, so unassigned chores (a humidifier filter here) appear on both the resident page and the Chores tab (owner 2026-10-16, a departure from the web, spec.md).',
+      'The Chores tab badge, Profile badge and Your Summary read the same Past Due list, so the 3 overdue here equals the badge (see overdue-chores-badge).',
+    ],
+  });
+  cfg.id = 'resident-chores';
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  Mock.mount(cfg);
+
+})();
+</script></body></html>

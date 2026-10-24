@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unassigned Chores · page mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../_chores.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, C = window.Chores;
+
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  Mock.mount(C.pageConfig('unassigned-chores', {
+    title: 'Unassigned Chores',
+    summary: 'Chores with nobody assigned: Past Due, Due Today, Upcoming, No Due Date, empty lists hidden. Opened from the Chores Quick Links; Add Task creates an unassigned task ("Anyone"). Fixture tasks.',
+    entities: ['todo.unassigned_past_due', 'todo.unassigned_due_today', 'todo.unassigned_upcoming', 'todo.unassigned_no_due_date', 'input_boolean.vacation_mode'],
+    defaultTitle: 'Past Due and No Due Date',
+    a11y: [{ rule: 'Reading order', note: 'Back (Chores), Quick Links, Profile; the title "Unassigned Chores" (heading); each list heading and its rows; Add Task; tab bar.' }],
+    notes: [
+      'Unassigned Chores reads the plain unassigned_* lists: there is no _with_unassigned view for it. The resident pages and the Chores tab include these tasks too, so a task here also appears on Stephen\'s page.',
+      'The empty copy is "There are no unassigned chores due- nice job!" ("Enjoy vacation!" while Vacation Mode is on). The Add Task sheet opens with Assignee "Anyone".',
+    ],
+  }));
+
+})();
+</script></body></html>

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Home Improvement Tasks · page mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../_chores.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, C = window.Chores;
+
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  Mock.mount(C.pageConfig('home-improvement-chores', {
+    title: 'Home Improvement Tasks',
+    summary: 'Home improvement tasks: Past Due, Due Today, Upcoming, No Due Date (empty lists hidden). Opened from the Home Tasks Quick Link; Add Task preassigns "Home Improvement". Fixture tasks.',
+    entities: ['todo.home_improvement_s_past_due', 'todo.home_improvement_s_due_today', 'todo.home_improvement_s_upcoming', 'todo.home_improvement_s_no_due_date', 'input_boolean.vacation_mode'],
+    defaultTitle: 'Two upcoming tasks',
+    a11y: [{ rule: 'Reading order', note: 'Back (Chores), Quick Links, Profile; the title "Home Improvement Tasks" (heading); the "Upcoming" heading and its rows; Add Task; tab bar.' }],
+    notes: [
+      'The tile on the Chores tab reads "Home Tasks"; the page title is "Home Improvement Tasks". The assignee value is "3" (DoneTick user 3), shown as "Home Improvement" in the task form.',
+      'Far-off tasks read in weeks or months ("Due in 3 months"): TodoItem.dueLabel switches unit at 1, 21 and 60 days. The empty copy is "No Tasks Due / There are no home improvement tasks due- nice job!".',
+    ],
+  }));
+
+})();
+</script></body></html>

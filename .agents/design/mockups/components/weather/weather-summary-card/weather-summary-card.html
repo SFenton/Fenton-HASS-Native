@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Weather card · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../_home-weather.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, HW = Mock.HW;
+
+  /** The device pose a sample is drawn for, with the current controls (text size, Reduce Motion). */
+  function sub(ctx, key) { return Mock.ctx(key, { appearance: ctx.appearance, ts: ctx.ts, reduceMotion: ctx.reduceMotion, reduceTransparency: ctx.reduceTransparency }); }
+  /** One swatch: a card in its window column (16 pt margins). */
+  function sw(ctx, cap, p, o) {
+    o = o || {}; var c = o.ctx || ctx, w = o.width || Math.min(o.narrow && c.splitGeometry ? c.splitGeometry.leading : c.contentW, 1000);
+    return { cap: cap, note: o.note, surface: 'page', width: w + 28, node: function () { var card = HW.card(c, Object.assign({ narrow: !!o.narrow }, p)); return HW.win(c, card, { width: w }); } };
+  }
+  function R(items) { return function (ctx) { return HW.swatches(ctx, items(ctx)); }; }
+
+  Mock.mount({
+    kind: 'component', id: 'weather-summary-card', title: 'Weather card (header, hourly carousel)', area: 'home', status: 'in-flight:claude/weather-card-header-d-5a3fe5', frame: false,
+    summary: 'The Home weather card: a thin module with the header, the day\'s first briefing sentence, then 24 hours that page across. Opens the Weather sheet. Shown with option D header (decided 2026-10-22, code only on the branch) beside the header main draws today. Size class and text size follow the Device and Text size controls.',
+    source: ['apple/Sources/HassUI/Features/Home/Weather/WeatherSummaryCard.swift', 'apple/Sources/HassUI/Features/Home/Weather/WeatherCardContent.swift', 'apple/Sources/HassUI/Features/Home/Weather/WeatherPagedCarousel.swift', 'apple/Sources/HassUI/Features/Home/Weather/WeatherCarouselPaging.swift',
+      'apple/Sources/HassUI/Features/Home/Weather/WeatherCardHour.swift', 'apple/Sources/HassUI/Features/Home/Weather/WeatherCardHourPlaceholder.swift', 'apple/Sources/HassUI/Features/Home/Weather/WeatherSymbols.swift',
+      'apple/Sources/HassDesign/TickerLabel.swift (branch only)', 'apple/Sources/HassDesign/TickerPlan.swift (branch only)'],
+    spec: ['.agents/patterns/weather.md', '.agents/design/weather-card-header.md', '.agents/pages/home/spec.md'],
+    patterns: ['weather', 'motion', 'status-pill'],
+    hig: ['Cards', 'Page controls', 'Typography', 'Color', 'Motion'],
+    entities: ['weather.pirate_weather', 'sun.sun'],
+    kitComponents: ['WeatherCard', 'WeatherCardHeader', 'WeatherGlyph'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+
+    states: {
+      'target': { title: 'Option D header (in flight): short and long condition', render: R(function (ctx) { return [
+        sw(ctx, 'page · option D · Partly Cloudy', {}, { note: 'glyph over the condition over H/L on the left; the numeral with the chevron centred on it on the right' }),
+        sw(ctx, 'page · option D · long condition: ticker', { condition: 'Heavy Thunderstorm With Hail', glyph: 'storm' }, { note: 'a label too long for its column scrolls: 30 pt/s, 1.5 s holds, three passes, then rests (Reduce Motion: it wraps)' })]; }) },
+      'was': { title: 'Header on main today (was)', render: R(function (ctx) { return [
+        sw(ctx, 'page · was · Partly Cloudy', { header: 'was' }, { note: 'glyph and numeral lead; the condition with its chevron and H/L trail' }),
+        sw(ctx, 'page · was · Weather Unavailable', { header: 'was', condition: 'Weather Unavailable', glyph: 'cloudy' }),
+        sw(ctx, 'page · was · numeral squeezed (the bug)', { header: 'was', bug: true, temp: 48, condition: 'Partly Cloudy' }, { width: 350, note: 'the app measured it at a 353 pt card; the kit\'s stand-in font is a little narrower, so this card is narrower to show the same squeeze. layoutPriority sat inside the Button, so the outer HStack never saw it and the numeral truncated ("4…") beside a long condition (design/weather-card-header.md)' })]; }) },
+      'compare': { title: 'Was and option D at the same width', note: 'D is about 19 pt taller at the default size', render: R(function (ctx) { return [
+        sw(ctx, 'was (main)', { header: 'was', brief: null, hourly: 'empty' }, { width: 385 }),
+        sw(ctx, 'option D (in flight)', { brief: null, hourly: 'empty' }, { width: 385 })]; }) },
+      'loading': { title: 'Loading (first sign-in)', note: 'the card has no pulsing bars: "--" and Weather Unavailable over static placeholder hours; no briefing line until one is written', render: R(function (ctx) { return [sw(ctx, 'page · loading', { loading: true })]; }) },
+      'error': { title: 'Hourly forecast failed', note: 'the header still shows the current conditions; the row holds 72 pt of message', render: R(function (ctx) { return [sw(ctx, 'page · hourly error', { hourly: 'error' }), sw(ctx, 'page · hourly empty', { hourly: 'empty' })]; }) },
+      'empty': { title: 'No briefing, no daily range', note: 'before the daily forecast arrives the range line holds its height (a blank line) so the card does not jump', render: R(function (ctx) { return [sw(ctx, 'page · no briefing, no range', { hi: null, lo: null, brief: null })]; }) },
+      'unavailable': { title: 'Weather entity unavailable', render: R(function (ctx) { return [sw(ctx, 'page · option D', { condition: 'Weather Unavailable', temp: null, glyph: 'cloudy', hi: 58, lo: 38 })]; }) },
+      'night': { title: 'Night variant', note: 'the current glyph swaps the sun for the moon (cloud.moon, moon.stars); hours keep their own conditions', render: R(function (ctx) { return [sw(ctx, 'page · night', { condition: 'Clear Night', glyph: 'clear-night', night: true, temp: 44, hi: 58, lo: 38 })]; }) },
+      'narrow': { title: 'Narrow: the Duo half', note: 'half a window wide: six hours a page instead of nine, so labels never truncate (2026-10-15)', render: R(function (ctx) { var d = sub(ctx, 'duo-unfolded-landscape'); return [sw(ctx, 'page · unfolded Duo landscape, leading pane', {}, { ctx: d, narrow: true }), sw(ctx, 'page · same window, if it were not narrow (nine hours)', {}, { ctx: d, width: d.splitGeometry ? d.splitGeometry.leading : 455 })]; }) },
+      'ax5': { title: 'Accessibility 5 text size (stacked header)', override: { ts: 'ax5' }, note: 'glyph and numeral on the top row, the condition under it at full width (wraps), H/L under that; two hours a page', render: R(function (ctx) { return [sw(ctx, 'page · option D · AX5', { condition: 'Partly Cloudy' }, { width: 440 }), sw(ctx, 'page · was · AX5', { header: 'was' }, { width: 440 })]; }) },
+      'reduce-motion': { title: 'Reduce Motion on', override: { reduceMotion: true }, note: 'no ticker: the long condition wraps to two lines', render: R(function (ctx) { return [sw(ctx, 'page · option D · long condition', { condition: 'Heavy Thunderstorm With Hail', glyph: 'storm' })]; }) },
+    },
+
+    motion: [
+      { id: 'ticker', what: 'A long condition scrolls like a ticker (option D)', token: '30 pt/s, 1.5 s holds, soft edge fade, three passes then rests; pauses while the page scrolls, off screen and while the scene is inactive', state: 'target',
+        source: 'HassDesign/TickerLabel.swift and TickerPlan.swift (branch claude/weather-card-header-d-5a3fe5); design/weather-card-header.md (exception to motion.md 9.6 and 9.10)', reduce: 'no ticker: the condition wraps to as many lines as it needs',
+        play: function (stage) { var t = stage.querySelectorAll('.ui-tick')[0]; return t ? Mock.anim.ticker(t) : Promise.resolve(); } },
+      { id: 'hour-paging', what: 'The hourly row pages whole screens of hours; the indicator dot stretches', token: 'paging is UIKit\'s (PagedRow); dot width quick 0.2 s', state: 'target',
+        source: 'WeatherPagedCarousel.swift, PagedRow (HassDesign), WeatherCarouselPaging.swift', reduce: 'the row jumps to the page (animatesPaging off)',
+        play: function (stage) { var c = stage.querySelector('.hw-carwrap'); return c ? Mock.sleep(200).then(function () { c.goTo(1); return Mock.sleep(900); }).then(function () { c.goTo(2); return Mock.sleep(900); }).then(function () { c.goTo(0); return Mock.sleep(700); }) : Promise.resolve(); } },
+      { id: 'number-roll', what: 'The temperature rolls to a new value', token: 'quick 0.2 s easeOut, contentTransition(.numericText)', state: 'target', source: 'WeatherCardContent.swift reading; motion.md section 6 Numbers', reduce: 'plain cross-fade',
+        play: function (stage) { var n = stage.querySelector('.ui-wxhdr .num'); return n ? Mock.anim.roll(n, '49°') : Promise.resolve(); } },
+    ],
+    transitions: [
+      { from: 'Weather card', to: 'Weather sheet', kind: 'sheet', note: 'Tap anywhere on the card (the header is the one button for assistive technology) to present the sheet full height. The hours scroll on their own; a drag never reaches the tap. See the Weather sheet mockup for the Play.' },
+    ],
+
+    a11y: [
+      { rule: 'One button', note: 'The header is the card\'s button: "Open seven-day weather forecast. Rain, 72°F". The rest of the card also opens the sheet by tap, but hours, today\'s range and the page indicator are separate elements for assistive technology. On the branch a clear button sits behind the header so its frame covers glyph, condition and numeral.' },
+      { rule: 'Hours', note: 'Each hour reads "7 PM Rain 62°F"; today\'s range reads "Today Rain H:70°  L:55°". The ticker text is hidden from VoiceOver; the condition is never truncated.' },
+      { rule: 'Paging', note: 'VoiceOver reads the hours on the page on screen ("Page 2 of 4") and pages with a three-finger swipe or the adjustable page indicator (44 pt tall element, small dots). Regular widths add 44 pt Previous and Next buttons (disabled at the ends).' },
+      { rule: 'Dynamic Type', note: 'The numeral scales with largeTitle and is capped at 96 pt; the glyph at twice its size. At accessibility sizes the header stacks and the hours per page fall to two (never below two). Hour labels scale freely (no minimumScaleFactor).' },
+      { rule: 'Targets and contrast', note: 'Header hit area at least 44 pt; the indicator and the carousel buttons are 44 pt; white on the thin module is far above 4.5:1; secondary text is 68% white on the module (H/L).' },
+    ],
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Page controls: show a position indicator for paged content', verdict: 'pass', note: 'Capsule indicator, current dot stretched; adjustable for VoiceOver.' },
+        { rule: 'Typography: let text scale, avoid truncation', verdict: 'pass', note: 'Option D: the numeral never truncates and the condition wraps at accessibility sizes (main: the numeral could truncate, the reason for D).' },
+        { rule: 'Motion: avoid continuous animation that distracts', verdict: 'departure', note: 'The ticker is an exception recorded in design/weather-card-header.md (only on overflow, three passes then rest, pauses on scroll and off screen); Reduce Motion wraps instead.' },
+        { rule: 'Materials: content-layer cards are not Liquid Glass', verdict: 'pass', note: 'The card is the thin module (#1C1C1E at 66%) over the wallpaper.' },
+        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'Condition glyph plus label plus temperature.' },
+      ],
+      swiftui: [
+        { rule: 'Layout adapts with AnyLayout, not nested conditionals', verdict: 'pass', note: 'Branch: stacked when accessibility size or when the range does not fit its column (measured from three widths that do not depend on the layout).' },
+        { rule: 'Scaled metrics for the numeral and glyph', verdict: 'pass', note: '@ScaledMetric numeral 64 (largeTitle, capped 96) and glyph 40.' },
+        { rule: 'No per-frame state writes in scrolling content', verdict: 'pass', note: 'The carousel is a UIKit paging scroll view; the ticker pauses while the page scrolls (pageIsScrolling).' },
+        { rule: 'Repeating animations need an off switch', verdict: 'departure', note: 'TickerLabel stops after three passes and under Reduce Motion; signposts and ios_tickerperf.sh measure it (design/weather-card-header.md).' },
+      ],
+    },
+    notes: [
+      'In flight: option D (design/weather-card-header.md, owner decision 2026-10-22) lives only on claude/weather-card-header-d-5a3fe5; main still draws the "was" header. The "was" drawings are from the code on main; the proposal mockups call it option A.',
+      'On the branch the header also stacks when today\'s range is wider than the left column (rangeOverflows), not only at accessibility sizes. The kit\'s header stacks at AX only; a wide range at a narrow width is not drawn here.',
+      'Kit gaps found (promote to kit): the kit WeatherCard shows six static hours with no page indicator or Previous/Next, draws hour time and temperature at 15 pt (the app: 13 pt semibold and 17 pt medium), its pending state is pulsing bars (the app: "--" and static placeholders) and its AX5 numeral is 118 pt (the app caps it at 96). This page uses components/weather/_home-weather.js (HW.card) which fixes those locally.',
+      'The briefing line is the first sentence of today\'s briefing; "appears once ... returns forecast data" is left out of the card (the hours say so).',
+      'Hours a page: 6 compact and 9 regular (6 in a Duo half), times 0.8 at xxxLarge, 0.5 at AX1 and AX2, 0.34 beyond, never below 2 (WeatherCarouselPaging.hoursPerPage).',
+      'Glyphs are the kit stand-ins; the app draws multicolour SF Symbols (cloud.sun.fill and others).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: card states, option D beside the main header, narrow and AX5.' }],
+  });
+})();
+</script></body></html>

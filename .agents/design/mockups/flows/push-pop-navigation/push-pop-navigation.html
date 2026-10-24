@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Push and pop navigation · flow mockup</title>
+<link rel="stylesheet" href="../../_kit/kit.css">
+<script src="../../_kit/kit.js"></script>
+<script src="../../components/navigation/_shell-navigation.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components;
+
+  function home(c, o) { return SN.rootPage(c, 'home', o); }
+  function kitchen(c, o) { return SN.pushedPage(c, o); }
+  /* Two pages part-way through the system push: the new one at `x` (a fraction of the width still to travel), the old one shifted left about 30% as far and dimmed. */
+  function mid(c, x, o) {
+    var a = home(c), b = kitchen(c);
+    a.style.transform = 'translateX(' + (-(1 - x) * 30) + '%)'; a.style.filter = 'brightness(' + (1 - (1 - x) * .3) + ')';
+    b.style.transform = 'translateX(' + (x * 100) + '%)'; b.style.boxShadow = '-8px 0 30px rgba(0,0,0,.35)';
+    if (o && o.finger) SN.finger(b, o.finger, { label: o.label, drag: o.drag, trail: o.trail });
+    return [a, b];
+  }
+  function play(back) {
+    return function (stage) {
+      var ctx = Mock.current, a = stage.querySelector('.ui-page'), b = back ? home(ctx) : kitchen(ctx);
+      if (back) a.parentNode.insertBefore(b, a); else a.parentNode.insertBefore(b, a.nextSibling);
+      return Mock.anim.push(a, b, { back: back }).then(function () { return Mock.sleep(500); }).then(function () { Mock.anim.reset(stage); b.remove(); });
+    };
+  }
+
+  Mock.mount({
+    kind: 'flow', id: 'push-pop-navigation', title: 'Push and pop within a section stack', area: 'shell', status: 'shipped',
+    summary: 'A page pushed under a section root (a room, Food, Media), and back. The system push every time: the new page slides in, the old shifts left and dims; the edge swipe back is interactive. The destination\'s content is present in its first frame; the header buttons stay on the pushed page, with Back replacing the menu.',
+    source: ['apple/Sources/HassUI/App/MainTabView.swift', 'apple/Sources/HassUI/Features/Home/HomeRoute.swift', 'apple/Sources/HassUI/App/Shell/ShellHeader.swift', 'apple/Sources/HassUI/App/Shell/ShellNavigator.swift'],
+    spec: ['.agents/design/motion.md', '.agents/patterns/motion.md', '.agents/design/apple/iphone.md', '.agents/design/direction-g.md'],
+    patterns: ['motion', 'header-edge-fade', 'page-backdrop'],
+    hig: ['Navigation bars', 'Navigation and search', 'Gestures', 'Motion'],
+    kitComponents: ['NavigationGlass', 'TabBar', 'NavigationFlyout', 'BackButton'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+    states: {
+      'root': { title: '1. Home root', note: 'pushes come from Quick Links (flow quick-links-to-page), a notification link, a Chores list or a Settings row; Open Navigation leads (not on the folded Duo)', render: function (c) { return home(c); } },
+      'push': { title: '2. Page pushes in (half way)', note: 'system push: the new page slides from the trailing edge, Home moves about 30% as far and dims; the new page\'s content is already there', render: function (c) { return mid(c, .5); } },
+      'pushed-page-keeps-header-buttons': { title: '3. Pushed: Back replaces the menu, header buttons stay', note: 'Quick Links and Profile are on every page; the tab bar stays; the wallpaper is the same crop', render: function (c) { var p = kitchen(c); SN.finger(p, 'button[aria-label="Home"]', { label: 'Back' }); return p; } },
+      'swipe-back': { title: '4a. Swipe back (interactive, mid-drag)', note: 'follows the finger from the leading edge; release past half completes, else it springs back; only on a pushed page (the root edge is the flyout swipe)', render: function (c) { return mid(c, .42, { finger: { x: 4, y: c.h * .5 }, label: 'drag right from the edge', trail: { x: 6 - c.contentW * .42, y: c.h * .5 } }); } },
+      'pop-back': { title: '4b. Back tapped: pop (half way)', note: 'the reverse of the push', render: function (c) { return mid(c, .55); } },
+      'popped': { title: '5. Back at the Home root', note: 'Home is exactly as left: same scroll position, nothing re-fetched', render: function (c) { return home(c); } },
+      'long-title': { title: 'A long page title', note: 'Back is the circle (no text); the large title wraps instead of truncating', render: function (c) { return kitchen(c, { title: 'Master Bathroom Heated Floor and Towel Rack' }); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'header circles keep 44 pt; the title and sections grow', render: function (c) { return kitchen(c); } },
+    },
+    motion: [
+      { id: 'system-push', what: 'The pushed page slides in from the trailing edge; the page underneath shifts left about 30% and dims', token: 'system push, about 0.35 s (curve and duration are the system\'s); no MotionTokens value, never replaced or decorated (motion.md 4.2)', state: 'root',
+        source: 'MainTabView.sectionStack NavigationStack + navigationDestination; motion.md section 2 and 4.2', reduce: 'the system cross-fades the pages (about 0.35 s)',
+        play: play(false) },
+      { id: 'system-pop', what: 'Back (button or swipe) slides the page out to the trailing edge and Home back in', token: 'system pop, about 0.35 s; interactive with the edge swipe', state: 'pushed-page-keeps-header-buttons',
+        source: 'ShellHeader.swift BackButton is the system back item', reduce: 'cross-fade',
+        play: play(true) },
+      { id: 'swipe-back-drag', what: 'Dragging from the leading edge moves the page with the finger; releasing past the middle completes the pop', token: 'system interactive pop; no app code', state: 'pushed-page-keeps-header-buttons',
+        source: 'UINavigationController interactivePopGestureRecognizer', reduce: 'unchanged: it is the finger',
+        play: function (stage) {
+          var ctx = Mock.current, a = stage.querySelector('.ui-page'), b = home(ctx), dot = SN.finger(a, { x: 6, y: ctx.h * .5 }, { label: 'drag' });
+          a.parentNode.insertBefore(b, a); b.style.transform = 'translateX(-30%)'; b.style.filter = 'brightness(.7)';
+          var steps = 14, i = 0;
+          return new Promise(function (res) { (function step() { var t = i / steps; a.style.transform = 'translateX(' + (t * 70) + '%)'; b.style.transform = 'translateX(' + (-30 * (1 - t)) + '%)'; b.style.filter = 'brightness(' + (.7 + .3 * t) + ')'; dot.style.left = (6 + t * .7 * ctx.contentW) + 'px'; if (++i <= steps) setTimeout(step, 35); else res(); })(); })
+            .then(function () { return Mock.anim.push(a, b, { back: true }); }).then(function () { return Mock.sleep(500); }).then(function () { Mock.anim.reset(stage); a.style.transform = ''; b.remove(); dot.remove(); });
+        } },
+      { id: 'content-first-frame', what: 'The destination shows its content in its first frame (no fade or cascade in onAppear)', token: 'none: presence does not animate (motion.md 4.2)', state: 'pushed-page-keeps-header-buttons',
+        source: 'HomeRouteDestination reads EntityStore synchronously; motion.md 4.2', reduce: 'unchanged',
+        play: play(false) },
+    ],
+    transitions: [
+      { from: 'Home root', to: 'Pushed page', kind: 'push', state: 'root', note: 'A tile or Quick Links choice appends a HomeRoute to the section path; NavigationStack animates it. Heavy setup (streams, maps) starts after the transition settles.', play: play(false) },
+      { from: 'Pushed page', to: 'Home root (Back)', kind: 'push', state: 'pushed-page-keeps-header-buttons', note: 'Back pops; the root keeps its scroll position.', play: play(true) },
+      { from: 'Pushed page', to: 'Home root (swipe)', kind: 'push', state: 'pushed-page-keeps-header-buttons', note: 'The leading-edge swipe is the system pop gesture; the flyout swipe is off while a page is pushed.', play: play(true) },
+    ],
+    a11y: [
+      { rule: 'Reading order', note: 'Back first (labelled with the previous page\'s title, "Home"), then the reconnecting arc if present, Quick Links, Profile; then the title as a heading and the page.' },
+      { rule: 'Focus on push', note: 'VoiceOver announces the new page (screen change) and starts at its first element; on pop it returns to the element that opened the page.' },
+      { rule: 'Targets', note: 'Back, Quick Links, Profile 44 pt; tiles far larger.' },
+      { rule: 'Dynamic Type / AX5', note: 'The large title wraps; the Back circle has no text, so nothing truncates.' },
+      { rule: 'Reduce Motion', note: 'The system turns the push and pop into cross-fades; the app adds nothing.' },
+      { rule: 'Gestures', note: 'Swipe back works from the leading edge on pushed pages; the flyout swipe is disabled there (ShellNavigator.isAtRoot).' },
+    ],
+    reviews: {
+      date: '2026-10-23', by: 'author',
+      hig: [
+        { rule: 'Navigation bars: Back leading with the previous title or a symbol', verdict: 'pass', note: 'A glass Back circle with the label from the previous title.' },
+        { rule: 'Navigation: use the standard push and keep it interactive', verdict: 'pass', note: 'NavigationStack with navigationDestination; no custom transition (motion.md 4.2, 9.5).' },
+        { rule: 'Navigation: keep the tab bar on pushed pages unless there is a bottom toolbar', verdict: 'pass', note: 'Stays, except pages with their own bottom toolbar (Recipes, inventory).' },
+        { rule: 'Gestures: support edge-swipe back', verdict: 'pass', note: 'System gesture; the flyout edge swipe yields on pushed pages.' },
+        { rule: 'Motion: make motion optional', verdict: 'pass', note: 'System behaviour under Reduce Motion.' },
+      ],
+      swiftui: [
+        { rule: 'Use navigationDestination(for:) with one route registry', verdict: 'pass', note: 'HomeRoute is the registry; features add pages by replacing a placeholder.' },
+        { rule: 'Do not start animations in onAppear for data already present', verdict: 'pass', note: 'Destinations read EntityStore synchronously.' },
+        { rule: 'Start heavy work after the transition settles', verdict: 'pass', note: 'NextFrame / transitionSettled (motion.md 4.2, 9).' },
+        { rule: 'Measure the push', verdict: 'pass', note: 'measuresNavigation(.push, page:) in pageChrome; Pop and ZoomClose are not recorded yet (patterns/motion.md Departures).' },
+        { rule: 'Chrome applied once per page via a modifier', verdict: 'pass', note: 'pageChrome() adds the header fade, header buttons, backdrop and hides the tab bar at regular width.' },
+      ],
+    },
+    notes: [
+      'Docs versus code: none for push and pop. The Pop signpost is not recorded yet (patterns/motion.md Departures), so motion.md 10 lists it ahead of the code.',
+      'The Duo folded draws the pushed page with the title in the header row beside the Back circle; the unfolded Duo portrait pose was not run on a simulator (design/apple/duo.md).',
+      'The wallpaper does not move with the push: every page draws the same crop shifted by its window position (page-backdrop R2); the kit page draws its own copy, so the mid-push states show two slightly different wallpapers.',
+      'The mid-transition states are static compositions (new page at a fraction of the width, old page shifted and dimmed); the real transition is the system\'s.',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: push, header buttons, swipe back, pop, long title, AX5.' }],
+  });
+})();
+</script></body></html>

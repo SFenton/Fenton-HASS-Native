@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin To-Do · page mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../_chores.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, C = window.Chores;
+
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  Mock.mount(C.pageConfig('admin-todo', {
+    title: 'Admin To-Do',
+    summary: 'Opened from a Settings row (Stephen only, hidden from Steph): the admin to-do list with no list header, Edit (rename) on each row, no delete. Checking an item off runs a script; Add Task can attach up to four images. Fixture items.',
+    source: ['apple/Sources/HassUI/Features/Settings/SettingsScreen.swift', 'apple/Sources/HassUI/Features/Settings/SettingsTabRoot.swift', 'apple/Sources/HassUI/Features/Chores/TodoItemSheets.swift'],
+    docs: ['.agents/pages/chores/spec.md', '.agents/pages/chores/ios.md', '.agents/pages/settings/ios.md'],
+    entities: ['todo.groceries', 'script.complete_admin_todo_item'],
+    defaultTitle: 'Two admin to-dos, no list header',
+    a11y: [{ rule: 'Reading order', note: 'Back (Settings), Quick Links, Profile; the title "To-Do" (heading); the rows (no list heading on this page); Add Task; tab bar. Each row has the toggle and "Edit {title}".' }],
+    notes: [
+      'items with images: rows carry no image indicator. Images are only sent when an admin to-do is created (multipart POST to the dashboard integration, which files them on the GitHub issue); see add-admin-todo-sheet.',
+      'The page has no section header (hideListHeaders) and a different list entity (todo.groceries, the admin list; the real grocery list is todo.shopping_list). Check-off calls script.complete_admin_todo_item with the item name; the row leaves and returns on failure like every list.',
+      'No Delete anywhere (swipe, context menu, VoiceOver): the list is synced from GitHub issues. Edit renames. Hidden entirely from Steph (ChoresConfig.showsAdminTodo); Settings shows the row as "To-Do / An admin panel for to-do tasks.".',
+      'The tab and flyout selection stay on Settings, the back label is "Settings".',
+    ],
+  }));
+
+})();
+</script></body></html>

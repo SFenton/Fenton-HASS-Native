@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Master Bedroom room page · page mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../rooms/_rooms.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, R = Mock.rooms;
+
+  function room(st, o) { return function (ctx) { return R.page(ctx, 'master-bedroom', st || {}, o); }; }
+  function tileEl(stage, ident) { return stage.querySelector('[data-ident="' + ident + '"]'); }
+  var stub = function (title, line) { return { title: title, detent: 'large', size: 'page', trailing: 'close', content: h('p', { style: { margin: 0, font: 'var(--fs-sub) var(--font)', color: 'var(--ink-sheet-2)' } }, line) }; };
+  var WAKE = stub('Wake-Light Alarms', 'Wake-light sheet: Alarms, Settings and Status tabs (Bedroom batch, modals/bedroom/wake-light-sheet).');
+  var BED = stub('Your Side', 'Bed side sheet: Temperature, Schedule and Alarms tabs (Bedroom batch, modals/bedroom/bed-side-sheet).');
+
+  Mock.mount({
+    kind: 'page', id: 'room-master-bedroom', title: 'Master Bedroom room page (beds, wake light, humidifier)', area: 'bedroom', status: 'shipped',
+    summary: 'The Master Bedroom swaps the generic card for the bedroom lane\'s tiles: a Wake-Light Alarms card, one SleepyPod tile per bed side (personalised "Your Side"), the Apple TV, and a Climate section with the humidifier. Four sections, two columns on wide windows.',
+    source: ['apple/Sources/HassUI/Features/Rooms/RoomScreen.swift', 'apple/Sources/HassUI/Features/Rooms/RoomTiles.swift', 'apple/Sources/HassUI/Features/Bedroom/BedroomComponents.swift',
+      'apple/Sources/HassUI/Features/Bedroom/BedSideSheet.swift', 'apple/Sources/HassUI/Features/Bedroom/WakeLightSheet.swift', 'apple/Sources/HassCore/Rooms/RoomsConfig.swift',
+      'apple/Sources/HassCore/Bedroom/BedSideController.swift', 'apple/Sources/HassDesign/ThermostatTileFace.swift'],
+    spec: ['.agents/patterns/bedroom-devices.md', '.agents/pages/rooms/ios.md', '.agents/pages/rooms/spec.md'],
+    patterns: ['bedroom-devices', 'room-device-sheets', 'entity-tile', 'status-rail', 'optimistic-actions', 'modal-sheet'],
+    hig: ['Toolbars', 'Layout', 'Color', 'Typography', 'Dynamic Type', 'Motion', 'Accessibility'],
+    entities: ['sensor.master_bedroom_wake_light', 'climate.sleepypod_eight_pod_left_side', 'climate.sleepypod_eight_pod_right_side', 'media_player.master_bedroom_apple_tv', 'cover.master_bedroom_vents',
+      'switch.lv600s_humidifier_power', 'sensor.lv600s_humidifier_current_humidity', 'light.master_bedroom', 'binary_sensor.master_bedroom_street_window_contact_sensor_contact'],
+    kitComponents: ['ChipRail', 'StatusChip', 'GlassTile', 'TileGrid', 'PageSectionHeader', 'TabBar', 'NavigationGlass', 'ReconnectingArc', 'OfflineChip'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'duo-unfolded-portrait', 'ipad-portrait', 'ipad-landscape'],
+
+    states: {
+      'default': { title: 'Stephen heating +3, Steph cooling -3, wake light scheduled', note: 'BedroomFixtures default scenario; viewer is Stephen ("Your Side")', render: room() },
+      'loading': { title: 'Nothing saved yet', note: 'no gate or pending bars: with an empty store every card reads Unavailable and the beds fall back to the neutral face', render: room({ u: true }) },
+      'refreshing': { title: 'Saved snapshot on screen, live values swap in', note: 'identical to default by design (no reload on reopen)', render: room() },
+      'error': { title: 'Bed and wake light unavailable', note: 'cards dim and do nothing; a bed side keeps its last state for 10 s of unavailability, then draws neutral', render: room({ u: true }) },
+      'offline': { title: 'No network', note: 'values stay; offline chip and cloud badge', render: room({}, { connection: 'offline' }) },
+      'reconnecting': { title: 'Connection down 2 s+', note: 'in flight (claude/reconnecting-spinner): arc left of Quick Links; was the orange chip', render: room({}, { connection: 'reconnecting' }) },
+      'reconnecting-was': { title: 'Reconnecting, today (main)', render: room({}, { connection: 'reconnecting-chip' }) },
+      'beds-idle': { title: 'Both sides on at level 0 (idle)', note: 'a side that is on fills even at 0 (owner 2026-10-16); family is Heating at 0 or above', render: room({ beds: { left: { action: 'idle', level: 0 }, right: { action: 'idle', level: 0 } } }) },
+      'beds-off': { title: 'Both sides off', note: 'dark tiles; the glyph keeps the family of the level (Heating at +3, Cooling at -3)', render: room({ beds: { left: { action: 'off', level: 3 }, right: { action: 'off', level: -3 } } }) },
+      'hot-flash': { title: 'Steph: Hot Flash Mode, holding', note: 'cooling fill; the line counts down once a second ("10:12 Remaining"); before it holds it reads "Hot Flash Mode • Cooling"', render: room({ beds: { right: { action: 'cooling', level: -10, hot: true, hold: '10:12' } } }) },
+      'solo-trip': { title: 'Solo Trip: Steph away', note: 'Stephen\'s side controls the whole bed ("Whole Bed • ..."); Steph\'s side is read-only and draws off', render: room({ beds: { left: { action: 'heating', level: 3, whole: true }, right: { action: 'cooling', level: -3, readOnly: true } } }) },
+      'viewer-steph': { title: 'Signed in as Steph', note: 'personal titles swap: "Stephen\'s Side" and "Your Side"; nothing else changes', render: room({ viewer: 'steph' }) },
+      'wake-ramping': { title: 'Wake light ramping', note: 'the card only prints the sensor\'s state word; it does not fill (the generic card fills only for on, open, playing, recording, home, heat, cool)', render: room({ wake: 'Ramping' }) },
+      'wake-snoozed': { title: 'Wake light snoozed', render: room({ wake: 'Snoozed' }) },
+      'wake-blocked': { title: 'Wake light blocked (vacation)', note: 'phase "blocked_vacation" prints as "Blocked Vacation" (titleCase of the state)', render: room({ wake: 'Blocked Vacation' }) },
+      'media-playing': { title: 'Apple TV playing, humidifier on', note: 'Apple TV fills media pink for idle, paused or playing; the humidifier fills water blue', render: room({ tv: 'Playing', humidifier: 'on' }) },
+      'window-open': { title: 'Street windows open at home', note: 'Window chip amber; opens "Master Bedroom Window" with a count of two', render: room({ window: 'home', lightsOn: true, occ: true }) },
+      'long-text': { title: 'Hot Flash with a long state and a blocked wake light', note: 'a long state word wraps to two lines inside the card and every card in the row grows to match', render: room({ wake: 'Blocked Vacation', beds: { left: { action: 'heating', level: 3, whole: true }, right: { action: 'cooling', level: -10, hot: true, hold: '10:12' } } }) },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, render: room() },
+      'placeholder': { title: 'No connection yet (PlaceholderScreen)', render: function (ctx) { return R.placeholder(ctx, 'Master Bedroom'); } },
+    },
+
+    motion: [
+      { id: 'bed-power', what: 'A bed side turns off and on: the card goes dark (keeping its level\'s glyph) and fills again', token: 'state 0.6 s ease-in-out (0.2 s reduced), colour only', state: 'default',
+        source: 'HassDesign/GlassTile.swift stateColorTransition("GlassTile"); RoomCardView.face(_:) -> ThermostatTileFace.bedSide; motion.md section 6', reduce: 'still cross-fades at 0.2 s',
+        play: function (stage) { var t = tileEl(stage, 'room.card.Stephen\'s Bed'); return R.toggle(t, false, 'Off').then(function () { return Mock.sleep(400); }).then(function () { return R.toggle(t, true, 'Heating • +3'); }); } },
+      { id: 'bed-family', what: 'Setting a level below zero swaps the family: Heating orange becomes Cooling teal, text follows', token: 'state 0.6 s ease-in-out (0.2 s reduced), colour only', state: 'default',
+        source: 'ThermostatTileFace.bedSide (level < 0 is Cooling); motion.md section 6', reduce: 'cross-fades at 0.2 s',
+        play: function (stage) { var t = tileEl(stage, 'room.card.Stephen\'s Bed'); t.dataset.family = 'cooling'; t.style.setProperty('--fill', 'var(--fam-cooling-fill)'); t.style.setProperty('--glyph', 'var(--fam-cooling-glyph)'); t.querySelector('.st').textContent = 'Cooling • -4'; return Mock.sleep(Mock.anim.ms.state() + 300); } },
+      { id: 'hot-flash-countdown', what: 'Hot Flash Mode\'s remaining time ticks once a second', token: 'EverySecond (TimelineView) re-renders the tile; plain text swap, no numeric transition', state: 'hot-flash',
+        source: 'HassUI/Features/Rooms/RoomTiles.swift RoomCardView (EverySecond), BedSideController.hotFlashCountdown', reduce: 'unchanged: a text update',
+        play: function (stage) { var st = tileEl(stage, 'room.card.Steph\'s Bed').querySelector('.st'), n = 0; function tick() { n++; st.textContent = '10:' + (12 - n < 10 ? '0' : '') + (12 - n) + ' Remaining'; return n < 5 ? Mock.sleep(1000).then(tick) : Promise.resolve(); } return Mock.sleep(600).then(tick); } },
+    ],
+
+    transitions: [
+      { from: 'Wake-Light Alarms card', to: 'Wake-light sheet', kind: 'sheet', note: 'Opens WakeLightSheet (page, large) on the page\'s shared BedroomDevices; the page scales back and dims. Content is the Bedroom batch\'s.',
+        play: function (stage) { return Mock.presentDemo(stage, WAKE); } },
+      { from: 'Bed side card', to: 'Bed side sheet', kind: 'sheet', note: 'Opens BedSideSheet (page, large) on Temperature. Editing alarms waits until the signed-in user is known to be an administrator.',
+        play: function (stage) { return Mock.presentDemo(stage, BED); } },
+      { from: 'Wake-light sheet', to: 'Bed side sheet (Alarms)', kind: 'sheet', note: '"Open Linked-Device Alarm Editor" closes the wake-light sheet and queues the bed on Alarms until the first sheet has gone (queuedModal, deviceSheetDismissed), so the two never overlap.',
+        play: function (stage) { return Mock.presentDemo(stage, WAKE, { hold: 600 }).then(function () { return Mock.sleep(150); }).then(function () { return Mock.presentDemo(stage, BED, { hold: 900 }); }); } },
+    ],
+
+    a11y: [
+      { rule: 'Reading order', note: 'Back, Quick Links, Profile; "Master Bedroom" (heading); the status rail; then Sleep & Wake, SleepyPod (Your Side, Steph\'s Side), Media, Climate, each a container with a heading. Two columns on wide windows read left column first.' },
+      { rule: 'Bed sides', note: 'Each is a button named by its personalised title ("Your Side") with the value "Heating • +3"; the identifier stays room.card.Stephen\'s Bed (not the personalised title). The state is the words plus the family colour and glyph; a read-only side says "Away · Read Only".' },
+      { rule: 'Wake-Light Alarms', note: 'A button with a chevron: "Wake-Light Alarms, Scheduled". The card never fills, so the state is carried only by its words; Ramping and Snoozed read the same way.' },
+      { rule: 'Apple TV and humidifier', note: 'Buttons with chevrons ("Apple TV, Off"; "Humidifier, Off • 44%").' },
+      { rule: 'Targets and Dynamic Type', note: 'All cards 72 pt or taller; at AX5 each anchors its text bottom-leading and the section grid is one column. The two bed tiles share one height with the wake light\'s row.' },
+      { rule: 'Reduce Motion', note: 'Colour changes shorten to 0.2 s; the countdown is a text update.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23', by: 'author',
+      hig: [
+        { rule: 'Toolbars: Back leading on a pushed page', verdict: 'pass', note: 'Standard shell header.' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Heating and Cooling both carry the words and a signed level; the family changes the fill and glyph only.' },
+        { rule: 'Layout: one equal height per grid row', verdict: 'pass', note: 'Both bed cards and the wake light share the row height set by the tallest.' },
+        { rule: 'Disabled controls look disabled', verdict: 'pass', note: 'Unavailable cards dim; a read-only side draws off and says so.' },
+        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'Scaled minimum width; wraps at AX5.' },
+        { rule: 'Color: a state should be visible without colour', verdict: 'fix', note: 'Wake-Light Alarms reads only the sensor\'s state word and never fills while ramping or snoozed, so a wake in progress is not visible at a glance. Candidate for a family fill while ramping (owner call).' },
+        { rule: 'Navigation: Quick Links as a header button', verdict: 'departure', note: 'Owner decision 2026-10-16 (direction-g.md Navigation).' },
+      ],
+      swiftui: [
+        { rule: 'One timer for live text', verdict: 'pass', note: 'EverySecond wraps only the bed tile that needs the countdown; the rest of the page does not tick.' },
+        { rule: 'Shared state objects created once per page', verdict: 'pass', note: 'One BedroomDevices per page (bedroom-devices.md), so the tile and both sheets agree.' },
+        { rule: 'Animate colour with the app token; honour Reduce Motion', verdict: 'pass', note: 'GlassTile stateColorTransition (0.6 s, 0.2 s reduced).' },
+        { rule: 'Do not hard-code identity in identifiers', verdict: 'pass', note: 'Ids use the config title ("Stephen\'s Bed"), so a personalised title does not change them.' },
+        { rule: 'Do not swallow errors silently', verdict: 'fix', note: 'BedroomDevices is only created when the caller can read service responses (HassServiceResponding); otherwise the page quietly keeps the generic tiles and the sheets fall back. Fine for the gallery, a silent downgrade in the app if the cast ever failed.' },
+      ],
+    },
+
+    notes: [
+      'empty: never empty: the page always has four sections (the rail and the sections come from RoomsConfig.masterBedroom).',
+      'loading: no gate or pending bars (see room-page). A bed keeps its last state for 10 s of unavailability (bedroom-devices.md) before the neutral face.',
+      'Docs versus code: the catalog hint lists "alarm ringing" and "wake light armed" states. The room tile has neither: it prints the status sensor\'s state (Scheduled, Ramping, Snoozed...), and a ringing bed alarm shows in the bed sheet, not on the card. The journey test comment "one heating, one idle in heat mode" predates the level-based face: with a controller the second side is Cooling at -3 (BedroomFixtures).',
+      'Bed tile subtitles follow BedSideController.tileSubtitle: "Heating • +3", "Cooling • -3", "Idle • 0", "Off", "Hot Flash Mode • Cooling", "<m:ss> Remaining", "Whole Bed • ..." and "Away · Read Only". Without a service-response caller (the debug gallery recorder falls back) the beds draw as generic climate cards.',
+      'Sheets are the Bedroom batch\'s (modals/bedroom); the stub sheets here only show the presentation.',
+      'The humidifier card needs the app\'s connection to open its sheet (the gallery uses RoomDeviceFallback).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: beds (heating, cooling, idle, off, hot flash, solo trip), wake light phases, Apple TV, humidifier.' }],
+  });
+})();
+</script></body></html>

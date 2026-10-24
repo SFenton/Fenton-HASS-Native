@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Location section (Profile tab) · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/login/_login-launch-flows.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, LL = Mock.LL;
+  var REVIEW_DATE = '2026-10-23';
+  function swatch(ctx, caption, o) { return LL.sheetSwatch(ctx, caption, h('div.ll-list', LL.locationSection(ctx, o)), { flex: '1 1 340px' }); }
+  function grid(items) { return function (ctx) { return h('div.k-swatch-grid', items.map(function (it) { return swatch(ctx, it[0], it[1]); })); }; }
+
+  Mock.mount({
+    kind: 'component', id: 'location-account-section', title: 'Profile tab Location section (Share Location row)', area: 'location', status: 'shipped', frame: false,
+    summary: 'The Your Summary sheet\'s Profile tab Location section: one Share Location row with the permission as its value (it opens the permission screen), an inline warning when nothing can be sent, a note when this iPhone is not on its person yet, and the line about what reporting does. Phones only.',
+    source: ['apple/Sources/HassUI/Features/Location/LocationAccountSection.swift', 'apple/Sources/HassUI/Features/Location/LocationStatusRow.swift', 'apple/Sources/HassUI/Features/Location/LocationPermissionCopy.swift', 'apple/Sources/HassUI/Features/Settings/Profile/ProfileTab.swift', 'apple/Sources/HassDesign/SettingsSection.swift'],
+    spec: ['.agents/pages/settings/location.md', '.agents/platforms/apple/location.md'],
+    patterns: ['settings-section', 'modal-sheet'],
+    hig: ['Toggles', 'Privacy', 'Lists and tables'],
+    kitComponents: ['InlineAlert'],
+    devices: ['iphone', 'ipad-portrait'],
+    states: {
+      'warnings': { title: 'Nothing is being sent: a warning', render: grid([['not asked', { stage: 'not-determined' }], ['off', { stage: 'denied' }], ['approximate', { stage: 'reduced-accuracy' }]]) },
+      'allowed': { title: 'Location can be reported: no warning', render: grid([['While Using', { stage: 'when-in-use' }], ['Always', { stage: 'always' }]]) },
+      'link-notice': { title: 'This iPhone is not on its person yet', note: 'PresenceLinkOutcome: needsAdmin, noPerson, trackerMissing, failed (linked and alreadyLinked show nothing)', render: grid([
+        ['Always + needs an administrator', { stage: 'always', link: 'needsAdmin' }], ['Always + no person yet', { stage: 'always', link: 'noPerson' }],
+        ['Always + tracker missing', { stage: 'always', link: 'trackerMissing' }], ['Always + failed', { stage: 'always', link: 'failed' }], ['Off + failed (both notes stack, warning first)', { stage: 'denied', link: 'failed' }]]) },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'the value wraps under the label; the chevron stays', render: grid([['not asked', { stage: 'not-determined' }], ['Always', { stage: 'always' }]]) },
+    },
+    motion: [],
+    a11y: [
+      { rule: 'The row', note: 'One button element: label "Share Location", value the permission ("Not Set", "Off", "While Using the App", "Always", "Always, Approximate"), hint "Shows location access for this iPhone.", identifier account.location. The location glyph and the chevron are hidden.' },
+      { rule: 'Warnings', note: 'InlineAlert reads "Warning: ..." and sits in the section footer, above the explanation, so the card keeps its rounded corners (a clear row inside the card cut them off, 2026-10-15). Identifiers account.location.warning and account.location.link.' },
+      { rule: 'No switch', note: 'There is no Report toggle since 2026-10-20: reporting follows the permission, so the section never duplicates the system setting (HIG Privacy).' },
+      { rule: '44 pt target', note: 'The row is at least 44 pt (HassTokens.minTarget), the whole width is the target.' },
+      { rule: 'Header and footer ink', note: 'FormHeader and FormFooter use the readable secondary ink (the system gray measured 3.3:1).' },
+      { rule: 'Dynamic Type', note: 'LabeledContent stacks at accessibility sizes; the footer text wraps.' },
+    ],
+    reviews: {
+      date: REVIEW_DATE,
+      hig: [
+        { rule: 'Privacy: do not duplicate a system permission with your own switch', verdict: 'pass', note: 'A row that opens the permission screen; no toggle.' },
+        { rule: 'Lists: rows that navigate show a disclosure indicator', verdict: 'pass', note: 'chevron.forward on the Share Location row.' },
+        { rule: 'Color: warnings are not colour alone', verdict: 'pass', note: 'The InlineAlert has a triangle glyph and the sentence says why.' },
+        { rule: 'Dark Mode', verdict: 'pass', note: 'Follows the Account sheet\'s appearance (system); shown in both with the Sheet appearance control.' },
+      ],
+      swiftui: [
+        { rule: 'Button, not onTapGesture, for a row that acts', verdict: 'pass', note: 'A plain Button with contentShape and a 44 pt minimum height.' },
+        { rule: 'Explicit accessibility element with label, value and hint', verdict: 'pass', note: 'accessibilityElement(.ignore) with all three set.' },
+        { rule: 'A sheet attached inside a List section does not present on the folded Duo', verdict: 'pass', note: 'The binding is lifted to the Account sheet (2026-10-15 fix); the section only sets it.' },
+      ],
+    },
+    notes: [
+      'The Profile tab is the only place this row lives, and only when the session has a LocationCoordinator (iPhone and iPhone Duo; hidden on iPad). In context it sits between People at Home and Sign Out: see flows/sign-out for the whole tab.',
+      'Cells here use the kit\'s sheet card (16 pt radius) as a stand-in for the system inset-grouped list.',
+      'Docs vs code: the owner\'s 2026-10-14 gallery shows a "Report to Home Assistant" switch under Share Location; the code and location.md removed it on 2026-10-20.',
+    ],
+    changelog: [{ date: REVIEW_DATE, note: 'First pass: warnings, allowed, four link notices, AX5, light and dark.' }],
+  });
+})();
+</script></body></html>

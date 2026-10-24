@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FilterSheet · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/food/_food.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, F = Food;
+  function sw(ctx, items, o) { return F.swatches(ctx, items, Object.assign({ surfaces: ['sheet'], min: 320 }, o)); }
+
+  /* The Inventory sheets use the same FilterSheet (InventoryControlSheets.swift): copy from InventoryCatalog. */
+  var SORT_BY = [['title', 'Title', 'Sort alphabetically by item name.'], ['expiry', 'Expiration Date', 'Sort by the item expiration date.']];
+  var DIR = [['ascending', 'Ascending', 'A–Z, soonest first'], ['descending', 'Descending', 'Z–A, latest first']];
+  var SHOW = [['all', 'All Items', 'Show everything in this location.'], ['expired', 'Expired', 'Only items past their expiration date.'], ['week', 'Expiring Within a Week', 'Items expiring in the next 7 days.'], ['month', 'Expiring Within a Month', 'Items expiring in the next 30 days.'],
+    ['six-months', 'Expiring Within 6 Months', 'Items expiring in the next 6 months.'], ['year', 'Expiring Within a Year', 'Items expiring in the next year.'], ['no-expiration', 'No Expiration Date', 'Items without a usable expiration date.']];
+  function opts(list, sel) { return list.map(function (r) { return { title: r[1], subtitle: r[2], selected: r[0] === sel }; }); }
+  function invSort(mode, dir) {
+    var changed = mode !== 'title' || dir !== 'ascending';
+    return { title: 'Sort Inventory', detent: 'fitted', size: 'form', leading: 'cancel', trailing: 'confirm', confirm: { title: 'Apply', enabled: changed },
+      content: K.FilterSheet({ canReset: changed, sections: [{ title: 'Sort By', options: opts(SORT_BY, mode) }, { title: 'Sort Direction', options: opts(DIR, dir) }] }) };
+  }
+  function invFilter(mode) {
+    return { title: 'Filter Inventory', subtitle: mode === 'all' ? '61 of 61 Items' : '3 of 61 Items', detent: 'fitted', size: 'form', leading: 'cancel', trailing: 'confirm', confirm: { title: 'Apply', enabled: mode !== 'all' },
+      content: K.FilterSheet({ canReset: mode !== 'all', sections: [{ title: 'Show', options: opts(SHOW, mode) }] }) };
+  }
+  function pantry(c) { return Mock.page(c, { title: 'Pantry', section: 'home', back: 'Food & Recipes', badge: 3, choresBadge: 2, body: [] }); }
+  function mini(ctx, key, opts, presenter, gz) {
+    return F.miniDevice(ctx, key, function (c2) { return Mock.sheet(c2, Object.assign({}, opts, { presenter: presenter(c2) })); }, gz || .62);
+  }
+  function recipes(c) { return F.recipesPage(c, { count: 12 }); }
+
+  Mock.mount({
+    kind: 'component', id: 'filter-sheet', title: 'FilterSheet, FilterSection, FilterOptionRow', area: 'design', status: 'shipped', frame: false,
+    summary: 'The shared sort and filter sheet: an edit sheet in direction G\'s form (circle x Cancel, a filled check Apply), a Form of titled sections and single-choice rows, and "Reset to Defaults" as a blue list row that appears only when there is something to reset. Used by Recipes and Inventory. Follows the system appearance.',
+    source: ['apple/Sources/HassDesign/FilterSheet.swift', 'apple/Sources/HassDesign/SheetEditToolbar.swift', 'apple/Sources/HassDesign/HassModal.swift (modalChrome, hassSheet)', 'apple/Sources/HassUI/Features/Food/RecipesScreen.swift', 'apple/Sources/HassUI/Features/Inventory/InventoryControlSheets.swift', 'apple/Sources/HassUI/Features/Gallery/FloatingActionsGallery.swift'],
+    spec: ['.agents/patterns/floating-actions.md', '.agents/patterns/modal-sheet.md', '.agents/design/direction-g.md (Sheets)'],
+    patterns: ['floating-actions', 'modal-sheet', 'motion'],
+    hig: ['Sheets', 'Lists and tables', 'Toolbars', 'Buttons', 'Dynamic Type'],
+    kitComponents: ['FilterSheet', 'FilterSection', 'FilterOptionRow', 'SegmentedChoice', 'HassModal', 'SheetCancelItem', 'SheetConfirmItem'],
+    devices: ['iphone', 'ipad-portrait'],
+    states: {
+      'anatomy': { title: 'Content: sections, rows, Reset', render: function (ctx) {
+        var secs = [{ title: 'Sort By', options: [{ title: 'Name', selected: true }, { title: 'Date Added' }, { title: 'Expires Soonest', subtitle: 'Items closest to their date first' }] },
+          { title: 'Added In The Last', segmented: { options: ['7 Days', '30 Days', '90 Days'], selected: '30 Days' }, footer: 'Shows items added within the last 30 days.' }];
+        return sw(ctx, [
+          { label: 'FilterSheet content, defaults (Reset hidden)', width: 340, render: function () { return K.FilterSheet({ sections: secs }); } },
+          { label: 'changed (Reset to Defaults shown)', width: 340, render: function () { return K.FilterSheet({ sections: secs, canReset: true }); } },
+          { label: 'FilterOptionRow: selected, with subtitle', width: 340, render: function () { return K.FilterOptionRow({ title: 'Expires Soonest', subtitle: 'Items closest to their date first', selected: true }); } },
+        ]); } },
+      'toolbar': { title: 'Toolbar states: Cancel and Apply', render: function (ctx) {
+        function head(enabled, canReset, subtitle) { return K.HassModal({ title: 'Sort Recipes', subtitle: subtitle, leading: 'cancel', trailing: 'confirm', confirm: { title: 'Apply', enabled: enabled }, content: K.FilterSheet({ canReset: canReset, sections: [{ title: 'Sort By', options: opts([['a', 'Ingredients Available', 'Prioritize recipes you can make from current inventory.'], ['b', 'Expiring Soon', 'Prioritize recipes that use ingredients nearing expiration.']], enabled ? 'b' : 'a') }] }) }); }
+        return sw(ctx, [
+          { label: 'nothing changed: Apply dimmed, no Reset', note: 'the check stays visible and disabled (owner 2026-10-16)', width: 380, render: function () { return head(false, false); } },
+          { label: 'draft differs: Apply #0071E3, Reset shown', width: 380, render: function () { return head(true, true); } },
+          { label: 'with a subtitle ("2 Filters On")', width: 380, render: function () { return head(true, true, '2 Filters On'); } },
+        ]); } },
+      'in-context': { title: 'In context: the four sheets that use it', note: 'Sort Recipes and Filter Recipes (Food), Sort Inventory and Filter Inventory (Inventory lane)', render: function (ctx) {
+        return sw(ctx, [
+          { label: 'Sort Recipes (changed)', width: 285, render: function () { return mini(ctx, 'iphone', F.sortOpts({ draft: 'alphabetical' }), recipes, .62); } },
+          { label: 'Filter Recipes (2 filters)', width: 285, render: function () { return mini(ctx, 'iphone', F.filterOpts({ coverage: 60, expiringOnly: true, horizon: '30 Days', changed: true, detent: 'large' }), recipes, .62); } },
+          { label: 'Sort Inventory (two sections)', width: 285, render: function () { return mini(ctx, 'iphone', invSort('expiry', 'ascending'), pantry, .62); } },
+          { label: 'Filter Inventory ("Show", seven rows)', width: 285, render: function () { return mini(ctx, 'iphone', invFilter('week'), pantry, .62); } },
+        ], { surfaces: ['sheet'] }); } },
+      'ipad-form': { title: 'iPad: a 540 pt form sheet', render: function (ctx) {
+        return sw(ctx, [{ label: 'Filter Recipes on iPad portrait', width: 470, render: function () { return mini(ctx, 'ipad-portrait', F.filterOpts({ coverage: 60, changed: true }), recipes, .5); } }]); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'headers and rows wrap whole words; the 7 / 30 / 90 Days control becomes a pop-up menu; the Reset row grows with the text', render: function (ctx) {
+        return sw(ctx, [{ label: 'sections with a segmented choice and Reset', width: 440, render: function () {
+          return K.FilterSheet({ canReset: true, sections: [{ title: 'Sort By', options: [{ title: 'Ingredients Available', subtitle: 'Prioritize recipes you can make from current inventory.', selected: true }] }, { title: 'Expiring Within', segmented: { options: ['7 Days', '30 Days', '90 Days'], selected: '30 Days' }, footer: 'Use ingredients expiring within the next month.' }] }); } }]); } },
+    },
+
+    motion: [
+      { id: 'check-fade', what: 'Choosing another option: the old check fades out and the new one fades in', token: 'quick 0.2 s ease-out (quickTransition "FilterOptionRow")', state: 'anatomy',
+        source: 'HassDesign/FilterSheet.swift FilterOptionRow', reduce: 'an opacity change is not movement; unchanged',
+        play: function (stage) { var rows = stage.querySelectorAll('.ui-optrow'); if (rows.length < 3) return Promise.resolve(); return Mock.sleep(400).then(function () { rows[0].classList.remove('sel'); rows[2].classList.add('sel'); return Mock.sleep(Mock.anim.ms.quick() + 600); }); } },
+      { id: 'apply-enable', what: 'Apply (the check) becomes pressable once the draft differs from what is applied', token: 'none of its own: the system dims and un-dims the button; its fill is #0071E3 (4.6:1 under white)', state: 'toolbar',
+        source: 'HassDesign/SheetEditToolbar.swift SheetConfirmItem', reduce: 'nothing to reduce', play: function () { return Mock.sleep(300); } },
+    ],
+
+    a11y: [
+      { rule: 'Reading order', note: 'Title (and subtitle), Cancel, Apply; then each section header (heading), its rows and footer; "Reset to Defaults" last.' },
+      { rule: 'Rows', note: 'FilterOptionRow combines title and subtitle into one element with the selected trait on the ticked row; at least 44 pt; the checkmark is hidden (the trait says it). Identifier prefixes belong to the caller (recipes.sort.<raw>, inventory.sort.<raw>).' },
+      { rule: 'Toolbar', note: 'Cancel = "Cancel" (filterSheet.cancel); Apply = "Apply" (filterSheet.apply), spoken as dimmed until the draft changes; both are the system circle x and check on iOS 26 and an icon-only xmark and a borderedProminent check circle before.' },
+      { rule: 'Reset row', note: '"Reset to Defaults" (filterSheet.reset) in the action tint, grows with the text (12 pt scaled padding, no fixed 44 pt floor), exists only when there is something to reset: a dimmed row failed the contrast audit. Never red.' },
+      { rule: 'Headers', note: 'FilterSection draws 15 Semibold in FormHeader\'s readable secondary ink (the system header measured 3.1:1 on the grouped ground) and wraps at AX sizes (the old custom header was reported clipped).' },
+      { rule: 'Dynamic Type', note: 'Everything wraps; a segmented control inside a section becomes a menu at AX sizes; the sheet grows to its content and scrolls beyond the large cap.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Sheets: edit sheets have Cancel and a confirm; dismiss drops the draft', verdict: 'pass', note: 'SheetCancelItem and SheetConfirmItem("Apply"); Cancel or a swipe down discards the draft.' },
+        { rule: 'Toolbars: disable rather than hide a control that does not apply now', verdict: 'departure', note: 'Apply visible and dimmed until a change, as in Calendar and Reminders (owner 2026-10-16).' },
+        { rule: 'Buttons: reserve red for destructive actions', verdict: 'pass', note: 'Reset to Defaults is blue (owner 2026-10-16).' },
+        { rule: 'Lists: inset grouped sections with headers and footers', verdict: 'pass', note: 'Form with FilterSection headers, no translucent band under the title (modalChrome).' },
+        { rule: 'Sheets: smallest detent that shows the content; prefer form sheets on iPad', verdict: 'pass', note: 'hassSheet(.form, height: .fitted), remembered per title (fitKey "FilterSheet.<title>").' },
+      ],
+      swiftui: [
+        { rule: 'Own the draft in the caller; commit in onApply', verdict: 'pass', note: 'canApply, canReset, onApply, onReset are closures; FilterSheet holds no state.' },
+        { rule: 'Reset row padding scales with the text', verdict: 'pass', note: '@ScaledMetric verticalPadding = 12: iPad Filter Recipes measured 1.26x row growth against 3x text before (2026-10-17).' },
+        { rule: 'Animate with the app token', verdict: 'pass', note: 'quickTransition on the check only.' },
+        { rule: 'Identifiers on every control', verdict: 'pass', note: 'filterSheet.cancel, .apply, .reset; rows carry the caller\'s.' },
+      ],
+    },
+
+    notes: [
+      'Docs vs code (1): floating-actions.md says FilterSheet(detents:) defaults to medium and large, large only at AX sizes, and that inventory Sort and Filter pass [.large] "since rows cut by the sheet edge fail the clipped-text audit". The code has height: .fitted (default) or .full and no detents argument; InventoryControlSheets passes neither, so Inventory sheets are fitted too.',
+      'Docs vs code (2): modal-sheet.md lists "filter and sort sheets" under .form: matches (hassSheet(.form, ...)).',
+      'The Inventory sheets are drawn from InventoryControlSheets.swift and InventoryCatalog.swift (copy, order, subtitle "n of m Items"); the Inventory lane\'s own mockups cover their pages.',
+      'Presenter pages in the in-context panel are the Recipes page and a title-only Pantry stand-in.',
+      'Promote to kit: nothing local; the sections, rows and Reset row come from the kit\'s FilterSheet. Slider and toggle rows for Filter Recipes are built in pages/food/_food.js (Food.filterContent).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: content anatomy, toolbar states, the four sheets in context, iPad form, AX5; light and dark with the Sheet appearance control.' }],
+  });
+})();
+</script></body></html>

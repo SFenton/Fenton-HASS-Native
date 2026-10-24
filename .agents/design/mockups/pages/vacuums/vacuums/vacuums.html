@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vacuums · page mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../modals/room-devices/_devices-vacuums.js"></script>
+<script src="../../../modals/vacuums/_devices-vacuums.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, dv = Mock.dv, vac = dv.vac;
+
+  /* VacuumsPage: a pushed page (Back, from Home or Quick Links): a one-line summary under the large title, Robot Vacuums as .cleaning tiles on a DynamicGridLayout
+     (min 150, up to 6 columns), Auto-Clean as a ModuleList of switch rows. Where SplitPolicy allows (unfolded Duo and iPad in landscape) Robot Vacuums leads and Auto-Clean
+     sits beside it, each scrolling on its own; everywhere else they stack. */
+  function page(ctx, o) {
+    o = o || {};
+    var b = vac.pageBody(ctx, { scenarios: o.sc, summary: o.summary, autoClean: o.autoClean });
+    var body = ctx.splitGeometry ? [Mock.split(ctx, { leading: [b.col1], trailing: [b.col2] })] : [b.col1, b.col2];
+    var pg = Mock.page(ctx, { title: 'Vacuums', section: 'home', back: 'Home', badge: 3, choresBadge: 2, connection: o.connection || 'live', body: body });
+    return pg;
+  }
+  var P = function (o) { return function (c) { return page(c, o); }; };
+  function tile(stage, i) { return stage.querySelectorAll('.ui-tile')[i]; }
+
+  Mock.mount({
+    kind: 'page', id: 'vacuums', title: 'Vacuums', area: 'vacuums', status: 'shipped',
+    summary: 'The robots at a glance: Main Floor, Music Room and Theater Room as tiles that open the vacuum sheet, and three Auto-Clean switches. Reached from Quick Links or a notification, pushed with Back. Sample data is the gallery fixture.',
+    source: ['apple/Sources/HassUI/Features/Vacuums/VacuumsScreen.swift', 'apple/Sources/HassUI/Features/Home/HomeRoute.swift', 'apple/Sources/HassUI/Features/Vacuums/VacuumSheet.swift', 'apple/Sources/HassCore/Vacuums/VacuumAutoCleanController.swift',
+      'apple/Sources/HassCore/Config/VacuumConfig.swift', 'apple/Sources/HassDesign/GlassTile.swift', 'apple/Sources/HassDesign/ModuleList.swift', 'apple/Sources/HassDesign/DynamicGridLayout.swift'],
+    spec: ['.agents/pages/vacuums/spec.md', '.agents/pages/vacuums/ios.md', '.agents/patterns/vacuum-sheet.md'],
+    patterns: ['vacuum-sheet', 'dynamic-grid', 'module-list', 'entity-tile', 'page-backdrop', 'header-edge-fade'],
+    hig: ['Navigation bars', 'Lists', 'Split views', 'Color', 'Dynamic Type', 'Layout'],
+    entities: ['vacuum.valetudo_exaltedsneakydeer', 'vacuum.valetudo_elatedusedram', 'vacuum.valetudo_politefatherlykingfisher', 'switch.main_floor_vacuum_coordinator_pause', 'automation.automatically_vacuum_or_mop_music_room', 'automation.automatically_vacuum_theater_room_on_schedule'],
+    kitComponents: ['GlassTile', 'TileGrid', 'ModuleList', 'ToggleRow', 'Toggle', 'PageSectionHeader', 'NavigationGlass', 'ReconnectingArc', 'OfflineChip'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'duo-unfolded-portrait', 'ipad-portrait', 'ipad-landscape'],
+
+    states: {
+      'default': { title: 'All docked', note: '"All Docked" summary; docked tiles are the off face with the house glyph and "Docked • 87%"; Auto-Clean on, on, paused', render: P({ sc: ['docked', 'docked', 'docked'] }) },
+      'cleaning': { title: 'One cleaning', note: '"1 Cleaning"; the Main Floor tile fills the cleaning purple and a band shows the battery level (74%)', render: P({ sc: ['cleaning', 'docked', 'docked'] }) },
+      'mixed': { title: 'One cleaning, one needs attention', note: '"1 Cleaning · 1 Needs Attention"; the error tile is the red error face with the issue appended', render: P({ sc: ['cleaning', 'error', 'docked'] }) },
+      'paused': { title: 'Paused and returning', note: 'neither counts in the summary except Returning ("1 Returning"); paused fills like cleaning', render: P({ sc: ['paused', 'returning', 'docked'] }) },
+      'error': { title: 'Unavailable', note: 'no summary line; each tile reads "Unavailable" with the question-mark glyph; the Auto-Clean rows dim their glyphs and switches', render: P({ sc: ['unavailable', 'unavailable', 'unavailable'], summary: null, autoClean: [{ on: false, unavailable: true }, { on: false, unavailable: true }, { on: false, unavailable: true }] }) },
+      'loading': { title: 'Before the first snapshot', note: 'there is no loading UI: a robot without an entity reads "Unavailable" until the snapshot lands (the same as the error state); the page never shows a spinner', render: P({ sc: ['unavailable', 'unavailable', 'unavailable'], summary: null, autoClean: [{ on: false, unavailable: true }, { on: false, unavailable: true }, { on: false, unavailable: true }] }) },
+      'refreshing': { title: 'Saved snapshot, live values swap in', note: 'identical to default: nothing re-fades or reorders (AGENTS.md: no reload on reopen)', render: P({ sc: ['docked', 'docked', 'docked'] }) },
+      'offline': { title: 'No network', note: 'values stay; the offline chip sits under the header; the cloud badge is on Profile', render: P({ sc: ['docked', 'docked', 'docked'], connection: 'offline' }) },
+      'reconnecting': { title: 'Connection down 2 s+', note: 'in flight (claude/reconnecting-spinner): the arc left of Quick Links; was a "Reconnecting…" chip under the header', render: P({ sc: ['cleaning', 'docked', 'docked'], connection: 'reconnecting' }) },
+      'reconnecting-was': { title: 'Reconnecting, today (main)', render: P({ sc: ['docked', 'docked', 'docked'], connection: 'reconnecting-chip' }) },
+      'long-text': { title: 'Long issue text', note: 'the error subtitle wraps (up to two lines) rather than truncating', render: P({ sc: ['stuck', 'paused', 'docked'] }) },
+      'empty': { title: 'No robots', note: 'there is no empty state: three robots are configured (Vacuums.all), so the grid always has three tiles; a missing entity reads Unavailable', render: P({ sc: ['docked', 'docked', 'docked'] }) },
+      'sheet-open': { title: 'Vacuum sheet open', note: 'a tile opens the full-height vacuum sheet (see vacuum-sheet)', render: function (c) { return vac.sheet(c, { v: vac.V({}) }); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'tiles stack their glyph over the text, one column; the summary and section headers wrap; rows put the switch under the text', render: P({ sc: ['cleaning', 'error', 'docked'] }) },
+    },
+
+    motion: [
+      { id: 'tile-state', what: 'A robot starts cleaning: its tile fills the cleaning purple, the glyph changes, and the battery band grows from the leading edge; the summary line updates', token: 'state 0.6 s ease-in-out, colour only (0.2 s reduced); the band follows the quick 0.2 s width change', state: 'default',
+        source: 'HassDesign/GlassTile.swift (stateColorTransition, progress band); VacuumsScreen.swift; motion.md section 6', reduce: 'still cross-fades at 0.2 s',
+        play: function (stage) { var t = tile(stage, 0); if (!t) return Promise.resolve(); dv.setTile(t, true, 'Cleaning • 74%', 'sparkles'); var band = document.createElement('span'); band.className = 'band shade'; band.style.width = '26%'; t.insertBefore(band, t.firstChild);
+          var sm = stage.querySelector('.vc-summary'); if (sm) sm.textContent = '1 Cleaning'; return Mock.sleep(Mock.anim.ms.state() + 700).then(function () { band.remove(); dv.setTile(t, false, 'Docked • 87%', 'house'); if (sm) sm.textContent = 'All Docked'; return Mock.sleep(Mock.anim.ms.state() + 300); }); } },
+      { id: 'autoclean-switch', what: 'Turning an Auto-Clean switch on or off: the knob slides and the track fades green; the subtitle changes between Paused and Enabled', token: 'standard 0.3 s knob; state 0.6 s track colour (system switch); optimistic, reverted after 8 s if Home Assistant does not confirm', state: 'default',
+        source: 'VacuumsScreen.swift autoCleanRow; VacuumAutoCleanController (revert 8 s)', reduce: 'track cross-fade 0.2 s',
+        play: function (stage) { var t = stage.querySelectorAll('.ui-toggle'); var sw = t[t.length - 1]; if (!sw) return Promise.resolve(); var sub = sw.closest('.ui-mrow').querySelector('.su'); sw.classList.add('on'); sw.setAttribute('aria-checked', 'true'); if (sub) sub.textContent = 'Enabled';
+          return Mock.sleep(Mock.anim.ms.state() + 600).then(function () { sw.classList.remove('on'); sw.setAttribute('aria-checked', 'false'); if (sub) sub.textContent = 'Paused'; return Mock.sleep(Mock.anim.ms.state() + 300); }); } },
+      { id: 'reconnecting-arc', what: 'The reconnecting arc fades in after 2 s offline and out when live (in flight)', token: '0.35 s ease-in-out each way, arc turns every 0.82 s', state: 'reconnecting', source: 'proposals/reconnecting-spinner; ReconnectingPolicy.delay 2 s', reduce: 'fade unchanged; the arc turns at half speed, never frozen',
+        play: function (stage) { var s = stage.querySelector('.ui-slot'); return s ? Mock.anim.arc(s, false).then(function () { return Mock.sleep(500); }).then(function () { return Mock.anim.arc(s, true); }).then(function () { return Mock.sleep(700); }) : Promise.resolve(); } },
+    ],
+
+    transitions: [
+      { from: 'Quick Links', to: 'Vacuums page', kind: 'push', note: 'Quick Links closes its sheet and the page is pushed onto the tab\'s stack (HomeRoute.vacuums); the system push, Back returns. A notification or a room-page vacuum card opens the vacuum sheet directly.',
+        play: function (stage) { var ctx = Mock.current, a = stage.querySelector('.ui-page'); var home = Mock.page(ctx, { title: 'Home', section: 'home', badge: 3, choresBadge: 2, body: [K.ChipRail({ chips: Mock.chips.home() })] }); var host = a.parentNode; host.insertBefore(home, a); a.style.position = 'absolute'; a.style.inset = '0';
+          return Mock.anim.push(home, a).then(function () { return Mock.sleep(700); }).then(function () { home.remove(); a.style.transform = ''; a.style.filter = ''; }); } },
+      { from: 'Robot tile', to: 'Vacuum sheet', kind: 'sheet', note: 'The tile presents the full-height page sheet; the page scales back. Not a zoom: motion.md lists tiles as zoom candidates but no zoomSource is wired (docs versus code, zoom-transition).',
+        play: function (stage) { var c = Mock.current; return Mock.presentDemo(stage, { title: 'Main Floor Robot Vacuum', subtitle: 'Docked · 87%', detent: 'large', size: 'page', content: vac.content(c, vac.V({}), 'controls'), tabs: vac.tabBar(vac.V({}), 'controls', c) }, { hold: 1300 }); } },
+    ],
+
+    a11y: [
+      { rule: 'Reading order', note: 'Back, (reconnecting arc), Quick Links, Profile; the title "Vacuums" (heading); the summary line ("1 Cleaning", identifier vacuums.summary); the "Robot Vacuums" heading and its three tiles; the "Auto-Clean" heading and its three rows; the tab bar last.' },
+      { rule: 'Tiles', note: 'Each tile is a button "Main Floor, Docked • 87%" with the hint "Opens the vacuum controls and map." (identifier vacuums.tile.<map id>); state is colour AND glyph AND words (Cleaning, Paused, Error • issue); an error tile is the red face with the issue in words.' },
+      { rule: 'Auto-Clean rows', note: 'Each row is a switch: label "Main Floor", value On or Off, subtitle Enabled or Paused, hint "Turns automatic cleaning on or off."; the Main Floor switch is inverted (it pauses the coordinator, so on means enabled when the pause switch is off). An unavailable row dims only its glyph; the text stays at full contrast.' },
+      { rule: 'Summary contrast', note: 'On the wallpaper the summary is the always-dark secondary at 85% (72% measured 4.0:1).' },
+      { rule: 'Targets', note: 'Tiles are at least 72 pt tall; rows 60 pt; the switch 51 x 31 inside a 60 pt row.' },
+      { rule: 'Dynamic Type', note: 'At AX5 the grid is one column of stacked tiles, the switches drop under the row text, the summary and headers wrap.' },
+      { rule: 'Split', note: 'On iPad landscape and the unfolded Duo in landscape the two sections sit side by side and scroll separately; the Duo hinge is a 40 pt band no control touches.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Navigation bars: Back, large title, trailing circles', verdict: 'pass', note: 'A pushed page swaps the hamburger for a glass Back circle; Quick Links and Profile stay (direction-g.md Navigation).' },
+        { rule: 'Split views: only where there is room', verdict: 'pass', note: 'SplitPolicy.allowsSplit: landscape, regular width, each pane at least 360 pt; portrait and the folded Duo stack.' },
+        { rule: 'Lists: switches only in list rows', verdict: 'pass', note: 'Auto-Clean is a ModuleList of switch rows (direction-g.md Controls: Switches).' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Glyph and words for every state; the error face adds the issue text.' },
+        { rule: 'Layout: respect the hinge', verdict: 'pass', note: 'Even columns on the unfolded Duo; panes end at the hinge band.' },
+        { rule: 'Loading: show content as soon as possible', verdict: 'pass', note: 'Nothing waits: tiles read the saved snapshot; an unknown robot reads "Unavailable".' },
+      ],
+      swiftui: [
+        { rule: 'Avoid per-frame state while scrolling', verdict: 'pass', note: 'scrollTelemetry only; the layout reads one GeometryReader size.' },
+        { rule: 'Use Toggle with a hidden label and a hint', verdict: 'pass', note: 'Toggle(...).labelsHidden() with accessibilityHint and identifier.' },
+        { rule: 'Dynamic Type: reflow, never truncate', verdict: 'pass', note: 'GlassTile stacks at AX sizes; rows move the switch under the text.' },
+        { rule: 'Equal-height tiles', verdict: 'pass', note: 'DynamicGridLayout(equalRowHeights:) with equalHeightTiles().' },
+        { rule: 'Motion with Reduce Motion', verdict: 'pass', note: 'Colour only through stateColorTransition (0.2 s reduced).' },
+      ],
+    },
+
+    notes: [
+      'empty: no empty state: Vacuums.all is a fixed list of three; loading: there is no loading UI (an unknown robot reads Unavailable); refreshing: identical to default. The keys are listed so a check finds them.',
+      'Docs versus code: spec.md describes the page as two bounded grids with VacuumTile tiles; the native page uses GlassTile (family cleaning) for robots and a ModuleList of switch rows for Auto-Clean (ios.md is right).',
+      'Docs versus code: ios.md says the tile opens `.hassSheet(.page)`; the code is `.hassSheet(.page, height: .full)`.',
+      'Unavailable robots are not passed isUnavailable to GlassTile: they draw the neutral off face with the question glyph and the word "Unavailable", not the dimmed unavailable face.',
+      'The tile subtitle on an error is "Error • 87% • <issue>" where the issue is the status code title-cased (docs example: "Error • 23% • Wheel Stuck"); the code is VacuumPageFormat.tile.',
+      'Vacuum sheet and Auto-Clean data are the gallery fixtures (Main Floor 87%, Music Room 100%, Theater Room 64%; Theater Room Auto-Clean paused).',
+      'The duo-unfolded-portrait pose was not run on a simulator (design/apple/duo.md); the page stacks there as on any portrait window.',
+      'Promote to kit: vac.robotTile (a GlassTile family cleaning wrapper) and vac.autoCleanList (modals/vacuums/_devices-vacuums.js).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass built with the kit: docked, cleaning, mixed, paused, unavailable, offline, reconnecting, long text, split on iPad and Duo landscape, AX5.' }],
+  });
+})();
+</script></body></html>

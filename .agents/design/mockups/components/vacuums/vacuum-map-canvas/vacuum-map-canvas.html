@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Valetudo map canvas · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../modals/room-devices/_devices-vacuums.js"></script>
+<script src="../../../modals/vacuums/_devices-vacuums.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, dv = Mock.dv, vac = dv.vac;
+  function card(o) { return function () { return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px' } }, vac.mapCard(o), o.after || null); }; }
+  function sw(label, o, note, w) { return { label: label, surface: 'sheet', w: w || 340, build: card(o), note: note }; }
+
+  Mock.mount({
+    kind: 'component', id: 'vacuum-map-canvas', title: 'Valetudo map canvas and map frame', area: 'vacuums', status: 'shipped', frame: false,
+    summary: 'The vacuum map as direction G draws it: flat neutral rooms on a #262628 card, selected rooms white with black numbered badges, skipped rooms hatched, the robot, dock and path, and the loading and unavailable fallbacks. Always dark, in both appearances.',
+    source: ['apple/Sources/HassUI/Features/Vacuums/ValetudoMapView.swift', 'apple/Sources/HassUI/Features/Vacuums/VacuumMapPanel.swift', 'apple/Sources/HassCore/Vacuums/ValetudoMap.swift', 'apple/Sources/HassCore/Vacuums/ValetudoMapStyle.swift', 'apple/Sources/HassCore/Vacuums/ValetudoMapGeometry.swift', 'apple/Sources/HassCore/Vacuums/ValetudoMapFocus.swift'],
+    spec: ['.agents/patterns/valetudo-map.md', '.agents/design/direction-g.md'],
+    patterns: ['valetudo-map', 'vacuum-sheet'],
+    hig: ['Color', 'Accessibility', 'Gestures', 'Dark Mode'],
+    entities: ['camera.valetudo_exaltedsneakydeer_map_data', 'camera.valetudo_elatedusedram_map_data', 'camera.valetudo_politefatherlykingfisher_map_data'],
+    kitComponents: ['ArcSpinner', 'InlineAlert', 'NavigationGlass'],
+    devices: ['iphone', 'ipad-portrait'],
+
+    states: {
+      'rooms': { title: 'Flat neutral rooms', render: function (ctx) { return dv.swatches(ctx, [sw('Main Floor, nothing selected', { map: 'main', selected: [], robot: 'dock' }, 'a cool neutral ramp (#40464E to #5E656F) cycled in layer order, dark wall seams #1E1F22; room names white 92% where they fit'),
+        sw('Music Room (focused crop)', { map: 'music', selected: [], robot: 'dock' }, 'a focused map keeps only the three configured rooms and the walls near them'), sw('Theater Room (no room selection)', { map: 'theater', selected: [], robot: 'dock' }, 'mapRoomSelection is off: no names, no badges, rooms are not tappable')], ['sheet']); } },
+      'selected': { title: 'Selected rooms', render: function (ctx) { return dv.swatches(ctx, [sw('Kitchen 1, Living Room 2', { map: 'main', selected: ['kitchen', 'living_room'], robot: 'dock' }, 'selected rooms are white (#EDEFF2) with ink #1C1C1E and a 22 pt black badge above the name; a room too small for both shows the badge alone'),
+        sw('Three selected, a small room', { map: 'main', selected: ['kitchen', 'office', 'guest_room'], robot: 'dock' }, 'Guest Room is narrow: its badge shows, its name is left out'), sw('Music Room, one selected', { map: 'music', selected: ['music_room'], robot: 'dock' })], ['sheet']); } },
+      'skipped': { title: 'Skipped by Auto-Clean (hatched)', render: function (ctx) { return dv.swatches(ctx, [sw('Guest Room skipped', { map: 'main', selected: [], skipped: ['guest_room'], robot: 'dock' }, '45 degree stripes, 2.4 pt, 7 pt apart, rgba(20,21,24,.75), clipped to the room'), sw('Several skipped', { map: 'main', selected: [], skipped: ['guest_room', 'gym', 'master_bathroom'], robot: 'dock' })], ['sheet']); } },
+      'robot': { title: 'Robot, dock and path', render: function (ctx) { return dv.swatches(ctx, [sw('Docked', { map: 'main', selected: [], robot: 'dock' }, 'the dock is a #C9CDD3 pill; the robot a white disc with a dark ring and centre on a soft halo'),
+        sw('Cleaning, with its path', { map: 'main', selected: ['kitchen', 'living_room'], robot: [220, 110], path: [[40, 50], [110, 80], [170, 40], [240, 90], [220, 110]] }, 'travelled path #8A9099 at 90%, 2.2 pt round'), sw('Last reported (from memory)', { map: 'main', selected: [], robot: [60, 300], reported: true }, 'the robot is grey once reported from memory; paths drop')], ['sheet']); } },
+      'area': { title: 'Cleaning area', render: function (ctx) { return dv.swatches(ctx, [sw('Area outline', { map: 'main', selected: [], robot: 'dock', area: { x: 24, y: 24, w: 150, h: 120 } }, 'action blue at 22% fill and a 2 pt stroke'), sw('With corner handles', { map: 'main', selected: [], robot: 'dock', area: { x: 24, y: 24, w: 150, h: 120 }, handles: true }, '16 pt white discs with a blue ring; 22 pt hit radius')], ['sheet']); } },
+      'frame': { title: 'Map frame', render: function (ctx) { return dv.swatches(ctx, [sw('Default (max height 300 pt) with Locate', { map: 'music', selected: ['music_room'], robot: 'dock', title: 'Music Room' }, 'a glass 44 pt circle at the top leading corner asks the robot to play a sound'),
+        sw('Cleaning (grown to 460 pt)', { map: 'main', selected: ['kitchen', 'living_room'], robot: [220, 110], big: true }, 'while a run is going the controls collapse and the map takes the space'), sw('Unavailable: no Locate', { map: 'main', selected: [], robot: 'dock', locate: false })], ['sheet']); } },
+      'fallback': { title: 'Loading and unavailable', render: function (ctx) { return dv.swatches(ctx, [sw('Loading Current Map…', { fallback: 'loading', map: 'main' }, 'the arc spinner and a line of text on the dark card; at least 220 pt tall'), sw('Loading Last Vacuum Map Position…', { fallback: 'loading-last', map: 'main' }, 'while the robot is unavailable and its last map is fetched'), sw('Map Unavailable', { fallback: 'unavailable', map: 'main' }, 'Home Assistant cannot confirm the map or position')], ['sheet']); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'the map itself does not scale (labels are fixed 11 pt, drawn, hidden from VoiceOver); only the fallback texts and the surrounding notice grow', render: function (ctx) { return dv.swatches(ctx, [sw('Map with badges', { map: 'main', selected: ['kitchen', 'living_room'], robot: 'dock' }), sw('Map Unavailable', { fallback: 'unavailable', map: 'main' })], ['sheet']); } },
+    },
+
+    motion: [
+      { id: 'map-grow', what: 'The map grows from 300 pt to 460 pt when a clean starts (and shrinks back when it ends), together with the panel swap beneath it', token: 'layout animation 0.28 s easeInOut inside SmoothContentSwap (only on a runtime-mode change); not a MotionTokens entry', state: 'frame',
+        source: 'VacuumMapFrame.maxHeight(mode), VacuumSheetContent.swap.animatesLayout', reduce: 'the map jumps to its new size',
+        play: function (stage) { var m = stage.querySelectorAll('.vc-mapin')[0]; if (!m) return Promise.resolve(); m.classList.add('big'); return Mock.sleep(900).then(function () { m.classList.remove('big'); return Mock.sleep(500); }); } },
+      { id: 'room-select', what: 'Tapping a room (or its card) marks it white at once; the badge appears with it', token: 'none: each room\'s mask is drawn or not; the card colour cross-fades 0.6 s', state: 'selected',
+        source: 'ValetudoMapCanvas.draw(masks); VacuumMapFrame.toggle', reduce: 'unchanged',
+        play: function (stage) { var w = stage.querySelectorAll('.vc-map')[0]; if (!w) return Promise.resolve(); var orig = w; var n = vac.mapCanvas({ map: 'main', selected: ['kitchen', 'living_room', 'gym'], robot: 'dock' }); return Mock.sleep(500).then(function () { w.replaceWith(n); return Mock.sleep(1000); }); } },
+    ],
+
+    a11y: [
+      { rule: 'The map is one element', note: 'The canvas is hidden from VoiceOver; the frame is one element named "<Robot> Valetudo map" whose value lists the selected rooms ("Selected rooms: Kitchen, Living Room"; identifier vacuum.map). Rooms are also buttons on the Rooms section, so the map never holds the only way to act.' },
+      { rule: 'Not colour alone', note: 'Selection is white plus a numbered badge (the badge carries the order); skipped rooms are hatched; the robot is a disc with a ring; nothing relies on hue.' },
+      { rule: 'Contrast', note: 'Room names are white at 92% on rooms of #40464E or lighter at 7:1 or more; on a selected room the name is #1C1C1E on #EDEFF2.' },
+      { rule: 'Locate', note: 'A 44 pt glass button, label "Locate", hint "Asks the robot to play a sound." (vacuum.locate); absent while the robot is unavailable.' },
+      { rule: 'Fallbacks', note: 'The loading and unavailable cards are combined into one element each (vacuum.map.fallback); the spinner is hidden.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Color: provide sufficient contrast, do not rely on hue', verdict: 'pass', note: 'White, badges and hatching carry state; the ramp is cool neutral grey.' },
+        { rule: 'Dark Mode: support both appearances', verdict: 'departure', note: 'The map card is always #262628 so a white selected room reads on a light sheet too (direction-g.md Controls: Vacuum map).' },
+        { rule: 'Accessibility: custom drawing needs an accessible representation', verdict: 'pass', note: 'One labelled element with the selection as its value, plus the Rooms section.' },
+        { rule: 'Buttons: 44 pt targets', verdict: 'pass', note: 'Locate is 44 pt; room taps on the map are a convenience over 76 pt cards.' },
+      ],
+      swiftui: [
+        { rule: 'Canvas for drawing; rasterise static layers once', verdict: 'pass', note: 'One pixel per cell image with nearest-neighbour scaling; masks built once per room.' },
+        { rule: 'Do not re-create heavy views on unrelated state changes', verdict: 'pass', note: 'Tab state is outside the sheet body so the map never redraws on a tab change.' },
+        { rule: 'Hide decorative content from accessibility', verdict: 'pass', note: 'accessibilityHidden on the canvas; the frame is labelled.' },
+        { rule: 'Reduce Motion', verdict: 'pass', note: 'No animation inside the canvas; pan and zoom are direct manipulation.' },
+      ],
+    },
+
+    notes: [
+      'This is a stand-in floor plan drawn by the helper (modals/vacuums/_devices-vacuums.js); the app decodes the real map from the Valetudo camera PNG (zTXt chunk) and rasterises it. Colours and badge sizes are the real palette (ValetudoMapScene.Palette).',
+      'loading and error are shown as the fallback states; there is no offline variant (the map polls every 3.5 s while live and falls back to the last reported map).',
+      'Main Floor is rotated 180 degrees (mapRotationDegrees); names stay upright. Music Room is focus-cropped to three segments.',
+      'Labels here are HTML overlays at a fixed 11 pt and appear where the room box is large enough at the phone scale; the app measures the name against the room on screen at the current zoom.',
+      'Promote to kit: vac.mapCanvas and vac.mapCard.',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass built with the kit: rooms, selected, hatched, robot and path, area, frame, loading and unavailable, AX5.' }],
+  });
+})();
+</script></body></html>

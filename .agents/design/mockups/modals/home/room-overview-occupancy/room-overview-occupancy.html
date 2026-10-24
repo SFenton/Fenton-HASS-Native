@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Occupancy overview sheet · modal mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../_room-overview-data.js"></script>
+<script src="../_room-overview.js"></script>
+</head><body>
+<script>
+(function () {
+  var kind = 'occupancy', room = "Living Room";
+  var states = RO.overviewStates(kind, { room: room });
+  states.redacted = { title: 'Redacted build (FENTON_REDACT_PRIVATE)', note: 'one "Rooms" heading, every card Hidden and dark; for shared screenshots only', render: function (ctx) { return RO.sheet(ctx, { kind: kind, W: RO.world('mixed'), redact: true }); } };
+  states.room.note = 'a plain push with Back; the first line is the live subtitle ("2 sensors occupied"), then the room\'s sensors under "Occupancy Sensors"';
+  Mock.mount({
+    kind: 'modal', id: 'room-overview-occupancy', title: 'Occupancy overview sheet', area: 'home', status: 'shipped',
+    summary: "Opened by the Occupancy chip on Home. Rooms with presence sensors, \"Occupied\" first and \"Clear\" after; an occupied room fills green, a clear one stays dark. Each card pushes the room's sensors inside the sheet. A full-height page sheet that follows the system appearance.",
+    source: [
+      "apple/Sources/HassUI/Common/RoomOverview/RoomOverviewSheet.swift",
+      "apple/Sources/HassUI/Common/RoomOverview/RoomOverviewGrid.swift",
+      "apple/Sources/HassUI/Common/RoomOverview/RoomOverviewTile.swift",
+      "apple/Sources/HassUI/Common/RoomOverview/RoomOverviewStyle.swift",
+      "apple/Sources/HassCore/Rooms/RoomOverview.swift",
+      "apple/Sources/HassCore/Rooms/RoomGroups.swift",
+      "apple/Sources/HassCore/Rooms/RoomFormat.swift",
+      "apple/Sources/HassUI/Features/Home/HomeScreen.swift",
+      "apple/Sources/HassDesign/GlassTile.swift",
+      "apple/Sources/HassDesign/DynamicGridLayout.swift",
+      "apple/Sources/HassDesign/HassModal.swift"
+],
+    spec: [".agents/pages/home/spec.md", ".agents/pages/home/ios.md", ".agents/patterns/room-overview-sheet.md"],
+    patterns: ['room-overview-sheet', 'modal-sheet', 'dynamic-grid', 'entity-tile', 'status-rail'],
+    hig: ['Sheets', 'Toolbars', 'Layout', 'Typography', 'Accessibility'],
+    entities: ["binary_sensor.living_room_presence_sensor_presence", "binary_sensor.kitchen_presence_sensor_presence", "binary_sensor.master_bedroom_bed_presence_sensor_presence"],
+    kitComponents: ['HassModal', 'SheetCloseItem', 'GlassTile', 'TileGrid', 'PageSectionHeader', 'ChipRail', 'WeatherCard'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+
+    states: states,
+    motion: RO.overviewMotion(kind),
+    transitions: RO.transitions(kind, room),
+
+    a11y: [
+      {
+            "rule": "Reading order",
+            "note": "The sheet is modal: focus lands on the title \"Occupancy\" and its subtitle (\"3 Rooms Occupied\" or \"All Clear\"), then the \"Occupied\" heading and its cards, then \"Clear\" and its cards, then Close (identifier overview.occupancy)."
+      },
+      {
+            "rule": "Section headings",
+            "note": "\"Occupied\" and \"Clear\" are headings (rotor Headings); an empty section is dropped with its heading."
+      },
+      {
+            "rule": "Room cards",
+            "note": "One button each: label the room, value \"Occupied\" or \"Not Occupied\", hint \"Opens Living Room Occupancy\". Identifier overview.occupancy.room.<room>. 72 pt minimum height."
+      },
+      {
+            "rule": "State is not colour alone",
+            "note": "An occupied card is filled green with a walking-figure glyph and the word \"Occupied\"; a clear card is dark with a standing figure and \"Not Occupied\"."
+      },
+      {
+            "rule": "Privacy",
+            "note": "With FENTON_REDACT_PRIVATE set (shared screenshots) every card reads \"Hidden\" and stays dark, under one \"Rooms\" heading; the sheet subtitle is not redacted."
+      },
+      {
+            "rule": "Equal heights and Dynamic Type",
+            "note": "Every card has the height of the tallest; the minimum width scales and the grid is one column of stacked tiles at AX5."
+      },
+      {
+            "rule": "Close",
+            "note": "The circle x is labelled Close for VoiceOver (never \"Done\"); it stays in the bar when a room is pushed, and dismisses the whole sheet from any depth."
+      },
+      {
+            "rule": "Light and dark",
+            "note": "The sheet follows the system appearance (white cells on #F2F2F7, or #2C2C2E on #1C1C1E); family fills and the lit tile are fixed in both. Reduce Transparency draws the solid tile finish."
+      }
+],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+      {
+            "rule": "Sheets: a sheet may hold a navigation hierarchy; give it a close control",
+            "verdict": "pass",
+            "note": "NavigationStack inside the sheet, Back on the pushed page, circle x Close at every depth."
+      },
+      {
+            "rule": "Sheets: prefer page or form sizing on iPad",
+            "verdict": "pass",
+            "note": "hassSheet(.page, height: .full): a 704 pt page sheet on iPad and the unfolded Duo; tile grids need the width."
+      },
+      {
+            "rule": "Sheets: content that pushes pages keeps one height",
+            "verdict": "pass",
+            "note": "height .full is required here (modal-sheet.md): a fitted sheet would resize when a room is pushed."
+      },
+      {
+            "rule": "Layout: scales with Dynamic Type",
+            "verdict": "pass",
+            "note": "Scaled minimum card width, one column at AX5, equal heights measured live."
+      },
+      {
+            "rule": "Materials: a sheet draws on an opaque ground",
+            "verdict": "departure",
+            "note": "Opaque sheet ground and sheet-cell tiles at every size, as direction-g.md Sheets and modal-sheet.md."
+      },
+      {
+            "rule": "Color: not the only differentiator",
+            "verdict": "pass",
+            "note": "Green fill comes with a different glyph (walking versus standing figure) and the word Occupied."
+      },
+      {
+            "rule": "Toolbars: a centred title with a one-line subtitle",
+            "verdict": "pass",
+            "note": "iOS 26 navigation subtitle (\"3 Rooms Occupied\"); earlier systems show \"Occupancy\" alone."
+      }
+],
+      swiftui: [
+      {
+            "rule": "Use ScrollView with a layout, not a List, for tile grids",
+            "verdict": "pass",
+            "note": "ScrollView { DynamicGridLayout } capped at 960 pt and centred."
+      },
+      {
+            "rule": "Scaled metrics for tile width",
+            "verdict": "pass",
+            "note": "@ScaledMetric(relativeTo: .subheadline) minTileWidth = 140."
+      },
+      {
+            "rule": "No entrance animations inside a sheet",
+            "verdict": "pass",
+            "note": "Content is present on arrival (motion.md 4.4); no .onAppear cascade."
+      },
+      {
+            "rule": "navigationSubtitle only where available",
+            "verdict": "pass",
+            "note": "sheetSubtitle(_:) guards #available(iOS 26); earlier systems keep the web title (SheetSubtitle.isShown)."
+      },
+      {
+            "rule": "Accessibility identifiers and hints on controls",
+            "verdict": "pass",
+            "note": "overview.occupancy, overview.occupancy.section.<title>, overview.occupancy.room.<room>; hint \"Opens <room> Occupancy\"."
+      },
+      {
+            "rule": "Colour changes animate with the app token",
+            "verdict": "pass",
+            "note": "GlassTileFace .stateColorTransition: 0.6 s, 0.2 s reduced; the glyph swaps with .symbolEffect(.replace), identity under Reduce Motion."
+      }
+],
+    },
+
+    notes: [
+      "loading: there is no loading state. The sheet reads EntityStore, so the \"loading\" state here is an empty store: every room reads Not Occupied under one \"Clear\" heading. No spinner or pending bar exists on these cards.",
+      "Redacted: the \"redacted\" state is the FENTON_REDACT_PRIVATE build used for shared screenshots (ScreenshotPrivacy.isRedacting), not something a person sees.",
+      "Sections follow the state when the grid is built; a live change recolours a card in place and never moves it (motion.md 6).",
+      "Unavailable rooms: the overview cards carry no unavailable face; an unavailable sensor does not count as occupied. The pushed tiles do dim (room-group-detail).",
+      "medium and fitted: not offered. The sheet is hassSheet(.page, height: .full), so large is the only detent; on iPad and the unfolded Duo it is the 704 pt page sheet. Dismiss is Close or a swipe down (Transitions list); there is no confirmation.",
+      "Docs versus code: direction-g.md says room cards in the chip overviews are \"status tiles, not navigation\", but the code draws them with kind .navigate (a trailing chevron) and pushes the room; patterns/motion.md still lists the overview room tiles as a zoom, but the code is a plain push (owner 2026-10-22, motion.md 4.3, .measuresNavigation(.push)). Drawn as the code.",
+      "Duo unfolded: the page sheet is centred in the window and crosses the hinge band here; a 704 pt sheet gives four even columns. Placement is the system's (the unfolded simulator pose was run for pages only): check on a device.",
+      "Kit gaps (promote to kit): symbols window.vertical.open|closed, figure.stand, desktopcomputer, stove, stairs, bathtub (added at runtime in modals/home/_room-overview.js); TileGrid with equal rows stretches a section header to the tile height and its track overflows a narrow container at AX5 (the helper equalises in JS and caps the track); BrightnessTile prints \"On at 70%\" where the app prints \"70%\".",
+      "Fixture: values are invented; room names, entity ids and the group lists are the app's (HassCore/Rooms/RoomGroups.swift)."
+],
+    changelog: [{ date: '2026-10-23', note: 'First pass built with the kit: overview in every state, the pushed room, present and push transitions, light and dark.' }],
+  });
+})();
+</script></body></html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Room card tile and card view · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/rooms/_rooms.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, R = Mock.rooms, C = R.card;
+
+  function tile(stage, title) { return [].filter.call(stage.querySelectorAll('.ui-tile'), function (t) { return t.querySelector('.ti').textContent === title; })[0]; }
+  function box(kind, ctx, label, nodes) { return h('div.k-swatch.' + kind + (kind === 'page' ? '.g-dark' : '.in-sheet.' + (ctx.appearance === 'dark' ? 'g-dark' : 'g-light')), { style: { flex: '1 1 100%' } }, h('div.k-cap', label), nodes); }
+
+  var cfg = Mock.componentConfig('RoomCardTile', { surfaces: ['page', 'sheet'] });
+  /* A real section as RoomSectionView draws it (page) and the read-only RoomEntityGrid tiles a sheet draws (sheet). */
+  cfg.states['in-context'] = { title: 'In context: a page section, a sheet grid, the app launcher', note: 'page: Climate section of the Master Bathroom (lead row) and Theater Room; sheet: read-only vent tiles', render: function (ctx) {
+    var sec = R.section(ctx, { title: 'Climate', layout: 'leadRow', cards: [R.fan({ on: true, locked: true, status: 'Off in 12:34' }), C.vents('Vent', {}), C.towel({}, true)] });
+    var sheetGrid = K.TileGrid({ items: [R.sheet.state('Vent 1', 'Open · 60%', 'aqi.medium', 'vents', true), R.sheet.state('Vent 2', 'Closed', 'aqi.medium', 'vents', false)], min: 140, max: 4 });
+    return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '18px' } }, box('page', ctx, 'page · RoomSectionView lead row', sec), box('page', ctx, 'page · RoomAppLaunchGrid (square app tiles, six wide)', R.apps()), box('sheet', ctx, 'sheet · RoomEntityGrid (read-only state tiles)', sheetGrid));
+  } };
+  cfg.states.ax5 = { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'every tile anchors text bottom-leading; the fan rail drops under the status', render: cfg.states.states.render };
+
+  Mock.mount(Object.assign(cfg, {
+    states: cfg.states,
+    id: 'room-card-tile', title: 'Room card tile and card view', area: 'rooms', status: 'shipped',
+    summary: 'A room card is a GlassTile whose kind follows the card (chevron for a sheet, switch for a flip, button for a command, selection, or a plain state) and whose face follows the device\'s colour family: dark when off with the family glyph, filled when on, the warm lit tile for lights, bright yellow for power. RoomCardView swaps in the bathroom fan, garage door and bed tiles.',
+    source: ['apple/Sources/HassUI/Features/Rooms/RoomTiles.swift', 'apple/Sources/HassUI/Features/Rooms/RoomSupport.swift', 'apple/Sources/HassUI/Features/Rooms/BathroomFanRoomTile.swift', 'apple/Sources/HassUI/Features/Rooms/FanRailButton.swift',
+      'apple/Sources/HassUI/Features/Security/SecurityTiles.swift', 'apple/Sources/HassDesign/GlassTile.swift', 'apple/Sources/HassDesign/ThermostatTileFace.swift', 'apple/Sources/HassCore/Rooms/RoomController.swift'],
+    spec: ['.agents/patterns/entity-tile.md', '.agents/pages/rooms/spec.md', '.agents/design/direction-g.md'],
+    patterns: ['entity-tile', 'optimistic-actions', 'dynamic-grid', 'motion'],
+    hig: ['Color', 'Buttons', 'Typography', 'Dynamic Type', 'Accessibility', 'Motion'],
+    entities: ['switch.guest_bathroom_towel_rack_switch_top', 'cover.living_room_vents', 'vacuum.valetudo_exaltedsneakydeer', 'input_boolean.stephen_s_pc_power', 'cover.garage_left_door', 'switch.guest_bathroom_fan_switch_top', 'climate.sleepypod_eight_pod_left_side'],
+    kitComponents: ['GlassTile', 'TileGrid'],
+    devices: ['iphone', 'ipad-portrait'],
+    motion: [
+      { id: 'face-crossfade', what: 'A card changes face (towel rack on, dishwasher running): the ground, glyph and ink cross-fade together', token: 'state 0.6 s ease-in-out (0.2 s reduced), colour only', state: 'variants',
+        source: 'HassDesign/GlassTile.swift stateColorTransition / stateForeground ("GlassTile", keyed on TileColorKey); motion.md section 6', reduce: 'still cross-fades at 0.2 s',
+        play: function (stage) { var t = tile(stage, 'Towel Rack'); return R.toggle(t, true, 'On').then(function () { return Mock.sleep(500); }).then(function () { return R.toggle(t, false, 'Off'); }); } },
+      { id: 'glyph-replace', what: 'A glyph that depends on state swaps (garage door closed to open, motion sensor off to on)', token: 'system symbolEffect(.replace); identity under Reduce Motion', state: 'states',
+        source: 'HassDesign/GlassTile.swift (glyph contentTransition)', reduce: 'the glyph swaps with no effect',
+        play: function (stage) { var t = tile(stage, 'Right Door'); if (!t) return Promise.resolve(); var g = t.querySelector('.glyph'); return Mock.anim.fade(g, { from: 1, to: 0, ms: 120 }).then(function () { g.innerHTML = Mock.icon('door.garage.closed', { fill: true }); return Mock.anim.fade(g, { from: 0, to: 1, ms: 200 }); }); } },
+    ],
+    a11y: [
+      { rule: 'Roles from semantics', note: 'RoomTileSemantics maps to GlassTile kinds: modal is a button with a chevron and a value; flip is a switch with an On/Off value (towel rack); command is a button (PC, garage door: hint "Opens the door" / "Closes the door"); selection is a button selected while chosen (Music Room sources); state is a read-only group, not a button, never dimmed as disabled (Washing Machine).' },
+      { rule: 'Name and value', note: 'Label = the (personalised) title; value = the state line. The fan speaks "on, off in 12 minutes, locked" and its Lock and Power switches are separate 44 pt elements; identifier room.card.<config title> on the tile, room.fan.<entity>.lock|power on the buttons.' },
+      { rule: 'Unavailable', note: 'Dimmed glyph, not enabled, subtitle "Unavailable"; a tile with no interaction is never marked unavailable.' },
+      { rule: 'Targets', note: 'Row tiles 72 pt tall minimum, navigation-style tiles 96 pt; fan circles 44 pt (cap 66 pt).' },
+      { rule: 'State is not colour alone', note: 'Words on every tile, filled glyph when on versus the outline glyph when off, an error is a red glyph and the word "Error"/"Didn\'t respond".' },
+      { rule: 'Dynamic Type', note: 'At AX5 every tile becomes the anchored-bottom arrangement; the minimum width is a scaled 140 pt so grids go to one column.' },
+    ],
+    reviews: {
+      date: '2026-10-23', by: 'author',
+      hig: [
+        { rule: 'Buttons: 44 pt minimum target; clear state', verdict: 'pass', note: '72 pt row tiles; fan circles 44 pt.' },
+        { rule: 'Color: not the only differentiator', verdict: 'pass', note: 'Words and glyph variant on every face.' },
+        { rule: 'Disabled controls look disabled and do nothing', verdict: 'pass', note: 'Unavailable tiles dim and are not enabled; the fan hides its rail.' },
+        { rule: 'Typography: Dynamic Type', verdict: 'pass', note: 'Scaled metrics; reflow at AX sizes.' },
+        { rule: 'Color: one meaning per hue', verdict: 'fix', note: 'Wake-Light Alarms, a light-family card, never fills while ramping (the generic fill rule only knows on, open, playing...), so a wake in progress reads only in words.' },
+        { rule: 'Materials: no per-tile live blur', verdict: 'departure', note: 'Tinted-glass finish over a rendered wallpaper (direction-g.md Tile finish).' },
+      ],
+      swiftui: [
+        { rule: 'One tile component, faces decided by pure functions', verdict: 'pass', note: 'RoomTileFace.resolve and ThermostatTileFace are pure and unit tested; GlassTile draws.' },
+        { rule: 'Accessory identifiers via tileIdentifier, not on the whole tile', verdict: 'pass', note: 'Keeps room.fan.<entity>.lock|power reachable.' },
+        { rule: 'Animate colour with the app token; honour Reduce Motion', verdict: 'pass', note: 'stateColorTransition; symbol replace is identity under Reduce Motion.' },
+        { rule: 'No second timer per tile', verdict: 'pass', note: 'The fan tile ticks hourly unless a countdown shows; only bed tiles use EverySecond.' },
+        { rule: 'Explicit service calls, never toggle', verdict: 'pass', note: 'Flip cards send turn_on / turn_off (Presence Based Lighting reverts toggles); the fan sends the script\'s target state.' },
+      ],
+    },
+    notes: [
+      'Face rules (RoomTileFace.resolve): light, fan, media, power and grill fill while not "off" (muted when inactive); air fills unless the entity is a sensor or "off"; climate takes Heating or Cooling from hvac_action; occupancy while occupied; vacuum while cleaning; everything else while its state is on, open, playing... Beds fill whenever the side is on, even at level 0.',
+      'Light cards that are power devices (the towel rack\'s heat-wave icon) use the Power family: bright yellow with dark ink, not the lit tile.',
+      'Not drawn: the web\'s state washes (towel rack on, bed heating) exist in RoomFormat.background but RoomCardTile does not pass them to GlassTile.',
+      'The garage tile is the Security page\'s GarageDoorTile with the card\'s title; the app launcher tile is MediaRemoteTabs.AppTile (artwork is a remote image; the mockup draws the loading glyph).',
+      'Promote to kit: Mock.rooms.tile / card builders (pages/rooms/_rooms.js).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: every face, semantics, fan, garage, bed, unavailable and error.' }],
+  }));
+})();
+</script></body></html>

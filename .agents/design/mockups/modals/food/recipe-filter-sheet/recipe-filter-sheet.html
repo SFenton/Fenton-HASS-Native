@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Filter Recipes · modal mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/food/_food.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, F = Food;
+
+  /* Filter Recipes over the Recipes page. o: Food.filterOpts options; cur: whether the page behind already has filters applied. */
+  function sheet(ctx, o, cur) {
+    return Mock.sheet(ctx, Object.assign(F.filterOpts(o || {}), { presenter: F.recipesPage(ctx, { count: 12, filterActive: !!cur }) }));
+  }
+  function S(o, cur) { return function (c) { return sheet(c, o, cur); }; }
+
+  Mock.mount({
+    kind: 'modal', id: 'recipe-filter-sheet', title: 'Filter Recipes (filter sheet)', area: 'food', status: 'shipped',
+    summary: 'The Filter circle on Recipes opens a fitted form sheet on FilterSheet: Ingredient Coverage, Expiring Ingredients and Ranking Strength, each an inset group under a 15 Semibold secondary header with a footer that explains it. It edits a draft; the subtitle counts the filters that narrow the results.',
+    source: ['apple/Sources/HassUI/Features/Food/RecipesScreen.swift (RecipeFilterSheet, RecipeHorizonPicker, PercentSliderRow)', 'apple/Sources/HassUI/Features/Food/FoodModels.swift (RecipeFilters)', 'apple/Sources/HassUI/Features/Food/RecipeSectionHeader.swift', 'apple/Sources/HassDesign/FilterSheet.swift', 'apple/Sources/HassDesign/SheetEditToolbar.swift', 'apple/Sources/HassDesign/SheetFit.swift'],
+    spec: ['.agents/pages/food/spec.md', '.agents/pages/food/ios.md', '.agents/patterns/floating-actions.md'],
+    patterns: ['floating-actions', 'modal-sheet', 'motion'],
+    hig: ['Sheets', 'Sliders', 'Segmented controls', 'Toggles', 'Toolbars', 'Dynamic Type'],
+    entities: [],
+    kitComponents: ['FilterSheet', 'FilterSection', 'Slider', 'Toggle', 'SegmentedChoice', 'HassModal', 'SheetCancelItem', 'SheetConfirmItem', 'FloatingActionBar'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'duo-unfolded-portrait', 'ipad-portrait', 'ipad-landscape'],
+
+    states: {
+      'default': { title: 'Defaults', note: 'coverage 0%, Expiring Ingredients Only off (the 7 / 30 / 90 Days control dims with it), weights 100% and 25%; Apply dimmed, no Reset, no subtitle', render: S({}) },
+      'coverage': { title: 'Minimum coverage 60%', note: 'subtitle "1 Filter On"; Apply enabled; Reset shown', render: S({ coverage: 60, changed: true }) },
+      'expiring': { title: 'Expiring only, 30 Days', note: 'the toggle un-dims the horizon control and its footer follows the choice: "Use ingredients expiring within the next month."', render: S({ expiringOnly: true, horizon: '30 Days', changed: true }) },
+      'two-filters': { title: 'Two filters on', note: 'subtitle "2 Filters On"; the ranking weights never count (they reorder, not narrow)', render: S({ coverage: 60, expiringOnly: true, horizon: '90 Days', changed: true }) },
+      'weights': { title: 'Only the ranking changed', note: 'availability 40%, expiry 75%: no subtitle, but Apply and Reset are live', render: S({ availability: 40, expiry: 75, changed: true }) },
+      'alphabetical': { title: 'Sorted alphabetically', note: 'both weights are dimmed and the footer explains why: "Weights are unavailable while recipes are sorted alphabetically."', render: S({ alphabetical: true }) },
+      'applied': { title: 'Reopened with filters applied', note: 'draft equals what is applied: Apply dimmed, Reset shown, the Filter circle behind is tinted', render: S({ coverage: 60, expiringOnly: true, horizon: '30 Days' }, true) },
+      'medium': { title: 'Medium detent', note: 'what a fitted sheet opens at until it has measured the form', render: S({ detent: 'medium' }) },
+      'large': { title: 'Large detent', note: 'the cap a fitted sheet reaches when its form is taller than the window (larger text sizes); the form then scrolls', render: S({ detent: 'large' }) },
+      'fitted': { title: 'Fitted detent', render: S({ detent: 'fitted' }) },
+      'closed': { title: 'Before presenting / after dismissing', render: function (c) { return F.recipesPage(c, { count: 12 }); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'the 7 / 30 / 90 Days segmented control becomes a pop-up menu naming the choice; sliders keep their 44 pt track; the sheet is large and scrolls', render: S({ expiringOnly: true, horizon: '7 Days', changed: true }) },
+    },
+
+    motion: [
+      { id: 'toggle-expiring', what: 'Turning Expiring Ingredients Only on: the switch slides and fills green, the 7 / 30 / 90 Days control un-dims, the subtitle appears, Apply fills blue', token: 'switch knob standard 0.3 s smooth, track state 0.6 s (0.2 s reduced); the system dims and un-dims the segmented control; Apply and the subtitle change with no animation of their own', state: 'default',
+        source: 'HassUI/Features/Food/RecipesScreen.swift RecipeFilterSheet; HassDesign/FilterSheet.swift', reduce: 'the knob still slides (the system switch) and the track cross-fades at 0.2 s',
+        play: function (stage) {
+          var t = stage.querySelector('.ui-toggle'), seg = stage.querySelector('.ui-field.fd-dis'), ok = stage.querySelector('.ui-confirm'); if (!t) return Promise.resolve();
+          return Mock.sleep(500).then(function () {
+            t.classList.add('on'); t.setAttribute('aria-checked', 'true'); if (seg) seg.classList.remove('fd-dis'); if (ok) ok.disabled = false;
+            var su = stage.querySelector('.ui-mhead .ct'); if (su && !su.querySelector('.su')) su.appendChild(h('span.su', '1 Filter On'));
+            return Mock.sleep(Mock.anim.ms.state() + 700);
+          });
+        } },
+      { id: 'slider', what: 'Dragging a slider moves the knob in steps of 5 and the value reads out beside the title', token: 'system Slider (step 5); the value is Text(...).monospacedDigit(), no content transition', state: 'default',
+        source: 'HassUI/Features/Food/RecipesScreen.swift PercentSliderRow', reduce: 'nothing to reduce (direct manipulation)',
+        play: function (stage) {
+          var row = stage.querySelector('.fd-sl'); if (!row) return Promise.resolve();
+          var fi = row.querySelector('.fi'), kn = row.querySelector('.kn'), va = row.querySelector('.va'), n = 0;
+          return new Promise(function (res) { var iv = setInterval(function () { n += 5; fi.style.width = n + '%'; kn.style.left = n + '%'; va.textContent = n + '%'; if (n >= 60) { clearInterval(iv); setTimeout(res, 500); } }, 70); });
+        } },
+    ],
+
+    transitions: [
+      { from: 'Recipes (Filter circle)', to: 'Filter Recipes sheet', kind: 'sheet', state: 'closed', note: 'A form sheet fitted to its content, capped at large (longer forms scroll); iPad shows a 540 pt form sheet.',
+        play: function (stage) { return Mock.presentDemo(stage, F.filterOpts({ coverage: 60, changed: true }), { hold: 1200 }); } },
+      { from: 'Apply', to: 'Recipes', kind: 'sheet', state: 'coverage', note: 'Apply commits the draft and dismisses; the grid reloads through the results gate and the Filter circle fills #F2F2F7. Cancel and a swipe down drop the draft.',
+        play: function (stage) { var host = stage.querySelector('.ui-host'); return Mock.anim.sheet(host, 'out').then(function () { return Mock.sleep(500); }); } },
+    ],
+
+    a11y: [
+      { rule: 'Reading order', note: 'Title "Filter Recipes" with its subtitle ("1 Filter On"), Cancel, Apply; then each group header (heading), its rows and its footer; "Reset to Defaults" last.' },
+      { rule: 'Sliders', note: 'One adjustable element per row: label "Minimum Ingredients Available", value "60 percent"; swipe up or down moves five points (clamped to 0...100). The visible title and value belong to the element (hiding them while only the slider spoke flagged inaccessible text on the folded Duo). A dimmed row ignores adjustment.' },
+      { rule: 'Toggle and horizon', note: '"Expiring Ingredients Only" is a switch with a clock label; "Expiring Within" is a segmented control (7 / 30 / 90 Days), dimmed while the switch is off, a pop-up menu that names the choice at accessibility sizes; at least 44 pt.' },
+      { rule: 'Footers', note: 'Each footer states what the group does or why it is unavailable; the one under Expiring Ingredients follows the chosen horizon.' },
+      { rule: 'Toolbar', note: 'Cancel and "Apply" as in every FilterSheet; Apply is dimmed until the draft differs from what is applied.' },
+      { rule: 'Dynamic Type', note: 'Headers, labels and footers wrap; the horizon control swaps to a menu at AX sizes; the form is as tall as the text needs and scrolls beyond the large cap.' },
+      { rule: 'Light and dark', note: 'System appearance; group cells #2C2C2E or white on the grouped ground; footers are secondary ink.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Sheets: group related settings under headers with explanatory footers', verdict: 'pass', note: 'Direction G form: inset sections, 15 Semibold secondary headers, footers that explain each group (mockup n5 Filter Recipes).' },
+        { rule: 'Segmented controls: two to four short options; a menu when text cannot fit', verdict: 'pass', note: '7 / 30 / 90 Days inline, a pop-up menu at accessibility sizes (direction-g.md Controls).' },
+        { rule: 'Sliders: show the value and make it adjustable to assistive technologies', verdict: 'pass', note: 'Value shown and spoken; step 5.' },
+        { rule: 'Toggles: a switch only in a list row', verdict: 'pass', note: 'One switch, in its row.' },
+        { rule: 'Toolbars: disable rather than hide a control that does not apply now', verdict: 'departure', note: 'Apply visible and dimmed until a change (owner 2026-10-16), as in Calendar and Reminders.' },
+        { rule: 'Materials: opaque sheet ground, no band under the title', verdict: 'departure', note: 'modalChrome plus the grouped background (the header read as a translucent band on Filter Recipes until 2026-10-16).' },
+      ],
+      swiftui: [
+        { rule: 'Use FilterSection, not Section("..."), for a header that must stay readable', verdict: 'pass', note: 'The Form section uses RecipeSectionHeader (FormHeader ink) because it also needs a footer; the system header measured 3.1:1.' },
+        { rule: 'Accessibility element for a compound row', verdict: 'pass', note: 'PercentSliderRow: children ignored, label, value and an adjustable action on one element.' },
+        { rule: 'Disable through the environment, dim consistently', verdict: 'pass', note: '.disabled on the picker and the weights; PercentSliderRow reads isEnabled and sets opacity .5.' },
+        { rule: 'Scaled padding on the Reset row', verdict: 'pass', note: 'verticalPadding is @ScaledMetric so the row grows with the text instead of a fixed 44 pt floor.' },
+        { rule: 'Compare drafts with Equatable', verdict: 'pass', note: 'RecipeFilters is Equatable; canApply is draft != current, canReset is draft != .defaults.' },
+      ],
+    },
+
+    notes: [
+      'loading, error and offline: none. The sheet edits a local draft and never waits on the service; applying only changes the page behind it.',
+      'Docs vs code: floating-actions.md says FilterSheet defaults to medium and large detents; the code is fitted (default) or full, no detents argument. The shipped phone height is whatever the measured form needs, capped at large, so the "medium" state is only the provisional detent before measurement.',
+      'The "applied" state draws the filters ticked with Apply dimmed because the draft equals the current value; the circle behind is tinted #F2F2F7 (its colour change animates 0.6 s, see Recipes).',
+      'iPad and the unfolded Duo present a 540 pt form sheet fitted to the content (iOS 18+); on the Duo the system places it, possibly across the hinge band (check on a device).',
+      'The kit\'s SliderRow is a self-contained card; here the rows sit in one inset group like the Form, built from ui-form, Slider and Toggle (promote to kit: a SliderRow without its own card).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: defaults, coverage, expiring, two filters, weights, alphabetical, applied, three detents, AX5; light and dark in the gallery.' }],
+  });
+})();
+</script></body></html>

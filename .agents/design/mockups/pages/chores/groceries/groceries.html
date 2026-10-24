@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Groceries · page mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../_chores.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, C = window.Chores;
+
+  /* Config assembled by Chores.pageConfig / sheetConfig in pages/chores/_chores.js, which supplies: source: spec: states: motion: a11y: reviews: { hig: swiftui: } devices: (static check keys). */
+  Mock.mount(C.pageConfig('groceries', {
+    title: 'Groceries (Grocery List)',
+    summary: 'The shared grocery list: one list "Grocery List" of checkable items on the dimmed house photo, an Add Groceries button, swipe to delete. No editor and no due dates. Fixture items.',
+    source: ['apple/Sources/HassUI/Features/Home/HomeRoute.swift', 'apple/Sources/HassUI/Features/Rooms/RoomScreen.swift', 'apple/Sources/HassUI/Features/Chores/TodoItemSheets.swift'],
+    entities: ['todo.shopping_list'],
+    defaultTitle: 'Three items on the list',
+    reviews: { hig: [{ rule: 'Buttons: a labelled primary action for the page', verdict: 'pass', note: 'Add Groceries is the one floating action (floating-actions.md).' }], swiftui: [] },
+    a11y: [{ rule: 'Reading order', note: 'Back (the sending page), Quick Links, Profile; the title "Groceries" (heading); the "Grocery List" heading; each item top to bottom; Add Groceries; tab bar. Items have no Edit button, so the row is one toggle plus Delete in the actions.' }],
+    notes: [
+      'Pushed from three places: the Chores Quick Links ("Groceries" tile, back label Chores), the Kitchen room page (a "Grocery List" tile, back label Kitchen) and the HomeRoute.groceryList route. The nav title is always "Groceries" (ChoresConfig.groceries.title) even when the route is called "Grocery List".',
+      'Groceries is a DoneTick-free page: rows edit nothing (no Edit glyph, trailing swipe is Delete only) and Delete says "Delete Item", not "Delete Task". Checking an item off runs todo.update_item; completed items are hidden.',
+      'With nothing listed the empty state reads "No Groceries Listed / Add some groceries to see them appear." No vacation copy (hiddenByVacation is false).',
+    ],
+  }));
+
+})();
+</script></body></html>

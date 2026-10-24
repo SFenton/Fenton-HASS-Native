@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guest Controls · page mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../_household-forms.js"></script>
+</head><body>
+<script>
+(function () {
+  Mock.mount({
+    kind: 'page', id: 'household-guests', title: 'Guest Controls', area: 'settings', status: 'shipped',
+    summary: 'Settings > Household > Guest Controls. One section, one toggle per guest room (Guest Room, Music Room, Theater Room): on tells the house guests are staying, which pauses automations like automatic vacuuming and keeps the room tracked for temperature and vents. The same three entities drive the Guests Staying Over section on Home.',
+    source: ['apple/Sources/HassUI/Features/Settings/Household/HouseholdSettingsPage.swift', 'apple/Sources/HassCore/Config/HouseholdSettingsConfig.swift', 'apple/Sources/HassCore/Config/HomeConfig.swift', 'apple/Sources/HassCore/Settings/HouseholdSettingsController.swift', 'apple/Sources/HassDesign/SettingsSection.swift'],
+    spec: ['.agents/pages/settings/household.md', '.agents/patterns/settings-section.md'],
+    patterns: ['settings-section', 'entity-tile', 'dynamic-grid', 'page-backdrop'],
+    hig: ['Toggles', 'Layout', 'Dynamic Type', 'Color'],
+    entities: ['input_boolean.guests_staying_in_guest_room', 'input_boolean.guests_staying_in_music_room', 'input_boolean.guests_staying_in_theater_room'],
+    kitComponents: ['SettingsSection', 'GlassTile', 'TileGrid'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'duo-unfolded-portrait', 'ipad-portrait', 'ipad-landscape'],
+
+    states: HF.pageStates('guests', {
+      base: { rooms: { guest: true, music: false, theater: false } },
+      defaultTitle: 'Guest Room on, the other two off',
+      long: { rooms: { guest: true, music: true, theater: false } },
+      longNote: 'xxxLarge: the paragraph is the longest copy; tile titles wrap and the three tiles drop to a narrower grid',
+      extra: {
+        'all-off': { title: 'No guests', opts: { rooms: { guest: false, music: false, theater: false } } },
+        'all-on': { title: 'All three rooms on', opts: { rooms: { guest: true, music: true, theater: true } } },
+      },
+    }),
+
+    motion: HF.pageMotion('guests', true),
+    transitions: HF.pageTransitions('guests'),
+
+    a11y: [
+      { rule: 'Reading order', note: 'Back (or Open Navigation), Quick Links, Profile; the title "Guest Controls"; the section heading "Guest Controls", its paragraph, then Guest Room, Music Room, Theater Room.' },
+      { rule: 'Toggle tiles', note: '"Guest Room, On": a button with the toggle trait (selected when on). Identifiers household.tile.input_boolean.guests_staying_in_<room>. Glyphs (bed, guitars, projector) are decorative.' },
+      { rule: 'Unavailable', note: '"Theater Room, Unavailable": dimmed and inert; the other tiles keep working.' },
+      { rule: 'Same title twice', note: 'The page title and the section heading are both "Guest Controls" (as on the web); VoiceOver reads the section as a heading under the page title, so the repeat is expected.' },
+      { rule: 'Targets and Dynamic Type', note: 'Tiles are at least 72 pt tall; the minimum cell width (150 pt) scales with the text, so the grid goes from five columns on iPad to one at AX5 and the tiles stack glyph over text.' },
+      { rule: 'Reduce Motion / Transparency', note: 'Colour cross-fades shorten to 0.2 s; Reduce Transparency draws the solid tile finish.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Toggles: show on and off state and make the control labelled', verdict: 'pass', note: 'Tile toggles carry the toggle trait and say On or Off, with a filled glyph and tinted rim; colour is never the only cue.' },
+        { rule: 'Settings: group related controls under headers with explanatory text', verdict: 'pass', note: 'One SettingsSection: a heading, its description, then the controls.' },
+        { rule: 'Layout: readable content width on wide screens', verdict: 'pass', note: 'The column is capped at 840 pt and centred on iPad and the unfolded Duo.' },
+        { rule: 'Dynamic Type: reflow instead of truncating', verdict: 'pass', note: 'The grid\'s minimum cell width scales with the text; at AX5 the tiles stack glyph over text.' },
+        { rule: 'Materials: tiles as Liquid Glass', verdict: 'departure', note: 'Tiles are content-layer modules (tinted glass finish, direction-g.md Tile finish); Liquid Glass stays on the navigation layer.' },
+      ],
+      swiftui: [
+        { rule: 'Scaled metrics and reflow at accessibility sizes', verdict: 'pass', note: 'HouseholdTileGrid(minWidth: 150, maxColumns: 6) scales with @ScaledMetric.' },
+        { rule: 'Explicit commands from the shown state', verdict: 'pass', note: 'flip() sends turn_on or turn_off for input_boolean from what the tile shows, optimistic for 2 s.' },
+        { rule: 'Animate colour with the app token, honour Reduce Motion', verdict: 'pass', note: 'GlassTile stateColorTransition: 0.6 s, 0.2 s reduced.' },
+        { rule: 'Do not fork a screen per device', verdict: 'pass', note: 'One layout; width decides columns (DynamicGridLayout), never a device-name check.' },
+        { rule: 'Avoid hard-coded colours', verdict: 'departure', note: 'Tint is HassTokens.Tint.settingsSwitch (67, 160, 71), the web SWITCH_ACTIVE_COLOR, for parity with the React dashboard (household.md).' },
+      ],
+    },
+
+    notes: [
+      'loading: no loading UI; tiles read the saved snapshot. With nothing saved on a first sign-in the entities are nil and every tile reads Unavailable (the error state). refreshing: a live change updates one tile in place. empty: the three rooms are config, so the page is never empty.',
+      'Docs versus code: pages/settings/household.md places these rows inside the Account sheet; the code pushes them on the Settings tab path.',
+      'The web gives the grid two columns, up to three, cells at most 320 px; the app keeps growing (up to six columns, five on iPad landscape).',
+      'Home\'s Guests Staying Over section reads the same three entities (HomeConfig.guestToggles) and only shows while one is on.',
+      'Fixture data: which rooms are on is invented; entity ids are the real ones.',
+      'Pages never split: one centred 840 pt column on the unfolded Duo and iPad landscape; the Duo grid rounds to even columns around the hinge.',
+      'Unconfirmed: on the unfolded Duo in landscape the centred 840 pt column is not aligned to the hinge band (x 455 to 496 pt), so with four columns one tile can straddle the fold even though the grid rounds to an even count; the simulator pose was only run for pages without this check, so confirm on a device.',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: three guest-room toggles, unavailable, offline, reconnecting, xxxLarge and AX5.' }],
+  });
+})();
+</script></body></html>

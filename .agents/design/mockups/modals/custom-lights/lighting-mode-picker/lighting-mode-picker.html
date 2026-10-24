@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lighting Mode picker · modal mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../components/media/_media-lights-cameras.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components;
+  function presenter(ctx, o) { return MLC.customLightsPage(ctx, { connection: o && o.connection, mode: (o && o.sel) || 'Custom' }); }
+  /* OptionPickerSheet(title: "Lighting Mode", options: input_select options with swatches) in .sheet { }.hassSheet(.form): fitted. */
+  function opts(ctx, o) {
+    o = o || {}; var modes = o.modes || MLC.MODES;
+    var options = modes.map(function (m) { var sw = MLC.swatch(m); return { value: m, swatch: sw.length ? sw : null }; });
+    return { title: 'Lighting Mode', detent: o.detent || 'fitted', size: 'form', trailing: 'close', content: K.OptionPickerSheet({ options: options, selected: o.sel || 'Custom' }) };
+  }
+  function sheet(ctx, o) { o = o || {}; return Mock.sheet(ctx, Object.assign(opts(ctx, o), { presenter: presenter(ctx, o) })); }
+  var S = function (o) { return function (c) { return sheet(c, o); }; };
+
+  Mock.mount({
+    kind: 'modal', id: 'lighting-mode-picker', title: 'Lighting Mode picker', area: 'custom-lights', status: 'shipped',
+    summary: 'The option sheet the Lighting Mode row opens: each mode with its colour swatch and a checkmark on the current one. A fitted form sheet (narrow on iPad); choosing a new mode sends it and dismisses. Follows the system appearance.',
+    source: ['apple/Sources/HassUI/Features/CustomLights/CustomLightsScreen.swift', 'apple/Sources/HassDesign/OptionPickerSheet.swift', 'apple/Sources/HassCore/Config/CustomLightsConfig.swift', 'apple/Sources/HassDesign/HassModal.swift'],
+    spec: ['.agents/patterns/option-picker.md', '.agents/pages/custom-lights/ios.md', '.agents/patterns/modal-sheet.md'],
+    patterns: ['option-picker', 'modal-sheet'],
+    hig: ['Sheets', 'Pickers', 'Lists and tables'],
+    entities: ['input_select.front_yard_custom_lights'],
+    kitComponents: ['OptionPickerSheet', 'HassModal', 'SheetCloseItem'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+
+    states: {
+      'default': { title: 'Custom selected, live colours', note: 'the Custom swatch is the lights\' own colours, darkest first; Default has no swatch', render: S() },
+      'loading': { title: 'No options yet (fallback list)', note: 'no loading state: the options come from the select\'s attributes, else the web\'s four fallback modes (Default, Custom, Seahawks, Valentine\'s Day), drawn here', render: S() },
+      'error': { title: 'Select unavailable', note: 'the row only opens while manual control is on; with the select unavailable the sheet still lists the fallback modes and choosing one sends nothing useful (Home Assistant stays the source of truth)', render: S({ sel: 'Default' }) },
+      'offline': { title: 'Over an offline Custom Lights page', note: 'no offline UI of its own; the page behind carries the offline chip', render: S({ connection: 'offline' }) },
+      'seahawks': { title: 'Seahawks selected', note: 'the checkmark moves; the page behind shows the swatch', render: S({ sel: 'Seahawks' }) },
+      'long-text': { title: 'Long mode names', note: 'a long mode name wraps; rows grow past 44 pt', render: S({ modes: ['Default', 'Custom', 'Seahawks Game Day Blue and Green', "Valentine's Day Red and Pink Fade"], sel: 'Custom' }) },
+      'medium': { title: 'Medium detent (provisional)', note: 'what a fitted sheet opens at until its content is measured', render: S({ detent: 'medium' }) },
+      'large': { title: 'Large detent', note: 'only when many modes or AX sizes make the list taller than the window', render: S({ detent: 'large' }) },
+      'fitted': { title: 'Fitted detent (shipped)', render: S({ detent: 'fitted' }) },
+      'closed': { title: 'Before presenting / after dismissing', render: function (c) { return presenter(c); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'rows wrap and grow; the swatch keeps its 44 by 20 pt size', render: S() },
+    },
+
+    motion: [
+      { id: 'check', what: 'Choosing a mode: the checkmark appears on the new row and leaves the old one, then the sheet dismisses', token: 'quick 0.2 s easeOut on the check\'s opacity (quickTransition("OptionPickerSheet"))', state: 'default',
+        source: 'HassDesign/OptionPickerSheet.swift; motion-components.md OptionPickerSheet rows (done)', reduce: 'unchanged (opacity is allowed)',
+        play: function (stage) { var rows = stage.querySelectorAll('.ui-optrow'); rows[1].classList.remove('sel'); rows[2].classList.add('sel'); return Mock.sleep(Mock.anim.ms.quick() + 500).then(function () { return Mock.anim.sheet(stage.querySelector('.ui-host'), 'out'); }); } },
+    ],
+
+    transitions: [
+      { from: 'Lighting Mode row', to: 'Lighting Mode picker', kind: 'sheet', state: 'closed', note: 'The row presents a form sheet fitted to its rows; the page scales back and dims.',
+        play: function (stage) { return Mock.presentDemo(stage, opts(Mock.current, {}), { hold: 1300 }); } },
+      { from: 'Lighting Mode picker', to: 'Custom Lights page', kind: 'sheet', state: 'default', note: 'Choosing a new mode sends it and dismisses; choosing the current one only dismisses; Close or a swipe down dismisses.',
+        play: function (stage) { return Mock.anim.sheet(stage.querySelector('.ui-host'), 'out').then(function () { return Mock.sleep(500); }); } },
+    ],
+
+    a11y: [
+      { rule: 'Reading order', note: 'Title "Lighting Mode", the rows in order, Close.' },
+      { rule: 'Rows', note: 'Each row is a button named by the mode, identifier customLights.mode.<name>; the current one carries the selected trait. The swatch and checkmark are hidden from VoiceOver, so selection is spoken, not only coloured.' },
+      { rule: 'Targets', note: 'Rows are at least 44 pt (minTarget) and grow with text.' },
+      { rule: 'Dynamic Type', note: 'Labels wrap; the swatch is fixed at 44 by 20 pt.' },
+      { rule: 'Contrast', note: 'The sheet takes an opaque grouped background at every detent: the medium detent\'s glass let a page\'s coloured tiles show through the rows and fail contrast (option-picker.md).' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Pickers: a short list of mutually exclusive options', verdict: 'pass', note: 'Single-choice list with a checkmark; four to six options is the sweet spot; two to four short choices would be a SegmentedChoice instead.' },
+        { rule: 'Sheets: form sheet on iPad for lists and prompts', verdict: 'pass', note: '.hassSheet(.form): 540 pt on iPad and the unfolded Duo.' },
+        MLC.R.sheetFit, MLC.R.target44, MLC.R.colorNotAlone, MLC.R.darkModes,
+        { rule: 'Materials: a sheet draws on an opaque ground', verdict: 'departure', note: 'Opaque grouped background at every detent (option-picker.md; modal-sheet.md).' },
+      ],
+      swiftui: [
+        MLC.R.scaled, MLC.R.motionTokens,
+        { rule: 'Choosing calls the action only for a new value, then dismisses', verdict: 'pass', note: 'OptionPickerSheet.choose is skipped for the current option.' },
+        { rule: 'Identifiers and traits for UI tests', verdict: 'pass', note: 'Rows carry customLights.mode.<value> and isSelected.' },
+      ],
+    },
+
+    notes: [
+      'Docs versus code: option-picker.md says "present it with .presentationDetents([.medium, .large])"; the Custom Lights call site uses .hassSheet(.form) (fitted, capped at large), as modal-sheet.md says. Medium here is only the provisional detent.',
+      'The mode swatch for Custom is computed from the lights\' live colours (customGradient); Seahawks and Valentine\'s Day use fixed colours from the automations that drive them.',
+      'The picker opens only while manual control is on (the Lighting Mode row exists only then).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: four modes with swatches, selected check, three detents, AX5, light and dark.' }],
+  });
+})();
+</script></body></html>

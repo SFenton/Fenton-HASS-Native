@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vacation date fields · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/vacation/_vacation-sprinklers.js"></script>
+</head><body>
+<script>
+(function () {
+  var cfg = Mock.componentConfig('VacationDateFields', { surfaces: ['page', 'sheet'], swatchWidth: '372px' });
+  Mock.mount(Object.assign(cfg, {
+    states: cfg.states,
+    id: 'vacation-date-fields', title: 'Vacation date fields (start, end, range error)', area: 'vacation', status: 'shipped',
+    summary: 'VacationDateFields: the vacation\'s start and end, each one compact date-and-time picker on a material row (ScheduleDateFields), under the dates description; a range error appears between the description and the fields when the start is not before the end. Used inline on Vacation Mode (writes after 0.9 s) and in the Confirm Vacation sheet (a local draft).',
+    source: ['apple/Sources/HassUI/Features/Vacation/VacationModeScreen.swift', 'apple/Sources/HassDesign/ScheduleDateFields.swift', 'apple/Sources/HassCore/Config/VacationConfig.swift'],
+    spec: ['.agents/patterns/schedule-date-fields.md', '.agents/pages/vacation/ios.md'],
+    patterns: ['schedule-date-fields', 'settings-section'],
+    hig: ['Date pickers', 'Layout', 'Dynamic Type', 'Dark Mode'],
+    kitComponents: ['ScheduleDateFields', 'InlineAlert'],
+    devices: ['iphone', 'ipad-portrait'],
+    a11y: [
+      { rule: 'Field', note: 'A labelled row at least 44 pt tall: a wrapping Text label ("Starts") beside a label-hidden compact DatePicker that carries the same accessibility label; identifiers vacation.dates.start and .end (inline) or vacation.confirm.start and .end (sheet).' },
+      { rule: 'Range error', note: 'An inline error alert between the description and the fields; it is read as an error and is not part of either field. Validation messages go below the description, not inside a field (schedule-date-fields.md).' },
+      { rule: 'Dynamic Type', note: 'The row is a ViewThatFits: label and picker side by side when the label fits one line, else the picker drops below the label (accessibility sizes, narrow iPad sheet columns); the label never truncates. Check at AX5 with the Text size control.' },
+      { rule: 'Commit', note: 'On the page each change is held for 0.9 s of quiet, then written once; the draft clears when the saved value changes or 3 s after reporting.' },
+      { rule: 'Light and dark', note: 'The row is a regular material on a page and in a sheet; the label is Ink.primary in both.' },
+    ],
+    reviews: { date: '2026-10-23', by: 'author',
+      hig: [{ rule: 'Date pickers: use compact pickers for a date and time; one control per moment', verdict: 'pass', note: 'Calendar\'s Starts and Ends idiom (owner 2026-10-13); four fields read as clutter.' },
+        { rule: 'Errors: place validation next to the control and say how to fix it', verdict: 'pass', note: 'The message names both the rule and the consequence.' },
+        { rule: 'Targets: 44 pt minimum', verdict: 'pass', note: 'minHeight 44 plus vertical padding.' },
+        { rule: 'Dark Mode: both appearances', verdict: 'pass', note: 'Material row, adaptive ink.' }],
+      swiftui: [{ rule: 'ViewThatFits for label and control', verdict: 'pass', note: 'Drops the picker below the label at AX sizes (the picker\'s own label truncated).' },
+        { rule: 'Debounce live service writes', verdict: 'pass', note: 'commitDelay 0.9 s.' },
+        { rule: 'Accessibility: label the picker', verdict: 'pass', note: '.accessibilityLabel(field.label) on a label-hidden picker.' }] },
+    notes: [
+      'The picker values are drawn as date and time buttons in the kit\'s style; the real control is the system compact DatePicker (date and hour-and-minute buttons).',
+      'ax5: use the Text size control; the kit stacks the label above the pickers at that size, as ViewThatFits does.',
+      'Consumers: Vacation Dates (inline), Confirm Vacation (sheet). Solo Trip uses ScheduleDateFields directly for Returns and for the editor. Planned in the pattern doc: sprinkler start times (the editor still has its own DatePicker rows).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: valid, invalid, single field, long label.' }],
+  }));
+})();
+</script></body></html>

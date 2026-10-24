@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contact Sensors overview sheet · modal mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../_room-overview-data.js"></script>
+<script src="../_room-overview.js"></script>
+</head><body>
+<script>
+(function () {
+  var kind = 'contacts', room = "Office";
+  var states = RO.overviewStates(kind, { room: room });
+  states['from-security'] = { title: 'Opened from the Security page', note: 'the same full-height sheet over Security (its Contact Sensors chip); only the page behind differs', render: function (ctx) { return RO.sheet(ctx, { kind: kind, W: RO.world('mixed'), from: 'security' }); } };
+  states.room.note = 'a plain push with Back; the first line is the room summary ("All Windows Open" or "1 Window Open"), then the sensors under "Contact Sensors"';
+  Mock.mount({
+    kind: 'modal', id: 'room-overview-contacts', title: 'Contact Sensors overview sheet', area: 'home', status: 'shipped',
+    summary: "Opened by the Contact Sensors chip on Home and on Security. Every room with doors or windows, each card saying what is open (\"Door Open\", \"1 Window Open\", \"All Windows Closed\"); a card with something open fills soft green. Each pushes the room's sensors inside the sheet. A full-height page sheet that follows the system appearance.",
+    source: [
+      "apple/Sources/HassUI/Common/RoomOverview/RoomOverviewSheet.swift",
+      "apple/Sources/HassUI/Common/RoomOverview/RoomOverviewGrid.swift",
+      "apple/Sources/HassUI/Common/RoomOverview/RoomOverviewTile.swift",
+      "apple/Sources/HassUI/Common/RoomOverview/RoomOverviewStyle.swift",
+      "apple/Sources/HassCore/Rooms/RoomOverview.swift",
+      "apple/Sources/HassCore/Rooms/RoomGroups.swift",
+      "apple/Sources/HassCore/Rooms/RoomFormat.swift",
+      "apple/Sources/HassUI/Features/Home/HomeScreen.swift",
+      "apple/Sources/HassDesign/GlassTile.swift",
+      "apple/Sources/HassDesign/DynamicGridLayout.swift",
+      "apple/Sources/HassDesign/HassModal.swift",
+      "apple/Sources/HassUI/Features/Security/SecurityScreen.swift"
+],
+    spec: [".agents/pages/home/spec.md", ".agents/pages/home/ios.md", ".agents/patterns/room-overview-sheet.md"],
+    patterns: ['room-overview-sheet', 'modal-sheet', 'dynamic-grid', 'entity-tile', 'status-rail'],
+    hig: ['Sheets', 'Toolbars', 'Layout', 'Typography', 'Accessibility'],
+    entities: ["binary_sensor.front_door_contact_sensor_contact", "binary_sensor.office_pc_window_sensor_contact", "binary_sensor.garage_door_contact_sensor_contact"],
+    kitComponents: ['HassModal', 'SheetCloseItem', 'GlassTile', 'TileGrid', 'PageSectionHeader', 'ChipRail', 'WeatherCard', 'AlarmPanel'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+
+    states: states,
+    motion: RO.overviewMotion(kind),
+    transitions: RO.transitions(kind, room),
+
+    a11y: [
+      {
+            "rule": "Reading order",
+            "note": "The sheet is modal: focus lands on the title \"Contact Sensors\" and its subtitle (\"3 Open\" or \"All Closed\"), then the \"Rooms\" heading, the 11 room cards in grid order, then Close (identifier overview.contacts)."
+      },
+      {
+            "rule": "Room cards",
+            "note": "One button each: label the room, value the summary (\"1 Window Open\", \"Door Closed\"), hint \"Opens Office Contact Sensors\". Identifier overview.contacts.room.<room>. 72 pt minimum height."
+      },
+      {
+            "rule": "State is not colour alone",
+            "note": "An open card is filled soft green with an open door or window glyph and the words \"Open\"; a closed card is dark with the closed glyph and \"Closed\". Doors and windows have different glyphs."
+      },
+      {
+            "rule": "Two entry points",
+            "note": "The same sheet opens from Home's chip and from Security's Contact Sensors chip, full height both times; the chip itself reads the house (armed with something open adds a triangle) but the sheet does not."
+      },
+      {
+            "rule": "Equal heights and Dynamic Type",
+            "note": "Every card has the height of the tallest; the minimum width scales and the grid is one column of stacked tiles at AX5."
+      },
+      {
+            "rule": "Close",
+            "note": "The circle x is labelled Close for VoiceOver (never \"Done\"); it stays in the bar when a room is pushed, and dismisses the whole sheet from any depth."
+      },
+      {
+            "rule": "Light and dark",
+            "note": "The sheet follows the system appearance (white cells on #F2F2F7, or #2C2C2E on #1C1C1E); family fills and the lit tile are fixed in both. Reduce Transparency draws the solid tile finish."
+      }
+],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+      {
+            "rule": "Sheets: a sheet may hold a navigation hierarchy; give it a close control",
+            "verdict": "pass",
+            "note": "NavigationStack inside the sheet, Back on the pushed page, circle x Close at every depth."
+      },
+      {
+            "rule": "Sheets: prefer page or form sizing on iPad",
+            "verdict": "pass",
+            "note": "hassSheet(.page, height: .full): a 704 pt page sheet on iPad and the unfolded Duo; tile grids need the width."
+      },
+      {
+            "rule": "Sheets: content that pushes pages keeps one height",
+            "verdict": "pass",
+            "note": "height .full is required here (modal-sheet.md): a fitted sheet would resize when a room is pushed."
+      },
+      {
+            "rule": "Layout: scales with Dynamic Type",
+            "verdict": "pass",
+            "note": "Scaled minimum card width, one column at AX5, equal heights measured live."
+      },
+      {
+            "rule": "Materials: a sheet draws on an opaque ground",
+            "verdict": "departure",
+            "note": "Opaque sheet ground and sheet-cell tiles at every size, as direction-g.md Sheets and modal-sheet.md."
+      },
+      {
+            "rule": "Color: not the only differentiator",
+            "verdict": "pass",
+            "note": "Soft green fill comes with an open glyph and the word Open; closed is outline and \"Closed\"."
+      },
+      {
+            "rule": "Toolbars: a centred title with a one-line subtitle",
+            "verdict": "pass",
+            "note": "iOS 26 navigation subtitle (\"3 Open\"); earlier systems show \"Contact Sensors\" alone."
+      }
+],
+      swiftui: [
+      {
+            "rule": "Use ScrollView with a layout, not a List, for tile grids",
+            "verdict": "pass",
+            "note": "ScrollView { DynamicGridLayout } capped at 960 pt and centred."
+      },
+      {
+            "rule": "Scaled metrics for tile width",
+            "verdict": "pass",
+            "note": "@ScaledMetric(relativeTo: .subheadline) minTileWidth = 140."
+      },
+      {
+            "rule": "No entrance animations inside a sheet",
+            "verdict": "pass",
+            "note": "Content is present on arrival (motion.md 4.4); no .onAppear cascade."
+      },
+      {
+            "rule": "navigationSubtitle only where available",
+            "verdict": "pass",
+            "note": "sheetSubtitle(_:) guards #available(iOS 26); earlier systems keep the web title (SheetSubtitle.isShown)."
+      },
+      {
+            "rule": "Accessibility identifiers and hints on controls",
+            "verdict": "pass",
+            "note": "overview.contacts, overview.contacts.room.<room>; hint \"Opens <room> Contact Sensors\"."
+      },
+      {
+            "rule": "Colour changes animate with the app token",
+            "verdict": "pass",
+            "note": "GlassTileFace .stateColorTransition: 0.6 s, 0.2 s reduced; the glyph swaps with .symbolEffect(.replace), identity under Reduce Motion."
+      }
+],
+    },
+
+    notes: [
+      "loading: there is no loading state. The sheet reads EntityStore, so the \"loading\" state here is an empty store: every room reads closed. No spinner or pending bar exists on these cards.",
+      "from-security: the Security page's Contact Sensors chip opens this same sheet with hassSheet(.page, height: .full); only the page behind differs (SecurityScreen.swift).",
+      "Summaries (RoomFormat.contactSummary): one door \"Door Open\" / \"Door Closed\"; several of one kind \"2 Doors Open\" / \"All Windows Closed\"; Master Bedroom's one sensor stands for two street windows (contactCount 2), so one open sensor reads \"1 Window Open\".",
+      "Unavailable rooms: the overview cards carry no unavailable face; an unavailable sensor reads closed here (RoomFormat.isOpen is false). The pushed tiles dim and read Unavailable.",
+      "Sections: this sheet has one heading, \"Rooms\"; the cards do not reorder when something opens.",
+      "medium and fitted: not offered. The sheet is hassSheet(.page, height: .full), so large is the only detent; on iPad and the unfolded Duo it is the 704 pt page sheet. Dismiss is Close or a swipe down (Transitions list); there is no confirmation.",
+      "Docs versus code: direction-g.md says room cards in the chip overviews are \"status tiles, not navigation\", but the code draws them with kind .navigate (a trailing chevron) and pushes the room; patterns/motion.md still lists the overview room tiles as a zoom, but the code is a plain push (owner 2026-10-22, motion.md 4.3, .measuresNavigation(.push)). Drawn as the code.",
+      "Duo unfolded: the page sheet is centred in the window and crosses the hinge band here; a 704 pt sheet gives four even columns. Placement is the system's (the unfolded simulator pose was run for pages only): check on a device.",
+      "Kit gaps (promote to kit): symbols window.vertical.open|closed, figure.stand, desktopcomputer, stove, stairs, bathtub (added at runtime in modals/home/_room-overview.js); TileGrid with equal rows stretches a section header to the tile height and its track overflows a narrow container at AX5 (the helper equalises in JS and caps the track); BrightnessTile prints \"On at 70%\" where the app prints \"70%\".",
+      "Fixture: values are invented; room names, entity ids and the group lists are the app's (HassCore/Rooms/RoomGroups.swift)."
+],
+    changelog: [{ date: '2026-10-23', note: 'First pass built with the kit: overview in every state, the pushed room, present and push transitions, light and dark.' }],
+  });
+})();
+</script></body></html>

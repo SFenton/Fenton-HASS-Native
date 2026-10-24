@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Confirm Vacation · modal mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/vacation/_vacation-sprinklers.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, V = Mock.VS.V;
+  function st(o) { return function (ctx) { return V.confirmSheet(ctx, o || {}); }; }
+
+  Mock.mount({
+    kind: 'modal', id: 'vacation-confirmation-sheet', title: 'Vacation dates (confirmation sheet)', area: 'vacation', status: 'shipped',
+    summary: 'Opened by the Vacation Mode card once the checklist is complete. A fitted form sheet: a description, one Starts and one Ends date-and-time picker, a range error when wrong, and the prominent Confirm Vacation button (hidden while invalid). Cancel is the circle x on the leading edge. Follows the system appearance; the States gallery shows both.',
+    source: ['apple/Sources/HassUI/Features/Vacation/VacationComponents.swift', 'apple/Sources/HassUI/Features/Vacation/VacationModeScreen.swift', 'apple/Sources/HassDesign/ScheduleDateFields.swift', 'apple/Sources/HassDesign/HassModal.swift', 'apple/Sources/HassCore/Config/VacationConfig.swift', 'apple/Sources/HassCore/HouseholdAway/VacationModeController.swift'],
+    spec: ['.agents/pages/vacation/spec.md', '.agents/pages/vacation/ios.md', '.agents/patterns/schedule-date-fields.md'],
+    patterns: ['schedule-date-fields', 'modal-sheet', 'header-edge-fade', 'motion'],
+    hig: ['Sheets', 'Date pickers', 'Buttons', 'Toolbars', 'Dark Mode', 'Dynamic Type'],
+    entities: ['input_boolean.vacation_mode', 'input_datetime.vacation_start', 'input_datetime.vacation_end', 'input_boolean.vacation_mode_invalid_dates_pending'],
+    kitComponents: ['HassModal', 'SheetCancelItem', 'ScheduleDateFields', 'InlineAlert', 'PrimaryButton'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-portrait', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+
+    states: {
+      'default': { title: 'Now to tomorrow, fitted', note: 'the range starts now and ends a day later (makeDefault)', render: st() },
+      'invalid': { title: 'Invalid range: Confirm Vacation hidden', note: 'the error replaces the button; fix the dates to bring it back. The draft is local until Confirm', render: st({ invalid: true, start: 'Oct 25, 2026 · 9:41 AM', end: 'Oct 24, 2026 · 9:41 AM' }) },
+      'loading': { title: 'Confirm tapped', note: 'there is no loading UI: Confirm writes both dates, clears the invalid flag and turns the mode on, then the sheet closes at once (optimistic); the page then shows On', render: st() },
+      'error': { title: 'The range is wrong', note: 'the only error is the range error above; a failed service call is not shown here (the Household Away error is deliberately not shown on Vacation Mode)', render: st({ invalid: true, start: 'Oct 24, 2026 · 9:41 AM', end: 'Oct 24, 2026 · 9:41 AM' }) },
+      'offline': { title: 'Over an offline page', note: 'no offline UI of its own: the sheet draws the same; the page behind carries the offline chip', render: st({ connection: 'offline' }) },
+      'medium': { title: 'Medium detent', note: 'what the sheet opens at until its content is measured', render: st({ detent: 'medium' }) },
+      'large': { title: 'Large detent', note: 'only when the content is taller than the window (AX sizes)', render: st({ detent: 'large' }) },
+      'fitted': { title: 'Fitted detent (shipped)', render: st({ detent: 'fitted' }) },
+      'closed': { title: 'Before presenting / after dismissing', note: 'the page the sheet scales back; the card reads Pending only while the sheet is up', render: function (ctx) { return V.modePage(ctx, { checks: [true, true, true, true, true] }); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'the fitted height reaches the large cap and the content scrolls; each picker label sits above its pickers', render: st() },
+    },
+
+    motion: [],
+
+    transitions: [
+      { from: 'Vacation Mode card', to: 'Confirm Vacation sheet', kind: 'sheet', state: 'closed', note: 'The card presents the form sheet at its fitted height; the page scales back and dims. Content is present on arrival; no entrance animation inside the sheet (motion.md section 4.4).',
+        play: function (stage) { return Mock.presentDemo(stage, { title: 'Confirm Vacation', detent: 'fitted', size: 'form', leading: 'cancel', trailing: 'none', content: h('div.vs-stack', V.dateFields({ fields: [{ label: 'Starts', value: V.when.now }, { label: 'Ends', value: V.when.plus1 }] }), V.actionButton('Confirm Vacation', { prominent: true })) }, { hold: 1200 }); } },
+      { from: 'Confirm Vacation sheet', to: 'Vacation Mode', kind: 'sheet', state: 'default', note: 'Cancel (circle x) or a swipe down drops the dates and the card returns to Off; Confirm closes it and the card goes On. The sheet slides away and the page returns to full size.',
+        play: function (stage) { var host = stage.querySelector('.ui-host'); return Mock.anim.sheet(host, 'out').then(function () { return Mock.sleep(500); }); } },
+    ],
+
+    a11y: [
+      { rule: 'Reading order', note: 'The sheet is modal: focus lands on the title "Confirm Vacation", then Cancel in the bar, the description, the Starts picker, the Ends picker, the error (when shown) and Confirm Vacation last. Escape and the two-finger scrub cancel.' },
+      { rule: 'Cancel', note: 'The circle x on the leading edge, labelled "Cancel" (identifier vacation.confirm.cancel); there is no text Done or Save (owner 2026-10-13). A create sheet puts Cancel leading and the primary action in the content.' },
+      { rule: 'Pickers', note: 'Each row is a labelled compact picker ("Starts", "Ends", 44 pt minimum); the label is a wrapping Text beside a label-hidden picker named for VoiceOver. At accessibility sizes the picker drops below the label. Identifiers vacation.confirm.start and vacation.confirm.end.' },
+      { rule: 'Range error', note: 'An inline error alert under the description: "Start date and time must be before end date and time. Vacation mode is disabled until the dates are fixed." The primary button is removed (not just disabled) while it shows.' },
+      { rule: 'Confirm Vacation', note: 'The one primary button, #0071E3 capsule with white text (4.6:1), 50 pt; identifier vacation.confirm.action.' },
+      { rule: 'Dynamic Type', note: 'The fitted height is capped at large and the content scrolls at AX5; nothing truncates (labels wrap). Checked at AX5 below.' },
+      { rule: 'Light and dark', note: 'Follows the system appearance: white cells on #F2F2F7 in light, #2C2C2E on #1C1C1E in dark.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23', by: 'author',
+      hig: [
+        { rule: 'Sheets: a create sheet has Cancel leading and a clear primary action; grabber visible; size to content', verdict: 'pass', note: 'hassSheet(.form), fitted; Cancel is the circle x; the primary button is in the content.' },
+        { rule: 'Sheets: prefer form sizing on iPad for short forms', verdict: 'pass', note: 'Form sheet (540 pt) on iPad and the unfolded Duo (modal-sheet.md "iPad size").' },
+        { rule: 'Date pickers: compact pickers for a date and time; show validation inline', verdict: 'pass', note: 'One combined picker per moment; error below the fields as an inline alert (schedule-date-fields.md).' },
+        { rule: 'Buttons: one prominent action', verdict: 'pass', note: 'Confirm Vacation is the only primary button.' },
+        { rule: 'Toolbars: do not use text Done/Save', verdict: 'departure', note: 'The confirm action is a content button, not the toolbar check the other create sheets use (SheetConfirmItem); direction G, Sheets: this sheet has one primary action beside its fields. Cancel is the toolbar circle x.' },
+        { rule: 'Dark Mode: support both appearances', verdict: 'pass', note: 'Sheets follow the system appearance while pages stay dark.' },
+      ],
+      swiftui: [
+        { rule: 'Use presentationDetents with a measured height', verdict: 'pass', note: 'hassSheet(.form): custom fitted height capped at large (SheetFit).' },
+        { rule: 'Adaptive colour tokens in a sheet', verdict: 'pass', note: 'modalChrome, Ink and Surface tokens; the date row is a regularMaterial cell.' },
+        { rule: 'Accessibility identifiers on every control', verdict: 'pass', note: 'vacation.confirm.start, .end, .action, .cancel.' },
+        { rule: 'Keep a draft local until confirmed', verdict: 'pass', note: 'updatePendingRange does not write to Home Assistant; Confirm sends the four calls.' },
+      ],
+    },
+
+    notes: [
+      'loading, error and offline: the sheet has none of its own (see each state\'s note). Confirm is optimistic and fire-and-forget; the page waits for both helpers to echo (10 s fallback) so the new start is not compared with the old end.',
+      'The state called "invalid" is the shipped "invalid range (primary hidden)". The date pickers are drawn as date and time buttons in the kit\'s style; the real control is the system compact picker.',
+      'Docs vs code: spec.md describes four pickers (Start Date, Start Time, End Date, End Time); code has one date-and-time picker per moment (owner 2026-10-13, ios.md). spec.md also says the sheet is "form size": it is, via hassSheet(.form).',
+      'Duo unfolded: the form sheet is centred in the window and crosses the hinge band here (the system decides placement on the Duo; the unfolded pose was only run for pages). Check on a device.',
+      'Presenter page is Vacation Mode with every task checked and the card reading Pending. Wallpaper is a kit stand-in. Dates are fixtures (the stage clock is Fri Oct 23, 9:41).',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: default, invalid, three detents, AX5, light and dark.' }],
+  });
+})();
+</script></body></html>

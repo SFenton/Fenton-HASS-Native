@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StatusPill · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/inventory/_inventory.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, V = Mock.inv;
+  function sw(c, surface, cap, node, w) { return V.swatch(surface, cap, node, c, w || 340); }
+  /* surface .module draws no fill: the module around it is the ground */
+  function pill(o, surface) { var n = K.StatusPill(o); if (surface === 'module') n.style.setProperty('--pill-bg', 'transparent'); if (surface === 'module') n.style.background = 'transparent'; return n; }
+  function pills(surface, low) {
+    return [pill({ label: 'Battery', value: low ? '18%' : '82%', symbol: 'battery.100percent', tone: low ? 'warning' : 'neutral' }, surface), pill({ label: 'Next Watering', value: 'Tomorrow, 6:00 AM', symbol: 'calendar.badge.clock' }, surface),
+      pill({ label: 'Last Watering', value: 'Today, 6:00 AM', symbol: 'clock.arrow.circlepath' }, surface), pill({ label: 'Hub', value: 'Connected', symbol: 'antenna.radiowaves.left.and.right', tone: 'ok' }, surface)];
+  }
+  function card(low) {
+    var row = K.ModuleRow({ title: 'Front Lawn', subtitle: 'Watering for 12 more minutes', symbol: 'sprinkler.and.droplets', glyph: 'var(--fam-water-glyph)', subtitleInk: 'var(--fam-water-glyph)', chevron: true });
+    var grid = K.TileGrid({ items: pills('module', low), min: 150, max: 2, gap: 0, equal: false });
+    return h('div', { style: { display: 'flex', flexDirection: 'column', gap: '12px' } }, low ? K.InlineAlert({ message: 'Front Lawn Battery 18%' }) : null, K.ModuleList({ density: low ? 'dense' : 'thin', rows: [row, grid] }));
+  }
+
+  var base = Mock.componentConfig('StatusPill', { surfaces: ['page', 'sheet'] });
+  var cfg = Object.assign(base, {
+    states: base.states,
+    id: 'status-pill', title: 'StatusPill', area: 'design', status: 'shipped',
+    summary: 'A read-only labelled value with a toned icon (battery, next watering, hub connection). The tone colours the icon only; the text stays the primary ink. One accessibility element, never a button. Three surfaces: a material on a page, a solid row fill in a sheet\'s grouped list, and no fill inside a module that draws the ground.',
+    source: ['apple/Sources/HassDesign/StatusPill.swift', 'apple/Sources/HassUI/Features/Sprinklers/SprinklersScreen.swift', 'apple/Sources/HassUI/Features/Sprinklers/SprinklerControllerSheet.swift'],
+    spec: ['.agents/patterns/status-pill.md', '.agents/patterns/dynamic-grid.md'],
+    patterns: ['status-pill', 'dynamic-grid', 'module-list'],
+    hig: ['Color', 'Materials', 'Dynamic Type', 'Accessibility'],
+    kitComponents: ['StatusPill', 'TileGrid', 'ModuleList', 'ModuleRow', 'InlineAlert'],
+    devices: ['iphone', 'ipad-portrait'],
+    a11y: [
+      { rule: 'One element', note: 'The pill is not a button. VoiceOver reads the label, then "value, detail" ("Battery, 82%"; "Next Watering, Tomorrow, 6:00 AM"); the icon is hidden. Nothing in a pill can be tapped (use a GlassTile for an action).' },
+      { rule: 'Tone is not text colour', note: 'Only the icon takes the tone (green, water blue, orange, red, grey); the words carry the meaning ("18%", "Unavailable"), so a colour-blind reader loses nothing; the text keeps the primary ink on every surface.' },
+      { rule: 'Targets and size', note: 'At least 44 pt tall (a read-only pill need not be a target, but it keeps the minimum so a row of pills lines up) and wide enough for 150 pt at the default text size.' },
+      { rule: 'Dynamic Type', note: 'Pills sit in a grid whose minimum cell width scales with the text (@ScaledMetric 150), so they wrap to one column at AX sizes; label, value and detail wrap inside the pill (fixedSize vertical).' },
+      { rule: 'Surfaces', note: 'In a grouped list or sheet the fill is solid (a material over a sheet\'s glass smeared the content behind it, seen 2026-10-11); with Reduce Transparency the page material is opaque.' },
+    ],
+    reviews: {
+      date: '2026-10-23', by: 'author',
+      hig: [
+        { rule: 'Color: do not rely on colour alone', verdict: 'pass', note: 'The value is text; the icon colour is reinforcement.' },
+        { rule: 'Materials: use a standard material or a solid fill, not glass, for content', verdict: 'pass', note: 'regularMaterial on a page; solid in lists; none in a module.' },
+        { rule: 'Accessibility: group related text into one element', verdict: 'pass', note: 'accessibilityElement(children: .ignore) with label and value.' },
+        { rule: 'Typography: text styles, monospaced digits for changing numbers', verdict: 'pass', note: 'footnote label, subheadline semibold value with monospacedDigit.' },
+      ],
+      swiftui: [
+        { rule: 'Animate state colour with the token', verdict: 'pass', note: 'stateForeground("StatusPill", tone colour) on the icon and stateColorTransition on the fill (0.6 s, 0.2 s reduced).' },
+        { rule: 'Use the semantic ink tokens', verdict: 'fix', note: 'Tone icons use system .green, .orange and .red, not the HassTokens ink pair, so on a light sheet the orange and green icons are the system\'s (not tuned to 3:1 against the sheet cell). Text is unaffected.' },
+        { rule: 'Do not make a read-only view look tappable', verdict: 'pass', note: 'No chevron, no pressed state.' },
+      ],
+    },
+    notes: [
+      'Used by: Sprinklers (the page card and the controller sheet). The humidifier and vacuum sheets use their own DeviceStatusPill and VacuumStatusChip (different components).',
+      'The sprinkler values here are fixtures (battery, times, hub); the real strings come from SprinklerFormat.',
+      'The module surface has no fill: in the kit the pill background is made transparent for that surface; the module around it draws the ground, and the grid has zero spacing so the pills read as one block.',
+      'The page surface in the app is regularMaterial over the wallpaper; the kit draws it as a translucent dark fill.',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: six tones, three surfaces, the Sprinklers card and sheet, tone change, AX5.' }],
+  });
+  cfg.states['surfaces'] = { title: 'Surfaces: page, grouped list (sheet), module', render: function (c) {
+    var p = { label: 'Battery', value: '82%', symbol: 'battery.100percent', tone: 'ok' };
+    return V.grid([sw(c, 'page', '.page: a material over the wallpaper', K.StatusPill(p)), sw(c, 'sheet', '.groupedList: a solid row fill', K.StatusPill(p)),
+      sw(c, 'page', '.module: no fill, the module is the ground', K.ModuleList({ rows: [pill(p, 'module')] })), sw(c, 'page', 'with a detail line', K.StatusPill({ label: 'Next Watering', value: 'Tomorrow', detail: 'Skips if it rains', symbol: 'calendar.badge.clock' }))]); } };
+  cfg.states['in-context'] = { title: 'In context: the Sprinklers page and controller sheet', render: function (c) {
+    return h('div', V.embed('iphone', c, function (cx) { return Mock.page(cx, { title: 'Sprinklers', section: 'home', badge: 3, choresBadge: 2, body: [card(false)] }); }, .6, 'Sprinklers: a controller row over a 2-column grid of pills, thin module'),
+      V.embed('iphone', c, function (cx) { return Mock.page(cx, { title: 'Sprinklers', section: 'home', badge: 3, choresBadge: 2, body: [card(true)] }); }, .6, 'Low battery: the module goes dense, the pill icon orange, an InlineAlert above'),
+      V.embed('iphone', c, function (cx) { return Mock.sheet(cx, { title: 'Front Lawn', detent: 'fitted', size: 'page', presenter: Mock.page(cx, { title: 'Sprinklers', section: 'home', body: [] }), content: K.TileGrid({ items: [K.StatusPill({ label: 'Controller', value: 'Watering', symbol: 'sprinkler.and.droplets', tone: 'active' }), K.StatusPill({ label: 'Battery', value: '82%', symbol: 'battery.100percent' }), K.StatusPill({ label: 'Next Watering', value: 'Tomorrow, 6:00 AM', symbol: 'calendar.badge.clock' }), K.StatusPill({ label: 'Last Watering', value: 'Today, 6:00 AM', symbol: 'clock.arrow.circlepath' })], min: 150, max: 2, gap: 12, equal: false }) }); }, .6, 'Controller sheet: solid pills (.groupedList)')); } };
+  cfg.states['ax5'] = { title: 'Accessibility 5', override: { ts: 'ax5' }, note: 'pills wrap to one column and their text wraps', render: function (c) { return V.grid([sw(c, 'page', 'AX5', K.TileGrid({ items: [K.StatusPill({ label: 'Battery', value: '82%', symbol: 'battery.100percent' }), K.StatusPill({ label: 'Next Watering', value: 'Tomorrow, 6:00 AM', symbol: 'calendar.badge.clock' })], min: 150, max: 2, gap: 12, equal: false }), 560)]); } };
+  cfg.motion = [
+    { id: 'tone-change', what: 'A pill\'s tone changes (battery goes low: neutral to orange)', token: 'state 0.6 s ease-in-out (0.2 s reduced), colour only', state: 'variants',
+      source: 'HassDesign/StatusPill.swift stateForeground and stateColorTransition("StatusPill"); motion.md section 6', reduce: 'still cross-fades at 0.2 s',
+      play: function (stage) { var p = stage.querySelector('.ui-pill'); if (!p) return Promise.resolve(); var was = p.style.getPropertyValue('--pill-tone'); p.style.setProperty('--pill-tone', '#FF9500'); var v = p.querySelector('.va'); if (v) v.textContent = '18%';
+        return Mock.sleep(Mock.anim.ms.state() + 500).then(function () { p.style.setProperty('--pill-tone', was); if (v) v.textContent = '82%'; return Mock.sleep(Mock.anim.ms.state() + 200); }); } },
+  ];
+  Mock.mount(cfg);
+})();
+</script></body></html>

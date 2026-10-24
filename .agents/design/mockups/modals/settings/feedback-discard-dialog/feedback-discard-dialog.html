@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Discard feedback? · modal mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/settings/_settings-account.js"></script>
+<script src="../../../pages/settings/_settings-page.js"></script>
+<script src="../_settings-account.js"></script>
+</head><body>
+<script>
+(function () {
+  var K = Mock.components;
+  var base = function (kind, extra) { return Object.assign({ kind: kind, canSubmit: true }, SA.fb[kind], extra); };
+  var F = function (o) { return function (ctx) { return SA.feedbackSheet(ctx, o); }; };
+
+  Mock.mount({
+    kind: 'modal', id: 'feedback-discard-dialog', title: 'Discard feedback? (confirmation dialog)', area: 'settings', status: 'shipped',
+    summary: 'Raised by Cancel, Escape or a swipe down on the feedback form when it holds typed text or attached media: "Discard this report?" (or request) with "Your text and attached media will be lost." Anchored to Cancel. Follows the system appearance; switch Sheet appearance above.',
+    source: ['apple/Sources/HassUI/Features/Settings/Feedback/FeedbackFormSheet.swift', 'apple/Sources/HassUI/Features/Settings/Feedback/SheetDismissAttemptObserver.swift'],
+    spec: ['.agents/pages/settings/feedback.md'],
+    patterns: ['modal-sheet'],
+    hig: ['Modality', 'Sheets', 'Action sheets', 'Popovers'],
+    entities: [],
+    kitComponents: ['HassModal', 'Alert'],
+    devices: ['iphone', 'duo-folded', 'duo-unfolded-landscape', 'ipad-portrait', 'ipad-landscape'],
+    states: {
+      'default': { title: 'Discard this report? (anchored popover)', note: 'iOS 26 and later: a popover under Cancel with Discard Changes; an outside tap is Keep Editing', render: F(base('bug', { popover: true })) },
+      'request': { title: 'Discard this request?', note: 'the noun follows the form (report or request)', render: F(base('feature', { popover: true })) },
+      'action-sheet': { title: 'Action sheet (iOS 17 to 25, compact window)', note: 'Discard Changes, then a separate Keep Editing', render: F(base('bug', { actionSheet: true })) },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, render: F(base('bug', { popover: true })) },
+    },
+    motion: [],
+    transitions: [
+      { from: 'Cancel or swipe down (with input)', to: 'Discard dialog', kind: 'overlay', note: 'The sheet refuses to dismiss (interactiveDismissDisabled) and the dialog appears from Cancel; the swipe’s attempt is caught by SheetDismissAttemptObserver. Keep Editing returns to the form; Discard Changes deletes the staged media and dismisses the sheet.', state: 'default',
+        play: function (stage) { var pop = stage.querySelector('.sa-pop'); pop.style.opacity = 0; return Mock.sleep(120).then(function () { return Mock.anim.fade(pop, { ms: 200 }); }).then(function () { pop.style.opacity = ''; return Mock.sleep(1000); }); } },
+    ],
+    a11y: [
+      { rule: 'Reading order', note: 'The dialog is modal: its title "Discard this report?", the message "Your text and attached media will be lost.", then Discard Changes (feedback.discard.confirm) and Keep Editing (feedback.discard.cancel).' },
+      { rule: 'Roles', note: 'Discard Changes has the destructive role and is red; Keep Editing has the cancel role, so Escape and an outside tap choose it. The words, not the red, carry the meaning.' },
+      { rule: 'Escape and VoiceOver', note: 'Escape, the two-finger scrub and the swipe-down all raise the same dialog while something would be lost; with nothing typed they close the sheet directly.' },
+      { rule: 'Dynamic Type', note: 'The system scales the dialog; the popover and the action sheet scroll when taller than the window.' },
+    ],
+    reviews: {
+      date: '2026-10-23', by: 'author',
+      hig: [
+        { rule: 'Modality: get confirmation before closing could lose user-generated content', verdict: 'pass', note: 'Cancel, Escape and the swipe go through it.' },
+        { rule: 'Sheets: if changes are unsaved when swiping begins, confirm with an action sheet', verdict: 'pass', note: 'The swipe attempt is observed and raises the dialog (UIKit delegate proxy).' },
+        { rule: 'Action sheets: make the destructive choice clear; include Cancel', verdict: 'departure', note: 'On iOS 27 a popover omits Cancel (an outside tap is the cancel); the Keep Editing button is still in the code for earlier systems.' },
+        { rule: 'Alerts and action sheets: title says what will happen, buttons name the action', verdict: 'pass', note: '"Discard Changes" and "Keep Editing" rather than Yes and No.' },
+      ],
+      swiftui: [
+        { rule: 'confirmationDialog anchored to the triggering control', verdict: 'pass', note: 'Attached to the Cancel toolbar button so the popover points at it.' },
+        { rule: 'interactiveDismissDisabled while there is something to lose', verdict: 'pass', note: 'isSending or hasUnsavedInput.' },
+        { rule: 'Button roles', verdict: 'pass', note: '.destructive and .cancel.' },
+        { rule: 'Do not wrap a UIKit delegate without forwarding', verdict: 'pass', note: 'DelegateProxy forwards every other call to SwiftUI’s own delegate.' },
+      ],
+    },
+    notes: [
+      'loading, error and offline: not applicable to a dialog. medium, large and fitted: no detents; the dialog sizes itself. It sits over the feedback form (modals/settings/feedback-form-sheet) in a typed state.',
+      'iOS 27 popover: ios.md records popovers without Cancel for the Sign Out dialog and the same system behaviour applies here; the exact geometry (width, offset under Cancel) is the system’s and unverified.',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass.' }],
+  });
+})();
+</script></body></html>

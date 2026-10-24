@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SheetCancelItem and SheetConfirmItem · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../../pages/food/_food.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, F = Food;
+  function sw(ctx, items, o) { return F.swatches(ctx, items, Object.assign({ surfaces: ['sheet'], min: 300 }, o)); }
+  var cfg = Mock.componentConfig('SheetConfirmItem', { surfaces: ['sheet'] });
+
+  function cancel(disabled) { var b = K.SheetCancelItem(); if (disabled) { b.disabled = true; b.style.opacity = .4; } return b; }
+  /* A create or edit header as the system lays it out: Cancel leading, title centred, the confirm check trailing. */
+  function header(o) {
+    return h('div', { style: { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '60px', padding: '0 4px' } },
+      cancel(o.cancelDisabled), h('div', { style: { position: 'absolute', left: 0, right: 0, textAlign: 'center', font: '600 var(--fs-hd)/1.2 var(--font)', pointerEvents: 'none' } }, o.title || 'New Task', o.subtitle ? h('div', { style: { font: 'var(--fs-foot)/1.2 var(--font)', color: 'var(--ink-sheet-2)', fontWeight: 400 } }, o.subtitle) : null),
+      K.SheetConfirmItem({ title: o.confirmTitle || 'Create', enabled: o.enabled, busy: o.busy, busyTitle: o.busyTitle }));
+  }
+  function taskForm(name) {
+    return K.FormSection({ header: 'Details', footer: 'Overdue tasks appear on the Chores tab.', fields: [{ label: 'Task Name', value: name, placeholder: 'Required' }, { label: 'Assignee', value: 'Stephen', kind: 'picker' }, { label: 'Repeats', kind: 'toggle', on: true }] });
+  }
+  function chores(c2) { return Mock.page(c2, { title: 'Chores', section: 'chores', badge: 3, choresBadge: 2, body: [] }); }
+  function editSheet(o) { return function (c2) { return Mock.sheet(c2, { title: o.title || 'New Task', detent: 'fitted', size: 'form', leading: 'cancel', trailing: 'confirm', confirm: { title: o.confirmTitle || 'Create', enabled: o.enabled, busy: o.busy }, content: taskForm(o.name), presenter: chores(c2) }); }; }
+
+  Mock.mount(Object.assign(cfg, {
+    id: 'sheet-edit-toolbar', title: 'SheetCancelItem and SheetConfirmItem (create/edit toolbar)', area: 'design', status: 'shipped',
+    summary: 'The toolbar of every create and edit sheet: an x on a glass circle leading (Cancel, drops the draft) and a check on a filled #0071E3 circle trailing (Save, Add, Create or Apply). The check is always visible and dimmed until there is something to confirm; while the save runs it becomes an inline arc and Cancel is unavailable. Viewing sheets use Close instead.',
+    source: ['apple/Sources/HassDesign/SheetEditToolbar.swift', 'apple/Sources/HassDesign/HassModal.swift (SheetCloseItem)', 'apple/Sources/HassDesign/ArcSpinner.swift', 'apple/Sources/HassDesign/FilterSheet.swift', 'apple/Sources/HassUI/Features/Chores/TodoItemSheets.swift', 'apple/Sources/HassUI/Features/Chores/DonetickTaskSheet.swift', 'apple/Sources/HassUI/Features/Inventory/InventoryItemEditor.swift', 'apple/Sources/HassUI/Features/Vacation/VacationModeScreen.swift'],
+    spec: ['.agents/patterns/modal-sheet.md', '.agents/design/direction-g.md (Sheets)'],
+    patterns: ['modal-sheet', 'motion'],
+    hig: ['Toolbars', 'Sheets', 'Buttons', 'Accessibility'],
+    kitComponents: ['SheetCancelItem', 'SheetConfirmItem', 'SheetCloseItem', 'HassModal', 'ArcSpinner', 'FormSection'],
+    devices: ['iphone', 'ipad-portrait'],
+    states: {
+      'buttons': { title: 'Cancel and confirm, every state', render: function (ctx) {
+        return sw(ctx, [
+          { label: 'Cancel', note: 'an xmark on a glass circle; VoiceOver "Cancel"', width: 150, render: function () { return cancel(false); } },
+          { label: 'Cancel while saving', note: 'isEnabled: false, dimmed', width: 150, render: function () { return cancel(true); } },
+          { label: 'confirm enabled', note: '#0071E3, white check, 4.6:1', width: 150, render: function () { return K.SheetConfirmItem({ title: 'Save', enabled: true }); } },
+          { label: 'confirm disabled', note: 'nothing to confirm yet: dimmed, not hidden', width: 150, render: function () { return K.SheetConfirmItem({ title: 'Save', enabled: false }); } },
+          { label: 'confirm busy', note: 'inline arc on a #0071E3 circle; spoken "Saving"', width: 150, render: function () { return K.SheetConfirmItem({ title: 'Save', busy: true, busyTitle: 'Saving' }); } },
+          { label: 'Close (viewing sheets)', note: 'SheetCloseItem, the glass circle x, never "Done"', width: 150, render: function () { return K.SheetCloseItem(); } },
+        ]); } },
+      'headers': { title: 'In a header: new, valid, saving, edit', note: 'SheetEditState.canConfirm(isValid:hasChanges:isBusy:)', render: function (ctx) {
+        return sw(ctx, [
+          { label: 'new item, no name yet: Create dimmed', width: 360, render: function () { return header({ enabled: false }); } },
+          { label: 'new item, valid draft: Create live', width: 360, render: function () { return header({ enabled: true }); } },
+          { label: 'saving: arc in the check, Cancel dimmed', width: 360, render: function () { return header({ enabled: true, busy: true, busyTitle: 'Saving', cancelDisabled: true }); } },
+          { label: 'editing, nothing changed: Save dimmed', width: 360, render: function () { return header({ title: 'Edit Task', confirmTitle: 'Save', enabled: false }); } },
+          { label: 'editing, changed: Save live', width: 360, render: function () { return header({ title: 'Edit Task', confirmTitle: 'Save', enabled: true }); } },
+          { label: 'a filter sheet: Apply, with a subtitle', width: 360, render: function () { return header({ title: 'Filter Recipes', subtitle: '2 Filters On', confirmTitle: 'Apply', enabled: true }); } },
+        ]); } },
+      'in-context': { title: 'In context: a create sheet', note: 'drawn with the kit\'s form rows; the Chores, Inventory and Vacation mockups draw their own sheets', render: function (ctx) {
+        return sw(ctx, [
+          { label: 'New Task, empty: Create dimmed', width: 285, render: function () { return F.miniDevice(ctx, 'iphone', editSheet({ enabled: false }), .62); } },
+          { label: 'New Task, named: Create live', width: 285, render: function () { return F.miniDevice(ctx, 'iphone', editSheet({ enabled: true, name: 'Replace the furnace filter' }), .62); } },
+          { label: 'saving', width: 285, render: function () { return F.miniDevice(ctx, 'iphone', editSheet({ enabled: true, busy: true, name: 'Replace the furnace filter' }), .62); } },
+        ]); } },
+      'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'toolbar items are system buttons: they keep their size (at least 44 pt) and the title above wraps in the bar', render: function (ctx) {
+        return sw(ctx, [{ label: 'header at AX5', width: 440, render: function () { return header({ enabled: true }); } }]); } },
+    },
+
+    motion: [
+      { id: 'enable', what: 'Typing the first valid character: Create goes from dimmed to #0071E3', token: 'none of its own: the system dims and un-dims the button', state: 'headers', source: 'HassDesign/SheetEditToolbar.swift SheetConfirmItem', reduce: 'nothing to reduce',
+        play: function (stage) { var b = stage.querySelector('.ui-confirm[disabled]'); if (!b) return Promise.resolve(); return Mock.sleep(500).then(function () { b.disabled = false; return Mock.sleep(700); }); } },
+      { id: 'saving', what: 'Confirming: the check is replaced by an inline arc on the blue circle while the save runs; Cancel dims and swipe dismissal is blocked', token: 'ArcSpinner inline: 16 pt in a 28 pt circle, 0.82 s a turn, linear', state: 'headers', source: 'HassDesign/SheetEditToolbar.swift SheetConfirmButton, ArcSpinner.swift', reduce: 'the arc keeps turning at half speed (a still arc reads as frozen)',
+        play: function (stage) {
+          var ok = stage.querySelectorAll('.ui-confirm:not([disabled])')[0]; if (!ok) return Promise.resolve();
+          var busy = K.SheetConfirmItem({ title: 'Create', busy: true, busyTitle: 'Saving' });
+          return Mock.sleep(400).then(function () { ok.replaceWith(busy); return Mock.sleep(2200); });
+        } },
+    ],
+
+    a11y: [
+      { rule: 'Names', note: 'Cancel is spoken "Cancel" (identifier sheet.cancel or the sheet\'s own); the confirm is named for what it does ("Save", "Add", "Create", "Apply") and, while busy, for the progress ("Saving"). Icon-only: HIG Toolbars prefers the standard symbols without text labels.' },
+      { rule: 'Disabled, not hidden', note: 'The check stays in its place and is spoken as dimmed until SheetEditState.canConfirm: a new item needs a valid draft, an edit also needs a change, and a save in flight disables it. HIG Toolbars: keep controls in a stable place and disable rather than hide one that does not apply now.' },
+      { rule: 'Contrast', note: 'The check is white on #0071E3 (HassTokens.Ink.actionFill, 4.6:1) in light and dark; the Cancel glyph is the glass ink.' },
+      { rule: 'Targets', note: 'Both are system toolbar items, at least 44 pt; the busy state is a 28 pt filled circle with the arc.' },
+      { rule: 'Order', note: 'Cancel (leading) is read before the title, the confirm after it, as in Calendar and Reminders.' },
+      { rule: 'Dynamic Type', note: 'Toolbar items do not scale with text; the title between them wraps.' },
+    ],
+
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Toolbars: icon buttons use standard symbols; confirm and cancel placement', verdict: 'pass', note: 'x leading, check trailing, as in Calendar and Reminders; iOS 26 uses Button(role: .cancel) and .confirm.' },
+        { rule: 'Toolbars: disable rather than hide a control that does not apply now', verdict: 'departure', note: 'The check is visible and dimmed until a change (owner 2026-10-16: "visible, disabled until a change").' },
+        { rule: 'Buttons: a prominent confirm with sufficient contrast', verdict: 'pass', note: '#0071E3 under white is 4.6:1 (HassTokens.Ink.actionFill, SheetEditToolbar.swift).' },
+        { rule: 'Progress: show activity in the control that started it', verdict: 'pass', note: 'The inline arc replaces the check while saving.' },
+        { rule: 'Sheets: a viewing sheet closes, an edit sheet cancels or confirms', verdict: 'pass', note: 'Close (SheetCloseItem) for viewing, this pair for create and edit; filter sheets use it with "Apply".' },
+      ],
+      swiftui: [
+        { rule: 'Use toolbar placements, not custom buttons', verdict: 'pass', note: '.cancellationAction and .confirmationAction items.' },
+        { rule: 'availability branch for iOS 26 roles', verdict: 'pass', note: '#available(iOS 26) uses Button(role:); earlier systems draw a bordered-prominent circle.' },
+        { rule: 'Pure function for the enabled rule', verdict: 'pass', note: 'SheetEditState.canConfirm(isValid:hasChanges:isBusy:) is static and tested.' },
+        { rule: 'Keep identifiers stable so UI tests do not churn', verdict: 'pass', note: 'Each caller passes its own identifier (filterSheet.apply, ...).' },
+        { rule: 'Known gaps', verdict: 'fix', note: 'modal-sheet.md lists sheets still on their own text Save/Submit buttons: the humidifier schedule editor, the feedback form, the bed and wake-light editors\' in-page buttons.' },
+      ],
+    },
+
+    notes: [
+      'Docs vs code: direction-g.md and modal-sheet.md say Cancel and confirm exist on every create or edit sheet; the listed gaps (humidifier schedule, feedback, bed and wake-light editors) still use text buttons, so this pair is the target, not universal.',
+      'Before iOS 26 the confirm is a borderedProminent circle (Label with checkmark, iconOnly) tinted #0071E3 and the cancel an icon-only xmark button; the kit draws the iOS 26 glass circle for both.',
+      'The sheet is blocked from interactive dismissal while a save runs (the item editor hides its grabber); the kit sheet does not model that.',
+      'The header here is built from kit parts (the kit\'s HassModal draws the same row inside a sheet); the saving and enable motions are staged by swapping nodes.',
+      'In flight: none.',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: buttons, headers (new, valid, saving, edit, filter), in context, AX5; light and dark with the Sheet appearance control.' }],
+  }));
+})();
+</script></body></html>

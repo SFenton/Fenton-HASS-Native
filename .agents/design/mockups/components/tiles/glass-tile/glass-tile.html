@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GlassTile · component mockup</title>
+<link rel="stylesheet" href="../../../_kit/kit.css">
+<script src="../../../_kit/kit.js"></script>
+<script src="../../weather/_home-weather.js"></script>
+</head><body>
+<script>
+(function () {
+  var h = Mock.h, K = Mock.components, HW = Mock.HW, I = Mock.icon;
+
+  function grid(items, o) { o = o || {}; return K.TileGrid({ min: o.min || 150, max: o.max || 4, items: items, equal: o.equal !== false }); }
+  /** Both surfaces: the page (always dark, tinted glass over the wallpaper) and a sheet (follows the Sheet appearance). */
+  function both(ctx, cap, node, note) { return HW.swatches(ctx, [{ cap: 'page · ' + cap, surface: 'page', node: node(), note: note }, { cap: 'sheet · ' + cap, surface: 'sheet', node: node() }]); }
+  function pill(label, kind) { return h('span', { style: { fontSize: '12px', fontWeight: 600, padding: '2px 8px', borderRadius: '999px', background: 'rgba(255,255,255,.2)', color: '#fff' } }, label); }
+  function accBtn(sym, label) { return h('button.ui-circle.ui-glass', { type: 'button', 'aria-label': label, style: { width: '36px', height: '36px' }, html: I(sym) }); }
+
+  var cfg = Mock.componentConfig('GlassTile', { surfaces: ['page', 'sheet'] });
+  var extra = {
+    'kinds': { title: 'Kinds: toggle, command, navigate, selection, state', note: 'toggle gets the switch trait and On or Off; navigate adds a centred chevron; selection carries the selected trait; state is not a button and never dims as disabled', render: function (ctx) {
+      return both(ctx, 'kinds', function () { return grid([
+        { title: 'Table Light', subtitle: 'On at 70%', symbol: 'lightbulb', family: 'lights', isActive: true, kind: 'toggle' },
+        { title: 'Open Garage', subtitle: 'Ready', symbol: 'door.garage.closed', family: 'contact', isActive: false, kind: 'command' },
+        { title: 'Thermostat', subtitle: 'Heating to 70°', symbol: 'thermometer.medium', family: 'heating', isActive: true, kind: 'navigate' },
+        { title: 'Eco', subtitle: 'Selected', symbol: 'leaf', family: 'occupancy', isActive: true, kind: 'selection', selected: true },
+        { title: 'Comfort', subtitle: 'Not selected', symbol: 'sparkles', family: 'occupancy', isActive: false, kind: 'selection', selected: false },
+        { title: 'Basement Humidity', subtitle: '48%', symbol: 'humidity', family: 'water', isActive: true, kind: 'state'  }]); }); } },
+    'layouts': { title: 'Layouts: row (shipped) and stacked', note: 'Row is Apple Home\'s tile (72 pt minimum); the stacked, bottom-anchored layout is the navigation tile (96 pt, two-line title reserve) and what every tile becomes at accessibility sizes. The other drawn arrangements are on the Tile finish and layouts mockup', render: function (ctx) {
+      return both(ctx, 'layouts', function () { return grid([
+        { title: 'Kitchen Lights', subtitle: 'On at 70%', symbol: 'lightbulb', family: 'lights', isActive: true },
+        { title: 'Master Bedroom Closet', subtitle: 'Off', symbol: 'door.left.hand.closed', family: 'contact', isActive: false },
+        { title: 'Master Bedroom Closet', symbol: 'door.left.hand.closed', family: 'contact', isActive: false, layout: 'stack', titleLines: 2, kind: 'navigate' },
+        { title: 'Kitchen', symbol: 'house', room: 'kitchen', layout: 'stack', titleLines: 2, kind: 'navigate' }]); }); } },
+    'accessory': { title: 'Tile with an accessory rail', note: 'the bathroom fan: Lock and Power buttons are their own controls outside the tile\'s button, centred on the trailing edge and clear of the chevron; at accessibility sizes the rail drops below the text', render: function (ctx) {
+      return both(ctx, 'accessory', function () { return grid([
+        { title: 'Bathroom Fan', subtitle: 'Off in 12:30', symbol: 'fan', family: 'air', isActive: true, singleLine: true, accessory: h('span', { style: { display: 'flex', gap: '8px' } }, accBtn('lock', 'Lock'), accBtn('power', 'Power')), accessoryWidth: 88 },
+        { title: 'Heated Towel Rack', subtitle: 'On', symbol: 'bolt.fill', family: 'power', isActive: true }], { min: 260, max: 2 }); }); } },
+    'wash': { title: 'State wash', note: 'a colour drawn under the material (towel rack on, an Eight Sleep side heating): 60% over a dark module, 22% over a white cell so the ink keeps 4.5:1', render: function (ctx) {
+      return both(ctx, 'wash', function () { return grid([
+        { title: 'Left Side', subtitle: 'Heating to 82°', symbol: 'bed.double', family: 'heating', isActive: true, wash: '#FF7A2F' },
+        { title: 'Right Side', subtitle: 'Off', symbol: 'bed.double', family: 'cooling', isActive: false, wash: '#3FC6D2' }]); }); } },
+    'long-text': { title: 'Long title and state', note: 'text wraps and the tile grows (equal-height rows follow the tallest); a single-line subtitle shrinks to 85% first (the bathroom fan: "Off in 12:30")', render: function (ctx) {
+      return both(ctx, 'long text', function () { return grid([
+        { title: 'Master Bedroom Closet Ceiling Light', subtitle: 'On at 70%, motion-activated, off in 12 minutes', symbol: 'lightbulb', family: 'lights', isActive: true },
+        { title: 'Garage', subtitle: 'Open', symbol: 'door.garage.open', family: 'contact', isActive: true }]); }); } },
+    'unavailable-vs-error': { title: 'Unavailable and error, side by side', note: 'unavailable dims the glyph and the tinted rim only, so the title and "Unavailable" keep 4.5:1 over the lit windows; error is the dense ground with a red glyph and state', render: function (ctx) {
+      return both(ctx, 'unavailable and error', function () { return grid([
+        { title: 'Back Deck Light', subtitle: 'Unavailable', symbol: 'lightbulb', family: 'lights', isUnavailable: true },
+        { title: 'Left Door', subtitle: 'Didn\'t respond', symbol: 'door.garage.closed', family: 'contact', isError: true }]); }); } },
+    'solid': { title: 'Reduce Transparency: the solid finish', override: { reduceTransparency: true }, note: 'opaque family fill, the thin module when off, a faint top highlight; no hairline, no sheen', render: function (ctx) {
+      return both(ctx, 'solid finish', function () { return grid([
+        { title: 'Heating', subtitle: 'On', symbol: 'thermometer.medium', family: 'heating', isActive: true }, { title: 'Occupancy', subtitle: 'Off', symbol: 'figure.walk.motion', family: 'occupancy', isActive: false },
+        { title: 'Table Light', subtitle: 'On at 70%', symbol: 'lightbulb', family: 'lights', isActive: true }, { title: 'Kitchen', symbol: 'house', room: 'kitchen', layout: 'stack', titleLines: 2, kind: 'navigate' }]); }); } },
+    'progress': { title: 'Progress bands', note: 'a done part from the leading edge: lit tiles get a lighter band, filled tiles darken the part not reached, off tiles tint the band (a dragged brightness animates its level on quick, not the 0.6 s colour fade)', render: function (ctx) {
+      return both(ctx, 'progress', function () { return grid([
+        { title: 'Table Light', subtitle: 'On at 70%', symbol: 'lightbulb', family: 'lights', isActive: true, progress: .7 }, { title: 'Dishwasher', subtitle: 'Cycle · 40%', symbol: 'sparkles', family: 'cleaning', isActive: true, progress: .4 },
+        { title: 'Towel Rack', subtitle: 'On', symbol: 'bolt.fill', family: 'power', isActive: true, progress: .5 }, { title: 'Robot Vacuum', subtitle: 'Docked · 40%', symbol: 'robotic.vacuum', family: 'cleaning', isActive: false, progress: .4 }]); }); } },
+    'ax5': { title: 'Accessibility 5 text size', override: { ts: 'ax5' }, note: 'every tile stacks the glyph over the text, anchored bottom; the grid gives one column', render: function (ctx) {
+      return both(ctx, 'AX5', function () { return grid([{ title: 'Kitchen Lights', subtitle: 'On at 70%', symbol: 'lightbulb', family: 'lights', isActive: true }, { title: 'Thermostat', subtitle: 'Heating to 70°', symbol: 'thermometer.medium', family: 'heating', isActive: false, kind: 'navigate' }], { min: 150, max: 4 }); }); } },
+  };
+  Object.keys(extra).forEach(function (k) { cfg.states[k] = extra[k]; });
+
+  Mock.mount(Object.assign(cfg, {
+    states: cfg.states,
+    id: 'glass-tile', title: 'GlassTile (kinds: toggle, command, navigate, state)', area: 'design', status: 'shipped',
+    summary: 'The entity tile every page draws: a glyph, a title and a state in a 22 pt tile. Its face follows state (off, filled in the family colour, lit, error, unavailable, tinted, a room or Quick Link fill); its kind decides what a tap does and how it speaks. Tinted glass on a page, opaque in a sheet, solid under Reduce Transparency.',
+    source: ['apple/Sources/HassDesign/GlassTile.swift', 'apple/Sources/HassDesign/TileFaceStyle.swift', 'apple/Sources/HassDesign/TileAppearance.swift', 'apple/Sources/HassDesign/TileMetrics.swift', 'apple/Sources/HassDesign/TileSurface.swift', 'apple/Sources/HassDesign/TileFinish.swift', 'apple/Sources/HassDesign/TileLayout.swift', 'apple/Sources/HassDesign/PendingValue.swift (the pending bar)'],
+    spec: ['.agents/patterns/entity-tile.md', '.agents/design/direction-g.md', '.agents/patterns/optimistic-actions.md'],
+    patterns: ['entity-tile', 'optimistic-actions', 'dynamic-grid', 'motion'],
+    hig: ['Toggles', 'Buttons', 'Color', 'Dynamic Type', 'Materials', 'Accessibility'],
+    entities: [],
+    kitComponents: ['GlassTile', 'TileGrid'],
+    devices: ['iphone', 'ipad-portrait'],
+    motion: [
+      { id: 'face-colour', what: 'A tile turns on or off: its ground, rim, glyph and text cross-fade together', token: 'state 0.6 s ease-in-out (0.2 s reduced), colour only; layout never moves', state: 'states',
+        source: 'GlassTile.swift .stateColorTransition("GlassTile", value: colorKey) and .stateForeground; motion.md section 6; motion-components.md GlassTile', reduce: 'still cross-fades (colour is not motion), shortened to 0.2 s',
+        play: function (stage) { var t = stage.querySelector('.ui-tile[data-face="off"]'); if (!t) return Promise.resolve(); return Mock.anim.toggleState(t, ['on'], ['tinted', 'off']).then(function () { t.dataset.face = 'on'; return Mock.sleep(300); }).then(function () { return Mock.anim.toggleState(t, ['tinted'], ['on']); }); } },
+      { id: 'press', what: 'Pressing a tile dims it', token: 'opacity 0.8 while pressed (GlassTileButtonStyle); no scale and no animation token', state: 'states',
+        source: 'GlassTile.swift GlassTileButtonStyle', reduce: 'unchanged (it is not motion)',
+        play: function (stage) { var t = stage.querySelector('.ui-tile'); if (!t) return Promise.resolve(); t.style.opacity = .8; return Mock.sleep(500).then(function () { t.style.opacity = ''; return Mock.sleep(200); }); } },
+      { id: 'symbol-replace', what: 'A glyph that changes with state (lock to unlock, play to pause) replaces itself', token: 'contentTransition(.symbolEffect(.replace)), the system effect', state: 'kinds',
+        source: 'GlassTile.swift glyph(_:layout:) contentTransition', reduce: 'identity: the glyph swaps with no effect',
+        play: function (stage) { var g = stage.querySelector('.ui-tile .glyph'); if (!g) return Promise.resolve(); var was = g.innerHTML; return Mock.anim.fade(g, { from: 1, to: 0, ms: 150 }).then(function () { g.innerHTML = I('lock.open'); return Mock.anim.fade(g, { ms: 200 }); }).then(function () { return Mock.sleep(500); }).then(function () { g.innerHTML = was; }); } },
+      { id: 'pending-pulse', what: 'First sign-in: a soft bar pulses where the state will go', token: 'opacity 0.35 to 1 over 1.4 s, repeats until the value arrives', state: 'states',
+        source: 'HassDesign/PendingValue.swift PendingValueBar; motion.md section 5', reduce: 'static at 65% opacity', play: function () { return Mock.sleep(2800); } },
+    ],
+    transitions: [],
+    a11y: [
+      { rule: 'Name, value and trait', note: 'The tile is one element named by its title with a value: Loading while values are pending, the caller\'s spoken value, Unavailable, the error text, On or Off for a toggle, else the subtitle. Toggle gets the toggle trait, selection the selected trait, navigate and command are buttons, state is not a button. The glyph is decorative; the title names the tile.' },
+      { rule: 'Unavailable is still readable', note: 'It dims the glyph and the tinted rim only; the title and "Unavailable" keep full strength (4.5:1), and the button is disabled. The button style never fades the label.' },
+      { rule: 'Targets', note: 'Every layout keeps a 44 pt target with room to spare: tiles measure 72 (row), 96 (anchored bottom), 84 and 112 pt; the accessory buttons are their own 44 pt controls.' },
+      { rule: 'Dynamic Type', note: 'Title is subheadline semibold, state footnote; both wrap and the tile grows. At accessibility sizes a row becomes anchored bottom (glyph above text) and the grid gives one column.' },
+      { rule: 'State is not colour alone', note: 'Filled versus dark, a filled glyph versus an outline, the words in the subtitle, the toggle value; error adds the words "Didn\'t respond" with a red glyph.' },
+      { rule: 'Reduce Transparency and Increase Contrast', note: 'The tinted glass finish is replaced by the solid finish (opaque fills, the thin module when off), keeping every state\'s meaning.' },
+    ],
+    reviews: {
+      date: '2026-10-23',
+      hig: [
+        { rule: 'Toggles and buttons: 44 pt minimum, state conveyed beyond colour', verdict: 'pass', note: '72 pt row, text states, toggle semantics.' },
+        { rule: 'Color: sufficient contrast, support both appearances', verdict: 'pass', note: 'White on every family fill at 4.5:1 or better; a light sheet takes a white cell, a separator rim and darkened glyphs (3:1).' },
+        { rule: 'Materials: content-layer tiles are not Liquid Glass', verdict: 'pass', note: 'Tinted glass is translucency over the once-blurred wallpaper plus one gradient and a hairline; never a live blur per tile (GPU cost, direction-g.md Layers).' },
+        { rule: 'Accessibility: reduce transparency', verdict: 'pass', note: 'TileFinish.effective returns the solid finish.' },
+        { rule: 'Press feedback', verdict: 'pass', note: 'Opacity 0.8 while pressed; no scale (the catalog hint said "press scale"; the code dims only).' },
+      ],
+      swiftui: [
+        { rule: 'Pure views: values in, action out', verdict: 'pass', note: 'GlassTile takes values and an action, never a store.' },
+        { rule: 'Animate colour with a scoped token', verdict: 'pass', note: 'stateColorTransition keyed on TileColorKey, so level changes (a dragged brightness) are not slowed by the 0.6 s fade.' },
+        { rule: 'Scaled metrics', verdict: 'pass', note: '@ScaledMetric title line height and glyph height drive the reserved title lines.' },
+        { rule: 'Do not wrap a Button\'s label in accessibilityElement(.ignore)', verdict: 'pass', note: 'Label, value and traits sit on the Button itself (the identifier and disabled state used to split between two elements).' },
+        { rule: 'Hard-coded colours', verdict: 'departure', note: 'Face inks and fills are fixed per family (ColorFamily.ink, LitTile) because a filled tile looks the same in a light or dark sheet (direction-g.md Controls).' },
+      ],
+    },
+    notes: [
+      'Docs versus code: the catalog hint "press scale" is not in the code: GlassTileButtonStyle fades the pressed tile to 0.8 opacity and nothing scales.',
+      'Docs versus code: entity-tile.md bullet 2 says GlassTile restates the button role with `.accessibilityElement(children: .ignore)`; a later bullet in the same file (and the code) puts label, value and traits on the Button itself and uses .ignore only for the read-only `.state` kind. The mockup describes the code.',
+      'Navigation tiles (Rooms grid, Climate Rooms tab, Quick Links) use anchored bottom with two reserved title lines (tileTitleLines(2)); device tiles on room pages keep the row. The kit calls the anchored layout "stack".',
+      'Kit gap: under Reduce Transparency the kit repaints a lit tile\'s unlit part dark (kit.css `.k-reduce-transparency .ui-tile` sets --ul after `.ui-tile.lit`); the app keeps the warm base in the solid finish. The solid state here has no progress band on the lit tile for that reason; promote the fix to kit.css.',
+      'Kit gap: a Power tile in a sheet loses its dark secondary ink (kit.css `.in-sheet .ui-tile` resets --tile-ink and --tile-ink-2 after `.ui-tile.power`, so the state text turns pale on the yellow). The app draws dark ink (ColorFamily.secondaryInk). Promote the fix to kit.css.',
+    ],
+    changelog: [{ date: '2026-10-23', note: 'First pass: every face, kind and layout, accessory rail, wash, long text, solid finish, progress, AX5.' }],
+  }));
+})();
+</script></body></html>
