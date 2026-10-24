@@ -21,3 +21,10 @@ Mockups: [weather-card-header.html](mockups/weather-card-header/weather-card-hea
 
 - The ticker is an exception to [motion.md](motion.md) section 9.6 (durations) and 9.10 (no animating while scrolling or off screen): it pauses on scroll, off screen and while the scene is inactive, and only runs when the label overflows.
 - Motion ships with signposts and performance tests ([performance](../testing/apple/performance.md)).
+
+## Shipped (2026-10-23)
+
+Screenshots from the iPhone journey run (`WeatherHeaderJourneyTests.testCaptureTheHeaderAtThreeSizes`): [Large short](mockups/weather-card-header/shipped/iPhone-header-large-short.png), [Large long](mockups/weather-card-header/shipped/iPhone-header-large-long.png), [xxxLarge short](mockups/weather-card-header/shipped/iPhone-header-xxxlarge-short.png), [xxxLarge long](mockups/weather-card-header/shipped/iPhone-header-xxxlarge-long.png), [AX2 short](mockups/weather-card-header/shipped/iPhone-header-ax2-short.png), [AX2 long](mockups/weather-card-header/shipped/iPhone-header-ax2-long.png).
+
+The card's one accessibility button sits behind the whole header (not on the numeral), so no drawn text lacks an element; the numeral, condition and glyph are hidden from VoiceOver and the button label names them.
+

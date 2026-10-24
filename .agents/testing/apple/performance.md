@@ -268,8 +268,8 @@ The Home weather card's condition scrolls as a ticker when it is wider than its 
 
   | What | Budget | Measured |
   |---|---|---|
-  | Ticking card against the still card, CPU over 10 s (simulator) | at most 10% of one core more | see the PR |
+  | Ticking card against the still card, CPU over 10 s (simulator) | at most 10% of one core more | 2026-10-23, `tools/ios_tickerperf.sh`: iPhone 17 Pro 0.365 → 0.726 s CPU in 10 s (+3.6% of a core), iPhone Duo 0.001 → 0.264 s (+2.6%), iPad 0.000 → 0.043 s (+0.4%) |
   | Hitch time ratio while the ticker runs (device only; simulator values are false) | under 5 ms/s (Apple's "good") | device run needs the owner's say-so |
-  | Weather card ticking label, scrolled 8 s: main-thread p95 turn, turns over 8 ms | within 0.5 ms of the short label, none over 8 ms | see the PR |
+  | Weather card ticking label, scrolled 8 s: main-thread p95 turn, turns over 8 ms | within 0.5 ms of the short label, none over 8 ms | iPhone 17 Pro, optimized: p95 2.77 ms (short) vs 3.03 ms (ticking), worst 11.0 vs 10.6 ms, turns over 8 ms: 0 and 0 (8 s scroll plus 8 s idle; the ticker idles at +330 M instructions in 8 s) |
   | Ticker paused (scrolling, off screen, scene inactive) | no `TickerRun` interval open, timeline paused | `testTickerStartsOnlyWhenTheConditionOverflows`, `TickerPlanTests` |
 - **What keeps it cheap:** the moving text is one clipped, masked overlay driven by a `TimelineView` that is paused whenever the label is not running; nothing re-lays out (the layout line is a hidden truncating copy); no state is written per frame; it stops itself after three passes.
