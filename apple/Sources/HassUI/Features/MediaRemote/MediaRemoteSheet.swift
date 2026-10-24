@@ -247,7 +247,7 @@ struct WindowMetricsReader: UIViewRepresentable {
         let view = ProbeView()
         view.isUserInteractionEnabled = false
         view.onChange = { metrics in
-            DispatchQueue.main.async { if self.metrics != metrics { self.metrics = metrics } }
+            Task { @MainActor in if self.metrics != metrics { self.metrics = metrics } }
         }
         return view
     }

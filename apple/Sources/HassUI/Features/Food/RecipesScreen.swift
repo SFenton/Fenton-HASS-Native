@@ -64,7 +64,7 @@ struct RecipesScreen: View {
         .sheet(item: sheetRecipe) { _ in
             if let detail { RecipeDetailSheet(model: detail) }
         }
-        .onAppear {
+        .task {
             collection.appear()
             if !collection.searchText.isEmpty { searchExpanded = true }
         }

@@ -190,7 +190,7 @@ extension View {
     func todoDeletionDialog(_ deletion: Binding<TodoDeletion?>) -> some View {
         confirmationDialog(
             deletion.wrappedValue.map { "Delete \($0.item.displayTitle)?" } ?? "",
-            isPresented: Binding(get: { deletion.wrappedValue != nil }, set: { if !$0 { deletion.wrappedValue = nil } }),
+            isPresented: deletion.isPresent(),
             titleVisibility: .visible,
             presenting: deletion.wrappedValue
         ) { deletion in

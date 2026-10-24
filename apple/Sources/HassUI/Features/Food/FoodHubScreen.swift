@@ -44,7 +44,7 @@ struct FoodHubScreen: View {
             hub
         }
         .navigationTitle("Food & Recipes")
-        .onAppear { models.suggestions.appear() }
+        .task { models.suggestions.appear() }
         .navigationDestination(item: $pushed) { FoodNavigation.destination($0, models: models).pageChrome() }
         .sheet(item: $openDetail) { RecipeDetailSheet(model: $0) }
     }

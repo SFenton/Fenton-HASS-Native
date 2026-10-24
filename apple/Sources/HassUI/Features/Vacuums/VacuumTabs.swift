@@ -88,7 +88,7 @@ struct VacuumControlsTab: View {
                 }
             }
         }
-        .confirmationDialog(confirmTitle, isPresented: Binding(get: { confirming != nil }, set: { if !$0 { confirming = nil } }),
+        .confirmationDialog(confirmTitle, isPresented: $confirming.isPresent(),
                             titleVisibility: .visible, presenting: confirming) { confirmation in
             switch confirmation {
             case .toRooms:
@@ -319,7 +319,7 @@ struct VacuumRoomsTab: View {
                 }
             }
         }
-        .alert("Switch to Rooms", isPresented: Binding(get: { pendingZone != nil }, set: { if !$0 { pendingZone = nil } }), presenting: pendingZone) { zone in
+        .alert("Switch to Rooms", isPresented: $pendingZone.isPresent(), presenting: pendingZone) { zone in
             Button("Continue") { controller.toggleRoom(zone) }
             Button("Cancel", role: .cancel) {}
         } message: { _ in

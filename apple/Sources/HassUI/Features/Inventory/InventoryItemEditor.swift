@@ -119,7 +119,7 @@ struct InventoryItemEditor: View {
     // MARK: - Prompts
 
     private var promptShown: Binding<Bool> {
-        Binding(get: { prompt != nil }, set: { if !$0 { prompt = nil } })
+        $prompt.isPresent()
     }
 }
 

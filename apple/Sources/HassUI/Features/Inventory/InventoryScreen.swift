@@ -100,7 +100,7 @@ struct InventoryScreen: View {
         }
         .confirmationDialog(
             presentation.confirmDelete.map { "Delete \($0.name) from the \(space.phrase)?" } ?? "",
-            isPresented: Binding(get: { presentation.confirmDelete != nil }, set: { if !$0 { presentation.confirmDelete = nil } }),
+            isPresented: Bindable(presentation).confirmDelete.isPresent(),
             titleVisibility: .visible,
             presenting: presentation.confirmDelete
         ) { item in
@@ -227,7 +227,7 @@ struct InventoryScreen: View {
     // MARK: - Presentation
 
     private var promptShown: Binding<Bool> {
-        Binding(get: { presentation.prompt != nil }, set: { if !$0 { presentation.prompt = nil } })
+        Bindable(presentation).prompt.isPresent()
     }
 
     private func updateSplit(_ size: CGSize) {

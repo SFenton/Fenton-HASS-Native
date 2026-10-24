@@ -86,7 +86,7 @@ struct RecipeDetailContent: View {
             }
         }
         .modifier(DetailTitle(title: model.detail?.title ?? model.recipe.title, subtitle: subtitle, isEnabled: setsNavigationTitle))
-        .onAppear { model.load() }
+        .task { model.load() }
         .overlay(alignment: .bottomTrailing) { DetailDebugMarker(model: model) }
     }
 

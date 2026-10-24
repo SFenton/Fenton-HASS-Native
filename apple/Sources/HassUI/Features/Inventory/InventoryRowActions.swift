@@ -14,8 +14,8 @@ extension View {
     ///   - model: The page model the row actions run against.
     func inventoryRowActions(_ presentation: InventoryPresentation, model: InventoryListModel) -> some View {
         let bindable = Bindable(presentation)
-        let promptShown = Binding(get: { presentation.prompt != nil }, set: { if !$0 { presentation.prompt = nil } })
-        let deleteShown = Binding(get: { presentation.confirmDelete != nil }, set: { if !$0 { presentation.confirmDelete = nil } })
+        let promptShown = bindable.prompt.isPresent()
+        let deleteShown = bindable.confirmDelete.isPresent()
         return sheet(item: bindable.sheetEditor) { editor in
             InventoryItemEditor(model: editor, style: .sheet) { presentation.editing = nil }
         }

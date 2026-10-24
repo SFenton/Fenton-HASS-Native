@@ -21,8 +21,22 @@ struct FeedbackFormSheet: View {
     @State private var showingPhotos = false
     @State private var showingFiles = false
     @State private var photoSelection: [PhotosPickerItem] = []
+    /// The text boxes that take focus.
+    private enum Field: Hashable {
+        case title, description, repro, expected
+
+        var identifier: String {
+            switch self {
+            case .title: "feedback.field.title"
+            case .description: "feedback.field.description"
+            case .repro: "feedback.field.repro"
+            case .expected: "feedback.field.expected"
+            }
+        }
+    }
+
     /// The focused box, cleared before sending so the keyboard closes.
-    @FocusState private var focusedField: String?
+    @FocusState private var focusedField: Field?
     @Environment(HassConnection.self) private var connection
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
@@ -98,7 +112,7 @@ struct FeedbackFormSheet: View {
                     .accessibilityLabel("Title")
                     .accessibilityHint(titleDetail)
                     .accessibilityIdentifier("feedback.field.title")
-                    .focused($focusedField, equals: "title")
+                    .focused($focusedField, equals: .title)
                     .disabled(model.isSending)
                     #if os(iOS)
                     .textInputAutocapitalization(.sentences)
@@ -106,12 +120,12 @@ struct FeedbackFormSheet: View {
             } header: {
                 FeedbackFieldHeader("Title", detail: titleDetail)
             }
-            textBox("Description", detail: descriptionDetail, text: $model.descriptionText, identifier: "feedback.field.description")
+            textBox("Description", detail: descriptionDetail, text: $model.descriptionText, field: .description)
             if kind.includesReproduction {
                 textBox("Steps to Reproduce", detail: "List the steps that make it happen, one per line.",
-                        text: $model.reproSteps, identifier: "feedback.field.repro")
+                        text: $model.reproSteps, field: .repro)
                 textBox("Expected Behavior", detail: "What did you expect to happen instead?",
-                        text: $model.expectedBehavior, identifier: "feedback.field.expected")
+                        text: $model.expectedBehavior, field: .expected)
             }
             mediaSection
             if model.isSending {
@@ -129,14 +143,14 @@ struct FeedbackFormSheet: View {
         .scrollDismissesKeyboard(.interactively)
     }
 
-    private func textBox(_ label: String, detail: String, text: Binding<String>, identifier: String) -> some View {
+    private func textBox(_ label: String, detail: String, text: Binding<String>, field: Field) -> some View {
         Section {
             TextEditor(text: text)
                 .frame(minHeight: 96)
                 .accessibilityLabel(label)
                 .accessibilityHint(detail)
-                .accessibilityIdentifier(identifier)
-                .focused($focusedField, equals: identifier)
+                .accessibilityIdentifier(field.identifier)
+                .focused($focusedField, equals: field)
                 .disabled(model.isSending)
         } header: {
             FeedbackFieldHeader(label, detail: detail)

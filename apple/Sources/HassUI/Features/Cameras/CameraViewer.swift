@@ -132,6 +132,7 @@ struct CameraControls: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(camera.title) camera controls")
+        .task(id: snapshot) { await runSnapshot() }
         .sensoryFeedback(trigger: snapshot) { _, new in
             switch new {
             case .saved: .success
@@ -174,27 +175,33 @@ struct CameraControls: View {
 
     private func takeSnapshot() {
         snapshot = .saving
-        let frame = model.liveFrameSource()
-        let fallbackURL = snapshotURL
-        Task {
-            let result = await CameraSnapshotSaver.save(frame: await frame?.image(), fallbackURL: fallbackURL)
+    }
+
+    /// Runs the snapshot's steps as `snapshot` changes: save while `.saving`, then announce and settle back to `.idle`.
+    /// Driven by `.task(id:)`, so leaving the viewer cancels a pending save or the 2 s outcome display.
+    private func runSnapshot() async {
+        switch snapshot {
+        case .idle:
+            return
+        case .saving:
+            let frame = model.liveFrameSource()
+            let result = await CameraSnapshotSaver.save(frame: await frame?.image(), fallbackURL: snapshotURL)
             switch result {
             case .saved: snapshot = .saved
             case .denied:
                 snapshot = .idle
                 showsPhotosDenied = true
-                return
             case .failed: snapshot = .failed
             }
+        case .saved, .failed:
             #if canImport(UIKit)
             UIAccessibility.post(notification: .announcement, argument: snapshot.accessibilityValue)
             #endif
             try? await Task.sleep(for: .seconds(2))
-            snapshot = .idle
+            if !Task.isCancelled { snapshot = .idle }
         }
     }
 
-    /// The camera's still from Home Assistant, used when no live frame is playing.
     private var snapshotURL: URL? {
         guard let picture = store.entity(camera.entityId).state?.attributes["entity_picture"]?.string else { return nil }
         return URL(string: picture, relativeTo: connection.server.baseURL)?.absoluteURL
