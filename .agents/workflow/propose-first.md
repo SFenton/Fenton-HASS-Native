@@ -18,7 +18,7 @@ When unsure whether a change is visible enough, propose. A one-screen proposal c
 
 ## The proposal
 
-One self-contained HTML file at `.agents/design/mockups/<topic>/<topic>.html`, headed `Proposal · <date>`, that opens in a browser with no network (light and dark, readable at phone width). In order:
+One self-contained HTML file at `.agents/design/mockups/proposals/<topic>/<topic>.html`, headed `Proposal · <date>`, that opens in a browser with no network (light and dark, readable at phone width). In order:
 
 1. **Cause or goal.** What is wrong or wanted, with the measured evidence (point sizes, the failing string, a screenshot), not a guess.
 2. **Options.** At least two genuinely different answers when there is a design choice; if the fix is unambiguous, a before and after. Each at live size on the device families it affects (iPhone, iPhone Duo, iPad), at the default text size and an accessibility size, and in the states that break it (long text, empty, error, offline).
