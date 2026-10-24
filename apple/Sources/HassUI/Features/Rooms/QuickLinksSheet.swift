@@ -224,10 +224,13 @@ struct RoomNavigationGrid: View {
     var onOpen: (String) -> Void
     @Environment(EntityStore.self) private var store
     @ScaledMetric(relativeTo: .subheadline) private var minTileWidth: CGFloat = 140
+    /// The ranking taken when the grid appeared. Tiles keep their places while it is on screen: a counter that
+    /// changes, or the tapped room as the sheet closes, never reorders them under the reader (HIG Lists and tables).
+    @State private var order: [RoomNavigationItem]?
 
     var body: some View {
         DynamicGridLayout(minCellWidth: minTileWidth, maxColumns: 4, equalRowHeights: true) {
-            ForEach(RoomNavigation.ranked { store.entity($0).state?.state }) { item in
+            ForEach(order ?? RoomNavigation.ranked { store.entity($0).state?.state }) { item in
                 // A solid fill per room with a filled white glyph (direction G, Colour: Room tiles; owner, 2026-10-16).
                 GlassTile(title: item.title, symbol: SymbolMap.symbol(for: item.icon), family: .neutral,
                           fillRGB: RoomPalette.fill(forRoom: item.path), isActive: false, kind: .navigate) { open(item) }
@@ -240,6 +243,7 @@ struct RoomNavigationGrid: View {
         .equalHeightTiles()
         .tileLayout(.anchoredBottom)
         .tileTitleLines(2)
+        .onAppear { if order == nil { order = RoomNavigation.ranked { store.entity($0).state?.state } } }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Rooms")
     }

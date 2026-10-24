@@ -74,7 +74,7 @@
       ],
       swiftui: [
         { rule: 'Fire-and-forget calls should surface or log failure', verdict: 'fix', note: 'RoomController.recordVisit runs Task { try? await caller.call(call) } (RoomController.swift:351): a failed counter call leaves the room\'s rank unchanged and says nothing. Low.', by: 'swiftui-pro skill' },
-        { rule: 'Order should not change under the reader', verdict: 'fix', note: 'RoomNavigation.ranked is evaluated in body (QuickLinksSheet.swift:230), so a counter that changes while the sheet is open, or the tapped room as the sheet closes, reorders the tiles live. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Order should not change under the reader', verdict: 'pass', note: 'Fixed: RoomNavigationGrid keeps the order taken on appear (@State order, QuickLinksSheet.swift).', by: 'swiftui-pro skill' },
         { rule: 'Group a grid for assistive tech with a name', verdict: 'pass', note: '.accessibilityElement(children: .contain) and label "Rooms" (QuickLinksSheet.swift:243-244).', by: 'swiftui-pro skill' },
       ],
     },
