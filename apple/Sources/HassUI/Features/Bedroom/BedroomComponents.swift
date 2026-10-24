@@ -210,24 +210,27 @@ struct ClockTimeField: View {
     var title: String
     @Binding var time: String
     var identifier: String
+    @Environment(\.calendar) private var calendar
 
     var body: some View {
-        DatePicker(title, selection: Binding(get: { Self.date(time) }, set: { time = Self.string($0) }),
+        DatePicker(title, selection: Binding(get: { Self.date(time, calendar: calendar) },
+                                             set: { time = Self.string($0, calendar: calendar) }),
                    displayedComponents: .hourAndMinute)
             .frame(minHeight: HassTokens.minTarget)
             .accessibilityIdentifier(identifier)
     }
 
-    static func date(_ value: String) -> Date {
+    static func date(_ value: String, calendar: Calendar = .current) -> Date {
         let parts = value.split(separator: ":").compactMap { Int($0) }
-        var components = Calendar.current.dateComponents([.year, .month, .day], from: .now)
+        var components = calendar.dateComponents([.year, .month, .day], from: .now)
         components.hour = parts.first ?? 7
         components.minute = parts.count > 1 ? parts[1] : 0
-        return Calendar.current.date(from: components) ?? .now
+        return calendar.date(from: components) ?? .now
     }
 
-    static func string(_ date: Date) -> String {
-        let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
+    static func string(_ date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.hour, .minute], from: date)
+        // A stored `HH:MM` value, so ASCII digits whatever the locale.
         return String(format: "%02d:%02d", parts.hour ?? 0, parts.minute ?? 0)
     }
 }

@@ -587,6 +587,9 @@ struct HostedBedroomTests {
         #expect(ClockTimeField.string(ClockTimeField.date("23:05")) == "23:05")
         // A malformed time falls back to 07:00.
         #expect(ClockTimeField.string(ClockTimeField.date("")) == "07:00")
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = TimeZone(identifier: "Pacific/Auckland") ?? .current
+        #expect(ClockTimeField.string(ClockTimeField.date("06:45", calendar: gregorian), calendar: gregorian) == "06:45")
     }
 
     @Test func sharedComponentsRender() async {

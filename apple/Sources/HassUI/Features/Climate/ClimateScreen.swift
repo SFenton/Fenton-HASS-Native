@@ -5,9 +5,24 @@ import SwiftUI
 /// The Climate tab on the app's connection.
 struct ClimateScreen: View {
     @Environment(HassConnection.self) private var connection
+    @State private var cache = ControllerCache()
 
     var body: some View {
-        ClimatePage(controller: ClimateController(store: connection.store, caller: connection))
+        ClimatePage(controller: cache.controller(for: connection))
+    }
+
+    /// Builds the page's controller on first use, so re-evaluating `body` does not allocate one that `ClimatePage`'s
+    /// `@State` then discards.
+    @MainActor
+    final class ControllerCache {
+        private var built: ClimateController?
+
+        func controller(for connection: HassConnection) -> ClimateController {
+            if let built { return built }
+            let controller = ClimateController(store: connection.store, caller: connection)
+            built = controller
+            return controller
+        }
     }
 }
 

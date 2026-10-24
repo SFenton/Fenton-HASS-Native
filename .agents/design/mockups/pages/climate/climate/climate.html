@@ -111,7 +111,7 @@
         { rule: "ScaledMetric for fixed sizes", verdict: 'pass', note: "The dial numeral is @ScaledMetric(relativeTo: .largeTitle) 76 (ThermostatDial.swift:56) and the contact minimum 160 relative to .subheadline (ClimateScreen.swift:30).", by: 'swiftui-pro skill' },
         { rule: "Avoid minimumScaleFactor for layout", verdict: 'departure', note: "The readout shrinks to 0.4 inside the fixed ring (ThermostatDial.swift:196) because the ring cannot grow with text; thermostat-dial.md records it as the bounded fallback.", by: 'swiftui-pro skill' },
         { rule: "Prefer bindings projected from state over Binding(get:set:) in body", verdict: 'fix', note: "HubPicker builds Binding(get:set:) inside body (ClimateComponents.swift:130); a Picker over an optional with onChange or a Menu of Buttons would avoid it.", by: 'swiftui-pro skill' },
-        { rule: "Do not create objects in a view body", verdict: 'fix', note: "ClimateScreen.body constructs a ClimateController on every evaluation (ClimateScreen.swift:10) that ClimatePage's @State then discards after the first; build it once in @State.", by: 'swiftui-pro skill' },
+        { rule: "Do not create objects in a view body", verdict: 'pass', note: "ClimateScreen builds its controller once through a cached holder (ClimateScreen.swift:10)", by: 'swiftui-pro skill' },
         { rule: "Animate with the app tokens and Reduce Motion", verdict: 'pass', note: "Handles glide on MotionTokens.quick, nil under Reduce Motion or while dragging (ThermostatDial.swift:89); colours cross-fade at 0.2 s reduced.", by: 'swiftui-pro skill' },
 
       ],
