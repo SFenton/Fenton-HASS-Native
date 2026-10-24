@@ -331,3 +331,41 @@ struct ShellHamburgerTests {
         #expect(ShellHeaderGrouping.resolve(inVerticalBar: true) == .oneGroup)
     }
 }
+
+/// Route de-duplication and link landing (HIG Navigation).
+@MainActor
+struct NavigationFlowTests {
+    @Test func aLinkClosesTheQuickLinksAndAccountSheetsSoThePageIsSeen() {
+        let navigator = ShellNavigator(selection: .home)
+        navigator.openQuickLinks()
+        navigator.open(.section(.climate))
+        #expect(navigator.quickLinksSection == nil)
+        navigator.openAccount()
+        navigator.open(.section(.security))
+        #expect(navigator.accountSection == nil)
+        navigator.quickLinksSection = .home
+        navigator.open(.homePage("sprinklers"))
+        #expect(navigator.quickLinksSection == nil)
+    }
+
+    @Test func quickLinksDoesNotPushThePageAlreadyOnTop() {
+        let navigator = ShellNavigator(selection: .home)
+        let route = HomeRoute.sprinklers
+        #expect(navigator.push(route, in: .home))
+        navigator.routeAppeared(route, in: .home)
+        #expect(!navigator.push(route, in: .home))
+        #expect(navigator.paths[.home]?.count == 1)
+        navigator.routeDisappeared(route, in: .home)
+        #expect(navigator.push(route, in: .home))
+        #expect(navigator.paths[.home]?.count == 2)
+    }
+
+    @Test func aCoveredRouteIsNotOnTopAndAnotherSectionIsIndependent() {
+        let navigator = ShellNavigator(selection: .home)
+        let route = HomeRoute.sprinklers
+        navigator.routeAppeared(route, in: .home)
+        #expect(navigator.push(route, in: .climate))
+        navigator.routeDisappeared(.vacuums, in: .home)
+        #expect(!navigator.push(route, in: .home))
+    }
+}

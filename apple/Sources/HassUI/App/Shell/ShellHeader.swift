@@ -187,7 +187,7 @@ private struct ShellSheets: ViewModifier {
     private func pushPending() {
         guard let route = pending, let navigator, let section else { return }
         pending = nil
-        navigator.paths[section, default: NavigationPath()].append(route)
+        navigator.push(route, in: section)
     }
 }
 

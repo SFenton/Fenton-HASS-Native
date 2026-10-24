@@ -101,6 +101,10 @@ final class ShellNavigator {
     func open(_ destination: PushDestination, anchor: String? = nil) {
         isFlyoutOpen = false
         pendingSheet = nil
+        // A link must land where the person can see it: close the Quick Links and Account sheets too, or the page
+        // opens on the stack behind them (HIG Navigation).
+        quickLinksSection = nil
+        accountSection = nil
         switch destination {
         case let .section(section):
             let target = AppSection(section)
@@ -113,6 +117,28 @@ final class ShellNavigator {
             paths[.home] = stack
             selection = .home
         }
+    }
+
+    /// The Home page on top of each section's stack, kept by the destination as it appears and disappears. A
+    /// ``NavigationPath`` cannot be read, so this is how ``push(_:in:)`` knows what is already showing.
+    private(set) var shownRoutes: [AppSection: HomeRoute] = [:]
+
+    /// Records that `route` is now the page showing on `section`'s stack.
+    func routeAppeared(_ route: HomeRoute, in section: AppSection) { shownRoutes[section] = route }
+
+    /// Records that `route` left the screen (popped, or covered by a deeper page).
+    func routeDisappeared(_ route: HomeRoute, in section: AppSection) {
+        if shownRoutes[section] == route { shownRoutes[section] = nil }
+    }
+
+    /// Pushes a page Quick Links chose onto `section`'s stack, unless that page is already on top (choosing
+    /// Sprinklers while on Sprinklers stays put; HIG Navigation: a destination is not pushed twice in a row).
+    /// - Returns: Whether the page was pushed.
+    @discardableResult
+    func push(_ route: HomeRoute, in section: AppSection) -> Bool {
+        guard shownRoutes[section] != route else { return false }
+        paths[section, default: NavigationPath()].append(route)
+        return true
     }
 
     /// The sheet a link asked `page` to open, once; nil for another page or none.

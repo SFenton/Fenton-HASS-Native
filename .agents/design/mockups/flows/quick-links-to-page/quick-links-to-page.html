@@ -77,7 +77,7 @@
       date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
         { rule: 'Sheets: finish dismissing before navigating', verdict: 'pass', note: 'The route waits for onDismiss before it is appended (ShellHeader.swift:182, 187-191).', by: 'apple-hig skill' },
-        { rule: 'Navigation: a destination is not pushed twice in a row', verdict: 'fix', note: 'pushPending appends the route even when that page is already on top, for example Sprinklers chosen while on Sprinklers (ShellHeader.swift:187-191). Low.', by: 'apple-hig skill' },
+        { rule: 'Navigation: a destination is not pushed twice in a row', verdict: 'pass', note: 'Fixed: ShellNavigator.push(_:in:) skips the route already on top (ShellHeader.swift pushPending).', by: 'apple-hig skill' },
         { rule: 'Navigation: keep a hierarchy so Back makes sense', verdict: 'fix', note: 'Quick Links is lateral navigation but pushes onto the current section\'s path, so repeated use grows a stack like Home, Media, Vacuums, Media (ShellHeader.swift:190). Low; an owner choice may be to pop first.', by: 'apple-hig skill' },
         { rule: 'Sheets: a close glyph, grabber, taller for a navigating sheet', verdict: 'pass', note: 'Circle x Close, grabber, height .full with page width on iPad (QuickLinksSheet.swift:63-65).', by: 'apple-hig skill' },
         { rule: 'Color: not the only signal', verdict: 'pass', note: 'Titles and glyphs on every tile.', by: 'apple-hig skill' },

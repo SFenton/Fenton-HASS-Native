@@ -86,7 +86,7 @@
       date: '2026-10-23', by: 'apple-hig skill, swiftui-pro skill',
       hig: [
         { rule: 'Notifications: open the content the notification is about', verdict: 'pass', note: 'A section is selected on a cleared path, a Home page is pushed, an unknown route opens Home (ShellNavigator.swift:99-116).', by: 'apple-hig skill' },
-        { rule: 'Navigation: a link must land where the person can see it', verdict: 'fix', note: 'open(_:) closes the flyout and clears pendingSheet but leaves quickLinksSection and accountSection set (ShellNavigator.swift:101-116), so a tap while Quick Links or Your Summary is open changes the stack behind the sheet and the page is not seen. Medium.', by: 'apple-hig skill' },
+        { rule: 'Navigation: a link must land where the person can see it', verdict: 'pass', note: 'Fixed: ShellNavigator.swift open(_:) now clears quickLinksSection and accountSection.', by: 'apple-hig skill' },
         { rule: 'App Shortcuts: phrases carry the app name, at most ten', verdict: 'pass', note: 'Four shortcuts, each phrase includes \\(.applicationName) (SHShortcuts.swift).', by: 'apple-hig skill' },
         { rule: 'App Shortcuts: cover the app\'s destinations', verdict: 'fix', note: 'OpenPageIntent says it opens Home, Security, Climate, Chores or Settings (OpenPageIntent.swift:7-10) but SHShortcuts offers four; Settings has no phrase. Low.', by: 'apple-hig skill' },
         { rule: 'Privacy: nothing of a signed-out person in the index', verdict: 'pass', note: 'spotlight.removeAll() runs in signOut (AppSession.swift:186).', by: 'apple-hig skill' },
