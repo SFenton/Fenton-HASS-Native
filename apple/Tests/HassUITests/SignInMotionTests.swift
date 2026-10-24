@@ -10,7 +10,7 @@ import Testing
 
 extension LoginTests {
 /// What a session does when Home Assistant rejects the token, the launch and sign-in choreography in the root, and the
-/// reconnecting chip.
+/// reconnecting arc and the offline chip.
 @MainActor
 @Suite(.serialized)
 struct SignInMotionTests {
@@ -210,13 +210,19 @@ struct SignInMotionTests {
         #expect(!shown.differs(from: atRest), "once revealed they sit where they would with no arrival")
     }
 
-    // MARK: Reconnecting chip
+    // MARK: Reconnecting arc and offline chip
 
-    @Test func theChipWaitsOutAShortOutageAndGoesWhenLive() async throws {
-        func draw(_ status: HassConnection.Status?, delay: Duration, wait: TimeInterval = 1.5) async throws -> NSBitmapImageRep {
+    /// Draws white while the shell's reconnecting indicator has the arc in the header, black otherwise.
+    private struct IndicatorProbe: View {
+        @Environment(ReconnectingIndicator.self) private var indicator: ReconnectingIndicator?
+        var body: some View { (indicator?.isPresent == true ? Color.white : Color.black) }
+    }
+
+    @Test func theArcWaitsOutAShortOutageAndGoesWhenLive() async throws {
+        func draw(_ status: HassConnection.Status?, offline: Bool = false, delay: Duration, wait: TimeInterval = 1.5) async throws -> NSBitmapImageRep {
             let hosted = HostedWindow(
-                Color.black.modifier(ReconnectingOverlay(headerEnd: 40, statusOverride: status, delay: delay)),
-                size: CGSize(width: 402, height: 300))
+                IndicatorProbe().modifier(ReconnectingIndicatorHost(statusOverride: status, offlineOverride: offline, delay: delay)),
+                size: CGSize(width: 100, height: 100))
             defer { hosted.close() }
             await hosted.settle(wait)
             return try #require(hosted.snapshot())
@@ -224,25 +230,43 @@ struct SignInMotionTests {
         // The delay is shortened (the policy's own two seconds are tested on their own): long enough never to pass, and short.
         let live = try await draw(.connected(version: "x"), delay: .milliseconds(50))
         let soon = try await draw(.waitingToReconnect, delay: .seconds(600))
-        #expect(!soon.differs(from: live), "no chip yet: the outage has not lasted its delay")
+        #expect(!soon.differs(from: live), "no arc yet: the outage has not lasted its delay")
         let later = try await draw(.waitingToReconnect, delay: .milliseconds(50))
-        #expect(later.differs(from: live), "the chip shows once the outage has lasted its delay")
+        #expect(later.differs(from: live), "the arc is placed once the outage has lasted its delay")
+        let offline = try await draw(.waitingToReconnect, offline: true, delay: .milliseconds(50))
+        #expect(!offline.differs(from: live), "no network path is offline, not reconnecting: no arc")
         let none = try await draw(nil, delay: .milliseconds(50))
         #expect(!none.differs(from: live), "no connection (a gallery) shows nothing")
     }
 
-    @Test func theChipsDotBreathesOrHoldsStillWithReduceMotion() {
-        let early = Date(timeIntervalSinceReferenceDate: 0.35), late = Date(timeIntervalSinceReferenceDate: 1.05)
-        #expect(ReconnectingChip.dotOpacity(at: early, reduceMotion: false) != ReconnectingChip.dotOpacity(at: late, reduceMotion: false))
-        #expect(ReconnectingChip.dotOpacity(at: early, reduceMotion: true) == 1)
-        for date in [early, late] {
-            let opacity = ReconnectingChip.dotOpacity(at: date, reduceMotion: false)
-            #expect(opacity >= 0.449 && opacity <= 1.001)
-        }
+    @Test func theArcFadesAsLongAsTheCrossFadeToken() {
+        #expect(ReconnectingPolicy.fade == .milliseconds(Int(MotionTokens.crossFadeDuration * 1000)))
     }
 
-    @Test func theChipDraws() throws {
-        let image = ImageRenderer(content: ReconnectingChip().padding())
+    @Test func theArcDrawsWhiteAndSaysWhatItIs() throws {
+        let image = ImageRenderer(content: ReconnectingArc(indicator: ReconnectingIndicator()).padding())
+        #expect(image.cgImage != nil)
+        #expect(ReconnectingArc.label == "Reconnecting to Home Assistant")
+    }
+
+    @Test func theOfflineChipShowsWithNoPathAndGoesWhenOneReturns() async throws {
+        func draw(offline: Bool?) async throws -> NSBitmapImageRep {
+            let hosted = HostedWindow(
+                Color.black.modifier(OfflineOverlay(headerEnd: 40, offlineOverride: offline)),
+                size: CGSize(width: 402, height: 300))
+            defer { hosted.close() }
+            await hosted.settle(1)
+            return try #require(hosted.snapshot())
+        }
+        let online = try await draw(offline: false)
+        let offline = try await draw(offline: true)
+        #expect(offline.differs(from: online), "offline shows the chip at once")
+        let none = try await draw(offline: nil)
+        #expect(!none.differs(from: online), "no connection (a gallery) shows nothing")
+    }
+
+    @Test func theOfflineChipDraws() throws {
+        let image = ImageRenderer(content: OfflineChip().padding())
         #expect(image.cgImage != nil)
     }
 

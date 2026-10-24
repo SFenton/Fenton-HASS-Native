@@ -13,10 +13,11 @@ import XCTest
 final class HeaderButtonsJourneyTests: JourneyTestCase {
     // MARK: - Helpers
 
-    private func launch(profile: String? = nil, badge: Int = 0, offline: Bool = false, scheme: String = "dark", pushed: Bool = false, plain: Bool = true,
+    private func launch(profile: String? = nil, badge: Int = 0, offline: Bool = false, reconnecting: Bool = false, scheme: String = "dark", pushed: Bool = false, plain: Bool = true,
                         arguments: [String] = []) -> XCUIApplication {
         var environment = ["FENTON_GALLERY_BADGE": "\(badge)", "FENTON_GALLERY_SCHEME": scheme]
         if offline { environment["FENTON_GALLERY_OFFLINE"] = "1" }
+        if reconnecting { environment["FENTON_GALLERY_RECONNECTING"] = "1" }
         if let profile { environment["FENTON_GALLERY_PROFILE"] = profile }
         if pushed { environment["FENTON_GALLERY_PUSHED"] = "1" }
         if plain { environment["FENTON_GALLERY_PLAIN"] = "1" }
@@ -245,6 +246,42 @@ final class HeaderButtonsJourneyTests: JourneyTestCase {
                 let plain = launch(profile: profile, badge: badge, scheme: scheme, pushed: pushed, plain: true)
                 shoot(plain, "\(state)-plain-\(scheme)")
             }
+        }
+    }
+
+    // MARK: - Reconnecting
+
+    /// Owner, 2026-10-23: while the connection is retrying a 20 pt white arc sits left of Quick Links, the same gap from Quick
+    /// Links as Quick Links is from Profile; it is a status, so VoiceOver reads it and nothing taps. The circles do not move
+    /// when it appears. On the Duo's vertical rail it stays in the page header, trailing, not in the rail.
+    func testReconnectingArcSitsLeftOfQuickLinksAtTheSameGap() {
+        let still = launch(profile: "Stephen Fenton")
+        let stillMeasured = isHorizontal(still) ? pixels(still) : nil
+        still.terminate()
+        let app = launch(profile: "Stephen Fenton", reconnecting: true)
+        let arc = app.descendants(matching: .any)["reconnecting.arc"]
+        XCTAssertTrue(arc.waitForExistence(timeout: 5), "No reconnecting arc")
+        XCTAssertEqual(arc.label, "Reconnecting to Home Assistant")
+        XCTAssertFalse(app.staticTexts["Reconnecting…"].exists, "The arc has no text")
+        shoot(app, "reconnecting-plain")
+        guard isHorizontal(app) else {
+            // The arc is a custom view: like the monogram it stays in the horizontal page header, on the trailing side, and
+            // never joins the vertical rail (owner, 2026-10-23).
+            let window = app.windows.firstMatch.frame
+            XCTAssertLessThan(arc.frame.midY, 110, "The arc left the page header")
+            XCTAssertGreaterThan(arc.frame.midX, window.midX, "The arc is not on the trailing side of the header")
+            return
+        }
+        XCTAssertLessThan(arc.frame.maxX, app.buttons["quickLinks.open"].frame.minX + 1, "The arc is not left of Quick Links")
+        let measured = pixels(app)
+        guard let disc = measured.disc, measured.glass.count >= 3 else { return XCTFail("Expected the arc, Quick Links and Profile, saw \(measured.glass)") }
+        let ring = measured.glass[measured.glass.count - 3], links = measured.glass[measured.glass.count - 2]
+        XCTAssertEqual(ring.upperBound - ring.lowerBound, 20, accuracy: 2, "The arc is not 20 pt")
+        let arcGap = links.lowerBound - ring.upperBound
+        let profileGap = disc.minX - links.upperBound
+        XCTAssertEqual(arcGap, profileGap, accuracy: 1.5, "The arc is \(arcGap) pt from Quick Links, Profile \(profileGap) pt")
+        if let stillDisc = stillMeasured?.disc {
+            XCTAssertEqual(disc.minX, stillDisc.minX, accuracy: 1, "Profile moved when the arc appeared")
         }
     }
 

@@ -59,6 +59,7 @@ private struct ShellHeaderButtons: ViewModifier {
     @Environment(ShellNavigator.self) private var navigator: ShellNavigator?
     @Environment(EntityStore.self) private var store: EntityStore?
     @Environment(HassConnection.self) private var connection: HassConnection?
+    @Environment(ReconnectingIndicator.self) private var reconnecting: ReconnectingIndicator?
     @AppStorage(ChoresModel.viewerDefaultsKey) private var viewerUserId: String?
 
     /// Overdue chores plus expired food (``ProfileSummary/badgeCount(overdue:expiredFood:vacationMode:)``); zero until
@@ -74,6 +75,7 @@ private struct ShellHeaderButtons: ViewModifier {
                     profileName: navigator.profileName,
                     attentionCount: attentionCount,
                     isOffline: connection?.isOffline ?? false,
+                    reconnecting: reconnecting?.isPresent == true ? reconnecting : nil,
                     openQuickLinks: { navigator.openQuickLinks() },
                     openAccount: { navigator.openAccount() }
                 )
@@ -82,8 +84,10 @@ private struct ShellHeaderButtons: ViewModifier {
     }
 }
 
-/// The shell's two trailing header items, Quick Links then Profile (owner, 2026-10-18, option A: FestivalNativeApps
-/// parity, HIG Toolbars "Item groupings").
+/// The shell's trailing header items, Quick Links then Profile (owner, 2026-10-18, option A: FestivalNativeApps
+/// parity, HIG Toolbars "Item groupings"), with the reconnecting arc before them while the connection is retrying
+/// (``ReconnectingArc``; owner, 2026-10-23): the same 12 pt from Quick Links as Quick Links is from Profile, so the trailing group
+/// grows to its left and the two circles never move.
 ///
 /// On iOS 26 the bar draws Quick Links' glass circle itself and a `ToolbarSpacer(.fixed)` separates it from Profile, the way
 /// FestivalNativeApps separates its page tools from its account group: the two stay separate circles and the bar never
@@ -97,6 +101,8 @@ struct ShellHeaderItems: ToolbarContent {
     var profileName: String?
     var attentionCount = 0
     var isOffline = false
+    /// The indicator, passed only while the arc is in the bar.
+    var reconnecting: ReconnectingIndicator?
     var openQuickLinks: () -> Void
     var openAccount: () -> Void
     @Environment(\.shellInVerticalBar) private var inVerticalBar
@@ -105,17 +111,43 @@ struct ShellHeaderItems: ToolbarContent {
         if #available(iOS 26.0, macOS 26.0, *), ShellHeaderGrouping.resolve(inVerticalBar: inVerticalBar) == .oneGroup {
             // Owner, 2026-10-20: on the Duo's vertical rail the two buttons share one glass blob. One item group is one
             // glass shape; the person symbol (a monogram custom view stays in the horizontal bar, measured) shares the glass, and no spacer is added (HIG Designing for iPhone Duo).
+            // The arc is a custom view, so like the monogram it stays in the horizontal page header, trailing, and never joins the
+            // rail (owner, 2026-10-23: "spinner would still appear in page header on right side"). Nothing sits beside it, so
+            // it keeps its own padding (`besideQuickLinks: false`).
+            if let reconnecting { ReconnectingArcItem(indicator: reconnecting, besideQuickLinks: false) }
             ToolbarItemGroup(placement: .primaryAction) {
                 QuickLinksButton(action: openQuickLinks)
                 ProfileButton(name: profileName, attentionCount: attentionCount, isOffline: isOffline, grouped: true, action: openAccount)
             }
         } else if #available(iOS 26.0, macOS 26.0, *) {
+            if let reconnecting {
+                ReconnectingArcItem(indicator: reconnecting)
+                ToolbarSpacer(.fixed, placement: .primaryAction)
+            }
             ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: openQuickLinks) }
             ToolbarSpacer(.fixed, placement: .primaryAction)
             ProfileHeaderItem(name: profileName, attentionCount: attentionCount, isOffline: isOffline, action: openAccount)
         } else {
+            if let reconnecting { ReconnectingArcItem(indicator: reconnecting) }
             ToolbarItem(placement: .primaryAction) { QuickLinksButton(action: openQuickLinks) }
             ProfileHeaderItem(name: profileName, attentionCount: attentionCount, isOffline: isOffline, action: openAccount)
+        }
+    }
+}
+
+/// The reconnecting arc's bar item: on iOS 26 its shared glass is hidden, so the arc floats on the wallpaper instead of sitting
+/// in a glass circle (it is a status, not a button).
+private struct ReconnectingArcItem: ToolbarContent {
+    var indicator: ReconnectingIndicator
+    /// Quick Links follows the arc in the same bar (false on the Duo's rail, where it sits in the page header alone).
+    var besideQuickLinks = true
+
+    var body: some ToolbarContent {
+        if #available(iOS 26.0, macOS 26.0, *) {
+            ToolbarItem(placement: .primaryAction) { ReconnectingArc(indicator: indicator, besideQuickLinks: besideQuickLinks) }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .primaryAction) { ReconnectingArc(indicator: indicator, besideQuickLinks: besideQuickLinks) }
         }
     }
 }
