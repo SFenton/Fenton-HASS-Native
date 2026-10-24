@@ -8,7 +8,7 @@ Status: built 2026-10-18 on `claude/motion-system` (see PROGRESS.md). The sign-i
 
 | Component | Where | Does |
 |---|---|---|
-| `MotionTokens` | `HassDesign/Motion/MotionTokens.swift` | The only animation values: `quick`, `state` (+ `stateReduced`), `standard`, `emphasized`, `arrivalStagger` (+ cap, rise, `arrival`, `reducedMoment`). Call sites never write a duration. |
+| `MotionTokens` | `HassDesign/Motion/MotionTokens.swift` | The only animation values: `quick`, `state` (+ `stateReduced`), `standard`, `segment`, `contentFade`, `emphasized`, `arrivalStagger` (+ `arrival`, `reducedMoment`). Call sites never write a duration. |
 | `.stateColorTransition(value:)` | `HassDesign/Motion/StateColorTransition.swift` | The only way a state-driven background, fill, tint, rim or ink colour animates: `MotionTokens.state`, scoped to the colour layer, Reduce Motion aware. Records itself in `MotionAudit` (debug and test) so tests can prove each component uses it. Every component and its status: [design/motion-components.md](../design/motion-components.md). |
 | `quickTransition(_:value:)`, `stateColor`, `stateForeground`, `MotionAudit` | `HassDesign/Motion/StateColorTransition.swift` | The scoped forms of the same helper (an opacity on `quick`; ink; closure-scoped colour) and the debug-and-test registry the per-component tests read (`MotionAudit.capture`) |
 | `MotionGallery` | `HassUI/Features/Gallery/MotionGallery.swift` | Every component with a state, with Toggle state and Toggle all, for visual checks and UX tests |

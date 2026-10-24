@@ -58,6 +58,7 @@ struct AppTile: View {
                 .overlay {
                     shape.strokeBorder(display.isActive ? ColorFamily.media.glyph : HassTokens.Surface.separator,
                                        lineWidth: display.isActive ? 3 : 1)
+                        .stateColorTransition("AppTile", value: display.isActive)
                 }
                 .opacity(display.isUnavailable ? 0.4 : 1)
                 Text(app.title)

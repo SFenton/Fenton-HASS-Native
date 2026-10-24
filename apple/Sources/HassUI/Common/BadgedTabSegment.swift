@@ -48,7 +48,7 @@ struct BadgedTabSegment: View {
 
     /// The selected segment glides to the new one; under Reduce Motion it jumps (HIG Motion).
     private func select() {
-        withAnimation(reduceMotion ? nil : .snappy(duration: 0.2), action)
+        withAnimation(reduceMotion ? nil : MotionTokens.segment, action)
     }
 }
 

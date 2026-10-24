@@ -56,7 +56,7 @@
       ],
       swiftui: [
         { by: 'swiftui-pro skill', rule: 'design.md: wrap Slider in LabeledContent inside a List', verdict: 'fix', note: 'The Hue Sync Brightness slider sits under a hand-built title row that is hidden from VoiceOver (MediaRemoteTabs.swift:374-397).' },
-        { by: 'swiftui-pro skill', rule: 'Animate color with the app token', verdict: 'fix', note: 'AppTile\'s ring changes between ColorFamily.media.glyph and the separator color with no stateColorTransition (lines 58-61), unlike the other tiles; the ring snaps when an app starts.' },
+        { by: 'swiftui-pro skill', rule: 'Animate color with the app token', verdict: 'pass', note: 'Fixed on claude/hig-motion-1ec6c6: MediaRemoteTabs.swift AppTile ring now has stateColorTransition("AppTile"). Was: AppTile\'s ring changes between ColorFamily.media.glyph and the separator color with no stateColorTransition (lines 58-61), unlike the other tiles; the ring snaps when an app starts.' },
         { by: 'swiftui-pro skill', rule: 'accessibility.md: decorative images hidden, text carried by the control', verdict: 'pass', note: 'The fallback glyph is accessibilityHidden (line 108) and the tile is one element labelled by the app title (lines 80-82).' },
       ],
     },

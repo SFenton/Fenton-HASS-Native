@@ -124,8 +124,10 @@ Exceptions must be written into this file with the owner's say-so. None exist to
 | `quick` | `.easeOut(duration: 0.2)` | Numbers, small fades, button state |
 | `state` | `.easeInOut(duration: 0.6)`, reduced `.easeInOut(duration: 0.2)` | Every background, fill, tint and rim colour change (the status chip's approved timing) |
 | `standard` | `.smooth(duration: 0.3)` (no bounce) | Layout a person caused: rows in or out, expanding sections |
-| `emphasized` | `.spring(response: 0.5, dampingFraction: 0.8)` | The house-and-heart mark in the intro, nothing else |
-| `arrivalStagger` | 0.06 s per item, first screenful only (≤8 items) | The sign-in arrival |
+| `emphasized` | `.spring(duration: 0.5, bounce: 0.2)` | The house-and-heart mark in the intro, nothing else |
+| `segment` | `.snappy(duration: 0.2)` | The selected capsule gliding between a modal's tabs (`BadgedTabSegment`) |
+| `contentFade` | `.easeInOut(duration: 0.15)` | One panel's content cross-fading when its own tab changes (`SummaryPanel`) |
+| `arrivalStagger` | 0.06 s per item, first screenful only (`Arrival.staggerLimit`, 5 items) | The sign-in arrival |
 | `gate` | per [content-gate](../patterns/content-gate.md) | Loading gate |
 | `Ticker` | 30 pt/s, 1.5 s holds, 0.3 s return, 3 passes, 12 pt edge fades (`MotionTokens.Ticker`) | A label too wide for its column (the Home weather card's condition), see the exception below |
 | Navigation | system | Push, sheet, zoom, tab |

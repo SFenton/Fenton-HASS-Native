@@ -182,7 +182,6 @@ public final class AppSession {
         UserDefaults.standard.removeObject(forKey: ChoresModel.viewerDefaultsKey)
         tokens = nil
         backdrop = nil
-        motion.reset()
         spotlight.removeAll()
         // A second sign-in plays its arrival again, and the signed-out screen its intro.
         motion.reset()

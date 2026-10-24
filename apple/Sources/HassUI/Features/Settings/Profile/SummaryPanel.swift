@@ -25,7 +25,7 @@ struct SummaryPanel: View {
                 .id(tab)
                 .transition(.opacity)
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.15), value: tab)
+        .animation(reduceMotion ? nil : MotionTokens.contentFade, value: tab)
         .onAppear {
             if injected == nil, hosted == nil, let connection { hosted = .live(connection: connection, session: session) }
         }

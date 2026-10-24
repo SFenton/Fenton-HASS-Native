@@ -201,12 +201,14 @@ public struct RootView: View {
             try? await Task.sleep(for: .milliseconds(60))
             LaunchCostProbe.finish()
             LaunchCostProbe.begin("arrival")
-            withAnimation(reduceMotion ? MotionTokens.crossFade : MotionTokens.Arrival.lift) { signInLeaves = true }
+            // The sign-in layer goes when its own lift ends, not after a guessed delay.
+            withAnimation(reduceMotion ? MotionTokens.crossFade : MotionTokens.Arrival.lift) { signInLeaves = true } completion: {
+                keepsSignIn = false
+                signInLeaves = false
+            }
             arrival.reveal()
-            try? await Task.sleep(for: .milliseconds(400))
-            keepsSignIn = false
-            signInLeaves = false
-            try? await Task.sleep(for: HomeArrival.duration - .milliseconds(460))
+            // The staggered items have no one completion; the arrival's own length bounds them.
+            try? await Task.sleep(for: HomeArrival.duration)
             arrival.finish()
             Telemetry.endTracked(Telemetry.Name.arrival)
             LaunchCostProbe.finish()

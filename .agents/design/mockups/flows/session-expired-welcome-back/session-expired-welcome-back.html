@@ -105,7 +105,7 @@
       swiftui: [
         { rule: 'Declare transitions where views are inserted and removed', verdict: 'pass', note: '.transition(.identity) on the shell, .transition(.opacity) on the sign-in layer, animation on isSignedIn (RootView.swift:140, 155, 158).', by: 'swiftui-pro skill' },
         { rule: 'Hide a covered layer from assistive tech', verdict: 'pass', note: '.accessibilityHidden(session.isSignedIn) and allowsHitTesting on the sign-in layer (RootView.swift:153-154).', by: 'swiftui-pro skill' },
-        { rule: 'Do the same reset once', verdict: 'fix', note: 'AppSession.signOut calls motion.reset() twice (AppSession.swift:185 and 188). Low hygiene.', by: 'swiftui-pro skill' },
+        { rule: 'Do the same reset once', verdict: 'pass', note: 'Fixed on claude/hig-motion-1ec6c6: AppSession.signOut resets once. Was: AppSession.signOut calls motion.reset() twice (AppSession.swift:185 and 188). Low hygiene.', by: 'swiftui-pro skill' },
       ],
     },
 

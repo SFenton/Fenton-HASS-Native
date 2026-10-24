@@ -121,7 +121,7 @@
 
         { rule: "Accessibility: icon-only controls keep a text label and selection traits", verdict: "pass", note: "Icon segments use Label(...).labelStyle(.iconOnly); the badged buttons set accessibilityLabel with the count, an isSelected trait, the badge hidden, and the bar is a .contain group named by the caller.", by: "swiftui-pro skill" },
 
-        { rule: "Animation: tokens, Reduce Motion, one transition", verdict: "fix", note: "The selected capsule glides with matchedGeometryEffect and a literal .snappy(duration: 0.2), nil under Reduce Motion (BadgedTabSegment.swift line 51); it is not a MotionTokens entry (motion.md does not list it), unlike the rest of the app's transitions. Low.", by: "swiftui-pro skill" },
+        { rule: "Animation: tokens, Reduce Motion, one transition", verdict: "pass", note: "Fixed on claude/hig-motion-1ec6c6: segment glide is MotionTokens.segment (BadgedTabSegment.swift). Was: The selected capsule glides with matchedGeometryEffect and a literal .snappy(duration: 0.2), nil under Reduce Motion (BadgedTabSegment.swift line 51); it is not a MotionTokens entry (motion.md does not list it), unlike the rest of the app's transitions. Low.", by: "swiftui-pro skill" },
 
         { rule: "Navigation: a bar pinned with safeAreaInset", verdict: "pass", note: "modalTabBar uses safeAreaInset(edge:), so the content's safe area grows by the bar and the last row clears it at every size; placement is a parameter (top or bottom) and nothing branches on a device name.", by: "swiftui-pro skill" },
 

@@ -83,8 +83,8 @@
         { rule: 'Loading: content usable as it arrives', verdict: 'pass', note: 'Views exist from the first frame and only opacity and offset are held (HomeArrival.swift:29-37); held bars are alpha 0 and release with .allowUserInteraction (ArrivalChrome.swift:76-83).', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Chain with completion, not sleeps', verdict: 'fix', note: 'signedIn sequences the lift with Task.sleep(.milliseconds(60/400)) and HomeArrival.duration - 460 ms (RootView.swift:201-209); withAnimation completion would not drift from the animation. Low.', by: 'swiftui-pro skill' },
-        { rule: 'Tokens agree with use', verdict: 'fix', note: 'MotionTokens.arrivalRise (8) and arrivalStaggerCap (8) are unused; the arrival reads Arrival.riseDistance (16) and staggerLimit (5) (MotionTokens.swift:25-27, 87-92). Low.', by: 'swiftui-pro skill' },
+        { rule: 'Chain with completion, not sleeps', verdict: 'pass', note: 'Fixed on claude/hig-motion-1ec6c6: RootView.signedIn chains the layer removal on the lift completion. Was: signedIn sequences the lift with Task.sleep(.milliseconds(60/400)) and HomeArrival.duration - 460 ms (RootView.swift:201-209); withAnimation completion would not drift from the animation. Low.', by: 'swiftui-pro skill' },
+        { rule: 'Tokens agree with use', verdict: 'pass', note: 'Fixed on claude/hig-motion-1ec6c6: unused arrivalRise, arrivalStaggerCap and arrivalDelay removed from MotionTokens.swift. Was: MotionTokens.arrivalRise (8) and arrivalStaggerCap (8) are unused; the arrival reads Arrival.riseDistance (16) and staggerLimit (5) (MotionTokens.swift:25-27, 87-92). Low.', by: 'swiftui-pro skill' },
         { rule: 'Hold content with state, not by delaying creation', verdict: 'pass', note: 'begin() holds, reveal() animates (HomeArrival.swift:30-37).', by: 'swiftui-pro skill' },
         { rule: 'Document the one place UIKit is animated, and fail safe', verdict: 'pass', note: 'ArrivalChromeProbe explains why, and a probe that leaves restores the bars (ArrivalChrome.swift:6-10, 63-66).', by: 'swiftui-pro skill' },
       ],

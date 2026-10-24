@@ -16,26 +16,20 @@ public enum MotionTokens {
     public static let stateReduced: Animation = .easeInOut(duration: 0.2)
     /// Layout a person caused (rows in or out, an expanding section, a pane): a smooth spring of 0.3 s with no bounce.
     public static let standard: Animation = .smooth(duration: 0.3)
-    /// The house-and-heart mark in the intro, and nothing else.
-    public static let emphasized: Animation = .spring(response: 0.5, dampingFraction: 0.8)
+    /// A selected-segment capsule gliding to its neighbour (`BadgedTabSegment`): `snappy`, 0.2 s.
+    public static let segment: Animation = .snappy(duration: 0.2)
+    /// One panel's content cross-fading when its own tab changes (`SummaryPanel`): `easeInOut`, 0.15 s. The longer swap with a layout
+    /// change is `SmoothContentSwap`, which chains its fades by completion and keeps its own timing like ``ContentGateModel``.
+    public static let contentFade: Animation = .easeInOut(duration: 0.15)
+    /// The house-and-heart mark in the intro, and nothing else: a spring of 0.5 s with a 0.2 bounce.
+    public static let emphasized: Animation = .spring(duration: 0.5, bounce: 0.2)
 
-    /// Seconds between one arrival item and the next (the sign-in arrival's stagger).
+    /// Seconds between one arrival item and the next (the sign-in arrival's stagger, first ``Arrival/staggerLimit`` items only).
     public static let arrivalStagger: Double = 0.06
-    /// Items past this index appear at once: the stagger covers the first screenful only.
-    public static let arrivalStaggerCap = 8
-    /// How far an arrival item rises while it fades in, in points.
-    public static let arrivalRise: CGFloat = 8
     /// What an arrival item uses to fade and rise (no bounce), before its stagger delay.
     public static let arrival: Animation = .smooth(duration: 0.3)
     /// A moment under Reduce Motion: a cross-fade of about 0.35 s, with no rise, scale, spring or stagger.
     public static let reducedMoment: Animation = .easeInOut(duration: 0.35)
-
-    /// The delay before arrival item `index` starts, or nil when the item is past the cap and shows at once.
-    /// - Parameter index: The item's position in the arrival, from 0.
-    public static func arrivalDelay(index: Int) -> Double? {
-        guard index >= 0, index < arrivalStaggerCap else { return nil }
-        return Double(index) * arrivalStagger
-    }
 
     // MARK: The sign-in lane's names
 
