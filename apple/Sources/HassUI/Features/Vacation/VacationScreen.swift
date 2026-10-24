@@ -73,6 +73,11 @@ struct VacationScreen: View {
     }
 }
 
+/// A page the chooser pushes.
+enum VacationPage: Hashable, Sendable {
+    case vacationMode, soloTrip
+}
+
 /// The two away modes as settings rows (web `VacationChooserPage`).
 struct VacationChooser: View {
     var household: HouseholdAwayController
@@ -83,16 +88,12 @@ struct VacationChooser: View {
     var body: some View {
         List {
             Section {
-                NavigationLink {
-                    VacationModeScreen(store: store, household: household, caller: caller).pageChrome()
-                } label: {
+                NavigationLink(value: VacationPage.vacationMode) {
                     SettingsLinkRow(title: Vacation.Copy.vacationLinkTitle, subtitle: Vacation.Copy.vacationLinkSubtitle,
                                     symbol: SymbolMap.symbol(for: "mdi:airplane"), showsChevron: false)
                 }
                 .accessibilityIdentifier("vacation.chooser.vacationMode")
-                NavigationLink {
-                    SoloTripScreen(household: household, viewer: viewer).pageChrome()
-                } label: {
+                NavigationLink(value: VacationPage.soloTrip) {
                     SettingsLinkRow(title: SoloTripCopy.title, subtitle: soloTripSubtitle,
                                     symbol: SymbolMap.symbol(for: "mdi:bag-suitcase"), showsChevron: false)
                 }
@@ -100,6 +101,13 @@ struct VacationChooser: View {
             }
         }
         .navigationTitle(Vacation.Copy.chooserTitle)
+        // Values and a registered destination, like the rest of the Settings stack (HIG Navigation: one destination style).
+        .pageDestination(for: VacationPage.self) { page in
+            switch page {
+            case .vacationMode: VacationModeScreen(store: store, household: household, caller: caller)
+            case .soloTrip: SoloTripScreen(household: household, viewer: viewer)
+            }
+        }
     }
 
     private var soloTripSubtitle: String {

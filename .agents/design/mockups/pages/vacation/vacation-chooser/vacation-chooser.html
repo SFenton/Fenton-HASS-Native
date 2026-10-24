@@ -70,7 +70,7 @@
         { rule: "Navigation: a chooser that disappears when a mode is engaged", verdict: "departure", note: "ios.md and VacationScreen.swift lines 21-23, 62-65: an engaged mode skips the chooser, and turning it off keeps its page via lastEngaged so the root does not swap under the person.", by: "apple-hig skill" },
       ],
       swiftui: [
-        { rule: "Navigation: do not mix destination styles in one hierarchy", verdict: "fix", note: "The chooser pushes with NavigationLink { VacationModeScreen … } destination closures (lines 86-96) inside a Settings stack that registers navigationDestination(for: SettingsRoute.self) (MainTabView.swift lines 153-155). Use values and registered destinations. Medium.", by: "swiftui-pro skill" },
+        { rule: "Navigation: do not mix destination styles in one hierarchy", verdict: "pass", note: "Fixed: VacationChooser pushes VacationPage values with a registered pageDestination (VacationScreen.swift).", by: "swiftui-pro skill" },
         { rule: "Views: switch on route inside body", verdict: "pass", note: "@ViewBuilder content switches three roots by derived route; state lives in HouseholdAwayController above the switch (lines 19, 50-60).", by: "swiftui-pro skill" },
         { rule: "Accessibility: identifiers and combined row", verdict: "pass", note: "accessibilityIdentifier on both links; SettingsLinkRow reads as one element with title then subtitle.", by: "swiftui-pro skill" },
       ],
