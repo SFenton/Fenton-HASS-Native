@@ -18,6 +18,8 @@ import os
 /// - **Decoding** happens off the main thread at the size the view draws (`kCGImageSourceThumbnailMaxPixelSize`),
 ///   so a 4000 px recipe photo never decodes at full size on the main thread mid-scroll.
 public final class ImagePipeline: Sendable {
+    private static let log = Logger(subsystem: "com.sfenton.home", category: "Images")
+
     // MARK: - Types
 
     /// What the disk store keeps beside each image's bytes.
@@ -303,11 +305,15 @@ public final class ImagePipeline: Sendable {
 
     private func writeMetadata(_ metadata: Metadata, key: String) {
         guard let data = try? JSONEncoder().encode(metadata) else { return }
-        try? data.write(to: fileURL(key, ".json"), options: .atomic)
+        do { try data.write(to: fileURL(key, ".json"), options: .atomic) } catch {
+            Self.log.error("image metadata write failed: \(String(describing: error), privacy: .public)")
+        }
     }
 
     private func write(_ data: Data, metadata: Metadata, key: String) {
-        try? data.write(to: fileURL(key, ".img"), options: .atomic)
+        do { try data.write(to: fileURL(key, ".img"), options: .atomic) } catch {
+            Self.log.error("image write failed (disk full?): \(String(describing: error), privacy: .public)")
+        }
         writeMetadata(metadata, key: key)
         Telemetry.count("image.bytesWritten", by: data.count)
     }

@@ -434,6 +434,14 @@ struct RoomsTests {
         #expect(caller.calls.first?.data["variables"]?.contains("kitchen") == true)
     }
 
+    @Test func aFailedVisitCountIsLoggedAndDoesNotSurface() async {
+        let caller = RecordingCaller()
+        caller.failNext = true
+        RoomController.recordVisit(RoomNavigation.item(for: "kitchen")!, caller: caller)
+        for _ in 0..<200 where caller.calls.isEmpty { await Task.yield() }
+        #expect(caller.calls.count == 1)
+    }
+
     @Test func accessCountsParseLikeTheWeb() {
         #expect(RoomNavigation.accessCount("7") == 7)
         #expect(RoomNavigation.accessCount("7.0") == 7)

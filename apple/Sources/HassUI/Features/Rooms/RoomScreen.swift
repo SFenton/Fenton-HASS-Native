@@ -1,6 +1,9 @@
 import HassCore
 import HassDesign
+import os
 import SwiftUI
+
+private let viewerLog = Logger(subsystem: "com.sfenton.home", category: "Rooms")
 
 /// A config-driven room page (web `SourceRoomPage`). Spec: `.agents/pages/rooms/spec.md`.
 ///
@@ -22,7 +25,12 @@ struct RoomScreen: View {
                 .environment(\.householdViewerIsAdmin, viewerIsAdminFlag)
                 .task {
                     // Personalized titles ("Your Side") need the signed-in user; the page shows plain titles until then.
-                    guard injectedViewer == nil, let connection, let user = try? await connection.currentUser() else { return }
+                    guard injectedViewer == nil, let connection else { return }
+                    let user: HassUser
+                    do { user = try await connection.currentUser() } catch {
+                        viewerLog.error("signed-in user read failed: \(String(describing: error), privacy: .public)")
+                        return
+                    }
                     viewer = HouseholdResident.forUser(id: user.id)
                     viewerIsAdminFlag = user.isAdmin
                 }

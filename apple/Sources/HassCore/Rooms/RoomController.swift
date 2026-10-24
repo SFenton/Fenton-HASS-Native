@@ -1,4 +1,7 @@
 import Foundation
+import os
+
+private let visitLog = Logger(subsystem: "com.sfenton.home", category: "Rooms")
 
 // MARK: - Display values
 
@@ -348,7 +351,12 @@ public final class RoomController {
     /// Counts a visit to a room opened from the Rooms grid.
     public static func recordVisit(_ item: RoomNavigationItem, caller: any HassServiceCalling) {
         let call = RoomNavigation.accessIncrementCall(for: item)
-        Task { try? await caller.call(call) }
+        Task {
+            do { try await caller.call(call) } catch {
+                // A missed visit count only reorders the grid; nothing to show, but the log says why.
+                visitLog.error("room visit count failed: \(String(describing: error), privacy: .public)")
+            }
+        }
     }
 
     private func send(_ domain: String, _ service: String, _ data: [String: any Sendable]) {
