@@ -9,6 +9,13 @@ extension PushPlatform {
     @MainActor
     static let system = PushPlatform(
         device: { SystemDevice.current() },
+        authorization: {
+            switch await UNUserNotificationCenter.current().notificationSettings().authorizationStatus {
+            case .notDetermined: .notDetermined
+            case .denied: .denied
+            default: .granted
+            }
+        },
         requestAuthorization: {
             (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
         },

@@ -19,6 +19,19 @@ public final class PushCoordinator {
     /// The session's `mobile_app` registration, which location and sensors share.
     @ObservationIgnored public let mobileApp: MobileAppCoordinator
 
+    /// The system's answer, read when the session connects and after each ask. ``showsPermissionBanner`` and the
+    /// Settings row read it.
+    public private(set) var authorization: PushAuthorization = .denied
+    /// Whether the person chose Not Now on the Home banner (kept across launches; the Settings row stays).
+    public private(set) var bannerDismissed: Bool
+
+    /// The key ``bannerDismissed`` is kept under.
+    public static let bannerDismissedKey = "push.permissionBannerDismissed"
+    @ObservationIgnored private let defaults: UserDefaults
+
+    /// Whether Home offers to turn notifications on: never asked, and not dismissed.
+    public var showsPermissionBanner: Bool { authorization == .notDetermined && !bannerDismissed }
+
     @ObservationIgnored private let platform: PushPlatform
     @ObservationIgnored private var server: HassServer?
     @ObservationIgnored private var requestID = 0
@@ -31,8 +44,11 @@ public final class PushCoordinator {
     ///   - isEnabled: Register and ask for permission. Off for UI journeys signed in with a test token, so they
     ///     neither prompt nor add `mobile_app` devices to the real server.
     public init(platform: PushPlatform, store: any MobileAppRegistrationStore = KeychainMobileAppRegistrationStore(),
-                transport: any FeedbackHTTPTransport = URLSessionFeedbackTransport(), isEnabled: Bool = true) {
+                transport: any FeedbackHTTPTransport = URLSessionFeedbackTransport(), isEnabled: Bool = true,
+                defaults: UserDefaults = .standard) {
         self.platform = platform
+        self.defaults = defaults
+        bannerDismissed = defaults.bool(forKey: Self.bannerDismissedKey)
         mobileApp = MobileAppCoordinator(device: platform.device, store: store, transport: transport, isEnabled: isEnabled)
     }
 
@@ -59,8 +75,23 @@ public final class PushCoordinator {
     ///   - userName: Their display name, which names a phone the system reports only as "iPhone".
     public func didConnect(userID: String, userName: String? = nil) async {
         guard mobileApp.begin(userID: userID, userName: userName) else { return }
-        if await platform.requestAuthorization() { platform.registerForRemoteNotifications() }
+        authorization = await platform.authorization()
+        if authorization == .granted { platform.registerForRemoteNotifications() }
         await mobileApp.sync()
+    }
+
+    /// The person tapped Turn On Notifications (Home banner or Settings row): the one place the system alert is
+    /// requested, after the app has said what the alerts are for.
+    public func enableNotifications() async {
+        let granted = await platform.requestAuthorization()
+        authorization = await platform.authorization()
+        if granted { platform.registerForRemoteNotifications() }
+    }
+
+    /// The person tapped Not Now on the Home banner.
+    public func dismissPermissionBanner() {
+        bannerDismissed = true
+        defaults.set(true, forKey: Self.bannerDismissedKey)
     }
 
     /// The system issued an APNs token.

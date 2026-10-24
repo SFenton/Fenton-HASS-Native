@@ -123,6 +123,12 @@ struct InventoryViewTests {
         camera.stop()
     }
 
+    @Test func onlyADeniedCameraOffersOpenSettings() {
+        #expect(ScanCameraController.offersSettings(.failed(ScanCameraController.deniedMessage)))
+        #expect(!ScanCameraController.offersSettings(.failed(ScanCameraController.unavailableMessage)))
+        #expect(!ScanCameraController.offersSettings(.starting))
+    }
+
     @Test func simulatedCameraWalksTheFlow() async {
         let (server, models) = models()
         let scan = ScanItemModel(space: .pantry, client: models.everShelf)

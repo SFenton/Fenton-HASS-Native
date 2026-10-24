@@ -9,6 +9,7 @@ import Testing
 @MainActor
 private final class PlatformProbe {
     var authorizationAnswer = true
+    var status: PushAuthorization = .granted
     var authorizationRequests = 0
     var remoteRegistrations = 0
     var delivered: [DeliveredNotification] = []
@@ -19,7 +20,14 @@ private final class PlatformProbe {
         PushPlatform(
             device: { MobileAppDevice(marketingVersion: "1", build: "2", name: "Test", model: "iPhone18,1", osVersion: "27.2",
                                  deviceID: "v", apnsEnvironment: .sandbox) },
-            requestAuthorization: { await MainActor.run { self.authorizationRequests += 1; return self.authorizationAnswer } },
+            authorization: { await MainActor.run { self.status } },
+            requestAuthorization: {
+                await MainActor.run {
+                    self.authorizationRequests += 1
+                    if self.status == .notDetermined { self.status = self.authorizationAnswer ? .granted : .denied }
+                    return self.authorizationAnswer
+                }
+            },
             registerForRemoteNotifications: { self.remoteRegistrations += 1 },
             deliveredNotifications: { await MainActor.run { self.delivered } },
             removeDelivered: { ids in Task { @MainActor in self.removed.append(ids) } },
@@ -55,8 +63,8 @@ struct PushCoordinatorTests {
         await push.didRegister(deviceToken: Data([0xAB]))
         #expect(transport.requests.isEmpty, "a token alone waits for the user")
         await push.didConnect(userID: "u1")
-        #expect(probe.authorizationRequests == 1)
-        #expect(probe.remoteRegistrations == 1)
+        #expect(probe.authorizationRequests == 0, "connecting never raises the system alert")
+        #expect(probe.remoteRegistrations == 1, "an already-allowed phone registers")
         #expect(store.active?.webhookID == "w1")
         let registration = try #require(body(transport.requests[1])["app_data"] as? [String: Any])
         #expect(registration["push_token"] as? String == "ab")
@@ -70,8 +78,57 @@ struct PushCoordinatorTests {
         #expect(transport.requests[3].url?.path == "/api/webhook/w1")
     }
 
+    private func defaults() -> UserDefaults {
+        let suite = "push-tests-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        return defaults
+    }
+
+    @Test func neverAskedWaitsForTheBannerThenAsksOnATap() async throws {
+        let probe = PlatformProbe()
+        probe.status = .notDetermined
+        let transport = StubHTTPTransport([(200, configJSON), (201, #"{"webhook_id":"w1"}"#)])
+        let defaults = defaults()
+        let push = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), transport: transport,
+                                   defaults: defaults)
+        push.sessionStarted(server: server) { "token" }
+        await push.didConnect(userID: "u1")
+        #expect(probe.authorizationRequests == 0 && probe.remoteRegistrations == 0)
+        #expect(push.showsPermissionBanner)
+
+        await push.enableNotifications()
+        #expect(probe.authorizationRequests == 1 && probe.remoteRegistrations == 1)
+        #expect(push.authorization == .granted && !push.showsPermissionBanner)
+    }
+
+    @Test func notNowHidesTheBannerAcrossLaunches() async throws {
+        let probe = PlatformProbe()
+        probe.status = .notDetermined
+        let defaults = defaults()
+        let push = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), defaults: defaults)
+        push.sessionStarted(server: server) { "token" }
+        await push.didConnect(userID: "u1")
+        push.dismissPermissionBanner()
+        #expect(!push.showsPermissionBanner)
+        let relaunched = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), defaults: defaults)
+        relaunched.sessionStarted(server: server) { "token" }
+        await relaunched.didConnect(userID: "u1")
+        #expect(!relaunched.showsPermissionBanner && relaunched.authorization == .notDetermined)
+    }
+
+    @Test func aRefusedAskLeavesNoBannerAndNoRegistration() async throws {
+        let probe = PlatformProbe()
+        probe.status = .notDetermined
+        probe.authorizationAnswer = false
+        let push = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), defaults: defaults())
+        await push.enableNotifications()
+        #expect(push.authorization == .denied && !push.showsPermissionBanner && probe.remoteRegistrations == 0)
+    }
+
     @Test func deniedPermissionStillRegistersForWebsocketPushes() async throws {
         let probe = PlatformProbe()
+        probe.status = .denied
         probe.authorizationAnswer = false
         let transport = StubHTTPTransport([(200, configJSON), (201, #"{"webhook_id":"w1"}"#)])
         let push = PushCoordinator(platform: probe.platform, store: InMemoryMobileAppRegistrationStore(), transport: transport)

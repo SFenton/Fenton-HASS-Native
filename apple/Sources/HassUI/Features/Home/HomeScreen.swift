@@ -58,6 +58,8 @@ extension HomeScreen {
             // Chips and weather lead; cameras and guests trail. Nothing crosses the hinge, and the hinge band is empty.
             HStack(alignment: .top, spacing: 0) {
                 VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
+                    NotificationPermissionBanner()
+                        .padding(.horizontal, HassTokens.Spacing.l)
                     StatusRail { sheet = .chip($0) }
                         .arrivalMotion(kind: .slideIn)
                     WeatherSummaryCard()
@@ -78,6 +80,8 @@ extension HomeScreen {
             }
         } else {
             VStack(alignment: .leading, spacing: HassTokens.Spacing.xl) {
+                NotificationPermissionBanner()
+                    .padding(.horizontal, HassTokens.Spacing.l)
                 StatusRail { sheet = .chip($0) }
                         .arrivalMotion(kind: .slideIn)
                 WeatherSummaryCard()

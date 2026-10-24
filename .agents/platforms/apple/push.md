@@ -76,3 +76,7 @@ automation ─ notify.mobile_app_<device>_fenton ─▶ mobile_app ─ POST push
 - Real APNs: needs Stephen's APNs key in the integration; TestFlight builds need `aps-environment: production` at archive.
 - Critical alerts need Apple's Critical Alerts entitlement for `com.sfenton.home`; until then the integration sends time-sensitive.
 - Notification settings UI goes under the Account sheet after Direction G Phase 2 (#68) lands.
+
+## Permission in context (owner, 2026-10-23)
+
+The system alert is never raised on sign-in. `PushCoordinator.didConnect` only reads the stored answer (`PushPlatform.authorization`) and registers when it is allowed. A never-asked phone sees the Home `NotificationPermissionBanner` ("Get door and camera alerts", Turn On Notifications / Not Now; Not Now is remembered) and the Settings → Notifications row; Turn On calls `enableNotifications()`, the only place the alert is requested. A refused phone gets an Open Settings row. Proposal: `.agents/design/mockups/proposals/widgets-push-siri-watch`. A category carries at most four buttons and a hidden-previews placeholder; the app has the time-sensitive entitlement.

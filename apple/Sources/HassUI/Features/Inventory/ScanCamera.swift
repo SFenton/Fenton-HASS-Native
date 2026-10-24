@@ -46,6 +46,11 @@ final class ScanCameraController {
     }
 
     static let unavailableMessage = "Camera unavailable. Enter the details manually."
+    /// Whether the status is the camera-access-off refusal, which the sheet answers with an Open Settings button.
+    static func offersSettings(_ status: ScanItemModel.CameraStatus) -> Bool {
+        status == .failed(deniedMessage)
+    }
+
     static let deniedMessage = "Camera access is off. Allow it in Settings, or enter the details manually."
 
     /// Starts the camera `model` wants, or stops it when it wants none.

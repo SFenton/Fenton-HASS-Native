@@ -14,6 +14,7 @@ struct ScanItemSheet: View {
     var onAdded: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var camera: ScanCameraController
     @State private var reportedAdd = false
@@ -389,6 +390,12 @@ struct ScanItemSheet: View {
         }
     }
 
+    private func openSettings() {
+        #if os(iOS)
+        if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+        #endif
+    }
+
     /// The camera card (26 pt corners, on the sheet ground) with its status pill, and manual entry under it in the
     /// action tint (mockup n6-scan-item).
     private func cameraSection(symbol: String, label: String, manualTitle: String, manualID: String,
@@ -434,17 +441,26 @@ struct ScanItemSheet: View {
             }
             if model.cameraStatus != .ready {
                 VStack(spacing: HassTokens.Spacing.s) {
-                    if case .failed = model.cameraStatus {
-                        Image(systemName: "exclamationmark.circle").font(.system(size: 42))
-                    } else {
-                        ArcSpinner(.page).accessibilityHidden(true)
+                    VStack(spacing: HassTokens.Spacing.s) {
+                        if case .failed = model.cameraStatus {
+                            Image(systemName: "exclamationmark.circle").font(.system(size: 42))
+                        } else {
+                            ArcSpinner(.page).accessibilityHidden(true)
+                        }
+                        Text(cameraStatusText).multilineTextAlignment(.center)
                     }
-                    Text(cameraStatusText).multilineTextAlignment(.center)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityIdentifier("scan.cameraStatus")
+                    if ScanCameraController.offersSettings(model.cameraStatus) {
+                        Button("Open Settings") { openSettings() }
+                            .buttonStyle(.bordered)
+                            .tint(.white)
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("scan.openSettings")
+                    }
                 }
                 .foregroundStyle(.white)
                 .padding()
-                .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("scan.cameraStatus")
             }
         }
         .overlay(alignment: .bottom) {

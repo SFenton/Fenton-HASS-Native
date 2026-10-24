@@ -217,6 +217,8 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  # Not a dependency of FentonHome and not in its scheme, so no build ships a Watch app until the scope in
+  # `.agents/design/apple/watchos.md` is built (owner, 2026-10-23: no empty Watch app).
   FentonHomeWatch:
     type: application
     platform: watchOS

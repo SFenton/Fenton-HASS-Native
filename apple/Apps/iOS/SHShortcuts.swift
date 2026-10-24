@@ -21,7 +21,6 @@ struct SHShortcuts: AppShortcutsProvider {
             phrases: [
                 "Open Security in \(.applicationName)",
                 "Show cameras in \(.applicationName)",
-                "Check the locks in \(.applicationName)",
             ],
             shortTitle: "Open Security",
             systemImageName: "shield.fill"
@@ -30,7 +29,7 @@ struct SHShortcuts: AppShortcutsProvider {
             intent: OpenPageIntent(page: .climate),
             phrases: [
                 "Open Climate in \(.applicationName)",
-                "Show the thermostat in \(.applicationName)",
+                "Open the thermostat in \(.applicationName)",
             ],
             shortTitle: "Open Climate",
             systemImageName: "thermometer.medium"
@@ -43,6 +42,14 @@ struct SHShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Open Chores",
             systemImageName: "list.clipboard.fill"
+        )
+        AppShortcut(
+            intent: OpenPageIntent(page: .settings),
+            phrases: [
+                "Open Settings in \(.applicationName)",
+            ],
+            shortTitle: "Open Settings",
+            systemImageName: "gearshape.fill"
         )
     }
 }

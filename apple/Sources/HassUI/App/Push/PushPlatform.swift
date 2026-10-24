@@ -2,10 +2,22 @@ import Foundation
 import HassCore
 import Observation
 
+/// Where the person stands on notification permission.
+public enum PushAuthorization: Sendable, Equatable {
+    /// Never asked. The app explains first (Home banner, Settings row), then asks on a tap.
+    case notDetermined
+    /// Allowed (including provisional and ephemeral).
+    case granted
+    /// Refused; only the system Settings app can change it.
+    case denied
+}
+
 /// The system services the coordinator uses; the app supplies UIKit and UserNotifications, tests supply stubs.
 public struct PushPlatform: Sendable {
     /// This phone's registration facts.
     public var device: @MainActor @Sendable () -> MobileAppDevice
+    /// The stored answer, without asking.
+    public var authorization: @Sendable () async -> PushAuthorization
     /// Asks for alert, sound and badge permission (once; later calls return the stored answer).
     public var requestAuthorization: @Sendable () async -> Bool
     /// `UIApplication.registerForRemoteNotifications()`.
@@ -19,12 +31,14 @@ public struct PushPlatform: Sendable {
 
     /// Creates a platform.
     public init(device: @escaping @MainActor @Sendable () -> MobileAppDevice,
+                authorization: @escaping @Sendable () async -> PushAuthorization = { .notDetermined },
                 requestAuthorization: @escaping @Sendable () async -> Bool,
                 registerForRemoteNotifications: @escaping @MainActor @Sendable () -> Void,
                 deliveredNotifications: @escaping @Sendable () async -> [DeliveredNotification],
                 removeDelivered: @escaping @Sendable ([String]) -> Void,
                 openExternal: @escaping @MainActor @Sendable (URL) -> Void) {
         self.device = device
+        self.authorization = authorization
         self.requestAuthorization = requestAuthorization
         self.registerForRemoteNotifications = registerForRemoteNotifications
         self.deliveredNotifications = deliveredNotifications
@@ -36,6 +50,7 @@ public struct PushPlatform: Sendable {
     public static let inert = PushPlatform(
         device: { MobileAppDevice(marketingVersion: "0", build: "0", name: "Preview", model: "Preview", osVersion: "0",
                              deviceID: "preview", apnsEnvironment: .sandbox) },
+        authorization: { .denied },
         requestAuthorization: { false },
         registerForRemoteNotifications: {},
         deliveredNotifications: { [] },

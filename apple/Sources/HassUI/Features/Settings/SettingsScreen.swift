@@ -52,6 +52,7 @@ struct SettingsScreen: View {
                 // Performance and Feedback sections (owner follow-up, 2026-10-17): Background Blur, then the App
                 // Icon row where the system can switch icons.
                 AppearanceSettingsSection()
+                NotificationsSettingsSection()
                 Section {
                     ForEach(HouseholdSettingsPage.allCases) { page in
                         Button {

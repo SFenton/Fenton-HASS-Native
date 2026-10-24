@@ -68,7 +68,7 @@
         { by: 'apple-hig skill', rule: 'Notifications: actions honour destructive, authentication and foreground options', verdict: 'pass', note: 'PushAction.options maps authenticationRequired, destructive and foreground; text-input actions become UNTextInputNotificationAction (PushCategory.swift:67-87).' },
         { by: 'apple-hig skill', rule: 'Notifications: at most four actions', verdict: 'pass', note: 'Fixed: PushCategory caps buttons at PushCategory.maxActions (4), PushCategory.swift.' },
         { by: 'apple-hig skill', rule: 'Notifications: time-sensitive needs the entitlement', verdict: 'pass', note: 'Fixed: project.yml adds com.apple.developer.usernotifications.time-sensitive.' },
-        { by: 'apple-hig skill', rule: 'Notifications: ask for permission in context', verdict: 'fix', note: 'PushCoordinator.didConnect requests authorization right after sign-in (PushCoordinator.swift:62), before any notification has been explained.' },
+        { by: 'apple-hig skill', rule: 'Notifications: ask for permission in context', verdict: 'pass', note: 'Fixed (owner pick, 2026-10-23): PushCoordinator.didConnect no longer asks; the Home NotificationPermissionBanner and the Settings Notifications row ask on a tap (NotificationPermission.swift).' },
         { by: 'apple-hig skill', rule: 'Notifications: sensitive previews', verdict: 'pass', note: 'Fixed: notificationCategory sets hiddenPreviewsBodyPlaceholder (PushCategory.swift).' },
       ],
       swiftui: [
