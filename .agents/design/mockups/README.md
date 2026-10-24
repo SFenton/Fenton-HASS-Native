@@ -7,3 +7,4 @@ Each folder holds `<topic>/<topic>.html`, a self-contained page, plus any `sourc
 | Folder | Decision |
 |---|---|
 | [weather-card-header/](weather-card-header/weather-card-header.html) | [weather-card-header.md](../weather-card-header.md) |
+| [reconnecting-spinner/](reconnecting-spinner/reconnecting-spinner.html) | [reconnecting-spinner.md](../reconnecting-spinner.md) |
