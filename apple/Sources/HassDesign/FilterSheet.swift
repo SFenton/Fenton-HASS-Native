@@ -18,14 +18,14 @@ public struct FilterSheet<Content: View>: View {
     /// How tall the sheet opens: as tall as its rows by default (owner, 2026-10-16), so a short Sort sheet is short and
     /// a long Filter sheet reaches the large detent and scrolls.
     public var height: HassSheetHeight
-    @ViewBuilder public var content: () -> Content
+    public let content: Content
 
     @Environment(\.dismiss) private var dismiss
     @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 12
 
     /// Creates a sheet.
     public init(title: String, subtitle: String? = nil, canApply: Bool, canReset: Bool, onApply: @escaping () -> Void,
-                onReset: @escaping () -> Void, height: HassSheetHeight = .fitted, @ViewBuilder content: @escaping () -> Content) {
+                onReset: @escaping () -> Void, height: HassSheetHeight = .fitted, @ViewBuilder content: () -> Content) {
         self.title = title
         self.subtitle = subtitle
         self.canApply = canApply
@@ -33,13 +33,13 @@ public struct FilterSheet<Content: View>: View {
         self.onApply = onApply
         self.onReset = onReset
         self.height = height
-        self.content = content
+        self.content = content()
     }
 
     public var body: some View {
         NavigationStack {
             Form {
-                content()
+                content
                 // Shown only when there is something to reset: a disabled row fails the contrast audit. A list row in
                 // the action tint (blue), as in the mockups (n5 Filter Recipes; direction G, Sheets: "Reset is a list
                 // row"). Never red: resetting filters is not destructive (HIG Buttons: reserve red for destructive
@@ -94,17 +94,17 @@ public struct FilterSheet<Content: View>: View {
 /// 15 Semibold secondary (`.agents/design/direction-g.md`, Type), drawn in ``FormHeader``'s readable secondary ink.
 public struct FilterSection<Content: View>: View {
     public var title: String
-    @ViewBuilder public var content: () -> Content
+    public let content: Content
 
     /// Creates a section.
-    public init(_ title: String, @ViewBuilder content: @escaping () -> Content) {
+    public init(_ title: String, @ViewBuilder content: () -> Content) {
         self.title = title
-        self.content = content
+        self.content = content()
     }
 
     public var body: some View {
         Section {
-            content()
+            content
         } header: {
             FormHeader(title)
                 .font(.subheadline.weight(.semibold))

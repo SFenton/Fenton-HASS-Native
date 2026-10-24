@@ -62,7 +62,7 @@
         { rule: 'Playing haptics: tick through discrete steps', verdict: 'fix', note: 'The slider moves in 5% steps with no sensoryFeedback, unlike BrightnessTile\'s stepped selection haptic (BrightnessTile.swift:123); a live-previewing control benefits from it.', by: 'apple-hig skill' },
       ],
       swiftui: [
-        { rule: 'Views: shared control in its own file', verdict: 'fix', note: 'PercentSliderRow is declared in Features/Food/RecipesScreen.swift (:377) and reused by Settings; a shared control belongs in HassDesign or its own file.', by: 'swiftui-pro skill' },
+        { rule: 'Views: shared control in its own file', verdict: 'pass', note: 'PercentSliderRow moved to Controls/PercentSliderRow.swift', by: 'swiftui-pro skill' },
         { rule: 'Accessibility: one adjustable element for title, value and slider', verdict: 'pass', note: 'accessibilityElement(children: .ignore) with label, value "N percent" and an adjustable action (:400-406), after the folded Duo audit flagged separate text.', by: 'swiftui-pro skill' },
         { rule: 'Data: @Bindable settings and @AppStorage toggle', verdict: 'pass', note: 'BackdropBlurRows binds $settings.sliderValue; the switch binds @AppStorage (AppearanceSettingsSection.swift:13, :41-44).', by: 'swiftui-pro skill' },
         { rule: 'Views: section header and footer as closures with their own ink', verdict: 'pass', note: 'SettingsSectionHeader and a footer Text carry the surface-dependent ink (:27-32).', by: 'swiftui-pro skill' },

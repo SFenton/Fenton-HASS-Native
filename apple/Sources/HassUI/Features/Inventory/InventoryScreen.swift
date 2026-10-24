@@ -71,13 +71,7 @@ struct InventoryScreen: View {
                     .transition(reduceMotion ? .opacity : .move(edge: .trailing))
             }
         }
-        .background {
-            GeometryReader { geometry in
-                Color.clear
-                    .onAppear { updateSplit(geometry.size) }
-                    .onChange(of: geometry.size) { _, size in updateSplit(size) }
-            }
-        }
+        .onGeometryChange(for: CGSize.self, of: \.size) { updateSplit($0) }
         .navigationTitle(space.title)
         .task {
             await model.load()

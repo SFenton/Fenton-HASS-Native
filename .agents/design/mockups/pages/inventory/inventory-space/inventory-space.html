@@ -144,7 +144,7 @@
       swiftui: [
         { rule: 'Never use onTapGesture for a tappable element', verdict: 'fix', note: 'The row opens the editor from .onTapGesture on its content (InventoryRow.swift:54), with no button trait, so VoiceOver, Full Keyboard Access and Voice Control rely on the separate chevron button; make the row text a Button.', by: 'swiftui-pro skill' },
         { rule: 'Presentation: attach confirmationDialog to its trigger', verdict: 'fix', note: 'The delete confirmation hangs on the page with a hand-made Binding(get:set:) (InventoryScreen.swift:101-108), so it cannot animate from the swiped row; Xcode 27 confirmationDialog(item:) removes the Boolean.', by: 'swiftui-pro skill' },
-        { rule: 'Layout: prefer onGeometryChange to a GeometryReader background', verdict: 'fix', note: 'updateSplit is driven by a Color.clear in a background GeometryReader with onAppear and onChange (InventoryScreen.swift:74-80); onGeometryChange does it in one modifier.', by: 'swiftui-pro skill' },
+        { rule: 'Layout: prefer onGeometryChange to a GeometryReader background', verdict: 'pass', note: 'InventoryScreen drives updateSplit with onGeometryChange (InventoryScreen.swift:74)', by: 'swiftui-pro skill' },
         { rule: 'Design: no UIKit colours', verdict: 'fix', note: 'InventoryTone.success builds its colour from UIColor { traits in } (InventoryRow.swift:222-224); a SwiftUI or catalog colour avoids the UIKit dependency in a view file.', by: 'swiftui-pro skill' },
         { rule: 'Privacy and lists', verdict: 'pass', note: 'Item names are .privacySensitive(), and the list is a real List with refreshable and section headers (InventoryRow.swift:82, InventoryScreen.swift:133-155).', by: 'swiftui-pro skill' },
       ],

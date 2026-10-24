@@ -110,7 +110,7 @@
 
       swiftui: [
 
-        { rule: "Performance: store built views, not escaping @ViewBuilder closures", verdict: "fix", note: "FilterSheet and FilterSection keep `@ViewBuilder var content: () -> Content` with an @escaping init parameter (FilterSheet.swift lines 21 and 97); a stored @ViewBuilder let content: Content built once avoids re-running the closure on every body pass. Low.", by: "swiftui-pro skill" },
+        { rule: "Performance: store built views, not escaping @ViewBuilder closures", verdict: "pass", note: "FilterSheet and FilterSection store the built content (FilterSheet.swift:21, 97)", by: "swiftui-pro skill" },
 
         { rule: "Views: use the system control for single choice", verdict: "fix", note: "FilterOptionRow hand-builds a radio row from Button, checkmark and the selected trait; Picker with .pickerStyle(.inline) (or a Form Picker) provides the radio semantics, Voice Control names and keyboard support for free, while the custom row only reproduces the look. Low.", by: "swiftui-pro skill" },
 
